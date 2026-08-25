@@ -21,11 +21,13 @@
 <script lang="ts">
   import type { Placement, VirtualElement } from '@floating-ui/dom';
   import type { SelectionPopoverProps } from './selection-popover.types.ts';
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import { createVirtualKeyboardDismissal } from './virtual-keyboard-dismissal.svelte.ts';
 
@@ -37,6 +39,7 @@
     onExpand,
     onCancel,
     onClose,
+    onExitComplete,
     class: customClassName,
     ...rest
   }: SelectionPopoverProps = $props();
@@ -83,8 +86,20 @@
     };
   });
 
+  // Snapshot of the last live virtual anchor OBJECT — not just its
+  // coordinates — so `virtualAnchor` below can return the exact same
+  // reference across a close instead of switching to a newly-constructed
+  // one. `anchored-overlay.svelte.ts`'s positioning effect tracks
+  // `anchor()`'s return value as a reactive dependency: even a
+  // same-coordinates-but-different-object swap makes it tear down and
+  // rebuild (resetting `positionStyle` for a tick before the async Floating
+  // UI recomputation restores it), so a consumer clearing `position` in the
+  // same update that flips `open` false must not trigger a reference change
+  // at all, not just an eventually-equivalent one.
+  let lastVirtualAnchor: VirtualElement | null = null;
+
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
-    if (!position) return null;
+    if (!position) return lastVirtualAnchor;
 
     // Use the selection height when provided so floating-ui sees the real bottom
     // edge of the selection. Without this, `bottom` equals `top` (zero-height
@@ -92,26 +107,90 @@
     // top is set to `anchor.bottom + offset = position.y + 8` — inside the
     // selection line — causing the observed ~8.5 px overlap (issue #369).
     const selectionHeight = position.height ?? 0;
+    // A plain, already-resolved rect object — not a closure reading
+    // `position.x`/`.y` live — so the anchor stays valid (a fixed rect, not a
+    // reference back to now-null `position`) for as long as this SAME
+    // wrapper object is returned during a close.
+    const rect = {
+      x: position.x,
+      y: position.y,
+      top: position.y,
+      left: position.x,
+      right: position.x,
+      bottom: position.y + selectionHeight,
+      width: 0,
+      height: selectionHeight,
+    } as DOMRect;
 
-    return {
-      getBoundingClientRect: () =>
-        ({
-          x: position.x,
-          y: position.y,
-          top: position.y,
-          left: position.x,
-          right: position.x,
-          bottom: position.y + selectionHeight,
-          width: 0,
-          height: selectionHeight,
-        }) as DOMRect,
-    };
+    const anchor: VirtualElement = { getBoundingClientRect: () => rect };
+    lastVirtualAnchor = anchor;
+    return anchor;
   });
 
   const isPositionedOpen = $derived(open && position != null);
 
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). This component never unmounts its own element,
+  // so `renderPanel`/`isClosing` drive `data-cinder-visible`/
+  // `data-cinder-closing` rather than an `{#if}` gate — but the same
+  // await-completion + generation-guard contract applies before the popover
+  // is removed from the tab order.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => isPositionedOpen,
+    getPanelElement: () => popoverElement,
+    getReducedMotion: () => reducedMotion.current,
+    // Deferred composer reset (CIN-376 round 17 review): closing externally
+    // (e.g. an outside pointerdown) used to reset `expanded`/`commentBody`
+    // the instant the close began, swapping the retained, still-fading
+    // panel's visible content from the full composer to the collapsed
+    // trigger mid-fade. Resetting only once the exit transition genuinely
+    // finishes keeps the composer's content and dimensions stable for the
+    // whole fade, matching HANDLE_CANCEL/HANDLE_SUBMIT's own explicit resets
+    // (those are user-initiated and already look correct, since the user
+    // just watched the content they typed get submitted/discarded).
+    onClosed: () => {
+      expanded = false;
+      commentBody = '';
+      // Lets a consumer wrapping this component in its own `{#if}` decouple
+      // that mount gate from the live open state (CIN-376 round 20 review —
+      // ReviewEditor's `{#if showSelectionPopover}` destroyed the whole
+      // component instance the instant its close handler cleared
+      // `selectionPopoverPosition`/`selectionPopoverExpanded`, before this
+      // component's OWN retained-exit lifecycle ever got a chance to run).
+      onExitComplete?.();
+    },
+  });
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => isPositionedOpen,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. When a documented
+    // close clears `position` in the same update that flips `open` false,
+    // `isPositionedOpen` goes false in THIS render, one tick before
+    // `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing `positionStyle`/`positionReady`
+    // before the async Floating UI recomputation restores them.
+    // `renderPanel` doesn't have this lag: it's a plain `$state` that's
+    // already `true` from the prior render and isn't reset until the
+    // completion callback actually fires, so reading it here in the same
+    // tick correctly keeps positioning active.
+    // `open()` is `exitState.renderPanel` ALONE, not `isPositionedOpen ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading
+    // `isPositionedOpen` here — a `$derived` that recomputes whenever
+    // `position` changes — still subscribes that effect to it as a
+    // fine-grained dependency, even when the overall `||` result doesn't
+    // change, causing it to briefly tear down/rebuild on every ordinary
+    // close. `renderPanel` alone is stable throughout the open session —
+    // see Popover's `anchoredOverlay` for the fuller explanation of this
+    // same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
+    // `virtualAnchor` itself now returns the SAME object reference across a
+    // close (see its own definition above) — no separate `?? lastVirtualAnchor`
+    // fallback needed here, and no reference change at the exact moment
+    // `position` goes null.
     anchor: () => virtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
@@ -123,6 +202,14 @@
   const portalAttachment = createPortalAttachment({
     target: () => document.body,
     inheritAttributes: true,
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
   });
 
   const canSubmit = $derived(commentBody.trim().length > 0);
@@ -267,8 +354,14 @@
       // re-evaluations while already closed.
       if (wasOpen) {
         wasOpen = false;
-        expanded = false;
-        commentBody = '';
+        // `expanded`/`commentBody` are NOT reset here: the retained closing
+        // panel (kept mounted through its exit transition, see `exitState`
+        // below) would otherwise instantly swap its visible content from the
+        // full composer to the compact "Add comment" trigger while still
+        // fading out — the same content and dimensions that were open
+        // should be what animates out. Reset only once the exit genuinely
+        // finishes, via `exitState`'s `onClosed` callback below.
+        //
         // Return focus to wherever it was before the popover opened, then
         // release the reference: this open session is over, so the next open
         // must re-arm from whatever has focus then rather than reuse a stale
@@ -294,6 +387,16 @@
   });
 </script>
 
+<!--
+  `aria-hidden`/`inert` are placed AFTER `{...rest}` below deliberately: in
+  Svelte, a later attribute on an element wins over an earlier one, including
+  one supplied via spread — with `{...rest}` last (as it was before), a
+  consumer passing `inert={false}`/`aria-hidden={null}` through rest props
+  would silently defeat the closing-state semantics. These two are
+  component-owned lifecycle state (CIN-376), not something a consumer prop
+  should be able to cancel, so they always win regardless of what `rest`
+  carries.
+-->
 <div
   bind:this={popoverElement}
   {id}
@@ -301,6 +404,8 @@
   data-cinder-expanded={expanded ? '' : undefined}
   data-cinder-position-ready={anchoredOverlay.positionReady}
   data-cinder-placement={anchoredOverlay.resolvedPlacement}
+  data-cinder-visible={exitState.renderPanel ? '' : undefined}
+  data-cinder-closing={exitState.isClosing ? '' : undefined}
   style={anchoredOverlay.positionStyle}
   role="toolbar"
   aria-label="Selection actions"
@@ -308,6 +413,8 @@
   {@attach portalAttachment}
   {@attach dismissOnOutsidePointerdown}
   {...rest}
+  aria-hidden={exitState.isClosing ? 'true' : undefined}
+  inert={exitState.isClosing ? true : undefined}
 >
   {#if expanded}
     <div bind:this={composerFormElement} class="cinder-selection-popover__form">

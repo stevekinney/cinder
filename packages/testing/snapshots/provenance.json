@@ -1,10 +1,8 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "color-field",
-    "color-picker"
-  ],
-  "renderedSourceSha": "5e56887569aa75574302fa40ba21f85f9ab00a6e",
+  "componentScope": "all",
+  "shard": "4/8",
+  "renderedSourceSha": "8143f4ce54aae1a2c455f86d7fdd2e613c6a898c",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

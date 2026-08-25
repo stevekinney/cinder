@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, jest, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -17,6 +17,12 @@ const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  // Fallback-duration tests advance fake timers instead of sleeping past a
+  // real wall-clock boundary (CIN-376 round 14 review) — reset here so a
+  // fake-timer test never leaks into the next one.
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
 });
 
 async function flushQueuedFocus(): Promise<void> {
@@ -123,7 +129,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
       expect(complete).not.toHaveBeenCalled();
@@ -148,7 +154,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       await flushQueuedFocus();
       expect(complete).toHaveBeenCalledTimes(1);
@@ -159,7 +165,97 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('exit helper counts every transitionProperty slot in the "all" fallback, not just max(durations, delays) (CIN-376)', async () => {
+    // Five properties (`all, opacity, transform, width, color`), only three
+    // durations/delays. The fifth slot (index 4) cyclically resolves to
+    // `durations[4 % 2] + delays[4 % 3] = 100ms + 300ms = 400ms` — the real
+    // longest boundary. Because `all` is present, `ignoreUnknownPropertyEvents`
+    // means completion can ONLY come from the computed-longest-duration
+    // fallback timer; a fallback that stopped at `max(durations.length,
+    // delays.length)` (3 slots) would miss this fifth slot and schedule
+    // completion ~100ms too early, removing the retained actions surface
+    // before the color transition ends.
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 300ms, 0ms',
+      transitionDuration: '100ms, 0ms',
+      transitionProperty: 'all, opacity, transform, width, color',
+    });
+
+    jest.useFakeTimers();
+    try {
+      waitForSpeedDialExit(action, false, complete);
+
+      jest.advanceTimersByTime(360);
+      expect(complete).not.toHaveBeenCalled();
+
+      jest.advanceTimersByTime(120);
+      expect(complete).toHaveBeenCalledTimes(1);
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper ignores individual events for a consumer transition list containing "all" and waits for the computed longest duration (CIN-376)', async () => {
+    // Regression guard: a consumer's own CSS on an action can legitimately
+    // include `all` alongside a named property — e.g.
+    // `transition: all 500ms, opacity 100ms`. `waitForTransitionCompletion`
+    // represents `all` with a null (unenumerable) tracked-property set, and
+    // by default finishes on the FIRST `transitionend` in that case (see
+    // OVERLAY-POLICY.md § "Transition lifecycle" — the cost of using `all`
+    // instead of naming properties, for CINDER'S OWN css). For Speed Dial
+    // specifically, that default would let the 100ms `opacity` boundary
+    // clear the retained actions surface while the `transform` covered by
+    // `all` is still transitioning for the full 500ms. `speed-dial-exit.ts`
+    // passes `ignoreUnknownPropertyEvents: true` to restore the old bespoke
+    // waiter's exact behavior: ignore individual events entirely for this
+    // case and rely solely on the computed-longest-duration fallback timer.
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '500ms, 100ms',
+      transitionProperty: 'all, opacity',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, false, complete);
+
+      // The named 100ms `opacity` boundary firing alone must NOT complete
+      // the exit — the `all` boundary's individual events are ignored, so
+      // completion can only come from the fallback timer at the longest
+      // (500ms) duration.
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      // A transitionend for a property `all` would have covered doesn't
+      // complete it either — individual events are ignored entirely.
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      expect(complete).not.toHaveBeenCalled();
+
+      await Bun.sleep(560);
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('exit helper ignores interrupted entrance transition cancellation', async () => {
+    // Speed Dial's per-action waiter passes `ignoreCancel: true` to the
+    // shared `waitForTransitionCompletion` (see speed-dial-exit.ts): an
+    // action can still be mid-ENTER-transition (its own staggered delay not
+    // yet elapsed) when the close begins, and the browser cancels that
+    // in-flight enter transition the instant the style target changes.
+    // Under the canonical (non-`ignoreCancel`) semantics that `transitioncancel`
+    // would be mistaken for "this action's exit already finished" — resolving
+    // prematurely, before the exit transition has even started. This matches
+    // the old bespoke `waitForSpeedDialExit`, which never listened for
+    // `transitioncancel` at all.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -170,7 +266,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitioncancel', 'opacity');
       dispatchTransitionBoundary(action, 'transitioncancel', 'transform');
@@ -188,7 +284,14 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper repeats shorter transition time lists from the beginning', async () => {
+  test('exit helper only tracks properties whose resolved duration+delay is positive', async () => {
+    // The shared `transition-completion.ts` this now delegates to repeats a
+    // shorter duration/delay list CYCLICALLY against a longer property list,
+    // matching the CSS spec — with `transitionDuration: '150ms, 0ms'` the
+    // third property (`width`, index 2) resolves to `durations[2 % 2] =
+    // durations[0] = 150ms` (tracked), while the second property
+    // (`transform`, index 1) resolves to `durations[1] = 0ms` (not tracked).
+    // Tracked set is `{opacity, width}` — both must fire before completing.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -199,7 +302,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
       expect(complete).not.toHaveBeenCalled();
@@ -213,11 +316,43 @@ describe('SpeedDial', () => {
     }
   });
 
-  test('exit helper ignores bubbled transition events from non-element children', async () => {
+  test('exit helper repeats a shorter duration list cyclically against delays (CIN-376)', async () => {
+    // The review's exact scenario: three properties, durations `100ms, 0ms`
+    // (cyclic), delays `0ms, 0ms, 300ms` (one per property, no repeat
+    // needed). The third property's real boundary is
+    // `durations[2 % 2] + delays[2] = 100ms + 300ms = 400ms` — a "repeat the
+    // last value" implementation would instead compute `durations.at(-1) +
+    // delays[2] = 0ms + 300ms = 300ms`, whose `+50` fallback (350ms) would
+    // remove the retained actions surface before the real 400ms transition
+    // ends.
     const action = document.createElement('button');
-    const text = document.createTextNode('Create');
-    action.append(text);
     document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms, 300ms',
+      transitionDuration: '100ms, 0ms',
+      transitionProperty: 'opacity, transform, width',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, false, complete);
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'width');
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper ignores events targeting an unrelated element', async () => {
+    const action = document.createElement('button');
+    const other = document.createElement('span');
+    document.body.append(action, other);
     const complete = mock(() => {});
     const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
       transitionDelay: '0ms, 0ms',
@@ -226,9 +361,9 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
 
-      dispatchTransitionBoundaryFrom(text, 'transitionend', 'opacity');
+      dispatchTransitionBoundary(other, 'transitionend', 'opacity');
       dispatchTransitionBoundary(action, 'transitionend', 'transform');
       expect(complete).not.toHaveBeenCalled();
 
@@ -252,7 +387,7 @@ describe('SpeedDial', () => {
     });
 
     try {
-      const cancel = waitForSpeedDialExit(action, complete);
+      const cancel = waitForSpeedDialExit(action, false, complete);
       cancel();
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
@@ -279,7 +414,7 @@ describe('SpeedDial', () => {
     );
 
     try {
-      const cancel = waitForSpeedDialExit([first, second], complete);
+      const cancel = waitForSpeedDialExit([first, second], false, complete);
       dispatchTransitionBoundary(first, 'transitionend', 'opacity');
       expect(complete).not.toHaveBeenCalled();
 

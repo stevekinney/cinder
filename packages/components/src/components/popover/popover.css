@@ -35,6 +35,42 @@
     opacity: 0;
   }
 
+  /* Exit transition (OVERLAY-POLICY.md § "Transition lifecycle"): the
+   component keeps the panel mounted for the duration of this transition
+   instead of removing it the instant `open` goes false. Declared after the
+   position-ready rule above so it wins at equal specificity.
+
+   `opacity`/`pointer-events` alone already handled the ordinary "live
+   `open` flag changes" class of this bug (round 10-12). */
+  .cinder-popover[data-cinder-closing] {
+    opacity: 0;
+    pointer-events: none;
+  }
+
+  /* `visibility: visible` explicitly overrides the position-ready rule's
+   `visibility: hidden` above (CIN-376 round 16 review, refined round 18) —
+   but ONLY when a valid retained position actually exists
+   (`data-cinder-has-position`, set whenever popover.svelte's
+   `resolvedPositionStyle` is non-empty). A consumer changing a positioning
+   INPUT (`placement`, `offset`, `widthMode`, ...) in the same update that
+   closes the Popover invalidates `createAnchoredOverlay`'s effect — its
+   cleanup briefly resets `positionReady` AND `positionStyle` to their empty
+   values before the asynchronous Floating UI recomputation restores them,
+   and gating on `data-cinder-closing` alone here would keep the panel
+   forced visible in that gap even though it has nothing but its
+   unpositioned `left: 0; top: 0` fixed-origin fallback to show — which is
+   exactly what an EARLY close (closed before its first-ever
+   `computePosition` finished, so `positionReady` is still false and
+   `lastPositionStyle` has never been populated) looks like: no positioning
+   input changed anything, there's just no valid position snapshot to fall
+   back to yet, and the panel would flash into view at the viewport origin
+   while fading instead of staying hidden. Requiring a real retained
+   position closes that gap without reintroducing the "disappears entirely"
+   bug this override originally fixed. */
+  .cinder-popover[data-cinder-closing][data-cinder-has-position] {
+    visibility: visible;
+  }
+
   .cinder-popover__trigger {
     display: contents;
   }

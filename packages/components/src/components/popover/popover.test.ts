@@ -1018,6 +1018,512 @@ describe('Popover — floating-ui wiring', () => {
     await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
     expect(autoUpdateTeardown).toHaveBeenCalled();
   });
+
+  test('survives closing with an empty-string data-cinder-closing and stays inert/aria-hidden (CIN-376)', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-popover` so
+    // `waitForTransitionCompletion` takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted" DOM state.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(Popover, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+      });
+      await waitFor(() => {
+        expect(queryPopoverPanel()).not.toBeNull();
+      });
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      // Regression guard: `isClosing || undefined` serializes Svelte's boolean
+      // `true` as the literal string `data-cinder-closing="true"`, not the
+      // empty-string idiom `[data-cinder-closing]` attribute selectors (and
+      // modal.svelte/drawer.svelte) are written against.
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      // Regression guard: a closing-but-still-mounted panel must not remain
+      // keyboard/AT-reachable — a focusable child inside a dismissing popover
+      // must not be tabbable while it fades out.
+      expect(panel?.getAttribute('aria-hidden')).toBe('true');
+      expect(panel?.hasAttribute('inert')).toBe(true);
+
+      const event = new Event('transitionend');
+      Object.defineProperty(event, 'propertyName', { value: 'opacity' });
+      panel?.dispatchEvent(event);
+
+      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('a removed trigger while closing does not unmount the panel early (CIN-376)', async () => {
+    // Regression guard: `anchorElement` re-resolves reactively and goes null
+    // the instant the trigger disconnects — a controlled consumer can do
+    // this in the very same update that flips `open` false. Without a
+    // last-anchor snapshot, the template's mount gate (`resolvedAnchorElement`)
+    // would unmount the panel immediately, before its exit transition could
+    // ever play.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const triggerEl = document.createElement('button');
+    attachScratch(triggerEl);
+
+    try {
+      let openValue = true;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          triggerRef: triggerEl,
+          children: textSnippet('content'),
+        },
+      });
+
+      await waitFor(() => {
+        expect(queryPopoverPanel()).not.toBeNull();
+      });
+
+      // Remove the trigger and close in the same update — `anchorElement`
+      // goes null synchronously.
+      triggerEl.remove();
+      openValue = false;
+      await rerender({ open: false, triggerRef: triggerEl, children: textSnippet('content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+
+      const event = new Event('transitionend');
+      Object.defineProperty(event, 'propertyName', { value: 'opacity' });
+      panel?.dispatchEvent(event);
+
+      await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('a removed trigger while closing keeps the panel inside its resolved top-layer owner (CIN-376)', async () => {
+    // Regression guard: retaining the anchor (`resolvedAnchorElement`) keeps
+    // the panel mounted, but `findNearestOpenTopLayer` can no longer walk up
+    // from a disconnected/removed trigger to find the enclosing modal's
+    // top-layer boundary — without a retained portal-target snapshot, the
+    // portal scope falls through to `document.body`, and the enclosing
+    // modal then paints above the still-exiting Popover.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const dialog = document.createElement('dialog');
+    dialog.setAttribute('open', '');
+    const nativeMatches = dialog.matches.bind(dialog);
+    dialog.matches = (selector: string) => selector === ':modal' || nativeMatches(selector);
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    dialog.append(triggerButton);
+    attachScratch(dialog);
+
+    try {
+      let openValue = true;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          triggerRef: triggerButton,
+          children: textSnippet('dialog content'),
+        },
+      });
+
+      await waitFor(() => {
+        expect(dialog.querySelector('.cinder-popover')).not.toBeNull();
+      });
+      expect(dialog.querySelector('.cinder-popover')?.parentElement?.parentElement).toBe(dialog);
+
+      // Remove the trigger and close in the same update.
+      triggerButton.remove();
+      openValue = false;
+      await rerender({
+        open: false,
+        triggerRef: triggerButton,
+        children: textSnippet('dialog content'),
+      });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      // Still scoped inside the dialog — not fallen through to document.body.
+      expect(panel?.parentElement?.parentElement).toBe(dialog);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('onExitComplete fires once the exit transition genuinely finishes, not immediately on close (CIN-376 round 20)', async () => {
+    // Regression guard: lets a consumer composing Popover (e.g. Combobox's
+    // listbox/empty-state panels, ReviewEditor's SelectionPopover analog)
+    // decouple its own wrapping `{#if}` from the live `open` prop — without
+    // this callback, that consumer's `{#if}` would destroy the whole
+    // Popover instance the instant `open` flips false, before Popover's own
+    // retained-exit lifecycle (data-cinder-closing, not an `{#if}` around
+    // its own root) ever gets a chance to run.
+    const onExitComplete = mock(() => {});
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+        onExitComplete,
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
+    });
+
+    openValue = false;
+    await rerender({
+      open: false,
+      trigger: triggerSnippet,
+      children: textSnippet('content'),
+      onExitComplete,
+    });
+
+    await waitFor(() => {
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
+    expect(queryPopoverPanel()).toBeNull();
+  });
+
+  test('a reopen after the exit completes with no fresh anchor does not resurrect the stale trigger (CIN-376)', async () => {
+    // Regression guard: `resolvedAnchorElement`'s fallback used to hold onto
+    // `lastAnchorElement` forever. If a controlled consumer removes its
+    // trigger while closing, lets the exit finish, and later sets `open`
+    // back to `true` without supplying a fresh trigger, the fallback would
+    // still resolve to the now-fully-disconnected element from the PREVIOUS
+    // session — mounting and positioning a panel for what is effectively an
+    // anchorless open, even though the open-lifecycle effect (gated on the
+    // live `anchorElement`) correctly refuses to register Escape or manage
+    // focus for it. The snapshot must clear once the exit genuinely
+    // completes (`onClosed`).
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    attachScratch(triggerButton);
+
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    // Remove the trigger, close, and let the (reduced-motion-default,
+    // microtask-resolved) exit fully complete.
+    triggerButton.remove();
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+
+    // Reopen without ever supplying a fresh trigger.
+    openValue = true;
+    await rerender({ open: true, triggerRef: triggerButton, children: textSnippet('content') });
+
+    expect(queryPopoverPanel()).toBeNull();
+  });
+
+  test('a reopen after the exit completes does not retain a stale prior-session position (CIN-376 round 19)', async () => {
+    // Regression guard: `lastPositionStyle` (the retained-position snapshot
+    // that lets a closing panel keep its coordinates through
+    // `createAnchoredOverlay`'s cleanup, so it fades in place instead of
+    // jumping to `left: 0; top: 0`) was never cleared by `onClosed` — so
+    // after one normally positioned session, a LATER session that closes
+    // before its own first `computePosition` ever resolves would still see
+    // `resolvedPositionStyle` (and `data-cinder-has-position`, which trusts
+    // it as proof of a valid CURRENT position) as non-empty, forcing the
+    // closing panel visible at the PREVIOUS session's stale coordinates
+    // instead of correctly staying hidden (an early close, never
+    // positioned, has nothing valid to fade from).
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    attachScratch(triggerButton);
+
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    // First session: computePosition resolves normally, positioning the panel.
+    await waitFor(() => {
+      const panel = queryPopoverPanel();
+      expect(panel?.getAttribute('data-cinder-position-ready')).toBe('true');
+    });
+    expect(queryPopoverPanel()?.hasAttribute('data-cinder-has-position')).toBe(true);
+
+    // Close and let the exit fully complete (onClosed fires).
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+
+    // Second session: computePosition never resolves before the close.
+    deferComputePosition = true;
+    openValue = true;
+    await rerender({ open: true, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => {
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-position-ready')).toBe('false');
+    });
+    // Never positioned this session — no stale carry-over from the last one.
+    expect(queryPopoverPanel()?.hasAttribute('data-cinder-has-position')).toBe(false);
+
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+
+    // The panel may still be briefly retained for its exit, but must not
+    // carry the PREVIOUS session's position forward as if it were valid.
+    const panel = queryPopoverPanel();
+    if (panel) {
+      expect(panel.hasAttribute('data-cinder-has-position')).toBe(false);
+      expect(panel.getAttribute('style') ?? '').not.toContain('left:');
+    }
+  });
+
+  test('retains inherited portal-style tokens through the exit when the trigger ref is un-supplied while closing (CIN-376)', async () => {
+    // Regression guard: `createInheritedPortalStyle`'s source used to read
+    // the live `anchorElement`, which goes `null` the instant a controlled
+    // consumer clears `triggerRef` (even while the underlying DOM node stays
+    // connected and styled) — `resolvedAnchorElement`'s retained anchor kept
+    // the panel mounted/positioned, but the inherited theme tokens still
+    // reset to an empty string, so a locally-themed-subtree Popover lost its
+    // tokens/typography/direction/color-scheme for the duration of the fade.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    triggerButton.style.setProperty('--cinder-surface-raised', 'hotpink');
+    attachScratch(triggerButton);
+
+    try {
+      let openValue = true;
+      let triggerRefValue: HTMLElement | null = triggerButton;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          get triggerRef() {
+            return triggerRefValue;
+          },
+          children: textSnippet('themed content'),
+        },
+      });
+
+      await waitFor(() => {
+        const portalScope = queryPopoverPanel()?.parentElement;
+        expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+      });
+
+      // Un-supply the triggerRef and close in the same update. The button
+      // itself stays connected and styled — only this component's own
+      // association with it is dropped.
+      triggerRefValue = null;
+      openValue = false;
+      await rerender({ open: false, triggerRef: null, children: textSnippet('themed content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      const portalScope = panel?.parentElement;
+      expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('keeps positioning active through an ordinary close, without waiting for async recomputation (CIN-376)', async () => {
+    // Regression guard: `open` becomes `false` before the later
+    // `exitState.sync()` effect can set `isClosing` (fires after a render has
+    // already committed) — gating `anchoredOverlay`'s `open()` on
+    // `exitState.isClosing` would briefly take the closed path, hitting the
+    // `[data-cinder-position-ready='false']` CSS rule and clearing
+    // `positionStyle`/`positionReady` for a tick before the async Floating UI
+    // recomputation restores them, interrupting the fade. `renderPanel`
+    // doesn't have this lag.
+    //
+    // A narrower residual gap remains, the same one documented on
+    // SelectionPopover's equivalent fix: `anchorElement` is itself a
+    // `$derived` that explicitly tracks the `open` prop (to re-resolve a
+    // disabled-then-focusable snippet trigger), so `anchoredOverlay`'s
+    // internal effect still reruns when `open` changes — even though its
+    // OVERALL `open()`/`anchor()` results stay valid throughout — briefly
+    // tearing down and rebuilding the position tracking. Poll for it to
+    // settle, then assert it converges back to the exact pre-close style.
+    //
+    // Stub a real (non-zero) transition duration so the exit doesn't resolve
+    // on the next microtask (the reduced-motion default) — that's the only
+    // way to observe the intermediate "closing but still mounted/positioned"
+    // state before `await rerender` itself yields the microtask queue.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(Popover, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('content') },
+      });
+      await waitFor(() => {
+        expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
+      });
+      const panelBeforeClose = queryPopoverPanel();
+      const styleBeforeClose = panelBeforeClose?.getAttribute('style');
+      expect(styleBeforeClose).toBeTruthy();
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+
+      await waitFor(() => {
+        expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
+        expect(queryPopoverPanel()?.getAttribute('style')).toBe(styleBeforeClose);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('clears the stale anchor when the trigger disconnects while already closed (CIN-376)', async () => {
+    // Regression guard: `lastAnchorElement`'s snapshot effect only ever SET
+    // the snapshot; it never cleared it when the anchor went null outside an
+    // active (open or closing) session — `onClosed` doesn't cover this,
+    // since no close session ever starts. A stale reference from a PREVIOUS
+    // session would sit around indefinitely, and a later controlled
+    // `open = true` with no fresh anchor would resolve to it — mounting a
+    // panel for what is effectively an anchorless open.
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    attachScratch(triggerButton);
+
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()).not.toBeNull();
+    });
+
+    // Close normally (trigger still connected) and let the exit complete.
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+
+    // NOW remove the trigger, while the Popover is already fully closed —
+    // no open/closing session is active.
+    triggerButton.remove();
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+
+    // Reopen without ever supplying a fresh trigger.
+    openValue = true;
+    await rerender({ open: true, triggerRef: triggerButton, children: textSnippet('content') });
+
+    expect(queryPopoverPanel()).toBeNull();
+  });
 });
 
 // ---------------------------------------------------------------------------

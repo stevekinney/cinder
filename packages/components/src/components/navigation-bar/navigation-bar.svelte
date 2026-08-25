@@ -27,10 +27,13 @@
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import type { SequentialFocusTarget } from '../../utilities/focus.ts';
+  import { onDestroy } from 'svelte';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
   import {
     closestAcrossShadow,
@@ -78,14 +81,6 @@
   const isCollapsible = $derived(placement === 'top' && menuToggle !== undefined);
   let isMobileLayout = $state(false);
 
-  const variant: NavigationVariant = $derived(
-    placement === 'bottom'
-      ? 'mobile'
-      : isCollapsible && isMobileLayout && mobileMenuOpen
-        ? 'mobile'
-        : 'horizontal',
-  );
-
   // Stores the toggle element for focus return after Escape-close.
   let navigationBarElement: HTMLElement | null = null;
   let toggleElement: HTMLElement | null = null;
@@ -94,7 +89,17 @@
   let itemsRegionElement: HTMLDivElement | null = null;
   let sourceSubtreeUnavailable = $state(false);
   const itemsPortalScope = createPortalAttachment({
-    disabled: () => !isMobileLayout || !mobileMenuOpen || sourceSubtreeUnavailable,
+    // Gated on `mobileMenuOpen || exitState.renderPanel` (not `mobileMenuOpen`
+    // alone), same reasoning as `variant` and the `cinder-_floating-surface`
+    // class below: `mobileMenuOpen` flips false the instant close begins.
+    // Disabling the portal at that exact moment moves the panel back inline
+    // — under whatever transformed/containing-block-forming ancestor the
+    // NavigationBar itself sits in — while `anchoredItems` keeps writing
+    // viewport-relative fixed `top`/`left` coordinates for the rest of the
+    // exit transition (`exitState.isClosing`), which are then interpreted in
+    // the wrong coordinate system and make the panel jump during the exit.
+    disabled: () =>
+      !isMobileLayout || !(mobileMenuOpen || exitState.renderPanel) || sourceSubtreeUnavailable,
     source: () => navigationBarElement,
     target: () => {
       const source = navigationBarElement;
@@ -102,17 +107,103 @@
       return findNearestOpenTopLayer(source);
     },
   });
+  const mobilePanelOpen = $derived(isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable);
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). The panel never unmounts, so `renderPanel`/
+  // `isClosing` drive `data-cinder-visible`/`data-cinder-closing` instead of
+  // an `{#if}` gate — this replaces the previous `[data-open='false']`
+  // instant `visibility: hidden`, which hid the exit transition entirely.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => mobilePanelOpen,
+    getPanelElement: () => itemsRegionElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
   const anchoredItems = createAnchoredOverlay({
-    open: () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. On every collapsed-
+    // panel close, `mobilePanelOpen` becomes `false` in THIS render, one
+    // tick before `exitState.sync()` ever runs — so `isClosing` still reads
+    // its pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing the fixed coordinates and
+    // match-anchor width. Because `data-cinder-visible` and the portal
+    // already retain the panel, it would visibly jump/reflow until Floating
+    // UI asynchronously repositions it again. `renderPanel` doesn't have
+    // this lag.
+    //
+    // `open()` is `isMobileLayout && exitState.renderPanel`, not
+    // `mobilePanelOpen || exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
+    // raw `mobilePanelOpen` prop here — even behind an `||` whose overall
+    // result doesn't change — still subscribes that effect to
+    // `mobilePanelOpen` as a fine-grained dependency, causing it to briefly
+    // tear down/rebuild on every ordinary close. `renderPanel` alone is
+    // stable throughout the open session — see Popover's `anchoredOverlay`
+    // for the fuller explanation of this same fix (CIN-376 round 12).
+    //
+    // `isMobileLayout` IS explicitly read here, unlike `mobilePanelOpen`:
+    // it's a deliberate, coarse-grained dependency (it only changes on a
+    // breakpoint crossing, not on every open/close), and reading it here is
+    // exactly what makes a breakpoint change torn down immediately. Without
+    // it, resizing to desktop mid-close would leave `renderPanel` still
+    // true (the exit transition hasn't finished), so this callback would
+    // keep returning `true` and `anchoredItems.positionStyle` would keep
+    // applying viewport-fixed mobile coordinates to what is now supposed to
+    // be an inline desktop nav — even though the portal (`itemsPortalScope`
+    // above) already correctly restores it inline and `variant`/
+    // `inheritedPortalStyle` already correctly stop treating it as mobile.
+    // Positioning must tear down in that same step, not lag behind on
+    // `renderPanel` alone.
+    //
+    // `!sourceSubtreeUnavailable` is read for the SAME reason as
+    // `isMobileLayout` (CIN-376 round 18 review): when the source ancestor
+    // becomes `inert`/`aria-hidden`/disabled, the availability observer sets
+    // `sourceSubtreeUnavailable` and closes the menu — `itemsPortalScope`
+    // above already includes this in its own `disabled` gate and
+    // immediately restores the panel inline, but this positioning gate
+    // stayed true through `exitState.renderPanel` regardless, so the
+    // restored (now inline, no longer portaled) panel kept its
+    // viewport-fixed coordinates and match-anchor width for the rest of the
+    // exit — coordinates that mean something different once reinterpreted
+    // under a transformed/containing-block-forming ancestor, making the
+    // panel visibly jump during this exceptional dismissal. Tearing down
+    // alongside the portal, not lagging behind it, fixes that.
+    open: () => isMobileLayout && exitState.renderPanel && !sourceSubtreeUnavailable,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,
     offset: () => 0,
     widthMode: () => 'match-anchor',
   });
+
+  // Gated on `mobileMenuOpen || exitState.renderPanel` (not `mobileMenuOpen`
+  // alone) for the same reason as the `cinder-_floating-surface` class below:
+  // `mobileMenuOpen` flips false the instant close begins, and resolving
+  // `variant` to 'horizontal' at that exact moment would strip the mobile
+  // item styling out from under the panel while it's still retained and
+  // visibly playing its exit transition.
+  const variant: NavigationVariant = $derived(
+    placement === 'bottom'
+      ? 'mobile'
+      : isCollapsible && isMobileLayout && (mobileMenuOpen || exitState.renderPanel)
+        ? 'mobile'
+        : 'horizontal',
+  );
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
+  });
   const inheritedPortalStyle = createInheritedPortalStyle(
     () => navigationBarElement,
-    () => isMobileLayout && mobileMenuOpen && !sourceSubtreeUnavailable,
+    // Same retention as `itemsPortalScope` above — keep inheriting the
+    // portaled subtree's theme/direction tokens through the exit
+    // transition too, not just while `mobileMenuOpen` is live.
+    () => isMobileLayout && (mobileMenuOpen || exitState.renderPanel) && !sourceSubtreeUnavailable,
   );
 
   $effect(() => {
@@ -666,14 +757,14 @@
     </div>
   {/if}
 
-  {#if isMobileLayout && mobileMenuOpen}
+  {#if isMobileLayout && (mobileMenuOpen || exitState.renderPanel)}
     <div class="cinder-navigation-bar__items-owner" aria-owns={regionId}></div>
   {/if}
 
   <div
     {@attach itemsPortalScope}
     class={classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)}
-    style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
+    style={`display: ${isMobileLayout && (mobileMenuOpen || exitState.renderPanel) ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
     <div
       bind:this={itemsRegionElement}
@@ -681,11 +772,20 @@
       id={regionId}
       class={classNames(
         'cinder-navigation-bar__items',
-        isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined,
+        // Keep the shared floating-surface chrome (border/radius/shadow)
+        // through the exit transition too — gating this purely on the live
+        // `mobileMenuOpen` bindable would strip it the instant close begins,
+        // stripping the surface's border/shadow before the 200ms exit
+        // transition has even started.
+        isMobileLayout && (mobileMenuOpen || exitState.renderPanel)
+          ? 'cinder-_floating-surface'
+          : undefined,
       )}
       data-open={mobileMenuOpen ? 'true' : 'false'}
       data-cinder-mobile-panel={isMobileLayout || undefined}
       data-cinder-position-ready={anchoredItems.positionReady || undefined}
+      data-cinder-visible={exitState.renderPanel ? '' : undefined}
+      data-cinder-closing={exitState.isClosing ? '' : undefined}
       style={anchoredItems.positionStyle}
       inert={isCollapsible && isMobileLayout && !mobileMenuOpen ? true : undefined}
     >

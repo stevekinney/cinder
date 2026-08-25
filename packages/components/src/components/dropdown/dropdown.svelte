@@ -16,8 +16,11 @@
 </script>
 
 <script lang="ts">
+  import { onDestroy } from 'svelte';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import {
     setDropdownContext,
     setDropdownRegister,
@@ -192,6 +195,36 @@
     const toggleEvent = event as ToggleEvent;
     open = toggleEvent.newState === 'open';
   }
+
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle") for the legacy `usesLegacySnippetApi` /
+  // non-popover-API fallback branch below (`{:else if exitState.renderPanel}`),
+  // which is a plain conditionally-rendered div this helper can fully own.
+  //
+  // The sibling `supportsPopover` branch is NOT wired through this helper:
+  // it's the native HTML Popover API, and its close (`menu.hidePopover()`
+  // above) synchronously removes the element from the top layer — there is
+  // no JS hook to delay that removal the way `waitForTransitionCompletion`
+  // does for a component-owned `{#if}`. That branch instead uses the
+  // web-platform-native equivalent mechanism (`@starting-style` +
+  // `transition-behavior: allow-discrete`, see dropdown.css), which is
+  // symmetric and collapses under reduced motion the same way, just without
+  // a JS wait — the same "accepted equivalent mechanism" precedent
+  // OVERLAY-POLICY.md already grants Svelte `transition:` directives.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => open,
+    getPanelElement: () => menuElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
+
+  onDestroy(() => {
+    exitState.destroy();
+  });
 </script>
 
 <div
@@ -239,13 +272,24 @@
         data-cinder-placement={placement}
         style={`position-anchor: --${menuId};`}
         ontoggle={handlePopoverToggle}
+        aria-hidden={!open ? 'true' : undefined}
+        inert={!open ? true : undefined}
       >
         {#if children}
           {@render children()}
         {/if}
       </div>
-    {:else if open}
-      <div id={menuId} class="cinder-dropdown__menu" role="menu" data-cinder-placement={placement}>
+    {:else if exitState.renderPanel}
+      <div
+        bind:this={menuElement}
+        id={menuId}
+        class="cinder-dropdown__menu"
+        role="menu"
+        data-cinder-placement={placement}
+        data-cinder-closing={exitState.isClosing ? '' : undefined}
+        aria-hidden={exitState.isClosing ? 'true' : undefined}
+        inert={exitState.isClosing ? true : undefined}
+      >
         {#if children}
           {@render children()}
         {/if}

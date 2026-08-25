@@ -714,4 +714,84 @@ describe('Dropdown', () => {
       /\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='bottom-end'\],\s*\.cinder-dropdown-menu\[popover\]\[dir='rtl'\]\[data-cinder-placement='top-end'\]\s*\{[^}]*inset-inline-start:\s*anchor\(left\);[^}]*inset-inline-end:\s*auto;/,
     );
   });
+
+  test('keeps the fallback menu mounted with data-cinder-closing until its exit transition finishes (CIN-376)', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-dropdown__menu`
+    // so `waitForTransitionCompletion` takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted" DOM state.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-dropdown__menu')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(Dropdown, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
+      });
+
+      const queryMenu = () => container.querySelector('.cinder-dropdown__menu');
+      expect(queryMenu()).not.toBeNull();
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
+
+      // Regression guard: this menu previously unmounted in the exact same
+      // tick `open` flipped false (a plain `{:else if open}` gate), so no CSS
+      // transition could ever play. It must now survive, carrying
+      // `data-cinder-closing`, until the transition genuinely completes.
+      const closingMenu = queryMenu();
+      expect(closingMenu).not.toBeNull();
+      expect(closingMenu?.hasAttribute('data-cinder-closing')).toBe(true);
+
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        closingMenu?.dispatchEvent(event);
+      }
+
+      await waitFor(() => expect(queryMenu()).toBeNull());
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('a reopen mid-close keeps the fallback menu mounted (generation guard, CIN-376)', async () => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-dropdown__menu')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(Dropdown, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
+      });
+      const queryMenu = () => container.querySelector('.cinder-dropdown__menu');
+      expect(queryMenu()).not.toBeNull();
+
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
+      expect(queryMenu()?.hasAttribute('data-cinder-closing')).toBe(true);
+
+      // Reopen before the (transitionend-driven) close ever completes.
+      await rerender({ open: true, trigger: triggerSnippet, children: textSnippet('Menu item') });
+
+      expect(queryMenu()).not.toBeNull();
+      expect(queryMenu()?.hasAttribute('data-cinder-closing')).toBe(false);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });

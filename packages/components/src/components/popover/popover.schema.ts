@@ -87,6 +87,12 @@ const schema = {
           'Optional callback for choosing the element that receives initial panel focus.',
       },
       {
+        name: 'onExitComplete',
+        reason: 'function-or-snippet',
+        description:
+          'Called once the panel\'s exit transition has genuinely finished and it\nhas fully unmounted (see `_internal/OVERLAY-POLICY.md` § "Transition\nlifecycle"). Popover keeps its own panel mounted for the whole exit\ntransition — driven by `data-cinder-closing`, not an `{#if}` gate around\nits own root — so a CONSUMER that composes Popover and wraps it in its\nown `{#if}` keyed directly on the same condition that flips `open` false\nwould destroy the whole component instance before this exit ever gets a\nchance to play. Use this callback to decouple that wrapping condition\nfrom the live open state: keep the composing consumer\'s own mount gate\ntrue until this fires, then clear it.',
+      },
+      {
         name: 'outsideClickIgnoreRefs',
         reason: 'function-or-snippet',
         description: 'Additional elements treated as inside for outside dismissal.',

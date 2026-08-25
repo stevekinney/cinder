@@ -186,6 +186,30 @@
 
   const listboxVisible = $derived(open && filteredOptions.length > 0);
   const emptyVisible = $derived(open && filteredOptions.length === 0);
+
+  /**
+   * Whether the composed Popover instance should stay MOUNTED (CIN-376
+   * round 20 review). `listboxVisible`/`emptyVisible` are both derived
+   * directly from `open`, so the instant `open` flips false they both go
+   * false in the SAME update — the `{#if listboxVisible}`/`{#if emptyVisible}`
+   * below would destroy the whole composed Popover instance immediately,
+   * before Popover's OWN retained-exit lifecycle (which keeps its panel
+   * mounted through `data-cinder-closing`, not an `{#if}` gate around its
+   * own root) ever gets a chance to run — the listbox would still snap
+   * closed instead of fading. `panelMounted` mirrors either becoming true,
+   * but only clears via Popover's `onExitComplete` once its exit genuinely
+   * finishes. `mountedIsEmpty` remembers which of the two variants (results
+   * vs. "No results") was active, so the retained Popover keeps rendering
+   * the same content through its own exit rather than switching mid-fade.
+   */
+  let panelMounted = $state(false);
+  let mountedIsEmpty = $state(false);
+  $effect(() => {
+    if (listboxVisible || emptyVisible) {
+      panelMounted = true;
+      mountedIsEmpty = emptyVisible;
+    }
+  });
   const activeOptionId = $derived(
     listboxVisible ? (commandList.activeItemId ?? undefined) : undefined,
   );
@@ -503,7 +527,7 @@
     />
   {/if}
 
-  {#if listboxVisible}
+  {#if panelMounted && !mountedIsEmpty}
     <Popover
       bind:open
       id={listboxId}
@@ -515,6 +539,9 @@
       widthMode="match-anchor"
       portalScopeClass={classNames('cinder-combobox', className)}
       class="cinder-combobox__panel"
+      onExitComplete={() => {
+        panelMounted = false;
+      }}
     >
       <ul bind:this={listboxElement} role="presentation" class="cinder-combobox__listbox">
         {#each filteredOptions as option, index (option.value)}
@@ -560,7 +587,7 @@
     </Popover>
   {/if}
 
-  {#if emptyVisible}
+  {#if panelMounted && mountedIsEmpty}
     <Popover
       bind:open
       id={listboxId}
@@ -572,6 +599,9 @@
       widthMode="match-anchor"
       portalScopeClass={classNames('cinder-combobox', className)}
       class="cinder-combobox__empty-panel"
+      onExitComplete={() => {
+        panelMounted = false;
+      }}
     >
       <div
         class="cinder-combobox__empty"

@@ -63,7 +63,30 @@ export default defineConfig({
   // The basename passed to toHaveScreenshot() carries the full slug/theme/viewport/fixture
   // pattern; Playwright resolves the directory from this template.
   snapshotPathTemplate: '{testDir}/../snapshots/{arg}{ext}',
-  projects: [{ name: 'chromium', use: { ...devices['Desktop Chrome'] } }],
+  projects: [
+    {
+      name: 'chromium',
+      use: { ...devices['Desktop Chrome'] },
+      // The reduced-motion exit-transition test only belongs to the
+      // `chromium-reduced-motion` project below.
+      testIgnore: '**/overlay-reduced-motion-exit.playwright.ts',
+    },
+    // CIN-376: emulates `prefers-reduced-motion: reduce` at the browser-context
+    // level (not per-test `themeContextOptions`/`contextOptions` overrides) so
+    // exit-transition tests can assert every anchored overlay's
+    // `AnchoredOverlayExitState`/`waitForTransitionCompletion` teardown still
+    // unmounts immediately under reduced motion, not just under the default
+    // no-preference project. Scoped to its own test file via `testMatch` so it
+    // doesn't re-run the entire suite a second time.
+    {
+      name: 'chromium-reduced-motion',
+      testMatch: '**/overlay-reduced-motion-exit.playwright.ts',
+      use: {
+        ...devices['Desktop Chrome'],
+        contextOptions: { reducedMotion: 'reduce' },
+      },
+    },
+  ],
   // Intentionally no `webServer` block. `scripts/start-server.ts` owns the
   // dev-server lifecycle so that manifest preparation (which must run before
   // Playwright resolves test names) and server startup share a single owner.
