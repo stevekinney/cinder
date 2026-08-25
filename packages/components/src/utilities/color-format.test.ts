@@ -159,6 +159,52 @@ describe('parseCssColor syntax allowlist (review thread #5)', () => {
   });
 });
 
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b8TF-): culori preserves an
+// authored out-of-range alpha (above 1 or negative) unchanged when handed a
+// color object directly (not through its CSS string parser); the
+// `RgbaComponents` contract promises alpha in [0, 1], the same as the RGB
+// channels, so `rgbColorToRgba` now clamps alpha too, not just r/g/b. With
+// `alpha={true}`, an unclamped out-of-range alpha would emit `/ 1.5` or
+// `/ -0.5` in a non-hex format, and ColorPicker would derive an alpha
+// slider thumb position / `aria-valuenow` outside its declared [0, 100]
+// range. These tests pin the end-to-end invariant — parseCssColor's output
+// alpha is always in [0, 1] — across every accepted intake syntax, whether
+// or not culori's own CSS-string tokenizer already clamps that particular
+// syntax upstream.
+describe('parseCssColor clamps out-of-range alpha to [0, 1] (review thread)', () => {
+  test('alpha above 1 clamps to 1, across every format', () => {
+    expect(parseCssColor('rgb(255 0 0 / 1.5)')?.a).toBe(1);
+    expect(parseCssColor('rgba(255, 0, 0, 1.5)')?.a).toBe(1);
+    expect(parseCssColor('hsl(0 100% 50% / 150%)')?.a).toBe(1);
+    expect(parseCssColor('hwb(0 0% 0% / 200%)')?.a).toBe(1);
+    expect(parseCssColor('oklch(50% 0.1 0 / 1.9)')?.a).toBe(1);
+  });
+
+  test('negative alpha clamps to 0, across every format', () => {
+    expect(parseCssColor('rgb(255 0 0 / -0.5)')?.a).toBe(0);
+    expect(parseCssColor('rgba(255, 0, 0, -0.5)')?.a).toBe(0);
+    expect(parseCssColor('hsl(0 100% 50% / -10%)')?.a).toBe(0);
+    expect(parseCssColor('hwb(0 0% 0% / -10%)')?.a).toBe(0);
+    expect(parseCssColor('oklch(50% 0.1 0 / -0.2)')?.a).toBe(0);
+  });
+
+  test('every parsed alpha stays within [0, 1] regardless of syntax', () => {
+    const inputs = [
+      'rgb(10 20 30 / 3)',
+      'rgb(10 20 30 / -3)',
+      'hsl(10 50% 50% / 5)',
+      'hwb(10 20% 20% / -5)',
+      'oklch(40% 0.1 10 / 10)',
+    ];
+    for (const input of inputs) {
+      const parsed = parseCssColor(input);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.a).toBeGreaterThanOrEqual(0);
+      expect(parsed!.a).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
 describe('formatColor alpha policy for non-hex formats', () => {
   const opaque: RgbaComponents = { r: 51, g: 102, b: 204, a: 1 };
   const translucent: RgbaComponents = { r: 51, g: 102, b: 204, a: 0.4 };

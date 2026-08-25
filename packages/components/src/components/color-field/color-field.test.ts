@@ -298,6 +298,42 @@ describe('ColorField — alpha behavior', () => {
       expect(hidden.value).toBe(expected);
     });
   }
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b8TF-): an unclamped
+  // out-of-range alpha (above 1 or negative) would let a non-hex `format`
+  // emit `/ 1.5` or `/ -0.5`. parseCssColor now clamps alpha to [0, 1]
+  // regardless of the input string.
+  test('alpha above 1 clamps to fully opaque (rgb format, no alpha suffix)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      alpha: true,
+      format: 'rgb',
+      name: 'c',
+      onValueChange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(255 0 0 / 1.5)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
+
+  test('negative alpha clamps to fully transparent (rgb format)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      alpha: true,
+      format: 'rgb',
+      name: 'c',
+      onValueChange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(255 0 0 / -0.5)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0 / 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0 / 0)');
+  });
 });
 
 describe('ColorField — formats gate', () => {

@@ -1423,6 +1423,42 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
   });
 });
 
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b8TF-): an unclamped
+// out-of-range alpha (above 1 or negative) would let ColorPicker derive an
+// alpha slider `aria-valuenow` / thumb position outside its declared
+// [0, 100] range. parseCssColor now clamps alpha to [0, 1] regardless of
+// what the input string (or culori) reports.
+describe('ColorPicker clamps out-of-range alpha to valid slider bounds (review thread)', () => {
+  test('alpha above 1 clamps: alpha slider aria-valuenow stays at 100, not above', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgb(255 0 0 / 1.5)',
+      alpha: true,
+      format: 'rgb',
+      name: 'p',
+    });
+    const alphaSlider = q<HTMLElement>(container, '[aria-label="Alpha"]');
+    expect(alphaSlider.getAttribute('aria-valuenow')).toBe('100');
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    // Clamped to fully opaque — no alpha suffix.
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
+
+  test('negative alpha clamps: alpha slider aria-valuenow stays at 0, not below', () => {
+    const { container } = render(ColorPicker, {
+      value: 'rgb(255 0 0 / -0.5)',
+      alpha: true,
+      format: 'rgb',
+      name: 'p',
+    });
+    const alphaSlider = q<HTMLElement>(container, '[aria-label="Alpha"]');
+    expect(alphaSlider.getAttribute('aria-valuenow')).toBe('0');
+
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    expect(hidden.value).toBe('rgb(255 0 0 / 0)');
+  });
+});
+
 // Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r73): with the default
 // format="hex", formatHex quantizes alpha to a BYTE (0.9996 * 255 rounds to
 // 255 -> byte-opaque, emits plain #rrggbb with no alpha at all), but every

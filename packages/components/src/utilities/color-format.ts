@@ -240,7 +240,13 @@ function rgbColorToRgba(rgb: Rgb, alpha: number): RgbaComponents {
     r: Math.round(Math.max(0, Math.min(1, rgb.r ?? 0)) * 255),
     g: Math.round(Math.max(0, Math.min(1, rgb.g ?? 0)) * 255),
     b: Math.round(Math.max(0, Math.min(1, rgb.b ?? 0)) * 255),
-    a: alpha,
+    // culori preserves an authored out-of-range alpha verbatim (e.g.
+    // `rgb(255 0 0 / 1.5)` or a negative alpha), but `RgbaComponents`
+    // promises alpha in [0, 1] just like the RGB channels above — clamp it
+    // here too. Without this, a non-hex `format` could emit `/ 1.5` or
+    // `/ -0.5`, and ColorPicker would derive an alpha slider thumb
+    // position / `aria-valuenow` outside its declared [0, 100] range.
+    a: Math.max(0, Math.min(1, alpha)),
   };
 }
 
