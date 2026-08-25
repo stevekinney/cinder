@@ -1913,14 +1913,21 @@ describe('SelectionPopover', () => {
       // `transitionend` yet).
       expect(toolbar.hasAttribute('data-cinder-closing')).toBe(true);
 
-      // `anchoredOverlay` recomputes position asynchronously (a dynamic
-      // `@floating-ui/dom` import + `computePosition` promise chain), so
-      // there's a brief tick where `positionStyle` resets before it
-      // recomputes — poll for it to settle, then assert it converges back
-      // to the SAME rect rather than an unpositioned fallback. This is what
-      // "doesn't jump mid-fade" means in practice: a live read through to
-      // the now-null `position` would instead settle on `left: 0px; top:
-      // 0px;` (or an empty style), never the original coordinates.
+      // `anchoredOverlay`'s `open()` gate is keyed off `exitState.renderPanel`
+      // (already `true` in this same render, unlike `isClosing` which only
+      // flips in a later `$effect`), so it never takes its `!open()` reset
+      // branch. A separate, narrower gap remains: `virtualAnchor` going
+      // `null` is still a reactive dependency change, so
+      // `anchored-overlay.svelte.ts`'s positioning effect still tears down
+      // and rebuilds once when the anchor reference switches from the live
+      // `virtualAnchor` object to the frozen `lastVirtualAnchor` fallback —
+      // resetting `positionStyle` for a tick before the async Floating UI
+      // recomputation restores it against the SAME frozen rect. Poll for it
+      // to settle, then assert it converges back to the exact pre-close
+      // rect rather than an unpositioned fallback — this is what "doesn't
+      // jump mid-fade" means in practice: a live read through to the
+      // now-null `position` would instead settle on `left: 0px; top: 0px;`
+      // (or an empty style), never the original coordinates.
       await waitFor(() => {
         expect(toolbar.getAttribute('style')).toBe(styleBeforeClose);
       });

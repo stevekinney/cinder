@@ -171,7 +171,15 @@
     inheritAttributes: false,
   });
   const inheritedPortalStyle = createInheritedPortalStyle(
-    () => anchorElement,
+    // `resolvedAnchorElement`, not the live `anchorElement`: when a
+    // controlled Popover inside a locally themed subtree closes while
+    // removing its trigger, the live anchor goes null even though the
+    // active condition below stays true through the exit — sourcing from
+    // the live anchor would recompute the inherited style as empty and the
+    // retained panel would lose its tokens/typography/direction/color-scheme
+    // mid-fade. `resolvedAnchorElement` falls back to the same
+    // `lastAnchorElement` snapshot the anchor/positioning already use.
+    () => resolvedAnchorElement,
     // Keep inheriting portal styles through the exit transition too — gating
     // this purely on the live `open` prop would drop inherited theme tokens
     // the instant close begins, so a themed-subtree popover would lose its

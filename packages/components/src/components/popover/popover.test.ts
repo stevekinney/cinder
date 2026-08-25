@@ -1243,6 +1243,71 @@ describe('Popover — floating-ui wiring', () => {
 
     expect(queryPopoverPanel()).toBeNull();
   });
+
+  test('retains inherited portal-style tokens through the exit when the trigger ref is un-supplied while closing (CIN-376)', async () => {
+    // Regression guard: `createInheritedPortalStyle`'s source used to read
+    // the live `anchorElement`, which goes `null` the instant a controlled
+    // consumer clears `triggerRef` (even while the underlying DOM node stays
+    // connected and styled) — `resolvedAnchorElement`'s retained anchor kept
+    // the panel mounted/positioned, but the inherited theme tokens still
+    // reset to an empty string, so a locally-themed-subtree Popover lost its
+    // tokens/typography/direction/color-scheme for the duration of the fade.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-popover')) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '80ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    triggerButton.style.setProperty('--cinder-surface-raised', 'hotpink');
+    attachScratch(triggerButton);
+
+    try {
+      let openValue = true;
+      let triggerRefValue: HTMLElement | null = triggerButton;
+      const { rerender } = render(Popover, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          get triggerRef() {
+            return triggerRefValue;
+          },
+          children: textSnippet('themed content'),
+        },
+      });
+
+      await waitFor(() => {
+        const portalScope = queryPopoverPanel()?.parentElement;
+        expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+      });
+
+      // Un-supply the triggerRef and close in the same update. The button
+      // itself stays connected and styled — only this component's own
+      // association with it is dropped.
+      triggerRefValue = null;
+      openValue = false;
+      await rerender({ open: false, triggerRef: null, children: textSnippet('themed content') });
+
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-closing')).toBe('');
+      const portalScope = panel?.parentElement;
+      expect(portalScope?.style.getPropertyValue('--cinder-surface-raised')).toBe('hotpink');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
 });
 
 // ---------------------------------------------------------------------------

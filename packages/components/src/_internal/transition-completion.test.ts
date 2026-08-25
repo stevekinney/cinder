@@ -108,6 +108,42 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('ignoreUnknownPropertyEvents: true ignores individual events for "all" and waits for the fallback timer', async () => {
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'all',
+          transitionDuration: '60ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        ignoreUnknownPropertyEvents: true,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
+      expect(completionCount).toBe(0);
+
+      await new Promise((resolve) => setTimeout(resolve, 120));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('a transitioncancel on a tracked property completes immediately by default', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);

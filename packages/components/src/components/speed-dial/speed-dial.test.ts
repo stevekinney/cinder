@@ -159,6 +159,53 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('exit helper ignores individual events for a consumer transition list containing "all" and waits for the computed longest duration (CIN-376)', async () => {
+    // Regression guard: a consumer's own CSS on an action can legitimately
+    // include `all` alongside a named property — e.g.
+    // `transition: all 500ms, opacity 100ms`. `waitForTransitionCompletion`
+    // represents `all` with a null (unenumerable) tracked-property set, and
+    // by default finishes on the FIRST `transitionend` in that case (see
+    // OVERLAY-POLICY.md § "Transition lifecycle" — the cost of using `all`
+    // instead of naming properties, for CINDER'S OWN css). For Speed Dial
+    // specifically, that default would let the 100ms `opacity` boundary
+    // clear the retained actions surface while the `transform` covered by
+    // `all` is still transitioning for the full 500ms. `speed-dial-exit.ts`
+    // passes `ignoreUnknownPropertyEvents: true` to restore the old bespoke
+    // waiter's exact behavior: ignore individual events entirely for this
+    // case and rely solely on the computed-longest-duration fallback timer.
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms',
+      transitionDuration: '500ms, 100ms',
+      transitionProperty: 'all, opacity',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, false, complete);
+
+      // The named 100ms `opacity` boundary firing alone must NOT complete
+      // the exit — the `all` boundary's individual events are ignored, so
+      // completion can only come from the fallback timer at the longest
+      // (500ms) duration.
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      // A transitionend for a property `all` would have covered doesn't
+      // complete it either — individual events are ignored entirely.
+      dispatchTransitionBoundary(action, 'transitionend', 'transform');
+      expect(complete).not.toHaveBeenCalled();
+
+      await Bun.sleep(560);
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
   test('exit helper ignores interrupted entrance transition cancellation', async () => {
     // Speed Dial's per-action waiter passes `ignoreCancel: true` to the
     // shared `waitForTransitionCompletion` (see speed-dial-exit.ts): an

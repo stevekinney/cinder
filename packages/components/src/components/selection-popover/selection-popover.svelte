@@ -148,12 +148,35 @@
   });
 
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => isPositionedOpen || exitState.isClosing,
-    // Deliberately NOT gated on `exitState.isClosing`: `$effect`s (where
-    // `exitState.sync()` runs) fire after a render has already committed, so
-    // on the exact tick `position` nulls and `open` flips false together,
-    // `isClosing` would still read its pre-close value here — falling back
-    // whenever `virtualAnchor` is null is what actually avoids that race.
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. When a documented
+    // close clears `position` in the same update that flips `open` false,
+    // `isPositionedOpen` goes false in THIS render, one tick before
+    // `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing `positionStyle`/`positionReady`
+    // before the async Floating UI recomputation restores them.
+    // `renderPanel` doesn't have this lag: it's a plain `$state` that's
+    // already `true` from the prior render and isn't reset until the
+    // completion callback actually fires, so reading it here in the same
+    // tick correctly keeps positioning active.
+    open: () => isPositionedOpen || exitState.renderPanel,
+    // Deliberately NOT gated on `exitState.isClosing` either, same reasoning
+    // as above — falling back whenever `virtualAnchor` is null is what
+    // actually avoids the race.
+    //
+    // Note this closes the `!open()` reset branch specifically, but a
+    // narrower gap remains: `virtualAnchor` going `null` is itself a
+    // reactive dependency change, so `anchored-overlay.svelte.ts`'s
+    // positioning effect still tears down and rebuilds once when the anchor
+    // reference switches from the live `virtualAnchor` object to the frozen
+    // `lastVirtualAnchor` fallback below — resetting `positionStyle` for a
+    // tick before the async Floating UI recomputation restores it against
+    // the same frozen rect. Fully closing that would mean keeping `anchor()`
+    // referentially stable across the transition, which would also freeze
+    // out legitimate re-positioning while genuinely open (e.g. a drag
+    // selection moving) — out of scope here.
     anchor: () => virtualAnchor ?? lastVirtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,

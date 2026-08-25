@@ -20,6 +20,26 @@ type TransitionCompletionOptions = {
    * Speed Dial while every other caller keeps the canonical contract.
    */
   ignoreCancel?: boolean;
+  /**
+   * Skip the "first `transitionend` completes immediately" behavior this
+   * helper applies when `transition-property` resolves to `all` (an
+   * unenumerable set — see `getTrackedTransitionProperties`), documented in
+   * `_internal/OVERLAY-POLICY.md` § "Transition lifecycle" as the intended
+   * cost of a caller using `all` instead of naming properties explicitly.
+   * Default `false` (the canonical semantics every Cinder-authored exit
+   * style relies on, since Cinder's own CSS never uses `all`).
+   *
+   * Speed Dial's per-action fan-out is the one caller that opts in: an
+   * action's transition list is arbitrary consumer CSS, not Cinder's own,
+   * and can legitimately contain `all` (e.g. `transition: all 500ms, opacity
+   * 100ms`). Finishing on the first `transitionend` there would let the
+   * 100ms `opacity` boundary complete the exit while a `transform` covered
+   * by `all` is still transitioning for the full 500ms. With this flag, an
+   * unenumerable `all` boundary is instead ignored entirely and completion
+   * relies solely on the computed-longest-duration fallback timer — matching
+   * the old bespoke `waitForSpeedDialExit`'s exact behavior for this case.
+   */
+  ignoreUnknownPropertyEvents?: boolean;
 };
 
 function parseTimeValueList(value: string): number[] {
@@ -84,6 +104,7 @@ export function waitForTransitionCompletion({
   reducedMotion,
   onComplete,
   ignoreCancel = false,
+  ignoreUnknownPropertyEvents = false,
 }: TransitionCompletionOptions): () => void {
   let completed = false;
   let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
@@ -103,6 +124,7 @@ export function waitForTransitionCompletion({
   const handleTransitionEnd = (event: TransitionEvent) => {
     if (event.target instanceof Element && event.target !== element) return;
     if (!pendingProperties) {
+      if (ignoreUnknownPropertyEvents) return;
       finish();
       return;
     }

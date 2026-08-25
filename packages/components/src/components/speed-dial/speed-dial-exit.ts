@@ -37,6 +37,16 @@ export function waitForSpeedDialExit(
       // which, under the default semantics, would be mistaken for "this
       // action's exit already finished" and resolve prematurely.
       ignoreCancel: true,
+      // See the `ignoreUnknownPropertyEvents` doc comment: an action's
+      // transition list is arbitrary consumer CSS and can legitimately
+      // contain `all` (e.g. a consumer's own `transition: all 500ms,
+      // opacity 100ms`) — finishing on the first `transitionend` in that
+      // case would let a shorter named boundary (the 100ms opacity above)
+      // complete the exit while a property covered by `all` is still
+      // transitioning. The old bespoke `waitForSpeedDialExit` ignored
+      // individual events entirely for this unknown-property case and
+      // waited for the computed longest duration instead.
+      ignoreUnknownPropertyEvents: true,
       onComplete: () => {
         pending -= 1;
         if (!cancelled && pending === 0) onComplete();
