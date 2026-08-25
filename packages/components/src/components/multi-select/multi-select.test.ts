@@ -87,6 +87,11 @@ describe('MultiSelect', () => {
     );
   });
 
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = render(MultiSelect, { id: 'no-error-yet-multi', items });
+    expect(container.querySelector('.cinder-multi-select__error')).not.toBeNull();
+  });
+
   test('renders trigger, placeholder, and listbox semantics', async () => {
     const { container } = render(MultiSelect, { id: 'fruits', items });
     expect(container.querySelector('#fruits')?.textContent).toContain('Select options');

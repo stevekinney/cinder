@@ -414,7 +414,7 @@ describe('ChoiceGrid column layout', () => {
       items,
     });
     const root = container.querySelector<HTMLElement>('.cinder-choice-grid');
-    expect(root?.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, 1fr)');
+    expect(root?.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, minmax(0, 1fr))');
   });
 
   test('maps responsive minimum width to the shared Grid layout variable', () => {

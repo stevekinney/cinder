@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -446,6 +447,44 @@ describe('Checkbox — FormField context wiring', () => {
     const input = container.querySelector('input[type="checkbox"]') as HTMLInputElement;
     expect(input.id).toBe('agree');
     expect(container.querySelector('label[for="agree"]')).not.toBeNull();
+  });
+});
+
+describe('Checkbox — error live region', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    // Checkbox wraps FormFieldFrame in `{#if renderInlineLabel || description
+    // || error}` (a separate known limitation, not fixed here), so a label
+    // is required for FormFieldFrame to render at all in this test.
+    const { container } = render(Checkbox, {
+      props: { id: 'no-error-yet-checkbox', label: 'Agree' },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const checkboxCss = readFileSync(new URL('./checkbox.css', import.meta.url), 'utf8');
+    const sharedErrorCss = readFileSync(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+      'utf8',
+    );
+    const removeStyles = injectStrippedStyles(checkboxCss, sharedErrorCss);
+    try {
+      const { container } = render(Checkbox, {
+        props: { id: 'no-error-computed-checkbox', label: 'Agree' },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
   });
 });
 
