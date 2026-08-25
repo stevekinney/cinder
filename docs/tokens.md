@@ -93,6 +93,7 @@ Font stacks, type scale, line heights, letter spacing, and weights. The base fon
 | `--cinder-font-medium`      | `500`                                                                                            |
 | `--cinder-font-semibold`    | `600`                                                                                            |
 | `--cinder-font-bold`        | `700`                                                                                            |
+| `--cinder-type-tab-size`    | `2`                                                                                              |
 | `--cinder-touch-target-min` | `44px`                                                                                           |
 
 `--cinder-touch-target-min` is the WCAG AAA touch-target floor. Interactive primitives use it as a minimum height or width.

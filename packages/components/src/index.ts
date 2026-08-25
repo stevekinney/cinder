@@ -416,7 +416,7 @@ export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
 
 export { default as Input } from './components/input/index.ts';
-export type { InputProps, InputType } from './components/input/index.ts';
+export type { InputProps, InputType, InputVariant } from './components/input/index.ts';
 
 export { default as InlineLoading } from './components/inline-loading/index.ts';
 export type { InlineLoadingProps, InlineLoadingStatus } from './components/inline-loading/index.ts';
@@ -907,7 +907,7 @@ export { default as Tabs } from './components/tabs/index.ts';
 export type { TabsContext, TabsOrientation, TabsProps } from './components/tabs/index.ts';
 
 export { default as Textarea } from './components/textarea/index.ts';
-export type { TextareaProps } from './components/textarea/index.ts';
+export type { TextareaProps, TextareaVariant } from './components/textarea/index.ts';
 
 export { default as TimeField } from './components/time-field/index.ts';
 export type {

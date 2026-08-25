@@ -169,6 +169,7 @@ describe('JsonSchemaEditor — Diff tab Badge indicator', () => {
     // 'Apply disables for an invalid draft...' test below).
     await fireEvent.click(screen.getByRole('button', { name: 'Edit JSON' }));
     const textarea = screen.getByRole('textbox', { name: 'JSON' });
+    expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
     await fireEvent.input(textarea, {
       target: { value: JSON.stringify({ type: 'string', title: 'Changed' }) },
     });
