@@ -48,6 +48,8 @@
     "deny": [
       "Read(./.env)",
       "Read(./.env.*)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
       "Bash(*HUSKY=0*)",
       "Bash(*CI=1*)",
       "Bash(git * --no-verify:*)",

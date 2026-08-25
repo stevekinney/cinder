@@ -238,7 +238,7 @@ It does not contact Vercel or deploy anything — it just produces the static `p
 - Conventional commit prefixes (`feat`, `fix`, `refactor`, `docs`, `chore`).
 - Run `bun run lint && bun run typecheck && bun test` before opening a PR.
 - PRs go through the multi-agent committee review before merging.
-- If this PR's completion depends on a manual step outside CI (a UI toggle, a credential-gated bootstrap, a flag flip plus deploy), file a blocking Linear issue in the owning team at merge time with binary evidence criteria — an authenticated endpoint response, a registry query, a deployment status. A merged PR and a checked box in the PR body are not evidence.
+- If this PR's completion depends on a manual step outside CI (a UI toggle, a credential-gated bootstrap, a flag flip plus deploy), file a blocking issue in the project's tracker (Linear internally; a GitHub issue for external contributors) in the owning team at merge time with binary evidence criteria — an authenticated endpoint response, a registry query, a deployment status. A merged PR and a checked box in the PR body are not evidence.
 
 ## Changesets
 
