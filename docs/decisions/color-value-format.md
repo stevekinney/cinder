@@ -25,7 +25,11 @@ exact syntax it just emitted, or the emit/re-parse round trip breaks. So
 `formats={['hex']}` combined with `format="rgb"` still accepts user-entered
 `rgb()` values — `formats` narrows what else is accepted, it never excludes
 the configured output format's own syntax. Don't rely on `formats` to reject
-`format`'s syntax.
+`format`'s syntax. This widening is exact-syntax-only: it never also grants
+a legacy alias — `formats={['hex']}` with `format="rgb"` still rejects
+`rgba()` input unless `'rgba'` (or `'rgb'`) is explicitly listed in
+`formats` too, preserving the separate "rgba/hsla aliases can be restricted
+independently" contract.
 
 Alpha policy: whether the emitted alpha suffix appears is decided by each
 format's own opacity-quantization threshold, not literally "alpha equals

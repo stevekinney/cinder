@@ -1289,3 +1289,71 @@ describe('ColorField — format switch admits a previously-rejected value (P1 re
     expect(swatch.hasAttribute('data-cinder-empty')).toBe(false);
   });
 });
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b7ntq): the implicit widening
+// that unions the configured `format` into the accepted-input set used to
+// also grant the legacy `rgba()`/`hsla()` alias, because `passesFormatGate`
+// checked "is 'rgb' anywhere in acceptedFormats?" without distinguishing
+// WHY it was there. With `formats={['hex']}` and `format="rgb"`, that meant
+// `rgba()` input was silently accepted too, even though the consumer's
+// `formats` list deliberately excluded it (per the documented "rgba/hsla
+// aliases can be restricted independently" contract). The implicit
+// widening now admits only the configured format's own exact syntax —
+// `explicitFormats` (the `formats` prop's own list, before the `format`
+// union) is what the legacy-alias leniency checks against.
+describe('ColorField — implicit format widening excludes legacy aliases (P1 regression)', () => {
+  test('formats=["hex"] + format="rgb": accepts rgb() (implicit) but rejects rgba() (legacy alias, not explicitly listed)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-no-alias',
+      formats: ['hex'],
+      format: 'rgb',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-no-alias');
+
+    // The configured format's own exact syntax IS accepted.
+    await typeAndBlur(input, 'rgb(255 0 0)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    onValueChange.mockClear();
+
+    // The legacy alias is NOT — it was never explicitly listed in `formats`.
+    await typeAndBlur(input, 'rgba(0, 255, 0, 0.5)');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  test('formats=["rgb"] + format="hex": explicitly listing "rgb" still grants the rgba() alias, unaffected by format widening', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-explicit-alias',
+      formats: ['rgb'],
+      format: 'hex',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-explicit-alias');
+
+    // 'rgb' is EXPLICITLY listed in `formats` here (not merely implied by
+    // `format`), so the existing rgb->rgba leniency still applies.
+    await typeAndBlur(input, 'rgba(0, 255, 0, 0.5)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  test('formats=["hsl"] + format="oklch": explicitly listing "hsl" still grants the hsla() alias', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-explicit-hsla',
+      formats: ['hsl'],
+      format: 'oklch',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-explicit-hsla');
+
+    await typeAndBlur(input, 'hsla(120, 100%, 50%, 0.5)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+});

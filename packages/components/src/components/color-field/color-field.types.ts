@@ -33,7 +33,10 @@ export type ColorFieldProps = {
    * listed here — the field must be able to parse back the exact syntax it
    * just emitted, so e.g. `formats={['hex']}` with `format="rgb"` still
    * accepts user-entered `rgb()` values. Don't rely on `formats` to exclude
-   * the configured output format's syntax.
+   * the configured output format's syntax. This implicit widening admits
+   * ONLY the configured format's own exact syntax, never a legacy alias —
+   * `formats={['hex']}` with `format="rgb"` still rejects `rgba()` input
+   * unless `'rgba'` (or `'rgb'`) is explicitly listed in `formats` too.
    */
   formats?: readonly ColorFieldFormat[];
   /**

@@ -86,33 +86,48 @@
   const OKLCH_TEXT_RE = /^oklch\s*\([^)]*\)\s*$/i;
   const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 
+  // The EXPLICIT accepted-input set — exactly what the `formats` prop (or
+  // its default) lists, with none of the configured output `format` unioned
+  // in yet. `passesFormatGate` needs this separately from `acceptedFormats`
+  // below: the rgb->rgba / hsl->hsla legacy-alias leniency must only apply
+  // when the PLAIN form was explicitly listed, never when it's present only
+  // because of the output-format widening (see `passesFormatGate`).
+  const explicitFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
+
   // The effective accepted-input set always includes the configured output
   // `format`, unioned in — otherwise a field emitting e.g. oklch() with the
   // default `formats` (which doesn't list 'oklch') could never parse its own
-  // emitted value back in, breaking the round-trip.
+  // emitted value back in, breaking the round-trip. Used for display
+  // purposes (the default error message's format list) — `passesFormatGate`
+  // does NOT use this directly; see below.
   const acceptedFormats = $derived.by(() => {
-    const base = formats.length === 0 ? DEFAULT_FORMATS : formats;
+    const base = explicitFormats;
     return base.includes(format) ? base : [...base, format];
   });
 
   function passesFormatGate(text: string): boolean {
-    if (HEX_RE.test(text)) return acceptedFormats.includes('hex');
+    if (HEX_RE.test(text)) return explicitFormats.includes('hex') || format === 'hex';
     const rgbMatch = text.match(RGB_RE);
     if (rgbMatch) {
-      const format = rgbMatch[1]!.toLowerCase() as 'rgb' | 'rgba';
-      return (
-        acceptedFormats.includes(format) || (format === 'rgba' && acceptedFormats.includes('rgb'))
-      );
+      const matchedFormat = rgbMatch[1]!.toLowerCase() as 'rgb' | 'rgba';
+      if (explicitFormats.includes(matchedFormat)) return true;
+      if (matchedFormat === 'rgba' && explicitFormats.includes('rgb')) return true;
+      // Implicit widening for the configured output format admits ONLY its
+      // own exact syntax — never the legacy `rgba` alias, even when
+      // `format` is `'rgb'`. `formats` documents that rgba/hsla aliases can
+      // be restricted independently; letting the output-format union widen
+      // rgba too would silently override that restriction.
+      return format === matchedFormat;
     }
     const hslMatch = text.match(HSL_RE);
     if (hslMatch) {
-      const format = hslMatch[1]!.toLowerCase() as 'hsl' | 'hsla';
-      return (
-        acceptedFormats.includes(format) || (format === 'hsla' && acceptedFormats.includes('hsl'))
-      );
+      const matchedFormat = hslMatch[1]!.toLowerCase() as 'hsl' | 'hsla';
+      if (explicitFormats.includes(matchedFormat)) return true;
+      if (matchedFormat === 'hsla' && explicitFormats.includes('hsl')) return true;
+      return format === matchedFormat;
     }
-    if (HWB_RE.test(text)) return acceptedFormats.includes('hwb');
-    if (OKLCH_TEXT_RE.test(text)) return acceptedFormats.includes('oklch');
+    if (HWB_RE.test(text)) return explicitFormats.includes('hwb') || format === 'hwb';
+    if (OKLCH_TEXT_RE.test(text)) return explicitFormats.includes('oklch') || format === 'oklch';
     return false;
   }
 

@@ -24,7 +24,7 @@ const schema = {
         enum: ['hex', 'rgb', 'rgba', 'hsl', 'hsla', 'hwb', 'oklch'],
       },
       description:
-        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`;\nrgba/hsla aliases can be restricted independently. Add `'oklch'` to\naccept `oklch()` input strings. The configured `format` (below) is\nalways an implicitly accepted input format too, regardless of what's\nlisted here — the field must be able to parse back the exact syntax it\njust emitted, so e.g. `formats={['hex']}` with `format=\"rgb\"` still\naccepts user-entered `rgb()` values. Don't rely on `formats` to exclude\nthe configured output format's syntax.",
+        "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`;\nrgba/hsla aliases can be restricted independently. Add `'oklch'` to\naccept `oklch()` input strings. The configured `format` (below) is\nalways an implicitly accepted input format too, regardless of what's\nlisted here — the field must be able to parse back the exact syntax it\njust emitted, so e.g. `formats={['hex']}` with `format=\"rgb\"` still\naccepts user-entered `rgb()` values. Don't rely on `formats` to exclude\nthe configured output format's syntax. This implicit widening admits\nONLY the configured format's own exact syntax, never a legacy alias —\n`formats={['hex']}` with `format=\"rgb\"` still rejects `rgba()` input\nunless `'rgba'` (or `'rgb'`) is explicitly listed in `formats` too.",
     },
     format: {
       enum: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],

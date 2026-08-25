@@ -1,7 +1,7 @@
 <script lang="ts" module>
   export const title = 'Output format';
   export const description =
-    'The format prop controls the emitted string syntax (hex, rgb, hsl, hwb, or oklch) independently of the accepted input formats.';
+    'The format prop controls the emitted string syntax (hex, rgb, hsl, hwb, or oklch). The selected output format is always implicitly accepted on input too, regardless of what the formats prop lists.';
 </script>
 
 <script lang="ts">
