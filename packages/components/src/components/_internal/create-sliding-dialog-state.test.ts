@@ -588,4 +588,84 @@ describe('createSlidingDialogState', () => {
     await tick();
     expect(closedCount).toBe(1);
   });
+
+  test('an external close landing MID-TRANSITION neutralizes the in-flight #finishClosing() call — exactly one report, not two (PR #1422 review)', async () => {
+    // Regression: a parent-driven close with a real panel element sets
+    // `isClosing = true` and starts `waitForTransitionCompletion()` — its
+    // `onComplete` (`#finishClosing(generation)`) is still PENDING while the
+    // native dialog itself is still genuinely open. If a native close (a
+    // `<form method="dialog">` submission, or anything else calling
+    // `dialogElement.close()` outside this class's API) lands during that
+    // window, `handleClose()`'s external branch used to report completion
+    // (correctly, once) but left `#cancelPendingClose` and
+    // `#closeGeneration` untouched. The in-flight transition callback would
+    // then still eventually fire `#finishClosing(oldGeneration)`: its own
+    // generation guard would NOT catch this (nothing bumped
+    // `#closeGeneration`), so it would proceed, find `dialogElement.open`
+    // already `false` (this external close set it), and fall into the
+    // "already closed" DEFENSIVE FALLBACK — reporting exit-completion a
+    // SECOND time for a cycle already reported once.
+    let open = true;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const panelElement = document.createElement('section');
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // A real panel element — `beginClosing()` takes the ASYNC
+      // `waitForTransitionCompletion()` path (`isClosing = true`) instead
+      // of the synchronous no-panel shortcut, so there is a genuine
+      // in-flight window between the close beginning and its own
+      // completion callback running. `reducedMotion: true` makes that
+      // completion a queued MICROTASK (`queueMicrotask(finish)`, since no
+      // CSS transition exists to wait on) rather than instant — giving this
+      // test a real, if brief, window to land the external close in.
+      getPanelElement: () => panelElement,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Parent-driven close BEGINS the exit transition — `isClosing` is now
+    // `true`, and the native dialog itself has NOT closed yet (that only
+    // happens once `#finishClosing()` eventually runs).
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogState.isClosing).toBe(true);
+    expect(dialogElement.open).toBe(true);
+
+    // A native close (e.g. a `<form method="dialog">` submission) lands
+    // MID-TRANSITION, before the queued microtask above has a chance to
+    // run — modeled the same way every native-close test in this file
+    // models the browser's own "close the dialog" steps: the dialog closes
+    // directly, then the wired `close`-event handler runs.
+    dialogElement.close();
+    dialogState.handleClose();
+
+    expect(dialogElement.open).toBe(false);
+    expect(open).toBe(false);
+    expect(dialogState.isClosing).toBe(false);
+    expect(dialogState.renderPanel).toBe(false);
+
+    // Let BOTH the deferred `#reportClosedOnce()` from the external close
+    // AND the in-flight transition's own queued-microtask completion get a
+    // chance to run.
+    await Promise.resolve();
+    await tick();
+    await tick();
+
+    // Exactly ONE report — the in-flight transition callback must have
+    // become a no-op, not a second `onClosed` fire for the same cycle.
+    expect(closedCount).toBe(1);
+    await tick();
+    expect(closedCount).toBe(1);
+  });
 });

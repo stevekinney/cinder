@@ -43,6 +43,19 @@ export class SlidingDialogState {
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
   #disposed = false;
+  // Hard, per-generation idempotence guard for `#reportClosedOnce()` (PR
+  // #1422 review, round 4 — "per-generation idempotence audit"): the
+  // deferred generation check inside that method already prevents a STALE
+  // generation's report from firing, but does NOT by itself prevent TWO
+  // separate `#reportClosedOnce()` calls for the SAME generation from both
+  // surviving to fire `onClosed` twice, if some future bug (or a mixed
+  // internal/external race this round's own fix didn't anticipate) manages
+  // to schedule both. Tracks the highest generation `onClosed` has actually
+  // fired for; `#reportClosedOnce()` consults and updates it as the final
+  // gate immediately before invoking the consumer callback, so `onClosed`
+  // can genuinely never fire twice for one close cycle, regardless of how
+  // many call sites or code paths ever reach this method for it.
+  #lastReportedGeneration: number | null = null;
   // A FIFO queue of the `#closeGeneration` values active at each moment we
   // called the native `dialogElement.close()` — see `#finishClosing()`. The
   // native `close` EVENT is dispatched via a QUEUED TASK, not synchronously
@@ -246,11 +259,40 @@ export class SlidingDialogState {
     this.#returnFocus();
 
     if (expectedGeneration === undefined) {
-      // External close (see this method's own top comment): there is no
-      // exit transition to wait for — the native dialog is already closed
-      // by the time this event fires, and `#finishClosing()` never ran for
-      // this cycle at all — so `isClosing`/`renderPanel` need setting here,
-      // which `#finishClosing()` would otherwise have done.
+      // External close (see this method's own top comment). If a
+      // PARENT-DRIVEN close had already begun an in-flight exit transition
+      // (`this.isClosing`, via `beginClosing()`) when this external close
+      // event arrives — e.g. a `<form method="dialog">` submission lands
+      // mid-transition — that transition's own deferred
+      // `waitForTransitionCompletion` callback (captured as
+      // `#cancelPendingClose`, still pending) is now racing this external
+      // close (PR #1422 review, round 4). Left alone, that callback would
+      // eventually fire `#finishClosing(oldGeneration)`: its own
+      // `generation !== this.#closeGeneration` guard would NOT catch this,
+      // since nothing here has bumped `#closeGeneration` yet; it would find
+      // `dialogElement.open` already `false` (THIS external close set it)
+      // and fall into `#finishClosing()`'s defensive "already closed"
+      // fallback — reporting exit-completion a SECOND time for a cycle this
+      // very call is about to report once already.
+      //
+      // Neutralized the same way `syncOpenState()`'s own reopen path
+      // already neutralizes an in-flight close: bump `#closeGeneration`
+      // FIRST, then call `#cancelPendingClose()`. That function IS
+      // `waitForTransitionCompletion`'s own `finish()` completion callback
+      // (not a true "cancel" — see its own doc comment), so calling it
+      // also synchronously invokes `onComplete()`/`#finishClosing(
+      // oldGeneration)` immediately — but by then the bump above has
+      // already made that call's own generation check correctly bail out
+      // as a no-op, exactly like the existing reopen path relies on.
+      if (this.isClosing) {
+        this.#closeGeneration += 1;
+        this.#cancelPendingClose?.();
+        this.#cancelPendingClose = null;
+      }
+      // `isClosing`/`renderPanel` need setting here regardless — an
+      // external close with NO in-flight transition (`isClosing` already
+      // `false`) never ran `#finishClosing()` for this cycle at all, so
+      // nothing else would set them.
       this.isClosing = false;
       this.renderPanel = false;
       this.#reportClosedOnce(this.#closeGeneration);
@@ -381,10 +423,12 @@ export class SlidingDialogState {
         this.#disposed ||
         closedGeneration !== this.#closeGeneration ||
         this.#options.getOpen() ||
-        this.renderPanel
+        this.renderPanel ||
+        this.#lastReportedGeneration === closedGeneration
       ) {
         return;
       }
+      this.#lastReportedGeneration = closedGeneration;
       try {
         this.#options.onClosed?.();
       } catch (error) {

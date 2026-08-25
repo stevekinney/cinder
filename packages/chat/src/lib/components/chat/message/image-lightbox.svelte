@@ -690,8 +690,15 @@
    * originating element across engines, so setting `--cinder-modal-backdrop`
    * on `.lightbox-modal` alone is inert for `::backdrop`'s own computed
    * style — the override must also target `.lightbox-modal::backdrop`
-   * directly (matching modal.css's own `.cinder-modal::backdrop` rule,
-   * which redeclares the default there for the same reason).
+   * directly. This matches modal.css's own `.cinder-modal::backdrop` rule,
+   * which does NOT redeclare `--cinder-modal-backdrop` there (that would
+   * shadow a consumer override scoped to `::backdrop` itself, and risks a
+   * cyclic `var(--cinder-modal-backdrop, var(--cinder-modal-backdrop))`-
+   * shaped declaration) — it only CONSUMES the property, with a fallback:
+   * `background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop))`.
+   * Declaring the override on both scopes here (`.lightbox-modal` and
+   * `.lightbox-modal::backdrop`) is what makes that consumed value resolve
+   * correctly for `::backdrop`'s own disconnected inheritance scope.
    */
   :global(.lightbox-modal),
   :global(.lightbox-modal::backdrop) {
