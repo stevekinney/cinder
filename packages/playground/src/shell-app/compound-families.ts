@@ -11,7 +11,6 @@
  */
 export const COMPOUND_COMPONENT_FAMILIES: Readonly<Record<string, readonly string[]>> = {
   accordion: ['accordion-item'],
-  'bento-grid': ['bento-cell'],
   chat: ['chat-composer-popover', 'chat-conversation-header', 'chat-conversation-list'],
   'choice-grid': ['choice-grid-item'],
   'command-menu': ['command-item'],
@@ -38,7 +37,6 @@ export const COMPOUND_COMPONENT_FAMILIES: Readonly<Record<string, readonly strin
 
 export const COMPOUND_COMPONENT_PARENTS: Readonly<Record<string, string>> = {
   'accordion-item': 'accordion',
-  'bento-cell': 'bento-grid',
   'chat-composer-popover': 'chat',
   'chat-conversation-header': 'chat',
   'chat-conversation-list': 'chat',

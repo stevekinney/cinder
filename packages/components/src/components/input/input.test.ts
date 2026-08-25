@@ -2,6 +2,7 @@
 import { describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
+import { injectStrippedStyles } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
@@ -215,6 +216,41 @@ describe('Input rendering', () => {
     const describedBy = input?.getAttribute('aria-describedby') ?? '';
     expect(describedBy).toContain('hidden-label-described-description');
     expect(describedBy).toContain('hidden-label-described-error');
+  });
+
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    // Input wraps FormFieldFrame in `{#if label || description || error}` (a
+    // separate known limitation, not fixed here), so a label is required for
+    // FormFieldFrame to render at all in this test.
+    const { container } = render(Input, {
+      props: { id: 'no-error-yet', label: 'Name', value: '' },
+    });
+    expect(container.querySelector('.cinder-form-field__error')).not.toBeNull();
+  });
+
+  test('the errorless live region has no layout footprint (shared _form-field-error.css, CIN-315 follow-up)', async () => {
+    const inputCss = await Bun.file(new URL('./input.css', import.meta.url)).text();
+    const sharedErrorCss = await Bun.file(
+      new URL('../../styles/components/_form-field-error.css', import.meta.url),
+    ).text();
+    const removeStyles = injectStrippedStyles(inputCss, sharedErrorCss);
+    try {
+      const { container } = render(Input, {
+        props: { id: 'no-error-computed', label: 'Name', value: '' },
+      });
+      const errorRegion = container.querySelector('.cinder-form-field__error');
+      expect(errorRegion).not.toBeNull();
+      const computed = getComputedStyle(errorRegion as Element);
+      // Sr-only pattern (CIN-315 review follow-up), not visibility:hidden —
+      // visibility:hidden removes an element from the accessibility tree
+      // (navigation-bar.a11y.md), which would defeat the announcement fix.
+      expect(computed.position).toBe('absolute');
+      expect(computed.visibility).not.toBe('hidden');
+      expect(computed.display).not.toBe('none');
+      expect(computed.clip).toBe('rect(0, 0, 0, 0)');
+    } finally {
+      removeStyles();
+    }
   });
 
   test('no aria-invalid when error prop is absent', () => {

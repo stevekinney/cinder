@@ -874,10 +874,11 @@ describe('Combobox aria wiring', () => {
     expect(input?.getAttribute('aria-describedby')).toBe('external-hint');
   });
 
-  test('inactive error live region is removed from flex layout flow', () => {
-    expect(readComboboxStyles()).toContain(
-      '.cinder-combobox__error:not([data-cinder-error]) {\n  position: absolute;',
-    );
+  test('does not duplicate the shared collapsed-when-errorless rule locally', () => {
+    // CIN-315 review follow-up: that rule now lives once in the shared
+    // `_form-field-error.css` partial (see its own test), imported by the
+    // required `cinder/styles` base — Combobox no longer carries its own copy.
+    expect(readComboboxStyles()).not.toContain('.cinder-combobox__error:not([data-cinder-error])');
   });
 });
 
@@ -1174,6 +1175,20 @@ describe('Combobox Escape restores committed label', () => {
 });
 
 describe('Combobox — required', () => {
+  test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
+    const { container } = renderIntoContainer(Combobox, {
+      props: {
+        id: 'no-error-yet-combobox',
+        label: 'Fruit',
+        options: [
+          { value: 'apple', label: 'Apple' },
+          { value: 'pear', label: 'Pear' },
+        ],
+      },
+    });
+    expect(container.querySelector('.cinder-combobox__error')).not.toBeNull();
+  });
+
   test('required renders the marker and sets aria-required on the input', () => {
     const { container } = renderIntoContainer(Combobox, {
       props: {
