@@ -139,11 +139,22 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   // flight (closing starts at ~150ms, ending at ~270ms), a reopen with
   // `openDelay={0}` resolves in ~0ms, landing comfortably inside that
   // window instead of racing it.
-  const instantReopenTrigger = page
-    .locator('#example-mount-instant-reopen')
-    .getByRole('button', { name: 'CIN-99' })
-    .first();
-  await instantReopenTrigger.scrollIntoViewIfNeeded();
+  // The "Examples" section mounts each scenario lazily, only once its
+  // container intersects the viewport (`mountScenarioWhenVisible` in
+  // component-page.svelte) — the container div itself always exists in the
+  // DOM immediately, but its content (and therefore the trigger button)
+  // does not render until that happens. `scrollIntoViewIfNeeded` on the
+  // trigger directly hangs forever in that state: the button doesn't exist
+  // yet for Playwright to even locate, so there's nothing to scroll to.
+  // Scrolling the CONTAINER into view first (it needs no lazy content to
+  // already exist) triggers the intersection observer and the mount, after
+  // which the trigger can be located and interacted with normally. Fresh
+  // CI evidence (run 32815679334): adding more examples ahead of this one
+  // in round 16-18 pushed it further down the page, past what was
+  // previously already in the initial viewport.
+  const instantReopenExample = page.locator('#example-mount-instant-reopen');
+  await instantReopenExample.scrollIntoViewIfNeeded();
+  const instantReopenTrigger = instantReopenExample.getByRole('button', { name: 'CIN-99' }).first();
   await instantReopenTrigger.hover();
 
   const instantReopenCard = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-99' });

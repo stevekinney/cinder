@@ -137,16 +137,33 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   // evidence). Clicking "Hide" flips the bound `open` prop directly, with no
   // timer indirection at all, so the exit begins synchronously within the
   // same task as the click.
-  const showButton = page
-    .locator('#example-mount-controlled')
-    .getByRole('button', { name: 'Show' });
-  const hideButton = page
-    .locator('#example-mount-controlled')
-    .getByRole('button', { name: 'Hide' });
-  await showButton.scrollIntoViewIfNeeded();
+  // The "Examples" section mounts each scenario lazily, only once its
+  // container intersects the viewport (`mountScenarioWhenVisible` in
+  // component-page.svelte) — the container div always exists in the DOM
+  // immediately, but its content (and therefore the Show/Hide buttons) does
+  // not render until that happens. Calling `scrollIntoViewIfNeeded`
+  // directly on `showButton` hangs forever in that state: the button
+  // doesn't exist yet for Playwright to even locate. Scrolling the
+  // CONTAINER into view first triggers the intersection observer and the
+  // mount; only then can the buttons be located. Fresh CI evidence (run
+  // 32815679334): adding more examples ahead of this one in round 16-18
+  // pushed it further down the page, past the initial viewport.
+  const controlledExample = page.locator('#example-mount-controlled');
+  await controlledExample.scrollIntoViewIfNeeded();
+  const showButton = controlledExample.getByRole('button', { name: 'Show' });
+  const hideButton = controlledExample.getByRole('button', { name: 'Hide' });
   await showButton.click();
 
-  const card = page.locator('#example-mount-controlled .cinder-hover-card');
+  // NOT a region-scoped `#example-mount-controlled .cinder-hover-card`
+  // descendant selector: the card is portaled to `document.body` the
+  // instant it opens (same as every other anchored overlay in this file),
+  // so it is never actually a DOM descendant of the example's container —
+  // that selector can never match once the card is showing. Locate it
+  // page-globally, scoped by this fixture's own content text instead
+  // (fresh CI evidence, run 32815679334: this exact mismatch caused a
+  // 5s "element(s) not found" timeout locally after fixing the earlier
+  // scroll hang).
+  const card = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-14' });
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Capture an `ElementHandle` BEFORE closing, not just the `Locator` — same
