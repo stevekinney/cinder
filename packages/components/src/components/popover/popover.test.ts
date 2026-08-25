@@ -1197,6 +1197,48 @@ describe('Popover — floating-ui wiring', () => {
     }
   });
 
+  test('onExitComplete fires once the exit transition genuinely finishes, not immediately on close (CIN-376 round 20)', async () => {
+    // Regression guard: lets a consumer composing Popover (e.g. Combobox's
+    // listbox/empty-state panels, ReviewEditor's SelectionPopover analog)
+    // decouple its own wrapping `{#if}` from the live `open` prop — without
+    // this callback, that consumer's `{#if}` would destroy the whole
+    // Popover instance the instant `open` flips false, before Popover's own
+    // retained-exit lifecycle (data-cinder-closing, not an `{#if}` around
+    // its own root) ever gets a chance to run.
+    const onExitComplete = mock(() => {});
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('content'),
+        onExitComplete,
+      },
+    });
+
+    await waitFor(() => {
+      expect(queryPopoverPanel()?.getAttribute('data-cinder-position-ready')).toBe('true');
+    });
+
+    openValue = false;
+    await rerender({
+      open: false,
+      trigger: triggerSnippet,
+      children: textSnippet('content'),
+      onExitComplete,
+    });
+
+    await waitFor(() => {
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
+    expect(queryPopoverPanel()).toBeNull();
+  });
+
   test('a reopen after the exit completes with no fresh anchor does not resurrect the stale trigger (CIN-376)', async () => {
     // Regression guard: `resolvedAnchorElement`'s fallback used to hold onto
     // `lastAnchorElement` forever. If a controlled consumer removes its

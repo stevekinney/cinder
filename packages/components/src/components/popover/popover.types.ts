@@ -63,4 +63,17 @@ export type PopoverProps = {
   portalScopeClass?: string;
   /** Extra class merged onto `.cinder-popover`. */
   class?: string;
+  /**
+   * Called once the panel's exit transition has genuinely finished and it
+   * has fully unmounted (see `_internal/OVERLAY-POLICY.md` § "Transition
+   * lifecycle"). Popover keeps its own panel mounted for the whole exit
+   * transition — driven by `data-cinder-closing`, not an `{#if}` gate around
+   * its own root — so a CONSUMER that composes Popover and wraps it in its
+   * own `{#if}` keyed directly on the same condition that flips `open` false
+   * would destroy the whole component instance before this exit ever gets a
+   * chance to play. Use this callback to decouple that wrapping condition
+   * from the live open state: keep the composing consumer's own mount gate
+   * true until this fires, then clear it.
+   */
+  onExitComplete?: () => void;
 };

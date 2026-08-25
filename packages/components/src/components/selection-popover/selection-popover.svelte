@@ -39,6 +39,7 @@
     onExpand,
     onCancel,
     onClose,
+    onExitComplete,
     class: customClassName,
     ...rest
   }: SelectionPopoverProps = $props();
@@ -151,6 +152,13 @@
     onClosed: () => {
       expanded = false;
       commentBody = '';
+      // Lets a consumer wrapping this component in its own `{#if}` decouple
+      // that mount gate from the live open state (CIN-376 round 20 review —
+      // ReviewEditor's `{#if showSelectionPopover}` destroyed the whole
+      // component instance the instant its close handler cleared
+      // `selectionPopoverPosition`/`selectionPopoverExpanded`, before this
+      // component's OWN retained-exit lifecycle ever got a chance to run).
+      onExitComplete?.();
     },
   });
 

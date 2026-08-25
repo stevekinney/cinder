@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -494,6 +494,31 @@ describe('SelectionPopover', () => {
       firstOwner.remove();
       secondOwner.remove();
     }
+  });
+
+  test('onExitComplete fires once the exit transition genuinely finishes, not immediately on close (CIN-376 round 20)', async () => {
+    // Regression guard: lets a composing consumer (ReviewEditor's
+    // `{#if showSelectionPopover}` was the concrete case) decouple its own
+    // wrapping mount gate from the live `open` prop — without this
+    // callback, that consumer's `{#if}` would destroy the whole
+    // SelectionPopover instance the instant `open` flips false, before this
+    // component's own retained-exit lifecycle (which never unmounts its own
+    // root element while closing) ever gets a chance to run.
+    const onExitComplete = mock(() => {});
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onExitComplete,
+      },
+    });
+
+    await rerender({ open: false, position: { x: 120, y: 80 }, onExitComplete });
+
+    await waitFor(() => {
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
   });
 
   test('a cancel followed by a real external focus move abandons restoration', async () => {

@@ -59,6 +59,7 @@
     widthMode = 'content',
     portalScopeClass,
     class: className,
+    onExitComplete,
   }: PopoverProps = $props();
 
   const FOCUSABLE_SELECTOR =
@@ -287,6 +288,12 @@
       lastAnchorElement = null;
       lastResolvedPortalTarget = null;
       lastPositionStyle = '';
+      // Lets a consumer composing Popover (e.g. Combobox's listbox/empty-state
+      // panels) decouple its own wrapping `{#if}` from the live open state
+      // (CIN-376 round 20 review): a composed `{#if listboxVisible}` keyed
+      // directly on `open` destroyed the whole Popover instance before its
+      // own retained-exit lifecycle ever got a chance to run.
+      onExitComplete?.();
     },
   });
 

@@ -26,6 +26,20 @@ export type SelectionPopoverProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'
   onCancel?: () => void;
   /** Called when the popover should close. */
   onClose?: () => void;
+  /**
+   * Called once the popover's exit transition has genuinely finished and it
+   * has fully unmounted from the layout (see `_internal/OVERLAY-POLICY.md` §
+   * "Transition lifecycle"). This component intentionally never unmounts
+   * ITS OWN root element while closing — `data-cinder-visible`/
+   * `data-cinder-closing` drive the retained fade instead of an `{#if}` gate
+   * — so a consumer that wraps this component in its own `{#if}` keyed
+   * directly on the same state that flips `open` false would destroy the
+   * whole component instance before its exit transition ever gets a chance
+   * to play. Use this callback to decouple that wrapping condition from the
+   * live open state: keep the consumer's own mount gate true until this
+   * fires, then clear it.
+   */
+  onExitComplete?: () => void;
   /** Additional class names merged with `.cinder-selection-popover`. */
   class?: string;
 };

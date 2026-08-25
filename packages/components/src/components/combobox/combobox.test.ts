@@ -1137,10 +1137,17 @@ describe('Combobox Escape restores committed label', () => {
 
       // The combobox consumed and swallowed the key...
       expect(escapeEvent.defaultPrevented).toBe(true);
-      // ...closed itself...
-      expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
       // ...and the parent overlay's handler never fired (combobox was topmost).
       expect(parentEscapeCount).toBe(0);
+      // ...and closed itself. NOT a synchronous check (CIN-376 round 20):
+      // the composed empty-state Popover now stays mounted for the duration
+      // of its own retained exit transition (data-cinder-closing) instead of
+      // being torn down the instant `open` flips false — the whole point of
+      // decoupling `panelMounted` from the live `emptyVisible` derived. The
+      // element disappears once that exit genuinely completes.
+      await waitFor(() => {
+        expect(container.querySelector('.cinder-combobox__empty[data-cinder-active]')).toBeNull();
+      });
     } finally {
       releaseParentEscape();
     }
