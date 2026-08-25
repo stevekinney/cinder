@@ -212,7 +212,7 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
     });
   });
 
-  test('modal schema requires aria-label for chrome="none" and title otherwise (CIN-377)', () => {
+  test('modal schema requires aria-label for chrome="none" and title (forbidding aria-label) otherwise (CIN-377)', () => {
     const { allOf } = generateSchema('modal', 'modal');
 
     const chromelessCondition = {
@@ -232,6 +232,13 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
       if: { not: chromelessCondition },
       [jsonSchemaThenKeyword]: {
         required: ['title'],
+        // The default chrome's `aria-label` is typed `never` in ModalProps
+        // and discarded by modal.svelte in favor of `aria-labelledby` —
+        // schema-driven config must not be able to request a name that's
+        // never exposed to assistive technology.
+        not: {
+          required: ['aria-label'],
+        },
       },
     });
   });

@@ -407,6 +407,17 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       // eslint-disable-next-line unicorn/no-thenable -- see above.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['title'],
+        // The default chrome's `title` renders the visible <h2> and
+        // supplies the accessible name via `aria-labelledby` — `aria-label`
+        // is typed `never` for this branch (ModalProps' discriminated
+        // union) and modal.svelte discards it entirely in favor of
+        // `aria-labelledby`. Forbidding it here closes the gap where
+        // schema-driven configuration (CLI/MCP consumers) could otherwise
+        // request an accessible name that is never exposed to assistive
+        // technology.
+        not: {
+          required: ['aria-label'],
+        },
       },
     },
   ];
