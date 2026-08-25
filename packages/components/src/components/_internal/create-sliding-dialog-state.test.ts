@@ -84,11 +84,19 @@ describe('createSlidingDialogState', () => {
 
     open = false;
     dialogState.syncOpenState();
-    // `close()` still runs unconditionally, synchronously, right here —
-    // only the `onClosed` forwarding call is deferred past a `tick()` so it
-    // fires after Svelte would have reconciled the `{#if renderPanel}`
-    // block, not before.
+    // `close()` still runs unconditionally, synchronously, right here.
     expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // `handleClose()` — modeling the native `close` EVENT Modal wires to it
+    // — is what actually triggers the deferred `onClosed` report (PR #1422
+    // review, third round): `#finishClosing()` no longer reports on its
+    // own, specifically so a consumer's callback never runs before THIS
+    // method's own scroll-lock/escape release and focus restoration have
+    // completed. Only after that does the report get scheduled, past a
+    // `tick()` so it fires after Svelte would have reconciled the `{#if
+    // renderPanel}` block too, not before.
+    dialogState.handleClose();
     expect(closedCount).toBe(0);
     await tick();
     expect(closedCount).toBe(1);
@@ -98,16 +106,21 @@ describe('createSlidingDialogState', () => {
     expect(closedCount).toBe(1);
   });
 
-  test('does not fire onClosed when reopened during the deferred window between #finishClosing and its tick()-deferred callback', async () => {
-    // Regression (PR #1422 review, round 18): `#finishClosing()` resets
-    // `isClosing` to false and calls `dialogElement.close()` SYNCHRONOUSLY,
-    // but defers its `onClosed` forwarding call past a `tick()`. If `open`
-    // flips back to true during that deferred window — after `isClosing` is
-    // already false and the dialog is already closed, but before the tick's
-    // flush lands — `syncOpenState()`'s old generation-bump logic (gated on
-    // `isClosing` alone) never ran, so the stale deferred callback would
-    // still fire `onClosed`, signaling "exit complete" for a Modal that is
-    // actually freshly open again.
+  test('a reopen BEFORE the queued native close event ever arrives leaves that event correctly stale, with no report and no undoing the reopen', async () => {
+    // Regression (PR #1422 review; originally round 18, restructured for
+    // the round-3 redesign): `#finishClosing()` resets `isClosing` to false
+    // and calls `dialogElement.close()` SYNCHRONOUSLY, but the native
+    // `close` EVENT itself — which is what now triggers the deferred
+    // `onClosed` report, via `handleClose()` — is dispatched via a QUEUED
+    // TASK per the WHATWG spec, arriving strictly later. If `open` flips
+    // back to true (ordinary application code, not from inside `onClosed` —
+    // that specific race is covered by the "STALE queued native close
+    // event" test below) before that queued event ever gets a turn,
+    // `syncOpenState()`'s generation bump (keyed off the dialog element's
+    // own closed state, not `isClosing` alone) must invalidate the
+    // in-flight close cycle — so that when the queued event eventually
+    // does arrive, `handleClose()` recognizes it as stale: no cleanup, no
+    // report, and no undoing the reopen that's already happened.
     let open = false;
     let closedCount = 0;
     let onOpenCount = 0;
@@ -140,43 +153,52 @@ describe('createSlidingDialogState', () => {
 
     // Close: `beginClosing()` has no panel element, so `#finishClosing()`
     // runs synchronously right here — `isClosing` is reset to false and the
-    // native dialog is closed before this call returns, but `onClosed` is
-    // only scheduled (deferred past a `tick()` that hasn't resolved yet).
+    // native dialog is closed before this call returns, and this cycle's
+    // generation is pushed onto the FIFO queue awaiting its own eventually-
+    // arriving native `close` event.
     open = false;
     dialogState.syncOpenState();
     expect(dialogState.isClosing).toBe(false);
     expect(dialogElement.open).toBe(false);
     expect(closedCount).toBe(0);
 
-    // Reopen DURING the deferred window, before the tick() above resolves.
+    // Reopen BEFORE that queued event ever arrives.
     open = true;
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(true);
     expect(dialogState.renderPanel).toBe(true);
     expect(onOpenCount).toBe(2);
 
-    // Let the original close cycle's deferred callback settle.
-    await tick();
+    // NOW the stale queued native close event for the superseded close
+    // cycle finally "lands" — simulated by calling `handleClose()` directly,
+    // same as every other test in this file models the queued event.
+    dialogState.handleClose();
 
-    // The stale onClosed must NOT have fired — the dialog is genuinely open
-    // again, not exited.
+    // The stale event must NOT have fired `onClosed`, and must NOT have
+    // undone the reopen — the dialog is genuinely open again, not exited.
     expect(closedCount).toBe(0);
+    expect(open).toBe(true);
     expect(dialogElement.open).toBe(true);
     expect(dialogState.renderPanel).toBe(true);
+
+    // Nothing further fires from a subsequent tick either — there was
+    // nothing scheduled at all for the stale entry.
+    await tick();
+    expect(closedCount).toBe(0);
   });
 
-  test('does not fire onClosed when destroy() is called during the deferred window between #finishClosing and its tick()-deferred callback', async () => {
-    // Regression (PR #1422 review): `#finishClosing()`'s `onClosed`
-    // forwarding call is deferred past a `tick()`. If the consumer unmounts
-    // Modal (e.g. from its own `onExitComplete`-driven teardown, or simply
-    // navigating away) while that continuation is still pending, the
-    // deferred closure still captured the CURRENT `#closeGeneration` at
-    // schedule time — an unmount alone does not change `#closeGeneration`,
-    // so the plain generation check would still match and `onClosed` would
-    // fire AFTER the host component (and its `onExitComplete` callback)
-    // have already been torn down. `destroy()` now sets a disposed flag the
-    // deferred continuation checks first, unconditionally, regardless of
-    // generation.
+  test('does not fire onClosed when destroy() is called during the deferred window between handleClose() and its tick()-deferred callback', async () => {
+    // Regression (PR #1422 review): `handleClose()`'s `onClosed` forwarding
+    // call (via `#reportClosedOnce()`) is deferred past a `tick()`. If the
+    // consumer unmounts Modal (e.g. from its own `onExitComplete`-driven
+    // teardown, or simply navigating away) while that continuation is
+    // still pending, the deferred closure still captured the CURRENT
+    // `#closeGeneration` at schedule time — an unmount alone does not
+    // change `#closeGeneration`, so the plain generation check would still
+    // match and `onClosed` would fire AFTER the host component (and its
+    // `onExitComplete` callback) have already been torn down. `destroy()`
+    // sets a disposed flag the deferred continuation checks first,
+    // unconditionally, regardless of generation.
     let open = false;
     let closedCount = 0;
     const dialogElement = createDialogElement();
@@ -202,14 +224,19 @@ describe('createSlidingDialogState', () => {
     expect(dialogElement.open).toBe(true);
 
     // Close: `#finishClosing()` runs synchronously here — the native dialog
-    // is closed before this call returns, but `onClosed` is only scheduled
-    // (deferred past a `tick()` that hasn't resolved yet).
+    // is closed before this call returns.
     open = false;
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(false);
     expect(closedCount).toBe(0);
 
-    // The consumer unmounts Modal DURING the deferred window, before the
+    // The queued native close event arrives — `handleClose()` runs its own
+    // cleanup and SCHEDULES the deferred `onClosed` report (past a
+    // `tick()` that hasn't resolved yet).
+    dialogState.handleClose();
+    expect(closedCount).toBe(0);
+
+    // The consumer unmounts Modal DURING that deferred window, before the
     // tick() above resolves — e.g. a parent clearing a mount flag from its
     // own (now stale) exit-complete handling, or an unrelated navigation.
     dialogState.destroy();
@@ -221,29 +248,38 @@ describe('createSlidingDialogState', () => {
     expect(closedCount).toBe(0);
   });
 
-  test('a synchronous reopen from onExitComplete survives a STALE queued native close event landing afterward (PR #1422 review)', async () => {
-    // Regression: the native `close` EVENT is dispatched via a QUEUED TASK
-    // per the WHATWG spec (`close()` itself synchronously flips
-    // `dialogElement.open` to `false`, but the event fires later) — not
-    // synchronously, as an earlier version of `#finishClosing`'s own comment
-    // incorrectly assumed. If a consumer's `onExitComplete` (fired from our
-    // `tick()`-deferred continuation, a MICROTASK that resolves well before
-    // any queued TASK gets a turn) synchronously reopens the modal —
-    // `open = true` then `showModal()` — the browser's still-pending queued
-    // `close` event for the OLD `.close()` call can land AFTER that reopen.
-    // Before the fix, `handleClose()` processed every `close` event
-    // unconditionally, calling `setOpen(false)` and undoing the fresh
-    // reopen out from under the consumer.
-    //
-    // This fake `dialogElement` (like the rest of this file's tests) does
-    // not actually dispatch a real, task-queued `close` event — so this test
-    // simulates the queued-event ordering explicitly: it lets the reopen
-    // happen FIRST (via the `onClosed` callback below, mirroring a
-    // synchronous `onExitComplete` reopen), THEN manually invokes
-    // `dialogState.handleClose()` — precisely modeling "the browser's queued
-    // task for the superseded close() call finally lands, after the reopen
-    // already completed."
+  test('onClosed fires only AFTER scroll-lock/escape release and focus restoration have completed — a follow-up overlay opened from inside it keeps its own focus (PR #1422 review, cross-overlay sequencing)', async () => {
+    // Regression: `#finishClosing()` used to call `#reportClosedOnce()`
+    // (and therefore `onClosed`) ITSELF, before the queued native `close`
+    // event ever reached `handleClose()` — so a consumer's `onClosed`
+    // could open a follow-up overlay and place ITS OWN focus while this
+    // Modal still owned the escape-stack/scroll-lock and had not yet
+    // restored focus to its own trigger. `handleClose()`'s LATER
+    // `#returnFocus()` call would then run AFTER that follow-up overlay had
+    // already focused something, stealing focus back out from under it.
+    // `handleClose()` is now the SOLE trigger for `onClosed` — called only
+    // after its own scroll-lock/escape release and focus restoration have
+    // already run — so nothing can execute afterward to interfere.
+    document.body.replaceChildren();
+    const triggerButton = document.createElement('button');
+    triggerButton.textContent = 'Open';
+    document.body.appendChild(triggerButton);
+    const followUpOverlayFocusTarget = document.createElement('button');
+    followUpOverlayFocusTarget.textContent = 'Follow-up overlay content';
+    document.body.appendChild(followUpOverlayFocusTarget);
+
     let open = true;
+    // A mutable object wrapper, not a bare `let`: TypeScript's control-flow
+    // narrowing only sees the ONE assignment reachable through the linear
+    // flow of this outer function body (the declaration's own `null`) — a
+    // reassignment inside a nested closure invoked asynchronously later
+    // (`onClosed`, below) isn't part of that traced flow, so a bare `let`
+    // here narrows the read at the bottom of this test to the literal type
+    // `null` and fails to typecheck against `triggerButton`. Wrapping in an
+    // object sidesteps the narrowing entirely, since TypeScript only
+    // narrows a bound identifier's OWN reassignments, never a property
+    // read off it.
+    const focusWhenClosedFired: { current: Element | null } = { current: null };
     const dialogElement = createDialogElement();
     const dialogState = createSlidingDialogState({
       getOpen: () => open,
@@ -253,63 +289,56 @@ describe('createSlidingDialogState', () => {
       getDialogElement: () => dialogElement,
       // No panel element — `beginClosing()` finishes synchronously via
       // `#finishClosing()`, letting this test control the exact timing
-      // deterministically relative to the deferred `tick()`.
+      // deterministically.
       getPanelElement: () => undefined,
       getReducedMotion: () => true,
-      getTriggerRef: () => null,
+      getTriggerRef: () => triggerButton,
       onClosed: () => {
-        // Simulates a consumer's `onExitComplete` synchronously reopening
-        // the modal from inside the callback itself.
-        open = true;
-        dialogState.syncOpenState();
+        // Record focus AT THE MOMENT onClosed fires — this must already
+        // reflect `handleClose()`'s own restoration (the trigger button),
+        // proving cleanup and focus restoration ran BEFORE this callback,
+        // never after.
+        focusWhenClosedFired.current = document.activeElement;
+        // Simulate a follow-up overlay opening from inside this callback
+        // and placing ITS OWN focus.
+        followUpOverlayFocusTarget.focus();
       },
     });
 
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(true);
 
-    // Close: `#finishClosing()` runs synchronously here — `dialogElement`
-    // is closed (its native side effects) before this call returns, but
-    // `onClosed` is scheduled past a `tick()` that hasn't resolved yet.
     open = false;
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(false);
 
-    // Let the deferred `onClosed` fire — this is the synchronous reopen
-    // from inside the callback (see above). By the time this resolves,
-    // the modal is genuinely open again: `open` is `true`, the native
-    // dialog is `showModal()`-open again, and `#closeGeneration` has been
-    // bumped past the generation active when the earlier `.close()` call
-    // was made.
-    await tick();
-    expect(open).toBe(true);
-    expect(dialogElement.open).toBe(true);
-    expect(dialogState.renderPanel).toBe(true);
-
-    // NOW the STALE queued native close event for the earlier, superseded
-    // close() call finally "lands" — simulated by calling `handleClose()`
-    // directly, exactly modeling the queued-task-fires-late race.
+    // The queued native close event arrives: `handleClose()` runs its own
+    // cleanup and focus restoration SYNCHRONOUSLY here, then merely
+    // SCHEDULES the deferred `onClosed` report — which only actually runs
+    // once the `await tick()` below resolves, strictly after this call has
+    // already returned.
     dialogState.handleClose();
 
-    // The fresh reopen must survive: `open` must NOT have been undone back
-    // to `false` by this stale event.
-    expect(open).toBe(true);
-    expect(dialogElement.open).toBe(true);
-    expect(dialogState.renderPanel).toBe(true);
+    await tick();
+
+    expect(focusWhenClosedFired.current).toBe(triggerButton);
+    // The follow-up overlay's own focus placement (from inside `onClosed`)
+    // must SURVIVE — nothing runs afterward to steal it back.
+    expect(document.activeElement).toBe(followUpOverlayFocusTarget);
   });
 
-  test('a genuine native close after a survived stale-event still performs full cleanup and fires onClosed (PR #1422 review)', async () => {
-    // Regression: the STALE-event branch above returned early WITHOUT
-    // clearing `#pendingNativeCloseGeneration` — it stayed pinned at the
-    // now-superseded generation forever. The very next native `close`
-    // event (e.g. a genuine, later `<form method="dialog">` submission)
-    // would then ALSO fail the `#pendingNativeCloseGeneration !==
-    // this.#closeGeneration` check (nothing else ever bumps
-    // `#closeGeneration` again on its own) and be ignored outright: `open`
-    // would stay `true`, scroll-lock/escape/focus cleanup would never run,
-    // and `onClosed` would never fire for a dialog the user just genuinely
-    // closed. Fixed by consuming (clearing) the marker on the stale-event
-    // path too, so the next native close falls through to the normal path.
+  test('external close then reopen then internal reduced-motion close each report onClosed exactly once, per completed cycle (PR #1422 review, provenance-aware event matching)', async () => {
+    // Regression: FIFO queue position ALONE cannot always attribute
+    // provenance correctly across a MIXED external/internal sequence — an
+    // external close (e.g. `<form method="dialog">`, or anything else
+    // calling `dialogElement.close()` outside this class's own API) pushes
+    // NOTHING onto `#pendingNativeCloseGenerations`, so a later internal
+    // cycle's own entry must never be misread by, or misattributed to, an
+    // unrelated external event. Verified here by fully completing an
+    // EXTERNAL close cycle first, then a genuinely separate INTERNAL
+    // (reduced-motion, synchronous) close cycle — asserting each reports
+    // `onClosed` exactly once, for a total of two, never zero and never
+    // three (a double-fire on either cycle).
     let open = true;
     let closedCount = 0;
     const dialogElement = createDialogElement();
@@ -324,51 +353,47 @@ describe('createSlidingDialogState', () => {
       getTriggerRef: () => null,
       onClosed: () => {
         closedCount += 1;
-        if (closedCount === 1) {
-          // First close's `onExitComplete`: synchronously reopens, exactly
-          // as the "survives a STALE queued native close event" test above.
-          open = true;
-          dialogState.syncOpenState();
-        }
       },
     });
 
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(true);
 
-    // First close cycle, then the synchronous reopen from inside
-    // `onClosed` (see above) — identical setup to the previous test.
+    // EXTERNAL close: the browser closes the native dialog directly (e.g.
+    // a `<form method="dialog">` submission), entirely bypassing
+    // `requestClose()`/`beginClosing()` — `#pendingNativeCloseGenerations`
+    // has NO entry for this call at all.
+    dialogElement.close();
+    dialogState.handleClose();
+    expect(open).toBe(false);
+    expect(closedCount).toBe(0);
+    await tick();
+    expect(closedCount).toBe(1);
+
+    // Reopen — an entirely ordinary, unrelated open cycle.
+    open = true;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // INTERNAL close: reduced motion / no panel element, so
+    // `beginClosing()` → `#finishClosing()` runs synchronously and pushes
+    // ITS OWN generation onto the queue.
     open = false;
     dialogState.syncOpenState();
     expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(1);
+
+    // The queued native close event for THIS internal cycle arrives —
+    // must be classified as internal (matches the pushed entry's
+    // generation) and must not be confused with the earlier, already-
+    // completed external cycle.
+    dialogState.handleClose();
+    expect(closedCount).toBe(1);
     await tick();
-    expect(closedCount).toBe(1);
-    expect(open).toBe(true);
-    expect(dialogElement.open).toBe(true);
 
-    // The STALE queued native close event for the FIRST (superseded)
-    // close() call lands now, exactly as the previous test models — and is
-    // correctly ignored, but must consume `#pendingNativeCloseGeneration`
-    // rather than leaving it pinned.
-    dialogState.handleClose();
-    expect(open).toBe(true);
-    expect(dialogElement.open).toBe(true);
-    expect(closedCount).toBe(1);
-
-    // NOW a genuine SECOND close happens — e.g. a real `<form
-    // method="dialog">` submission this time. Model it exactly like the
-    // dedicated native-form test below: the browser closes the dialog
-    // directly, then the wired `close`-event handler runs.
-    open = false;
-    dialogElement.close();
-    dialogState.handleClose();
-
-    // Full cleanup must have run — the close must NOT have been ignored as
-    // stale a second time — and `onClosed` must fire again once the tick
-    // resolves.
-    expect(dialogElement.open).toBe(false);
-    expect(dialogState.renderPanel).toBe(false);
-    expect(open).toBe(false);
+    // Exactly one report per cycle — two total, never a double-fire on
+    // either.
+    expect(closedCount).toBe(2);
     await tick();
     expect(closedCount).toBe(2);
   });
@@ -401,11 +426,11 @@ describe('createSlidingDialogState', () => {
       // No panel element — `beginClosing()` finishes synchronously via
       // `#finishClosing()` on every cycle, letting this test control the
       // exact close→reopen→close timing deterministically, independent of
-      // `onClosed` itself (unlike the "survived stale-event" test above,
-      // this scenario does not depend on a reopen happening FROM inside
-      // `onClosed` — it can just as well be driven by ordinary application
-      // code closing, reopening, and closing again in quick succession,
-      // all before either cycle's queued native event has a turn).
+      // `onClosed` itself — this scenario does not depend on a reopen
+      // happening FROM inside `onClosed` at all; it can just as well be
+      // driven by ordinary application code closing, reopening, and
+      // closing again in quick succession, all before either cycle's
+      // queued native event has a turn.
       getPanelElement: () => undefined,
       getReducedMotion: () => true,
       getTriggerRef: () => null,
