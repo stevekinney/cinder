@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, jest, mock, spyOn, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -17,6 +17,12 @@ const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  // Fallback-duration tests advance fake timers instead of sleeping past a
+  // real wall-clock boundary (CIN-376 round 14 review) — reset here so a
+  // fake-timer test never leaks into the next one.
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
 });
 
 async function flushQueuedFocus(): Promise<void> {
@@ -178,13 +184,14 @@ describe('SpeedDial', () => {
       transitionProperty: 'all, opacity, transform, width, color',
     });
 
+    jest.useFakeTimers();
     try {
       waitForSpeedDialExit(action, false, complete);
 
-      await new Promise((resolve) => setTimeout(resolve, 360));
+      jest.advanceTimersByTime(360);
       expect(complete).not.toHaveBeenCalled();
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      jest.advanceTimersByTime(120);
       expect(complete).toHaveBeenCalledTimes(1);
     } finally {
       getComputedStyleSpy.mockRestore();

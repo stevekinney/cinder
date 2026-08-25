@@ -1,10 +1,24 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, jest, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
 import { waitForTransitionCompletion } from './transition-completion.ts';
 
 setupHappyDom();
+
+/**
+ * Fallback-duration tests advance Bun's fake timers instead of sleeping past
+ * the real wall-clock boundary (CIN-376 round 14 review): a real
+ * `setTimeout(resolve, 360)` followed by another `setTimeout(resolve, 120)`
+ * to straddle a ~450ms fallback boundary is racy on a loaded CI worker — an
+ * overloaded event loop can wake the first timer late enough that the
+ * fallback has already fired, failing the `completionCount === 0` assertion
+ * despite entirely correct code. `waitForTransitionCompletion` only ever
+ * calls `setTimeout`/`clearTimeout` (no `performance.now()` reads), so fake
+ * timers alone are a complete, deterministic stand-in — no injectable clock
+ * seam needed in the helper itself. Mirrors the pattern already used by
+ * `toast-region.test.ts` and others.
+ */
 
 function createTransitionEndEvent(propertyName: string): Event {
   const event = new Event('transitionend');
@@ -20,6 +34,9 @@ function createTransitionCancelEvent(propertyName: string, bubbles = false): Eve
 
 afterEach(() => {
   document.body.replaceChildren();
+  if (jest.isFakeTimers()) {
+    jest.useRealTimers();
+  }
 });
 
 describe('waitForTransitionCompletion', () => {
@@ -83,6 +100,7 @@ describe('waitForTransitionCompletion', () => {
       return originalGetComputedStyle(target);
     }) as typeof window.getComputedStyle;
 
+    jest.useFakeTimers();
     try {
       let completionCount = 0;
       waitForTransitionCompletion({
@@ -94,10 +112,10 @@ describe('waitForTransitionCompletion', () => {
         },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 360));
+      jest.advanceTimersByTime(360);
       expect(completionCount).toBe(0);
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      jest.advanceTimersByTime(120);
       expect(completionCount).toBe(1);
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
@@ -128,6 +146,7 @@ describe('waitForTransitionCompletion', () => {
       return originalGetComputedStyle(target);
     }) as typeof window.getComputedStyle;
 
+    jest.useFakeTimers();
     try {
       let completionCount = 0;
       waitForTransitionCompletion({
@@ -139,10 +158,10 @@ describe('waitForTransitionCompletion', () => {
         },
       });
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      jest.advanceTimersByTime(100);
       expect(completionCount).toBe(0);
 
-      await new Promise((resolve) => setTimeout(resolve, 100));
+      jest.advanceTimersByTime(100);
       expect(completionCount).toBe(1);
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
@@ -256,6 +275,7 @@ describe('waitForTransitionCompletion', () => {
       return originalGetComputedStyle(target);
     }) as typeof window.getComputedStyle;
 
+    jest.useFakeTimers();
     try {
       let completionCount = 0;
       waitForTransitionCompletion({
@@ -270,7 +290,7 @@ describe('waitForTransitionCompletion', () => {
       element.dispatchEvent(createTransitionEndEvent('opacity'));
       expect(completionCount).toBe(0);
 
-      await new Promise((resolve) => setTimeout(resolve, 120));
+      jest.advanceTimersByTime(120);
       expect(completionCount).toBe(1);
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
