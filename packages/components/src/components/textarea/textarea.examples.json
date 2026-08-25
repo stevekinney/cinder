@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let bio = $state('');\n</script>\n\n<Textarea\n  id=\"field\"\n  bind:value={bio}\n  label=\"Bio\"\n  description=\"Tell us a little about yourself.\"\n  placeholder=\"I'm a designer who…\"\n/>\n{#if bio.length > 0}\n  <p style=\"margin-top: 0.5rem; color: var(--cinder-text-muted);\">{bio.length} characters</p>\n{/if}\n"
     },
     {
+      "id": "code-variant",
+      "title": "Code variant",
+      "description": "variant=\"code\" applies a shared monospace metric set for source-like values such as raw JSON, YAML, or configuration text.",
+      "code": "<script lang=\"ts\">\n  import { Textarea } from '@lostgradient/cinder/textarea';\n\n  let json = $state('{\\n  \"name\": \"Ada\",\\n  \"active\": true\\n}');\n</script>\n\n<Textarea id=\"field\" bind:value={json} label=\"Raw JSON\" variant=\"code\" rows={6} />\n"
+    },
+    {
       "id": "disabled",
       "title": "Disabled textarea",
       "description": "A disabled textarea is dimmed and non-editable; its value is still shown so context is preserved while editing is locked.",

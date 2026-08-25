@@ -10,7 +10,8 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description: 'Number of columns this item spans.',
@@ -21,7 +22,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-column-start` value.',
@@ -32,7 +36,10 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-column-end` value.',
@@ -43,7 +50,8 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          minimum: 1,
         },
       ],
       description: 'Number of rows this item spans.',
@@ -54,10 +62,28 @@ const schema = {
           type: 'string',
         },
         {
-          type: 'number',
+          type: 'integer',
+          not: {
+            const: 0,
+          },
         },
       ],
       description: 'Explicit `grid-row-start` value.',
+    },
+    rowEnd: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'integer',
+          not: {
+            const: 0,
+          },
+        },
+      ],
+      description:
+        'Explicit `grid-row-end` value. Takes precedence over `rowSpan` when both are set.',
     },
     as: {
       enum: [

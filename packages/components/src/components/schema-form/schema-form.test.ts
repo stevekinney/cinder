@@ -500,6 +500,7 @@ describe('SchemaForm — composed-control regressions', () => {
     expect((countInput as HTMLInputElement).value).toBe('7'); // does not revert after blur commit
 
     const rawTextarea = container.querySelector('textarea') as HTMLTextAreaElement;
+    expect(rawTextarea.getAttribute('data-cinder-variant')).toBe('code');
     await fireEvent.input(rawTextarea, { target: { value: '{"ok":true}' } });
     expect(rawTextarea.value).toBe('{"ok":true}'); // draft does not revert
 

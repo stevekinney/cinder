@@ -9,7 +9,7 @@ export type GridColumns = number | string;
 export type GridProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
   /**
    * Positive integer number of equal-width columns or a full CSS `grid-template-columns` value.
-   * Numeric values render as `repeat(<columns>, 1fr)`.
+   * Numeric values render as `repeat(<columns>, minmax(0, 1fr))`.
    */
   columns?: GridColumns | undefined;
   /** Uniform row and column gap. */

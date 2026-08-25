@@ -18,6 +18,26 @@ function queryTextarea(): HTMLTextAreaElement {
 }
 
 describe('FrontMatterFields raw-YAML editing', () => {
+  test('renders the raw-YAML textarea with variant="code"', () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: { id: 'fm', data: null, raw: '', onchange },
+    });
+
+    const textarea = queryTextarea();
+    expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
+  test('renders a complex-value field textarea with variant="code"', () => {
+    const onchange = mock((_data: Record<string, unknown> | null) => {});
+    render(FrontMatterFields, {
+      props: { id: 'fm', data: { tags: ['a', 'b'] }, raw: 'tags:\n  - a\n  - b', onchange },
+    });
+
+    const textarea = queryTextarea();
+    expect(textarea.getAttribute('data-cinder-variant')).toBe('code');
+  });
+
   test('rejects non-object-shaped YAML instead of silently discarding it (cinder#1325 follow-up)', async () => {
     // The intentionally-empty front matter case renders the raw-YAML
     // textarea (data: null, raw: '').

@@ -142,7 +142,7 @@ describe('Grid', () => {
       props: { columns: 3, children: textSnippet('content') },
     });
     const root = container.querySelector('.cinder-grid') as HTMLElement;
-    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, 1fr)');
+    expect(root.style.getPropertyValue('--cinder-grid-columns')).toBe('repeat(3, minmax(0, 1fr))');
   });
 
   test('ignores invalid numeric column counts', () => {

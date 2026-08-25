@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../input/input.css';
+@import '../textarea/textarea.css';
 
 @layer cinder.components {
   .cinder-schema-form {
@@ -50,11 +52,10 @@
     font-size: var(--cinder-text-sm);
   }
 
-  /* JSON drafts edit raw text — give the composed Textarea a monospace,
-     vertically-resizable surface via its forwarded class. */
+  /* JSON drafts edit raw text — the composed Textarea's `variant="code"`
+     supplies the monospace metrics; this class only owns sizing/resize. */
   .cinder-schema-form__json-control {
     min-block-size: 8rem;
-    font-family: var(--cinder-font-mono);
     resize: vertical;
   }
 

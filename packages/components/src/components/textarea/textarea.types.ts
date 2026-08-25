@@ -1,4 +1,8 @@
 import type { HTMLTextareaAttributes } from 'svelte/elements';
+
+/** Visual style of the textarea. `"code"` applies the shared monospace metric set (font-family, font-size, line-height, tab-size) used for source-like values such as raw JSON, YAML, or configuration text. */
+export type TextareaVariant = 'default' | 'code';
+
 export type TextareaProps = Omit<HTMLTextareaAttributes, 'class'> & {
   /** Unique identifier — required for label association and ARIA wiring. */
   id: string;
@@ -26,6 +30,12 @@ export type TextareaProps = Omit<HTMLTextareaAttributes, 'class'> & {
   disabled?: boolean;
   /** Extra class names merged with `.cinder-textarea`. */
   class?: string;
+  /**
+   * Visual style. `"code"` applies a shared monospace metric set (font-family, font-size,
+   * line-height, tab-size) for source-like values such as raw JSON, YAML, or configuration text.
+   * @default "default"
+   */
+  variant?: TextareaVariant;
   /**
    * When `true` AND `maxlength` is set, renders a live character counter
    * (`{value.length}/{maxlength}`) below the textarea. The counter element

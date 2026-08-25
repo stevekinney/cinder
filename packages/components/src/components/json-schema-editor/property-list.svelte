@@ -446,6 +446,7 @@
                   label="Name"
                   value={getDraftName(key)}
                   disabled={readonly}
+                  variant="code"
                   oninput={(event: Event) =>
                     (draftNames[key] = (event.target as HTMLInputElement).value)}
                   onblur={() => commitRename(key)}
