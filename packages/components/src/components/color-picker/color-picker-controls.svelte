@@ -131,7 +131,7 @@
 >
   <div
     class="cinder-color-picker__hue-thumb"
-    style="left: {(hue / 359) * 100}%;"
+    style="left: {Math.min(100, (hue / 359) * 100)}%;"
     aria-hidden="true"
   ></div>
 </div>

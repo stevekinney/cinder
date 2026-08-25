@@ -226,6 +226,58 @@ describe('ColorField — invalid input', () => {
     expect(errorText).not.toContain('Try a hex code like #336699.');
     expect(errorText).toContain('hex');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b8Ax4): folding `errorMessage`
+  // into the SAME effect that reconciles/commits format-widened drafts (the
+  // previous round's fix for the errorMessage-staleness bug above) meant an
+  // errorMessage-only change also re-ran that reconciliation branch. If the
+  // user had an invalid blur behind them and had since typed a new,
+  // now-valid replacement draft, that draft got silently committed to
+  // `value` (via `seedFromParts`) the moment a parent changed
+  // `errorMessage` — with no blur, no Enter, and no `onValueChange` —
+  // breaking the exact local-draft contract the split was supposed to
+  // protect. The errorMessage-only effect is now fully separate from the
+  // formats/format reconciliation effect: it only ever refreshes the
+  // displayed message, never touches `visibleText`/`value`.
+  test('changing errorMessage while an uncommitted valid draft is in progress does NOT commit the draft', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      errorMessage: 'Pick a color from the palette.',
+      onValueChange,
+    });
+    const input = getInput(container);
+
+    // Invalid blur first, so parseError is set.
+    await typeAndBlur(input, 'nope');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Type a fully valid replacement WITHOUT blurring — a local draft.
+    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    await tick();
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Parent changes errorMessage while that draft is still uncommitted.
+    await rerender({
+      id: 'color',
+      errorMessage: 'Try a hex code like #336699.',
+      onValueChange,
+    });
+    await tick();
+
+    // The draft must NOT have been silently committed.
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(input.value).toBe('#ff0000');
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('');
+
+    // Only the next real commit (blur) actually seeds/emits it.
+    await fireEvent.blur(input);
+    await tick();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('#ff0000');
+  });
 });
 
 describe('ColorField — alpha behavior', () => {

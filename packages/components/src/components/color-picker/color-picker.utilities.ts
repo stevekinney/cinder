@@ -10,8 +10,17 @@ function toHex2(value: number): string {
   return clamp(Math.round(value), 0, 255).toString(16).padStart(2, '0');
 }
 
+// Wraps into [0, 360) without truncating the 359-360 interval. The previous
+// `Math.min(..., 359)` clamp silently rounded any canonical hue between 359
+// and 360 (e.g. 359.34, from #5b0001's HSL projection) down to 359 -- so a
+// value ColorField emitted as `hsl(359.34 100% 17.84%)` came back out of
+// ColorPicker's own round-trip as `hsl(358.68 100% 17.84%)` (a different
+// RGB byte), violating the cross-component round-trip contract. The
+// keyboard hue slider's own `aria-valuemax="359"` is a SEPARATE, intentional
+// UI-affordance concern (see hueFromKeyboard below) and is unaffected by
+// this parse-time normalization.
 function normalizeHue(hue: number): number {
-  return Math.min(((hue % 360) + 360) % 360, 359);
+  return ((hue % 360) + 360) % 360;
 }
 
 function rgbToHsl(r: number, g: number, b: number): Omit<Hsla, 'a'> {

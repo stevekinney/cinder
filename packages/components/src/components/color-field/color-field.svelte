@@ -17,6 +17,19 @@
     ColorFieldFormat,
     ColorFieldOutputFormat,
   } from './color-field.types.ts';
+
+  // Module-scope (not per-instance) so it's a single stable reference used
+  // as the `formats` prop's default. An inline array-literal default in a
+  // `$props()` destructuring (`formats = ['hex', ...]`) is NOT memoized by
+  // Svelte — it's re-evaluated (producing a NEW array identity) every time
+  // the default is read, including on a re-render triggered by a
+  // completely unrelated prop changing. Any `$effect` that reads `formats`
+  // (even via `void formats;`) would then see a "changed" reference and
+  // re-run on every parent re-render, not just when `formats` itself
+  // actually changes — which is exactly what let an `errorMessage`-only
+  // change spuriously re-trigger the formats/format reconciliation effect
+  // and silently commit an in-progress draft.
+  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 </script>
 
 <script lang="ts">
@@ -29,14 +42,18 @@
   import ColorPicker from '@lostgradient/cinder/color-picker';
   import Popover from '@lostgradient/cinder/popover';
   import Pipette from 'lucide-svelte/icons/pipette';
-  import type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
+  import type {
+    ColorFieldFormat,
+    ColorFieldOutputFormat,
+    ColorFieldProps,
+  } from './color-field.types.ts';
 
   let {
     id,
     class: className,
     value = $bindable(''),
     alpha = false,
-    formats = ['hex', 'rgb', 'hsl', 'hwb'],
+    formats = DEFAULT_FORMATS,
     format = 'hex',
     disabled = false,
     required = false,
@@ -61,6 +78,16 @@
   // Plain (non-reactive) skip guard for the value-sync effect.
   let lastReconciledValue = '';
   let lastReconciledValueWasInvalid = false;
+  // Plain (non-reactive) skip guards for the formats/format reconciliation
+  // effect below. `$effect` re-runs are not guaranteed to fire ONLY when
+  // `formats`/`format` themselves change — a Svelte `$props()` update
+  // triggered by any OTHER prop (e.g. `errorMessage`) can still re-invoke
+  // an effect that merely reads `formats`/`format`, even when their values
+  // are unchanged. Comparing against these plain snapshots makes the
+  // reconciliation's draft-admission/commit side effect run only on an
+  // ACTUAL formats/format change, regardless of why the effect fired.
+  let lastReconciledFormats: readonly ColorFieldFormat[] = untrack(() => formats);
+  let lastReconciledFormat: ColorFieldOutputFormat = untrack(() => format);
 
   // Parse any accepted input format — hex, rgb()/rgba(), hsl()/hsla(),
   // hwb(), or oklch() — in either legacy comma syntax or the modern
@@ -79,12 +106,24 @@
     return formatColor({ ...parts, a: emitAlpha ? parts.a : 1 }, format);
   }
 
+  // Content equality, not reference equality — a consumer passing `formats`
+  // as an inline array literal (e.g. `formats={['hex']}` directly in a
+  // template) gets a NEW array reference on every one of their own
+  // re-renders, even when the listed formats haven't changed. Reference
+  // equality alone would make the reconciliation guard below think
+  // `formats` changed on every such re-render, reopening the exact
+  // spurious-reconciliation bug the guard exists to close.
+  function formatsEqual(a: readonly ColorFieldFormat[], b: readonly ColorFieldFormat[]): boolean {
+    if (a === b) return true;
+    if (a.length !== b.length) return false;
+    return a.every((value, index) => value === b[index]);
+  }
+
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^(rgb|rgba)\s*\([^)]*\)\s*$/i;
   const HSL_RE = /^(hsl|hsla)\s*\([^)]*\)\s*$/i;
   const HWB_RE = /^hwb\s*\([^)]*\)\s*$/i;
   const OKLCH_TEXT_RE = /^oklch\s*\([^)]*\)\s*$/i;
-  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 
   // The EXPLICIT accepted-input set — exactly what the `formats` prop (or
   // its default) lists, with none of the configured output `format` unioned
@@ -268,7 +307,7 @@
     if (hadNoDraft) visibleText = nextHex;
   });
 
-  // ── formats/format/errorMessage runtime changes — reconcile + refresh ───
+  // ── formats/format runtime changes — reconcile newly-admitted values ────
 
   // A `formats`/`format` change can widen the effective accepted-input gate
   // (recall `acceptedFormats` always unions in the configured `format` — see
@@ -277,11 +316,13 @@
   // text.
   //
   // This effect MUST react only to actual `formats`/`format` prop changes —
-  // never to `visibleText` edits. `void formats; void format;` pins the
-  // reactive dependency explicitly; everything else is read inside
-  // `untrack(...)` so a keystroke alone can never re-trigger this effect.
-  // Without that separation: after an invalid blur/Enter leaves `parseError`
-  // set, reading `visibleText` directly (not untracked) would make EVERY
+  // never to `visibleText` edits, and never to `errorMessage` either (see
+  // the separate errorMessage-only effect below for why the two must stay
+  // split). `void formats; void format;` pins the reactive dependency
+  // explicitly; everything else is read inside `untrack(...)` so a
+  // keystroke alone can never re-trigger this effect. Without that
+  // separation: after an invalid blur/Enter leaves `parseError` set,
+  // reading `visibleText` directly (not untracked) would make EVERY
   // subsequent keystroke re-run this effect. As soon as the user's
   // in-progress replacement draft became parseable, `seedFromParts` and the
   // assignment to `value` would commit it before blur or Enter — and without
@@ -304,22 +345,23 @@
   $effect(() => {
     void formats;
     void format;
-    // `errorMessage` is tracked here too (alongside `formats`/`format`, and
-    // still never `visibleText`): when the field is already invalid and a
-    // parent changes `errorMessage` — including removing a custom message
-    // to fall back to the generated one — the displayed live-region error
-    // and the native custom-validity message must refresh immediately, not
-    // wait for the next validation or formats/format change.
-    void errorMessage;
     untrack(() => {
+      // Guard against this effect firing for a reason OTHER than an actual
+      // `formats`/`format` change (see `lastReconciledFormats`/
+      // `lastReconciledFormat` above) — only THEN may it run the
+      // draft-admission/commit logic below.
+      const didFormatsChange =
+        !formatsEqual(formats, lastReconciledFormats) || format !== lastReconciledFormat;
+      lastReconciledFormats = formats;
+      lastReconciledFormat = format;
+      if (!didFormatsChange) return;
       if (parseError === null) return;
       const text = visibleText.trim();
       if (text === '') {
         parseError = null;
       } else if (!passesFormatGate(text)) {
-        // Refresh the message so its wording reflects the new `formats` set
-        // (or the new `errorMessage`), not the wording current when the
-        // error was first raised.
+        // Refresh the message so its wording reflects the new `formats` set,
+        // not the wording that was current when the error was first raised.
         parseError = defaultErrorMessage();
       } else {
         const parsed = parseInput(text);
@@ -332,6 +374,32 @@
           value = committedHex;
         }
       }
+      syncCustomValidity();
+    });
+  });
+
+  // ── errorMessage runtime changes — refresh display only, never commit ───
+
+  // A change to `errorMessage` alone (e.g. a localization swap, or clearing
+  // a custom message to fall back to the generated one) must refresh the
+  // CURRENTLY DISPLAYED error text and native customValidity — but must
+  // NEVER re-run format-gate validation or commit an in-progress draft.
+  // That commit/reconciliation behavior belongs exclusively to the
+  // formats/format effect above. Folding `errorMessage` into that same
+  // effect (an earlier iteration of this fix) meant an errorMessage-only
+  // change also re-ran the full branch below it: if the user had an invalid
+  // blur behind them and had since typed a new, now-valid replacement draft,
+  // that draft would get `seedFromParts`-committed to `value` the moment a
+  // parent changed `errorMessage` — with no blur, no Enter, and no
+  // `onValueChange` — silently breaking the exact local-draft contract the
+  // formats/format effect above was written to protect. This effect only
+  // ever reassigns `parseError` to a freshly computed message; it never
+  // touches `visibleText`, `committedRgba`, `committedHex`, or `value`.
+  $effect(() => {
+    void errorMessage;
+    untrack(() => {
+      if (parseError === null) return;
+      parseError = defaultErrorMessage();
       syncCustomValidity();
     });
   });

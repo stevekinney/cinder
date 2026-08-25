@@ -189,8 +189,48 @@ describe('ColorPicker parser round-trips', () => {
     const { container } = render(ColorPicker, { value: '#ff0001' });
     const hue = q(container, '[aria-label="Hue"]');
     const thumb = q(container, '.cinder-color-picker__hue-thumb');
+    // The ANNOUNCED/visual bounds clamp to the slider's own [0, 359] range
+    // (aria-valuemax="359") — but see the tests below for proof the
+    // INTERNAL hue used for color math is not truncated to 359.
     expect(hue.getAttribute('aria-valuenow')).toBe('359');
     expect(thumb.getAttribute('style')).toContain('left: 100%;');
+  });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b8Ax2): `normalizeHue` used to
+  // `Math.min(..., 359)` every parsed hue, silently truncating any
+  // canonical hue between 359 and 360 down to exactly 359. For example,
+  // ColorField emits `hsl(359.34 100% 17.84%)` for `#5b0001`; ColorPicker
+  // parsing that back used to cap the hue to 359 and re-emit a DIFFERENT
+  // RGB byte (91, 0, 2) instead of the original (91, 0, 1) — a cross-
+  // component round-trip corruption. `normalizeHue` now only wraps into
+  // [0, 360) without truncating the 359-360 interval.
+  test('hue 359.5 round-trips through ColorPicker without being clamped to 359', () => {
+    const { container } = render(ColorPicker, {
+      value: 'hsl(359.5 100% 50%)',
+      format: 'hsl',
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    // Rounds to 2 decimals (color-picker.utilities.ts's own hand-rolled
+    // rgb<->hsl math, not culori) — the point is it's NOT truncated to 359.
+    expect(hidden.value).toMatch(/^hsl\(359\.\d+ 100% 50%\)$/);
+    expect(hidden.value).not.toContain('hsl(359 ');
+
+    const hue = q(container, '[aria-label="Hue"]');
+    // The announced integer value still clamps to the slider's own max.
+    expect(hue.getAttribute('aria-valuenow')).toBe('359');
+  });
+
+  test("the cited #5b0001 example: ColorField's hsl(359.34 ...) emission round-trips through ColorPicker at the same RGB byte", () => {
+    const { container } = render(ColorPicker, {
+      value: 'hsl(359.34 100% 17.84%)',
+      format: 'rgb',
+      name: 'p',
+    });
+    const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
+    // Must stay at the ORIGINAL byte (91, 0, 1) — not the previously-
+    // corrupted (91, 0, 2) that hue-clamping to 359 produced.
+    expect(hidden.value).toBe('rgb(91 0 1)');
   });
 });
 

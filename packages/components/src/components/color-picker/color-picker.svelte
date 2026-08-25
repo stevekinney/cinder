@@ -616,7 +616,14 @@
     return { x: svFromHsl * 100, y: (1 - v) * 100 };
   });
 
-  const hueAriaValue = $derived(Math.round(hue));
+  // Clamp the ANNOUNCED integer value to the slider's own [0, 359] range
+  // (aria-valuemax="359") — this is a display-layer concern only. A
+  // precise internal `hue` just under 360 (e.g. 359.9997, from a parsed
+  // canonical color) must NOT be truncated for color math/round-tripping
+  // (see `normalizeHue` in color-picker.utilities.ts), but rounding IT to
+  // an integer for aria-valuenow can legitimately land on 360, one past the
+  // slider's declared max; clamp only this announced value, not `hue` itself.
+  const hueAriaValue = $derived(Math.min(359, Math.round(hue)));
   const alphaAriaValue = $derived(Math.round(alphaValue * 100));
 </script>
 
