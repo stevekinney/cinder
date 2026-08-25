@@ -592,6 +592,7 @@
           <Input
             id={inputIdFor(activePickerToken.name)}
             value={draftValues[activePickerToken.name] ?? ''}
+            variant="code"
             class="token-css-value-input"
             {...errors[activePickerToken.name] === undefined
               ? {}
@@ -858,8 +859,6 @@
 
   .picker-css-editor :global(.cinder-input.token-css-value-input) {
     width: 100%;
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
   }
 
   @media (forced-colors: active) {

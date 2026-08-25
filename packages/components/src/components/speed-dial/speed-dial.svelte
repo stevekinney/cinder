@@ -418,7 +418,7 @@
       return;
     }
 
-    return waitForSpeedDialExit(exitingActions, () => {
+    return waitForSpeedDialExit(exitingActions, reducedMotion.current, () => {
       if (open) return;
       actionsScopeActive = false;
       retainedPositionStyle = '';
@@ -483,6 +483,7 @@
     data-cinder-open={open ? '' : undefined}
     data-cinder-direction={resolvedDirection}
     data-cinder-position-ready={actionsPositionReady || undefined}
+    data-cinder-closing={!open && actionsScopeActive ? '' : undefined}
     style={actionsPositionStyle}
     aria-hidden={hidden ||
     (!open && actionsScopeActive) ||

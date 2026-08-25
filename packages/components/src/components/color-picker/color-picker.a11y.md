@@ -2,7 +2,7 @@
 
 ## What this component is — and what it isn't
 
-`color-picker.svelte` is a **visual** color selector. It exposes a 2D saturation/lightness gradient, a hue slider, an optional alpha slider, and an optional palette of preset swatches. It is intentionally _not_ a substitute for a text-entry color field. When precise color values matter (brand hex codes, accessibility-critical contrast targets), pair this component with a future `color-field.svelte` — a labeled text input that parses and normalizes hex/`rgb()`/`hsl()` strings. Users who need exact entry should reach for the field; users who want to graze around a color space should reach for the picker.
+`color-picker.svelte` is a **visual** color selector. It exposes a 2D saturation/lightness gradient, a hue slider, an optional alpha slider, and an optional palette of preset swatches. It is intentionally _not_ a substitute for a text-entry color field. When precise color values matter (brand color codes, accessibility-critical contrast targets), pair this component with `color-field.svelte` — a labeled text input that parses and normalizes hex/`rgb()`/`hsl()`/`hwb()`/`oklch()` strings. Users who need exact entry should reach for the field; users who want to graze around a color space should reach for the picker.
 
 ## The gradient is `role="application"` on purpose
 
@@ -26,11 +26,11 @@ We do not use selection-follows-focus here. Arrowing past a swatch should let us
 
 ## Form participation and form reset
 
-The component renders a hidden `<input>` so it shows up in `FormData` and participates in `<form>` submission when `name` is set. When the surrounding form fires a `reset` event, the picker reverts to `value` (or to an empty value when no default was provided). We listen for `reset` on the input's actual form element — not on a passed-in callback — so the contract matches native form controls and consumers don't have to wire anything up.
+The component renders a hidden `<input>` so it shows up in `FormData` and participates in `<form>` submission when `name` is set. That hidden mirror is formatted in whichever CSS Color 4 syntax the `format` prop selects (hex by default; `rgb()`/`hsl()`/`hwb()`/`oklch()` for the others) from the moment the component mounts. The bindable `value` itself is NOT rewritten at mount, though: mounting must never itself mutate a prop the consumer owns, so an initial `value` whose syntax differs from `format` (e.g. `value="#ff0000"` with `format="rgb"`) is left exactly as supplied — the hidden mirror already reads `rgb(255 0 0)` while the consumer's own bound value still reads `#ff0000` — until the first user-driven commit (pointer drag, keyboard nudge, or swatch selection) writes the fully-normalized string back to `value` too. When the surrounding form fires a `reset` event, the picker re-parses the original `value` string and re-emits it through whichever `format` is current at the moment of reset (not necessarily the mount-time `format`), or reverts to an empty value when no default was provided or the original string doesn't parse. We listen for `reset` on the input's actual form element — not on a passed-in callback — so the contract matches native form controls and consumers don't have to wire anything up.
 
 ## Touch precision and fine selection
 
-Both the gradient and the sliders are pointer-driven. On touch devices, the gradient handle is small relative to a fingertip — landing on an exact hex is impractical. This is the same limitation every visual color picker has. Consumers building touch-first interfaces should pair the picker with a text field for exact entry, or expose preset swatches that cover the values they actually care about.
+Both the gradient and the sliders are pointer-driven. On touch devices, the gradient handle is small relative to a fingertip — landing on an exact value is impractical, regardless of which `format` the picker is configured to emit. This is the same limitation every visual color picker has. Consumers building touch-first interfaces should pair the picker with a text field for exact entry, or expose preset swatches that cover the values they actually care about.
 
 ## Reduced motion
 
@@ -42,4 +42,4 @@ In Windows High Contrast / forced-colors mode the gradient itself cannot be mean
 
 ## Pairing recommendation
 
-For any production form where users need to choose a color, pair this picker with a text input that accepts and validates `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`, `hsl()`, and `hsla()` strings. The picker is the discovery surface; the field is the precision surface. Neither replaces the other.
+For any production form where users need to choose a color, pair this picker with a text input that accepts and validates `#rgb`, `#rrggbb`, `#rrggbbaa`, `rgb()`, `rgba()`, `hsl()`, `hsla()`, `hwb()`, and `oklch()` strings. The picker is the discovery surface; the field is the precision surface. Neither replaces the other.

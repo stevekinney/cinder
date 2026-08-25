@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "data-grid"
+    "chat"
   ],
-  "renderedSourceSha": "df2006549cafd74acf2ccf645932ca29e282535e",
+  "renderedSourceSha": "aeeefa67ecfe904e36b7fc8e2797f3f7a2c95bc8",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

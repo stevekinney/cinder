@@ -6,10 +6,6 @@
       "type": "boolean",
       "description": "Controls whether the modal is open; bindable for controlled usage."
     },
-    "title": {
-      "type": "string",
-      "description": "Text rendered as the modal's visible heading and used as its accessible label."
-    },
     "dismissOnBackdropClick": {
       "type": "boolean",
       "description": "When true, clicking the backdrop outside the modal panel dismisses it. Default `true`."
@@ -26,17 +22,31 @@
       "type": "string",
       "description": "Additional class names merged with the component's root class."
     },
+    "chrome": {
+      "enum": ["default", "none"],
+      "description": "Chrome mode. `'default'` renders the header, visible title, border,\n`max-width: min(90vw, 32rem)`, and body padding. `'none'` renders a\nchromeless, full-bleed surface — the header, title, border, max-width, and\npadding are all suppressed, but coordination (focus trap, scroll lock,\nescape-stack participation, the exit-transition lifecycle, `role=\"dialog\"`\nand `aria-modal`) is entirely unchanged. Default `'default'`."
+    },
+    "title": {
+      "type": "string",
+      "description": "Text rendered as the modal's visible heading and used as its accessible label."
+    },
+    "aria-label": {
+      "type": "string",
+      "description": "Not used in the default chrome — the visible title supplies the accessible name instead."
+    },
     "role": {
       "enum": ["dialog", "alertdialog"],
       "description": "ARIA role applied to the underlying dialog element. Default `dialog`."
     },
     "describedById": {
       "type": "string",
-      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only."
+      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only.",
+      "minLength": 1,
+      "pattern": "\\S"
     }
   },
   "additionalProperties": false,
-  "required": ["open", "title"],
+  "required": ["open"],
   "metadata": {
     "unsupportedProps": [
       {
@@ -52,6 +62,11 @@
         "name": "onDismiss",
         "reason": "function-or-snippet",
         "description": "Fired on user-initiated dismissal. Includes: Escape key (native dialog 'cancel' event),\nbackdrop click, and the close-X button. EXCLUDES: parent-driven open = false.\nCallbacks are not awaited and thrown callbacks do not block close."
+      },
+      {
+        "name": "onExitComplete",
+        "reason": "function-or-snippet",
+        "description": "Fired once the exit transition genuinely finishes and the panel actually\nunmounts — not when `open` first flips false. Modal keeps its children\nmounted for the whole exit-transition window (via `SlidingDialogState`),\nso a CONSUMER that composes Modal and wraps it in its own `{#if}` keyed\ndirectly on the same condition that flips `open` false would destroy the\nwhole component instance before this exit ever gets a chance to play.\nUse this callback to decouple that wrapping condition from the live open\nstate: keep the composing consumer's own mount gate true until this\nfires, then clear it. Fires immediately (no animation) when\n`prefers-reduced-motion: reduce` collapses the transition duration to\nzero. Does NOT fire if `open` flips back to true before the exit\ntransition completes (a reopen-during-close) — the panel never actually\nunmounts in that case, so the composing consumer's mount gate must stay\non. Same pattern as `PopoverProps`/`SelectionPopoverProps`'\n`onExitComplete` (CIN-376)."
       },
       {
         "name": "triggerRef",
@@ -71,6 +86,49 @@
       },
       "then": {
         "required": ["describedById"]
+      }
+    },
+    {
+      "if": {
+        "properties": {
+          "chrome": {
+            "const": "none"
+          }
+        },
+        "required": ["chrome"]
+      },
+      "then": {
+        "required": ["aria-label"],
+        "properties": {
+          "aria-label": {
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        }
+      }
+    },
+    {
+      "if": {
+        "not": {
+          "properties": {
+            "chrome": {
+              "const": "none"
+            }
+          },
+          "required": ["chrome"]
+        }
+      },
+      "then": {
+        "required": ["title"],
+        "not": {
+          "required": ["aria-label"]
+        },
+        "properties": {
+          "title": {
+            "minLength": 1,
+            "pattern": "\\S"
+          }
+        }
       }
     }
   ]

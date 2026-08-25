@@ -12,7 +12,7 @@
    * @avoidWhen Collecting a numeric value with stepping controls — use number-input instead.
    * @related textarea, number-input, search-field, form-field
    */
-  export type { InputProps, InputType } from './input.types.ts';
+  export type { InputProps, InputType, InputVariant } from './input.types.ts';
 </script>
 
 <script lang="ts">
@@ -37,6 +37,7 @@
     disabled,
     required,
     type = 'text',
+    variant = 'default',
     inputAttachment,
     groupClassName,
     class: className,
@@ -166,6 +167,7 @@
     oninput={handleInput}
     class={classNames('cinder-input', className)}
     data-cinder-full-width
+    data-cinder-variant={variant}
     data-cinder-native-date={rendersNativeDateIcon ? '' : undefined}
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={describedBy}
@@ -250,6 +252,7 @@
       required={resolvedRequired}
       disabled={resolvedDisabled}
       class="cinder-input-field"
+      data-cinder-variant={variant}
       fullWidth
       descriptionClass="cinder-input-field__description"
       errorClass="cinder-input-field__error"
@@ -280,6 +283,7 @@
     required={required ?? false}
     disabled={disabled ?? false}
     class="cinder-input-field"
+    data-cinder-variant={variant}
     fullWidth
     descriptionClass="cinder-input-field__description"
     errorClass="cinder-input-field__error"

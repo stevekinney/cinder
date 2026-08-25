@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { createRawSnippet, tick } from 'svelte';
 
@@ -51,6 +51,30 @@ const emptySnippet = createRawSnippet(() => ({
   render: () => `<span></span>`,
   setup: () => {},
 }));
+
+/**
+ * Fires a native `close` event the way a REAL browser genuinely would: the
+ * WHATWG "close the dialog" steps flip `dialogElement.open` to `false`
+ * SYNCHRONOUSLY as part of handling the close, strictly BEFORE the `close`
+ * event itself fires (PR #1422 review — `create-sliding-dialog-state.svelte.ts`'s
+ * `handleClose()` now validates an unmatched/external event against
+ * `dialogElement.open` to detect a STALE event arriving after a reopen; a
+ * dialog still `.open === true` at event time is exactly what makes that
+ * event look stale). A bare `fireEvent(dialog, new Event('close'))` — this
+ * file's previous convention — never actually toggled `.open` at all
+ * (happy-dom does not do this on its own, and dispatching a synthetic
+ * `Event` object doesn't run the browser's native close ALGORITHM), so
+ * `handleClose()` would incorrectly treat every one of these test-fired
+ * events as stale and skip all of its cleanup. `dialog.close()` here is the
+ * `HTMLDialogElement.prototype.close` stub defined above (which does
+ * exactly that attribute toggle); this helper is what makes calling it,
+ * then dispatching the event, the one correct sequence everywhere in this
+ * file that simulates a native close.
+ */
+async function fireNativeClose(dialog: HTMLDialogElement): Promise<void> {
+  dialog.close();
+  await fireEvent(dialog, new Event('close'));
+}
 
 afterEach(() => {
   cleanup();
@@ -302,6 +326,320 @@ describe('Modal', () => {
     }
   });
 
+  test('onExitComplete fires only once the exit transition genuinely finishes, not when open first flips false', async () => {
+    // Same real-transition stub as the test above — this is the only way to
+    // observe that onExitComplete is NOT called merely because `open` went
+    // false; it must wait for the actual transitionend-driven completion.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      let exitCompleteCount = 0;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            exitCompleteCount++;
+          },
+        },
+      });
+
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+      expect(openValue).toBe(false);
+      // Still mounted, still mid-transition — onExitComplete must not have
+      // fired yet.
+      expect(exitCompleteCount).toBe(0);
+
+      const panel = container.querySelector('.cinder-modal__panel');
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      await waitFor(() => {
+        expect(container.querySelector('.cinder-modal__panel')).toBeNull();
+      });
+      expect(exitCompleteCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('onExitComplete fires immediately under reduced motion (transition collapsed to zero)', async () => {
+    // No getComputedStyle stub here — happy-dom's default (zero) transition
+    // duration is exactly the reduced-motion-collapsed path
+    // waitForTransitionCompletion takes, resolving via queueMicrotask.
+    let openValue = true;
+    let exitCompleteCount = 0;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+        onExitComplete: () => {
+          exitCompleteCount++;
+        },
+      },
+    });
+
+    const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+    await fireEvent.click(closeButton);
+
+    await waitFor(() => {
+      expect(container.querySelector('.cinder-modal__panel')).toBeNull();
+    });
+    expect(exitCompleteCount).toBe(1);
+  });
+
+  test('a throwing onExitComplete does not block the native dialog from closing or the scroll lock from releasing', async () => {
+    // Regression: `#finishClosing` used to call `onClosed?.()` (which
+    // forwards to this consumer callback) BEFORE `dialogElement.close()`.
+    // A throwing consumer callback would therefore propagate out before the
+    // native `close()` call ever ran — leaving the dialog stuck open in the
+    // top layer, and the scroll lock/escape-stack hold (released by the
+    // native `close` event's own `onclose` handler) never released. The
+    // fix reorders `#finishClosing` to call `close()` first.
+    //
+    // Uses the same real-(non-collapsed)-transition stub as the
+    // "keeps the panel mounted..." test above, and drives completion via an
+    // explicit `dispatchEvent('transitionend')`. `onExitComplete` now fires
+    // from a `tick().then()` continuation past the render flush (see the
+    // "fires after the render flush" test above), so the throw is no longer
+    // synchronously observable at all — `#finishClosing` catches it and
+    // reports it via `globalThis.reportError` rather than letting it
+    // surface as an unhandled promise rejection. What this test actually
+    // proves is the ORDERING: `dialogElement.close()` (and the scroll-lock/
+    // escape-stack release its native `close` event triggers) still runs
+    // unconditionally, before the (now-deferred, now-caught) throwing
+    // callback ever runs.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    // `#finishClosing` now reports a throwing `onExitComplete` via
+    // `globalThis.reportError` (see create-sliding-dialog-state.svelte.ts) —
+    // the async equivalent of a DOM event listener's "reported, not
+    // propagated to any caller" throw semantics. Stub it so this
+    // intentional test exception doesn't surface as a real uncaught error
+    // to the test runner, while still proving it WAS reported exactly once.
+    const originalReportError = globalThis.reportError;
+    const reportedErrors: unknown[] = [];
+    globalThis.reportError = (error: unknown) => {
+      reportedErrors.push(error);
+    };
+
+    try {
+      let openValue = true;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            throw new Error('boom — a throwing consumer callback');
+          },
+        },
+      });
+
+      expect(document.body.style.overflow).toBe('hidden');
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+
+      const panel = container.querySelector('.cinder-modal__panel');
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      // The native dialog is genuinely closed and body scroll is restored —
+      // despite the consumer callback throwing — because `close()` runs
+      // unconditionally before the deferred, now-caught callback.
+      await waitFor(() => {
+        expect(dialog.hasAttribute('open')).toBe(false);
+      });
+      expect(document.body.style.overflow).toBe('');
+      await waitFor(() => {
+        expect(reportedErrors).toHaveLength(1);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+      globalThis.reportError = originalReportError;
+    }
+  });
+
+  test('onExitComplete does NOT fire when open flips back to true before the exit transition finishes (reopen during close)', async () => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      let exitCompleteCount = 0;
+      const { container, rerender } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            exitCompleteCount++;
+          },
+        },
+      });
+
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+      expect(openValue).toBe(false);
+
+      // Reopen mid-transition, before any transitionend fires.
+      openValue = true;
+      await rerender({ open: true, title: 'Test Modal', children: emptySnippet });
+
+      // The panel never actually unmounted, so onExitComplete must not fire —
+      // even after the exit-transition's own generation is force-completed
+      // internally on reopen.
+      expect(container.querySelector('.cinder-modal__panel')).not.toBeNull();
+      expect(exitCompleteCount).toBe(0);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('onExitComplete fires after the render flush — the panel is already gone from the DOM at the moment the callback runs, not merely by the time a later assertion checks', async () => {
+    // Regression: `#finishClosing()` used to call `onClosed?.()` (which
+    // forwards to `onExitComplete`) synchronously in the same stack as
+    // `renderPanel = false` — before Svelte reconciled the `{#if renderPanel}`
+    // block and actually removed `.cinder-modal__panel` from the DOM. A
+    // consumer's callback would still find the panel present, contradicting
+    // the documented "fires once ... the panel actually unmounts" contract.
+    // Assert the DOM state INSIDE the callback itself, not via a later
+    // `waitFor` (which would pass even with the old synchronous-and-wrong
+    // ordering, since it merely polls until eventually true).
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      let panelPresentWhenCallbackFired: boolean | undefined;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            panelPresentWhenCallbackFired =
+              container.querySelector('.cinder-modal__panel') !== null;
+          },
+        },
+      });
+
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+
+      const panel = container.querySelector('.cinder-modal__panel');
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      await waitFor(() => {
+        expect(panelPresentWhenCallbackFired).toBe(false);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('destroying the component (e.g. a consumer unmounting Modal from onExitComplete) detaches the <dialog> from the DOM', () => {
+    // Regression: a native <dialog> shown via showModal() is promoted to
+    // the browser's top layer, outside ordinary document flow — a consumer
+    // composing Modal behind its own conditional mount keyed off
+    // onExitComplete (the documented pattern) could otherwise be left with
+    // a stale, already-destroyed instance's <dialog> still attached to the
+    // DOM after the surrounding block tears down, since top-layer promotion
+    // means it is not always removed by ordinary child-removal alone.
+    const { container, unmount } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(document.body.contains(dialog)).toBe(true);
+
+    unmount();
+
+    expect(document.body.contains(dialog)).toBe(false);
+  });
+
   test('dialog close event sets open to false', async () => {
     let openValue = true;
     const { container } = render(Modal, {
@@ -319,7 +657,7 @@ describe('Modal', () => {
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
     expect(dialog).not.toBeNull();
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(openValue).toBe(false);
   });
 
@@ -346,7 +684,7 @@ describe('Modal', () => {
     expect(dialog).not.toBeNull();
     // Simulate the browser sequence: Escape keydown → close event on the dialog.
     await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(openValue).toBe(false);
   });
 
@@ -523,6 +861,28 @@ describe('Modal', () => {
     expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
   });
 
+  test('aria-describedby is absent when describedById is whitespace-only (PR #1422 review)', () => {
+    // Regression: a bare truthiness check (`describedById ? ... : {}`)
+    // treats a whitespace-only string as truthy in JS — it would have
+    // emitted `aria-describedby="   "`, referencing an id that cannot
+    // exist, even though the `described-by-non-empty` constraint
+    // (`nonEmpty`, which trims) already rejects that same value, and the
+    // generated schema's `pattern: '\\S'` restriction on `describedById`
+    // rejects it too. `isNonEmptyString` (the same guard the title/
+    // aria-label nameless-effect already relies on) keeps the runtime in
+    // agreement with both.
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+        describedById: '   ',
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   test('onDismiss fires when native cancel event is dispatched (Escape)', async () => {
     let dismissCount = 0;
     let openValue = true;
@@ -661,7 +1021,7 @@ describe('Modal', () => {
     });
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -696,7 +1056,7 @@ describe('Modal', () => {
     document.body.removeChild(triggerEl);
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.activeElement).toBe(previouslyFocused);
 
     document.body.removeChild(previouslyFocused);
@@ -726,7 +1086,7 @@ describe('Modal', () => {
     document.body.removeChild(triggerEl);
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     // No fallback to document.body — focus stays where the dialog left it.
     expect(document.activeElement).not.toBe(triggerEl);
   });
@@ -749,7 +1109,7 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -784,11 +1144,11 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const innerDialog = inner.container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(innerDialog, new Event('close'));
+    await fireNativeClose(innerDialog);
     expect(document.body.style.overflow).toBe('hidden');
 
     const outerDialog = outer.container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(outerDialog, new Event('close'));
+    await fireNativeClose(outerDialog);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -810,7 +1170,7 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.body.style.overflow).toBe('');
 
     // Unmount after close — second release MUST be a no-op (it would otherwise
@@ -1028,6 +1388,523 @@ describe('Modal', () => {
 
     // No close button rendered when closeButtonVisible=false.
     expect(container.querySelector('.cinder-modal__close')).toBeNull();
+  });
+});
+
+describe('Modal chromeless mode (chrome="none")', () => {
+  test('suppresses the header/title, applying aria-label as the accessible name instead', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(container.querySelector('.cinder-modal__header')).toBeNull();
+    expect(dialog.getAttribute('aria-label')).toBe('Image viewer');
+    expect(dialog.hasAttribute('aria-labelledby')).toBe(false);
+  });
+
+  test('still sets role="dialog" and aria-modal="true" from Modal\'s own markup', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(dialog.getAttribute('role')).toBe('dialog');
+    expect(dialog.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('marks the dialog and panel with data-cinder-chrome="none" so CSS can drop border/max-width/padding', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    expect(dialog.getAttribute('data-cinder-chrome')).toBe('none');
+    expect(panel.getAttribute('data-cinder-chrome')).toBe('none');
+    expect(body.getAttribute('data-cinder-chrome')).toBe('none');
+  });
+
+  test('the default chrome renders the header/title and carries no data-cinder-chrome attribute', () => {
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    expect(container.querySelector('.cinder-modal__header')).not.toBeNull();
+    expect(dialog.hasAttribute('data-cinder-chrome')).toBe(false);
+    expect(dialog.getAttribute('aria-labelledby')).not.toBeNull();
+  });
+
+  test('modal.css suppresses max-width/border/padding for data-cinder-chrome="none" without touching coordination logic', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(/\.cinder-modal\[data-cinder-chrome='none'\]\s*\{[^}]*max-width:\s*none;/s);
+    expect(css).toMatch(
+      /\.cinder-modal__panel\[data-cinder-chrome='none'\]\s*\{[^}]*border:\s*none;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]\s*\{[^}]*padding:\s*0;/s,
+    );
+  });
+
+  test('modal.css disables the shared scroll-fade\'s opaque edge overlay for data-cinder-chrome="none"', async () => {
+    // The shared `.cinder-_scroll-fade` recipe fades with an OPAQUE overlay
+    // painted in `--_cinder-scroll-fade-color` (--cinder-surface here) by
+    // design (see _scroll-fade.css's design rules). A chromeless body is
+    // transparent/full-bleed on purpose, with no surface color to fade INTO
+    // — that opaque band would paint a solid stripe across arbitrary
+    // full-bleed content (e.g. an image lightbox's photo). `content: none`
+    // fully suppresses the generated `::after` box; a bare `opacity: 0`
+    // would not be enough, since a running `animation-timeline: scroll()`
+    // keyframe overrides plain `opacity` regardless of source order.
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]::after\s*\{[^}]*content:\s*none;/s,
+    );
+  });
+
+  test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    // Declared on .cinder-modal as a PLAIN (non-self-referencing) reference
+    // to --cinder-overlay-backdrop, purely so the variables generator
+    // collects --cinder-modal-backdrop into modal.variables.json/README.
+    // NOT redeclared on `.cinder-modal::backdrop` at all — the fallback for
+    // that pseudo-element lives on the CONSUMING `background-color`
+    // property instead (see the cyclic-fallback regression test below for
+    // why a redeclaration there would be actively wrong).
+    expect(css).toMatch(
+      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
+    );
+    expect(css).toContain(
+      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
+  });
+
+  test('the --cinder-modal-backdrop fallback is never a self-referencing (cyclic) custom-property declaration', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    // Regression: `--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)`
+    // is a CSS custom-property dependency CYCLE — a property referencing
+    // itself in its own declaration — which the spec resolves by making the
+    // property invalid at computed-value time. Cycle detection happens
+    // BEFORE fallback substitution, so the fallback argument does not
+    // rescue it: this form breaks the backdrop for every Modal with no
+    // override at all. An earlier revision of this file made exactly this
+    // mistake trying to avoid shadowing ancestor-scoped overrides; the
+    // correct fix moves the fallback to the CONSUMING property
+    // (`background-color`) instead of self-referencing the declaration.
+    expect(css).not.toContain(
+      '--cinder-modal-backdrop: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
+
+    // `.cinder-modal::backdrop` must not declare --cinder-modal-backdrop at
+    // all (a hard literal redeclare there would always win the cascade for
+    // that exact pseudo-element, shadowing an ancestor-/:root-scoped
+    // consumer override in any engine that would otherwise let it inherit
+    // through) — only consume it, with the fallback on the right-hand side
+    // of `background-color`.
+    const backdropRuleStart = css.indexOf('.cinder-modal::backdrop {');
+    const backdropRuleEnd = css.indexOf('}', backdropRuleStart);
+    const backdropRule = css.slice(backdropRuleStart, backdropRuleEnd);
+    expect(backdropRule).not.toContain('--cinder-modal-backdrop:');
+    expect(backdropRule).toContain(
+      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
+  });
+
+  test('coordination (focus trap, scroll lock, escape stack, exit transition) is unchanged in chromeless mode', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    // Native cancel (Escape) still routes through requestClose()/onDismiss,
+    // exactly like the default chrome.
+    const cancelEvent = new Event('cancel', { cancelable: true });
+    await fireEvent(dialog, cancelEvent);
+    expect(cancelEvent.defaultPrevented).toBe(true);
+    expect(openValue).toBe(false);
+  });
+
+  test('clicking the panel background dismisses (backdrop-equivalent) since the panel fills the whole dialog', async () => {
+    // Regression: chrome="none" makes the panel/body fill the dialog's
+    // entire content box (width/height 100%, inset 0), so a real click can
+    // never land directly on `dialogElement` — event.target === dialogElement
+    // is unreachable there. The panel/body ARE the backdrop-equivalent
+    // surface for this chrome.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(false);
+  });
+
+  test('clicking the body background dismisses (backdrop-equivalent)', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    await fireEvent.click(body);
+    expect(openValue).toBe(false);
+  });
+
+  test('dismissOnBackdropClick=false keeps chromeless panel/body clicks from closing', async () => {
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        dismissOnBackdropClick: false,
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(true);
+  });
+
+  test('a click on real content INSIDE the chromeless body does not dismiss (event.target is the content, not the body/panel)', async () => {
+    const contentSnippet = createRawSnippet(() => ({
+      render: () => `<button type="button" id="real-content">Real content</button>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: contentSnippet,
+      },
+    });
+    const content = container.querySelector('#real-content') as HTMLElement;
+    await fireEvent.click(content);
+    expect(openValue).toBe(true);
+  });
+
+  test('default chrome is unaffected: clicking the panel/body does NOT dismiss (only event.target === dialogElement does)', async () => {
+    // Regression guard: the chromeless-only fallback (panel/body as
+    // backdrop-equivalent) must not leak into the default chrome, where
+    // clicking the panel/body is a normal part of the visible card, not a
+    // backdrop click.
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: emptySnippet,
+      },
+    });
+    const panel = container.querySelector('.cinder-modal__panel') as HTMLElement;
+    const body = container.querySelector('.cinder-modal__body') as HTMLElement;
+    await fireEvent.click(panel);
+    expect(openValue).toBe(true);
+    await fireEvent.click(body);
+    expect(openValue).toBe(true);
+  });
+
+  test('data-cinder-modal-backdrop on a consumer full-bleed child dismisses, independent of the panel/body checks', async () => {
+    // Regression: the canonical chromeless composition (see
+    // chromeless.example.svelte) renders a root child that fills the body
+    // (width/height 100%) — every empty-surface click's target is THAT
+    // child, never the body/panel, so the panel/body fallback above never
+    // fires. A consumer opts a full-bleed scrim wrapper into
+    // backdrop-equivalent dismissal by marking it with
+    // `data-cinder-modal-backdrop`.
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () =>
+        `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"><button type="button" id="real-content">Real content</button></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(false);
+  });
+
+  test('a click on a descendant of the data-cinder-modal-backdrop element does not dismiss', async () => {
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () =>
+        `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"><button type="button" id="real-content">Real content</button></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: scrimSnippet,
+      },
+    });
+    const content = container.querySelector('#real-content') as HTMLElement;
+    await fireEvent.click(content);
+    expect(openValue).toBe(true);
+  });
+
+  test('dismissOnBackdropClick=false suppresses data-cinder-modal-backdrop dismissal too', async () => {
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () => `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        dismissOnBackdropClick: false,
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(true);
+  });
+
+  test('data-cinder-modal-backdrop has no effect in the default chrome', async () => {
+    // Regression guard: this marker is a chromeless-only escape hatch. A
+    // consumer accidentally leaving it on content rendered in the default
+    // chrome must not get surprise backdrop-equivalent dismissal there.
+    const scrimSnippet = createRawSnippet(() => ({
+      render: () => `<div data-cinder-modal-backdrop style="width: 100%; height: 100%;"></div>`,
+      setup: () => {},
+    }));
+    let openValue = true;
+    const { container } = render(Modal, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Test Modal',
+        children: scrimSnippet,
+      },
+    });
+    const scrim = container.querySelector('[data-cinder-modal-backdrop]') as HTMLElement;
+    await fireEvent.click(scrim);
+    expect(openValue).toBe(true);
+  });
+
+  test('modal.css clears the reserved scrollbar gutter for the chromeless body', async () => {
+    // Regression: the base body rule's `scrollbar-gutter: stable` reserves
+    // an inline-end band on classic-scrollbar platforms even when the body
+    // does not overflow. On a full-bleed chromeless surface that band
+    // visibly shifts centered content (e.g. an image lightbox's photo) away
+    // from true viewport center.
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-cinder-chrome='none'\]\s*\{[^}]*scrollbar-gutter:\s*auto;/s,
+    );
+  });
+
+  test('marks the footer with data-cinder-chrome="none" and modal.css resets its background/border/padding', async () => {
+    // Regression: chromeless mode fills the dialog's entire content box with
+    // the panel/body/footer as one full-bleed surface, but the footer kept
+    // painting its own card-style background, top border, and padding —
+    // breaking the "genuinely full-bleed" contract when a consumer uses
+    // chrome="none" together with a footer snippet.
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+        footer: textSnippet('Footer content'),
+      },
+    });
+    const footer = container.querySelector('.cinder-modal__footer');
+    expect(footer?.getAttribute('data-cinder-chrome')).toBe('none');
+
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*padding:\s*0;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*background:\s*transparent;/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*border-block-start:\s*none;/s,
+    );
+  });
+});
+
+describe('Modal nameless-dialog dev warning', () => {
+  let originalWarn: typeof console.warn;
+  let warnings: string[];
+
+  beforeEach(() => {
+    originalWarn = console.warn;
+    warnings = [];
+    console.warn = (...args: unknown[]) => {
+      warnings.push(args.join(' '));
+    };
+  });
+
+  afterEach(() => {
+    console.warn = originalWarn;
+  });
+
+  test('warns when chrome="default" renders with an empty title', () => {
+    render(Modal, {
+      props: { open: true, title: '', children: emptySnippet },
+    });
+    expect(
+      warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="default"')),
+    ).toBe(true);
+  });
+
+  test('does not warn when chrome="default" has a non-empty title', () => {
+    render(Modal, {
+      props: { open: true, title: 'Confirm deletion', children: emptySnippet },
+    });
+    expect(warnings.some((w) => w.includes('chrome="default"'))).toBe(false);
+  });
+
+  test('warns when chrome="none" renders with an empty aria-label', () => {
+    render(Modal, {
+      props: { open: true, chrome: 'none', 'aria-label': '', children: emptySnippet },
+    });
+    expect(warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="none"'))).toBe(
+      true,
+    );
+  });
+
+  test('does not warn when chrome="none" has a non-empty aria-label', () => {
+    render(Modal, {
+      props: {
+        open: true,
+        chrome: 'none',
+        'aria-label': 'Image viewer',
+        children: emptySnippet,
+      },
+    });
+    expect(warnings.some((w) => w.includes('chrome="none"'))).toBe(false);
+  });
+
+  test('a non-string truthy title (a JS consumer bypassing TypeScript) warns instead of throwing', () => {
+    // Regression: the guard used to call `.trim()` after only a truthiness
+    // check, so a non-string truthy value would throw inside the $effect —
+    // turning a dev-only warning into a hard crash.
+    expect(() => {
+      render(Modal, {
+        // eslint-disable-next-line no-unsafe-type-assertion -- simulating a JS consumer bypassing the `title: string` type at runtime.
+        props: {
+          open: true,
+          title: { not: 'a string' } as unknown as string,
+          children: emptySnippet,
+        },
+      });
+    }).not.toThrow();
+    expect(
+      warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="default"')),
+    ).toBe(true);
+  });
+
+  test('a non-string truthy aria-label in the chromeless chrome warns instead of throwing', () => {
+    expect(() => {
+      render(Modal, {
+        props: {
+          open: true,
+          chrome: 'none',
+          // eslint-disable-next-line no-unsafe-type-assertion -- simulating a JS consumer bypassing the `aria-label: string` type at runtime.
+          'aria-label': { not: 'a string' } as unknown as string,
+          children: emptySnippet,
+        },
+      });
+    }).not.toThrow();
+    expect(warnings.some((w) => w.includes('[cinder/Modal]') && w.includes('chrome="none"'))).toBe(
+      true,
+    );
   });
 });
 

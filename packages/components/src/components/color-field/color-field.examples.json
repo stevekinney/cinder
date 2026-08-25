@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 20rem;\">\n  <label for=\"field\" style=\"font-size: 0.875rem; font-weight: 500;\"> Brand color </label>\n  <ColorField\n    id=\"field\"\n    value=\"#3b82f6\"\n    onValueChange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
     },
     {
+      "id": "output-format",
+      "title": "Output format",
+      "description": "The format prop controls the emitted string syntax (hex, rgb, hsl, hwb, or oklch). The selected output format is always implicitly accepted on input too, regardless of what the formats prop lists.",
+      "code": "<script lang=\"ts\">\n  import { ColorField } from '@lostgradient/cinder/color-field';\n  import type { ColorFieldOutputFormat } from '@lostgradient/cinder/color-field';\n  import { Select } from '@lostgradient/cinder/select';\n\n  const formatOptions: { value: ColorFieldOutputFormat; label: string }[] = [\n    { value: 'hex', label: 'hex' },\n    { value: 'rgb', label: 'rgb' },\n    { value: 'hsl', label: 'hsl' },\n    { value: 'hwb', label: 'hwb' },\n    { value: 'oklch', label: 'oklch' },\n  ];\n  let selectedFormat = $state<ColorFieldOutputFormat>('oklch');\n  let committed = $state('');\n</script>\n\n<div style=\"display: flex; flex-direction: column; gap: 0.5rem; max-width: 24rem;\">\n  <Select\n    id=\"color-field-output-format-select\"\n    bind:value={selectedFormat}\n    options={formatOptions}\n    label=\"Output format\"\n  />\n\n  <label for=\"color-field-output-format\" style=\"font-size: 0.875rem; font-weight: 500;\">\n    Brand color\n  </label>\n  <ColorField\n    id=\"color-field-output-format\"\n    value=\"#3b82f6\"\n    format={selectedFormat}\n    onValueChange={(value) => {\n      committed = value;\n    }}\n  />\n  {#if committed}\n    <p style=\"font-size: 0.75rem; color: var(--cinder-text-muted);\">Committed: {committed}</p>\n  {/if}\n</div>\n"
+    },
+    {
       "id": "states",
       "title": "Disabled and readonly states",
       "description": "A disabled color field rejects all interaction; a readonly field displays the value but blocks editing.",

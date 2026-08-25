@@ -410,7 +410,7 @@ describe('NavigationBar', () => {
     expect(navigationBarSource).toContain('pendingTabFocus');
     expect(navigationBarSource).toContain('pendingTabFocusTarget');
     expect(navigationBarSource).toContain(
-      "isMobileLayout && mobileMenuOpen ? 'cinder-_floating-surface' : undefined",
+      'isMobileLayout && (mobileMenuOpen || exitState.renderPanel)',
     );
     expect(navigationBarSource).toContain(
       "classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)",
@@ -791,6 +791,100 @@ describe('NavigationBar', () => {
     expect(itemsRegion?.getAttribute('data-open')).toBe('true');
     expect(itemsRegion).not.toBeNull();
     expect(itemsRegion?.hasAttribute('inert')).toBe(false);
+  });
+
+  test('keeps the floating-surface chrome class through the exit transition (CIN-376)', async () => {
+    // Regression guard: gating `cinder-_floating-surface` purely on the live
+    // `mobileMenuOpen` bindable dropped the class (and with it, the surface's
+    // border/radius/shadow) the instant the toggle closed — before the
+    // 200ms exit transition had even started.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-navigation-bar__items')
+      ) {
+        return {
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      await withResizeObserver(async () => {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+
+        const nav = await openCollapsedMobileMenu(container);
+        const itemsRegion = getItemsRegion(container);
+        expect(itemsRegion.classList.contains('cinder-_floating-surface')).toBe(true);
+
+        const toggle = nav.querySelector('#toggle-btn') as HTMLElement;
+        await fireEvent.click(toggle);
+
+        const closingRegion = getItemsRegion(container);
+        expect(closingRegion.hasAttribute('data-cinder-closing')).toBe(true);
+        expect(closingRegion.classList.contains('cinder-_floating-surface')).toBe(true);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('keeps the mobile panel portaled through the exit transition (CIN-376)', async () => {
+    // Regression guard: `itemsPortalScope`'s `disabled` flag used to key off
+    // the live `mobileMenuOpen` bindable alone. Inside a transformed (or
+    // otherwise containing-block-forming) ancestor, disabling the portal the
+    // instant close begins moves the panel back inline while
+    // `anchoredItems` keeps writing viewport-relative fixed `top`/`left`
+    // coordinates for the rest of the exit (`exitState.isClosing`) — those
+    // coordinates are then interpreted in the ancestor's coordinate system,
+    // making the panel jump during the exit. The portal must stay attached
+    // to `document.body` for as long as the panel is retained
+    // (`exitState.renderPanel`), not just while `mobileMenuOpen` is live.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-navigation-bar__items')
+      ) {
+        return {
+          transitionProperty: 'opacity, transform',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      await withResizeObserver(async () => {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+
+        const nav = await openCollapsedMobileMenu(container);
+        const itemsRegion = getItemsRegion(container);
+        expect(itemsRegion.parentElement?.parentElement).toBe(document.body);
+
+        const toggle = nav.querySelector('#toggle-btn') as HTMLElement;
+        await fireEvent.click(toggle);
+
+        const closingRegion = getItemsRegion(container);
+        expect(closingRegion.hasAttribute('data-cinder-closing')).toBe(true);
+        // Still portaled to `document.body`, not moved back inline under `nav`.
+        expect(closingRegion.parentElement?.parentElement).toBe(document.body);
+        expect(nav.contains(closingRegion)).toBe(false);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
   });
 
   test('an open collapsed menu is portaled outside the navigation stacking context', async () => {
@@ -1655,6 +1749,20 @@ describe('NavigationBar', () => {
     ).toBe('true');
   });
 
+  test('variant resolution is gated on mobileMenuOpen || exitState.renderPanel, not mobileMenuOpen alone (CIN-376)', () => {
+    // Regression guard: `mobileMenuOpen` flips to `false` the instant close
+    // begins, so gating `variant` on it alone would resolve back to
+    // 'horizontal' — stripping mobile item styling — while the panel is
+    // still retained (`exitState.renderPanel`) and visibly playing its exit
+    // transition. `createRawSnippet`'s `setup()` only runs once at mount
+    // (see the test above), so this can't be observed by re-capturing the
+    // snippet context reactively; assert the source condition directly,
+    // mirroring the existing `cinder-_floating-surface` gating test.
+    expect(navigationBarSource).toContain(
+      'isCollapsible && isMobileLayout && (mobileMenuOpen || exitState.renderPanel)',
+    );
+  });
+
   // ── data-collapsible cannot be overridden via rest ───────────────────────
 
   test('consumer data-collapsible rest prop cannot override internal value', () => {
@@ -2047,7 +2155,7 @@ describe('NavigationBar responsive CSS', () => {
     expect(navigationBarCss).toContain('container-name: cinder-navigation-bar;');
     expect(navigationBarCss).toContain('@container cinder-navigation-bar (max-width: 47.99rem)');
     expect(navigationBarCss).toMatch(
-      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?inline-size:\s*100%;/,
     );
   });
 
@@ -2123,10 +2231,10 @@ describe('NavigationBar responsive CSS', () => {
 
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
     expect(navigationBarCss).toMatch(
-      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
     );
     expect(navigationBarCss).toMatch(
-      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-open='true'\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
     );
   });
 });

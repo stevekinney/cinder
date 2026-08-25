@@ -8,15 +8,48 @@
     position: fixed;
     z-index: var(--cinder-z-tooltip);
     display: flex;
-    visibility: hidden;
     margin: 0;
     padding: 0;
     border: 0;
     background: transparent;
+    opacity: 0;
+    scale: 0.95;
+    pointer-events: none;
+    transition:
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      scale var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* Hidden from the tab order/AT whenever the panel isn't ACTUALLY
+   positioned and visible: before Floating UI has set
+   `data-cinder-position-ready='true'` (an open/initial-mount window —
+   `data-cinder-visible` alone turns on as soon as `exitState.renderPanel`
+   does, which is BEFORE positioning resolves, so gating on it alone briefly
+   exposed the un-positioned, opacity:0 toolbar as focusable/AT-visible), and
+   once the exit transition has genuinely finished (driven by
+   `createAnchoredOverlayExitState` / `waitForTransitionCompletion`), not the
+   instant `open` goes false — see OVERLAY-POLICY.md § "Transition
+   lifecycle". `[data-cinder-closing]` is exempted from the position-ready
+   requirement so the retained exit stays visible even if positioning
+   happens to lag behind. No transition on `visibility` itself; it flips
+   only after opacity/scale have already settled at 0. */
+  .cinder-selection-popover:not([data-cinder-position-ready='true']):not([data-cinder-closing]) {
+    visibility: hidden;
   }
 
   .cinder-selection-popover[data-cinder-position-ready='true'] {
-    visibility: visible;
+    opacity: 1;
+    scale: 1;
+    pointer-events: auto;
+  }
+
+  /* Exit transition: mirrors the entry state above so the popover fades back
+   out exactly the way it faded in, while `data-cinder-visible` (see above)
+   keeps it focusable/visible for the duration of the transition. */
+  .cinder-selection-popover[data-cinder-closing] {
+    opacity: 0;
+    scale: 0.95;
+    pointer-events: none;
   }
 
   .cinder-selection-popover__button {
@@ -183,34 +216,10 @@
     stroke-width: 2;
   }
 
-  @keyframes cinder-selection-popover-in {
-    from {
-      opacity: 0;
-      scale: 0.95;
-    }
-    to {
-      opacity: 1;
-      scale: 1;
-    }
-  }
-
-  .cinder-selection-popover[data-cinder-position-ready='true'] {
-    animation: cinder-selection-popover-in var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
-      .cinder-selection-popover[data-cinder-position-ready='true'] {
-      animation: cinder-selection-popover-fade var(--cinder-duration-fast) linear;
-    }
-
-    @keyframes cinder-selection-popover-fade {
-      from {
-        opacity: 0;
-      }
-      to {
-        opacity: 1;
-      }
+      .cinder-selection-popover {
+      transition: none;
     }
   }
 }

@@ -40,24 +40,28 @@
 
     pointer-events: none;
     user-select: none;
+    opacity: 0;
 
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  .cinder-tooltip[data-cinder-position-ready='false'] {
+  /* Steady-state hidden: removed from the a11y/paint tree only once the exit
+   transition below has genuinely finished (driven by
+   `createAnchoredOverlayExitState` / `waitForTransitionCompletion`), not the
+   instant it stops being shown — see OVERLAY-POLICY.md § "Transition
+   lifecycle". `aria-hidden` (set directly by the component) still flips
+   immediately for assistive tech; only the visual `visibility` waits. */
+  .cinder-tooltip:not([data-cinder-visible]) {
     visibility: hidden;
-    opacity: 0;
   }
 
-  /* Visible state */
-  .cinder-tooltip[aria-hidden='false'] {
-    visibility: visible;
+  .cinder-tooltip[data-cinder-position-ready='true'] {
     opacity: 1;
   }
 
-  /* Hidden state */
-  .cinder-tooltip[aria-hidden='true'] {
-    visibility: hidden;
+  /* Exit transition: mirrors the visible state above so the tooltip fades
+   back out instead of snapping away with `visibility`. */
+  .cinder-tooltip[data-cinder-closing] {
     opacity: 0;
     pointer-events: none;
   }

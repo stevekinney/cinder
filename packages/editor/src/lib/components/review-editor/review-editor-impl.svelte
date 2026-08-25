@@ -270,6 +270,27 @@
       popoverThreadId === null,
   );
 
+  /**
+   * Whether the SelectionPopover component instance should stay MOUNTED
+   * (CIN-376 round 20 review). SelectionPopover intentionally never
+   * unmounts its own root element while closing — it keeps itself mounted
+   * for the duration of its exit transition via
+   * `data-cinder-visible`/`data-cinder-closing`, not an `{#if}` gate, so it
+   * can actually fade out. Wrapping it directly in `{#if showSelectionPopover}`
+   * destroyed the WHOLE component instance the instant `handleSelectionPopoverClose`
+   * cleared `selectionPopoverPosition`/`selectionPopoverExpanded` — before
+   * its own retained-exit lifecycle ever got a chance to run, so the editor
+   * still snapped the popover closed instead of fading it. This mirrors
+   * `showSelectionPopover` becoming true, but only clears via
+   * `onExitComplete` once SelectionPopover's own exit genuinely finishes.
+   */
+  let selectionPopoverMounted = $state(false);
+  $effect(() => {
+    if (showSelectionPopover) {
+      selectionPopoverMounted = true;
+    }
+  });
+
   /** Delay for scroll-then-position pattern (matches smooth scroll duration) */
   const POSITION_DELAY_MS = 350;
 
@@ -2185,7 +2206,7 @@
   {/if}
 
   <!-- Selection popover for quick comment creation -->
-  {#if showSelectionPopover}
+  {#if selectionPopoverMounted}
     <SelectionPopover
       id="{id}-selection-popover"
       position={selectionPopoverPosition}
@@ -2194,6 +2215,9 @@
       onExpand={handleSelectionPopoverExpand}
       onCancel={handleSelectionPopoverCancel}
       onClose={handleSelectionPopoverClose}
+      onExitComplete={() => {
+        selectionPopoverMounted = false;
+      }}
     />
   {/if}
 </div>

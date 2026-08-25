@@ -21,8 +21,10 @@
   import type { Attachment } from 'svelte/attachments';
   import type { Placement } from '@floating-ui/dom';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { createPortalAttachment } from '../portal/index.ts';
 
   let {
@@ -37,8 +39,31 @@
   /**
    * Anchor-by-reference mode: the consumer owns the trigger's placement, so the
    * Tooltip renders only its panel. See {@link TooltipProps.triggerRef}.
+   *
+   * Retained through a closing session, not read directly off `triggerRef`:
+   * a consumer can clear `triggerRef` (e.g. unmount the referenced element)
+   * in the same update that starts a close. Reading `triggerRef != null`
+   * directly would flip `isDetached` to `false` mid-fade, switching the
+   * template from the detached branch to the wrapping branch — discarding
+   * the retained panel and its exit transition entirely, even though
+   * `exitState.renderPanel` correctly says a session is still closing.
+   * Mirrors Popover's `lastAnchorElement` retention pattern.
    */
-  const isDetached = $derived(triggerRef != null);
+  let lastIsDetached = $state(false);
+  $effect(() => {
+    if (triggerRef != null) {
+      lastIsDetached = true;
+      return;
+    }
+    // Only clear once there's no active (open or closing) session to retain
+    // it for — same effect-ordering reason as Popover's snapshots: gating on
+    // `exitState.renderPanel` here (not `visible`/`exitState.isClosing`)
+    // reads the CURRENT retention need rather than a one-tick-stale value.
+    if (!exitState.renderPanel) {
+      lastIsDetached = false;
+    }
+  });
+  const isDetached = $derived(triggerRef != null || lastIsDetached);
 
   /*
    * OVERLAY-POLICY.md's SSR rule is a HARD CONSTRAINT: overlays render nothing
@@ -201,7 +226,26 @@
       trigger.removeEventListener('mouseleave', handleMouseLeave);
       trigger.removeEventListener('focusin', handleFocusIn);
       trigger.removeEventListener('focusout', handleFocusOut);
-      if (anchorElement === trigger) anchorElement = null;
+      // If the trigger ref was CLEARED (not merely swapped to a different
+      // element — checked against the live `triggerRef`, not the captured
+      // `trigger`) while the tooltip is genuinely visible, force it to
+      // start closing now. `lastIsDetached`/`exitState.renderPanel`
+      // retention above exists ONLY to keep the panel positioned/mounted
+      // through the resulting exit transition — without this, a triggerRef
+      // cleared while `visible` was still true left the tooltip visibly
+      // portaled against a removed trigger with no event source left to
+      // ever dismiss it (no mouseleave/focusout can fire on an element
+      // that's gone).
+      if (triggerRef == null && visible) {
+        hide();
+      }
+      // Don't null the anchor while a session is still closing: `anchor()`
+      // below reads `anchorElement` directly, and `createAnchoredOverlay`
+      // clears its position when `anchor()` returns null — nulling this the
+      // instant `triggerRef` is cleared (same tick a close can start) would
+      // strand the retained (detached-mode-retained, see `lastIsDetached`
+      // above) panel with no positioning through its own exit transition.
+      if (anchorElement === trigger && !exitState.renderPanel) anchorElement = null;
     };
   });
 
@@ -244,23 +288,85 @@
      * gating on it would deadlock a tooltip that can never be positioned
      * because it was never portaled.
      */
-    disabled: () => !visible,
+    disabled: () => !exitState.renderPanel,
     target: () => document.body,
     source: () => anchorElement ?? wrapperElement ?? null,
     inheritAttributes: true,
   });
 
+  const reducedMotion = useReducedMotion();
+  // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
+  // "Transition lifecycle"). The tooltip element never unmounts, so
+  // `renderPanel`/`isClosing` drive `data-cinder-visible`/`data-cinder-closing`
+  // rather than an `{#if}` gate — but the a11y-visible fade-out still awaits
+  // the real transition instead of snapping away via `visibility`.
+  const exitState = createAnchoredOverlayExitState({
+    getOpen: () => visible,
+    getPanelElement: () => tooltipElement,
+    getReducedMotion: () => reducedMotion.current,
+  });
+
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => visible,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. Whenever a visible
+    // tooltip closes, `visible` flips `false` in THIS render, one tick
+    // before `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing `positionStyle`/`positionReady`
+    // for a tick before the async Floating UI recomputation restores them —
+    // the retained (`data-cinder-visible`) tooltip would start its fade from
+    // an unpositioned fixed location. `renderPanel` doesn't have this lag.
+    //
+    // `open()` is `exitState.renderPanel` ALONE, not `visible ||
+    // exitState.renderPanel`: this callback runs inside
+    // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
+    // raw `visible` prop here — even behind an `||` whose overall result
+    // doesn't change — still subscribes that effect to `visible` as a
+    // fine-grained dependency (Svelte tracks every signal an effect reads
+    // during its run, not just whether the return value changed), causing
+    // it to briefly tear down/rebuild on every ordinary close. `renderPanel`
+    // is already `true` throughout the whole open session and only changes
+    // at genuine session boundaries — see Popover's `anchoredOverlay` for
+    // the fuller explanation of this same fix (CIN-376 round 12).
+    open: () => exitState.renderPanel,
     anchor: () => anchorElement,
     panel: () => tooltipElement,
     placement: () => placement as Placement,
     offset: () => 8,
     widthMode: () => 'none',
   });
+
+  // Snapshot of the last non-empty computed position style, mirroring
+  // Popover's `lastPositionStyle` (CIN-376 round 17/18 review): a reactive
+  // `placement` change while the tooltip is fading out still invalidates
+  // `createAnchoredOverlay`'s effect even though `open()` above
+  // (`exitState.renderPanel`) stays true — its cleanup synchronously clears
+  // `positionStyle`/`positionReady` before the asynchronous recomputation
+  // restores them, but `data-cinder-visible` keeps the tooltip painted
+  // throughout, so without this the partially visible fixed element would
+  // jump to its default `left: 0; top: 0` position during the exit. A
+  // genuine fresh recompute overwrites this snapshot again within the same
+  // reactive flush, so there's no meaningful staleness window outside this
+  // transient invalidation gap.
+  let lastPositionStyle = '';
+  $effect(() => {
+    if (anchoredOverlay.positionStyle) {
+      lastPositionStyle = anchoredOverlay.positionStyle;
+    }
+  });
+  const resolvedPositionStyle = $derived(anchoredOverlay.positionStyle || lastPositionStyle);
+
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   onDestroy(clearPendingShow);
+  onDestroy(() => {
+    exitState.destroy();
+  });
+
+  $effect(() => {
+    exitState.sync();
+  });
 
   $effect(() => {
     if (!visible) return;
@@ -293,7 +399,9 @@
       aria-hidden={!isTooltipExposed}
       data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
       data-cinder-position-ready={anchoredOverlay.positionReady}
-      style={anchoredOverlay.positionStyle}
+      data-cinder-visible={exitState.renderPanel ? '' : undefined}
+      data-cinder-closing={exitState.isClosing ? '' : undefined}
+      style={resolvedPositionStyle}
       {@attach tooltipPortalAttachment}
     >
       {text}
@@ -320,7 +428,9 @@
         aria-hidden={!isTooltipExposed}
         data-cinder-placement={visible ? anchoredOverlay.resolvedPlacement : placement}
         data-cinder-position-ready={anchoredOverlay.positionReady}
-        style={anchoredOverlay.positionStyle}
+        data-cinder-visible={exitState.renderPanel ? '' : undefined}
+        data-cinder-closing={exitState.isClosing ? '' : undefined}
+        style={resolvedPositionStyle}
         {@attach tooltipPortalAttachment}
       >
         {text}

@@ -23,8 +23,8 @@ export type ConstraintSeverity = 'error' | 'warning' | 'info';
  *
  * - `{prop, equals}` — strict equality against the named attribute value.
  * - `{prop, exists}` — attribute key is present (any value, including null/false/'').
- * - `{prop, nonEmpty}` — attribute key exists and its value is not undefined, null, '',
- *   or an empty array.
+ * - `{prop, nonEmpty}` — attribute key exists and its value is not undefined, null, false, '',
+ *   whitespace-only, or an empty array.
  * - `{snippet}` — presence check for a named snippet; treated identically to
  *   `{prop, nonEmpty}` against the snippet name.
  * - `{allOf}` / `{anyOf}` — logical composition of child predicates.
@@ -130,7 +130,7 @@ export function defineConstraints(document: ConstraintsDocument): ConstraintsDoc
  * Predicate semantics:
  * - `{prop, equals}` — `attributes[prop] === equals`. Missing key → undefined → not equal.
  * - `{prop, exists}` — key is present in the map (including null, false, '').
- * - `{prop, nonEmpty}` — key exists AND value is not undefined, null, '', or [].
+ * - `{prop, nonEmpty}` — key exists AND value is not undefined, null, false, '', whitespace-only, or [].
  * - `{snippet}` — non-empty presence check against the snippet name key.
  * - `{allOf}` — all child predicates match.
  * - `{anyOf}` — at least one child predicate matches.
@@ -166,7 +166,13 @@ export function evaluatePredicate(predicate: Predicate, attributes: ComponentAtt
 }
 
 function isNonEmpty(value: unknown): boolean {
-  if (value === undefined || value === null || value === '' || value === false) return false;
+  if (value === undefined || value === null || value === false) return false;
+  // A whitespace-only string (`'   '`) is not a real value for accessible-
+  // name/label purposes — trimming before the emptiness check keeps
+  // `nonEmpty` consistent with the runtime `isNonEmptyString` guards
+  // components author (which trim before checking) and with the generated
+  // JSON Schema's `pattern: '\\S'` restriction for the same fields.
+  if (typeof value === 'string' && value.trim() === '') return false;
   if (Array.isArray(value) && value.length === 0) return false;
   return true;
 }

@@ -1,0 +1,363 @@
+import { describe, expect, test } from 'bun:test';
+import { converter, parse } from 'culori';
+
+import {
+  canonicalAlpha,
+  formatColor,
+  formatHex,
+  isCanonicallyOpaque,
+  isOpaqueForFormat,
+  parseCssColor,
+  parseOklch,
+  type RgbaComponents,
+} from './color-format.ts';
+import { parseColor } from './color-luminance.ts';
+
+const FORMATS = ['hex', 'rgb', 'hsl', 'hwb', 'oklch'] as const;
+const toRgb = converter('rgb');
+
+// Reparse via culori's own CSS parser (which understands the modern
+// space-separated syntax `formatColor` emits), not the legacy comma-syntax
+// `parseColor` used by the component's *input* pipeline.
+function reparse(format: (typeof FORMATS)[number], text: string): RgbaComponents {
+  if (format === 'hex') {
+    const parsed = parseColor(text);
+    expect(parsed).not.toBeNull();
+    return parsed!;
+  }
+  if (format === 'oklch') {
+    const parsed = parseOklch(text);
+    expect(parsed).not.toBeNull();
+    return parsed!;
+  }
+  const parsed = parse(text);
+  expect(parsed).not.toBeUndefined();
+  const rgb = toRgb(parsed!);
+  return {
+    r: Math.round(Math.max(0, Math.min(1, rgb.r ?? 0)) * 255),
+    g: Math.round(Math.max(0, Math.min(1, rgb.g ?? 0)) * 255),
+    b: Math.round(Math.max(0, Math.min(1, rgb.b ?? 0)) * 255),
+    a: parsed!.alpha ?? 1,
+  };
+}
+
+describe('formatHex', () => {
+  test('emits plain #rrggbb when alpha is exactly 1', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 1 })).toBe('#ff0000');
+  });
+
+  test('emits #rrggbbaa when alpha < 1, never dropping it', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 0.5 })).toBe('#ff000080');
+  });
+
+  // Review thread #2 (PR #1420): alpha 0.999 rounds to the 0xff byte, which
+  // must canonicalize to plain #rrggbb — otherwise it re-parses as alpha
+  // === 1 and the very next round-trip flips syntax (translucent in, opaque
+  // out, on the SAME logical value).
+  test('rounds a byte-for-byte-opaque alpha (0.999) down to plain #rrggbb', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 0.999 })).toBe('#ff0000');
+  });
+
+  test('does not canonicalize an alpha that genuinely rounds below 0xff', () => {
+    expect(formatHex({ r: 255, g: 0, b: 0, a: 0.997 })).toBe('#ff0000fe');
+  });
+
+  test('boundary is idempotent: re-parsing the canonicalized hex re-emits the same string', () => {
+    const once = formatHex({ r: 255, g: 0, b: 0, a: 0.999 });
+    const reparsed = parseCssColor(once);
+    expect(reparsed).not.toBeNull();
+    expect(formatHex(reparsed!)).toBe(once);
+  });
+});
+
+// Review thread (PR #1420): "Preserve fractional alpha in copy payloads".
+// canonicalAlpha/isCanonicallyOpaque are the single shared boundary every
+// caller (formatColor's own suffix decision, and ColorPicker's copy-panel
+// strings) must use — a caller that rounds to a different precision or
+// gates on the raw alpha can disagree with formatColor about whether the
+// SAME value is translucent.
+describe('canonicalAlpha / isCanonicallyOpaque (the shared 0.9995–1 boundary)', () => {
+  test('0.9996 canonicalizes to itself and is NOT opaque', () => {
+    expect(canonicalAlpha(0.9996)).toBe(0.9996);
+    expect(isCanonicallyOpaque(0.9996)).toBe(false);
+  });
+
+  test('0.99999 canonicalizes to 1 and IS opaque', () => {
+    expect(canonicalAlpha(0.99999)).toBe(1);
+    expect(isCanonicallyOpaque(0.99999)).toBe(true);
+  });
+
+  test('a sweep across the 0.9995–1 band matches formatColor’s own opacity decision', () => {
+    for (const a of [0.9994, 0.9995, 0.9996, 0.9997, 0.9998, 0.9999, 0.99994, 0.99996, 1]) {
+      const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+      const emittedHasSlash = formatColor(seed, 'rgb').includes('/');
+      expect(emittedHasSlash).toBe(!isCanonicallyOpaque(a));
+    }
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r73): `format="hex"` quantizes
+// alpha to a BYTE (formatHex), not the 4-decimal `canonicalAlpha`/
+// `isCanonicallyOpaque` boundary every other format uses. 0.9996 is a case
+// where the two boundaries disagree: still translucent at 4 decimals, but
+// byte-opaque (0.9996 * 255 rounds to 255). `isOpaqueForFormat` must match
+// whichever boundary the CONFIGURED format actually uses, and every
+// alpha-dependent surface (preview, checkerboard, copy strings) must ask
+// this function with the current `format` rather than a fixed boundary.
+describe('isOpaqueForFormat (format-dependent opacity boundary)', () => {
+  test('0.9996 is opaque for format="hex" (byte quantization) but not for format="rgb" (4-decimal)', () => {
+    expect(isOpaqueForFormat(0.9996, 'hex')).toBe(true);
+    expect(isOpaqueForFormat(0.9996, 'rgb')).toBe(false);
+  });
+
+  test('matches formatHex’s own alpha-suffix decision across the byte boundary', () => {
+    for (const a of [0.99, 0.994, 0.995, 0.9959, 0.996, 0.9996, 0.9999, 1]) {
+      const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+      const emittedHasAlphaByte = formatHex(seed).length > 7; // '#rrggbb' is 7 chars
+      expect(emittedHasAlphaByte).toBe(!isOpaqueForFormat(a, 'hex'));
+    }
+  });
+
+  test('non-hex formats fall back to the 4-decimal canonicalAlpha boundary, matching formatColor', () => {
+    for (const format of ['rgb', 'hsl', 'hwb', 'oklch'] as const) {
+      for (const a of [0.9994, 0.9996, 0.99999, 1]) {
+        const seed: RgbaComponents = { r: 10, g: 20, b: 30, a };
+        const emittedHasSlash = formatColor(seed, format).includes('/');
+        expect(emittedHasSlash).toBe(!isOpaqueForFormat(a, format));
+      }
+    }
+  });
+});
+
+describe('parseCssColor syntax allowlist (review thread #5)', () => {
+  // culori's own `parse()` resolves CSS named colors and keywords to mode
+  // 'rgb', which would silently bypass the documented
+  // hex/rgb()/hsl()/hwb()/oklch() function-call allowlist if we only
+  // checked the resulting mode. The pre-change legacy parser (`parseColor`
+  // in color-luminance.ts) never recognized named colors either — it only
+  // matched `#`-prefixed hex and the four function-call prefixes — so
+  // rejecting them here matches prior behavior, not a new restriction.
+  test('rejects CSS named colors', () => {
+    expect(parseCssColor('red')).toBeNull();
+    expect(parseCssColor('rebeccapurple')).toBeNull();
+    expect(parseCssColor('transparent')).toBeNull();
+  });
+
+  test('rejects other culori-parseable but non-allowlisted syntax', () => {
+    expect(parseCssColor('lab(50% 40 59.5)')).toBeNull();
+    expect(parseCssColor('lch(50% 40 59.5)')).toBeNull();
+    expect(parseCssColor('color(srgb 1 0 0)')).toBeNull();
+  });
+
+  test('still accepts every documented function-call syntax', () => {
+    expect(parseCssColor('#ff0000')).not.toBeNull();
+    expect(parseCssColor('rgb(255, 0, 0)')).not.toBeNull();
+    expect(parseCssColor('rgb(255 0 0)')).not.toBeNull();
+    expect(parseCssColor('hsl(0, 100%, 50%)')).not.toBeNull();
+    expect(parseCssColor('hwb(0 0% 0%)')).not.toBeNull();
+    expect(parseCssColor('oklch(62.8% 0.258 29.23)')).not.toBeNull();
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b8TF-): culori preserves an
+// authored out-of-range alpha (above 1 or negative) unchanged when handed a
+// color object directly (not through its CSS string parser); the
+// `RgbaComponents` contract promises alpha in [0, 1], the same as the RGB
+// channels, so `rgbColorToRgba` now clamps alpha too, not just r/g/b. With
+// `alpha={true}`, an unclamped out-of-range alpha would emit `/ 1.5` or
+// `/ -0.5` in a non-hex format, and ColorPicker would derive an alpha
+// slider thumb position / `aria-valuenow` outside its declared [0, 100]
+// range. These tests pin the end-to-end invariant — parseCssColor's output
+// alpha is always in [0, 1] — across every accepted intake syntax, whether
+// or not culori's own CSS-string tokenizer already clamps that particular
+// syntax upstream.
+describe('parseCssColor clamps out-of-range alpha to [0, 1] (review thread)', () => {
+  test('alpha above 1 clamps to 1, across every format', () => {
+    expect(parseCssColor('rgb(255 0 0 / 1.5)')?.a).toBe(1);
+    expect(parseCssColor('rgba(255, 0, 0, 1.5)')?.a).toBe(1);
+    expect(parseCssColor('hsl(0 100% 50% / 150%)')?.a).toBe(1);
+    expect(parseCssColor('hwb(0 0% 0% / 200%)')?.a).toBe(1);
+    expect(parseCssColor('oklch(50% 0.1 0 / 1.9)')?.a).toBe(1);
+  });
+
+  test('negative alpha clamps to 0, across every format', () => {
+    expect(parseCssColor('rgb(255 0 0 / -0.5)')?.a).toBe(0);
+    expect(parseCssColor('rgba(255, 0, 0, -0.5)')?.a).toBe(0);
+    expect(parseCssColor('hsl(0 100% 50% / -10%)')?.a).toBe(0);
+    expect(parseCssColor('hwb(0 0% 0% / -10%)')?.a).toBe(0);
+    expect(parseCssColor('oklch(50% 0.1 0 / -0.2)')?.a).toBe(0);
+  });
+
+  test('every parsed alpha stays within [0, 1] regardless of syntax', () => {
+    const inputs = [
+      'rgb(10 20 30 / 3)',
+      'rgb(10 20 30 / -3)',
+      'hsl(10 50% 50% / 5)',
+      'hwb(10 20% 20% / -5)',
+      'oklch(40% 0.1 10 / 10)',
+    ];
+    for (const input of inputs) {
+      const parsed = parseCssColor(input);
+      expect(parsed).not.toBeNull();
+      expect(parsed!.a).toBeGreaterThanOrEqual(0);
+      expect(parsed!.a).toBeLessThanOrEqual(1);
+    }
+  });
+});
+
+describe('formatColor alpha policy for non-hex formats', () => {
+  const opaque: RgbaComponents = { r: 51, g: 102, b: 204, a: 1 };
+  const translucent: RgbaComponents = { r: 51, g: 102, b: 204, a: 0.4 };
+
+  for (const format of ['rgb', 'hsl', 'hwb', 'oklch'] as const) {
+    test(`${format}: omits the / a segment entirely when alpha === 1`, () => {
+      expect(formatColor(opaque, format)).not.toContain('/');
+    });
+
+    test(`${format}: includes a slash alpha segment when alpha < 1`, () => {
+      expect(formatColor(translucent, format)).toMatch(/\/\s*0\.4/);
+    });
+
+    // Review thread (PR #1420, PRRT_kwDOSKrFTs6b3k23): an alpha close enough
+    // to 1 to round to `1` at four decimals (0.99999) still had `hasAlpha`
+    // computed from the RAW alpha, so it appended `/ 1` — which re-parses as
+    // alpha exactly 1 and drops the suffix on the very next round-trip,
+    // breaking documented idempotence. Alpha must be canonicalized to the
+    // same precision BEFORE deciding whether to append the suffix.
+    test(`${format}: canonicalizes an alpha that rounds to 1 at four decimals to plain opaque syntax`, () => {
+      const nearlyOpaque: RgbaComponents = { ...opaque, a: 0.99999 };
+      expect(formatColor(nearlyOpaque, format)).not.toContain('/');
+    });
+
+    test(`${format}: does not canonicalize an alpha that genuinely rounds below 1`, () => {
+      const genuinelyTranslucent: RgbaComponents = { ...opaque, a: 0.9994 };
+      expect(formatColor(genuinelyTranslucent, format)).toMatch(/\/\s*0\.9994/);
+    });
+
+    test(`${format}: the 0.99999 boundary is idempotent across a full round-trip`, () => {
+      const nearlyOpaque: RgbaComponents = { ...opaque, a: 0.99999 };
+      const once = formatColor(nearlyOpaque, format);
+      const parsedOnce = parseCssColor(once);
+      expect(parsedOnce).not.toBeNull();
+      const twice = formatColor(parsedOnce!, format);
+      expect(twice).toBe(once);
+    });
+  }
+});
+
+describe('gamut mapping preserves hue within 2 degrees', () => {
+  test('a saturated out-of-gamut oklch input maps into sRGB without rotating hue', () => {
+    // High chroma at a mid lightness is out of sRGB gamut for most hues.
+    const input = 'oklch(70% 0.4 30)';
+    const mapped = parseOklch(input);
+    expect(mapped).not.toBeNull();
+
+    const remapped = formatColor(mapped!, 'oklch');
+    const hueMatch = remapped.match(/oklch\([^)]*?\s+[^\s]+\s+([+-]?[\d.]+)/);
+    expect(hueMatch).not.toBeNull();
+    const outputHue = parseFloat(hueMatch![1]!);
+
+    const hueDelta = Math.abs(((outputHue - 30 + 540) % 360) - 180);
+    expect(hueDelta).toBeLessThanOrEqual(2);
+  });
+
+  // Review thread (PR #1420): "Gamut-map near-boundary out-of-range OKLCH
+  // inputs". The earlier round-trip fix skipped gamut mapping whenever the
+  // direct conversion landed within a fixed epsilon (3e-3) of [0, 1] — but a
+  // genuinely out-of-gamut input can have an excursion just as small as our
+  // own round-trip noise (this exact example: direct conversion lands at
+  // roughly (0.0136, -0.0012, 0.0371), well inside that old epsilon). A
+  // fixed-magnitude epsilon can't distinguish "our own quantization noise"
+  // from "a real out-of-gamut color", so it silently per-channel-clamped
+  // this input instead of gamut-mapping it — exactly the hand-rolled
+  // clamping the CIN-104 policy forbids. It must still go through the real
+  // chroma-reduction bisection and come out with the SAME result `toGamut`
+  // alone would produce.
+  test('the cited example (small excursion, ~0.0012 out of gamut) does not crash and stays hue-plausible', () => {
+    // This is the review thread's own counterexample: direct conversion
+    // lands at roughly (0.0136, -0.0012, 0.0371) — comfortably inside what
+    // used to be a 3e-3 "trust it" epsilon, yet it happens to round to the
+    // SAME byte triple whichever path is taken for this particular color
+    // (the real regression is about which INTERNAL path runs — see the
+    // isRoundTripArtifact-level test below for a case that diverges at the
+    // byte level too). This just pins that it still parses to something
+    // sane rather than crashing.
+    const parsed = parseOklch('oklch(7.819% 0.04576 306.42)');
+    expect(parsed).toEqual({ r: 3, g: 0, b: 9, a: 1 });
+  });
+
+  test('a genuinely out-of-gamut small excursion that DOES diverge at the byte level is gamut-mapped, not channel-clamped', () => {
+    // oklch(5% 0.05 0) has a direct (non-gamut-mapped) conversion whose
+    // green channel excess is only ~0.003 — well inside the old fixed 3e-3
+    // "trust it" epsilon that this thread's regression flagged. A
+    // per-channel clamp of the raw direct conversion rounds to byte r=4;
+    // real chroma-reduction (toGamut) rounds to r=3. Getting 3 here proves
+    // the fix actually routes small-but-genuine excursions through gamut
+    // mapping instead of silently trusting them as round-trip noise.
+    const parsed = parseOklch('oklch(5% 0.05 0)');
+    expect(parsed).toEqual({ r: 3, g: 0, b: 0, a: 1 });
+  });
+});
+
+describe('round-trip stability', () => {
+  for (const format of FORMATS) {
+    test(`${format}: parsing then re-emitting is idempotent`, () => {
+      const seed: RgbaComponents = { r: 51, g: 187, b: 102, a: 1 };
+      const once = format === 'hex' ? formatHex(seed) : formatColor(seed, format);
+      const parsedOnce = reparse(format, once);
+      const twice = format === 'hex' ? formatHex(parsedOnce) : formatColor(parsedOnce, format);
+      const parsedTwice = reparse(format, twice);
+      const thrice = format === 'hex' ? formatHex(parsedTwice) : formatColor(parsedTwice, format);
+
+      expect(twice).toBe(thrice);
+    });
+
+    test(`${format}: idempotent with partial alpha too`, () => {
+      const seed: RgbaComponents = { r: 200, g: 20, b: 90, a: 0.6 };
+      const once = format === 'hex' ? formatHex(seed) : formatColor(seed, format);
+      const parsedOnce = reparse(format, once);
+      const twice = format === 'hex' ? formatHex(parsedOnce) : formatColor(parsedOnce, format);
+      const parsedTwice = reparse(format, twice);
+      const thrice = format === 'hex' ? formatHex(parsedTwice) : formatColor(parsedTwice, format);
+
+      expect(twice).toBe(thrice);
+    });
+  }
+});
+
+describe('oklch emission precision preserves byte-exact round-trips', () => {
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b4Ull): oklch(l% c h) at 2
+  // decimals of lightness / 4 decimals of chroma wasn't enough precision to
+  // round-trip every sRGB byte value. #00b8c1 (0, 184, 193) emitted
+  // oklch(71.19% 0.121 201.02); parsing that back produced RGB (1, 184,
+  // 193) — one byte off — which then re-emitted a DIFFERENT chroma
+  // (0.1209), rewriting a persisted value with no user interaction and
+  // violating the documented parse -> emit idempotence guarantee.
+  test('#00b8c1 (the cited byte-boundary case) parses back to the exact same RGB byte triple', () => {
+    const seed: RgbaComponents = { r: 0, g: 184, b: 193, a: 1 };
+    const emitted = formatColor(seed, 'oklch');
+    const parsed = parseCssColor(emitted);
+    expect(parsed).not.toBeNull();
+    expect(parsed).toEqual(seed);
+    // And re-emitting from the reparsed value is byte-for-byte identical —
+    // no drift on a second round-trip.
+    expect(formatColor(parsed!, 'oklch')).toBe(emitted);
+  });
+
+  test('a sweep of sRGB byte triples all round-trip to the exact same bytes', () => {
+    let failures = 0;
+    for (let r = 0; r <= 255; r += 5) {
+      for (let g = 0; g <= 255; g += 17) {
+        for (let b = 0; b <= 255; b += 29) {
+          const seed: RgbaComponents = { r, g, b, a: 1 };
+          const emitted = formatColor(seed, 'oklch');
+          const parsed = parseCssColor(emitted);
+          if (parsed === null || parsed.r !== r || parsed.g !== g || parsed.b !== b) {
+            failures++;
+          }
+        }
+      }
+    }
+    expect(failures).toBe(0);
+  });
+});

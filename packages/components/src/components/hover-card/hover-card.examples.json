@@ -10,10 +10,22 @@
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n</script>\n\n<HoverCard>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">Ada Lovelace</Button>\n  {/snippet}\n\n  <strong>Ada Lovelace</strong>\n  <p>Mathematician, writer, and early computing collaborator.</p>\n</HoverCard>\n"
     },
     {
+      "id": "controlled",
+      "title": "Controlled visibility",
+      "description": "The open state can be bound and driven externally, letting another control show or hide the card without waiting on hover or focus delays.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n\n  let open = $state(false);\n</script>\n\n<div style=\"display: flex; gap: 0.5rem; align-items: center;\">\n  <Button onclick={() => (open = true)}>Show</Button>\n  <Button onclick={() => (open = false)}>Hide</Button>\n\n  <HoverCard bind:open>\n    {#snippet trigger()}\n      <Button variant=\"ghost\">CIN-14</Button>\n    {/snippet}\n\n    <strong>CIN-14</strong>\n    <p>Track down the intermittent double-submit on the settings form.</p>\n  </HoverCard>\n</div>\n"
+    },
+    {
       "id": "delays",
       "title": "Custom hover delays",
       "description": "Hover cards can tune open and close delay for denser interfaces.",
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n</script>\n\n<HoverCard openDelay={100} closeDelay={300}>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">CIN-42</Button>\n  {/snippet}\n\n  <strong>CIN-42</strong>\n  <p>Investigate overlay stacking behavior in nested surfaces.</p>\n</HoverCard>\n"
+    },
+    {
+      "id": "instant-reopen",
+      "title": "Instant reopen",
+      "description": "A zero open delay reopens the card immediately on re-entry, useful for adjacent triggers meant to feel like one continuous surface.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { HoverCard } from '@lostgradient/cinder';\n</script>\n\n<HoverCard openDelay={0}>\n  {#snippet trigger()}\n    <Button variant=\"ghost\">CIN-99</Button>\n  {/snippet}\n\n  <strong>CIN-99</strong>\n  <p>Reproduce the flaky drag handle in the tree view's reorder mode.</p>\n</HoverCard>\n"
     }
   ]
 }

@@ -364,6 +364,7 @@
           disabled={submitting}
           rows={6}
           spellcheck={false}
+          variant="code"
           class="cinder-schema-form__json-control"
           onblur={() => formState.validateTouchedField(field)}
           bind:value={

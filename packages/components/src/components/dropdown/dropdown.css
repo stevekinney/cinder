@@ -378,8 +378,15 @@
     opacity: 1;
   }
 
+  /*
+   * Fallback (non-popover-API) branch entry animation only. The `[popover]`
+   * branch below owns its own enter/exit via `@starting-style` +
+   * `transition-behavior: allow-discrete` — layering this keyframe
+   * `animation` on top of it as well would fight that transition for the
+   * same `opacity`/`translate` properties on the same element.
+   */
   @media (prefers-reduced-motion: no-preference) {
-    .cinder-dropdown__menu {
+    .cinder-dropdown__menu:not([popover]) {
       animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
         forwards;
     }
@@ -396,9 +403,144 @@
     }
   }
 
-  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
-    .cinder-dropdown__menu {
+  /* `:where(...)` around the `:root`/preference-attribute condition (CIN-376
+   * round 17 review — see the closing rule below for the full story): a
+   * selector's condition prefix still needs to SELECT the same elements
+   * whether or not the app has explicitly forced motion on, but it must not
+   * outrank the later `[data-cinder-closing]` override once closing starts.
+   * `:where()` zeroes the specificity of everything inside it while
+   * matching identically, so this selector's specificity collapses to that
+   * of the bare `.cinder-dropdown__menu:not([popover])` it's attached to —
+   * letting the closing rule's genuinely higher specificity (one more
+   * attribute selector) win on its own, with no reliance on source-order
+   * tie-breaking or a `:root`-anchored selector (which the build's
+   * class-anchoring guard for component CSS sidecars rejects outright). */
+  :where(:root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off']))
+    .cinder-dropdown__menu:not([popover]) {
     animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
       forwards;
+  }
+
+  /* ----------------------------------------
+ * Exit transition (CIN-376, OVERLAY-POLICY.md § "Transition lifecycle")
+ * ----------------------------------------
+ *
+ * Non-popover-API fallback branch only (`:not([popover])`) — the component
+ * keeps this element mounted for the duration of this transition instead of
+ * removing it the instant `open` goes false (see dropdown.svelte's
+ * `exitState`/`AnchoredOverlayExitState`). Named properties, never `all`, so
+ * `waitForTransitionCompletion` can enumerate them.
+ * ---------------------------------------- */
+
+  .cinder-dropdown__menu:not([popover]) {
+    transition:
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      translate var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  /* This selector must genuinely OUTRANK the explicit-motion
+   * entry-animation override above (CIN-376 round 17 review): that rule's
+   * `forwards`-filled `animation` kept winning and supplying
+   * `opacity: 1`/`translate: 0` even while closing, whenever an application
+   * explicitly forced motion on — so `animation: none` below never took
+   * effect. Rather than raising THIS selector's specificity (a `:root`
+   * prefix here would violate the build's class-anchoring guard for
+   * component CSS sidecars, which rejects any selector whose first compound
+   * isn't a class), the entry rule's condition prefix above is wrapped in
+   * `:where(...)` instead, zeroing its specificity contribution — this
+   * selector's ordinary extra `[data-cinder-closing]` attribute is then
+   * sufficient to win outright, no tie-break needed. */
+  .cinder-dropdown__menu:not([popover])[data-cinder-closing] {
+    /* The entry `animation` above uses `forwards` fill, so it keeps supplying
+     * opacity/translate for this element even after the keyframe finishes —
+     * without disabling it here, that held value overrides the closing
+     * declarations below and the exit transition never visibly plays. */
+    animation: none;
+    opacity: 0;
+    translate: 0 -0.25rem;
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-dropdown__menu:not([popover]) {
+      transition: none;
+    }
+  }
+
+  /* Explicit-preference override, OUTSIDE the media query: an application
+   * that explicitly sets its preference to reduced motion
+   * (`data-cinder-reduced-motion="true"` / `data-reduced-motion="on"`, see
+   * use-reduced-motion.svelte.ts's `applyReducedMotionPreference`) must
+   * collapse this transition even while the OS-level media query itself
+   * still reports `no-preference` — the media query above only ever reflects
+   * the OS setting, never the app's own explicit override. Mirrors the
+   * explicit-off override above (`[data-cinder-reduced-motion='false']`),
+   * just for the opposite (force-on) direction. */
+  :root[data-cinder-reduced-motion='true'] .cinder-dropdown__menu:not([popover]) {
+    transition: none;
+  }
+
+  /* ----------------------------------------
+ * Popover-API path exit transition (native equivalent)
+ * ----------------------------------------
+ *
+ * `menu.hidePopover()` (dropdown.svelte) synchronously removes this element
+ * from the top layer — there is no JS hook to delay that the way
+ * `waitForTransitionCompletion` does for the fallback branch above. The
+ * platform-native equivalent is `transition-behavior: allow-discrete` +
+ * `@starting-style`, which lets the UA itself defer the discrete
+ * `display`/`overlay` flip until the named transitions finish. This keeps
+ * entry/exit symmetric and reduced-motion-safe without a JS wait.
+ * ---------------------------------------- */
+
+  .cinder-dropdown__menu[popover] {
+    opacity: 0;
+    translate: 0 -0.25rem;
+    /* `display`/`overlay` stay at their :popover-open computed values for the
+     full transition (that's what `allow-discrete` buys), so without this the
+     visually-fading-out menu would remain hit-testable and a stray click
+     could still activate an item during teardown. */
+    pointer-events: none;
+    transition:
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      translate var(--cinder-duration-fast) var(--cinder-ease-standard),
+      display var(--cinder-duration-fast) allow-discrete,
+      overlay var(--cinder-duration-fast) allow-discrete;
+  }
+
+  .cinder-dropdown__menu[popover]:popover-open {
+    opacity: 1;
+    translate: 0 0;
+    pointer-events: auto;
+  }
+
+  @starting-style {
+    .cinder-dropdown__menu[popover]:popover-open {
+      opacity: 0;
+      translate: 0 -0.25rem;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-dropdown__menu[popover] {
+      transition: none;
+    }
+  }
+
+  /* Explicit-preference override, OUTSIDE the media query (CIN-376 round 16
+   * review): unlike the fallback branch above, this native Popover-API path
+   * has NO JS teardown (`AnchoredOverlayExitState`/`waitForTransitionCompletion`)
+   * to collapse the wait when reduced motion is active — `menu.hidePopover()`
+   * relies entirely on this CSS transition (via `allow-discrete`) actually
+   * being `none` to skip the wait. Without this selector, an application
+   * that explicitly sets its preference to reduced motion while the OS
+   * media query still reports `no-preference` would still run the full
+   * opacity/translate exit transition here, ignoring the explicit
+   * preference entirely. Mirrors the explicit-off override above, for the
+   * opposite (force-on) direction. */
+  :root[data-cinder-reduced-motion='true'] .cinder-dropdown__menu[popover] {
+    transition: none;
   }
 }

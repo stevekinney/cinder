@@ -3,15 +3,48 @@ import { defineConstraints } from '../../_internal/constraints.ts';
 export default defineConstraints({
   component: 'modal',
   summary:
-    'Modal requires a non-empty title prop to provide an accessible name for the dialog element via aria-labelledby. When describedById is provided it must reference a real id — never pass an empty string.',
+    'Modal requires a non-empty accessible-name source appropriate to its chrome: chrome="default" (the default, whether omitted or explicit) requires a non-empty title, rendered as an <h2> and referenced by aria-labelledby, and rejects aria-label entirely (it is discarded, never exposed to assistive technology); chrome="none" (the chromeless full-bleed mode) renders no header, so it requires a non-empty aria-label instead. When describedById is provided it must reference a real id — never pass an empty string.',
   rules: [
     {
       id: 'accessible-title',
       severity: 'error',
       description:
-        'Modal requires a non-empty title prop — it is rendered as an <h2> and referenced by aria-labelledby on the <dialog>, giving screen readers the accessible name on open',
+        'Modal with chrome="default" (the default — whether chrome is omitted or explicitly "default") requires a non-empty title prop — it is rendered as an <h2> and referenced by aria-labelledby on the <dialog>, giving screen readers the accessible name on open. Not required when chrome="none", which has no header to render it in.',
+      // `anyOf` rather than `requires` + `when`: there is no "not equals"
+      // predicate to gate this on "chrome is NOT 'none'" (chrome may be
+      // omitted, or explicitly 'default' — both need this rule). Instead the
+      // rule always evaluates and is satisfied by EITHER a non-empty title
+      // OR chrome="none" (which shifts the requirement to aria-label below).
+      kind: 'anyOf',
+      of: [
+        { prop: 'title', nonEmpty: true },
+        { prop: 'chrome', equals: 'none' },
+      ],
+    },
+    {
+      id: 'chromeless-accessible-label',
+      severity: 'error',
+      description:
+        'Modal with chrome="none" (the chromeless, full-bleed mode) renders no header/title, so aria-label is the only source of the dialog\'s accessible name — it must be a non-empty string.',
       kind: 'requires',
-      of: [{ prop: 'title', nonEmpty: true }],
+      when: { prop: 'chrome', equals: 'none' },
+      of: [{ prop: 'aria-label', nonEmpty: true }],
+    },
+    {
+      id: 'default-chrome-rejects-aria-label',
+      severity: 'error',
+      description:
+        'aria-label is only meaningful with chrome="none" — the default chrome (omitted or explicit "default") renders a visible title and names the dialog via aria-labelledby, discarding aria-label entirely. Supplying aria-label without chrome="none" requests an accessible name that is never exposed to assistive technology.',
+      // Mirrors chromeless-accessible-label's `requires` + `when` shape, but
+      // guarded on the OPPOSITE prop: there is no "not equals" predicate to
+      // gate this rule directly on "chrome is NOT none" (chrome may be
+      // omitted or explicitly "default" — both must reject aria-label).
+      // Guarding on `aria-label` existing instead and requiring
+      // chrome="none" is logically equivalent (aria-label present implies
+      // chrome="none") and sidesteps the missing negation entirely.
+      kind: 'requires',
+      when: { prop: 'aria-label', exists: true },
+      of: [{ prop: 'chrome', equals: 'none' }],
     },
     {
       id: 'described-by-non-empty',
@@ -50,6 +83,10 @@ export default defineConstraints({
         title: 'Modal without describedById (omit entirely when not needed)',
         code: '<Modal title="Upload file" bind:open={isOpen}>\n  <FileUpload />\n</Modal>',
       },
+      {
+        title: 'Chromeless modal with aria-label (no title needed)',
+        code: '<Modal chrome="none" aria-label="Image viewer" closeButtonVisible={false} bind:open={isOpen}>\n  <img src={src} alt={alt} />\n</Modal>',
+      },
     ],
     invalid: [
       {
@@ -66,6 +103,21 @@ export default defineConstraints({
         title: 'Alert dialog role without a description',
         code: '<Modal role="alertdialog" title="Session expired" bind:open={isOpen}><p>Sign in again.</p></Modal>',
         violates: 'alertdialog-description',
+      },
+      {
+        title: 'Chromeless modal without aria-label',
+        code: '<Modal chrome="none" bind:open={isOpen}><img src={src} alt={alt} /></Modal>',
+        violates: 'chromeless-accessible-label',
+      },
+      {
+        title: 'Chromeless modal with empty-string aria-label',
+        code: '<Modal chrome="none" aria-label="" bind:open={isOpen}><img src={src} alt={alt} /></Modal>',
+        violates: 'chromeless-accessible-label',
+      },
+      {
+        title: 'Default-chrome modal with a supplied aria-label (discarded, never exposed)',
+        code: '<Modal title="Confirm deletion" aria-label="Different name" bind:open={isOpen}><p>Are you sure?</p></Modal>',
+        violates: 'default-chrome-rejects-aria-label',
       },
     ],
   },

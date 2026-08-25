@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 
+import { stripCinderComponentsLayer } from '../../test/css.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -9,6 +10,15 @@ const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-l
 const { default: SelectionPopover } = await import('./selection-popover.svelte');
 
 afterEach(() => cleanup());
+
+async function readSelectionPopoverCss(): Promise<string> {
+  // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
+  // getComputedStyle, so string-extraction assertions read the raw source
+  // instead of relying on the cascade.
+  return stripCinderComponentsLayer(
+    await Bun.file(new URL('./selection-popover.css', import.meta.url)).text(),
+  );
+}
 
 describe('SelectionPopover', () => {
   test('renders the collapsed selection action when open', () => {
@@ -484,6 +494,31 @@ describe('SelectionPopover', () => {
       firstOwner.remove();
       secondOwner.remove();
     }
+  });
+
+  test('onExitComplete fires once the exit transition genuinely finishes, not immediately on close (CIN-376 round 20)', async () => {
+    // Regression guard: lets a composing consumer (ReviewEditor's
+    // `{#if showSelectionPopover}` was the concrete case) decouple its own
+    // wrapping mount gate from the live `open` prop — without this
+    // callback, that consumer's `{#if}` would destroy the whole
+    // SelectionPopover instance the instant `open` flips false, before this
+    // component's own retained-exit lifecycle (which never unmounts its own
+    // root element while closing) ever gets a chance to run.
+    const onExitComplete = mock(() => {});
+    const { rerender } = render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+        onExitComplete,
+      },
+    });
+
+    await rerender({ open: false, position: { x: 120, y: 80 }, onExitComplete });
+
+    await waitFor(() => {
+      expect(onExitComplete).toHaveBeenCalledTimes(1);
+    });
   });
 
   test('a cancel followed by a real external focus move abandons restoration', async () => {
@@ -1810,5 +1845,157 @@ describe('SelectionPopover', () => {
 
     expect(focusOptions).toEqual({ preventScroll: true });
     trigger.remove();
+  });
+
+  test('a consumer-passed inert=false cannot defeat the closing-state inert/aria-hidden (CIN-376)', async () => {
+    // Regression guard: {...rest} used to trail every internal attribute, so
+    // a consumer's own `inert`/`aria-hidden` prop would win over the
+    // component-owned closing semantics. These two are lifecycle state the
+    // component owns, not something a consumer prop should be able to cancel.
+    //
+    // Stub a real (non-zero) transition duration so `waitForTransitionCompletion`
+    // takes its transitionend-listening path instead of resolving on the next
+    // microtask — this is the only way to observe the intermediate
+    // "closing but still mounted" state before `await rerender` itself
+    // yields the microtask queue.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-selection-popover')) {
+        return {
+          transitionProperty: 'opacity, scale',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          inert: false,
+          'aria-hidden': 'false',
+        } as never,
+      });
+
+      const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+      expect(toolbar.hasAttribute('inert')).toBe(false);
+
+      await rerender({
+        open: false,
+        position: null,
+        inert: false,
+        'aria-hidden': 'false',
+      } as never);
+
+      expect(toolbar.hasAttribute('inert')).toBe(true);
+      expect(toolbar.getAttribute('aria-hidden')).toBe('true');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('the retained anchor rect stays stable after position clears (CIN-376)', async () => {
+    // Regression guard: the snapshot used to copy `virtualAnchor`'s wrapper
+    // object, whose `getBoundingClientRect` closure reads `position.x`/`.y`
+    // live — so once `position` went `null`, the "frozen" anchor's rect
+    // would actually read through to the now-null `position` instead of
+    // staying at its last real coordinates.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-selection-popover')) {
+        return {
+          transitionProperty: 'opacity, scale',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { rerender } = render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80, height: 20 },
+        },
+      });
+
+      const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+      await waitFor(() => {
+        expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('true');
+      });
+      const styleBeforeClose = toolbar.getAttribute('style');
+      expect(styleBeforeClose).toBeTruthy();
+
+      await rerender({ open: false, position: null });
+
+      // Still mid-exit (the stubbed 80ms transition hasn't fired
+      // `transitionend` yet).
+      expect(toolbar.hasAttribute('data-cinder-closing')).toBe(true);
+
+      // `anchoredOverlay`'s `open()` gate is keyed off `exitState.renderPanel`
+      // (already `true` in this same render, unlike `isClosing` which only
+      // flips in a later `$effect`), so it never takes its `!open()` reset
+      // branch, and `virtualAnchor` now returns the exact same object
+      // reference across this transition (see its own definition) instead of
+      // switching to a differently-constructed snapshot. A narrower gap
+      // remains even so: `open()`'s closure also reads `isPositionedOpen`,
+      // a `$derived` that DOES recompute when `position`/`open` change —
+      // Svelte still reruns `anchored-overlay.svelte.ts`'s positioning
+      // effect whenever any of its tracked reads is invalidated, regardless
+      // of whether the closure's overall boolean/anchor OUTPUT stayed the
+      // same, so it still tears down and rebuilds once. Poll for it to
+      // settle, then assert it converges back to the exact pre-close rect
+      // (not an unpositioned fallback) — this is what "doesn't jump
+      // mid-fade" means in practice: a live read through to the now-null
+      // `position` would instead settle on `left: 0px; top: 0px;` (or an
+      // empty style), never the original coordinates.
+      await waitFor(() => {
+        expect(toolbar.getAttribute('style')).toBe(styleBeforeClose);
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('stays hidden from the tab order until positioning is ready, exempting the closing state (CIN-376)', async () => {
+    // Regression guard: `data-cinder-visible` (driven by
+    // `exitState.renderPanel`) turns on as soon as the panel starts opening —
+    // BEFORE Floating UI has set `data-cinder-position-ready='true'`. Gating
+    // `visibility` on `data-cinder-visible` alone (as an earlier revision of
+    // this migration did) removed the old `visibility: hidden` protection
+    // during that positioning window: the toolbar stayed opacity:0/
+    // pointer-events:none, but its buttons were still keyboard-focusable and
+    // exposed to assistive technology. An initially-open SSR render has the
+    // same invisible-interactive gap for the same reason. `[data-cinder-closing]`
+    // is exempted so the retained exit stays visible even if it happens to
+    // race positioning.
+    const css = await readSelectionPopoverCss();
+    expect(css).toMatch(
+      /\.cinder-selection-popover:not\(\[data-cinder-position-ready='true'\]\):not\(\[data-cinder-closing\]\)\s*\{\s*visibility:\s*hidden;/,
+    );
+
+    // Behavioral half: before Floating UI resolves, `data-cinder-visible` is
+    // already present (renderPanel mirrors `open` immediately) while
+    // `data-cinder-position-ready` is still `'false'` and the panel isn't
+    // closing — exactly the state the CSS rule above must key off instead of
+    // `data-cinder-visible` alone.
+    render(SelectionPopover, {
+      props: {
+        id: 'selection-comment',
+        open: true,
+        position: { x: 120, y: 80 },
+      },
+    });
+
+    const toolbar = document.querySelector('.cinder-selection-popover') as HTMLElement;
+    expect(toolbar.getAttribute('data-cinder-visible')).toBe('');
+    expect(toolbar.getAttribute('data-cinder-position-ready')).toBe('false');
+    expect(toolbar.hasAttribute('data-cinder-closing')).toBe(false);
   });
 });

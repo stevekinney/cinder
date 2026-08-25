@@ -199,19 +199,67 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
   test('modal schema requires describedById for alertdialog role', () => {
     const { allOf } = generateSchema('modal', 'modal');
 
-    expect(allOf).toEqual([
-      {
-        if: {
-          properties: {
-            role: { const: 'alertdialog' },
-          },
-          required: ['role'],
+    expect(allOf).toContainEqual({
+      if: {
+        properties: {
+          role: { const: 'alertdialog' },
         },
-        [jsonSchemaThenKeyword]: {
-          required: ['describedById'],
+        required: ['role'],
+      },
+      [jsonSchemaThenKeyword]: {
+        required: ['describedById'],
+      },
+    });
+  });
+
+  test('modal schema requires aria-label for chrome="none" and title (forbidding aria-label) otherwise (CIN-377)', () => {
+    const { allOf } = generateSchema('modal', 'modal');
+
+    const chromelessCondition = {
+      properties: {
+        chrome: { const: 'none' },
+      },
+      required: ['chrome'],
+    };
+
+    expect(allOf).toContainEqual({
+      if: chromelessCondition,
+      [jsonSchemaThenKeyword]: {
+        required: ['aria-label'],
+        // `required` alone only checks key presence — { chrome: 'none',
+        // 'aria-label': '' } would otherwise validate even though the
+        // constraints sidecar and Modal's own runtime guard both reject an
+        // empty aria-label as a nameless dialog. `minLength: 1` alone still
+        // accepts a whitespace-only string like '   ' — `pattern: '\\S'`
+        // requires at least one non-whitespace character, matching the
+        // runtime guard (which trims before checking) and the constraints
+        // sidecar's `nonEmpty` predicate (which also trims).
+        properties: {
+          'aria-label': { minLength: 1, pattern: '\\S' },
         },
       },
-    ]);
+    });
+    expect(allOf).toContainEqual({
+      if: { not: chromelessCondition },
+      [jsonSchemaThenKeyword]: {
+        required: ['title'],
+        // The default chrome's `aria-label` is typed `never` in ModalProps
+        // and discarded by modal.svelte in favor of `aria-labelledby` —
+        // schema-driven config must not be able to request a name that's
+        // never exposed to assistive technology.
+        not: {
+          required: ['aria-label'],
+        },
+        // Mirrors the chromeless branch's aria-label restriction exactly:
+        // `required` alone only checks key presence — { title: '' } or
+        // { title: '   ' } would otherwise validate even though the
+        // constraints sidecar and Modal's own runtime guard both reject an
+        // empty/whitespace-only title as a nameless dialog.
+        properties: {
+          title: { minLength: 1, pattern: '\\S' },
+        },
+      },
+    });
   });
 
   test('grid schema tightens numeric columns to positive integers', () => {

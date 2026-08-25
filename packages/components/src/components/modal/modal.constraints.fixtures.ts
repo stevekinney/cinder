@@ -25,6 +25,12 @@ export const valid: ComponentAttributes[] = [
     children: true,
     describedById: 'session-desc',
   },
+
+  // chrome="none" with aria-label — no title required in the chromeless chrome
+  { chrome: 'none', 'aria-label': 'Image viewer', open: true, children: true },
+
+  // chrome="default" explicit — same title requirement as the omitted-chrome case
+  { chrome: 'default', title: 'Confirm deletion', open: true, children: true },
 ];
 
 /**
@@ -37,9 +43,29 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
     violates: 'accessible-title',
   },
 
+  // violates: accessible-title — whitespace-only title. `nonEmpty` trims
+  // before checking (matching modal.svelte's runtime `isNonEmptyString`
+  // guard and the generated schema's `pattern: '\\S'` restriction on
+  // `title` in the default-chrome branch), so "   " is rejected the same
+  // way "" is.
+  {
+    attributes: { title: '   ', open: true, children: true },
+    violates: 'accessible-title',
+  },
+
   // violates: described-by-non-empty — empty string for describedById
   {
     attributes: { title: 'Settings', open: true, children: true, describedById: '' },
+    violates: 'described-by-non-empty',
+  },
+
+  // violates: described-by-non-empty — whitespace-only describedById (PR
+  // #1422 review). `nonEmpty` trims before checking (matching
+  // modal.svelte's runtime `isNonEmptyString` guard on `aria-describedby`
+  // and the generated schema's `pattern: '\\S'` restriction on
+  // `describedById`), so "   " is rejected the same way "" is.
+  {
+    attributes: { title: 'Settings', open: true, children: true, describedById: '   ' },
     violates: 'described-by-non-empty',
   },
 
@@ -53,5 +79,57 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
   {
     attributes: { title: 'Session expired', role: 'alertdialog', open: true, children: true },
     violates: 'alertdialog-description',
+  },
+
+  // violates: chromeless-accessible-label — chrome="none" without aria-label
+  {
+    attributes: { chrome: 'none', open: true, children: true },
+    violates: 'chromeless-accessible-label',
+  },
+
+  // violates: chromeless-accessible-label — chrome="none" with empty-string aria-label
+  {
+    attributes: { chrome: 'none', 'aria-label': '', open: true, children: true },
+    violates: 'chromeless-accessible-label',
+  },
+
+  // violates: chromeless-accessible-label — chrome="none" with a whitespace-only aria-label.
+  // `nonEmpty` trims before checking (matching modal.svelte's runtime
+  // `isNonEmptyString` guard and the generated schema's `pattern: '\\S'`
+  // restriction), so "   " is rejected the same way "" is.
+  {
+    attributes: { chrome: 'none', 'aria-label': '   ', open: true, children: true },
+    violates: 'chromeless-accessible-label',
+  },
+
+  // violates: default-chrome-rejects-aria-label — chrome omitted (implicit default) WITH aria-label supplied
+  {
+    attributes: {
+      title: 'Confirm deletion',
+      'aria-label': 'Different name',
+      open: true,
+      children: true,
+    },
+    violates: 'default-chrome-rejects-aria-label',
+  },
+
+  // violates: default-chrome-rejects-aria-label — chrome="default" explicit WITH aria-label supplied
+  {
+    attributes: {
+      chrome: 'default',
+      title: 'Confirm deletion',
+      'aria-label': 'Different name',
+      open: true,
+      children: true,
+    },
+    violates: 'default-chrome-rejects-aria-label',
+  },
+
+  // violates: default-chrome-rejects-aria-label — even an EMPTY-STRING aria-label counts as
+  // "supplied" (exists:true checks key presence, matching the JSON Schema `required` semantics
+  // this rule mirrors — a key present with any value, including '', is still forbidden).
+  {
+    attributes: { title: 'Confirm deletion', 'aria-label': '', open: true, children: true },
+    violates: 'default-chrome-rejects-aria-label',
   },
 ];

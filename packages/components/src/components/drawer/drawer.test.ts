@@ -301,7 +301,17 @@ describe('Drawer', () => {
       },
     });
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    // `dialog.close()` — not a bare `fireEvent(dialog, new Event('close'))`
+    // (PR #1422 review): this file's own `HTMLDialogElement.prototype.close`
+    // stub above already flips `.open` to `false` SYNCHRONOUSLY before
+    // dispatching the `close` event itself, matching a REAL browser's
+    // native close ALGORITHM. `create-sliding-dialog-state.svelte.ts`'s
+    // `handleClose()` now validates an unmatched/external event against
+    // `dialogElement.open` to detect a stale event arriving after a
+    // reopen — a dialog still `.open === true` at event time looks stale.
+    // A bare synthetic event never toggles `.open` at all, so it would be
+    // (wrongly) treated as stale here and skip all cleanup.
+    dialog.close();
     expect(openValue).toBe(false);
   });
 
