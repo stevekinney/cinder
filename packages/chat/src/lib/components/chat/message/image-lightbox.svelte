@@ -133,6 +133,38 @@
   // read. `untrack()` makes the one-time intent explicit to both the
   // compiler and the reader.
   let hasOpenedOnce = $state(open && untrack(() => images.length) > 0);
+  // Snapshot of the currently-displayed image, independent of the live
+  // `images` array (PR #1422 review). `currentImage` (`images[effectiveIndex]`,
+  // below) previously drove BOTH what's rendered AND the template's mount
+  // guard (`{#if hasOpenedOnce && currentImage}`) directly — so if a parent
+  // cleared `images` while the lightbox was open (or right as it closed),
+  // `currentImage` went `undefined` mid-session and that `{#if}` destroyed
+  // the still-open/closing Modal INSTANTLY, skipping the promised exit
+  // transition entirely. Worse, `onExitComplete` never got a chance to fire
+  // (Modal was torn down out from under it, not exited normally), so
+  // `hasOpenedOnce` never cleared — a LATER `images` restore (with `open`
+  // already false by then) mounted a Modal that was already closed the
+  // instant it appeared, with no exit transition to release it — the exact
+  // same shape of bug as the empty-images-on-open leak fixed above, but
+  // triggered mid-session instead of on open.
+  //
+  // `sessionImage` mirrors `currentImage` whenever it's truthy (see the
+  // effect below `currentImage`'s declaration) and is left untouched
+  // otherwise — so it freezes at the last real image the instant `images`
+  // goes empty, and the template renders from THIS, not the live array.
+  // Cleared back to `null` in `handleExitComplete`, in lockstep with
+  // `hasOpenedOnce`, once the exit transition has genuinely finished.
+  // Seeded here (not left `null` until the first client effect) for the
+  // same already-open-on-first-render reason `hasOpenedOnce` is seeded from
+  // `open` above — `untrack()` for the same one-time-capture reason (see
+  // that seed's comment).
+  let sessionImage = $state<LightboxImage | null>(
+    untrack(() => {
+      if (!open || images.length === 0) return null;
+      const initialSessionIndex = Math.max(0, Math.min(initialIndex, images.length - 1));
+      return images[initialSessionIndex] ?? null;
+    }),
+  );
   // Forces the `{#key mountGeneration}` block around <Modal> (below) to
   // fully destroy and recreate on every genuine remount cycle. `{#if}`
   // alone was not reliable here: when `hasOpenedOnce` flips false (exit
@@ -180,6 +212,23 @@
         navigationIndex = null;
         resetAppliedForCurrentSession = true;
       }
+      // Force `sessionImage` to resync HERE too, on every fresh-open
+      // transition — not solely via the separate `currentImage`-mirroring
+      // effect below. That effect only reruns when `currentImage` (a
+      // `$derived`) actually CHANGES; a close-then-reopen at the SAME index
+      // (the overwhelmingly common case, e.g. re-clicking the same
+      // thumbnail) recomputes `currentImage` to the exact same object
+      // reference as before the close — Svelte's fine-grained reactivity
+      // does not consider that a change, so the mirroring effect would never
+      // rerun, leaving `sessionImage` stuck at the `null` `handleExitComplete`
+      // cleared it to. Reading `images[...]` directly here, AFTER
+      // `frozenIndex`/`navigationIndex` were just reset above so
+      // `effectiveIndex` reflects the fresh session's index, guarantees a
+      // resync on every genuine open regardless of whether the resulting
+      // value happens to be referentially identical to the old one.
+      if (images[effectiveIndex]) {
+        sessionImage = images[effectiveIndex];
+      }
     } else {
       resetAppliedForCurrentSession = false;
       // Fallback freeze for a parent-driven `open = false` that doesn't go
@@ -197,6 +246,32 @@
   const hasMultiple = $derived(images.length > 1);
   const currentImage = $derived(images[effectiveIndex]);
   const counterText = $derived(`${effectiveIndex + 1} of ${images.length}`);
+
+  // Keeps `sessionImage` (declared above, alongside `hasOpenedOnce`) in sync
+  // with `currentImage` for LIVE changes during an open session — arrow-key
+  // navigation (`previous()`/`next()`, below) changes `effectiveIndex`
+  // without touching `open` at all, so the main open-watching effect above
+  // (which only resyncs `sessionImage` on a fresh open transition) would
+  // never see it. This effect is the complement, not the sole mechanism: a
+  // close-then-reopen at the SAME index recomputes `currentImage` to the
+  // exact same object reference as before, which Svelte's reactivity does
+  // NOT treat as a change, so this effect alone would never rerun for that
+  // case — the main effect's direct, unconditional resync on every fresh
+  // open (above) is what covers it.
+  //
+  // Deliberately does NOT clear `sessionImage` when `currentImage` goes
+  // `undefined` (an `images` clear mid-session): that's the entire point —
+  // `sessionImage` freezes at the last real image instead of following
+  // `images` down to empty, so the template's mount guard and rendered
+  // `<img>` both keep showing that frozen image through the rest of the
+  // open session and the whole exit-transition window. Only
+  // `handleExitComplete` (below) clears it, once the exit has genuinely
+  // finished.
+  $effect(() => {
+    if (currentImage) {
+      sessionImage = currentImage;
+    }
+  });
 
   // The single path for a lightbox-initiated close (the close button, or a
   // click on the backdrop area around the image). `open` flips first so a
@@ -259,6 +334,11 @@
     void tick().then(() => {
       if (!open) {
         hasOpenedOnce = false;
+        // Cleared in lockstep with `hasOpenedOnce`, not before: `sessionImage`
+        // must keep the exit-transition's frozen image visible for the ENTIRE
+        // window Modal keeps this component's children mounted, which lasts
+        // until exactly this point.
+        sessionImage = null;
       }
     });
   }
@@ -306,7 +386,7 @@
 </script>
 
 {#key mountGeneration}
-  {#if hasOpenedOnce && currentImage}
+  {#if hasOpenedOnce && sessionImage}
     <Modal
       bind:open
       chrome="none"
@@ -370,8 +450,8 @@
 
         <div class="lightbox-image-container">
           <img
-            src={currentImage.src}
-            alt={currentImage.alt}
+            src={sessionImage.src}
+            alt={sessionImage.alt}
             class="lightbox-image"
             decoding="async"
           />

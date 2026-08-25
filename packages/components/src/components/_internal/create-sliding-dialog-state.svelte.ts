@@ -43,6 +43,16 @@ export class SlidingDialogState {
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
   #disposed = false;
+  // The `#closeGeneration` active at the moment we last called the native
+  // `dialogElement.close()` — see `#finishClosing()`. The native `close`
+  // EVENT is dispatched via a QUEUED TASK, not synchronously (the WHATWG
+  // spec's "close the dialog" steps queue a task to fire it), so it can
+  // still be pending when other, faster (microtask-scheduled) work runs
+  // first — specifically, a consumer's `onExitComplete` synchronously
+  // reopening the modal. `handleClose()` compares this against the CURRENT
+  // `#closeGeneration` to detect exactly that: a queued event left over from
+  // a close cycle a reopen has already superseded.
+  #pendingNativeCloseGeneration: number | null = null;
 
   constructor(options: SlidingDialogStateOptions) {
     this.#options = options;
@@ -129,6 +139,22 @@ export class SlidingDialogState {
   }
 
   handleClose(): void {
+    // Ignore a STALE native `close` event: its queued task can still be
+    // pending after a synchronous reopen (from `onExitComplete`, fired from
+    // our own tick()-deferred continuation, which runs as a microtask well
+    // before this event's task gets a turn) has already moved
+    // `#closeGeneration` past the generation active when we called
+    // `.close()`. Processing it now would call `setOpen(false)`, undoing
+    // that fresh reopen out from under the consumer. By the time a genuinely
+    // current event arrives, the generation still matches — see
+    // `#pendingNativeCloseGeneration`'s own comment for the full race.
+    if (
+      this.#pendingNativeCloseGeneration !== null &&
+      this.#pendingNativeCloseGeneration !== this.#closeGeneration
+    ) {
+      return;
+    }
+    this.#pendingNativeCloseGeneration = null;
     this.#releaseScrollLock?.();
     this.#releaseScrollLock = null;
     this.#releaseEscape?.();
@@ -188,9 +214,12 @@ export class SlidingDialogState {
     }
     this.renderPanel = false;
     // `dialogElement.close()` MUST run before `onClosed?.()`, not after.
-    // `close()` synchronously fires the native `close` event, which Modal
-    // wires to `handleClose()` — releasing the scroll lock and escape-stack
-    // hold. `onClosed` forwards to a consumer-supplied callback
+    // `close()` SYNCHRONOUSLY flips `dialogElement.open` to `false` and
+    // removes it from the top layer — but the native `close` EVENT itself
+    // (which Modal wires to `handleClose()`, releasing the scroll lock and
+    // escape-stack hold) is dispatched via a QUEUED TASK per the WHATWG
+    // spec's "close the dialog" steps, not fired synchronously from this
+    // call. `onClosed` forwards to a consumer-supplied callback
     // (`onExitComplete` on ModalProps); if that callback throws, a throw
     // from HERE before the close() call would propagate out of
     // `#finishClosing` with the native dialog never closed and the scroll
@@ -198,8 +227,16 @@ export class SlidingDialogState {
     // leave the whole page stuck. Calling `close()` first means all of that
     // cleanup is unconditionally complete before the consumer callback ever
     // runs, so a throw there cannot block it.
+    //
+    // That queued-task timing is exactly what `#pendingNativeCloseGeneration`
+    // guards against: if the consumer's `onExitComplete` (below, deferred
+    // only past a microtask `tick()`) synchronously reopens the modal before
+    // this event's task gets a turn, `handleClose()` must recognize the
+    // eventually-arriving event as stale and ignore it, rather than calling
+    // `setOpen(false)` and undoing the fresh reopen.
     const dialogElement = this.#options.getDialogElement();
     if (dialogElement?.open) {
+      this.#pendingNativeCloseGeneration = generation;
       dialogElement.close();
     }
     // `onClosed` (Modal's `onExitComplete` forwarding) is documented as

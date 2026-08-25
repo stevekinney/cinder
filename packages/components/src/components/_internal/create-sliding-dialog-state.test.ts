@@ -220,4 +220,81 @@ describe('createSlidingDialogState', () => {
     // component instance is gone.
     expect(closedCount).toBe(0);
   });
+
+  test('a synchronous reopen from onExitComplete survives a STALE queued native close event landing afterward (PR #1422 review)', async () => {
+    // Regression: the native `close` EVENT is dispatched via a QUEUED TASK
+    // per the WHATWG spec (`close()` itself synchronously flips
+    // `dialogElement.open` to `false`, but the event fires later) — not
+    // synchronously, as an earlier version of `#finishClosing`'s own comment
+    // incorrectly assumed. If a consumer's `onExitComplete` (fired from our
+    // `tick()`-deferred continuation, a MICROTASK that resolves well before
+    // any queued TASK gets a turn) synchronously reopens the modal —
+    // `open = true` then `showModal()` — the browser's still-pending queued
+    // `close` event for the OLD `.close()` call can land AFTER that reopen.
+    // Before the fix, `handleClose()` processed every `close` event
+    // unconditionally, calling `setOpen(false)` and undoing the fresh
+    // reopen out from under the consumer.
+    //
+    // This fake `dialogElement` (like the rest of this file's tests) does
+    // not actually dispatch a real, task-queued `close` event — so this test
+    // simulates the queued-event ordering explicitly: it lets the reopen
+    // happen FIRST (via the `onClosed` callback below, mirroring a
+    // synchronous `onExitComplete` reopen), THEN manually invokes
+    // `dialogState.handleClose()` — precisely modeling "the browser's queued
+    // task for the superseded close() call finally lands, after the reopen
+    // already completed."
+    let open = true;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()`, letting this test control the exact timing
+      // deterministically relative to the deferred `tick()`.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        // Simulates a consumer's `onExitComplete` synchronously reopening
+        // the modal from inside the callback itself.
+        open = true;
+        dialogState.syncOpenState();
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Close: `#finishClosing()` runs synchronously here — `dialogElement`
+    // is closed (its native side effects) before this call returns, but
+    // `onClosed` is scheduled past a `tick()` that hasn't resolved yet.
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+
+    // Let the deferred `onClosed` fire — this is the synchronous reopen
+    // from inside the callback (see above). By the time this resolves,
+    // the modal is genuinely open again: `open` is `true`, the native
+    // dialog is `showModal()`-open again, and `#closeGeneration` has been
+    // bumped past the generation active when the earlier `.close()` call
+    // was made.
+    await tick();
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+
+    // NOW the STALE queued native close event for the earlier, superseded
+    // close() call finally "lands" — simulated by calling `handleClose()`
+    // directly, exactly modeling the queued-task-fires-late race.
+    dialogState.handleClose();
+
+    // The fresh reopen must survive: `open` must NOT have been undone back
+    // to `false` by this stale event.
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+  });
 });

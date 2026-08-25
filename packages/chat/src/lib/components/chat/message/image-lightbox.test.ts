@@ -216,14 +216,19 @@ describe('image-lightbox source contract — Modal composition', () => {
     expect(dismissBody).not.toContain('navigationIndex = null');
   });
 
-  test('the Modal render guard requires hasOpenedOnce, not currentImage alone', () => {
+  test('the Modal render guard requires hasOpenedOnce, not sessionImage alone', () => {
     // Regression: once currentImage stopped depending on `open`, guarding
-    // Modal's render on `currentImage` alone mounted a closed Modal for
+    // Modal's render on an image value alone mounted a closed Modal for
     // every never-opened lightbox instance. `hasOpenedOnce` restores lazy
     // mounting: false until the first open, clearing again once Modal's
     // exit transition genuinely finishes (via onExitComplete) rather than
     // staying permanently true forever after the first open.
-    expect(source).toContain('{#if hasOpenedOnce && currentImage}');
+    //
+    // The guard reads `sessionImage` (a snapshot), not `currentImage` (the
+    // live array lookup) — see the "images cleared mid-session" tests below
+    // for why: a parent clearing `images` during/right after an open session
+    // must not destroy the still-open/closing Modal outright.
+    expect(source).toContain('{#if hasOpenedOnce && sessionImage}');
   });
 
   test('hasOpenedOnce is seeded from `open && images.length > 0`, not `open` alone or a hardcoded false', () => {
@@ -647,6 +652,86 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
     await rerender({ images, initialIndex: 0, open: true });
     await tick();
 
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+
+  test('clearing images mid-session (or right as it closes) does not destroy the Modal outright — the exit transition still runs and the gate still clears (PR #1422 review)', async () => {
+    // Regression: `currentImage` (`images[effectiveIndex]`) previously drove
+    // the template's mount guard directly (`{#if hasOpenedOnce &&
+    // currentImage}`). A parent clearing `images` while the lightbox was
+    // open (or right as it closed) made `currentImage` go `undefined`
+    // mid-session — that `{#if}` destroyed the still-open/closing Modal
+    // INSTANTLY, skipping the promised exit transition, and `onExitComplete`
+    // never got a chance to fire (Modal was torn down out from under it, not
+    // exited normally) — so `hasOpenedOnce` never cleared either.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Parent clears `images` WHILE still open — `currentImage` is now
+    // `undefined`, but the Modal must survive, still showing the frozen
+    // last-known image (`sessionImage`), not vanish.
+    await rerender({ images: [], initialIndex: 0, open: true });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+
+    // Now close, with `images` still empty — the exit transition must
+    // actually run (not be skipped because there's no "current" image),
+    // and once it genuinely finishes, the Modal fully unmounts and the gate
+    // (`hasOpenedOnce`) clears — proving `onExitComplete` fired normally
+    // rather than the component having been torn down out from under it.
+    await rerender({ images: [], initialIndex: 0, open: false });
+    // Immediately after the `open` flip, the Modal must still be present —
+    // proving the exit transition actually started, not an instant destroy.
+    expect(container.querySelector('dialog')).not.toBeNull();
+
+    // Drain enough microtask turns for the exit transition to genuinely
+    // finish (same pattern as the "fully unmounts" test above).
+    await tick();
+    await tick();
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+  });
+
+  test('restoring images after a clear-mid-session close does not resurrect a zombie (already-closed) Modal (PR #1422 review)', async () => {
+    // Companion to the test above: once the clear-images-while-open Modal
+    // has fully exited (gate cleared), a later `images` update — while the
+    // lightbox is STILL CLOSED — must not mount anything. Before this fix,
+    // `hasOpenedOnce` stuck at `true` forever in this exact sequence
+    // (`images` cleared mid-session prevented the gate from ever clearing),
+    // so restoring `images` resurrected a Modal that was already closed the
+    // instant it appeared, with no exit transition to release it.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+
+    await rerender({ images: [], initialIndex: 0, open: true });
+    await tick();
+
+    await rerender({ images: [], initialIndex: 0, open: false });
+    await tick();
+    await tick();
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+
+    // Restore `images` while STILL CLOSED — must NOT resurrect a Modal.
+    await rerender({ images, initialIndex: 0, open: false });
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+
+    // A genuine fresh open afterward must still work correctly — proving
+    // the gate is in a clean, reusable state, not permanently stuck.
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
     const dialog = container.querySelector('dialog');
     expect(dialog).not.toBeNull();
     expect(dialog?.hasAttribute('open')).toBe(true);
