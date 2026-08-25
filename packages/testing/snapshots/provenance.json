@@ -1,7 +1,10 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["input", "textarea"],
-  "renderedSourceSha": "b029003c3fda750951a908e6c59cdb6bc7b92650",
+  "componentScope": [
+    "color-field",
+    "color-picker"
+  ],
+  "renderedSourceSha": "5e56887569aa75574302fa40ba21f85f9ab00a6e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
