@@ -435,6 +435,51 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(checkComponentNameForBarePluralShadow('buzzes', existingNames)).toBeUndefined();
   });
 
+  test('flags the real irregular plural permission-matrix -> permission-matrices', () => {
+    // Neither the -es branch ("permission-matric", stem ends in "c", not a
+    // recognized -es stem) nor the plain trailing-s branch
+    // ("permission-matrice") derives the real singular. The explicit
+    // IRREGULAR_PLURAL_SUFFIXES rewrite (-ices -> -ix) is what catches it.
+    const violation = checkComponentNameForBarePluralShadow(
+      'permission-matrices',
+      new Set(['permission-matrix']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('permission-matrix');
+    expect(violation?.message).toContain('permission-matrix-group');
+  });
+
+  test('does not flag an -ices candidate whose de-irregularized stem does not exist', () => {
+    expect(checkComponentNameForBarePluralShadow('service-indices', existingNames)).toBeUndefined();
+  });
+
+  test('recommends the real family group instead of a nonexistent <singular>-group (dropdown-item)', () => {
+    // dropdown-item's real collection is DropdownGroup, not a
+    // "dropdown-item-group" that does not exist.
+    const violation = checkComponentNameForBarePluralShadow(
+      'dropdown-items',
+      new Set(['dropdown-item', 'dropdown-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.message).toContain('dropdown-group');
+    expect(violation?.message).not.toContain('dropdown-item-group');
+  });
+
+  test('recommends the real family group instead of a nonexistent <singular>-group (side-navigation-item)', () => {
+    const violation = checkComponentNameForBarePluralShadow(
+      'side-navigation-items',
+      new Set(['side-navigation-item', 'side-navigation-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.message).toContain('side-navigation-group');
+    expect(violation?.message).not.toContain('side-navigation-item-group');
+  });
+
+  test('falls back to the default <singular>-group pattern when no override is documented', () => {
+    const violation = checkComponentNameForBarePluralShadow('widgets', new Set(['widget']));
+    expect(violation?.message).toContain('widget-group');
+  });
+
   test('enumerates directory names from a given root, including one level into experimental/', () => {
     // Hermetic: builds its own temporary component tree rather than asserting
     // on which real components exist, so it never drifts when the real

@@ -97,9 +97,20 @@ component that collects instances of an existing singular component must be
 named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
 enforces this mechanically at `lint:invariants` time: it enumerates every
 existing component directory name and scans each one — stripped of a trailing
-`s`, a regular `-es` (for stems ending in x/ch/sh/s/z), or `-ies` (restored to
-the consonant-plus-`y` singular) — against every other existing directory name, failing the gate the moment
-a bare-plural directory shadows an existing singular component.
+`s`, a regular `-es` (for stems ending in x/ch/sh/s/z, including that rule's
+doubled-final-consonant form, e.g. `quiz` → `quizzes`), `-ies` (restored to
+the consonant-plus-`y` singular), or one of a short, inventory-seeded list of
+irregular-plural rewrites (e.g. `permission-matrix` → `permission-matrices`)
+— against a membership set built from every other existing directory name
+PLUS namespace-only singulars: names that exist only as an internal,
+non-directory-shaped implementation exposed through a compound namespace
+member, such as `_radio`'s `radio.svelte` backing `RadioGroup.Option` (there
+is no public `radio` directory). A new `radios` directory would therefore
+still fail the gate even though no public `radio` directory exists to
+discover. The check fails the moment any bare-plural directory shadows a
+singular in that membership set, and its message recommends the family's
+actual `*Group` collection — which is not always `<singular>-group`
+verbatim (`DropdownGroup` collects `DropdownItem` rows, for instance).
 
 `tabs` is the single grandfathered exception: it collects `Tab` (exposed as
 `Tabs.Trigger`) and shipped as a bare plural before this convention existed.

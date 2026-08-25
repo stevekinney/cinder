@@ -682,11 +682,31 @@ export type ComponentNameShadowViolation = {
  *      including that same rule's doubled-final-consonant form
  *      (`quiz` → `quizzes`, not `quizes`).
  *   3. A plain trailing `s` (`avatar` → `avatars`).
+ *   4. The explicit, seeded-by-inventory irregular-plural rewrites in
+ *      `IRREGULAR_PLURAL_SUFFIXES` below.
  *
- * Irregular plurals (`child`/`children`, `datum`/`data`, …) stay out of
- * scope regardless of order.
+ * General irregular plurals (`child`/`children`, `datum`/`data`, …) stay out
+ * of scope; only an irregular form a REAL existing component actually needs
+ * gets an explicit entry.
  */
 const ES_PLURAL_STEM_ENDING = /(?:x|ch|sh|s|z)$/;
+
+/**
+ * Irregular plural suffix rewrites, seeded ONLY from the current component
+ * inventory — not a general English pluralization table. The ticket ruled
+ * out irregular-plural handling "given the current component set", but that
+ * assumed no irregular plural was actually present in it; `permission-matrix`
+ * is one (`permission-matrices`, not `permission-matrixs`/`-es`), so its one
+ * irregular form is handled explicitly here rather than left as a gap.
+ *
+ * Add an entry only when a REAL existing singular component's regular
+ * plural (via the `-ies`/`-es`/`-s` rules above) fails to derive it — never
+ * to pre-emptively cover a hypothetical future name.
+ */
+const IRREGULAR_PLURAL_SUFFIXES = new Map<string, string>([
+  // matrix -> matrices (permission-matrix -> permission-matrices)
+  ['ices', 'ix'],
+]);
 
 /**
  * Candidate singular forms to check, in derivation order: the `-ies` → `y`
@@ -721,18 +741,44 @@ function candidateSingulars(candidateName: string): string[] {
   if (candidateName.endsWith('s')) {
     pushIfNew(candidateName.slice(0, -1));
   }
+  for (const [suffix, replacement] of IRREGULAR_PLURAL_SUFFIXES) {
+    if (candidateName.endsWith(suffix)) {
+      pushIfNew(`${candidateName.slice(0, -suffix.length)}${replacement}`);
+    }
+  }
   return candidates;
+}
+
+/**
+ * Overrides for a singular's owning `*Group` collection name when it is NOT
+ * `<singular>-group` — e.g. `DropdownGroup` collects `DropdownItem` rows
+ * (there is no `dropdown-item-group`), and `SideNavigationGroup` collects
+ * `SideNavigationItem` entries. Seeded verbatim from the family mappings in
+ * docs/component-api-conventions.md's "*Group versus plural component names"
+ * section, so the shadow-check recommendation always points at the family's
+ * ACTUAL documented group contract instead of a plausible-looking but
+ * nonexistent duplicate API. Add an entry here whenever a family's owning
+ * group is not simply the singular's own name plus `-group`.
+ */
+const GROUP_NAME_OVERRIDES = new Map<string, string>([
+  ['dropdown-item', 'dropdown-group'],
+  ['side-navigation-item', 'side-navigation-group'],
+]);
+
+/** The collection name to recommend for a shadowed singular: its documented override, or the default `<singular>-group` pattern every other family follows. */
+function recommendedGroupName(singular: string): string {
+  return GROUP_NAME_OVERRIDES.get(singular) ?? `${singular}-group`;
 }
 
 /**
  * Checks a candidate NEW component's kebab-case directory name against a
  * membership set of existing (and namespace-only) singular names. Tries
  * `candidateSingulars()`'s derivation order — `-ies` → `y`, then `-es` (with
- * its doubled-consonant variant), then a plain trailing-`s` strip — no
- * irregular-plural handling beyond that — and rejects the candidate when any
- * derived singular is itself in the set: that shape is a collection name and
- * must be `<singular>-group` (or whatever grouping contract the family's
- * `@purpose` documents), never a bare plural.
+ * its doubled-consonant variant), then a plain trailing-`s` strip, then the
+ * explicit `IRREGULAR_PLURAL_SUFFIXES` rewrites — and rejects the candidate
+ * when any derived singular is itself in the set: that shape is a
+ * collection name and must be named after the family's actual `*Group`
+ * (via `recommendedGroupName()`), never a bare plural.
  */
 export function checkComponentNameForBarePluralShadow(
   candidateName: string,
@@ -740,13 +786,14 @@ export function checkComponentNameForBarePluralShadow(
 ): ComponentNameShadowViolation | undefined {
   for (const singular of candidateSingulars(candidateName)) {
     if (!existingNames.has(singular)) continue;
+    const recommendedGroup = recommendedGroupName(singular);
     return {
       candidateName,
       shadowedComponent: singular,
       message:
         `Component name "${candidateName}" is a bare plural of the existing "${singular}" ` +
         `component. A curated collection of "${singular}" instances must be named ` +
-        `"${singular}-group" (see ${documentationPath}, "*Group versus plural component ` +
+        `"${recommendedGroup}" (see ${documentationPath}, "*Group versus plural component ` +
         'names"), not a bare plural.',
     };
   }

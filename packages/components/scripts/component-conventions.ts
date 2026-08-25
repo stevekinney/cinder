@@ -78,7 +78,7 @@ export const COMPONENT_AUTHORING_CHECKLIST = [
   },
   {
     id: 'group-vs-plural-naming',
-    text: 'Name a curated collection `<Singular>Group`, never a bare plural of an existing singular component; a bare plural is legal only as a domain mass noun that composes no matching singular (see docs/component-api-conventions.md, "*Group versus plural component names"). `check:prop-conventions` rejects a new bare-plural name that shadows an existing singular.',
+    text: 'Name a curated collection `<Singular>Group`, never a bare plural of an existing singular component; a bare plural is legal only as a domain mass noun that composes no matching singular (see docs/component-api-conventions.md, "\\*Group versus plural component names"). `check:prop-conventions` rejects a new bare-plural name that shadows an existing singular.',
     references: ['#1416'],
   },
   {
