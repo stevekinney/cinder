@@ -321,6 +321,28 @@
     widthMode: () => widthMode,
   });
 
+  // Snapshot of the last non-empty computed position style. A consumer
+  // changing a positioning INPUT (`placement`, `offset`, `widthMode`, ...)
+  // in the same update that closes the Popover invalidates
+  // `createAnchoredOverlay`'s effect — its cleanup resets both
+  // `positionReady` AND `positionStyle` to their empty values before the
+  // asynchronous Floating UI recomputation restores them. `popover.css`'s
+  // `visibility: visible` override (CIN-376 round 16) already stops the
+  // retained panel from disappearing in that gap, but with no positioning
+  // fallback the panel would still jump to its unpositioned fixed-origin
+  // location while fading — visible, but in the wrong place. Falling back
+  // to the last real computed style whenever the current one is empty
+  // covers this: a genuine fresh recompute (open, resize, anchor change)
+  // overwrites it again within the same reactive flush, so there's no
+  // meaningful staleness window outside this transient invalidation gap.
+  let lastPositionStyle = '';
+  $effect(() => {
+    if (anchoredOverlay.positionStyle) {
+      lastPositionStyle = anchoredOverlay.positionStyle;
+    }
+  });
+  const resolvedPositionStyle = $derived(anchoredOverlay.positionStyle || lastPositionStyle);
+
   $effect(() => {
     mounted = true;
   });
@@ -538,7 +560,7 @@
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
     data-cinder-closing={exitState.isClosing ? '' : undefined}
-    style={anchoredOverlay.positionStyle}
+    style={resolvedPositionStyle}
     tabindex="-1"
   >
     {@render children()}

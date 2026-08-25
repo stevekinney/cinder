@@ -277,6 +277,21 @@
 {/if}
 
 {#if mounted && exitState.renderPanel && anchorElement}
+  <!--
+    `aria-hidden`, deliberately NOT `inert`, while closing (CIN-376 round 17
+    review): `describedBy` already removes this card's id from the trigger's
+    `aria-describedby` the instant the close starts, but the retained,
+    portaled `role="tooltip"` element itself stayed mounted and
+    accessibility-visible for the whole exit transition — exposing dismissed
+    preview content as a standalone tooltip during the fade, longer still if
+    a consumer overrides the duration token. `aria-hidden` closes that gap.
+    `inert` would ALSO suppress the `mouseenter`/`focusin` handlers below,
+    which is exactly what the reopen-mid-close defect fix (CIN-376's whole
+    point for HoverCard) depends on: hovering back over a still-closing card
+    must cancel the close and reopen it. `aria-hidden` and pointer/focus
+    interactivity are not mutually exclusive — this hides it from assistive
+    technology without blocking the re-entry that keeps it open.
+  -->
   <div
     bind:this={cardElement}
     id={cardId}
@@ -285,6 +300,7 @@
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
     data-cinder-closing={exitState.isClosing ? '' : undefined}
+    aria-hidden={exitState.isClosing ? 'true' : undefined}
     style={anchoredOverlay.positionStyle}
     onmouseenter={handleCardMouseEnter}
     onmouseleave={handleCardMouseLeave}

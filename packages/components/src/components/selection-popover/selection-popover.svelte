@@ -139,6 +139,19 @@
     getOpen: () => isPositionedOpen,
     getPanelElement: () => popoverElement,
     getReducedMotion: () => reducedMotion.current,
+    // Deferred composer reset (CIN-376 round 17 review): closing externally
+    // (e.g. an outside pointerdown) used to reset `expanded`/`commentBody`
+    // the instant the close began, swapping the retained, still-fading
+    // panel's visible content from the full composer to the collapsed
+    // trigger mid-fade. Resetting only once the exit transition genuinely
+    // finishes keeps the composer's content and dimensions stable for the
+    // whole fade, matching HANDLE_CANCEL/HANDLE_SUBMIT's own explicit resets
+    // (those are user-initiated and already look correct, since the user
+    // just watched the content they typed get submitted/discarded).
+    onClosed: () => {
+      expanded = false;
+      commentBody = '';
+    },
   });
 
   const anchoredOverlay = createAnchoredOverlay({
@@ -333,8 +346,14 @@
       // re-evaluations while already closed.
       if (wasOpen) {
         wasOpen = false;
-        expanded = false;
-        commentBody = '';
+        // `expanded`/`commentBody` are NOT reset here: the retained closing
+        // panel (kept mounted through its exit transition, see `exitState`
+        // below) would otherwise instantly swap its visible content from the
+        // full composer to the compact "Add comment" trigger while still
+        // fading out — the same content and dimensions that were open
+        // should be what animates out. Reset only once the exit genuinely
+        // finishes, via `exitState`'s `onClosed` callback below.
+        //
         // Return focus to wherever it was before the popover opened, then
         // release the reference: this open session is over, so the next open
         // must re-arm from whatever has focus then rather than reuse a stale
