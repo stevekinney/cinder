@@ -180,6 +180,43 @@ describe('gamut mapping preserves hue within 2 degrees', () => {
     const hueDelta = Math.abs(((outputHue - 30 + 540) % 360) - 180);
     expect(hueDelta).toBeLessThanOrEqual(2);
   });
+
+  // Review thread (PR #1420): "Gamut-map near-boundary out-of-range OKLCH
+  // inputs". The earlier round-trip fix skipped gamut mapping whenever the
+  // direct conversion landed within a fixed epsilon (3e-3) of [0, 1] — but a
+  // genuinely out-of-gamut input can have an excursion just as small as our
+  // own round-trip noise (this exact example: direct conversion lands at
+  // roughly (0.0136, -0.0012, 0.0371), well inside that old epsilon). A
+  // fixed-magnitude epsilon can't distinguish "our own quantization noise"
+  // from "a real out-of-gamut color", so it silently per-channel-clamped
+  // this input instead of gamut-mapping it — exactly the hand-rolled
+  // clamping the CIN-104 policy forbids. It must still go through the real
+  // chroma-reduction bisection and come out with the SAME result `toGamut`
+  // alone would produce.
+  test('the cited example (small excursion, ~0.0012 out of gamut) does not crash and stays hue-plausible', () => {
+    // This is the review thread's own counterexample: direct conversion
+    // lands at roughly (0.0136, -0.0012, 0.0371) — comfortably inside what
+    // used to be a 3e-3 "trust it" epsilon, yet it happens to round to the
+    // SAME byte triple whichever path is taken for this particular color
+    // (the real regression is about which INTERNAL path runs — see the
+    // isRoundTripArtifact-level test below for a case that diverges at the
+    // byte level too). This just pins that it still parses to something
+    // sane rather than crashing.
+    const parsed = parseOklch('oklch(7.819% 0.04576 306.42)');
+    expect(parsed).toEqual({ r: 3, g: 0, b: 9, a: 1 });
+  });
+
+  test('a genuinely out-of-gamut small excursion that DOES diverge at the byte level is gamut-mapped, not channel-clamped', () => {
+    // oklch(5% 0.05 0) has a direct (non-gamut-mapped) conversion whose
+    // green channel excess is only ~0.003 — well inside the old fixed 3e-3
+    // "trust it" epsilon that this thread's regression flagged. A
+    // per-channel clamp of the raw direct conversion rounds to byte r=4;
+    // real chroma-reduction (toGamut) rounds to r=3. Getting 3 here proves
+    // the fix actually routes small-but-genuine excursions through gamut
+    // mapping instead of silently trusting them as round-trip noise.
+    const parsed = parseOklch('oklch(5% 0.05 0)');
+    expect(parsed).toEqual({ r: 3, g: 0, b: 0, a: 1 });
+  });
 });
 
 describe('round-trip stability', () => {

@@ -26,9 +26,15 @@
  *
  * Gamut policy: out-of-sRGB values (currently only reachable by parsing an
  * `oklch()` input string directly) are mapped into sRGB via CSS Color 4
- * chroma reduction (culori's `toGamut`), never hand-rolled chroma clamping.
+ * chroma reduction (culori's `toGamut`), never hand-rolled chroma clamping —
+ * except for the one narrow case where the excursion is reproducible from a
+ * real sRGB byte color at our own emission precision (see
+ * `isRoundTripArtifact`), which is indistinguishable from our own
+ * round-trip noise and is trusted/clamped directly so parse -> emit stays a
+ * fixed point. A genuinely out-of-gamut input, even one with a comparably
+ * small excursion, still goes through the real chroma-reduction bisection.
  */
-import type { Rgb } from 'culori';
+import type { Oklch, Rgb } from 'culori';
 import { converter, parse, toGamut } from 'culori';
 
 /** Canonical parsed color: sRGB channels 0-255, alpha 0-1. */
@@ -43,21 +49,40 @@ const toHwbConverter = converter('hwb');
 const toRgbConverter = converter('rgb');
 const gamutMapOklchToRgb = toGamut('rgb', 'oklch');
 
-// A direct (non-gamut-mapped) oklch->rgb conversion that lands only a hair
-// outside [0, 1] — a floating-point rounding artifact of an already-in-gamut
-// color, not a genuinely saturated out-of-gamut one — is trusted and clamped
-// directly rather than routed through `toGamut`'s bisection. `culori`'s
-// `inGamut` has zero tolerance, and `toGamut`'s bisection re-derives the
-// color through its working space even on its "already in gamut" early
-// return, which introduces enough additional floating-point drift to flip
-// an in-gamut color's rounded byte (see the #00b8c1 round-trip regression).
-// Skipping gamut mapping for near-boundary values avoids that drift; a
-// genuinely saturated out-of-gamut color (far outside this epsilon) still
-// goes through the real chroma-reduction bisection below.
-const GAMUT_EPSILON = 3e-3;
-function isCloseEnoughToGamut(rgb: Rgb): boolean {
-  return [rgb.r, rgb.g, rgb.b].every(
-    (channel) => (channel ?? 0) >= -GAMUT_EPSILON && (channel ?? 0) <= 1 + GAMUT_EPSILON,
+/**
+ * A direct (non-gamut-mapped) oklch->rgb conversion that lands slightly
+ * outside [0, 1] is ambiguous by magnitude alone: it could be a
+ * floating-point/decimal-rounding artifact of an already-in-gamut color
+ * (specifically, OUR OWN 3/5/2-decimal oklch emission precision — see
+ * `formatColor` below — perturbing an in-gamut byte color just past the
+ * boundary on reparse), or it could be a genuinely out-of-gamut color a
+ * consumer typed in directly, which the CIN-104 policy requires to go
+ * through real chroma-reduction, never a hand-rolled clamp — and a
+ * deliberately saturated color CAN have an excursion as small as our own
+ * rounding noise (see the review thread's `oklch(7.819% 0.04576 306.42)`
+ * example), so no fixed epsilon on the excursion's magnitude can tell the
+ * two apart.
+ *
+ * What DOES tell them apart: whether this exact oklch value is reproducible
+ * from a real sRGB byte color at our own emission precision. Round the
+ * direct conversion to the nearest byte, re-derive the oklch a real color at
+ * that byte would emit, and compare at the SAME 3/5/2-decimal precision
+ * `formatColor` uses. A match means this is indistinguishable from our own
+ * round-trip of an in-gamut byte value — trust the direct/clamped
+ * conversion (this is what makes the emit/reparse round-trip a fixed point,
+ * verified by the sweep in color-format.test.ts). No match means it's not
+ * reproducible from any real sRGB byte at this precision — genuinely
+ * out-of-gamut, so it still goes through `toGamut`'s real chroma reduction.
+ */
+function isRoundTripArtifact(parsed: Oklch, direct: Rgb): boolean {
+  const byteR = Math.round(Math.max(0, Math.min(1, direct.r ?? 0)) * 255);
+  const byteG = Math.round(Math.max(0, Math.min(1, direct.g ?? 0)) * 255);
+  const byteB = Math.round(Math.max(0, Math.min(1, direct.b ?? 0)) * 255);
+  const reOklch = toOklchConverter({ mode: 'rgb', r: byteR / 255, g: byteG / 255, b: byteB / 255 });
+  return (
+    roundTo((parsed.l ?? 0) * 100, 3) === roundTo((reOklch.l ?? 0) * 100, 3) &&
+    roundTo(parsed.c ?? 0, 5) === roundTo(reOklch.c ?? 0, 5) &&
+    roundTo(parsed.h ?? 0, 2) === roundTo(reOklch.h ?? 0, 2)
   );
 }
 
@@ -236,7 +261,9 @@ export function parseCssColor(input: string): RgbaComponents | null {
 
   if (parsed.mode === 'oklch') {
     const direct = toRgbConverter(parsed);
-    const rgb = isCloseEnoughToGamut(direct) ? direct : toRgbConverter(gamutMapOklchToRgb(parsed));
+    const rgb = isRoundTripArtifact(parsed, direct)
+      ? direct
+      : toRgbConverter(gamutMapOklchToRgb(parsed));
     return rgbColorToRgba(rgb, parsed.alpha ?? 1);
   }
 

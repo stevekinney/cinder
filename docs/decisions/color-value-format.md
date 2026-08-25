@@ -19,6 +19,14 @@ field will parse. `formats` gained `'oklch'` as an accepted input value so a
 consumer can opt into accepting `oklch()` strings without changing what the
 field emits.
 
+The configured `format` is always an implicitly accepted input format too,
+regardless of what `formats` lists: the field must be able to parse back the
+exact syntax it just emitted, or the emit/re-parse round trip breaks. So
+`formats={['hex']}` combined with `format="rgb"` still accepts user-entered
+`rgb()` values — `formats` narrows what else is accepted, it never excludes
+the configured output format's own syntax. Don't rely on `formats` to reject
+`format`'s syntax.
+
 Alpha policy:
 
 - `hex` emits `#rrggbbaa` when alpha < 1, and plain `#rrggbb` when alpha is
