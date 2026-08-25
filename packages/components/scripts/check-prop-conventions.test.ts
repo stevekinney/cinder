@@ -9,6 +9,7 @@ import {
   collectResolvedSurfaceViolations,
   createPropsProgram,
   existingComponentDirectoryNames,
+  namespaceOnlySingularNames,
 } from './check-prop-conventions';
 
 describe('check-prop-conventions', () => {
@@ -413,6 +414,27 @@ describe('check-prop-conventions component-name directory scan', () => {
     expect(checkComponentNameForBarePluralShadow('gazes', existingNames)).toBeUndefined();
   });
 
+  test('flags a synthetic doubled-consonant -es plural (quiz -> quizzes)', () => {
+    // "quizzes" -es-strips to "quizz", which is not a real component — the
+    // regular -es plural of a z-ending singular doubles the z before adding
+    // "es" ("quiz" -> "quizzes", not "quizes"), so the de-doubled "quiz" must
+    // also be tried and land on the real singular.
+    const violation = checkComponentNameForBarePluralShadow(
+      'quizzes',
+      new Set(['quiz', 'quiz-group']),
+    );
+    expect(violation).toBeDefined();
+    expect(violation?.shadowedComponent).toBe('quiz');
+    expect(violation?.message).toContain('quiz-group');
+  });
+
+  test('does not flag a doubled-consonant -es candidate whose de-doubled stem does not exist', () => {
+    // "buzzes" -es-strips to "buzz" (already a real word on its own, not
+    // doubled-away) and de-doubles to "buz" — neither is in the set, so this
+    // must not produce a false positive.
+    expect(checkComponentNameForBarePluralShadow('buzzes', existingNames)).toBeUndefined();
+  });
+
   test('enumerates directory names from a given root, including one level into experimental/', () => {
     // Hermetic: builds its own temporary component tree rather than asserting
     // on which real components exist, so it never drifts when the real
@@ -460,23 +482,72 @@ describe('check-prop-conventions component-name directory scan', () => {
     // The regression case CIN-105 requires: a NEWLY ADDED bare-plural
     // directory that shadows an existing singular must fail the gate, not
     // just a hand-checked candidate. This drives collectComponentNameShadowViolations
-    // with a synthetic set so it never depends on which real components exist.
-    const violations = collectComponentNameShadowViolations(new Set(['widget', 'widgets']));
+    // with a synthetic set (and an explicit empty namespace-only set, so this
+    // stays fully hermetic) so it never depends on which real components exist.
+    const violations = collectComponentNameShadowViolations(
+      new Set(['widget', 'widgets']),
+      new Set(),
+    );
     expect(violations).toHaveLength(1);
     expect(violations[0]?.candidateName).toBe('widgets');
     expect(violations[0]?.shadowedComponent).toBe('widget');
   });
 
   test('passes a synthetic set with no shadowing pair', () => {
-    expect(collectComponentNameShadowViolations(new Set(['widget', 'gadget']))).toEqual([]);
+    expect(collectComponentNameShadowViolations(new Set(['widget', 'gadget']), new Set())).toEqual(
+      [],
+    );
   });
 
-  test('grandfathers tabs/tab and flags no other pair on the real component tree', () => {
+  test('derives namespace-only singular names from underscore-prefixed directories with matching svelte/types files', () => {
+    // Hermetic: builds its own temporary tree rather than asserting on which
+    // real internal directories exist.
+    const root = mkdtempSync(join(import.meta.dir, '..', 'src', 'components', '.tmp-namespace-'));
+    try {
+      const seed = (dirName: string, fileBaseName: string, extensions: readonly string[]) => {
+        const directory = join(root, dirName);
+        mkdirSync(directory, { recursive: true });
+        for (const extension of extensions)
+          writeFileSync(join(directory, `${fileBaseName}${extension}`), '');
+      };
+
+      seed('_widget', 'widget', ['.svelte', '.types.ts']);
+      // Missing .types.ts: an in-progress internal scaffold must not count.
+      seed('_partial', 'partial', ['.svelte']);
+      // Not underscore-prefixed: irrelevant to this scan.
+      seed('widget-group', 'widget-group', ['.svelte', '.types.ts']);
+
+      const names = namespaceOnlySingularNames(root);
+      expect(names.has('widget')).toBe(true);
+      expect(names.has('partial')).toBe(false);
+      expect(names.has('widget-group')).toBe(false);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a synthetic namespace-only singular is included in the shadow membership set but never scanned as a candidate', () => {
+    // "widget" here stands in for a real case like `_radio`'s `radio`
+    // (exposed as RadioGroup.Option): it is not a public directory, so
+    // existingComponentDirectoryNames() would never discover it, and it is
+    // never itself iterated as a CANDIDATE — but a new "widgets" directory
+    // must still be rejected as a bare plural shadowing it.
+    const violations = collectComponentNameShadowViolations(
+      new Set(['widgets']),
+      new Set(['widget']),
+    );
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.candidateName).toBe('widgets');
+    expect(violations[0]?.shadowedComponent).toBe('widget');
+  });
+
+  test('grandfathers tabs/tab and flags no other pair on the real component tree, including real namespace-only singulars', () => {
     // tabs collects Tab (via Tabs.Trigger) and predates the convention; it
-    // must not fail the gate. This runs against the REAL directory tree, so
-    // it also proves no other existing pair collides — if a new component
-    // were ever added that shadowed an existing singular, this test would
-    // fail alongside `bun run check:prop-conventions`.
+    // must not fail the gate. This runs against the REAL directory tree (and
+    // the real namespace-only singulars, e.g. `_radio`'s `radio`), so it also
+    // proves no other existing pair collides — if a new component were ever
+    // added that shadowed an existing (or namespace-only) singular, this test
+    // would fail alongside `bun run check:prop-conventions`.
     expect(collectComponentNameShadowViolations()).toEqual([]);
   });
 });

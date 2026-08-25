@@ -597,11 +597,15 @@ async function scan(): Promise<PropConventionViolation[]> {
  * in-progress scaffold with only some files written) out of the scan so they
  * cannot produce a false-positive shadow match.
  */
-function isComponentDirectory(directory: string, name: string): boolean {
-  if (name.startsWith('_')) return false;
+function hasComponentFiles(directory: string, name: string): boolean {
   return (
     existsSync(join(directory, `${name}.svelte`)) && existsSync(join(directory, `${name}.types.ts`))
   );
+}
+
+function isComponentDirectory(directory: string, name: string): boolean {
+  if (name.startsWith('_')) return false;
+  return hasComponentFiles(directory, name);
 }
 
 /**
@@ -633,6 +637,35 @@ export function existingComponentDirectoryNames(root: string = componentsDirecto
   return names;
 }
 
+/**
+ * Singular component names that exist only as an internal, non-directory-
+ * shaped implementation exposed through a compound namespace member — e.g.
+ * `_radio/radio.svelte` backs `RadioGroup.Option`, and there is no public
+ * `radio` directory for `existingComponentDirectoryNames()` to discover.
+ * Derived by stripping the leading `_` from a directory whose
+ * underscore-stripped name has `<name>.svelte` + `<name>.types.ts`
+ * siblings — the same file-shape test `isComponentDirectory` uses, minus
+ * the `_`-prefix exclusion.
+ *
+ * These names are never treated as CANDIDATES in
+ * `collectComponentNameShadowViolations` — an `_`-prefixed directory is not
+ * a new top-level component proposal — but they DO belong in the
+ * shadow-comparison membership set, so a new `radios` directory still
+ * shadows the `_radio`-backed singular even though no public `radio`
+ * directory exists.
+ */
+export function namespaceOnlySingularNames(root: string = componentsDirectory): Set<string> {
+  const names = new Set<string>();
+  for (const entry of readdirSync(root, { withFileTypes: true })) {
+    if (!entry.isDirectory() || !entry.name.startsWith('_')) continue;
+    const bareName = entry.name.slice(1);
+    if (!bareName) continue;
+    const directory = join(root, entry.name);
+    if (hasComponentFiles(directory, bareName)) names.add(bareName);
+  }
+  return names;
+}
+
 export type ComponentNameShadowViolation = {
   candidateName: string;
   shadowedComponent: string;
@@ -640,48 +673,66 @@ export type ComponentNameShadowViolation = {
 };
 
 /**
- * A stem ending in x/ch/sh/s/z takes `-es` for its regular plural
- * (`checkbox` → `checkboxes`) or `-ies` for consonant-plus-`y` singulars
- * (`feed-boundary` → `feed-boundaries`), rather than a bare trailing `s`. These are the
- * TWO additional regular-plural shapes handled beyond the plain trailing-`s`
- * strip — still no irregular plurals (`child`/`children`, `datum`/`data`,
- * …), which stay out of scope.
+ * Regular plurals this check recognizes beyond a bare trailing `s`, tried in
+ * this order — the same order `candidateSingulars()` below derives them in:
+ *
+ *   1. `-ies`: a consonant-plus-`y` singular restores its `y`
+ *      (`feed-boundary` → `feed-boundaries`).
+ *   2. `-es` on a stem ending in x/ch/sh/s/z (`checkbox` → `checkboxes`),
+ *      including that same rule's doubled-final-consonant form
+ *      (`quiz` → `quizzes`, not `quizes`).
+ *   3. A plain trailing `s` (`avatar` → `avatars`).
+ *
+ * Irregular plurals (`child`/`children`, `datum`/`data`, …) stay out of
+ * scope regardless of order.
  */
 const ES_PLURAL_STEM_ENDING = /(?:x|ch|sh|s|z)$/;
 
 /**
- * Candidate singular forms to check, in order: the regular `-es` strip when
- * the remaining stem is one that takes `-es` (`checkboxes` → `checkbox`),
- * then the plain trailing-`s` strip (`avatars` → `avatar`). Returns at most
- * three candidates and never the same string twice. Order: the `-ies` → `y`
- * restoration first, then the `-es` strip (x/ch/sh/s/z stems), then the plain
- * trailing-`s` strip.
+ * Candidate singular forms to check, in derivation order: the `-ies` → `y`
+ * restoration first (`feed-boundaries` → `feed-boundary`), then the `-es`
+ * strip on an x/ch/sh/s/z stem (`checkboxes` → `checkbox`) plus its
+ * doubled-final-consonant variant (`quizzes` → `quizz` → `quiz`), then the
+ * plain trailing-`s` strip (`avatars` → `avatar`). Returns each candidate at
+ * most once.
  */
 function candidateSingulars(candidateName: string): string[] {
   const candidates: string[] = [];
+  const pushIfNew = (candidate: string) => {
+    if (!candidates.includes(candidate)) candidates.push(candidate);
+  };
+
   if (candidateName.endsWith('ies')) {
-    const iesStem = `${candidateName.slice(0, -3)}y`;
-    candidates.push(iesStem);
+    pushIfNew(`${candidateName.slice(0, -3)}y`);
   }
   if (candidateName.endsWith('es')) {
     const esStem = candidateName.slice(0, -2);
-    if (ES_PLURAL_STEM_ENDING.test(esStem) && !candidates.includes(esStem)) candidates.push(esStem);
+    if (ES_PLURAL_STEM_ENDING.test(esStem)) {
+      pushIfNew(esStem);
+      // A regular `-es` plural doubles a final consonant before adding the
+      // suffix when the singular itself already ends in that consonant
+      // (`quiz` → `quizzes`, not `quizes`) — try the de-doubled stem too.
+      const lastCharacter = esStem.at(-1);
+      if (esStem.length > 1 && lastCharacter !== undefined && esStem.at(-2) === lastCharacter) {
+        pushIfNew(esStem.slice(0, -1));
+      }
+    }
   }
   if (candidateName.endsWith('s')) {
-    const sStem = candidateName.slice(0, -1);
-    if (!candidates.includes(sStem)) candidates.push(sStem);
+    pushIfNew(candidateName.slice(0, -1));
   }
   return candidates;
 }
 
 /**
- * Checks a candidate NEW component's kebab-case directory name against the
- * existing component directory set. Strips only a trailing `s`, or `-es`
- * when the remaining stem takes the regular `-es` plural (x/ch/sh/s/z) — no
- * irregular-plural handling beyond that — and rejects the candidate when
- * what remains is itself an existing singular component: that shape is a
- * collection name and must be `<singular>-group` (or whatever grouping
- * contract the family's `@purpose` documents), never a bare plural.
+ * Checks a candidate NEW component's kebab-case directory name against a
+ * membership set of existing (and namespace-only) singular names. Tries
+ * `candidateSingulars()`'s derivation order — `-ies` → `y`, then `-es` (with
+ * its doubled-consonant variant), then a plain trailing-`s` strip — no
+ * irregular-plural handling beyond that — and rejects the candidate when any
+ * derived singular is itself in the set: that shape is a collection name and
+ * must be `<singular>-group` (or whatever grouping contract the family's
+ * `@purpose` documents), never a bare plural.
  */
 export function checkComponentNameForBarePluralShadow(
   candidateName: string,
@@ -714,23 +765,31 @@ export function checkComponentNameForBarePluralShadow(
 const GRANDFATHERED_COMPONENT_NAMES = new Set<string>(['tabs']);
 
 /**
- * Scans every existing component directory name against every OTHER existing
- * directory name, so a newly added bare-plural directory that shadows an
- * existing singular component fails `check:prop-conventions` (and therefore
- * `lint:invariants`) immediately — not only when a future new-component
- * candidate is checked by hand.
+ * Scans every existing component directory name (the CANDIDATES) against a
+ * membership set built from those same directory names PLUS
+ * `namespaceOnlySingularNames()` — so a newly added bare-plural directory
+ * that shadows an existing singular component fails `check:prop-conventions`
+ * (and therefore `lint:invariants`) immediately, not only when a future
+ * new-component candidate is checked by hand. Namespace-only singulars
+ * (`_radio`'s `radio`, exposed as `RadioGroup.Option`) are never scanned as
+ * candidates themselves — an `_`-prefixed directory is not a new top-level
+ * component proposal — but they DO belong in the membership set, so e.g. a
+ * new `radios` directory still shadows `radio` even though there is no
+ * public `radio` directory to discover.
  */
 export function collectComponentNameShadowViolations(
-  existingNames: ReadonlySet<string> = existingComponentDirectoryNames(),
+  candidateNames: ReadonlySet<string> = existingComponentDirectoryNames(),
+  namespaceOnlyNames: ReadonlySet<string> = namespaceOnlySingularNames(),
 ): ComponentNameShadowViolation[] {
+  const membershipNames = new Set<string>([...candidateNames, ...namespaceOnlyNames]);
   const violations: ComponentNameShadowViolation[] = [];
-  for (const name of existingNames) {
+  for (const name of candidateNames) {
     if (GRANDFATHERED_COMPONENT_NAMES.has(name)) continue;
     // No self-exclusion needed: every derived singular (trailing-`s`, `-es`,
     // or `-ies`→`y` strip) differs from the original name — the first two are
     // strictly shorter and the `-ies` form swaps its suffix — so
-    // `existingNames.has(singular)` can only ever match some OTHER entry.
-    const violation = checkComponentNameForBarePluralShadow(name, existingNames);
+    // `membershipNames.has(singular)` can only ever match some OTHER entry.
+    const violation = checkComponentNameForBarePluralShadow(name, membershipNames);
     if (violation) violations.push(violation);
   }
   return violations;
