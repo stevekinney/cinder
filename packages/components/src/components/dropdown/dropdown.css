@@ -460,6 +460,11 @@
   .cinder-dropdown__menu[popover] {
     opacity: 0;
     translate: 0 -0.25rem;
+    /* `display`/`overlay` stay at their :popover-open computed values for the
+     full transition (that's what `allow-discrete` buys), so without this the
+     visually-fading-out menu would remain hit-testable and a stray click
+     could still activate an item during teardown. */
+    pointer-events: none;
     transition:
       opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
       translate var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -470,6 +475,7 @@
   .cinder-dropdown__menu[popover]:popover-open {
     opacity: 1;
     translate: 0 0;
+    pointer-events: auto;
   }
 
   @starting-style {

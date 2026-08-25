@@ -265,7 +265,17 @@
   });
 
   const anchoredOverlay = createAnchoredOverlay({
-    open: () => visible || exitState.isClosing,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. Whenever a visible
+    // tooltip closes, `visible` flips `false` in THIS render, one tick
+    // before `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing `positionStyle`/`positionReady`
+    // for a tick before the async Floating UI recomputation restores them —
+    // the retained (`data-cinder-visible`) tooltip would start its fade from
+    // an unpositioned fixed location. `renderPanel` doesn't have this lag.
+    open: () => visible || exitState.renderPanel,
     anchor: () => anchorElement,
     panel: () => tooltipElement,
     placement: () => placement as Placement,

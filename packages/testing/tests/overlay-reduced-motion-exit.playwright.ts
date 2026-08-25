@@ -11,20 +11,28 @@ import { expect, test } from '@playwright/test';
  * zero-duration tokens would never fire. See `_internal/OVERLAY-POLICY.md` §
  * "Transition lifecycle".
  *
- * Navigates to the plain documentation page (`/page/<slug>`, no
- * `?snapshot=1`, no `?view=playground`) and scopes locators to
+ * Popover/Tooltip/HoverCard navigate to the plain documentation page (no
+ * `?snapshot=1`, no `?view=playground`) and scope locators to
  * `#overview-mount-basic` — see the companion
- * `overlay-exit-transition.playwright.ts` (default `chromium` project) for
- * the full reasoning: `?snapshot=1` forces every transition to `0s
- * !important` regardless of the actual `reducedMotion` context (which is
- * exactly what these tests need to be sensitive to), and `?view=playground`
- * either bare-mounts some components with no real content (Tooltip) or
- * behind a stage width that never engages the collapsed-mobile breakpoint
- * (NavigationBar) or a compound-children shape the generic prop synthesizer
- * can't produce (Speed Dial's actions). The Overview preview is always the
- * real example, hydrated and interactive, flowing with the actual page
- * width — same pages as the default-motion project, opposite `reducedMotion`
- * context, genuinely different code paths in both directions now.
+ * `overlay-exit-transition.playwright.ts` for the full reasoning
+ * (`?snapshot=1`/`?view=playground` each defeat this project's purpose or a
+ * specific component's real content in different ways). Tooltip is further
+ * filtered on its example text: the documentation page's own "Copy"
+ * code-block buttons are wired through this same Tooltip component, and
+ * `.first()` previously asserted against that unrelated tooltip instead (CI
+ * run 32795764067, job 97646670185).
+ *
+ * NavigationBar and Speed Dial instead use `?snapshot=1` +
+ * `#example-mount-basic` (the dedicated, isolated, full-width single-example
+ * testing surface used elsewhere in this suite): the Overview preview flows
+ * inside the documentation page's own responsive layout, which never
+ * collapsed to NavigationBar's mobile breakpoint even at a 390px viewport
+ * (CI's `click: Test timeout` on the hidden toggle), and Speed Dial's
+ * actions never appeared there either. Snapshot mode's forced `0s`
+ * transition duration is harmless for both HERE — this project already
+ * expects immediate completion under reduced motion, so there's nothing
+ * these two tests lose by additionally being isolated from the
+ * documentation page's own layout and chrome.
  */
 
 test('Popover unmounts immediately under reduced motion', async ({ page }) => {
@@ -51,7 +59,7 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  const tip = page.locator('.cinder-tooltip').first();
+  const tip = page.locator('.cinder-tooltip', { hasText: 'This is a helpful explanation.' });
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   await page.mouse.move(0, 0);
@@ -77,11 +85,9 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
 
 test('NavigationBar mobile panel hides immediately under reduced motion', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
-
-  const toggle = overview.getByRole('button', { name: 'Open menu' }).first();
+  await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });
+  const example = page.locator('#example-mount-basic');
+  const toggle = example.getByRole('button', { name: 'Open menu' }).first();
   await toggle.click();
 
   const panel = page
@@ -95,11 +101,9 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
 });
 
 test('SpeedDial actions become inert immediately under reduced motion', async ({ page }) => {
-  await page.goto('/page/speed-dial', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
-
-  const toggle = overview.getByRole('button', { name: 'Quick actions' }).first();
+  await page.goto('/page/speed-dial?snapshot=1', { waitUntil: 'load' });
+  const example = page.locator('#example-mount-basic');
+  const toggle = example.getByRole('button', { name: 'Quick actions' }).first();
   await toggle.click();
 
   const actions = page

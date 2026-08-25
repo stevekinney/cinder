@@ -85,8 +85,20 @@
     };
   });
 
+  // Snapshot of the last live virtual anchor OBJECT — not just its
+  // coordinates — so `virtualAnchor` below can return the exact same
+  // reference across a close instead of switching to a newly-constructed
+  // one. `anchored-overlay.svelte.ts`'s positioning effect tracks
+  // `anchor()`'s return value as a reactive dependency: even a
+  // same-coordinates-but-different-object swap makes it tear down and
+  // rebuild (resetting `positionStyle` for a tick before the async Floating
+  // UI recomputation restores it), so a consumer clearing `position` in the
+  // same update that flips `open` false must not trigger a reference change
+  // at all, not just an eventually-equivalent one.
+  let lastVirtualAnchor: VirtualElement | null = null;
+
   const virtualAnchor = $derived.by<VirtualElement | null>(() => {
-    if (!position) return null;
+    if (!position) return lastVirtualAnchor;
 
     // Use the selection height when provided so floating-ui sees the real bottom
     // edge of the selection. Without this, `bottom` equals `top` (zero-height
@@ -94,45 +106,27 @@
     // top is set to `anchor.bottom + offset = position.y + 8` — inside the
     // selection line — causing the observed ~8.5 px overlap (issue #369).
     const selectionHeight = position.height ?? 0;
+    // A plain, already-resolved rect object — not a closure reading
+    // `position.x`/`.y` live — so the anchor stays valid (a fixed rect, not a
+    // reference back to now-null `position`) for as long as this SAME
+    // wrapper object is returned during a close.
+    const rect = {
+      x: position.x,
+      y: position.y,
+      top: position.y,
+      left: position.x,
+      right: position.x,
+      bottom: position.y + selectionHeight,
+      width: 0,
+      height: selectionHeight,
+    } as DOMRect;
 
-    return {
-      getBoundingClientRect: () =>
-        ({
-          x: position.x,
-          y: position.y,
-          top: position.y,
-          left: position.x,
-          right: position.x,
-          bottom: position.y + selectionHeight,
-          width: 0,
-          height: selectionHeight,
-        }) as DOMRect,
-    };
+    const anchor: VirtualElement = { getBoundingClientRect: () => rect };
+    lastVirtualAnchor = anchor;
+    return anchor;
   });
 
   const isPositionedOpen = $derived(open && position != null);
-
-  // Snapshot of the last non-null virtual anchor. A consumer typically clears
-  // `position` to `null` in the same update that flips `open` to `false` (see
-  // selection-popover.examples.json), which would otherwise null out
-  // `virtualAnchor` immediately — and with it, `anchoredOverlay`'s computed
-  // `positionStyle` (anchored-overlay.svelte.ts resets position when its
-  // `anchor()` getter returns null) — the instant the exit transition begins,
-  // making the panel jump to its unpositioned fallback spot mid-fade instead
-  // of fading out in place.
-  //
-  // Materializes a STATIC rect at snapshot time rather than copying
-  // `virtualAnchor`'s own wrapper object: that object's `getBoundingClientRect`
-  // closure reads `position.x`/`position.y` live, at call time — so simply
-  // reassigning the reference would still read through to `position` after
-  // it goes `null`. Calling `getBoundingClientRect()` once here and closing
-  // over the resulting plain object is what actually freezes the coordinates.
-  let lastVirtualAnchor: VirtualElement | null = null;
-  $effect(() => {
-    if (!virtualAnchor) return;
-    const frozenRect = virtualAnchor.getBoundingClientRect();
-    lastVirtualAnchor = { getBoundingClientRect: () => frozenRect };
-  });
 
   const reducedMotion = useReducedMotion();
   // Shared anchored-overlay exit-transition lifecycle (OVERLAY-POLICY.md §
@@ -162,22 +156,18 @@
     // completion callback actually fires, so reading it here in the same
     // tick correctly keeps positioning active.
     open: () => isPositionedOpen || exitState.renderPanel,
-    // Deliberately NOT gated on `exitState.isClosing` either, same reasoning
-    // as above — falling back whenever `virtualAnchor` is null is what
-    // actually avoids the race.
-    //
-    // Note this closes the `!open()` reset branch specifically, but a
-    // narrower gap remains: `virtualAnchor` going `null` is itself a
-    // reactive dependency change, so `anchored-overlay.svelte.ts`'s
-    // positioning effect still tears down and rebuilds once when the anchor
-    // reference switches from the live `virtualAnchor` object to the frozen
-    // `lastVirtualAnchor` fallback below — resetting `positionStyle` for a
-    // tick before the async Floating UI recomputation restores it against
-    // the same frozen rect. Fully closing that would mean keeping `anchor()`
-    // referentially stable across the transition, which would also freeze
-    // out legitimate re-positioning while genuinely open (e.g. a drag
-    // selection moving) — out of scope here.
-    anchor: () => virtualAnchor ?? lastVirtualAnchor,
+    // `virtualAnchor` itself now returns the SAME object reference across a
+    // close (see its own definition above) — no separate `?? lastVirtualAnchor`
+    // fallback needed here, and no reference change at the exact moment
+    // `position` goes null. A narrower gap remains regardless: `open()`
+    // above also reads `isPositionedOpen`, a `$derived` that DOES recompute
+    // when `position` changes, so `anchored-overlay.svelte.ts`'s positioning
+    // effect still reruns once (tearing down/rebuilding) even though its
+    // overall `open()`/`anchor()` results stay valid throughout — fully
+    // closing that would require decoupling the effect's dependency
+    // tracking from `isPositionedOpen`'s own recomputation, out of scope
+    // here.
+    anchor: () => virtualAnchor,
     panel: () => popoverElement,
     placement: () => 'top' as Placement,
     offset: () => 8,

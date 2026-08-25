@@ -1916,18 +1916,20 @@ describe('SelectionPopover', () => {
       // `anchoredOverlay`'s `open()` gate is keyed off `exitState.renderPanel`
       // (already `true` in this same render, unlike `isClosing` which only
       // flips in a later `$effect`), so it never takes its `!open()` reset
-      // branch. A separate, narrower gap remains: `virtualAnchor` going
-      // `null` is still a reactive dependency change, so
-      // `anchored-overlay.svelte.ts`'s positioning effect still tears down
-      // and rebuilds once when the anchor reference switches from the live
-      // `virtualAnchor` object to the frozen `lastVirtualAnchor` fallback —
-      // resetting `positionStyle` for a tick before the async Floating UI
-      // recomputation restores it against the SAME frozen rect. Poll for it
-      // to settle, then assert it converges back to the exact pre-close
-      // rect rather than an unpositioned fallback — this is what "doesn't
-      // jump mid-fade" means in practice: a live read through to the
-      // now-null `position` would instead settle on `left: 0px; top: 0px;`
-      // (or an empty style), never the original coordinates.
+      // branch, and `virtualAnchor` now returns the exact same object
+      // reference across this transition (see its own definition) instead of
+      // switching to a differently-constructed snapshot. A narrower gap
+      // remains even so: `open()`'s closure also reads `isPositionedOpen`,
+      // a `$derived` that DOES recompute when `position`/`open` change —
+      // Svelte still reruns `anchored-overlay.svelte.ts`'s positioning
+      // effect whenever any of its tracked reads is invalidated, regardless
+      // of whether the closure's overall boolean/anchor OUTPUT stayed the
+      // same, so it still tears down and rebuilds once. Poll for it to
+      // settle, then assert it converges back to the exact pre-close rect
+      // (not an unpositioned fallback) — this is what "doesn't jump
+      // mid-fade" means in practice: a live read through to the now-null
+      // `position` would instead settle on `left: 0px; top: 0px;` (or an
+      // empty style), never the original coordinates.
       await waitFor(() => {
         expect(toolbar.getAttribute('style')).toBe(styleBeforeClose);
       });

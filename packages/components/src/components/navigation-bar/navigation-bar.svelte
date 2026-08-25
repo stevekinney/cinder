@@ -120,7 +120,18 @@
     getReducedMotion: () => reducedMotion.current,
   });
   const anchoredItems = createAnchoredOverlay({
-    open: () => mobilePanelOpen || exitState.isClosing,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. On every collapsed-
+    // panel close, `mobilePanelOpen` becomes `false` in THIS render, one
+    // tick before `exitState.sync()` ever runs — so `isClosing` still reads
+    // its pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing the fixed coordinates and
+    // match-anchor width. Because `data-cinder-visible` and the portal
+    // already retain the panel, it would visibly jump/reflow until Floating
+    // UI asynchronously repositions it again. `renderPanel` doesn't have
+    // this lag.
+    open: () => mobilePanelOpen || exitState.renderPanel,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,
@@ -715,7 +726,7 @@
   <div
     {@attach itemsPortalScope}
     class={classNames('cinder-navigation-bar__portal-scope', 'cinder-navigation-bar', className)}
-    style={`display: ${isMobileLayout && mobileMenuOpen ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
+    style={`display: ${isMobileLayout && (mobileMenuOpen || exitState.renderPanel) ? 'block' : 'contents'};${inheritedPortalStyle.style}`}
   >
     <div
       bind:this={itemsRegionElement}

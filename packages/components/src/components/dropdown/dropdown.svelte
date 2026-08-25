@@ -272,6 +272,8 @@
         data-cinder-placement={placement}
         style={`position-anchor: --${menuId};`}
         ontoggle={handlePopoverToggle}
+        aria-hidden={!open ? 'true' : undefined}
+        inert={!open ? true : undefined}
       >
         {#if children}
           {@render children()}

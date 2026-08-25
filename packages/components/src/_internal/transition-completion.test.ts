@@ -58,6 +58,48 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('repeats a shorter duration/delay list CYCLICALLY, per the CSS spec (CIN-376)', () => {
+    // Three properties, only two durations (`100ms, 0ms`) — CSS repeats the
+    // shorter list from the beginning: the third property (index 2)
+    // resolves to `durations[2 % 2] = durations[0] = 100ms`, tracked. The
+    // second property (index 1) resolves to `durations[1] = 0ms`, not
+    // tracked. A "repeat the last value" implementation would instead give
+    // the third property `durations.at(-1) = 0ms` (also not tracked),
+    // wrongly narrowing the tracked set to just the first property.
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'opacity, transform, width',
+          transitionDuration: '100ms, 0ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
+      expect(completionCount).toBe(0);
+
+      element.dispatchEvent(createTransitionEndEvent('width'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('completes on the next microtask when reduced motion is enabled', async () => {
     const element = document.createElement('div');
     document.body.appendChild(element);

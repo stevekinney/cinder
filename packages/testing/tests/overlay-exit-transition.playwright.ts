@@ -43,6 +43,30 @@ import { expect, test } from '@playwright/test';
  * The Overview preview sidesteps both problems: it's always the real example
  * (never bare-mount-synthesized), and it isn't gated behind a fixed stage
  * width — it flows with the actual page/viewport width like ordinary content.
+ *
+ * Two further, CI-confirmed corrections (run 32795764067, job 97646670185):
+ *
+ * - Tooltip: `page.locator('.cinder-tooltip').first()` collided with the
+ *   documentation page's OWN chrome — every code block on the page has a
+ *   "Copy" button wired through this same Tooltip component, whose panel
+ *   ("Copy import") sorts earlier in the DOM than the Overview example's.
+ *   `.first()` silently asserted against that unrelated, permanently-closed
+ *   tooltip instead. Filtered on the actual example text instead of position.
+ * - NavigationBar: the Overview section's live preview flows inside the
+ *   documentation page's own responsive layout (sidebar nav, content
+ *   column), which doesn't collapse to the same width as the outer browser
+ *   viewport — CI's `click: Test timeout` on `getByRole('button', {name:
+ *   'Open menu'})` confirms the toggle never became visible even at a
+ *   390px viewport. Switched to `?snapshot=1` + `#example-mount-basic` (the
+ *   dedicated, isolated, full-width single-example testing surface used
+ *   elsewhere in this suite, e.g. `floating-surface-containment.playwright.ts`)
+ *   instead, which is unaffected by the documentation page's own layout.
+ *   Trade-off: snapshot mode forces every transition duration to `0s`
+ *   (`packages/playground/src/snapshot-mode.ts`), so this specific test can
+ *   no longer prove the exit plays over a REAL, non-zero duration the way
+ *   the other three in this file do — it still proves the panel stays
+ *   mounted/portaled/visible through `data-cinder-closing` before
+ *   unmounting, which is the part snapshot mode doesn't defeat.
  */
 
 test('Popover renders data-cinder-closing during its exit transition, then unmounts', async ({
@@ -74,7 +98,11 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
 
-  const tip = page.locator('.cinder-tooltip').first();
+  // Filtered on the example's actual text, not `.first()`: the documentation
+  // page's own "Copy" code-block buttons are wired through this same
+  // Tooltip component, and their (permanently-closed) panel sorts earlier
+  // in the DOM.
+  const tip = page.locator('.cinder-tooltip', { hasText: 'This is a helpful explanation.' });
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Move away to trigger the hide/close path.
@@ -116,11 +144,9 @@ test('NavigationBar mobile panel plays its exit transition instead of snapping v
   page,
 }) => {
   await page.setViewportSize({ width: 390, height: 844 });
-  await page.goto('/page/navigation-bar', { waitUntil: 'load' });
-  const overview = page.locator('#overview-mount-basic');
-  await expect(overview).toHaveAttribute('data-overview-preview-rendered', '');
-
-  const toggle = overview.getByRole('button', { name: 'Open menu' }).first();
+  await page.goto('/page/navigation-bar?snapshot=1', { waitUntil: 'load' });
+  const example = page.locator('#example-mount-basic');
+  const toggle = example.getByRole('button', { name: 'Open menu' }).first();
   await toggle.click();
 
   const panel = page

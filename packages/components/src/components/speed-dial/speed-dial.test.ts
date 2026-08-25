@@ -246,13 +246,13 @@ describe('SpeedDial', () => {
   });
 
   test('exit helper only tracks properties whose resolved duration+delay is positive', async () => {
-    // The shared `transition-completion.ts` this now delegates to resolves a
-    // shorter duration/delay list against a longer property list by repeating
-    // its LAST value (not CSS's full modulo cycling) — with
-    // `transitionDuration: '150ms, 0ms'` the third property (`width`) also
-    // resolves to 0ms and is therefore not tracked, unlike `transform`
-    // ending up not tracked either. Only `opacity` (150ms) is tracked, so a
-    // single `transitionend` for it completes the exit.
+    // The shared `transition-completion.ts` this now delegates to repeats a
+    // shorter duration/delay list CYCLICALLY against a longer property list,
+    // matching the CSS spec — with `transitionDuration: '150ms, 0ms'` the
+    // third property (`width`, index 2) resolves to `durations[2 % 2] =
+    // durations[0] = 150ms` (tracked), while the second property
+    // (`transform`, index 1) resolves to `durations[1] = 0ms` (not tracked).
+    // Tracked set is `{opacity, width}` — both must fire before completing.
     const action = document.createElement('button');
     document.body.append(action);
     const complete = mock(() => {});
@@ -266,6 +266,42 @@ describe('SpeedDial', () => {
       const cancel = waitForSpeedDialExit(action, false, complete);
 
       dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'width');
+      expect(complete).toHaveBeenCalledTimes(1);
+
+      cancel();
+    } finally {
+      getComputedStyleSpy.mockRestore();
+    }
+  });
+
+  test('exit helper repeats a shorter duration list cyclically against delays (CIN-376)', async () => {
+    // The review's exact scenario: three properties, durations `100ms, 0ms`
+    // (cyclic), delays `0ms, 0ms, 300ms` (one per property, no repeat
+    // needed). The third property's real boundary is
+    // `durations[2 % 2] + delays[2] = 100ms + 300ms = 400ms` — a "repeat the
+    // last value" implementation would instead compute `durations.at(-1) +
+    // delays[2] = 0ms + 300ms = 300ms`, whose `+50` fallback (350ms) would
+    // remove the retained actions surface before the real 400ms transition
+    // ends.
+    const action = document.createElement('button');
+    document.body.append(action);
+    const complete = mock(() => {});
+    const getComputedStyleSpy = mockComputedTransitionStyle((element) => element === action, {
+      transitionDelay: '0ms, 0ms, 300ms',
+      transitionDuration: '100ms, 0ms',
+      transitionProperty: 'opacity, transform, width',
+    });
+
+    try {
+      const cancel = waitForSpeedDialExit(action, false, complete);
+
+      dispatchTransitionBoundary(action, 'transitionend', 'opacity');
+      expect(complete).not.toHaveBeenCalled();
+
+      dispatchTransitionBoundary(action, 'transitionend', 'width');
       expect(complete).toHaveBeenCalledTimes(1);
 
       cancel();

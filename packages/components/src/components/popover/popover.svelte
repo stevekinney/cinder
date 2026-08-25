@@ -207,11 +207,15 @@
     // mid-fade. `resolvedAnchorElement` falls back to the same
     // `lastAnchorElement` snapshot the anchor/positioning already use.
     () => resolvedAnchorElement,
-    // Keep inheriting portal styles through the exit transition too — gating
-    // this purely on the live `open` prop would drop inherited theme tokens
-    // the instant close begins, so a themed-subtree popover would lose its
-    // tokens mid-exit instead of fading out with the correct styling.
-    () => mounted && (open || exitState.isClosing),
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`, for the
+    // same effect-ordering reason as the positioning gate below: `open`
+    // becomes `false` one tick before `exitState.sync()`'s effect can set
+    // `isClosing`, so gating on `isClosing` here would briefly clear the
+    // inherited custom properties/typography/direction/color-scheme while
+    // the panel remains visible. Keeping this active through the exit
+    // transition at all (not just gating it correctly) is what stops a
+    // themed-subtree popover from losing its tokens mid-exit.
+    () => mounted && (open || exitState.renderPanel),
   );
 
   const reducedMotion = useReducedMotion();

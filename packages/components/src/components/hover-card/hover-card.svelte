@@ -88,13 +88,20 @@
   });
 
   const anchoredOverlay = createAnchoredOverlay({
-    // `open || exitState.isClosing` keeps Floating UI positioning the card
-    // while it is fading out — resetting to `open` alone would clear
-    // `positionStyle` (see anchored-overlay.svelte.ts) the instant `open`
-    // goes false, so the still-visible, still-mounted card would jump to its
-    // unpositioned fallback spot mid-transition instead of fading out in
-    // place.
-    open: () => open || exitState.isClosing,
+    // Gated on `exitState.renderPanel`, not `exitState.isClosing`: `$effect`s
+    // (where `exitState.sync()` runs, and where `isClosing` actually flips
+    // true) fire after a render has already committed. On every ordinary
+    // close, `open` becomes `false` in THIS render, one tick before
+    // `exitState.sync()` ever runs — so `isClosing` still reads its
+    // pre-close (false) value here, and `createAnchoredOverlay` would
+    // briefly take its closed path, clearing `positionStyle` (see
+    // anchored-overlay.svelte.ts) for a tick before the async Floating UI
+    // recomputation restores it, so the still-visible, still-mounted card
+    // would jump to its unpositioned fallback spot before fading out in
+    // place. `renderPanel` doesn't have this lag: it's a plain `$state`
+    // that's already `true` from the prior render and isn't reset until the
+    // completion callback actually fires.
+    open: () => open || exitState.renderPanel,
     anchor: () => anchorElement,
     panel: () => cardElement,
     arrow: () => arrowElement,

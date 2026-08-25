@@ -54,6 +54,18 @@ function parseTimeValueList(value: string): number[] {
     .filter((part) => Number.isFinite(part));
 }
 
+/**
+ * Per the CSS spec, when `transition-property`/`transition-duration`/
+ * `transition-delay` lists have different lengths, the SHORTER lists repeat
+ * CYCLICALLY from the beginning — not "hold the last value". E.g. three
+ * properties with only two durations (`100ms, 0ms`) resolve to `100ms, 0ms,
+ * 100ms` for the third property (index 2 % 2 = 0), not `100ms, 0ms, 0ms`.
+ */
+function getRepeatedValue<T>(values: readonly T[], index: number, fallback: T): T {
+  if (values.length === 0) return fallback;
+  return values[index % values.length] ?? fallback;
+}
+
 function getLongestTransitionTime(element: HTMLElement): number {
   const style = window.getComputedStyle(element);
   const durations = parseTimeValueList(style.transitionDuration);
@@ -63,8 +75,8 @@ function getLongestTransitionTime(element: HTMLElement): number {
   let longest = 0;
 
   for (let index = 0; index < count; index += 1) {
-    const duration = durations[index] ?? durations.at(-1) ?? 0;
-    const delay = delays[index] ?? delays.at(-1) ?? 0;
+    const duration = getRepeatedValue(durations, index, 0);
+    const delay = getRepeatedValue(delays, index, 0);
     longest = Math.max(longest, duration + delay);
   }
 
@@ -84,9 +96,9 @@ function getTrackedTransitionProperties(element: HTMLElement): Set<string> | nul
   const trackedProperties = new Set<string>();
 
   for (let index = 0; index < count; index += 1) {
-    const property = properties[index] ?? properties.at(-1) ?? 'all';
-    const duration = durations[index] ?? durations.at(-1) ?? 0;
-    const delay = delays[index] ?? delays.at(-1) ?? 0;
+    const property = getRepeatedValue(properties, index, 'all');
+    const duration = getRepeatedValue(durations, index, 0);
+    const delay = getRepeatedValue(delays, index, 0);
     if (duration + delay <= 0) continue;
     // `transition-property: none` means no property actually transitions,
     // whatever duration/delay a shorthand happens to leave behind — skip it
