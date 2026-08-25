@@ -10,6 +10,12 @@
  *   `createBodyScrollLock()` attachment are gone from the source.
  * - arrow-key navigation (previous/next) and the index-reset-on-reopen
  *   behavior are UNCHANGED from before the migration.
+ * - `.lightbox-content` (not Modal's body wrapper) is the initial-focus
+ *   target, so arrow keys work immediately on open.
+ * - the current image survives the exit transition: navigating then closing
+ *   must not reset the displayed image to clampedInitialIndex until the NEXT
+ *   fresh open, since Modal keeps this component's children mounted for the
+ *   whole exit-transition window.
  */
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
@@ -111,14 +117,54 @@ describe('image-lightbox source contract — Modal composition', () => {
   test('does not use previousOpen $state + $effect write-back to reset currentIndex', () => {
     // Regression: the old code used `let previousOpen = $state(false)` plus an
     // $effect that wrote `previousOpen = open` (state write-back) to detect the
-    // opening transition. The idiomatic replacement uses a $derived `effectiveIndex`
-    // that falls back to `clampedInitialIndex` when no user navigation has occurred,
-    // and resets `navigationIndex` explicitly in close().
+    // opening transition. The current replacement uses a plain (non-`$state`)
+    // flag — `resetAppliedForCurrentSession` — as write-only bookkeeping for a
+    // single effect that reads only `open`, so it never re-triggers itself.
     expect(source).not.toContain('previousOpen = $state(false)');
     expect(source).not.toContain('previousOpen = open');
     expect(source).toContain('navigationIndex');
     expect(source).toContain('clampedInitialIndex');
     expect(source).toContain('effectiveIndex');
+  });
+
+  test('effectiveIndex does not depend on `open`, so the displayed image survives the exit transition', () => {
+    // Regression (CIN-377 review): Modal keeps this component's children
+    // mounted for the full exit-transition window even after `open` has
+    // already flipped to false. effectiveIndex must read ONLY
+    // navigationIndex/clampedInitialIndex — gating it on `open` would reset
+    // the displayed image the instant `open` goes false, visibly snapping
+    // back mid-fade.
+    //
+    // This mechanism can't be proven via a DOM-behavioral test in THIS
+    // harness: happy-dom computes a zero-length CSS transition, so Modal's
+    // `waitForTransitionCompletion` resolves via a queued microtask that any
+    // `await` (including `fireEvent`'s own internal flush) drains, unmounting
+    // the panel before an assertion could run — there is no awaited
+    // checkpoint here where "closing but still mounted" is observable. That
+    // window is real in an actual browser (a non-zero CSS transition keeps
+    // the panel mounted for its duration), so the source-level assertions
+    // below are the guard for this harness; a Playwright test would be
+    // needed to observe the DOM directly mid-fade.
+    expect(source).toContain(
+      'const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);',
+    );
+    expect(source).not.toContain('open ? (navigationIndex ?? clampedInitialIndex)');
+  });
+
+  test('close() and handleModalDismiss() do not reset navigationIndex synchronously', () => {
+    // The reset happens exactly once, on the NEXT fresh open (the effect
+    // above) — not at close time, which would race the exit transition.
+    const closeBody = source.slice(
+      source.indexOf('function close()'),
+      source.indexOf('function handleModalDismiss()'),
+    );
+    expect(closeBody).not.toContain('navigationIndex = null');
+
+    const dismissBody = source.slice(
+      source.indexOf('function handleModalDismiss()'),
+      source.indexOf('function previous()'),
+    );
+    expect(dismissBody).not.toContain('navigationIndex = null');
   });
 });
 
@@ -152,9 +198,11 @@ describe('image-lightbox — behavioral reset on reopen', () => {
 
     // Close the lightbox via its own close button.
     await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    await tick();
 
     // Reopen: must reset to initialIndex (0 → image A), NOT stay on image C.
     await rerender({ images, initialIndex: 0, open: true });
+    await tick();
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
     expect(container.querySelector('.lightbox-counter')?.textContent?.trim()).toBe('1 of 3');
   });
@@ -173,7 +221,9 @@ describe('image-lightbox — behavioral reset on reopen', () => {
 
     // Close and reopen with the same initialIndex=1.
     await fireEvent.click(container.querySelector('[aria-label="Close image viewer"]')!);
+    await tick();
     await rerender({ images, initialIndex: 1, open: true });
+    await tick();
 
     // Must reset to initialIndex=1 (image B), not stay on image C.
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');

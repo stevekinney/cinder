@@ -202,3 +202,60 @@ test.describe('nested overlay — image lightbox inside a Drawer', () => {
     }
   });
 });
+
+test.describe('nested overlay — image lightbox preserves its current image through the exit transition (CIN-377 review)', () => {
+  // Deliberately its own context, NOT `openHarness`: that helper passes
+  // `?snapshot=1` (which zeroes CSS animation durations for screenshot
+  // determinism) and forces `reducedMotion: 'reduce'` — both would collapse
+  // Modal's exit transition to zero length, making `data-cinder-closing`
+  // unobservable mid-flight. This test needs the OPPOSITE: a real,
+  // non-collapsed transition, so it can catch the actual regression (the
+  // displayed image snapping back to the initial one mid-fade instead of
+  // holding the last-navigated image for the whole exit window). Same
+  // pattern as `overlay-exit-transition.playwright.ts`.
+  test('navigating then closing keeps the navigated image visible while data-cinder-closing is set', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({
+      baseURL: PLAYGROUND_URL,
+      colorScheme: 'dark',
+      reducedMotion: 'no-preference',
+      viewport: { width: 1280, height: 900 },
+    });
+    try {
+      const page = await context.newPage();
+      await page.goto(
+        `/page/chat?fixture=private-lightbox-nested-overlay&fixtureContentHash=${FIXTURE_HASH}`,
+        { waitUntil: 'load' },
+      );
+      await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+      const harness = page.locator(HARNESS);
+      await harness.waitFor({ state: 'visible', timeout: 20_000 });
+
+      await harness.getByRole('button', { name: 'Open drawer' }).click();
+      await harness.locator('[data-testid="open-lightbox"]').click();
+      const lightbox = harness.page().locator('dialog.lightbox-modal[open]');
+      await expect(lightbox).toBeVisible();
+
+      // Navigate from the first image to the second.
+      await expect(lightbox.locator('img')).toHaveAttribute('alt', 'First image');
+      await lightbox.getByRole('button', { name: 'Next image' }).click();
+      await expect(lightbox.locator('img')).toHaveAttribute('alt', 'Second image');
+
+      // Close, then immediately assert while the exit transition is still
+      // playing: the panel carries `data-cinder-closing` for the whole exit
+      // window (see OVERLAY-POLICY.md § "Transition lifecycle"), and the
+      // image must still be the one the user navigated to — NOT reset to
+      // the initial image mid-fade.
+      await lightbox.getByRole('button', { name: 'Close image viewer' }).click();
+      const panel = harness.page().locator('.cinder-modal__panel[data-cinder-closing]');
+      await expect(panel).toBeVisible();
+      await expect(panel.locator('img')).toHaveAttribute('alt', 'Second image');
+
+      // And once the exit transition finishes, the panel is gone.
+      await expect(lightbox).toBeHidden();
+    } finally {
+      await context.close();
+    }
+  });
+});

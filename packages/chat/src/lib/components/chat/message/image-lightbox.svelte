@@ -30,22 +30,37 @@
   // navigationIndex is null when no user navigation has occurred in the current
   // open session. effectiveIndex falls back to clampedInitialIndex.
   //
-  // Reset semantics WITHOUT a write-back loop: when the lightbox is closed
-  // (`open === false`) effectiveIndex ignores navigationIndex entirely, so the
-  // displayed index is always clampedInitialIndex while closed — regardless of
-  // how it was closed (the close() button, Escape via Modal, OR a parent
-  // setting `bind:open` false). On the next open, a single guarded $effect
-  // clears the stale navigationIndex so navigation starts fresh from
-  // initialIndex. This effect only writes navigationIndex in response to
-  // `open` (two distinct values), so it is not the read-and-write-back-the-
-  // same-bindable pattern #464 removes.
+  // Preserving the current image through the exit transition: Modal keeps the
+  // lightbox's children mounted for the full exit-transition window (via its
+  // own `SlidingDialogState`/`data-cinder-closing` lifecycle) even after
+  // `open` has already flipped to false — that's what lets the panel fade out
+  // instead of vanishing instantly. effectiveIndex therefore must NOT fall
+  // back to clampedInitialIndex the moment `open` goes false, or the displayed
+  // image would visibly reset mid-fade to whatever the user navigated away
+  // from. So effectiveIndex reads ONLY navigationIndex (falling back to
+  // clampedInitialIndex just when no navigation has happened yet), with no
+  // dependency on `open` at all.
+  //
+  // Reset semantics WITHOUT a write-back loop: navigationIndex is cleared
+  // exactly once per FRESH open (the false→true transition), not on close.
+  // `resetAppliedForCurrentSession` is a plain (non-`$state`) variable — it is
+  // write-only bookkeeping for this effect and nothing else ever reads it, so
+  // it never participates in Svelte's dependency tracking. The effect's only
+  // reactive read is `open`; it writes `navigationIndex` conditionally on
+  // that plain flag, never in a way that would re-trigger itself. This is not
+  // the read-and-write-back-the-same-bindable pattern #464 removes (that
+  // pattern re-wrote a $state the SAME effect also read).
   let navigationIndex = $state<number | null>(null);
-  const effectiveIndex = $derived(
-    open ? (navigationIndex ?? clampedInitialIndex) : clampedInitialIndex,
-  );
+  const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);
+  let resetAppliedForCurrentSession = false;
   $effect(() => {
-    if (!open && navigationIndex !== null) {
-      navigationIndex = null;
+    if (open) {
+      if (!resetAppliedForCurrentSession) {
+        navigationIndex = null;
+        resetAppliedForCurrentSession = true;
+      }
+    } else {
+      resetAppliedForCurrentSession = false;
     }
   });
 
@@ -56,8 +71,12 @@
   // The single path for a lightbox-initiated close (the close button, or a
   // click on the backdrop area around the image). `open` flips first so a
   // thrown onClose callback does not leave the lightbox's reactive state open.
+  // Deliberately does NOT reset navigationIndex here — Modal keeps this
+  // component's children mounted through its exit transition, and resetting
+  // now would visibly snap the displayed image back to clampedInitialIndex
+  // mid-fade. The reset happens exactly once, on the NEXT fresh open (see the
+  // effect above).
   function close() {
-    navigationIndex = null;
     open = false;
     onClose?.();
   }
@@ -66,10 +85,10 @@
   // route through `onDismiss` instead of our `close()` — Modal has already
   // flipped `open` to false by the time this fires, via the coordinated
   // SlidingDialogState lifecycle (focus trap, scroll lock, escape-stack
-  // participation, exit-transition) that Modal owns entirely. We only need to
-  // mirror close()'s bookkeeping: reset navigation state and forward onClose.
+  // participation, exit-transition) that Modal owns entirely. Same as
+  // close(): no navigationIndex reset here either, for the same
+  // preserve-through-the-exit reason.
   function handleModalDismiss() {
-    navigationIndex = null;
     onClose?.();
   }
 
