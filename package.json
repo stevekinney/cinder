@@ -3,6 +3,7 @@
   "private": true,
   "type": "module",
   "workspaces": [
+    "labs/chat-room",
     "packages/components",
     "packages/chat",
     "packages/editor",
