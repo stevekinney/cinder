@@ -10,7 +10,8 @@
     value?: string;
     defaultValue?: string;
     alpha?: boolean;
-    formats?: readonly ('hex' | 'rgb' | 'hsl')[];
+    formats?: readonly ('hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb' | 'oklch')[];
+    format?: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch';
     enterBehavior?: 'commit-then-submit' | 'commit-only';
     onValueChange?: (value: string) => void;
     onsubmit?: (event: SubmitEvent) => void;
@@ -27,6 +28,7 @@
     defaultValue,
     alpha,
     formats,
+    format,
     enterBehavior,
     onValueChange,
     onsubmit,
@@ -39,6 +41,7 @@
     ...(defaultValue !== undefined ? { defaultValue } : {}),
     ...(alpha !== undefined ? { alpha } : {}),
     ...(formats !== undefined ? { formats } : {}),
+    ...(format !== undefined ? { format } : {}),
     ...(enterBehavior !== undefined ? { enterBehavior } : {}),
     ...(onValueChange !== undefined ? { onValueChange } : {}),
   });

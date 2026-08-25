@@ -1,4 +1,4 @@
-import { parseColor } from '../../utilities/color-luminance.ts';
+import { parseCssColor } from '../../utilities/color-format.ts';
 
 export type Hsla = { h: number; s: number; l: number; a: number };
 
@@ -10,8 +10,17 @@ function toHex2(value: number): string {
   return clamp(Math.round(value), 0, 255).toString(16).padStart(2, '0');
 }
 
+// Wraps into [0, 360) without truncating the 359-360 interval. The previous
+// `Math.min(..., 359)` clamp silently rounded any canonical hue between 359
+// and 360 (e.g. 359.34, from #5b0001's HSL projection) down to 359 -- so a
+// value ColorField emitted as `hsl(359.34 100% 17.84%)` came back out of
+// ColorPicker's own round-trip as `hsl(358.68 100% 17.84%)` (a different
+// RGB byte), violating the cross-component round-trip contract. The
+// keyboard hue slider's own `aria-valuemax="359"` is a SEPARATE, intentional
+// UI-affordance concern (see hueFromKeyboard below) and is unaffected by
+// this parse-time normalization.
 function normalizeHue(hue: number): number {
-  return Math.min(((hue % 360) + 360) % 360, 359);
+  return ((hue % 360) + 360) % 360;
 }
 
 function rgbToHsl(r: number, g: number, b: number): Omit<Hsla, 'a'> {
@@ -71,8 +80,14 @@ export function formatHex(
   return withAlpha ? base + toHex2(alpha * 255) : base;
 }
 
+// Parses hex, rgb()/rgba(), hsl()/hsla(), hwb(), and oklch() — legacy comma
+// syntax or the modern space-separated syntax the picker itself emits — via
+// culori's own CSS color parser (parseCssColor in color-format.ts). Without
+// this, an emitted rgb()/hsl()/oklch() value (any non-hex `format`) couldn't
+// be parsed back in: the previous `parseColor` was legacy-comma-only and had
+// no notion of oklch() at all.
 export function parseToHsla(input: string): Hsla | null {
-  const parsed = parseColor(input);
+  const parsed = parseCssColor(input);
   if (!parsed) return null;
   const { h, s, l } = rgbToHsl(parsed.r, parsed.g, parsed.b);
   return { h: normalizeHue(h), s, l, a: parsed.a };

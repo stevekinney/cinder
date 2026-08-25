@@ -108,6 +108,37 @@ describe('ColorField — color picker trigger', () => {
     expect(hue.getAttribute('aria-disabled')).toBe('true');
     expect(onValueChange).not.toHaveBeenCalled();
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b67FF): the embedded
+  // ColorPicker used to stay at its default format="hex" regardless of the
+  // field's own `format`. Any picker-driven commit therefore quantized
+  // alpha to an 8-bit hex byte internally (e.g. an existing `/ 0.5` became
+  // `/ 0.502`) BEFORE handlePickerCommit ever re-parsed and reformatted it
+  // into the field's actual `format` — corrupting the committed precision
+  // even for interactions (like nudging hue) that never touch alpha at all.
+  // The picker now receives the field's `format` directly.
+  test("a picker-driven commit preserves the field value's decimal alpha precision", async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      value: 'rgb(255 0 0 / 0.5)',
+      alpha: true,
+      format: 'rgb',
+      onValueChange,
+    });
+    await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
+    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+
+    // Nudge hue only — alpha should pass through untouched. If the embedded
+    // picker were still hex by default, this alone would already corrupt
+    // 0.5 into ~0.502 via 8-bit byte quantization.
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    await tick();
+
+    expect(onValueChange).toHaveBeenCalled();
+    const committed = onValueChange.mock.calls.at(-1)![0];
+    expect(committed).toMatch(/\/\s*0\.5\)$/);
+  });
 });
 
 describe('ColorField — parse round-trips', () => {
@@ -158,6 +189,97 @@ describe('ColorField — invalid input', () => {
       'Pick a color from the palette.',
     );
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b7zRP): while the field is
+  // already invalid, changing `errorMessage` used to leave the displayed
+  // live-region error (and the native custom-validity message) stale —
+  // the reconciliation effect tracked only `formats`/`format`, not
+  // `errorMessage`, so it didn't rerun until another validation or
+  // formats/format change. `errorMessage` is now tracked explicitly too
+  // (without tracking the draft text itself).
+  test('changing errorMessage while already invalid refreshes the displayed error immediately', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      errorMessage: 'Pick a color from the palette.',
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'nope');
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Pick a color from the palette.',
+    );
+
+    // Parent swaps in a different custom message while still invalid.
+    await rerender({ id: 'color', errorMessage: 'Try a hex code like #336699.' });
+    await tick();
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Try a hex code like #336699.',
+    );
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).not.toContain(
+      'Pick a color from the palette.',
+    );
+
+    // Parent removes the custom message entirely — falls back to the
+    // generated default.
+    await rerender({ id: 'color', errorMessage: undefined } as unknown as Parameters<
+      typeof rerender
+    >[0]);
+    await tick();
+    const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
+    expect(errorText).not.toContain('Try a hex code like #336699.');
+    expect(errorText).toContain('hex');
+  });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b8Ax4): folding `errorMessage`
+  // into the SAME effect that reconciles/commits format-widened drafts (the
+  // previous round's fix for the errorMessage-staleness bug above) meant an
+  // errorMessage-only change also re-ran that reconciliation branch. If the
+  // user had an invalid blur behind them and had since typed a new,
+  // now-valid replacement draft, that draft got silently committed to
+  // `value` (via `seedFromParts`) the moment a parent changed
+  // `errorMessage` — with no blur, no Enter, and no `onValueChange` —
+  // breaking the exact local-draft contract the split was supposed to
+  // protect. The errorMessage-only effect is now fully separate from the
+  // formats/format reconciliation effect: it only ever refreshes the
+  // displayed message, never touches `visibleText`/`value`.
+  test('changing errorMessage while an uncommitted valid draft is in progress does NOT commit the draft', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color',
+      errorMessage: 'Pick a color from the palette.',
+      onValueChange,
+    });
+    const input = getInput(container);
+
+    // Invalid blur first, so parseError is set.
+    await typeAndBlur(input, 'nope');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Type a fully valid replacement WITHOUT blurring — a local draft.
+    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    await tick();
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Parent changes errorMessage while that draft is still uncommitted.
+    await rerender({
+      id: 'color',
+      errorMessage: 'Try a hex code like #336699.',
+      onValueChange,
+    });
+    await tick();
+
+    // The draft must NOT have been silently committed.
+    expect(onValueChange).not.toHaveBeenCalled();
+    expect(input.value).toBe('#ff0000');
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('');
+
+    // Only the next real commit (blur) actually seeds/emits it.
+    await fireEvent.blur(input);
+    await tick();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('#ff0000');
+  });
 });
 
 describe('ColorField — alpha behavior', () => {
@@ -178,6 +300,42 @@ describe('ColorField — alpha behavior', () => {
       expect(hidden.value).toBe(expected);
     });
   }
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b8TF-): an unclamped
+  // out-of-range alpha (above 1 or negative) would let a non-hex `format`
+  // emit `/ 1.5` or `/ -0.5`. parseCssColor now clamps alpha to [0, 1]
+  // regardless of the input string.
+  test('alpha above 1 clamps to fully opaque (rgb format, no alpha suffix)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      alpha: true,
+      format: 'rgb',
+      name: 'c',
+      onValueChange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(255 0 0 / 1.5)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
+
+  test('negative alpha clamps to fully transparent (rgb format)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      alpha: true,
+      format: 'rgb',
+      name: 'c',
+      onValueChange,
+    });
+    const input = getInput(container);
+    await typeAndBlur(input, 'rgb(255 0 0 / -0.5)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0 / 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0 / 0)');
+  });
 });
 
 describe('ColorField — formats gate', () => {
@@ -252,6 +410,90 @@ describe('ColorField — formats gate', () => {
 
     expect(onValueChange.mock.calls[0]?.[0]).toBe('#33b333');
   });
+
+  test('formats=[oklch] accepts an oklch() input string', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['oklch'],
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), 'oklch(0% 0 0)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#000000');
+  });
+});
+
+describe('ColorField — format (output)', () => {
+  test('default format is hex, so existing consumers are unaffected', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
+    await typeAndBlur(getInput(container), '#ff0000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#ff0000');
+  });
+
+  test('format="rgb" emits modern rgb() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'rgb', onValueChange });
+    await typeAndBlur(getInput(container), '#ff0000');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+  });
+
+  test('format="hsl" emits modern hsl() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'hsl', onValueChange });
+    await typeAndBlur(getInput(container), '#0000ff');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hsl(240 100% 50%)');
+  });
+
+  test('format="hwb" emits modern hwb() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'hwb', onValueChange });
+    await typeAndBlur(getInput(container), '#00ff00');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('hwb(120 0% 0%)');
+  });
+
+  test('format="oklch" emits modern oklch() syntax', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', format: 'oklch', onValueChange });
+    await typeAndBlur(getInput(container), '#ffffff');
+    expect(onValueChange.mock.calls[0]?.[0]).toMatch(/^oklch\(/);
+  });
+
+  test('non-hex format with alpha uses slash alpha syntax, alpha=true and a<1', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      format: 'rgb',
+      alpha: true,
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), '#ff000080');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0 / 0.502)');
+  });
+
+  test('alpha=false strips alpha even for non-hex formats', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      format: 'rgb',
+      alpha: false,
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), '#ff000080');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('rgb(255 0 0)');
+  });
+
+  test('formats (input) and format (output) are independent: oklch input, hex output', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      formats: ['oklch'],
+      format: 'hex',
+      onValueChange,
+    });
+    await typeAndBlur(getInput(container), 'oklch(100% 0 0)');
+    expect(onValueChange.mock.calls[0]?.[0]).toBe('#ffffff');
+  });
 });
 
 describe('ColorField — no commit during typing', () => {
@@ -263,6 +505,42 @@ describe('ColorField — no commit during typing', () => {
     await tick();
     expect(onValueChange).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
+  });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b67FB): the formats/format
+  // reconciliation effect used to also (implicitly) track `visibleText`, so
+  // once an invalid blur left `parseError` set, EVERY subsequent keystroke
+  // re-ran it. As soon as the user's in-progress replacement draft became
+  // parseable, it was silently committed — without blur/Enter and without
+  // firing `onValueChange` — breaking the local-draft contract this exact
+  // describe block is about. The effect is now scoped to actual
+  // `formats`/`format` prop changes only (via `void formats; void format;`
+  // plus `untrack` around everything else), so typing alone — even typing
+  // that happens to make the draft valid — can never trigger it.
+  test('typing a valid replacement after an invalid blur does NOT auto-commit before the next blur/Enter', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
+    const input = getInput(container);
+
+    // Commit something invalid first, so parseError is set.
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Now type a fully valid replacement WITHOUT blurring. `formats`/
+    // `format` never changed — this must stay a local, uncommitted draft.
+    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    await tick();
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('');
+
+    // Only the next commit (blur) actually seeds/emits it.
+    await fireEvent.blur(input);
+    await tick();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('#ff0000');
   });
 });
 
@@ -808,6 +1086,57 @@ describe('ColorField — reset honors formats gate', () => {
     // After reset: value still fails formats gate; field clears.
     expect(input.value).toBe('');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b7E8M): the initial value's
+  // syntax can be accepted ONLY because it matches the mount-time `format`
+  // (the configured `format` is always an implicit member of the accepted
+  // set). If `format` later changes, that syntax can drop back out of the
+  // accepted set (when it's absent from `formats`) even though the color
+  // itself was successfully parsed and committed at mount. The old
+  // `resetToInitialValue` re-validated the raw `resetTarget` string against
+  // the CURRENT gate on every reset, so it would clear the field instead of
+  // restoring the originally-accepted color. It now snapshots the
+  // successfully-parsed reset color once at mount and re-emits THAT through
+  // the current `format` on reset, bypassing gate re-validation entirely.
+  test('reset restores the initially-accepted color even after `format` changes it out of the accepted set', async () => {
+    const oklchRed = 'oklch(62.8% 0.2577 29.23)';
+    const { container, rerender } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'oklch',
+    });
+    const input = getInput(container);
+    // Accepted at mount: 'oklch' is the configured `format`, so it's
+    // implicitly admitted even though `formats` only lists 'hex'.
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(input.value).toMatch(/^oklch\(/);
+
+    // Switch `format` to 'rgb' — 'oklch' syntax now drops out of the
+    // accepted set (it's neither in `formats` nor the new `format`).
+    await rerender({
+      id: 'color',
+      name: 'c',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'rgb',
+    });
+    await tick();
+
+    // Dirty the field with something else, then reset.
+    await typeAndBlur(input, '#00ff00');
+    expect(input.value).toBe('rgb(0 255 0)');
+
+    container.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    // Must restore the originally-accepted red — re-emitted in the CURRENT
+    // format ('rgb') — not clear the field.
+    expect(input.value).toBe('rgb(255 0 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
 });
 
 describe('ColorField — default error message reflects formats', () => {
@@ -863,5 +1192,295 @@ describe('ColorField — default error message reflects formats', () => {
     expect(errorText).toContain('hex');
     expect(errorText).not.toContain('rgb');
     expect(errorText).not.toContain('hsl');
+  });
+});
+
+// P1 regression (PR #1420 review): with format="rgb"/"hsl" the field emits
+// modern space-separated syntax, but intake used to delegate to the legacy
+// comma-only parseColor — so pasting the field's own emitted value back in
+// failed to parse. Intake now goes through culori (parseCssColor in
+// color-format.ts) for every format in `formats`. These tests emit in each
+// format, paste the emitted string back into the field, and assert it
+// parses and re-emits identically.
+describe('ColorField — emit/intake round-trip (P1 regression)', () => {
+  const CASES: Array<{ format: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch'; seed: string }> = [
+    { format: 'hex', seed: '#3366cc' },
+    { format: 'rgb', seed: '#3366cc' },
+    { format: 'hsl', seed: '#3366cc' },
+    { format: 'hwb', seed: '#3366cc' },
+    { format: 'oklch', seed: '#3366cc' },
+  ];
+
+  for (const { format, seed } of CASES) {
+    test(`format="${format}": emit → paste into a fresh field → parses and re-emits identically`, async () => {
+      const onValueChange = mock<(value: string) => void>(() => {});
+      const first = render(ColorField, {
+        id: 'color-a',
+        format,
+        formats: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],
+        onValueChange,
+      });
+
+      // First commit: seed a hex value, capture what the field emits in `format`.
+      await typeAndBlur(getInput(first.container, 'color-a'), seed);
+      expect(onValueChange).toHaveBeenCalledTimes(1);
+      const emitted = onValueChange.mock.calls[0]![0];
+      if (format !== 'hex') expect(emitted).not.toMatch(/^#/);
+      first.unmount();
+
+      // Paste the emitted string into a *fresh* field instance (no prior
+      // committed state, so the canonical-display bypass can't shortcut the
+      // parse) — it must parse (no aria-invalid) and commit right back out
+      // to the exact same string.
+      const onValueChangeSecond = mock<(value: string) => void>(() => {});
+      const second = render(ColorField, {
+        id: 'color-b',
+        format,
+        formats: ['hex', 'rgb', 'hsl', 'hwb', 'oklch'],
+        onValueChange: onValueChangeSecond,
+      });
+      const secondInput = getInput(second.container, 'color-b');
+      await typeAndBlur(secondInput, emitted);
+
+      expect(secondInput.getAttribute('aria-invalid')).not.toBe('true');
+      expect(onValueChangeSecond).toHaveBeenCalledTimes(1);
+      expect(onValueChangeSecond.mock.calls[0]![0]).toBe(emitted);
+      second.unmount();
+    });
+  }
+
+  test('format="rgb": a translucent value round-trips through the alpha slash syntax', async () => {
+    const seedChange = mock<(value: string) => void>(() => {});
+    const seed = render(ColorField, {
+      id: 'color-alpha-a',
+      format: 'rgb',
+      alpha: true,
+      onValueChange: seedChange,
+    });
+    await typeAndBlur(getInput(seed.container, 'color-alpha-a'), '#3366cc80');
+    const emitted = seedChange.mock.calls[0]![0];
+    expect(emitted).toMatch(/\//);
+    seed.unmount();
+
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-alpha-b',
+      format: 'rgb',
+      alpha: true,
+      onValueChange,
+    });
+    const input = getInput(container, 'color-alpha-b');
+    await typeAndBlur(input, emitted);
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
+  });
+
+  // Review thread #1 (PR #1420): with format="oklch" and the DEFAULT
+  // `formats` (which doesn't list 'oklch'), the field emitted oklch() but
+  // its own intake allowlist rejected it — the accepted-input set must
+  // always include the configured output `format`, unioned in.
+  test('format="oklch" with default `formats`: the field always accepts its own output', async () => {
+    // No `formats` prop at all — exercises the actual default (which
+    // doesn't list 'oklch'), not an explicit superset.
+    const seedChange = mock<(value: string) => void>(() => {});
+    const seed = render(ColorField, {
+      id: 'color-df-a',
+      format: 'oklch',
+      onValueChange: seedChange,
+    });
+    await typeAndBlur(getInput(seed.container, 'color-df-a'), '#3366cc');
+    expect(seedChange).toHaveBeenCalledTimes(1);
+    const emitted = seedChange.mock.calls[0]![0];
+    expect(emitted).toMatch(/^oklch\(/);
+    seed.unmount();
+
+    // Paste that oklch() string into a *fresh* field (default `formats`,
+    // no prior committed state, so the canonical-display bypass can't
+    // shortcut the parse) — it must be accepted.
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-df-b',
+      format: 'oklch',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-df-b');
+    await typeAndBlur(input, emitted);
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe(emitted);
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b3k24): changing `format` while
+// the user has an uncommitted draft in progress used to invalidate the
+// alpha/config-sync effect (which reads `format` through `emitFor`), and
+// that effect unconditionally overwrote `visibleText` with the reformatted
+// OLD committed color — silently discarding the user's in-progress
+// keystrokes, even though ColorField otherwise keeps intermediate input
+// local until blur/Enter. The effect now only overwrites `visibleText` when
+// it still matches the prior committed mirror (nothing dirty to lose); a
+// draft in progress is preserved, and the new `format` applies naturally at
+// the user's next commit.
+describe('ColorField — format change preserves an in-progress draft (P1 regression)', () => {
+  test('changing `format` mid-typing does not clobber the uncommitted draft text', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container, rerender } = render(ColorField, {
+      id: 'color-draft',
+      value: '#3366cc',
+      format: 'hex',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-draft');
+
+    // User starts typing a replacement but hasn't committed it yet.
+    await fireEvent.input(input, { target: { value: '#123456' } });
+    await tick();
+    expect(input.value).toBe('#123456');
+
+    // Format changes mid-draft — must NOT touch the visible draft text.
+    await rerender({ id: 'color-draft', value: '#3366cc', format: 'rgb', onValueChange });
+    await tick();
+    expect(input.value).toBe('#123456');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Committing now applies the NEW format to whatever the user actually typed.
+    await fireEvent.blur(input);
+    await tick();
+    expect(input.value).toBe('rgb(18 52 86)');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('rgb(18 52 86)');
+  });
+
+  test('changing `format` with no draft in progress DOES reformat the resting (committed) display', async () => {
+    const { container, rerender } = render(ColorField, {
+      id: 'color-no-draft',
+      value: '#3366cc',
+      format: 'hex',
+    });
+    const input = getInput(container, 'color-no-draft');
+    expect(input.value).toBe('#3366cc');
+
+    await rerender({ id: 'color-no-draft', value: '#3366cc', format: 'hsl' });
+    await tick();
+    expect(input.value).toBe('hsl(220 60% 50%)');
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b6r77): a controlled value
+// initially rejected by `formats` can become implicitly accepted once
+// `format` changes (recall `acceptedFormats` always unions in the
+// configured `format`). The "formats runtime change" effect used to only
+// clear `parseError` in that case, leaving `committedRgba`/`committedHex`
+// at their prior (never-seeded) empty state — the field looked valid, but
+// its swatch and hidden form mirror stayed empty until the user typed
+// something and committed again. The effect now reconciles (seeds) the
+// committed state via `seedFromParts` whenever the gate widens.
+describe('ColorField — format switch admits a previously-rejected value (P1 regression)', () => {
+  test('an oklch value rejected under formats=["hex"] + format="hex" is reconciled once format switches to "oklch"', async () => {
+    const oklchRed = 'oklch(62.8% 0.2577 29.23)';
+    const { container, rerender } = render(ColorField, {
+      id: 'color-widen',
+      name: 'widen',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'hex',
+    });
+    const input = getInput(container, 'color-widen');
+
+    // Initially rejected: 'oklch' is neither in `formats` nor the configured
+    // (hex) `format`.
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    let hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="widen"]');
+    expect(hidden.value).toBe('');
+    let swatch = q(container, '.cinder-color-field__swatch');
+    expect(swatch.hasAttribute('data-cinder-empty')).toBe(true);
+
+    // Switching `format` to "oklch" widens the effective accepted-input set
+    // to admit this exact value — the field must reconcile, not just clear
+    // the error.
+    await rerender({
+      id: 'color-widen',
+      name: 'widen',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'oklch',
+    });
+    await tick();
+
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="widen"]');
+    expect(hidden.value).toMatch(/^oklch\(/);
+    expect(input.value).toMatch(/^oklch\(/);
+    swatch = q(container, '.cinder-color-field__swatch');
+    expect(swatch.hasAttribute('data-cinder-empty')).toBe(false);
+  });
+});
+
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b7ntq): the implicit widening
+// that unions the configured `format` into the accepted-input set used to
+// also grant the legacy `rgba()`/`hsla()` alias, because `passesFormatGate`
+// checked "is 'rgb' anywhere in acceptedFormats?" without distinguishing
+// WHY it was there. With `formats={['hex']}` and `format="rgb"`, that meant
+// `rgba()` input was silently accepted too, even though the consumer's
+// `formats` list deliberately excluded it (per the documented "rgba/hsla
+// aliases can be restricted independently" contract). The implicit
+// widening now admits only the configured format's own exact syntax —
+// `explicitFormats` (the `formats` prop's own list, before the `format`
+// union) is what the legacy-alias leniency checks against.
+describe('ColorField — implicit format widening excludes legacy aliases (P1 regression)', () => {
+  test('formats=["hex"] + format="rgb": accepts rgb() (implicit) but rejects rgba() (legacy alias, not explicitly listed)', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-no-alias',
+      formats: ['hex'],
+      format: 'rgb',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-no-alias');
+
+    // The configured format's own exact syntax IS accepted.
+    await typeAndBlur(input, 'rgb(255 0 0)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+
+    onValueChange.mockClear();
+
+    // The legacy alias is NOT — it was never explicitly listed in `formats`.
+    await typeAndBlur(input, 'rgba(0, 255, 0, 0.5)');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
+
+  test('formats=["rgb"] + format="hex": explicitly listing "rgb" still grants the rgba() alias, unaffected by format widening', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-explicit-alias',
+      formats: ['rgb'],
+      format: 'hex',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-explicit-alias');
+
+    // 'rgb' is EXPLICITLY listed in `formats` here (not merely implied by
+    // `format`), so the existing rgb->rgba leniency still applies.
+    await typeAndBlur(input, 'rgba(0, 255, 0, 0.5)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+  });
+
+  test('formats=["hsl"] + format="oklch": explicitly listing "hsl" still grants the hsla() alias', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color-explicit-hsla',
+      formats: ['hsl'],
+      format: 'oklch',
+      onValueChange,
+    });
+    const input = getInput(container, 'color-explicit-hsla');
+
+    await typeAndBlur(input, 'hsla(120, 100%, 50%, 0.5)');
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(onValueChange).toHaveBeenCalledTimes(1);
   });
 });
