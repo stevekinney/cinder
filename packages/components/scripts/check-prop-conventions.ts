@@ -677,8 +677,8 @@ export type ComponentNameShadowViolation = {
  * this order — the same order `candidateSingulars()` below derives them in:
  *
  *   1. `-ies`: a consonant-plus-`y` singular restores its `y`
- *      (`feed-boundary` → `feed-boundaries`).
- *   2. `-es` on a stem ending in x/ch/sh/s/z (`checkbox` → `checkboxes`),
+ *      (`feed-boundaries` → `feed-boundary`).
+ *   2. `-es` on a stem ending in x/ch/sh/s/z (`checkboxes` → `checkbox`),
  *      including that same rule's doubled-final-consonant form
  *      (`quiz` → `quizzes`, not `quizes`).
  *   3. A plain trailing `s` (`avatar` → `avatars`).

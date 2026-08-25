@@ -95,8 +95,9 @@ it) is permitted only as a domain mass noun — a name for a kind of thing, not
 a container of named instances. It is never legal as a collection name: a new
 component that collects instances of an existing singular component must be
 named `<Singular>Group`, not a bare plural of that singular. `check:prop-conventions`
-enforces this mechanically at `lint:invariants` time: it enumerates every
-existing component directory name and scans each one — stripped of a trailing
+enforces this mechanically at `lint:invariants` time for newly introduced
+directories: names present in its frozen inventory snapshot are grandfathered,
+and it scans each new component directory name — stripped of a trailing
 `s`, a regular `-es` (for stems ending in x/ch/sh/s/z, including that rule's
 doubled-final-consonant form, e.g. `quiz` → `quizzes`), `-ies` (restored to
 the consonant-plus-`y` singular), or one of a short, inventory-seeded list of
