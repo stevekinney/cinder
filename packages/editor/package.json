@@ -112,6 +112,8 @@
     "./anchor-decorations": {
       "types": "./dist/anchor-decorations.d.ts",
       "bun": "./src/lib/anchor-decorations.ts",
+      "browser": "./src/lib/anchor-decorations.ts",
+      "svelte": "./src/lib/anchor-decorations.ts",
       "import": "./dist/anchor-decorations.js",
       "default": "./dist/anchor-decorations.js"
     },
