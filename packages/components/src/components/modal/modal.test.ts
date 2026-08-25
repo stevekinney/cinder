@@ -1117,39 +1117,49 @@ describe('Modal chromeless mode (chrome="none")', () => {
 
   test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
-    // Declared on .cinder-modal (so the variables generator collects it into
-    // modal.variables.json/README) AND redeclared directly on
-    // `.cinder-modal::backdrop` — `::backdrop` does not reliably inherit
-    // custom properties from its originating element across engines, so a
-    // declaration on `.cinder-modal` alone would leave the pseudo-element's
-    // own `background-color: var(--cinder-modal-backdrop)` invalid there.
-    //
-    // Both declarations use the SELF-REFERENCING fallback form
-    // (`var(--cinder-modal-backdrop, ...)` on the right-hand side, not a
-    // hard literal) so an ancestor-/`:root`-scoped consumer override isn't
-    // shadowed by this default — see the CSS file's own comments.
+    // Declared on .cinder-modal as a PLAIN (non-self-referencing) reference
+    // to --cinder-overlay-backdrop, purely so the variables generator
+    // collects --cinder-modal-backdrop into modal.variables.json/README.
+    // NOT redeclared on `.cinder-modal::backdrop` at all — the fallback for
+    // that pseudo-element lives on the CONSUMING `background-color`
+    // property instead (see the cyclic-fallback regression test below for
+    // why a redeclaration there would be actively wrong).
     expect(css).toMatch(
-      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-modal-backdrop,\s*var\(--cinder-overlay-backdrop\)\);/s,
+      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
     );
-    expect(css).toMatch(
-      /\.cinder-modal::backdrop\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-modal-backdrop,\s*var\(--cinder-overlay-backdrop\)\);/s,
+    expect(css).toContain(
+      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
     );
-    expect(css).toContain('background-color: var(--cinder-modal-backdrop);');
   });
 
-  test('the --cinder-modal-backdrop default does not shadow an ancestor/:root-scoped override', async () => {
+  test('the --cinder-modal-backdrop fallback is never a self-referencing (cyclic) custom-property declaration', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
-    // Regression: a hard `--cinder-modal-backdrop: var(--cinder-overlay-backdrop);`
-    // redeclare (no self-reference) on EITHER selector would always win the
-    // cascade for that exact box, permanently shadowing a consumer's
-    // ancestor-/:root-scoped override in any engine that would otherwise
-    // have let it inherit through. Neither declaration may be a bare literal.
-    const backdropDefaultBlockStart = css.indexOf('.cinder-modal::backdrop {');
-    const backdropDefaultBlockEnd = css.indexOf('}', backdropDefaultBlockStart);
-    const backdropBlock = css.slice(backdropDefaultBlockStart, backdropDefaultBlockEnd);
-    expect(backdropBlock).not.toContain('--cinder-modal-backdrop: var(--cinder-overlay-backdrop);');
-    expect(backdropBlock).toContain(
+    // Regression: `--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)`
+    // is a CSS custom-property dependency CYCLE — a property referencing
+    // itself in its own declaration — which the spec resolves by making the
+    // property invalid at computed-value time. Cycle detection happens
+    // BEFORE fallback substitution, so the fallback argument does not
+    // rescue it: this form breaks the backdrop for every Modal with no
+    // override at all. An earlier revision of this file made exactly this
+    // mistake trying to avoid shadowing ancestor-scoped overrides; the
+    // correct fix moves the fallback to the CONSUMING property
+    // (`background-color`) instead of self-referencing the declaration.
+    expect(css).not.toContain(
       '--cinder-modal-backdrop: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
+
+    // `.cinder-modal::backdrop` must not declare --cinder-modal-backdrop at
+    // all (a hard literal redeclare there would always win the cascade for
+    // that exact pseudo-element, shadowing an ancestor-/:root-scoped
+    // consumer override in any engine that would otherwise let it inherit
+    // through) — only consume it, with the fallback on the right-hand side
+    // of `background-color`.
+    const backdropRuleStart = css.indexOf('.cinder-modal::backdrop {');
+    const backdropRuleEnd = css.indexOf('}', backdropRuleStart);
+    const backdropRule = css.slice(backdropRuleStart, backdropRuleEnd);
+    expect(backdropRule).not.toContain('--cinder-modal-backdrop:');
+    expect(backdropRule).toContain(
+      'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
     );
   });
 

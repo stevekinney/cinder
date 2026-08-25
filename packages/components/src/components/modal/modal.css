@@ -20,24 +20,31 @@
     max-height: calc(100dvh - var(--cinder-space-8));
     overflow: visible;
 
-    /* Supported override point for the `::backdrop` color (declared here,
-     * not only consumed on `::backdrop`, so the variables generator collects
-     * it into modal.variables.json/README). BECAUSE `::backdrop` does not
-     * reliably inherit custom properties from its originating element across
-     * engines (see the `.cinder-modal::backdrop` rule below), a consumer
-     * override must target BOTH the `class` selector AND that same class's
-     * `::backdrop` pseudo-element — declare `--cinder-modal-backdrop` on
-     * `.my-modal` AND separately on `.my-modal::backdrop` (see
-     * `ImageLightbox`'s `:global(.lightbox-modal)` /
-     * `:global(.lightbox-modal::backdrop)` pair for the real pattern) —
-     * rather than reaching into `.cinder-modal::backdrop` with `:global()`.
-     * `var(--cinder-modal-backdrop, ...)` here (not a hard literal) is
-     * itself a self-referencing fallback: it picks up any ancestor- or
-     * `:root`-scoped `--cinder-modal-backdrop` a consumer set further up the
-     * tree — ordinary DOM inheritance, which `.cinder-modal` (a real
-     * element) receives reliably — rather than shadowing it with a fixed
-     * default. */
-    --cinder-modal-backdrop: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
+    /* Supported override point for the `::backdrop` color. This declaration
+     * exists ONLY so the variables generator collects
+     * `--cinder-modal-backdrop` into modal.variables.json/README — it is a
+     * plain reference to a DIFFERENT variable (`--cinder-overlay-backdrop`),
+     * never to itself. A self-referencing form
+     * (`--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)`)
+     * is a CSS custom-property dependency CYCLE per spec: cycle detection
+     * happens before fallback substitution, so the fallback argument does
+     * NOT rescue it — the property computes to its guaranteed-invalid
+     * value, breaking the backdrop for every Modal with no override at all.
+     * (An earlier revision of this file made exactly that mistake; see the
+     * `::backdrop` rule below for where the real fallback logic lives now.)
+     *
+     * This declaration does not, by itself, reach `::backdrop`'s computed
+     * value — `::backdrop` does not reliably inherit custom properties from
+     * its originating element across engines — so it neither helps nor
+     * defeats a consumer override; it exists purely for the generator. A
+     * consumer override must target BOTH the `class` selector AND that same
+     * class's `::backdrop` pseudo-element directly — declare
+     * `--cinder-modal-backdrop` on `.my-modal` AND separately on
+     * `.my-modal::backdrop` (see `ImageLightbox`'s
+     * `:global(.lightbox-modal)` / `:global(.lightbox-modal::backdrop)`
+     * pair for the real pattern) — rather than reaching into
+     * `.cinder-modal::backdrop` with `:global()`. */
+    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   }
 
   /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
@@ -59,30 +66,33 @@
    * `::backdrop` does NOT reliably inherit custom properties from its
    * originating element across engines (some engines inherit from the
    * dialog, some effectively from the initial containing block/`:root`,
-   * some not at all), so `--cinder-modal-backdrop` is declared again here
-   * directly on the pseudo-element rather than assumed to arrive by
-   * inheritance from `.cinder-modal` above.
+   * some not at all).
    *
-   * `var(--cinder-modal-backdrop, ...)` on the RIGHT-hand side (not a hard
-   * literal redeclare) matters: a hard `--cinder-modal-backdrop: <literal>`
-   * here would ALWAYS win the cascade for this exact pseudo-element,
-   * shadowing an ancestor-/`:root`-scoped override that a given engine DOES
-   * successfully inherit onto `::backdrop` (browsers are inconsistent about
-   * WHICH ancestor `::backdrop` inherits from, not just WHETHER it inherits
-   * at all). Reading the already-inherited value first and only falling
-   * back to the default when nothing set it preserves whichever partial
-   * inheritance path a given engine actually provides, instead of stomping
-   * on it. Only an engine where NEITHER the dialog's nor any ancestor's
-   * `--cinder-modal-backdrop` reaches `::backdrop` falls through to the
-   * literal `--cinder-overlay-backdrop` default here — which is exactly the
-   * failure mode this redeclaration exists to guard against. A consumer
-   * override must still target `::backdrop` directly too — see
-   * `ImageLightbox`'s `:global(.lightbox-modal::backdrop)` rule for the
-   * pattern; a class-scoped override on the element alone would be inert
-   * here for the same reliability reason. */
+   * The fallback lives on the CONSUMING property (`background-color`
+   * below), NOT on a redeclaration of `--cinder-modal-backdrop` itself.
+   * `--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)` looks
+   * like a reasonable "use the inherited value, or fall back" pattern, but
+   * it is a CSS custom-property dependency CYCLE — a property referencing
+   * itself, even guarded by a fallback — which the spec resolves by making
+   * the property invalid at computed-value time (cycle detection happens
+   * BEFORE fallback substitution). That breaks the backdrop for every Modal
+   * with no override at all, which is strictly worse than the reliability
+   * problem this rule exists to solve.
+   *
+   * Declaring NOTHING here for `--cinder-modal-backdrop` and only consuming
+   * it via `var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop))`
+   * is what's actually correct: whatever value the property resolves to for
+   * `::backdrop`'s own scope (inherited from `:root`/an ancestor in
+   * whichever engines route inheritance that way, or from a same-selector
+   * `::backdrop` override, or simply unset) is used as-is, falling back to
+   * `--cinder-overlay-backdrop` only when the property is truly unset/
+   * invalid here. A consumer override must still target `::backdrop`
+   * directly for cross-engine reliability — see `ImageLightbox`'s
+   * `:global(.lightbox-modal::backdrop)` rule for the pattern; a
+   * class-scoped override on the element alone is not reliably visible
+   * here. */
   .cinder-modal::backdrop {
-    --cinder-modal-backdrop: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
-    background-color: var(--cinder-modal-backdrop);
+    background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));
     backdrop-filter: blur(var(--cinder-overlay-blur));
     transition:
       background-color var(--cinder-duration-normal) var(--cinder-ease-standard),
