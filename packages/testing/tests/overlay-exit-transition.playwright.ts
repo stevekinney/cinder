@@ -133,9 +133,12 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   // would pass even with a completely broken generation guard, since
   // they'd just be observing a brand-new, independently-opened card (fresh
   // review evidence). Use the "instant-reopen" example instead
-  // (`openDelay={0}`, `closeDelay={200}`) for that check: once the exit is
-  // confirmed in flight, a reopen resolves in ~0ms, landing comfortably
-  // inside the transition's 120ms window instead of racing it.
+  // (`openDelay={0}`, DEFAULT `closeDelay` — 150ms — left untouched rather
+  // than raised, per review: a fixture shouldn't override a delay just to
+  // buy a test more margin) for that check: once the exit is confirmed in
+  // flight (closing starts at ~150ms, ending at ~270ms), a reopen with
+  // `openDelay={0}` resolves in ~0ms, landing comfortably inside that
+  // window instead of racing it.
   const instantReopenTrigger = page
     .locator('#example-mount-instant-reopen')
     .getByRole('button', { name: 'CIN-99' })

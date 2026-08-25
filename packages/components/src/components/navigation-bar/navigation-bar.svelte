@@ -132,8 +132,8 @@
     // UI asynchronously repositions it again. `renderPanel` doesn't have
     // this lag.
     //
-    // `open()` is `exitState.renderPanel` ALONE, not `mobilePanelOpen ||
-    // exitState.renderPanel`: this callback runs inside
+    // `open()` is `isMobileLayout && exitState.renderPanel`, not
+    // `mobilePanelOpen || exitState.renderPanel`: this callback runs inside
     // `createAnchoredOverlay`'s own positioning `$effect`, so reading the
     // raw `mobilePanelOpen` prop here — even behind an `||` whose overall
     // result doesn't change — still subscribes that effect to
@@ -141,7 +141,21 @@
     // tear down/rebuild on every ordinary close. `renderPanel` alone is
     // stable throughout the open session — see Popover's `anchoredOverlay`
     // for the fuller explanation of this same fix (CIN-376 round 12).
-    open: () => exitState.renderPanel,
+    //
+    // `isMobileLayout` IS explicitly read here, unlike `mobilePanelOpen`:
+    // it's a deliberate, coarse-grained dependency (it only changes on a
+    // breakpoint crossing, not on every open/close), and reading it here is
+    // exactly what makes a breakpoint change torn down immediately. Without
+    // it, resizing to desktop mid-close would leave `renderPanel` still
+    // true (the exit transition hasn't finished), so this callback would
+    // keep returning `true` and `anchoredItems.positionStyle` would keep
+    // applying viewport-fixed mobile coordinates to what is now supposed to
+    // be an inline desktop nav — even though the portal (`itemsPortalScope`
+    // above) already correctly restores it inline and `variant`/
+    // `inheritedPortalStyle` already correctly stop treating it as mobile.
+    // Positioning must tear down in that same step, not lag behind on
+    // `renderPanel` alone.
+    open: () => isMobileLayout && exitState.renderPanel,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,

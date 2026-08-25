@@ -9,7 +9,7 @@
   import { HoverCard } from '@lostgradient/cinder';
 </script>
 
-<HoverCard openDelay={0} closeDelay={200}>
+<HoverCard openDelay={0}>
   {#snippet trigger()}
     <Button variant="ghost">CIN-99</Button>
   {/snippet}
