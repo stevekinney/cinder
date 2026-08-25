@@ -1099,6 +1099,22 @@ describe('Modal chromeless mode (chrome="none")', () => {
     expect(css).toMatch(/\.cinder-modal__body\[data-chrome='none'\]\s*\{[^}]*padding:\s*0;/s);
   });
 
+  test('modal.css disables the shared scroll-fade\'s opaque edge overlay for data-chrome="none"', async () => {
+    // The shared `.cinder-_scroll-fade` recipe fades with an OPAQUE overlay
+    // painted in `--_cinder-scroll-fade-color` (--cinder-surface here) by
+    // design (see _scroll-fade.css's design rules). A chromeless body is
+    // transparent/full-bleed on purpose, with no surface color to fade INTO
+    // — that opaque band would paint a solid stripe across arbitrary
+    // full-bleed content (e.g. an image lightbox's photo). `content: none`
+    // fully suppresses the generated `::after` box; a bare `opacity: 0`
+    // would not be enough, since a running `animation-timeline: scroll()`
+    // keyframe overrides plain `opacity` regardless of source order.
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-modal__body\[data-chrome='none'\]::after\s*\{[^}]*content:\s*none;/s,
+    );
+  });
+
   test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
     // Declared on .cinder-modal (so the variables generator collects it into
@@ -1107,13 +1123,34 @@ describe('Modal chromeless mode (chrome="none")', () => {
     // custom properties from its originating element across engines, so a
     // declaration on `.cinder-modal` alone would leave the pseudo-element's
     // own `background-color: var(--cinder-modal-backdrop)` invalid there.
+    //
+    // Both declarations use the SELF-REFERENCING fallback form
+    // (`var(--cinder-modal-backdrop, ...)` on the right-hand side, not a
+    // hard literal) so an ancestor-/`:root`-scoped consumer override isn't
+    // shadowed by this default — see the CSS file's own comments.
     expect(css).toMatch(
-      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
+      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-modal-backdrop,\s*var\(--cinder-overlay-backdrop\)\);/s,
     );
     expect(css).toMatch(
-      /\.cinder-modal::backdrop\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
+      /\.cinder-modal::backdrop\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-modal-backdrop,\s*var\(--cinder-overlay-backdrop\)\);/s,
     );
     expect(css).toContain('background-color: var(--cinder-modal-backdrop);');
+  });
+
+  test('the --cinder-modal-backdrop default does not shadow an ancestor/:root-scoped override', async () => {
+    const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
+    // Regression: a hard `--cinder-modal-backdrop: var(--cinder-overlay-backdrop);`
+    // redeclare (no self-reference) on EITHER selector would always win the
+    // cascade for that exact box, permanently shadowing a consumer's
+    // ancestor-/:root-scoped override in any engine that would otherwise
+    // have let it inherit through. Neither declaration may be a bare literal.
+    const backdropDefaultBlockStart = css.indexOf('.cinder-modal::backdrop {');
+    const backdropDefaultBlockEnd = css.indexOf('}', backdropDefaultBlockStart);
+    const backdropBlock = css.slice(backdropDefaultBlockStart, backdropDefaultBlockEnd);
+    expect(backdropBlock).not.toContain('--cinder-modal-backdrop: var(--cinder-overlay-backdrop);');
+    expect(backdropBlock).toContain(
+      '--cinder-modal-backdrop: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
+    );
   });
 
   test('coordination (focus trap, scroll lock, escape stack, exit transition) is unchanged in chromeless mode', async () => {
