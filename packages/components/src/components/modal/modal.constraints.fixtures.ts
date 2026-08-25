@@ -59,6 +59,16 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
     violates: 'described-by-non-empty',
   },
 
+  // violates: described-by-non-empty — whitespace-only describedById (PR
+  // #1422 review). `nonEmpty` trims before checking (matching
+  // modal.svelte's runtime `isNonEmptyString` guard on `aria-describedby`
+  // and the generated schema's `pattern: '\\S'` restriction on
+  // `describedById`), so "   " is rejected the same way "" is.
+  {
+    attributes: { title: 'Settings', open: true, children: true, describedById: '   ' },
+    violates: 'described-by-non-empty',
+  },
+
   // violates: accessible-title — title is missing
   {
     attributes: { open: true, children: true },

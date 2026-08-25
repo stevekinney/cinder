@@ -248,6 +248,19 @@
 </script>
 
 {#if mounted}
+  <!--
+    `aria-describedby` below is gated on `isNonEmptyString(describedById)`,
+    not a bare truthiness check (PR #1422 review): a plain empty string is
+    already falsy and excluded either way, but a WHITESPACE-ONLY
+    `describedById` (e.g. "   ") is truthy in JS — a bare `describedById ?
+    ... : {}` would emit `aria-describedby="   "`, referencing an id that
+    cannot exist, even though the `described-by-non-empty` constraint
+    (`nonEmpty`, which also trims) already rejects that same value, and
+    the generated schema now carries a matching `minLength`/`pattern:
+    '\S'` restriction on this prop. Reusing the same guard the
+    title/aria-label nameless-effect below already relies on keeps
+    runtime, constraints, and schema in agreement.
+  -->
   <dialog
     bind:this={dialogElement}
     class={classNames('cinder-modal', className)}
@@ -255,7 +268,7 @@
     aria-modal="true"
     data-cinder-chrome={isChromeless ? 'none' : undefined}
     {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
-    {...describedById ? { 'aria-describedby': describedById } : {}}
+    {...isNonEmptyString(describedById) ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
     onclose={() => dialogState.handleClose()}
     onclick={handleBackdropClick}

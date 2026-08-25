@@ -61,6 +61,15 @@ export interface PropertySchema {
   not?: PropertySchema;
   minimum?: number;
   minItems?: number;
+  // Added for Modal's `describedById` restriction (PR #1422 review): the
+  // `title`/`aria-label` conditional restrictions elsewhere in this file
+  // already emit these two through the loosely-typed `allOf`/`then` escape
+  // hatch (`Record<string, unknown>`, see `ComponentSchemaOutput.allOf`
+  // below) — `describedById`'s restriction is unconditional, though, so it
+  // lives directly on the BASE property object, which needs these two
+  // fields typed here to accept it.
+  minLength?: number;
+  pattern?: string;
   description?: string;
   default?: unknown;
 }
@@ -369,6 +378,25 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
   }
 
   if (componentName !== 'modal') return;
+
+  // `describedById` is optional (never `required` unconditionally), but
+  // WHEN provided it must reference a real id — the constraints sidecar's
+  // `described-by-non-empty` rule already rejects an empty OR
+  // whitespace-only value (`nonEmpty`, which trims) — see
+  // modal.constraints.ts. `type: 'string'` alone lets a schema-driven
+  // consumer (CLI/MCP) pass `describedById: '   '` right past validation,
+  // even though modal.svelte's own runtime guard rejects it too (see that
+  // file's `isNonEmptyString` comment). `minLength: 1` + `pattern: '\S'`
+  // mirror the `title`/`aria-label` restrictions immediately below —
+  // `minLength` alone still lets whitespace-only through, `pattern: '\S'`
+  // requires at least one non-whitespace character, matching
+  // `isNonEmptyString` (trims before checking) and the constraints
+  // sidecar's `nonEmpty` predicate exactly.
+  const describedByIdProperty = schema.properties['describedById'];
+  if (describedByIdProperty) {
+    describedByIdProperty.minLength = 1;
+    describedByIdProperty.pattern = '\\S';
+  }
 
   // `chrome="none"` (the chromeless full-bleed mode) requires `aria-label`
   // since no header/title renders; `chrome="default"` (or omitted, the

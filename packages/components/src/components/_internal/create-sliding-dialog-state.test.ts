@@ -398,6 +398,91 @@ describe('createSlidingDialogState', () => {
     expect(closedCount).toBe(2);
   });
 
+  test('a STALE external close event arriving AFTER a microtask reopen does not tear down the freshly reopened session (PR #1422 review, round 5)', async () => {
+    // Regression: an external close (e.g. a `<form method="dialog">`
+    // submission) has NO entry in `#pendingNativeCloseGenerations` at all —
+    // round 4 treats "no entry" as sufficient to classify an event as
+    // external. But a synchronous MICROTASK reopen (a consumer's
+    // `onClosed` reopening the modal, or any other microtask-scheduled
+    // work) can complete a full `showModal()` cycle before the BROWSER's
+    // own queued TASK for that earlier external close's `close` event ever
+    // gets a turn (tasks run strictly after microtasks). Before this fix,
+    // that now-stale event fell through the staleness check entirely
+    // (external events have `expectedGeneration === undefined`, and the
+    // OLD check only ever compared a DEFINED `expectedGeneration` against
+    // `#closeGeneration`) — so it tore the freshly reopened session down:
+    // released its scroll lock and escape registration, called
+    // `setOpen(false)` on a session the consumer just reopened, and stole
+    // focus back.
+    let open = true;
+    let closedCount = 0;
+    let reopenedFromOnClosed = false;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()`, letting this test control the exact timing
+      // deterministically.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+        if (!reopenedFromOnClosed) {
+          // Simulates a consumer's `onExitComplete` synchronously reopening
+          // the modal from inside the callback itself — a MICROTASK
+          // reopen, well before the browser's own queued TASK for the
+          // external close event (below) gets a turn.
+          reopenedFromOnClosed = true;
+          open = true;
+          dialogState.syncOpenState();
+        }
+      },
+    });
+
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // EXTERNAL close: the browser closes the native dialog directly,
+    // entirely bypassing `requestClose()`/`beginClosing()` —
+    // `#pendingNativeCloseGenerations` has NO entry for this call.
+    dialogElement.close();
+    dialogState.handleClose();
+    expect(open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // Let the deferred report fire — this is the synchronous reopen from
+    // inside `onClosed` (see above). By the time this resolves, the modal
+    // is genuinely open again: `open` is `true` and the native dialog is
+    // `showModal()`-open again.
+    await tick();
+    expect(closedCount).toBe(1);
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+
+    // NOW the STALE external close event for the earlier, superseded close
+    // finally "lands" — simulated by calling `handleClose()` again, exactly
+    // modeling the browser's queued-task-fires-late race. It has no queue
+    // entry either (same as the first call), so without this round's fix
+    // it would be indistinguishable from a genuine current external close.
+    dialogState.handleClose();
+
+    // The fresh reopen must survive: nothing must have been undone.
+    expect(open).toBe(true);
+    expect(dialogElement.open).toBe(true);
+    expect(dialogState.renderPanel).toBe(true);
+
+    // No second report either — the stale event must not have scheduled
+    // anything.
+    await tick();
+    expect(closedCount).toBe(1);
+  });
+
   test('two rapid close→reopen→close cycles each report onClosed exactly once, not twice (PR #1422 review)', async () => {
     // Regression: a single nullable scalar (`#pendingNativeCloseGeneration`,
     // this class's original shape) can only remember the LATEST `.close()`
@@ -603,10 +688,52 @@ describe('createSlidingDialogState', () => {
     // generation guard would NOT catch this (nothing bumped
     // `#closeGeneration`), so it would proceed, find `dialogElement.open`
     // already `false` (this external close set it), and fall into the
-    // "already closed" DEFENSIVE FALLBACK — reporting exit-completion a
-    // SECOND time for a cycle already reported once.
+    // "already closed" fallback — reporting exit-completion a SECOND time
+    // for a cycle already reported once.
+    //
+    // Round 5 review: an EARLIER version of this test called
+    // `dialogState.handleClose()` SYNCHRONOUSLY, right after
+    // `dialogElement.close()` — modeling the native `close` EVENT arriving
+    // immediately. That masked a real ordering bug: a REAL browser
+    // dispatches that event as a QUEUED TASK, which always runs strictly
+    // AFTER any already-queued MICROTASK — including the in-flight
+    // transition's own `queueMicrotask(finish)` completion (reduced
+    // motion, below). So in a real browser, the transition callback
+    // (`#finishClosing`) actually runs BEFORE `handleClose()` ever sees
+    // this external close's event, not after. This version of the test
+    // models that real ordering with a genuine `setTimeout` (a task) for
+    // `handleClose()`, awaited only after the microtask queue has already
+    // drained — exercising the FIX in `#finishClosing()`'s "already
+    // closed" branch (it must NOT report directly there anymore) rather
+    // than the fix in `handleClose()`'s external branch (which only
+    // matters when a transition is genuinely still `isClosing` at event
+    // time, not already finished by it).
     let open = true;
     let closedCount = 0;
+    // Tracks whether the queued TASK (the `setTimeout` below, modeling the
+    // browser's real `close` event) has actually STARTED by the time
+    // `onClosed` fires — a direct, timing-robust proof of ordering. Relying
+    // on `closedCount` alone here would NOT distinguish "reported
+    // correctly, once, from `handleClose()`" from "reported (once)
+    // PREMATURELY from `#finishClosing()`'s old fallback, with the round-4
+    // `#lastReportedGeneration` guard separately suppressing the later,
+    // legitimate `handleClose()`-triggered report as a same-generation
+    // duplicate" — both produce `closedCount === 1` in the end, but only
+    // the first is actually correct. Capturing whether the queued task had
+    // already run makes the two distinguishable regardless of exactly how
+    // many microtask turns either path needs to resolve.
+    // An object wrapper, not a bare `let` (matches the established
+    // workaround elsewhere in this codebase for the same TypeScript
+    // control-flow quirk): TypeScript's control-flow narrowing only sees
+    // the ONE assignment reachable through this outer function's own
+    // linear flow (the declaration's `null` initializer) — a reassignment
+    // inside a nested closure invoked asynchronously later (`onClosed`,
+    // below) isn't part of that traced flow, so a bare `let` here narrows
+    // the read at the bottom of this test to the literal type `null` and
+    // fails to typecheck against `true`. A property read off a bound
+    // identifier is never narrowed this way.
+    const queuedTaskHadRunWhenReported: { current: boolean | null } = { current: null };
+    let queuedTaskHasRun = false;
     const dialogElement = createDialogElement();
     const panelElement = document.createElement('section');
     const dialogState = createSlidingDialogState({
@@ -628,6 +755,7 @@ describe('createSlidingDialogState', () => {
       getTriggerRef: () => null,
       onClosed: () => {
         closedCount += 1;
+        queuedTaskHadRunWhenReported.current = queuedTaskHasRun;
       },
     });
 
@@ -643,28 +771,44 @@ describe('createSlidingDialogState', () => {
     expect(dialogElement.open).toBe(true);
 
     // A native close (e.g. a `<form method="dialog">` submission) lands
-    // MID-TRANSITION, before the queued microtask above has a chance to
-    // run — modeled the same way every native-close test in this file
-    // models the browser's own "close the dialog" steps: the dialog closes
-    // directly, then the wired `close`-event handler runs.
+    // MID-TRANSITION: the browser's own "close the dialog" steps flip
+    // `dialogElement.open` to `false` SYNCHRONOUSLY as part of handling it
+    // — but the `close` EVENT itself (which invokes `handleClose()`) is
+    // queued as a genuine TASK, modeled here with a real `setTimeout`
+    // rather than a direct synchronous call.
     dialogElement.close();
-    dialogState.handleClose();
+    setTimeout(() => {
+      queuedTaskHasRun = true;
+      dialogState.handleClose();
+    }, 0);
 
+    // The dialog is closed, but NOTHING has processed that yet — neither
+    // `handleClose()` (still queued as a task) nor the in-flight
+    // transition's completion (still queued as a microtask) have run.
     expect(dialogElement.open).toBe(false);
     expect(open).toBe(false);
-    expect(dialogState.isClosing).toBe(false);
-    expect(dialogState.renderPanel).toBe(false);
+    expect(dialogState.isClosing).toBe(true);
+    expect(closedCount).toBe(0);
 
-    // Let BOTH the deferred `#reportClosedOnce()` from the external close
-    // AND the in-flight transition's own queued-microtask completion get a
-    // chance to run.
-    await Promise.resolve();
-    await tick();
+    // Let BOTH the microtask queue (the in-flight transition's own
+    // `queueMicrotask(finish)` completion, and — regardless of which path
+    // reports — `#reportClosedOnce()`'s `tick().then(...)` continuation)
+    // AND the queued task (the `setTimeout` above) resolve. A `setTimeout`
+    // await always drains every pending microtask first, so by the time
+    // this resolves, exactly one of the two possible reporting paths has
+    // genuinely fired — proven by `queuedTaskHadRunWhenReported` below,
+    // not merely by the final count.
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
     await tick();
 
-    // Exactly ONE report — the in-flight transition callback must have
-    // become a no-op, not a second `onClosed` fire for the same cycle.
+    // Exactly ONE report — the in-flight transition callback correctly
+    // deferred to `handleClose()` instead of double-reporting itself.
     expect(closedCount).toBe(1);
+    // And it must have fired ONLY after the queued task (the real native
+    // `close` event) had already started running — never from
+    // `#finishClosing()`'s "already closed" branch reporting prematurely,
+    // during the microtask-only phase before that task ever got a turn.
+    expect(queuedTaskHadRunWhenReported.current).toBe(true);
     await tick();
     expect(closedCount).toBe(1);
   });

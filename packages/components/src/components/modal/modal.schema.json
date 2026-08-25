@@ -40,7 +40,9 @@
     },
     "describedById": {
       "type": "string",
-      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only."
+      "description": "When set, applied as aria-describedby on the underlying <dialog>. Pass a short, plain description ID only.",
+      "minLength": 1,
+      "pattern": "\\S"
     }
   },
   "additionalProperties": false,

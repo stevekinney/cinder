@@ -209,6 +209,14 @@ export class SlidingDialogState {
   // see the field's own comment — but the fix is called out here because
   // Round 2 explicitly re-verified it holds under a mixed external/internal
   // sequence, not just repeated-internal cycling (Round 1's original test).
+  //
+  // Round 5 found that an UNMATCHED (external) event is not automatically
+  // safe to process just because it has no queue entry: a microtask reopen
+  // (e.g. a consumer's `onClosed` reopening the modal) can complete —
+  // including a real `showModal()` — before the browser's own queued TASK
+  // for an EARLIER external close (whose event this now is) gets a turn.
+  // Fixed by validating an unmatched event against the dialog's own current
+  // open state below, not merely against the absence of a queue entry.
   handleClose(): void {
     // Shift the OLDEST pending generation off the FIFO queue. Queued native
     // `close` events fire in the same order their `.close()` calls were
@@ -225,30 +233,61 @@ export class SlidingDialogState {
     // `requestClose()`/`beginClosing()`).
     const expectedGeneration = this.#pendingNativeCloseGenerations.shift();
 
-    // Ignore a STALE native `close` event: its queued task can still be
-    // pending after a reopen (via `syncOpenState()`, which a consumer's
-    // `onOpen`/render-driven update can trigger synchronously, or — since
-    // reporting now happens from HERE rather than a microtask — via any
-    // reopen that lands before this task gets a turn) has already moved
-    // `#closeGeneration` past the generation active when `.close()` was
-    // called for THIS entry. Processing it now would call `setOpen(false)`,
-    // undoing that fresh reopen out from under the consumer. By the time a
-    // genuinely current event for THIS generation arrives, the generation
-    // still matches — this comparison is exactly what makes provenance
-    // robust to a mixed external/internal sequence: an entry only ever
-    // resolves against the CURRENT `#closeGeneration` at event time, never
-    // merely by queue position, so an external event landing between two
-    // internal cycles can never be mistaken for either one's own entry (it
-    // finds no entry at all — the queue only ever holds OUR OWN calls'
-    // generations), and one internal cycle's entry can never satisfy a
-    // DIFFERENT cycle's event, however they interleave.
-    if (expectedGeneration !== undefined && expectedGeneration !== this.#closeGeneration) {
-      // The entry for THIS stale event was already consumed by the `shift()`
-      // above — there is nothing further to clear here, and any OTHER
-      // still-pending entries in the queue (from other in-flight close
-      // cycles) are left untouched, so their own eventually-arriving events
-      // still resolve against their own correct generation.
-      return;
+    if (expectedGeneration !== undefined) {
+      // Ignore a STALE INTERNAL native `close` event: its queued task can
+      // still be pending after a reopen (via `syncOpenState()`, which a
+      // consumer's `onOpen`/render-driven update can trigger synchronously,
+      // or — since reporting now happens from HERE rather than a microtask
+      // — via any reopen that lands before this task gets a turn) has
+      // already moved `#closeGeneration` past the generation active when
+      // `.close()` was called for THIS entry. Processing it now would call
+      // `setOpen(false)`, undoing that fresh reopen out from under the
+      // consumer. By the time a genuinely current event for THIS generation
+      // arrives, the generation still matches — this comparison is exactly
+      // what makes provenance robust to a mixed external/internal
+      // sequence: an entry only ever resolves against the CURRENT
+      // `#closeGeneration` at event time, never merely by queue position,
+      // so an external event landing between two internal cycles can never
+      // be mistaken for either one's own entry (it finds no entry at all —
+      // the queue only ever holds OUR OWN calls' generations), and one
+      // internal cycle's entry can never satisfy a DIFFERENT cycle's
+      // event, however they interleave.
+      if (expectedGeneration !== this.#closeGeneration) {
+        // The entry for THIS stale event was already consumed by the
+        // `shift()` above — there is nothing further to clear here, and
+        // any OTHER still-pending entries in the queue (from other
+        // in-flight close cycles) are left untouched, so their own
+        // eventually-arriving events still resolve against their own
+        // correct generation.
+        return;
+      }
+    } else {
+      // An UNMATCHED (external) event — the queue had no entry for it at
+      // all. Round 4 established that "no entry" alone means external
+      // provenance; round 5 found that is NOT enough to rule out
+      // staleness (PR #1422 review): a synchronous MICROTASK reopen (a
+      // consumer's `onClosed` reopening the modal, or any other
+      // microtask-scheduled work) can complete — including a full
+      // `showModal()` — before the browser's own QUEUED TASK for an
+      // earlier external close (whose event this now is) gets a turn.
+      // Processing it as a genuine close would tear down that freshly
+      // reopened session: release the (newly re-acquired) scroll lock and
+      // escape registration, call `setOpen(false)` on a session the
+      // consumer just reopened, and steal focus back via `#returnFocus()`.
+      //
+      // A genuinely CURRENT external close, by definition, left the native
+      // dialog closed — nothing in this class ever reopens synchronously
+      // WITHOUT calling `dialogElement.showModal()` first (see
+      // `syncOpenState()`'s open branch). So `dialogElement.open === true`
+      // at this exact moment is conclusive: a reopen has happened SINCE
+      // this event's own close, making it stale — there is no need to
+      // track a separate "session generation" counter for this, since
+      // `dialogElement.open` already IS that signal in its most direct
+      // form.
+      const dialogElement = this.#options.getDialogElement();
+      if (dialogElement?.open) {
+        return;
+      }
     }
 
     this.#releaseScrollLock?.();
@@ -381,15 +420,32 @@ export class SlidingDialogState {
       dialogElement.close();
       return;
     }
-    // Defensive fallback: every caller of `#finishClosing()` reaches this
-    // point with `dialogElement.open` still `true` in practice (`.close()`
-    // is the only thing that flips it, and nothing else calls it between
-    // `beginClosing()` starting the wait and this method running) — but if
-    // the native dialog were ever ALREADY closed by some other means by
-    // this point, no `close` event is coming at all, so nothing would ever
-    // invoke `handleClose()` to trigger the report. Report directly rather
-    // than leaving the consumer's `onClosed`/mount-gate release stuck
-    // forever waiting for an event that will never arrive.
+    // Reached when the native dialog is ALREADY closed by the time this
+    // runs — typically an EXTERNAL close (a `<form method="dialog">`
+    // submission, or anything else calling `dialogElement.close()` outside
+    // this class's API) raced this in-flight `#finishClosing()` call and
+    // won. `#reportClosedOnce()` is deliberately NOT called directly here
+    // (PR #1422 review, round 5 — reporting order): a REAL browser
+    // dispatches the native `close` EVENT for whatever closed the dialog as
+    // a QUEUED TASK, strictly after this synchronous call returns — that
+    // event is still coming, and `handleClose()` is the unified choke point
+    // for reporting (round 3). Reporting from here instead would race
+    // AHEAD of that event's own scroll-lock/escape release and focus
+    // restoration — exactly the ordering hazard round 3's fix eliminated
+    // for the internal path, reintroduced here for the external one. (An
+    // earlier version of this method DID report directly in this branch;
+    // its own regression test called `handleClose()` synchronously right
+    // after the close, which masked the real task-queue delay and hid this
+    // race — see this file's test suite for the corrected, queued-task
+    // model.) `dialogElement` existing here is what guarantees that event
+    // is genuinely coming, so nothing further needs to happen — leave it
+    // to arrive and let `handleClose()` report.
+    if (dialogElement) return;
+    // No dialog element AT ALL: the one case where no native `close` event
+    // can ever come, because there is no element left to dispatch one from
+    // (a report-directly fallback is still correct here, not merely
+    // defensive — this is the ONLY branch where `handleClose()` could never
+    // be reached for this cycle regardless of provenance).
     this.#reportClosedOnce(generation);
   }
 

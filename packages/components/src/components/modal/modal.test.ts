@@ -52,6 +52,30 @@ const emptySnippet = createRawSnippet(() => ({
   setup: () => {},
 }));
 
+/**
+ * Fires a native `close` event the way a REAL browser genuinely would: the
+ * WHATWG "close the dialog" steps flip `dialogElement.open` to `false`
+ * SYNCHRONOUSLY as part of handling the close, strictly BEFORE the `close`
+ * event itself fires (PR #1422 review — `create-sliding-dialog-state.svelte.ts`'s
+ * `handleClose()` now validates an unmatched/external event against
+ * `dialogElement.open` to detect a STALE event arriving after a reopen; a
+ * dialog still `.open === true` at event time is exactly what makes that
+ * event look stale). A bare `fireEvent(dialog, new Event('close'))` — this
+ * file's previous convention — never actually toggled `.open` at all
+ * (happy-dom does not do this on its own, and dispatching a synthetic
+ * `Event` object doesn't run the browser's native close ALGORITHM), so
+ * `handleClose()` would incorrectly treat every one of these test-fired
+ * events as stale and skip all of its cleanup. `dialog.close()` here is the
+ * `HTMLDialogElement.prototype.close` stub defined above (which does
+ * exactly that attribute toggle); this helper is what makes calling it,
+ * then dispatching the event, the one correct sequence everywhere in this
+ * file that simulates a native close.
+ */
+async function fireNativeClose(dialog: HTMLDialogElement): Promise<void> {
+  dialog.close();
+  await fireEvent(dialog, new Event('close'));
+}
+
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
@@ -633,7 +657,7 @@ describe('Modal', () => {
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
     expect(dialog).not.toBeNull();
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(openValue).toBe(false);
   });
 
@@ -660,7 +684,7 @@ describe('Modal', () => {
     expect(dialog).not.toBeNull();
     // Simulate the browser sequence: Escape keydown → close event on the dialog.
     await fireEvent.keyDown(dialog, { key: 'Escape', code: 'Escape' });
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(openValue).toBe(false);
   });
 
@@ -837,6 +861,28 @@ describe('Modal', () => {
     expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
   });
 
+  test('aria-describedby is absent when describedById is whitespace-only (PR #1422 review)', () => {
+    // Regression: a bare truthiness check (`describedById ? ... : {}`)
+    // treats a whitespace-only string as truthy in JS — it would have
+    // emitted `aria-describedby="   "`, referencing an id that cannot
+    // exist, even though the `described-by-non-empty` constraint
+    // (`nonEmpty`, which trims) already rejects that same value, and the
+    // generated schema's `pattern: '\\S'` restriction on `describedById`
+    // rejects it too. `isNonEmptyString` (the same guard the title/
+    // aria-label nameless-effect already relies on) keeps the runtime in
+    // agreement with both.
+    const { container } = render(Modal, {
+      props: {
+        open: true,
+        title: 'Test Modal',
+        children: emptySnippet,
+        describedById: '   ',
+      },
+    });
+    const dialog = container.querySelector('dialog');
+    expect(dialog?.hasAttribute('aria-describedby')).toBe(false);
+  });
+
   test('onDismiss fires when native cancel event is dispatched (Escape)', async () => {
     let dismissCount = 0;
     let openValue = true;
@@ -975,7 +1021,7 @@ describe('Modal', () => {
     });
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.activeElement).toBe(button);
 
     document.body.removeChild(button);
@@ -1010,7 +1056,7 @@ describe('Modal', () => {
     document.body.removeChild(triggerEl);
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.activeElement).toBe(previouslyFocused);
 
     document.body.removeChild(previouslyFocused);
@@ -1040,7 +1086,7 @@ describe('Modal', () => {
     document.body.removeChild(triggerEl);
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     // No fallback to document.body — focus stays where the dialog left it.
     expect(document.activeElement).not.toBe(triggerEl);
   });
@@ -1063,7 +1109,7 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -1098,11 +1144,11 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const innerDialog = inner.container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(innerDialog, new Event('close'));
+    await fireNativeClose(innerDialog);
     expect(document.body.style.overflow).toBe('hidden');
 
     const outerDialog = outer.container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(outerDialog, new Event('close'));
+    await fireNativeClose(outerDialog);
     expect(document.body.style.overflow).toBe('');
   });
 
@@ -1124,7 +1170,7 @@ describe('Modal', () => {
     expect(document.body.style.overflow).toBe('hidden');
 
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
+    await fireNativeClose(dialog);
     expect(document.body.style.overflow).toBe('');
 
     // Unmount after close — second release MUST be a no-op (it would otherwise
