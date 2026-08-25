@@ -250,6 +250,14 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
         not: {
           required: ['aria-label'],
         },
+        // Mirrors the chromeless branch's aria-label restriction exactly:
+        // `required` alone only checks key presence — { title: '' } or
+        // { title: '   ' } would otherwise validate even though the
+        // constraints sidecar and Modal's own runtime guard both reject an
+        // empty/whitespace-only title as a nameless dialog.
+        properties: {
+          title: { minLength: 1, pattern: '\\S' },
+        },
       },
     });
   });

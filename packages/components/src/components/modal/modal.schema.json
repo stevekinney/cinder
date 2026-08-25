@@ -120,6 +120,12 @@
         "required": ["title"],
         "not": {
           "required": ["aria-label"]
+        },
+        "properties": {
+          "title": {
+            "minLength": 1,
+            "pattern": "\\S"
+          }
         }
       }
     }

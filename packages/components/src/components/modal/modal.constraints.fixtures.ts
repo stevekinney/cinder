@@ -43,6 +43,16 @@ export const invalid: Array<{ attributes: ComponentAttributes; violates: string 
     violates: 'accessible-title',
   },
 
+  // violates: accessible-title — whitespace-only title. `nonEmpty` trims
+  // before checking (matching modal.svelte's runtime `isNonEmptyString`
+  // guard and the generated schema's `pattern: '\\S'` restriction on
+  // `title` in the default-chrome branch), so "   " is rejected the same
+  // way "" is.
+  {
+    attributes: { title: '   ', open: true, children: true },
+    violates: 'accessible-title',
+  },
+
   // violates: described-by-non-empty — empty string for describedById
   {
     attributes: { title: 'Settings', open: true, children: true, describedById: '' },

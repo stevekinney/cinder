@@ -431,6 +431,18 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
         not: {
           required: ['aria-label'],
         },
+        // Same reasoning as the chromeless branch's aria-label restriction
+        // above: `required` alone only checks key presence — `{ title: '' }`
+        // or `{ title: '   ' }` would otherwise validate even though the
+        // constraints sidecar (`accessible-title`) and Modal's own runtime
+        // nameless guard both reject an empty/whitespace-only title.
+        // `minLength: 1` + `pattern: '\\S'` mirror the chromeless branch's
+        // aria-label restriction exactly, matching `isNonEmptyString`
+        // (trims before checking) and the constraints sidecar's `nonEmpty`
+        // predicate (also trims).
+        properties: {
+          title: { minLength: 1, pattern: '\\S' },
+        },
       },
     },
   ];
