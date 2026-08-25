@@ -144,11 +144,22 @@ export class SlidingDialogState {
       return;
     }
     this.renderPanel = false;
-    this.#options.onClosed?.();
+    // `dialogElement.close()` MUST run before `onClosed?.()`, not after.
+    // `close()` synchronously fires the native `close` event, which Modal
+    // wires to `handleClose()` — releasing the scroll lock and escape-stack
+    // hold. `onClosed` forwards to a consumer-supplied callback
+    // (`onExitComplete` on ModalProps); if that callback throws, a throw
+    // from HERE before the close() call would propagate out of
+    // `#finishClosing` with the native dialog never closed and the scroll
+    // lock/escape-stack never released — a throwing consumer callback would
+    // leave the whole page stuck. Calling `close()` first means all of that
+    // cleanup is unconditionally complete before the consumer callback ever
+    // runs, so a throw there cannot block it.
     const dialogElement = this.#options.getDialogElement();
     if (dialogElement?.open) {
       dialogElement.close();
     }
+    this.#options.onClosed?.();
   }
 
   #acquireScrollLock(): void {

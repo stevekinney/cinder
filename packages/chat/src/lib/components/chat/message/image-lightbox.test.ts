@@ -223,8 +223,20 @@ describe('image-lightbox source contract — Modal composition', () => {
     // mounting: false until the first open, clearing again once Modal's
     // exit transition genuinely finishes (via onExitComplete) rather than
     // staying permanently true forever after the first open.
-    expect(source).toContain('let hasOpenedOnce = $state(false);');
     expect(source).toContain('{#if hasOpenedOnce && currentImage}');
+  });
+
+  test('hasOpenedOnce is seeded from `open`, not a hardcoded false (CIN-377 review — SSR contract)', () => {
+    // Regression: $effect never runs on the server, so a hardcoded
+    // `$state(false)` here meant an instance server-rendered with
+    // `open={true}` from the start emitted NO dialog markup during SSR — a
+    // hydration flash, and no content at all for a client that never
+    // hydrates. Seeding from `open` keeps the lazy-mount behavior for the
+    // common initially-closed case (this still evaluates to `false` then)
+    // while making an initially-open instance SSR-correct immediately. See
+    // image-lightbox.ssr.test.ts for the actual server-render proof.
+    expect(source).toContain('let hasOpenedOnce = $state(open);');
+    expect(source).not.toContain('let hasOpenedOnce = $state(false);');
   });
 
   test('mountGeneration forces a full destroy-then-recreate of the Modal instance via {#key}', () => {

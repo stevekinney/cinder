@@ -391,6 +391,85 @@ describe('Modal', () => {
     expect(exitCompleteCount).toBe(1);
   });
 
+  test('a throwing onExitComplete does not block the native dialog from closing or the scroll lock from releasing', async () => {
+    // Regression: `#finishClosing` used to call `onClosed?.()` (which
+    // forwards to this consumer callback) BEFORE `dialogElement.close()`.
+    // A throwing consumer callback would therefore propagate out before the
+    // native `close()` call ever ran — leaving the dialog stuck open in the
+    // top layer, and the scroll lock/escape-stack hold (released by the
+    // native `close` event's own `onclose` handler) never released. The
+    // fix reorders `#finishClosing` to call `close()` first.
+    //
+    // Uses the same real-(non-collapsed)-transition stub as the
+    // "keeps the panel mounted..." test above, and drives completion via an
+    // explicit `dispatchEvent('transitionend')` rather than letting the
+    // reduced-motion queued-microtask path resolve on its own — a throw
+    // from a listener invoked via `dispatchEvent` propagates synchronously
+    // out of that call (matching this harness's behavior), which is what
+    // makes the throw observable/catchable here at all; a throw from a
+    // bare `queueMicrotask` continuation is not something a `try`/`catch`
+    // around the triggering action can intercept.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-modal__panel')) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let openValue = true;
+      const { container } = render(Modal, {
+        props: {
+          get open() {
+            return openValue;
+          },
+          set open(value: boolean) {
+            openValue = value;
+          },
+          title: 'Test Modal',
+          children: emptySnippet,
+          onExitComplete: () => {
+            throw new Error('boom — a throwing consumer callback');
+          },
+        },
+      });
+
+      expect(document.body.style.overflow).toBe('hidden');
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      const closeButton = container.querySelector('.cinder-modal__close') as HTMLButtonElement;
+      await fireEvent.click(closeButton);
+
+      const panel = container.querySelector('.cinder-modal__panel');
+      // `dispatchEvent` follows the DOM spec here (matching real browsers):
+      // an exception thrown inside a listener is reported, not propagated
+      // to the caller — so this does NOT throw, even though
+      // `onExitComplete` (invoked from deep inside this dispatch, via
+      // `waitForTransitionCompletion`'s `finish()` → `#finishClosing`) does.
+      // What this test actually proves is the ORDERING inside
+      // `#finishClosing`: the assertions below only pass if
+      // `dialogElement.close()` (and the scroll-lock/escape-stack release
+      // its native `close` event triggers) ran BEFORE the throwing
+      // callback — which is exactly the fix.
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      // The native dialog is genuinely closed and body scroll is restored —
+      // despite the consumer callback throwing.
+      expect(dialog.hasAttribute('open')).toBe(false);
+      expect(document.body.style.overflow).toBe('');
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('onExitComplete does NOT fire when open flips back to true before the exit transition finishes (reopen during close)', async () => {
     const originalGetComputedStyle = window.getComputedStyle.bind(window);
     window.getComputedStyle = ((target: Element) => {

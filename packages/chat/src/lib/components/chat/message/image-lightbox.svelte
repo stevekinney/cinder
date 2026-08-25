@@ -100,7 +100,18 @@
   // closed <dialog>, SlidingDialogState's effects, and a useReducedMotion
   // MediaQuery subscription alive for the rest of the chat's lifetime, one
   // per message in a long thread (CIN-377 review).
-  let hasOpenedOnce = $state(false);
+  //
+  // Initialized from `open` (NOT a hardcoded `false`): `$effect` never runs
+  // on the server, so a hardcoded `false` here meant an instance rendered
+  // with `open={true}` from the start (a server-rendered "deep link" into
+  // an already-open lightbox, or any consumer that seeds `open` truthy)
+  // emitted NO dialog markup at all during SSR — a hydration flash where
+  // the lightbox pops in only after the client-side effect first runs,
+  // and no content whatsoever for a client that never hydrates. Seeding
+  // from `open` keeps the common lazy case intact (starts `false` for the
+  // overwhelmingly common closed-by-default instance) while making an
+  // initially-open instance SSR-correct from the first render.
+  let hasOpenedOnce = $state(open);
   // Forces the `{#key mountGeneration}` block around <Modal> (below) to
   // fully destroy and recreate on every genuine remount cycle. `{#if}`
   // alone was not reliable here: when `hasOpenedOnce` flips false (exit
