@@ -131,6 +131,7 @@ export function waitForTransitionCompletion({
 }: TransitionCompletionOptions): () => void {
   let completed = false;
   let fallbackTimer: ReturnType<typeof setTimeout> | undefined;
+  let cancelListenerFrame: number | undefined;
 
   const finish = () => {
     if (completed) return;
@@ -140,6 +141,10 @@ export function waitForTransitionCompletion({
     if (fallbackTimer) {
       clearTimeout(fallbackTimer);
       fallbackTimer = undefined;
+    }
+    if (cancelListenerFrame !== undefined) {
+      cancelAnimationFrame(cancelListenerFrame);
+      cancelListenerFrame = undefined;
     }
     onComplete();
   };
@@ -182,7 +187,36 @@ export function waitForTransitionCompletion({
   }
 
   element.addEventListener('transitionend', handleTransitionEnd);
-  if (!ignoreCancel) element.addEventListener('transitioncancel', handleTransitionCancel);
+
+  // Defer attaching `transitioncancel` by one animation frame rather than
+  // listening for it immediately. Closing an element mid-ENTER-transition
+  // retargets the same property to its exit value, which cancels that
+  // in-flight entrance transition — the browser dispatches `transitioncancel`
+  // for it essentially synchronously with the style change that starts this
+  // exit. Since that event's target is this same element, an immediately
+  // attached listener can't tell it apart from a genuine cancellation of the
+  // EXIT itself, and would call `finish()` on the strength of the stale
+  // ENTER's cancellation before the new exit transition has even started —
+  // the retained panel would snap away instead of animating out on a rapid
+  // open-then-close. Waiting a frame lets that leftover event (which fires
+  // before the browser's next rendering opportunity) pass with nothing
+  // listening; only a cancellation that happens genuinely DURING this exit
+  // (a later restyle interrupting it) is caught after that point, and the
+  // fallback timer or `transitionend` still completes things regardless.
+  if (!ignoreCancel) {
+    if (typeof requestAnimationFrame === 'function') {
+      cancelListenerFrame = requestAnimationFrame(() => {
+        cancelListenerFrame = undefined;
+        if (completed) return;
+        element.addEventListener('transitioncancel', handleTransitionCancel);
+      });
+    } else {
+      // No `requestAnimationFrame` (SSR/non-browser environment) — attach
+      // immediately, matching the prior behavior there.
+      element.addEventListener('transitioncancel', handleTransitionCancel);
+    }
+  }
+
   fallbackTimer = setTimeout(finish, totalTransitionTime + 50);
 
   return finish;

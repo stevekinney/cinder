@@ -232,7 +232,7 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
-  test('a transitioncancel on a tracked property completes immediately by default', () => {
+  test('a transitioncancel on a tracked property completes immediately by default, once the exit has had a frame to start (CIN-376 round 11)', async () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
     const originalGetComputedStyle = window.getComputedStyle;
@@ -257,7 +257,57 @@ describe('waitForTransitionCompletion', () => {
         },
       });
 
+      // The `transitioncancel` listener is deliberately deferred by one
+      // animation frame (see the fix below) — before that frame, a cancel
+      // is not observed at all.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
+
       element.dispatchEvent(createTransitionCancelEvent('opacity'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('ignores a transitioncancel from a canceled ENTER transition, arriving before the exit has had a frame to start (CIN-376 round 11)', async () => {
+    // Closing an element mid-ENTER-transition retargets the same property to
+    // its exit value, canceling the in-flight entrance transition — the
+    // browser dispatches `transitioncancel` for it essentially synchronously
+    // with the style change that starts this exit wait. Because that event's
+    // target is this same element, treating it as "the exit already
+    // canceled" would finish() before the exit transition even started,
+    // snapping the panel away instead of animating it out.
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '150ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      // Simulates the leftover cancel of the just-interrupted ENTER
+      // transition, dispatched before the deferred listener attaches.
+      element.dispatchEvent(createTransitionCancelEvent('opacity'));
+      expect(completionCount).toBe(0);
+
+      // The exit's own `transitionend` still completes things normally.
+      element.dispatchEvent(createTransitionEndEvent('opacity'));
       expect(completionCount).toBe(1);
     } finally {
       window.getComputedStyle = originalGetComputedStyle;

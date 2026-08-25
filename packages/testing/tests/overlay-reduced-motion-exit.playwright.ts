@@ -23,10 +23,15 @@ import { expect, test } from '@playwright/test';
  * motion detection regressed and the ordinary ~120ms transition ran
  * instead, a polling assertion would still pass once that transition
  * finished, never actually proving "immediate". Each test instead runs a
- * single `page.evaluate` that awaits exactly one microtask (matching
+ * single `evaluate` (via the SAME locator/handle already resolved earlier in
+ * the test, not a fresh `page.evaluate` global query — see the per-test
+ * comments below) that awaits exactly one microtask (matching
  * `queueMicrotask(finish)`'s own resolution timing) and then reads the DOM
  * directly — a plain boolean assertion on the result, not a locator, so
- * there is no retry window for a slow transition to sneak through.
+ * there is no retry window for a slow transition to sneak through, and no
+ * risk of resolving to a different, already-hidden instance the documentation
+ * page also happens to mount (e.g. the Tooltip/NavigationBar "Examples"
+ * section duplicate mounts, fresh review evidence found this happening).
  *
  * Speed Dial's assertion checks for the element's absence, not
  * `not.toHaveAttribute(...)`: the retained actions surface fully unmounts
@@ -52,9 +57,13 @@ test('Popover unmounts immediately under reduced motion', async ({ page }) => {
 
   await trigger.click();
 
-  const stillPresent = await page.evaluate(async () => {
+  // Check whether the SAME `panel` handle already resolved above is still
+  // connected, not a fresh global query — same wrong-instance risk as
+  // Tooltip/NavigationBar if the documentation page ever mounts a second
+  // Popover example.
+  const stillPresent = await panel.evaluate(async (el) => {
     await Promise.resolve();
-    return document.querySelector('.cinder-popover') !== null;
+    return el.isConnected;
   });
   expect(stillPresent).toBe(false);
 });
@@ -82,10 +91,15 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
 
   await page.mouse.move(0, 0);
 
-  const stillVisible = await page.evaluate(async () => {
+  // Inspect the SAME element `tip` already resolved (via `describedBy`), not
+  // a fresh global `.cinder-tooltip` query: the documentation page mounts a
+  // second, permanently-hidden tooltip in its "Examples" section, and once
+  // the tested Overview tooltip is portaled to the end of `body`, a global
+  // query can resolve to that other instance instead — reporting "hidden"
+  // regardless of whether the ACTIVE tooltip finished immediately.
+  // `Locator#evaluate` passes the exact handle `tip` already identified.
+  const stillVisible = await tip.evaluate(async (el) => {
     await Promise.resolve();
-    const el = document.querySelector('.cinder-tooltip');
-    if (!el) return false;
     return window.getComputedStyle(el).visibility !== 'hidden';
   });
   expect(stillVisible).toBe(false);
@@ -118,9 +132,13 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   // within the poll's window.
   await expect(card).toHaveAttribute('data-cinder-closing', '');
 
-  const stillPresent = await page.evaluate(async () => {
+  // Check whether the SAME element `card` already resolved above is still
+  // connected to the DOM, not a fresh global query for `.cinder-hover-card`
+  // — same wrong-instance risk as Tooltip/NavigationBar if the
+  // documentation page ever mounts a second HoverCard example.
+  const stillPresent = await card.evaluate(async (el) => {
     await Promise.resolve();
-    return document.querySelector('.cinder-hover-card') !== null;
+    return el.isConnected;
   });
   expect(stillPresent).toBe(false);
 });
@@ -144,10 +162,17 @@ test('NavigationBar mobile panel hides immediately under reduced motion', async 
 
   await toggle.click();
 
-  const stillVisible = await page.evaluate(async () => {
+  // Inspect the SAME `panel` handle already resolved above, not a fresh
+  // global query: both the Overview and Examples sections mount the basic
+  // NavigationBar, so opening the Overview instance portals its panel later
+  // in `body` while another closed mobile panel (Examples', never opened)
+  // remains earlier in document order — a global `document.querySelector`
+  // can resolve to that already-hidden sibling and report "hidden"
+  // regardless of whether the panel that was actually toggled finished
+  // immediately. `Locator#evaluate` passes the exact handle `panel` already
+  // identified.
+  const stillVisible = await panel.evaluate(async (el) => {
     await Promise.resolve();
-    const el = document.querySelector('.cinder-navigation-bar__items[data-cinder-mobile-panel]');
-    if (!el) return false;
     return window.getComputedStyle(el).visibility !== 'hidden';
   });
   expect(stillVisible).toBe(false);
