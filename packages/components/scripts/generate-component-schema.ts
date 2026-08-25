@@ -400,6 +400,15 @@ function applyComponentSchemaRules(componentName: string, schema: ComponentSchem
       // eslint-disable-next-line unicorn/no-thenable -- see above.
       [JSON_SCHEMA_THEN_KEYWORD]: {
         required: ['aria-label'],
+        // `required` alone only checks key presence — `{ chrome: 'none',
+        // 'aria-label': '' }` would otherwise validate even though the
+        // constraints sidecar (`chromeless-accessible-label`) rejects the
+        // empty string and Modal's own runtime nameless guard flags it as
+        // an unnamed dialog. `minLength: 1` closes that gap for
+        // schema-driven consumers.
+        properties: {
+          'aria-label': { minLength: 1 },
+        },
       },
     },
     {

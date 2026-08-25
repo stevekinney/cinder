@@ -49,7 +49,16 @@
         lightboxOpen = true;
       }}
     />
-  </Drawer>
 
-  <ImageLightbox {images} bind:open={lightboxOpen} />
+    <!--
+      Rendered INSIDE the Drawer's content, not as a sibling after
+      `</Drawer>` — real `MessageAttachments` renders its ImageLightbox
+      within its own subtree, so the Drawer panel must be a genuine DOM
+      ancestor of the lightbox for this harness to exercise the production
+      nesting it claims to: ancestor `inert` state and focus-containment
+      behavior (especially during the drawer-first close order) only show
+      up when the lightbox is a real descendant, not a sibling.
+    -->
+    <ImageLightbox {images} bind:open={lightboxOpen} />
+  </Drawer>
 </div>

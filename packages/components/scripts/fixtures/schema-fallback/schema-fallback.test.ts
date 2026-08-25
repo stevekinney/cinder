@@ -226,6 +226,13 @@ describe('generate-component-schema — <Name>Props fallback HTML-attribute filt
       if: chromelessCondition,
       [jsonSchemaThenKeyword]: {
         required: ['aria-label'],
+        // `required` alone only checks key presence — { chrome: 'none',
+        // 'aria-label': '' } would otherwise validate even though the
+        // constraints sidecar and Modal's own runtime guard both reject an
+        // empty aria-label as a nameless dialog.
+        properties: {
+          'aria-label': { minLength: 1 },
+        },
       },
     });
     expect(allOf).toContainEqual({

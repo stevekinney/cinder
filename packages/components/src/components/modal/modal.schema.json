@@ -91,7 +91,12 @@
         "required": ["chrome"]
       },
       "then": {
-        "required": ["aria-label"]
+        "required": ["aria-label"],
+        "properties": {
+          "aria-label": {
+            "minLength": 1
+          }
+        }
       }
     },
     {

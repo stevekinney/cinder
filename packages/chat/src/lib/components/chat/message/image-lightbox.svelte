@@ -67,6 +67,24 @@
   // resetAppliedForCurrentSession below.
   let frozenIndex = $state<number | null>(null);
   const effectiveIndex = $derived(frozenIndex ?? navigationIndex ?? clampedInitialIndex);
+  // lastLiveIndex continuously mirrors the live effectiveIndex WHILE open —
+  // this is the fallback freeze's actual source of truth (see the effect
+  // below), not a re-read of navigationIndex/clampedInitialIndex at close
+  // time. That distinction matters for a PARENT-driven close: when a
+  // controlling parent sets `open = false` AND resets `initialIndex` in the
+  // very same reactive update (a common controlled-component pattern), both
+  // prop changes land in the SAME effect flush — by the time our
+  // open-watching effect runs, `clampedInitialIndex` already reflects the
+  // NEW `initialIndex`, so re-deriving from it at that point would freeze
+  // the wrong (post-reset) image. `lastLiveIndex` instead only updates on
+  // flushes where `open` is (still) true, so it holds the value from the
+  // LAST such flush — i.e. whatever was actually visible immediately before
+  // this closing transition began, unaffected by a same-flush prop reset.
+  // (The synchronous close()/handleModalDismiss() capture below remains the
+  // precise mechanism for LIGHTBOX-initiated closes, since it runs before
+  // any effect at all; this is specifically the fallback for a parent-driven
+  // `open = false` that bypasses those functions entirely.)
+  let lastLiveIndex = $state(0);
   let resetAppliedForCurrentSession = false;
   // Lazy mount: `hasOpenedOnce` starts false so an ImageLightbox instance
   // that is never opened (the common case — MessageAttachments renders one
@@ -79,6 +97,7 @@
   let hasOpenedOnce = $state(false);
   $effect(() => {
     if (open) {
+      lastLiveIndex = navigationIndex ?? clampedInitialIndex;
       hasOpenedOnce = true;
       frozenIndex = null;
       if (!resetAppliedForCurrentSession) {
@@ -90,9 +109,11 @@
       // Fallback freeze for a parent-driven `open = false` that doesn't go
       // through close()/handleModalDismiss() at all (no onClose fires for
       // that path, so there's no synchronous capture point to race) — this
-      // is a no-op if already frozen synchronously below.
+      // is a no-op if already frozen synchronously below. Reads
+      // `lastLiveIndex`, NOT a fresh navigationIndex/clampedInitialIndex
+      // recomputation — see the comment on `lastLiveIndex` above for why.
       if (frozenIndex === null) {
-        frozenIndex = navigationIndex ?? clampedInitialIndex;
+        frozenIndex = lastLiveIndex;
       }
     }
   });

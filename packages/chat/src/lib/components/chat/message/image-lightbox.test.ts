@@ -178,6 +178,28 @@ describe('image-lightbox source contract — Modal composition', () => {
     );
   });
 
+  test('the fallback freeze reads lastLiveIndex, not a fresh navigationIndex/clampedInitialIndex recomputation (CIN-377 review)', () => {
+    // Regression: a controlling parent can set `open = false` AND reset
+    // `initialIndex` in the very SAME reactive update — both prop changes
+    // land in the same effect flush. By the time our open-watching effect
+    // runs, `clampedInitialIndex` already reflects the NEW `initialIndex`,
+    // so re-deriving the frozen value from it at that point would freeze
+    // the POST-reset image, not what was visible when closing began.
+    // `lastLiveIndex` is written continuously, only on flushes where `open`
+    // is (still) true — so it holds the value from the LAST such flush,
+    // unaffected by a same-flush prop reset. The fallback freeze in the
+    // `else` branch must read `lastLiveIndex`, not recompute from
+    // navigationIndex/clampedInitialIndex directly.
+    expect(source).toContain('lastLiveIndex = navigationIndex ?? clampedInitialIndex;');
+    const effectBody = source.slice(
+      source.indexOf('$effect(() => {'),
+      source.indexOf('const hasMultiple'),
+    );
+    const elseBranch = effectBody.slice(effectBody.indexOf('} else {'));
+    expect(elseBranch).toContain('frozenIndex = lastLiveIndex;');
+    expect(elseBranch).not.toContain('navigationIndex ?? clampedInitialIndex');
+  });
+
   test('close() and handleModalDismiss() do not reset navigationIndex synchronously', () => {
     // The reset happens exactly once, on the NEXT fresh open (the effect
     // above) — not at close time, which would race the exit transition.
@@ -217,6 +239,30 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     { src: '/b.jpg', alt: 'Image B' },
     { src: '/c.jpg', alt: 'Image C' },
   ];
+
+  test('a same-batch parent-driven close + initialIndex reset still unfreezes correctly on the next fresh open', async () => {
+    // Behavioral regression net for the "capture the index before
+    // parent-driven closes" review thread: a single rerender changes BOTH
+    // `open` (to false) and `initialIndex` together, exactly like a
+    // controlling parent's same-update close+reset. This harness can't
+    // observe the DOM mid-fade (happy-dom collapses Modal's exit transition
+    // instantly — documented elsewhere in this file), so this proves the
+    // surrounding mechanism instead: the freeze/unfreeze cycle survives a
+    // same-batch multi-prop change without getting stuck, and the NEXT
+    // fresh open still picks up the fresh initialIndex correctly.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 1, open: true },
+    });
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image B');
+
+    // Parent-driven: open flips false AND initialIndex resets, together.
+    await rerender({ images, initialIndex: 2, open: false });
+    await tick();
+
+    await rerender({ images, initialIndex: 2, open: true });
+    await tick();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image C');
+  });
 
   test('displayed index resets to initialIndex after close and reopen', async () => {
     const { container, rerender } = render(ImageLightbox, {
