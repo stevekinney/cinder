@@ -48,7 +48,7 @@
 
   /**
    * Normalizes a track-span count (`span`, `rowSpan`). The generated schema
-   * promises `integer, minimum: 1`; the runtime should refuse the same
+   * promises numeric values are `integer, minimum: 1` (strings pass through); the runtime should refuse the same
    * inputs — an empty string, `0`, or a non-integer would otherwise
    * stringify straight onto the element (e.g. `grid-column-end: span `,
    * `span 0`, or `span 1.5`), none of which are valid CSS.
