@@ -1244,6 +1244,72 @@ describe('Popover — floating-ui wiring', () => {
     expect(queryPopoverPanel()).toBeNull();
   });
 
+  test('a reopen after the exit completes does not retain a stale prior-session position (CIN-376 round 19)', async () => {
+    // Regression guard: `lastPositionStyle` (the retained-position snapshot
+    // that lets a closing panel keep its coordinates through
+    // `createAnchoredOverlay`'s cleanup, so it fades in place instead of
+    // jumping to `left: 0; top: 0`) was never cleared by `onClosed` — so
+    // after one normally positioned session, a LATER session that closes
+    // before its own first `computePosition` ever resolves would still see
+    // `resolvedPositionStyle` (and `data-cinder-has-position`, which trusts
+    // it as proof of a valid CURRENT position) as non-empty, forcing the
+    // closing panel visible at the PREVIOUS session's stale coordinates
+    // instead of correctly staying hidden (an early close, never
+    // positioned, has nothing valid to fade from).
+    const triggerButton = document.createElement('button');
+    triggerButton.type = 'button';
+    attachScratch(triggerButton);
+
+    let openValue = true;
+    const { rerender } = render(Popover, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        triggerRef: triggerButton,
+        children: textSnippet('content'),
+      },
+    });
+
+    // First session: computePosition resolves normally, positioning the panel.
+    await waitFor(() => {
+      const panel = queryPopoverPanel();
+      expect(panel?.getAttribute('data-cinder-position-ready')).toBe('true');
+    });
+    expect(queryPopoverPanel()?.hasAttribute('data-cinder-has-position')).toBe(true);
+
+    // Close and let the exit fully complete (onClosed fires).
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => expect(queryPopoverPanel()).toBeNull());
+
+    // Second session: computePosition never resolves before the close.
+    deferComputePosition = true;
+    openValue = true;
+    await rerender({ open: true, triggerRef: triggerButton, children: textSnippet('content') });
+    await waitFor(() => {
+      const panel = queryPopoverPanel();
+      expect(panel).not.toBeNull();
+      expect(panel?.getAttribute('data-cinder-position-ready')).toBe('false');
+    });
+    // Never positioned this session — no stale carry-over from the last one.
+    expect(queryPopoverPanel()?.hasAttribute('data-cinder-has-position')).toBe(false);
+
+    openValue = false;
+    await rerender({ open: false, triggerRef: triggerButton, children: textSnippet('content') });
+
+    // The panel may still be briefly retained for its exit, but must not
+    // carry the PREVIOUS session's position forward as if it were valid.
+    const panel = queryPopoverPanel();
+    if (panel) {
+      expect(panel.hasAttribute('data-cinder-has-position')).toBe(false);
+      expect(panel.getAttribute('style') ?? '').not.toContain('left:');
+    }
+  });
+
   test('retains inherited portal-style tokens through the exit when the trigger ref is un-supplied while closing (CIN-376)', async () => {
     // Regression guard: `createInheritedPortalStyle`'s source used to read
     // the live `anchorElement`, which goes `null` the instant a controlled

@@ -272,9 +272,21 @@
     // though the open-lifecycle effect below correctly refuses to register
     // Escape or manage focus for it (it's gated on the live `anchorElement`,
     // not this fallback).
+    // `lastPositionStyle` is cleared here too (CIN-376 round 19 review),
+    // for the same reason as the anchor/portal-target snapshots above: a
+    // LATER session (a moved or replaced trigger, or the same trigger
+    // repositioned) that closes before its own first `computePosition`
+    // ever resolves would otherwise fall back to the PREVIOUS session's
+    // stale position — `resolvedPositionStyle` would look valid (non-empty)
+    // and `data-cinder-has-position` would stay set, so the closing CSS
+    // would force the panel visible and fade it out at coordinates that
+    // belonged to a different session entirely, not simply hide it (which
+    // is the correct behavior for a session that was never genuinely
+    // positioned).
     onClosed: () => {
       lastAnchorElement = null;
       lastResolvedPortalTarget = null;
+      lastPositionStyle = '';
     },
   });
 
