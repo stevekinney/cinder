@@ -1,23 +1,52 @@
-/** Accepted *input* color string formats. Output is always hex. */
-export type ColorFieldFormat = 'hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb';
+/** Accepted *input* color string formats. */
+export type ColorFieldFormat = 'hex' | 'rgb' | 'rgba' | 'hsl' | 'hsla' | 'hwb' | 'oklch';
+
+/** Output color format for the emitted/committed value. `lab` is deliberately excluded. */
+export type ColorFieldOutputFormat = 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch';
 
 /** Props for ColorField. */
 export type ColorFieldProps = {
   /** Inner `<input>` id. Required (mirrors Input). */
   id: string;
   /**
-   * Bindable value as a hex string. Accepts any color string the configured
-   * `formats` allow when set externally.
+   * Bindable value, committed in the syntax the configured `format` prop
+   * selects (plain hex by default; modern CSS Color 4 syntax for the other
+   * formats — see `format`). Accepts any color string the configured
+   * `formats` allow when set externally, plus whatever syntax `format`
+   * itself uses (see `formats` below — the configured output format is
+   * always an implicitly accepted input format too).
    */
   value?: string;
   /**
    * Accept and emit alpha when the parsed value has partial alpha. When
-   * `false` (default), `#RRGGBBAA` and `rgba()`/`hsla()` inputs are parsed
-   * but alpha is stripped on emit.
+   * `false` (default), alpha-bearing input (`#RRGGBBAA`, `rgba()`,
+   * `hsla()`, or a translucent `oklch()`/`hwb()`) is parsed but alpha is
+   * stripped on emit, uniformly across every `format` — not a hex-only
+   * concern.
    */
   alpha?: boolean;
-  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Output is always hex. */
+  /**
+   * Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`;
+   * rgba/hsla aliases can be restricted independently. Add `'oklch'` to
+   * accept `oklch()` input strings. The configured `format` (below) is
+   * always an implicitly accepted input format too, regardless of what's
+   * listed here — the field must be able to parse back the exact syntax it
+   * just emitted, so e.g. `formats={['hex']}` with `format="rgb"` still
+   * accepts user-entered `rgb()` values. Don't rely on `formats` to exclude
+   * the configured output format's syntax. This implicit widening admits
+   * ONLY the configured format's own exact syntax, never a legacy alias —
+   * `formats={['hex']}` with `format="rgb"` still rejects `rgba()` input
+   * unless `'rgba'` (or `'rgb'`) is explicitly listed in `formats` too.
+   */
   formats?: readonly ColorFieldFormat[];
+  /**
+   * Output color format for the committed/emitted value. Default `'hex'`.
+   * Purely additive — existing consumers relying on the hex default are
+   * unaffected. `value` stays a plain string regardless of format. `lab` is
+   * deliberately excluded. Implicitly widens the accepted *input* set too —
+   * see `formats` above.
+   */
+  format?: ColorFieldOutputFormat;
   /** Disable the input. */
   disabled?: boolean;
   /** Mark the input as required for form submission and a11y. */
@@ -25,8 +54,9 @@ export type ColorFieldProps = {
   /** Render the inner `<input>` as read-only. */
   readonly?: boolean;
   /**
-   * Form field name. When set, the hidden mirror input contributes the current
-   * committed hex value to native form submission.
+   * Form field name. When set, the hidden mirror input contributes the
+   * current committed value — in the configured `format`'s syntax — to
+   * native form submission.
    */
   name?: string;
   /** Placeholder text for the inner `<input>`. */
@@ -49,9 +79,9 @@ export type ColorFieldProps = {
    */
   enterBehavior?: 'commit-then-submit' | 'commit-only';
   /**
-   * Fires on successful blur-time commit when the canonical hex actually
-   * changes. Value callback by repo convention — not forwarded to the inner
-   * native `<input>`.
+   * Fires on successful blur-time commit when the committed value — in the
+   * configured `format`'s syntax — actually changes. Value callback by repo
+   * convention — not forwarded to the inner native `<input>`.
    */
   onValueChange?: (value: string) => void;
 };

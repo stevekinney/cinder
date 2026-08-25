@@ -2,6 +2,8 @@
   import Copy from 'lucide-svelte/icons/copy';
   import CopyButton from '@lostgradient/cinder/copy-button';
 
+  import { isOpaqueForFormat, type ColorOutputFormat } from '../../utilities/color-format.ts';
+
   type ColorPickerControlsProps = {
     gradientId: string;
     hueId: string;
@@ -9,6 +11,7 @@
     previewId: string;
     disabled: boolean;
     alpha: boolean;
+    format: ColorOutputFormat;
     hue: number;
     saturation: number;
     lightnessValue: number;
@@ -16,6 +19,7 @@
     hueColor: string;
     previewColor: string;
     internalValue: string;
+    hexValue: string;
     formatRgb: string;
     formatHsl: string;
     handlePosition: { x: number; y: number };
@@ -48,6 +52,7 @@
     previewId,
     disabled,
     alpha,
+    format,
     hue,
     saturation,
     lightnessValue,
@@ -55,6 +60,7 @@
     hueColor,
     previewColor,
     internalValue,
+    hexValue,
     formatRgb,
     formatHsl,
     handlePosition,
@@ -125,7 +131,7 @@
 >
   <div
     class="cinder-color-picker__hue-thumb"
-    style="left: {(hue / 359) * 100}%;"
+    style="left: {Math.min(100, (hue / 359) * 100)}%;"
     aria-hidden="true"
   ></div>
 </div>
@@ -159,23 +165,33 @@
 {/if}
 
 <div class="cinder-color-picker__footer">
+  <!--
+    The checkerboard backdrop is keyed off the ACTUAL alphaValue (< 1), not
+    the `alpha` UI-affordance prop: a programmatically-retained translucent
+    value (alpha={false} + a translucent `value`, per the CIN-104
+    alpha-retention ruling) renders as an hsla(...) preview color and must
+    show the checkerboard behind it, even with the alpha slider hidden —
+    otherwise it composites flat against the surrounding surface and reads
+    as a different opaque color despite the stored value and copy actions
+    reporting alpha.
+  -->
   <div
     id={previewId}
     role="img"
     class="cinder-color-picker__preview"
-    data-cinder-alpha={alpha ? '' : undefined}
+    data-cinder-alpha={isOpaqueForFormat(alphaValue, format) ? undefined : ''}
     aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
     style="--cinder-color-picker-preview: {previewColor};"
   ></div>
   <div class="cinder-color-picker__formats" role="group" aria-label="Copy color formats">
     <CopyButton
-      value={internalValue}
+      value={hexValue}
       label="Copy HEX format"
       copiedLabel="HEX format copied"
       class="cinder-color-picker__format"
       disabled={!internalValue || disabled}
     >
-      <span class="cinder-color-picker__hex-value">{internalValue || '—'}</span><Copy
+      <span class="cinder-color-picker__hex-value">{hexValue || '—'}</span><Copy
         class="cinder-icon-xs"
         aria-hidden="true"
       />

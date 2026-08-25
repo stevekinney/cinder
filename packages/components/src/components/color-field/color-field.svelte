@@ -3,7 +3,7 @@
    * @cinder
    * @category form
    * @status stable
-   * @purpose Text input that validates and normalizes hex, rgb(), hsl(), and hwb() color strings into a canonical hex value emitted on blur.
+   * @purpose Text input that validates and normalizes hex, rgb(), hsl(), hwb(), and oklch() color strings into a canonical value (hex by default, or another CSS Color 4 format via `format`) emitted on blur.
    * @tag form
    * @tag color
    * @useWhen Accepting an exact color value via keyboard entry, including pasted hex, rgb(), or hsl() strings.
@@ -12,27 +12,49 @@
    * @avoidWhen Constraining selection to a fixed brand palette — use color-swatch-picker instead.
    * @related color-picker, color-swatch-picker, input, form-field
    */
-  export type { ColorFieldProps, ColorFieldFormat } from './color-field.types.ts';
+  export type {
+    ColorFieldProps,
+    ColorFieldFormat,
+    ColorFieldOutputFormat,
+  } from './color-field.types.ts';
+
+  // Module-scope (not per-instance) so it's a single stable reference used
+  // as the `formats` prop's default. An inline array-literal default in a
+  // `$props()` destructuring (`formats = ['hex', ...]`) is NOT memoized by
+  // Svelte — it's re-evaluated (producing a NEW array identity) every time
+  // the default is read, including on a re-render triggered by a
+  // completely unrelated prop changing. Any `$effect` that reads `formats`
+  // (even via `void formats;`) would then see a "changed" reference and
+  // re-run on every parent re-render, not just when `formats` itself
+  // actually changes — which is exactly what let an `errorMessage`-only
+  // change spuriously re-trigger the formats/format reconciliation effect
+  // and silently commit an in-progress draft.
+  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
 </script>
 
 <script lang="ts">
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import { parseColor } from '../../utilities/color-luminance.ts';
+  import { formatColor, parseCssColor } from '../../utilities/color-format.ts';
   import Input from '../input/input.svelte';
   import Button from '@lostgradient/cinder/button';
   import ColorPicker from '@lostgradient/cinder/color-picker';
   import Popover from '@lostgradient/cinder/popover';
   import Pipette from 'lucide-svelte/icons/pipette';
-  import type { ColorFieldFormat, ColorFieldProps } from './color-field.types.ts';
+  import type {
+    ColorFieldFormat,
+    ColorFieldOutputFormat,
+    ColorFieldProps,
+  } from './color-field.types.ts';
 
   let {
     id,
     class: className,
     value = $bindable(''),
     alpha = false,
-    formats = ['hex', 'rgb', 'hsl', 'hwb'],
+    formats = DEFAULT_FORMATS,
+    format = 'hex',
     disabled = false,
     required = false,
     readonly = false,
@@ -56,49 +78,95 @@
   // Plain (non-reactive) skip guard for the value-sync effect.
   let lastReconciledValue = '';
   let lastReconciledValueWasInvalid = false;
+  // Plain (non-reactive) skip guards for the formats/format reconciliation
+  // effect below. `$effect` re-runs are not guaranteed to fire ONLY when
+  // `formats`/`format` themselves change — a Svelte `$props()` update
+  // triggered by any OTHER prop (e.g. `errorMessage`) can still re-invoke
+  // an effect that merely reads `formats`/`format`, even when their values
+  // are unchanged. Comparing against these plain snapshots makes the
+  // reconciliation's draft-admission/commit side effect run only on an
+  // ACTUAL formats/format change, regardless of why the effect fired.
+  let lastReconciledFormats: readonly ColorFieldFormat[] = untrack(() => formats);
+  let lastReconciledFormat: ColorFieldOutputFormat = untrack(() => format);
 
-  function toHex2(n: number): string {
-    return Math.max(0, Math.min(255, Math.round(n)))
-      .toString(16)
-      .padStart(2, '0');
+  // Parse any accepted input format — hex, rgb()/rgba(), hsl()/hsla(),
+  // hwb(), or oklch() — in either legacy comma syntax or the modern
+  // space-separated syntax `formatColor` itself emits. Backed by culori's
+  // own CSS color parser (see color-format.ts), not a hand-rolled
+  // legacy-comma-only regex parser, so an emitted value always parses back.
+  function parseInput(text: string): RgbaParts | null {
+    return parseCssColor(text);
   }
 
-  function normalizeHex(parts: RgbaParts, emitAlpha: boolean): string {
-    const base = `#${toHex2(parts.r)}${toHex2(parts.g)}${toHex2(parts.b)}`;
-    if (emitAlpha) return base + toHex2(parts.a * 255);
-    return base;
-  }
-
-  // Emit rule: emit `#rrggbbaa` only when `alpha === true` AND parsed `a < 1`.
+  // Emit rule: pass through `alpha` only when `alpha === true` AND parsed
+  // `a < 1`; otherwise force fully opaque so config-gated stripping stays
+  // uniform across every output format.
   function emitFor(parts: RgbaParts): string {
-    return normalizeHex(parts, alpha && parts.a < 1);
+    const emitAlpha = alpha && parts.a < 1;
+    return formatColor({ ...parts, a: emitAlpha ? parts.a : 1 }, format);
+  }
+
+  // Content equality, not reference equality — a consumer passing `formats`
+  // as an inline array literal (e.g. `formats={['hex']}` directly in a
+  // template) gets a NEW array reference on every one of their own
+  // re-renders, even when the listed formats haven't changed. Reference
+  // equality alone would make the reconciliation guard below think
+  // `formats` changed on every such re-render, reopening the exact
+  // spurious-reconciliation bug the guard exists to close.
+  function formatsEqual(a: readonly ColorFieldFormat[], b: readonly ColorFieldFormat[]): boolean {
+    if (a === b) return true;
+    if (a.length !== b.length) return false;
+    return a.every((value, index) => value === b[index]);
   }
 
   const HEX_RE = /^#[0-9a-f]{3}([0-9a-f]([0-9a-f]{2})?([0-9a-f]{2})?)?$/i;
   const RGB_RE = /^(rgb|rgba)\s*\([^)]*\)\s*$/i;
   const HSL_RE = /^(hsl|hsla)\s*\([^)]*\)\s*$/i;
   const HWB_RE = /^hwb\s*\([^)]*\)\s*$/i;
-  const DEFAULT_FORMATS = ['hex', 'rgb', 'hsl', 'hwb'] as const;
+  const OKLCH_TEXT_RE = /^oklch\s*\([^)]*\)\s*$/i;
 
-  const acceptedFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
+  // The EXPLICIT accepted-input set — exactly what the `formats` prop (or
+  // its default) lists, with none of the configured output `format` unioned
+  // in yet. `passesFormatGate` needs this separately from `acceptedFormats`
+  // below: the rgb->rgba / hsl->hsla legacy-alias leniency must only apply
+  // when the PLAIN form was explicitly listed, never when it's present only
+  // because of the output-format widening (see `passesFormatGate`).
+  const explicitFormats = $derived(formats.length === 0 ? DEFAULT_FORMATS : formats);
+
+  // The effective accepted-input set always includes the configured output
+  // `format`, unioned in — otherwise a field emitting e.g. oklch() with the
+  // default `formats` (which doesn't list 'oklch') could never parse its own
+  // emitted value back in, breaking the round-trip. Used for display
+  // purposes (the default error message's format list) — `passesFormatGate`
+  // does NOT use this directly; see below.
+  const acceptedFormats = $derived.by(() => {
+    const base = explicitFormats;
+    return base.includes(format) ? base : [...base, format];
+  });
 
   function passesFormatGate(text: string): boolean {
-    if (HEX_RE.test(text)) return acceptedFormats.includes('hex');
+    if (HEX_RE.test(text)) return explicitFormats.includes('hex') || format === 'hex';
     const rgbMatch = text.match(RGB_RE);
     if (rgbMatch) {
-      const format = rgbMatch[1]!.toLowerCase() as 'rgb' | 'rgba';
-      return (
-        acceptedFormats.includes(format) || (format === 'rgba' && acceptedFormats.includes('rgb'))
-      );
+      const matchedFormat = rgbMatch[1]!.toLowerCase() as 'rgb' | 'rgba';
+      if (explicitFormats.includes(matchedFormat)) return true;
+      if (matchedFormat === 'rgba' && explicitFormats.includes('rgb')) return true;
+      // Implicit widening for the configured output format admits ONLY its
+      // own exact syntax — never the legacy `rgba` alias, even when
+      // `format` is `'rgb'`. `formats` documents that rgba/hsla aliases can
+      // be restricted independently; letting the output-format union widen
+      // rgba too would silently override that restriction.
+      return format === matchedFormat;
     }
     const hslMatch = text.match(HSL_RE);
     if (hslMatch) {
-      const format = hslMatch[1]!.toLowerCase() as 'hsl' | 'hsla';
-      return (
-        acceptedFormats.includes(format) || (format === 'hsla' && acceptedFormats.includes('hsl'))
-      );
+      const matchedFormat = hslMatch[1]!.toLowerCase() as 'hsl' | 'hsla';
+      if (explicitFormats.includes(matchedFormat)) return true;
+      if (matchedFormat === 'hsla' && explicitFormats.includes('hsl')) return true;
+      return format === matchedFormat;
     }
-    if (HWB_RE.test(text)) return acceptedFormats.includes('hwb');
+    if (HWB_RE.test(text)) return explicitFormats.includes('hwb') || format === 'hwb';
+    if (OKLCH_TEXT_RE.test(text)) return explicitFormats.includes('oklch') || format === 'oklch';
     return false;
   }
 
@@ -111,6 +179,7 @@
       hsl: 'hsl()',
       hsla: 'hsla()',
       hwb: 'hwb()',
+      oklch: 'oklch()',
     };
     const accepted = acceptedFormats.map((format) => labels[format]);
     if (accepted.length === 1) return `Enter a valid ${accepted[0]} color.`;
@@ -136,14 +205,23 @@
   // value; the value-sync effect below handles later prop changes.
   const initialValue = untrack(() => value);
   const resetTarget = initialValue;
+  // Snapshot the successfully-PARSED reset color too (not just the raw
+  // string) — see `resetToInitialValue` below for why: a later
+  // `formats`/`format` change can narrow the accepted-input gate enough
+  // that `resetTarget` itself is no longer admitted, even though it parsed
+  // fine at mount. Re-validating the raw string against the CURRENT gate on
+  // every reset would then silently clear the field instead of restoring
+  // the color that was actually accepted when the component mounted.
+  let resetTargetParsed: RgbaParts | null = null;
 
   if (initialValue !== '') {
     const trimmedInitial = initialValue.trim();
     if (trimmedInitial !== '' && passesFormatGate(trimmedInitial)) {
-      const parsed = parseColor(trimmedInitial);
+      const parsed = parseInput(trimmedInitial);
       if (parsed !== null) {
         seedFromParts(parsed);
         lastReconciledValue = initialValue;
+        resetTargetParsed = parsed;
       } else {
         visibleText = initialValue;
         committedHex = '';
@@ -175,7 +253,7 @@
       parseError = defaultErrorMessage();
       lastReconciledValueWasInvalid = true;
     } else {
-      const parsed = parseColor(trimmed);
+      const parsed = parseInput(trimmed);
       if (parsed === null) {
         visibleText = next;
         committedHex = '';
@@ -200,42 +278,130 @@
     reconcileFromValue(value);
   });
 
-  // ── alpha runtime changes ───────────────────────────────────────────────
+  // ── alpha / format runtime changes ──────────────────────────────────────
 
-  // Re-derive `committedHex` and `visibleText` from `committedRgba` when the
-  // alpha mode toggles after mount. Never emit `onValueChange` on a config change.
+  // Re-derive `committedHex` from `committedRgba` when `alpha` toggles OR
+  // `format` changes after mount (`emitFor` reads `format` through closure,
+  // so this effect implicitly depends on it too — hence the name covers
+  // both). Never emits `onValueChange` on a config change.
+  //
+  // Preserves an in-progress, uncommitted draft: only overwrite the visible
+  // `<input>` text when it currently matches the OLD committed mirror
+  // (nothing dirty to lose). If the user is mid-edit — `visibleText`
+  // already differs from `committedHex` — leave their draft alone; the new
+  // `format` naturally applies at their next commit (blur/Enter), since
+  // `runCommit` calls `emitFor` with whatever `format` is current at that
+  // point. Reformatting the mirror out from under a dirty draft would
+  // silently discard keystrokes ColorField otherwise keeps local until
+  // commit.
   $effect(() => {
     void alpha;
+    void format;
     if (committedRgba === null) return;
     const nextHex = emitFor(committedRgba);
     if (nextHex === committedHex) return;
+    const hadNoDraft = visibleText === committedHex;
     committedHex = nextHex;
-    visibleText = nextHex;
     lastReconciledValue = nextHex;
     value = nextHex;
+    if (hadNoDraft) visibleText = nextHex;
   });
 
-  // ── formats runtime changes — display-only validation ───────────────────
+  // ── formats/format runtime changes — reconcile newly-admitted values ────
 
-  // A `formats` change only affects the input-time gate. It must never mutate
-  // committed state. If there's a current parse error, re-run the gate on the
-  // visible text and clear the error when the value now passes. `passesFormatGate`
-  // and `defaultErrorMessage` both read `acceptedFormats` through closure, so the
-  // effect re-runs on `formats` changes without an explicit dependency pin.
+  // A `formats`/`format` change can widen the effective accepted-input gate
+  // (recall `acceptedFormats` always unions in the configured `format` — see
+  // above), which can turn a previously-rejected `visibleText` into a valid
+  // one. If there's a current parse error, re-run the gate on the visible
+  // text.
+  //
+  // This effect MUST react only to actual `formats`/`format` prop changes —
+  // never to `visibleText` edits, and never to `errorMessage` either (see
+  // the separate errorMessage-only effect below for why the two must stay
+  // split). `void formats; void format;` pins the reactive dependency
+  // explicitly; everything else is read inside `untrack(...)` so a
+  // keystroke alone can never re-trigger this effect. Without that
+  // separation: after an invalid blur/Enter leaves `parseError` set,
+  // reading `visibleText` directly (not untracked) would make EVERY
+  // subsequent keystroke re-run this effect. As soon as the user's
+  // in-progress replacement draft became parseable, `seedFromParts` and the
+  // assignment to `value` would commit it before blur or Enter — and without
+  // firing `onValueChange` — silently breaking ColorField's local-draft
+  // contract (intermediate keystrokes are supposed to stay local until an
+  // explicit commit).
+  //
+  // When the text now passes AND parses, this RECONCILES the committed
+  // state (swatch, hidden form mirror, `committedHex`) via `seedFromParts` —
+  // it does not merely clear the error. Merely clearing `parseError` would
+  // leave the field looking valid while `committedRgba`/`committedHex`
+  // stayed at their prior (never-committed) empty state: e.g. a controlled
+  // `oklch(...)` value with `formats={['hex']}` and `format="hex"` starts
+  // rejected (oklch isn't accepted and isn't the configured format yet); if
+  // format later switches to `"oklch"`, `acceptedFormats` now admits that
+  // same value, but the value was never seeded on mount because it was
+  // rejected then — this effect must seed it now, not just silence the
+  // error. `onValueChange` is never fired here, matching the alpha-effect's
+  // "never fire onValueChange on a config change" precedent below.
   $effect(() => {
-    if (parseError === null) return;
-    const text = visibleText.trim();
-    if (text === '') {
-      parseError = null;
-    } else if (!passesFormatGate(text)) {
-      // Refresh the message so its wording reflects the new `formats` set,
-      // not the wording that was current when the error was first raised.
+    void formats;
+    void format;
+    untrack(() => {
+      // Guard against this effect firing for a reason OTHER than an actual
+      // `formats`/`format` change (see `lastReconciledFormats`/
+      // `lastReconciledFormat` above) — only THEN may it run the
+      // draft-admission/commit logic below.
+      const didFormatsChange =
+        !formatsEqual(formats, lastReconciledFormats) || format !== lastReconciledFormat;
+      lastReconciledFormats = formats;
+      lastReconciledFormat = format;
+      if (!didFormatsChange) return;
+      if (parseError === null) return;
+      const text = visibleText.trim();
+      if (text === '') {
+        parseError = null;
+      } else if (!passesFormatGate(text)) {
+        // Refresh the message so its wording reflects the new `formats` set,
+        // not the wording that was current when the error was first raised.
+        parseError = defaultErrorMessage();
+      } else {
+        const parsed = parseInput(text);
+        if (parsed === null) {
+          parseError = defaultErrorMessage();
+        } else {
+          seedFromParts(parsed);
+          parseError = null;
+          lastReconciledValue = committedHex;
+          value = committedHex;
+        }
+      }
+      syncCustomValidity();
+    });
+  });
+
+  // ── errorMessage runtime changes — refresh display only, never commit ───
+
+  // A change to `errorMessage` alone (e.g. a localization swap, or clearing
+  // a custom message to fall back to the generated one) must refresh the
+  // CURRENTLY DISPLAYED error text and native customValidity — but must
+  // NEVER re-run format-gate validation or commit an in-progress draft.
+  // That commit/reconciliation behavior belongs exclusively to the
+  // formats/format effect above. Folding `errorMessage` into that same
+  // effect (an earlier iteration of this fix) meant an errorMessage-only
+  // change also re-ran the full branch below it: if the user had an invalid
+  // blur behind them and had since typed a new, now-valid replacement draft,
+  // that draft would get `seedFromParts`-committed to `value` the moment a
+  // parent changed `errorMessage` — with no blur, no Enter, and no
+  // `onValueChange` — silently breaking the exact local-draft contract the
+  // formats/format effect above was written to protect. This effect only
+  // ever reassigns `parseError` to a freshly computed message; it never
+  // touches `visibleText`, `committedRgba`, `committedHex`, or `value`.
+  $effect(() => {
+    void errorMessage;
+    untrack(() => {
+      if (parseError === null) return;
       parseError = defaultErrorMessage();
-    } else {
-      const parsed = parseColor(text);
-      parseError = parsed === null ? defaultErrorMessage() : null;
-    }
-    syncCustomValidity();
+      syncCustomValidity();
+    });
   });
 
   // ── Commit pipeline (blur + Enter) ──────────────────────────────────────
@@ -270,7 +436,7 @@
       return { committed: false, emittedHex: null };
     }
 
-    const parsed = parseColor(trimmed);
+    const parsed = parseInput(trimmed);
     if (parsed === null) {
       parseError = defaultErrorMessage();
       return { committed: false, emittedHex: null };
@@ -347,7 +513,7 @@
 
   function resetToInitialValue(): void {
     parseError = null;
-    if (resetTarget === '') {
+    if (resetTarget === '' || resetTargetParsed === null) {
       clearAll();
       lastReconciledValue = '';
       value = '';
@@ -356,23 +522,15 @@
       syncCustomValidity();
       return;
     }
-    const trimmedDefault = resetTarget.trim();
-    if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
-      clearAll();
-      lastReconciledValue = '';
-      value = '';
-      syncCustomValidity();
-      return;
-    }
-    const parsed = parseColor(trimmedDefault);
-    if (parsed === null) {
-      clearAll();
-      lastReconciledValue = '';
-      value = '';
-      syncCustomValidity();
-      return;
-    }
-    seedFromParts(parsed);
+    // Use the snapshotted PARSED color directly — do not re-validate
+    // `resetTarget` against the current `formats`/`format` gate. It was
+    // already successfully accepted and parsed once, at mount; a later
+    // `format` change can narrow the gate enough to reject its raw syntax
+    // even though the color itself is still perfectly valid. `seedFromParts`
+    // re-emits it through the CURRENT `format` (and `alpha` stripping
+    // policy), so a reset always restores the originally-accepted color,
+    // not an empty field.
+    seedFromParts(resetTargetParsed);
     lastReconciledValue = committedHex;
     value = committedHex;
     syncCustomValidity();
@@ -405,7 +563,7 @@
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
 
   function handlePickerCommit(next: string, reason: 'pointer' | 'swatch' | 'keyboard'): void {
-    const parsed = parseColor(next);
+    const parsed = parseInput(next);
     if (parsed === null) return;
     const normalized = emitFor(parsed);
     const previousHex = committedHex;
@@ -441,9 +599,22 @@
         <Pipette class="cinder-icon-xs" aria-hidden="true" />
       </Button>
     {/snippet}
+    <!--
+      Pass the field's own `format` through — `ColorFieldOutputFormat` and
+      `ColorPickerFormat` are the same union, so no translation is needed.
+      Without this, the embedded picker stayed at its default `'hex'`
+      regardless of the field's configured format: any interactive picker
+      commit (drag, keyboard) would quantize alpha to an 8-bit hex byte
+      internally BEFORE `handlePickerCommit` ever re-parses and reformats it
+      into the field's actual `format` — so a translucent `/ 0.5` alpha
+      became `/ 0.502` (hex byte round-trip noise) and a near-opaque
+      `/ 0.9996` was silently rounded fully opaque, corrupting the committed
+      precision even though the field's own text-entry commit path is exact.
+    -->
     <ColorPicker
       value={committedHex}
       {alpha}
+      {format}
       disabled={disabled || readonly}
       label="Choose a color"
       onValueCommit={handlePickerCommit}
