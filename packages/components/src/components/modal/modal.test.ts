@@ -1101,10 +1101,17 @@ describe('Modal chromeless mode (chrome="none")', () => {
 
   test('exposes --cinder-modal-backdrop as a supported backdrop-color override point', async () => {
     const css = await Bun.file(new URL('./modal.css', import.meta.url)).text();
-    // Declared on .cinder-modal (so the variables generator collects it),
-    // consumed on ::backdrop (which inherits it from its originating element).
+    // Declared on .cinder-modal (so the variables generator collects it into
+    // modal.variables.json/README) AND redeclared directly on
+    // `.cinder-modal::backdrop` — `::backdrop` does not reliably inherit
+    // custom properties from its originating element across engines, so a
+    // declaration on `.cinder-modal` alone would leave the pseudo-element's
+    // own `background-color: var(--cinder-modal-backdrop)` invalid there.
     expect(css).toMatch(
       /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
+    );
+    expect(css).toMatch(
+      /\.cinder-modal::backdrop\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
     );
     expect(css).toContain('background-color: var(--cinder-modal-backdrop);');
   });

@@ -166,6 +166,16 @@ describe('image-lightbox source contract — Modal composition', () => {
     );
     expect(dismissBody).not.toContain('navigationIndex = null');
   });
+
+  test('the Modal render guard requires open OR hasOpenedOnce, not currentImage alone', () => {
+    // Regression: once currentImage stopped depending on `open`, guarding
+    // Modal's render on `currentImage` alone mounted a closed Modal for
+    // every never-opened lightbox instance. `hasOpenedOnce` restores lazy
+    // mounting: false until the first open, permanently true afterward so
+    // exit transitions on later closes still work.
+    expect(source).toContain('let hasOpenedOnce = $state(false);');
+    expect(source).toContain('{#if (open || hasOpenedOnce) && currentImage}');
+  });
 });
 
 describe('image-lightbox — behavioral reset on reopen', () => {
@@ -292,5 +302,63 @@ describe('image-lightbox — behavioral reset on reopen', () => {
     await rerender({ images, initialIndex: 0, open: true });
     await tick();
     expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+});
+
+describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+    document.body.style.overflow = '';
+  });
+
+  const images = [
+    { src: '/a.jpg', alt: 'Image A' },
+    { src: '/b.jpg', alt: 'Image B' },
+  ];
+
+  test('a never-opened lightbox renders no Modal/dialog at all', () => {
+    // Regression: once effectiveIndex/currentImage stopped depending on
+    // `open` (the exit-transition-preservation fix above), the top-level
+    // `{#if currentImage}` guard around <Modal> became true unconditionally
+    // for any non-empty `images` array — every MessageAttachments instance
+    // with at least one image mounted a closed Modal (dialog + reduced-
+    // motion observer + SlidingDialogState effects) even when its lightbox
+    // was never opened. `MessageAttachments` renders one ImageLightbox per
+    // message unconditionally, so a long chat with many image messages would
+    // accumulate one hidden dialog per message. Restored laziness: the guard
+    // now also requires `open || hasOpenedOnce`.
+    const { container } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: false },
+    });
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('img')).toBeNull();
+  });
+
+  test('opening mounts the Modal/dialog', async () => {
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: false },
+    });
+    expect(container.querySelector('dialog')).toBeNull();
+
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
+  });
+
+  test('once opened, the dialog stays mounted through a subsequent close (for the exit transition)', async () => {
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images, initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).not.toBeNull();
+
+    await rerender({ images, initialIndex: 0, open: false });
+    await tick();
+    // Still mounted immediately after close — Modal owns unmount timing via
+    // its own exit-transition lifecycle; this component's guard must not
+    // tear the whole Modal down the instant `open` goes false.
+    expect(container.querySelector('dialog')).not.toBeNull();
   });
 });

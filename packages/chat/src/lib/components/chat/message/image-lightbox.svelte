@@ -53,8 +53,18 @@
   let navigationIndex = $state<number | null>(null);
   const effectiveIndex = $derived(navigationIndex ?? clampedInitialIndex);
   let resetAppliedForCurrentSession = false;
+  // Lazy mount: `hasOpenedOnce` starts false so an ImageLightbox instance
+  // that is never opened (the common case — MessageAttachments renders one
+  // per message unconditionally) never mounts Modal at all: no closed
+  // <dialog>, no reduced-motion observer, no SlidingDialogState effects. It
+  // flips true (permanently) on the FIRST open and stays true afterward so
+  // subsequent closes still get their exit transition — Modal's children
+  // must stay mounted through `data-cinder-closing` for the fade to play,
+  // which requires the template guard below to not depend on `open` alone.
+  let hasOpenedOnce = $state(false);
   $effect(() => {
     if (open) {
+      hasOpenedOnce = true;
       if (!resetAppliedForCurrentSession) {
         navigationIndex = null;
         resetAppliedForCurrentSession = true;
@@ -134,7 +144,7 @@
   }
 </script>
 
-{#if currentImage}
+{#if (open || hasOpenedOnce) && currentImage}
   <Modal
     bind:open
     chrome="none"
@@ -226,8 +236,16 @@
    * inside this component's own template), so `:global()` is required here
    * for the selector to match — the override point itself is the public
    * contract, not an escape into `.cinder-modal__panel` etc.
+   *
+   * `::backdrop` does NOT reliably inherit custom properties from its
+   * originating element across engines, so setting `--cinder-modal-backdrop`
+   * on `.lightbox-modal` alone is inert for `::backdrop`'s own computed
+   * style — the override must also target `.lightbox-modal::backdrop`
+   * directly (matching modal.css's own `.cinder-modal::backdrop` rule,
+   * which redeclares the default there for the same reason).
    */
-  :global(.lightbox-modal) {
+  :global(.lightbox-modal),
+  :global(.lightbox-modal::backdrop) {
     --cinder-modal-backdrop: rgba(0, 0, 0, 0.9);
   }
 

@@ -44,10 +44,18 @@
     margin: 0;
   }
 
-  /* Backdrop — native <dialog>::backdrop is controlled by the UA. `::backdrop`
-   * inherits `--cinder-modal-backdrop` from its originating `.cinder-modal`
-   * (declared above), which is the supported override point. */
+  /* Backdrop — native <dialog>::backdrop is controlled by the UA.
+   * `::backdrop` does NOT reliably inherit custom properties from its
+   * originating element across engines, so `--cinder-modal-backdrop` is
+   * declared again here directly on the pseudo-element (redundant with the
+   * `.cinder-modal` declaration above, which stays so the variables
+   * generator still collects it into modal.variables.json/README). A
+   * consumer override must target `::backdrop` directly too — see
+   * `ImageLightbox`'s `:global(.lightbox-modal::backdrop)` rule for the
+   * pattern; a class-scoped override on the element alone would be inert
+   * here for the same inheritance reason. */
   .cinder-modal::backdrop {
+    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
     background-color: var(--cinder-modal-backdrop);
     backdrop-filter: blur(var(--cinder-overlay-blur));
     transition:
