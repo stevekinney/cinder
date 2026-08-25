@@ -403,7 +403,19 @@
     }
   }
 
-  :root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
+  /* `:where(...)` around the `:root`/preference-attribute condition (CIN-376
+   * round 17 review — see the closing rule below for the full story): a
+   * selector's condition prefix still needs to SELECT the same elements
+   * whether or not the app has explicitly forced motion on, but it must not
+   * outrank the later `[data-cinder-closing]` override once closing starts.
+   * `:where()` zeroes the specificity of everything inside it while
+   * matching identically, so this selector's specificity collapses to that
+   * of the bare `.cinder-dropdown__menu:not([popover])` it's attached to —
+   * letting the closing rule's genuinely higher specificity (one more
+   * attribute selector) win on its own, with no reliance on source-order
+   * tie-breaking or a `:root`-anchored selector (which the build's
+   * class-anchoring guard for component CSS sidecars rejects outright). */
+  :where(:root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off']))
     .cinder-dropdown__menu:not([popover]) {
     animation: cinder-dropdown-enter var(--cinder-duration-fast) var(--cinder-ease-standard)
       forwards;
@@ -426,21 +438,19 @@
       translate var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* `:root` prefix (CIN-376 round 17 review), not just the bare selector:
-   * the explicit-motion entry-animation override above
-   * (`:root:is([data-cinder-reduced-motion='false'], [data-reduced-motion='off'])
-   * .cinder-dropdown__menu:not([popover])`) has HIGHER specificity than a
-   * bare `.cinder-dropdown__menu:not([popover])[data-cinder-closing]` would
-   * (that `:is(...)` counts toward specificity via its argument, plus
-   * `:root` itself) — so when an application explicitly forces motion ON
-   * while the OS reports `no-preference`, that rule's `forwards`-filled
-   * `animation` kept winning and supplying `opacity: 1`/`translate: 0` even
-   * while closing, and `animation: none` below never took effect. Adding
-   * `:root` here brings this selector to the SAME specificity, and since it
-   * appears later in the file, the standard CSS tie-break (last rule wins)
-   * settles it in this rule's favor regardless of which reduced-motion
-   * state is active. */
-  :root .cinder-dropdown__menu:not([popover])[data-cinder-closing] {
+  /* This selector must genuinely OUTRANK the explicit-motion
+   * entry-animation override above (CIN-376 round 17 review): that rule's
+   * `forwards`-filled `animation` kept winning and supplying
+   * `opacity: 1`/`translate: 0` even while closing, whenever an application
+   * explicitly forced motion on — so `animation: none` below never took
+   * effect. Rather than raising THIS selector's specificity (a `:root`
+   * prefix here would violate the build's class-anchoring guard for
+   * component CSS sidecars, which rejects any selector whose first compound
+   * isn't a class), the entry rule's condition prefix above is wrapped in
+   * `:where(...)` instead, zeroing its specificity contribution — this
+   * selector's ordinary extra `[data-cinder-closing]` attribute is then
+   * sufficient to win outright, no tie-break needed. */
+  .cinder-dropdown__menu:not([popover])[data-cinder-closing] {
     /* The entry `animation` above uses `forwards` fill, so it keeps supplying
      * opacity/translate for this element even after the keyframe finishes —
      * without disabling it here, that held value overrides the closing
