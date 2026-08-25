@@ -220,7 +220,10 @@ describe('ColorField — invalid input', () => {
 
     // Parent removes the custom message entirely — falls back to the
     // generated default.
-    await rerender({ id: 'color', errorMessage: undefined });
+    await rerender({ id: 'color', errorMessage: undefined } as {
+      id: string;
+      errorMessage: string | undefined;
+    });
     await tick();
     const errorText = container.querySelector('.cinder-input-field__error')?.textContent ?? '';
     expect(errorText).not.toContain('Try a hex code like #336699.');
