@@ -27,17 +27,37 @@ exact syntax it just emitted, or the emit/re-parse round trip breaks. So
 the configured output format's own syntax. Don't rely on `formats` to reject
 `format`'s syntax.
 
-Alpha policy:
+Alpha policy: whether the emitted alpha suffix appears is decided by each
+format's own opacity-quantization threshold, not literally "alpha equals
+1" — every format treats alpha as opaque slightly before the mathematical
+boundary, because each canonicalizes alpha to its own emitted precision
+before deciding whether to keep the suffix, exactly the way `formatHex`
+already canonicalizes a byte-rounds-to-`0xff` alpha to plain `#rrggbb`
+rather than emit a byte-for-byte-opaque `#rrggbbff`:
 
-- `hex` emits `#rrggbbaa` when alpha < 1, and plain `#rrggbb` when alpha is
-  exactly 1. Alpha is never silently dropped.
+- `hex` quantizes alpha to a single byte (0-255): it emits `#rrggbbaa`
+  only when the alpha BYTE (`Math.round(alpha * 255)`) is below 255, and
+  plain `#rrggbb` once that byte reaches 255 — which happens for any alpha
+  `>= ~0.998` (e.g. `0.999`), not only alpha `=== 1`.
 - Every other format uses modern space-separated CSS Color 4 syntax with
   slash alpha (`oklch(l c h / a)`, `rgb(r g b / a)`, etc.), omitting the
-  `/ a` segment entirely when alpha is exactly 1.
+  `/ a` segment once alpha rounds to `1` at 4 decimal places (`canonicalAlpha`
+  in `color-format.ts`) — which happens for any alpha `>= 0.99995` (e.g.
+  `0.99999`), not only alpha `=== 1`. Alpha is never silently dropped BELOW
+  each format's own threshold — only quantized to opaque at or above it,
+  the same way byte/decimal precision limits round any other channel.
+- Every alpha-dependent surface (the emitted `value`, ColorPicker's preview,
+  its checkerboard backdrop, and its RGB/HSL copy-panel strings) must ask
+  the SAME format-appropriate threshold (`isOpaqueForFormat` in
+  `color-format.ts`) — never a fixed boundary independent of `format` —
+  or two representations of the identical color can disagree about whether
+  it's translucent.
 - `ColorPicker.alpha` remains a UI-affordance concern (whether the alpha
   slider renders) uniformly across every format — it is not a hex-only
-  special case. Whether the emitted string's alpha segment/suffix appears at
-  all is decided solely by whether the resulting alpha is below 1.
+  special case, and it is independent of the quantization threshold above:
+  disabling the slider does not change where a format's opacity boundary
+  sits, it only gates whether an interactive commit can produce alpha `< 1`
+  in the first place.
 
 Gamut policy: out-of-sRGB values (reachable today by parsing an `oklch()`
 input string directly) are mapped into sRGB via CSS Color 4 chroma reduction,

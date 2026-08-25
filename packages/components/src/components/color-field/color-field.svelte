@@ -151,6 +151,14 @@
   // value; the value-sync effect below handles later prop changes.
   const initialValue = untrack(() => value);
   const resetTarget = initialValue;
+  // Snapshot the successfully-PARSED reset color too (not just the raw
+  // string) — see `resetToInitialValue` below for why: a later
+  // `formats`/`format` change can narrow the accepted-input gate enough
+  // that `resetTarget` itself is no longer admitted, even though it parsed
+  // fine at mount. Re-validating the raw string against the CURRENT gate on
+  // every reset would then silently clear the field instead of restoring
+  // the color that was actually accepted when the component mounted.
+  let resetTargetParsed: RgbaParts | null = null;
 
   if (initialValue !== '') {
     const trimmedInitial = initialValue.trim();
@@ -159,6 +167,7 @@
       if (parsed !== null) {
         seedFromParts(parsed);
         lastReconciledValue = initialValue;
+        resetTargetParsed = parsed;
       } else {
         visibleText = initialValue;
         committedHex = '';
@@ -413,7 +422,7 @@
 
   function resetToInitialValue(): void {
     parseError = null;
-    if (resetTarget === '') {
+    if (resetTarget === '' || resetTargetParsed === null) {
       clearAll();
       lastReconciledValue = '';
       value = '';
@@ -422,23 +431,15 @@
       syncCustomValidity();
       return;
     }
-    const trimmedDefault = resetTarget.trim();
-    if (trimmedDefault === '' || !passesFormatGate(trimmedDefault)) {
-      clearAll();
-      lastReconciledValue = '';
-      value = '';
-      syncCustomValidity();
-      return;
-    }
-    const parsed = parseInput(trimmedDefault);
-    if (parsed === null) {
-      clearAll();
-      lastReconciledValue = '';
-      value = '';
-      syncCustomValidity();
-      return;
-    }
-    seedFromParts(parsed);
+    // Use the snapshotted PARSED color directly — do not re-validate
+    // `resetTarget` against the current `formats`/`format` gate. It was
+    // already successfully accepted and parsed once, at mount; a later
+    // `format` change can narrow the gate enough to reject its raw syntax
+    // even though the color itself is still perfectly valid. `seedFromParts`
+    // re-emits it through the CURRENT `format` (and `alpha` stripping
+    // policy), so a reset always restores the originally-accepted color,
+    // not an empty field.
+    seedFromParts(resetTargetParsed);
     lastReconciledValue = committedHex;
     value = committedHex;
     syncCustomValidity();

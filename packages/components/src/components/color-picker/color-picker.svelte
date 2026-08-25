@@ -475,14 +475,24 @@
    * commit; the hex form remains what's actually used for rendering and
    * selection matching.
    */
-  const originalSwatchByNormalizedColor = $derived(
-    new Map(
-      (swatches ?? []).flatMap((swatch): [string, string][] => {
-        const normalized = normalizeSwatch(swatch);
-        return normalized === null ? [] : [[normalized, swatch]];
-      }),
-    ),
-  );
+  // First-occurrence-wins, matching ColorSwatchPicker's own de-duplication
+  // (`renderableColors`'s `seen` set skips every LATER swatch that shares an
+  // already-seen color). If two distinct swatches quantize to the same
+  // normalized hex — e.g. `rgb(255 0 0 / 0.5)` and `rgb(255 0 0 / 0.501)`
+  // both normalize to `#ff000080` — ColorSwatchPicker renders only the
+  // FIRST one; a `new Map(...)` built by iterating in order would silently
+  // keep the LAST entry instead (later insertions overwrite earlier ones
+  // for the same key), so clicking the one visible option would look up
+  // and commit the second (invisible, never-rendered) swatch's value.
+  const originalSwatchByNormalizedColor = $derived.by(() => {
+    const lookup = new Map<string, string>();
+    for (const swatch of swatches ?? []) {
+      const normalized = normalizeSwatch(swatch);
+      if (normalized === null || lookup.has(normalized)) continue;
+      lookup.set(normalized, swatch);
+    }
+    return lookup;
+  });
 
   // Always hex, for value-matching against the (always-hex) swatch colors —
   // see `normalizeSwatch` above for why swatch plumbing stays hex-only.

@@ -17,12 +17,23 @@
  * formats (`hex`, `rgb`, `hsl`, `hwb`, `oklch`) per the CIN-104 ruling
  * recorded in `docs/decisions/color-value-format.md`.
  *
- * Alpha policy:
- *   - hex: `#rrggbbaa` when alpha < 1, plain `#rrggbb` when alpha === 1.
- *     Alpha is never silently dropped.
- *   - non-hex: modern space-separated CSS Color 4 syntax with slash alpha
- *     (e.g. `oklch(l c h / a)`), omitting the `/ a` segment entirely when
- *     alpha === 1.
+ * Alpha policy: each format canonicalizes alpha to its own emitted
+ * precision BEFORE deciding whether to keep the alpha suffix — so "opaque"
+ * means "quantizes to opaque at this format's precision", not literally
+ * "alpha === 1":
+ *   - hex quantizes alpha to a byte: `#rrggbbaa` when the byte
+ *     (`Math.round(alpha * 255)`) is below 255, plain `#rrggbb` once it
+ *     reaches 255 (any alpha `>= ~0.998`, not only `1`) — see
+ *     `isOpaqueForFormat`/`formatHex`.
+ *   - non-hex formats round alpha to 4 decimals (`canonicalAlpha`): modern
+ *     space-separated CSS Color 4 syntax with slash alpha
+ *     (e.g. `oklch(l c h / a)`), omitting the `/ a` segment once alpha
+ *     rounds to `1` (any alpha `>= 0.99995`, not only `1`) — see
+ *     `isOpaqueForFormat`/`formatColor`.
+ * Every alpha-dependent caller (previews, checkerboards, copy strings, …)
+ * must ask `isOpaqueForFormat` with the current `format` — never a fixed
+ * boundary — or it can disagree with the emitted `value` about whether the
+ * identical color is translucent.
  *
  * Gamut policy: out-of-sRGB values (currently only reachable by parsing an
  * `oklch()` input string directly) are mapped into sRGB via CSS Color 4

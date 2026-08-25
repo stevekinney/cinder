@@ -34,9 +34,13 @@ export type ColorPickerProps = {
    *   once the affordance to see or change it is removed.
    *
    * This gate is uniform across every `format` — it is not a hex-only
-   * concern. Independently of `alpha`, a non-hex `format`'s alpha-emission
-   * syntax (the `/ a` segment) only appears when the resulting alpha is
-   * actually below 1.
+   * concern. Independently of `alpha`, whether an alpha suffix appears at
+   * all is decided by the configured `format`'s own opacity-quantization
+   * threshold, not literally "alpha equals 1": `'hex'` treats alpha as
+   * opaque once it rounds to the byte `0xff` (any alpha `>= ~0.998`, e.g.
+   * `0.999`), while every other format treats alpha as opaque once it
+   * rounds to `1` at 4 decimal places (any alpha `>= 0.99995`, e.g.
+   * `0.99999`).
    */
   alpha?: boolean;
   /**

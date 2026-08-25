@@ -1498,6 +1498,40 @@ describe('ColorPicker swatch commit preserves decimal alpha precision (P1 regres
     // become fully opaque; the real decimal value must survive.
     expect(committed).toBe('rgb(255 0 0 / 0.998)');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b7E8C): when two distinct
+  // swatches quantize to the SAME normalized hex, ColorSwatchPicker renders
+  // only the FIRST one (its own de-duplication keeps first-occurrence-wins).
+  // The normalized-to-raw lookup built with `new Map(...)` kept the LAST
+  // matching entry instead (later insertions overwrite earlier ones for the
+  // same key), so clicking the one visible option looked up and committed
+  // the SECOND (never-rendered) swatch's value. The lookup now also keeps
+  // first-occurrence-wins, matching what's actually rendered.
+  test('two swatches that normalize identically: only one option renders, and it commits its OWN (first) value', async () => {
+    let committed = '';
+    const { container } = render(ColorPicker, {
+      value: '#00ff00',
+      alpha: true,
+      format: 'rgb',
+      // Both round to the same byte (127.5 and 127.755 both round to 128),
+      // so both normalize to the identical hex `#ff000080`.
+      swatches: ['rgb(255 0 0 / 0.5)', 'rgb(255 0 0 / 0.501)'],
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+
+    // ColorSwatchPicker de-duplicates: only one option should render for
+    // the red swatches (plus the unrelated green current-value entry would
+    // add a second — here there are no other swatches, so exactly one).
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options.length).toBe(1);
+
+    await fireEvent.click(options[0]!);
+
+    // Must commit the FIRST swatch's own value, not the second's.
+    expect(committed).toBe('rgb(255 0 0 / 0.5)');
+  });
 });
 
 // Review thread #7 (PR #1420): with bind:value="#ff0000" and format="rgb",

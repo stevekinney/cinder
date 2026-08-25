@@ -959,6 +959,57 @@ describe('ColorField — reset honors formats gate', () => {
     // After reset: value still fails formats gate; field clears.
     expect(input.value).toBe('');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b7E8M): the initial value's
+  // syntax can be accepted ONLY because it matches the mount-time `format`
+  // (the configured `format` is always an implicit member of the accepted
+  // set). If `format` later changes, that syntax can drop back out of the
+  // accepted set (when it's absent from `formats`) even though the color
+  // itself was successfully parsed and committed at mount. The old
+  // `resetToInitialValue` re-validated the raw `resetTarget` string against
+  // the CURRENT gate on every reset, so it would clear the field instead of
+  // restoring the originally-accepted color. It now snapshots the
+  // successfully-parsed reset color once at mount and re-emits THAT through
+  // the current `format` on reset, bypassing gate re-validation entirely.
+  test('reset restores the initially-accepted color even after `format` changes it out of the accepted set', async () => {
+    const oklchRed = 'oklch(62.8% 0.2577 29.23)';
+    const { container, rerender } = renderColorFieldFormFixture({
+      id: 'color',
+      name: 'c',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'oklch',
+    });
+    const input = getInput(container);
+    // Accepted at mount: 'oklch' is the configured `format`, so it's
+    // implicitly admitted even though `formats` only lists 'hex'.
+    expect(input.getAttribute('aria-invalid')).not.toBe('true');
+    expect(input.value).toMatch(/^oklch\(/);
+
+    // Switch `format` to 'rgb' — 'oklch' syntax now drops out of the
+    // accepted set (it's neither in `formats` nor the new `format`).
+    await rerender({
+      id: 'color',
+      name: 'c',
+      value: oklchRed,
+      formats: ['hex'],
+      format: 'rgb',
+    });
+    await tick();
+
+    // Dirty the field with something else, then reset.
+    await typeAndBlur(input, '#00ff00');
+    expect(input.value).toBe('rgb(0 255 0)');
+
+    container.dispatchEvent(new Event('reset', { bubbles: true, cancelable: true }));
+    await tick();
+
+    // Must restore the originally-accepted red — re-emitted in the CURRENT
+    // format ('rgb') — not clear the field.
+    expect(input.value).toBe('rgb(255 0 0)');
+    const hidden = q<HTMLInputElement>(container, 'input[type="hidden"][name="c"]');
+    expect(hidden.value).toBe('rgb(255 0 0)');
+  });
 });
 
 describe('ColorField — default error message reflects formats', () => {
