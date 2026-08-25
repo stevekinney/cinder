@@ -20,7 +20,6 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
-  import { BROWSER as browser } from 'esm-env';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -70,10 +69,23 @@
   let dialogElement: HTMLDialogElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
-  // `mounted` is false during SSR and becomes true after the first client-side effect.
-  // The dialog renders only when mounted (client) or when open (SSR with open=true).
-  // This keeps the <dialog> absent from SSR HTML when closed, while letting the client
-  // keep the element mounted so dialogElement.close() fires correctly.
+  // `mounted` is false during SSR and becomes true after the first client-side
+  // effect. The dialog renders ONLY once mounted — never merely because
+  // `open` is true — per OVERLAY-POLICY.md's SSR rule (hard constraint): the
+  // overlay surface must render nothing on the server regardless of its
+  // initial `open` state, matching Drawer's `{#if dialogState.hydrated}` and
+  // Popover's `{#if mounted && ...}` gates. This keeps the <dialog> entirely
+  // absent from SSR HTML whether the modal starts open or closed. The
+  // trade-off (documented in the policy) is a one-frame render delay on the
+  // client when an overlay starts open, in exchange for a single, predictable
+  // hydration model with no `open={true}` server/client mismatch. An earlier
+  // revision of this file briefly emitted the `open` HTML attribute directly
+  // during SSR to avoid that one-frame delay for a deep-linked initially-open
+  // modal — reverted (PR #1422 review): a plain attribute-open `<dialog>` is
+  // not a real top-layer modal (no `::backdrop`, no focus trap, no scroll
+  // lock, no inertness of the rest of the page), which is worse than the
+  // policy's accepted one-frame delay, and it broke the single predictable
+  // hydration model the policy exists to guarantee.
   let mounted = $state(false);
 
   const reducedMotion = useReducedMotion();
@@ -116,32 +128,6 @@
 
   $effect(() => {
     mounted = true;
-  });
-
-  // One-time SSR-to-client upgrade. When the modal starts open, the server
-  // render emits the `open` HTML attribute directly on <dialog> (see the
-  // `!browser` spread on the element below) so a deep-linked initially-open
-  // modal is actually visible in the served HTML instead of `display:none`
-  // per UA default styles until the client calls `showModal()`. A plain
-  // attribute-open dialog is not a real top-layer modal, though — no
-  // `::backdrop` (that's a `showModal()`-only construct), no focus trap, no
-  // scroll lock, no escape-stack entry. modal.css's
-  // `.cinder-modal[data-cinder-chrome='none'][open]:not(:modal)` rule covers
-  // the missing-`::backdrop` gap for chromeless consumers by painting the
-  // same backdrop color directly on the dialog element for exactly this
-  // window; stripping the attribute here is what makes that CSS selector
-  // stop matching. Strip the attribute (not `.close()` — that would fire
-  // the native `close` event and route through `dialogState.handleClose()`
-  // as if a user had dismissed it) so `dialogElement.open` reads false
-  // again; the `syncOpenState()` effect below then takes its normal
-  // `!dialogElement.open` branch and promotes it to a genuine
-  // `showModal()` dialog with all the associated side effects. Runs once
-  // per mount, before `syncOpenState()`.
-  $effect(() => {
-    if (!browser) return;
-    if (dialogElement?.hasAttribute('open')) {
-      dialogElement.removeAttribute('open');
-    }
   });
 
   $effect(() => {
@@ -261,7 +247,7 @@
   }
 </script>
 
-{#if mounted || open}
+{#if mounted}
   <dialog
     bind:this={dialogElement}
     class={classNames('cinder-modal', className)}
@@ -271,7 +257,6 @@
     {...isChromeless ? { 'aria-label': ariaLabel } : { 'aria-labelledby': titleId }}
     {...describedById ? { 'aria-describedby': describedById } : {}}
     data-cinder-closing={dialogState.isClosing ? '' : undefined}
-    {...!browser && open ? { open: true } : {}}
     onclose={() => dialogState.handleClose()}
     onclick={handleBackdropClick}
     oncancel={handleNativeCancel}

@@ -226,17 +226,27 @@ describe('image-lightbox source contract — Modal composition', () => {
     expect(source).toContain('{#if hasOpenedOnce && currentImage}');
   });
 
-  test('hasOpenedOnce is seeded from `open`, not a hardcoded false (CIN-377 review — SSR contract)', () => {
-    // Regression: $effect never runs on the server, so a hardcoded
-    // `$state(false)` here meant an instance server-rendered with
-    // `open={true}` from the start emitted NO dialog markup during SSR — a
-    // hydration flash, and no content at all for a client that never
-    // hydrates. Seeding from `open` keeps the lazy-mount behavior for the
-    // common initially-closed case (this still evaluates to `false` then)
-    // while making an initially-open instance SSR-correct immediately. See
-    // image-lightbox.ssr.test.ts for the actual server-render proof.
-    expect(source).toContain('let hasOpenedOnce = $state(open);');
+  test('hasOpenedOnce is seeded from `open && images.length > 0`, not `open` alone or a hardcoded false', () => {
+    // Regression (PR #1422 review): seeding from `open` ALONE meant an
+    // instance constructed with `open: true` and an EMPTY `images` array set
+    // `hasOpenedOnce = true` even though the template's own mount condition
+    // (`{#if hasOpenedOnce && currentImage}`) never actually mounts a Modal
+    // in that case (`currentImage` is `undefined` for an empty array) — with
+    // no Modal ever mounting, `onExitComplete` (the only other place that
+    // clears the flag) never fires, so it stuck at `true` forever. A LATER
+    // update supplying non-empty `images` (with the lightbox by then already
+    // closed) would mount a Modal that was already CLOSED the instant it
+    // appeared, with no exit transition to release it. Gating the seed on
+    // `images.length > 0` too matches the template's actual mount condition.
+    // Per OVERLAY-POLICY.md's SSR rule, this seeding does not put any dialog
+    // markup into server HTML either way — Modal's own `{#if mounted}` gate
+    // keeps its overlay surface SSR-empty regardless; see
+    // image-lightbox.ssr.test.ts for the executable proof of that contract.
+    expect(source).toContain(
+      'let hasOpenedOnce = $state(open && untrack(() => images.length) > 0);',
+    );
     expect(source).not.toContain('let hasOpenedOnce = $state(false);');
+    expect(source).not.toContain('let hasOpenedOnce = $state(open);');
   });
 
   test('mountGeneration forces a full destroy-then-recreate of the Modal instance via {#key}', () => {
@@ -587,5 +597,59 @@ describe('image-lightbox — lazy Modal mount (CIN-377 review)', () => {
 
     expect(container.querySelectorAll('dialog').length).toBe(1);
     expect(container.querySelectorAll('img').length).toBe(1);
+  });
+
+  test('open flipping true with an empty images array does not leak a closed Modal once images later become non-empty (PR #1422 review)', async () => {
+    // Regression: `open` flipping true while `images` was empty used to set
+    // `hasOpenedOnce = true` unconditionally, even though the template's own
+    // mount guard (`{#if hasOpenedOnce && currentImage}`) never actually
+    // mounts a Modal in that case — `currentImage` is `undefined` for an
+    // empty `images` array. With no Modal ever mounting, `onExitComplete`
+    // (the only other place that clears `hasOpenedOnce`) never fires, so the
+    // flag stuck at `true` forever. If `open` then flipped back to `false`
+    // and a LATER update supplied non-empty `images`, the template condition
+    // became true and mounted a Modal that was already closed the instant it
+    // appeared — a closed <dialog> + SlidingDialogState + useReducedMotion
+    // subscription that then persists indefinitely, since a Modal that never
+    // actually opens has no exit transition to release it.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images: [], initialIndex: 0, open: true },
+    });
+    await tick();
+    // No Modal mounts — there is nothing to show yet.
+    expect(container.querySelector('dialog')).toBeNull();
+
+    // The lightbox closes again (still no images) before ever mounting.
+    await rerender({ images: [], initialIndex: 0, open: false });
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+
+    // A later update supplies real images, but the lightbox is already
+    // closed by this point (`open: false`) — a fresh, genuinely-closed
+    // Modal instance must NOT appear.
+    await rerender({ images, initialIndex: 0, open: false });
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+  });
+
+  test('images transitioning from empty to non-empty WHILE still open mounts a genuinely open Modal, not a leaked closed one', async () => {
+    // Companion to the test above: when `images` goes from empty to
+    // non-empty while `open` is still `true` (rather than after a close),
+    // the fix must still mount a real, OPEN Modal — not silently do nothing
+    // forever because `hasOpenedOnce` was never set while `images` was
+    // empty.
+    const { container, rerender } = render(ImageLightbox, {
+      props: { images: [], initialIndex: 0, open: true },
+    });
+    await tick();
+    expect(container.querySelector('dialog')).toBeNull();
+
+    await rerender({ images, initialIndex: 0, open: true });
+    await tick();
+
+    const dialog = container.querySelector('dialog');
+    expect(dialog).not.toBeNull();
+    expect(dialog?.hasAttribute('open')).toBe(true);
+    expect(container.querySelector('img')?.getAttribute('alt')).toBe('Image A');
   });
 });

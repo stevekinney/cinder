@@ -17,7 +17,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { ChevronLeft, ChevronRight, X } from '@lostgradient/cinder/icons';
   import { Modal } from '@lostgradient/cinder/modal';
 
@@ -101,17 +101,38 @@
   // MediaQuery subscription alive for the rest of the chat's lifetime, one
   // per message in a long thread (CIN-377 review).
   //
-  // Initialized from `open` (NOT a hardcoded `false`): `$effect` never runs
-  // on the server, so a hardcoded `false` here meant an instance rendered
-  // with `open={true}` from the start (a server-rendered "deep link" into
-  // an already-open lightbox, or any consumer that seeds `open` truthy)
-  // emitted NO dialog markup at all during SSR — a hydration flash where
-  // the lightbox pops in only after the client-side effect first runs,
-  // and no content whatsoever for a client that never hydrates. Seeding
-  // from `open` keeps the common lazy case intact (starts `false` for the
-  // overwhelmingly common closed-by-default instance) while making an
-  // initially-open instance SSR-correct from the first render.
-  let hasOpenedOnce = $state(open);
+  // Initialized from `open && images.length > 0` (NOT a hardcoded `false`,
+  // and NOT `open` alone): `$effect` never runs on the server, so a
+  // hardcoded `false` here would leave the client's own bootstrap effect as
+  // the only thing that ever sets it, opening a brief window on the client
+  // where an already-open instance renders no Modal yet. Seeding from `open`
+  // closes that window for the common already-open-on-mount case — but
+  // `open` ALONE is not sufficient: gating on `images.length > 0` too
+  // matches the template's actual mount condition
+  // (`{#if hasOpenedOnce && currentImage}`, and `currentImage` is
+  // `undefined` for an empty `images` array). Seeding `hasOpenedOnce = true`
+  // for `open: true` with an EMPTY `images` array previously left the flag
+  // stuck at `true` forever with no Modal ever having genuinely mounted —
+  // `onExitComplete` (the only other place that clears it) never fires for a
+  // Modal that never mounted — so a LATER update supplying non-empty
+  // `images` (with the lightbox already closed by then) mounted a Modal that
+  // was already CLOSED the instant it appeared, with no exit transition to
+  // release it (PR #1422 review). Note: per OVERLAY-POLICY.md's SSR rule,
+  // this seeding does not itself put any dialog markup into the server
+  // HTML — Modal's own internal `{#if mounted}` gate keeps its overlay
+  // surface SSR-empty regardless of `hasOpenedOnce`; see
+  // image-lightbox.ssr.test.ts.
+  //
+  // Wrapped in `untrack()` (the established idiom elsewhere in this
+  // codebase for exactly this — see `popover-bindable-fixture.svelte`'s
+  // `$state(untrack(() => initialOpen))`): reading `images.length` directly
+  // inside the `$state(...)` initializer is flagged by Svelte as
+  // `state_referenced_locally`, since only the value AT CONSTRUCTION TIME is
+  // captured — which is exactly what's wanted here (a one-time seed, not a
+  // live binding), but the compiler can't tell that from a bare reactive
+  // read. `untrack()` makes the one-time intent explicit to both the
+  // compiler and the reader.
+  let hasOpenedOnce = $state(open && untrack(() => images.length) > 0);
   // Forces the `{#key mountGeneration}` block around <Modal> (below) to
   // fully destroy and recreate on every genuine remount cycle. `{#if}`
   // alone was not reliable here: when `hasOpenedOnce` flips false (exit
@@ -127,10 +148,33 @@
   $effect(() => {
     if (open) {
       lastLiveIndex = navigationIndex ?? clampedInitialIndex;
-      if (!hasOpenedOnce) {
-        mountGeneration += 1;
+      // Gate on `images.length > 0` (equivalently: a Modal will genuinely
+      // mount), not on `open` alone. `open` flipping true with an EMPTY
+      // `images` array used to set `hasOpenedOnce = true` here even though
+      // the template's own mount condition (`{#if hasOpenedOnce &&
+      // currentImage}`) never actually mounts a Modal in that case
+      // (`currentImage` is `undefined` when `images` is empty) — so
+      // `onExitComplete` (the only other place that clears
+      // `hasOpenedOnce`) never fires, and the flag stayed stuck at `true`
+      // indefinitely. A LATER update supplying non-empty `images` while
+      // `open` was already false by then (the lightbox's own open/close
+      // cycle having come and gone with no Modal ever mounting) would flip
+      // the template condition true and mount a Modal that was already
+      // CLOSED from the moment it appeared — a closed `<dialog>` +
+      // `SlidingDialogState` + `useReducedMotion` subscription that then
+      // persists indefinitely, since a Modal that never actually opens has
+      // no exit transition to fire `onExitComplete` and release it either.
+      // Reading `images.length` here (this effect did not previously read
+      // `images` at all) also means the effect now correctly reruns and
+      // sets `hasOpenedOnce` the moment `images` transitions from empty to
+      // non-empty while still open, so a real Modal mounts as soon as
+      // there's something to show.
+      if (images.length > 0) {
+        if (!hasOpenedOnce) {
+          mountGeneration += 1;
+        }
+        hasOpenedOnce = true;
       }
-      hasOpenedOnce = true;
       frozenIndex = null;
       if (!resetAppliedForCurrentSession) {
         navigationIndex = null;
