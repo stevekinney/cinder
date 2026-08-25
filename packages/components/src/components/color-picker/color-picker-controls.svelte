@@ -161,11 +161,21 @@
 {/if}
 
 <div class="cinder-color-picker__footer">
+  <!--
+    The checkerboard backdrop is keyed off the ACTUAL alphaValue (< 1), not
+    the `alpha` UI-affordance prop: a programmatically-retained translucent
+    value (alpha={false} + a translucent `value`, per the CIN-104
+    alpha-retention ruling) renders as an hsla(...) preview color and must
+    show the checkerboard behind it, even with the alpha slider hidden —
+    otherwise it composites flat against the surrounding surface and reads
+    as a different opaque color despite the stored value and copy actions
+    reporting alpha.
+  -->
   <div
     id={previewId}
     role="img"
     class="cinder-color-picker__preview"
-    data-cinder-alpha={alpha ? '' : undefined}
+    data-cinder-alpha={alphaValue < 1 ? '' : undefined}
     aria-label={internalValue ? `Selected color: ${internalValue}` : 'Selected color: none'}
     style="--cinder-color-picker-preview: {previewColor};"
   ></div>

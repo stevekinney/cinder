@@ -8,7 +8,7 @@
     },
     "value": {
       "type": "string",
-      "description": "Bindable value, committed in the syntax the configured `format` prop\nselects (plain hex by default; modern CSS Color 4 syntax for the other\nformats — see `format`). Accepts any color string the configured\n`formats` allow when set externally, regardless of `format`."
+      "description": "Bindable value, committed in the syntax the configured `format` prop\nselects (plain hex by default; modern CSS Color 4 syntax for the other\nformats — see `format`). Accepts any color string the configured\n`formats` allow when set externally, plus whatever syntax `format`\nitself uses (see `formats` below — the configured output format is\nalways an implicitly accepted input format too)."
     },
     "alpha": {
       "type": "boolean",
@@ -19,11 +19,11 @@
       "items": {
         "enum": ["hex", "rgb", "rgba", "hsl", "hsla", "hwb", "oklch"]
       },
-      "description": "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Add `'oklch'` to accept `oklch()` input strings."
+      "description": "Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`;\nrgba/hsla aliases can be restricted independently. Add `'oklch'` to\naccept `oklch()` input strings. The configured `format` (below) is\nalways an implicitly accepted input format too, regardless of what's\nlisted here — the field must be able to parse back the exact syntax it\njust emitted, so e.g. `formats={['hex']}` with `format=\"rgb\"` still\naccepts user-entered `rgb()` values. Don't rely on `formats` to exclude\nthe configured output format's syntax."
     },
     "format": {
       "enum": ["hex", "rgb", "hsl", "hwb", "oklch"],
-      "description": "Output color format for the committed/emitted value. Default `'hex'`.\nPurely additive — existing consumers relying on the hex default are\nunaffected. `value` stays a plain string regardless of format. `lab` is\ndeliberately excluded."
+      "description": "Output color format for the committed/emitted value. Default `'hex'`.\nPurely additive — existing consumers relying on the hex default are\nunaffected. `value` stays a plain string regardless of format. `lab` is\ndeliberately excluded. Implicitly widens the accepted *input* set too —\nsee `formats` above."
     },
     "disabled": {
       "type": "boolean",

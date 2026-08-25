@@ -7,19 +7,26 @@
 <script lang="ts">
   import { ColorPicker } from '@lostgradient/cinder/color-picker';
   import type { ColorPickerFormat } from '@lostgradient/cinder/color-picker';
+  import { Select } from '@lostgradient/cinder/select';
 
-  const formats: ColorPickerFormat[] = ['hex', 'rgb', 'hsl', 'hwb', 'oklch'];
+  const formatOptions: { value: ColorPickerFormat; label: string }[] = [
+    { value: 'hex', label: 'hex' },
+    { value: 'rgb', label: 'rgb' },
+    { value: 'hsl', label: 'hsl' },
+    { value: 'hwb', label: 'hwb' },
+    { value: 'oklch', label: 'oklch' },
+  ];
   let selectedFormat = $state<ColorPickerFormat>('oklch');
   let current = $state('');
 </script>
 
 <div style="display: flex; flex-direction: column; gap: 0.75rem; max-width: 20rem;">
-  <label for="picker-format" style="font-size: 0.875rem; font-weight: 500;"> Output format </label>
-  <select id="picker-format" bind:value={selectedFormat}>
-    {#each formats as formatOption (formatOption)}
-      <option value={formatOption}>{formatOption}</option>
-    {/each}
-  </select>
+  <Select
+    id="picker-format"
+    bind:value={selectedFormat}
+    options={formatOptions}
+    label="Output format"
+  />
 
   <ColorPicker
     value="#22c55e"

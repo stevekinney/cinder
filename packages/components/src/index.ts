@@ -196,10 +196,14 @@ export { default as Collapsible } from './components/collapsible/index.ts';
 export type { CollapsibleProps, CollapsibleTriggerState } from './components/collapsible/index.ts';
 
 export { default as ColorField } from './components/color-field/index.ts';
-export type { ColorFieldFormat, ColorFieldProps } from './components/color-field/index.ts';
+export type {
+  ColorFieldFormat,
+  ColorFieldOutputFormat,
+  ColorFieldProps,
+} from './components/color-field/index.ts';
 
 export { default as ColorPicker } from './components/color-picker/index.ts';
-export type { ColorPickerProps } from './components/color-picker/index.ts';
+export type { ColorPickerFormat, ColorPickerProps } from './components/color-picker/index.ts';
 
 export { default as ColorSwatchPicker } from './components/color-swatch-picker/index.ts';
 export type {

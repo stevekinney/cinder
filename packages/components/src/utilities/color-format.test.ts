@@ -179,3 +179,40 @@ describe('round-trip stability', () => {
     });
   }
 });
+
+describe('oklch emission precision preserves byte-exact round-trips', () => {
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b4Ull): oklch(l% c h) at 2
+  // decimals of lightness / 4 decimals of chroma wasn't enough precision to
+  // round-trip every sRGB byte value. #00b8c1 (0, 184, 193) emitted
+  // oklch(71.19% 0.121 201.02); parsing that back produced RGB (1, 184,
+  // 193) — one byte off — which then re-emitted a DIFFERENT chroma
+  // (0.1209), rewriting a persisted value with no user interaction and
+  // violating the documented parse -> emit idempotence guarantee.
+  test('#00b8c1 (the cited byte-boundary case) parses back to the exact same RGB byte triple', () => {
+    const seed: RgbaComponents = { r: 0, g: 184, b: 193, a: 1 };
+    const emitted = formatColor(seed, 'oklch');
+    const parsed = parseCssColor(emitted);
+    expect(parsed).not.toBeNull();
+    expect(parsed).toEqual(seed);
+    // And re-emitting from the reparsed value is byte-for-byte identical —
+    // no drift on a second round-trip.
+    expect(formatColor(parsed!, 'oklch')).toBe(emitted);
+  });
+
+  test('a sweep of sRGB byte triples all round-trip to the exact same bytes', () => {
+    let failures = 0;
+    for (let r = 0; r <= 255; r += 5) {
+      for (let g = 0; g <= 255; g += 17) {
+        for (let b = 0; b <= 255; b += 29) {
+          const seed: RgbaComponents = { r, g, b, a: 1 };
+          const emitted = formatColor(seed, 'oklch');
+          const parsed = parseCssColor(emitted);
+          if (parsed === null || parsed.r !== r || parsed.g !== g || parsed.b !== b) {
+            failures++;
+          }
+        }
+      }
+    }
+    expect(failures).toBe(0);
+  });
+});

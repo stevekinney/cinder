@@ -898,6 +898,36 @@ describe('ColorPicker swatch normalization', () => {
     expect(options[1]!.getAttribute('aria-selected')).toBe('true');
     expect(options[0]!.getAttribute('aria-selected')).toBe('false');
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b5hja): with alpha=false, a
+  // programmatically-retained translucent `value` (per the CIN-104
+  // alpha-retention ruling) used to be matched against swatches using a
+  // GATED (forced-opaque) hex, while the value itself stayed translucent —
+  // so an identical translucent swatch entry never showed as selected.
+  // Matching now uses the swatch's alpha verbatim, consistent with the
+  // retained (non-gated) current value.
+  test('alpha=false: a retained translucent value matches an identical translucent swatch entry', () => {
+    const { container } = render(ColorPicker, {
+      value: '#ff000080',
+      alpha: false,
+      swatches: ['#ff000080', '#00ff00'],
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('true');
+    expect(options[0]!.hasAttribute('data-cinder-selected')).toBe(true);
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+  });
+
+  test('alpha=false: a retained translucent value does NOT match an opaque swatch of the same hue', () => {
+    const { container } = render(ColorPicker, {
+      value: '#ff000080',
+      alpha: false,
+      swatches: ['#ff0000', '#00ff00'],
+    });
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    expect(options[0]!.getAttribute('aria-selected')).toBe('false');
+    expect(options[1]!.getAttribute('aria-selected')).toBe('false');
+  });
 });
 
 describe('ColorPicker disabled', () => {
@@ -1230,6 +1260,31 @@ describe('ColorPicker retained translucent value renders/copies consistently (P1
     const hslButton = q<HTMLButtonElement>(container, '[aria-label="Copy HSL format"]');
     expect(rgbButton.textContent).toMatch(/^RGB rgb\(/);
     expect(hslButton.textContent).toMatch(/^HSL hsl\(/);
+  });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b5hjd): the retained
+  // translucent preview above builds an hsla(...) preview color, but the
+  // checkerboard backdrop was still gated on the `alpha` UI-affordance prop
+  // (data-cinder-alpha), not the actual alphaValue — so the retained color
+  // composited flat against the surrounding surface, indistinguishable from
+  // a different opaque color, even though the stored value and copy actions
+  // correctly reported alpha. The checkerboard is now gated on alphaValue < 1.
+  test('alpha=false with a retained translucent value: the preview shows the alpha checkerboard backdrop', () => {
+    const { container } = render(ColorPicker, { value: '#ff000080', alpha: false });
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
+  });
+
+  test('alpha=false with a genuinely opaque value: no checkerboard backdrop', () => {
+    const { container } = render(ColorPicker, { value: '#ff0000', alpha: false });
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
+  });
+
+  test('alpha=true with an opaque value: no checkerboard backdrop (the affordance alone does not force it)', () => {
+    const { container } = render(ColorPicker, { value: '#ff0000', alpha: true });
+    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
   });
 });
 

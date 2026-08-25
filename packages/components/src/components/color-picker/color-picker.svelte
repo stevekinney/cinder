@@ -411,11 +411,23 @@
    * in this parseable canonical form; only the publicly emitted `value` /
    * `onValueChange` / `onValueCommit` payloads follow `format`. Returns
    * `null` for an unparseable swatch.
+   *
+   * Uses the swatch's alpha VERBATIM (not `gatedAlpha`) so this matches
+   * `currentHexForSwatches` below, which is also computed from the raw,
+   * possibly-retained `alphaValue` — not gated by the `alpha` affordance.
+   * Without this, a programmatically-retained translucent `value` (e.g.
+   * `alpha={false}` + `value="#ff000080"`, per the CIN-104 alpha-retention
+   * ruling) would never match an identically-translucent `swatches` entry:
+   * this function would gate it to `#ff0000` while `currentHexForSwatches`
+   * stayed at `#ff000080`, so `ColorSwatchPicker`'s exact-string equality
+   * check would never mark the matching option `aria-selected`. Gating by
+   * `alpha` still happens — correctly — at the moment a swatch is actually
+   * *committed* interactively (`handleSwatchChange` below), not here.
    */
   function normalizeSwatch(swatch: string): string | null {
     const parsed = parseToHsla(swatch);
     if (!parsed) return null;
-    return hexFor(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a)).toLowerCase();
+    return hexFor(parsed.h, parsed.s, parsed.l, parsed.a).toLowerCase();
   }
 
   /**

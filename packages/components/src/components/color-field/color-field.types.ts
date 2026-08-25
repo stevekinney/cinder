@@ -12,7 +12,9 @@ export type ColorFieldProps = {
    * Bindable value, committed in the syntax the configured `format` prop
    * selects (plain hex by default; modern CSS Color 4 syntax for the other
    * formats — see `format`). Accepts any color string the configured
-   * `formats` allow when set externally, regardless of `format`.
+   * `formats` allow when set externally, plus whatever syntax `format`
+   * itself uses (see `formats` below — the configured output format is
+   * always an implicitly accepted input format too).
    */
   value?: string;
   /**
@@ -23,13 +25,23 @@ export type ColorFieldProps = {
    * concern.
    */
   alpha?: boolean;
-  /** Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`; rgba/hsla aliases can be restricted independently. Add `'oklch'` to accept `oklch()` input strings. */
+  /**
+   * Accepted *input* formats. Defaults to `['hex', 'rgb', 'hsl', 'hwb']`;
+   * rgba/hsla aliases can be restricted independently. Add `'oklch'` to
+   * accept `oklch()` input strings. The configured `format` (below) is
+   * always an implicitly accepted input format too, regardless of what's
+   * listed here — the field must be able to parse back the exact syntax it
+   * just emitted, so e.g. `formats={['hex']}` with `format="rgb"` still
+   * accepts user-entered `rgb()` values. Don't rely on `formats` to exclude
+   * the configured output format's syntax.
+   */
   formats?: readonly ColorFieldFormat[];
   /**
    * Output color format for the committed/emitted value. Default `'hex'`.
    * Purely additive — existing consumers relying on the hex default are
    * unaffected. `value` stays a plain string regardless of format. `lab` is
-   * deliberately excluded.
+   * deliberately excluded. Implicitly widens the accepted *input* set too —
+   * see `formats` above.
    */
   format?: ColorFieldOutputFormat;
   /** Disable the input. */

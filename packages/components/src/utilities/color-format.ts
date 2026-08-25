@@ -43,6 +43,24 @@ const toHwbConverter = converter('hwb');
 const toRgbConverter = converter('rgb');
 const gamutMapOklchToRgb = toGamut('rgb', 'oklch');
 
+// A direct (non-gamut-mapped) oklch->rgb conversion that lands only a hair
+// outside [0, 1] — a floating-point rounding artifact of an already-in-gamut
+// color, not a genuinely saturated out-of-gamut one — is trusted and clamped
+// directly rather than routed through `toGamut`'s bisection. `culori`'s
+// `inGamut` has zero tolerance, and `toGamut`'s bisection re-derives the
+// color through its working space even on its "already in gamut" early
+// return, which introduces enough additional floating-point drift to flip
+// an in-gamut color's rounded byte (see the #00b8c1 round-trip regression).
+// Skipping gamut mapping for near-boundary values avoids that drift; a
+// genuinely saturated out-of-gamut color (far outside this epsilon) still
+// goes through the real chroma-reduction bisection below.
+const GAMUT_EPSILON = 3e-3;
+function isCloseEnoughToGamut(rgb: Rgb): boolean {
+  return [rgb.r, rgb.g, rgb.b].every(
+    (channel) => (channel ?? 0) >= -GAMUT_EPSILON && (channel ?? 0) <= 1 + GAMUT_EPSILON,
+  );
+}
+
 function toHex2(value: number): string {
   return Math.max(0, Math.min(255, Math.round(value)))
     .toString(16)
@@ -120,10 +138,17 @@ export function formatColor(parts: RgbaComponents, format: ColorOutputFormat): s
     return `hwb(${h} ${w}% ${b}%${alphaSuffix})`;
   }
 
-  // oklch
+  // oklch. Lightness at 2 decimals (percentage) / chroma at 4 decimals was
+  // not enough precision to round-trip every sRGB byte value — e.g.
+  // #00b8c1 emitted oklch(71.19% 0.121 201.02), which parses to a
+  // one-byte-off RGB and then re-emits a DIFFERENT chroma (0.1209),
+  // rewriting a persisted value with no user interaction. 3 decimals for
+  // lightness and 5 for chroma is the precision verified (by an exhaustive
+  // sweep over sRGB byte triples, plus the cited #00b8c1 case) to make
+  // parse -> emit a fixed point for every sRGB byte value.
   const oklch = toOklchConverter(rgbColor);
-  const l = roundTo((oklch.l ?? 0) * 100, 2);
-  const c = roundTo(oklch.c ?? 0, 4);
+  const l = roundTo((oklch.l ?? 0) * 100, 3);
+  const c = roundTo(oklch.c ?? 0, 5);
   const h = roundTo(oklch.h ?? 0, 2);
   return `oklch(${l}% ${c} ${h}${alphaSuffix})`;
 }
@@ -186,8 +211,8 @@ export function parseCssColor(input: string): RgbaComponents | null {
   if (parsed === undefined || !ACCEPTED_PARSE_MODES.has(parsed.mode)) return null;
 
   if (parsed.mode === 'oklch') {
-    const mapped = gamutMapOklchToRgb(parsed);
-    const rgb = toRgbConverter(mapped);
+    const direct = toRgbConverter(parsed);
+    const rgb = isCloseEnoughToGamut(direct) ? direct : toRgbConverter(gamutMapOklchToRgb(parsed));
     return rgbColorToRgba(rgb, parsed.alpha ?? 1);
   }
 
