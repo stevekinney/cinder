@@ -42,6 +42,7 @@ export class SlidingDialogState {
   #releaseScrollLock: (() => void) | null = null;
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
+  #disposed = false;
 
   constructor(options: SlidingDialogStateOptions) {
     this.#options = options;
@@ -156,6 +157,14 @@ export class SlidingDialogState {
   }
 
   destroy(): void {
+    // Marks any in-flight `#finishClosing()` deferred continuation (past its
+    // `tick()`) as stale, even though it captured the CURRENT
+    // `#closeGeneration` and would otherwise still match it — a consumer
+    // that unmounts Modal (e.g. from its own `onExitComplete`-driven
+    // teardown, or simply navigating away) while that continuation is
+    // pending must not have `onClosed` fire afterward, calling back into a
+    // destroyed component instance.
+    this.#disposed = true;
     this.#cancelPendingClose?.();
     this.#cancelPendingClose = null;
     const wasOpen = this.#releaseScrollLock !== null || this.#releaseEscape !== null;
@@ -215,6 +224,7 @@ export class SlidingDialogState {
       // in case some future reopen path forwards to `setOpen`/`renderPanel`
       // without going through `syncOpenState()`'s generation bump.
       if (
+        this.#disposed ||
         closedGeneration !== this.#closeGeneration ||
         this.#options.getOpen() ||
         this.renderPanel

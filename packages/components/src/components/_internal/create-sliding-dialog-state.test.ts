@@ -164,4 +164,60 @@ describe('createSlidingDialogState', () => {
     expect(dialogElement.open).toBe(true);
     expect(dialogState.renderPanel).toBe(true);
   });
+
+  test('does not fire onClosed when destroy() is called during the deferred window between #finishClosing and its tick()-deferred callback', async () => {
+    // Regression (PR #1422 review): `#finishClosing()`'s `onClosed`
+    // forwarding call is deferred past a `tick()`. If the consumer unmounts
+    // Modal (e.g. from its own `onExitComplete`-driven teardown, or simply
+    // navigating away) while that continuation is still pending, the
+    // deferred closure still captured the CURRENT `#closeGeneration` at
+    // schedule time — an unmount alone does not change `#closeGeneration`,
+    // so the plain generation check would still match and `onClosed` would
+    // fire AFTER the host component (and its `onExitComplete` callback)
+    // have already been torn down. `destroy()` now sets a disposed flag the
+    // deferred continuation checks first, unconditionally, regardless of
+    // generation.
+    let open = false;
+    let closedCount = 0;
+    const dialogElement = createDialogElement();
+    const dialogState = createSlidingDialogState({
+      getOpen: () => open,
+      setOpen: (next) => {
+        open = next;
+      },
+      getDialogElement: () => dialogElement,
+      // No panel element — `beginClosing()` finishes synchronously via
+      // `#finishClosing()`, letting this test control the exact destroy
+      // timing deterministically relative to the deferred `tick()`.
+      getPanelElement: () => undefined,
+      getReducedMotion: () => true,
+      getTriggerRef: () => null,
+      onClosed: () => {
+        closedCount += 1;
+      },
+    });
+
+    open = true;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(true);
+
+    // Close: `#finishClosing()` runs synchronously here — the native dialog
+    // is closed before this call returns, but `onClosed` is only scheduled
+    // (deferred past a `tick()` that hasn't resolved yet).
+    open = false;
+    dialogState.syncOpenState();
+    expect(dialogElement.open).toBe(false);
+    expect(closedCount).toBe(0);
+
+    // The consumer unmounts Modal DURING the deferred window, before the
+    // tick() above resolves — e.g. a parent clearing a mount flag from its
+    // own (now stale) exit-complete handling, or an unrelated navigation.
+    dialogState.destroy();
+
+    await tick();
+
+    // The deferred onClosed must NOT have fired after destroy() — the host
+    // component instance is gone.
+    expect(closedCount).toBe(0);
+  });
 });
