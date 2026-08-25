@@ -74,14 +74,24 @@ function getLongestTransitionTime(element: HTMLElement): number {
     .filter(Boolean);
   const durations = parseTimeValueList(style.transitionDuration);
   const delays = parseTimeValueList(style.transitionDelay);
-  // Must also count `transitionProperty`'s own slots: a caller passing
-  // `ignoreUnknownPropertyEvents` (Speed Dial) relies on this fallback
-  // EXCLUSIVELY whenever any slot resolves to `all` — a longer property list
-  // than duration/delay list (e.g. `all, opacity, transform, width, color`
-  // with only 3 durations/delays) still cyclically resolves each of its OWN
-  // slots to a real duration+delay, and this loop must iterate that many
-  // times to see the longest one, not stop at `max(durations, delays)`.
-  const count = Math.max(durations.length, delays.length, properties.length);
+  // The EFFECTIVE number of transition slots is always `properties.length`
+  // — per the CSS Transitions spec, `transition-property` defines how many
+  // transitions exist; `transition-duration`/`transition-delay` only ever
+  // cyclically REPEAT into that many slots when shorter, or have their
+  // EXCESS entries ignored entirely when longer (round 18 review: `all`
+  // with durations `100ms, 10s` has only ONE effective slot — properties.length
+  // is 1 — so the `10s` second duration entry is simply unused, never
+  // paired with any real transition. `Math.max(durations.length,
+  // delays.length, properties.length)` previously let that unused entry
+  // inflate the loop to a phantom second iteration via
+  // `getRepeatedValue`'s cyclical wrap-around, producing a bogus 10s
+  // "longest" boundary instead of the real ~100ms one). A property list
+  // LONGER than the duration/delay lists is still fully covered by this —
+  // `properties.length` IS the count in that case too, e.g. `all, opacity,
+  // transform, width, color` with only 3 durations/delays still iterates
+  // all 5 property slots, each cyclically resolving its own duration+delay
+  // from the shorter lists.
+  const count = properties.length;
 
   let longest = 0;
 

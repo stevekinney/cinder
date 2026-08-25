@@ -560,6 +560,7 @@
     data-cinder-placement={anchoredOverlay.resolvedPlacement}
     data-cinder-position-ready={anchoredOverlay.positionReady}
     data-cinder-closing={exitState.isClosing ? '' : undefined}
+    data-cinder-has-position={resolvedPositionStyle ? '' : undefined}
     style={resolvedPositionStyle}
     tabindex="-1"
   >

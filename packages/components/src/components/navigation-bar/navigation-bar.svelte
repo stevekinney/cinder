@@ -155,7 +155,21 @@
     // `inheritedPortalStyle` already correctly stop treating it as mobile.
     // Positioning must tear down in that same step, not lag behind on
     // `renderPanel` alone.
-    open: () => isMobileLayout && exitState.renderPanel,
+    //
+    // `!sourceSubtreeUnavailable` is read for the SAME reason as
+    // `isMobileLayout` (CIN-376 round 18 review): when the source ancestor
+    // becomes `inert`/`aria-hidden`/disabled, the availability observer sets
+    // `sourceSubtreeUnavailable` and closes the menu — `itemsPortalScope`
+    // above already includes this in its own `disabled` gate and
+    // immediately restores the panel inline, but this positioning gate
+    // stayed true through `exitState.renderPanel` regardless, so the
+    // restored (now inline, no longer portaled) panel kept its
+    // viewport-fixed coordinates and match-anchor width for the rest of the
+    // exit — coordinates that mean something different once reinterpreted
+    // under a transformed/containing-block-forming ancestor, making the
+    // panel visibly jump during this exceptional dismissal. Tearing down
+    // alongside the portal, not lagging behind it, fixes that.
+    open: () => isMobileLayout && exitState.renderPanel && !sourceSubtreeUnavailable,
     anchor: () => navigationBarElement,
     panel: () => itemsRegionElement,
     placement: () => 'bottom-start' as Placement,

@@ -336,6 +336,27 @@
     offset: () => 8,
     widthMode: () => 'none',
   });
+
+  // Snapshot of the last non-empty computed position style, mirroring
+  // Popover's `lastPositionStyle` (CIN-376 round 17/18 review): a reactive
+  // `placement` change while the tooltip is fading out still invalidates
+  // `createAnchoredOverlay`'s effect even though `open()` above
+  // (`exitState.renderPanel`) stays true — its cleanup synchronously clears
+  // `positionStyle`/`positionReady` before the asynchronous recomputation
+  // restores them, but `data-cinder-visible` keeps the tooltip painted
+  // throughout, so without this the partially visible fixed element would
+  // jump to its default `left: 0; top: 0` position during the exit. A
+  // genuine fresh recompute overwrites this snapshot again within the same
+  // reactive flush, so there's no meaningful staleness window outside this
+  // transient invalidation gap.
+  let lastPositionStyle = '';
+  $effect(() => {
+    if (anchoredOverlay.positionStyle) {
+      lastPositionStyle = anchoredOverlay.positionStyle;
+    }
+  });
+  const resolvedPositionStyle = $derived(anchoredOverlay.positionStyle || lastPositionStyle);
+
   const isTooltipExposed = $derived(visible && anchoredOverlay.positionReady);
 
   onDestroy(clearPendingShow);
@@ -380,7 +401,7 @@
       data-cinder-position-ready={anchoredOverlay.positionReady}
       data-cinder-visible={exitState.renderPanel ? '' : undefined}
       data-cinder-closing={exitState.isClosing ? '' : undefined}
-      style={anchoredOverlay.positionStyle}
+      style={resolvedPositionStyle}
       {@attach tooltipPortalAttachment}
     >
       {text}
@@ -409,7 +430,7 @@
         data-cinder-position-ready={anchoredOverlay.positionReady}
         data-cinder-visible={exitState.renderPanel ? '' : undefined}
         data-cinder-closing={exitState.isClosing ? '' : undefined}
-        style={anchoredOverlay.positionStyle}
+        style={resolvedPositionStyle}
         {@attach tooltipPortalAttachment}
       >
         {text}

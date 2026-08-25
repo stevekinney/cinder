@@ -168,6 +168,50 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('the fallback timer only counts transition-property slots, ignoring unused excess duration/delay entries (CIN-376 round 18)', () => {
+    // `transition-property: all` has exactly ONE effective slot — per the
+    // CSS spec, transition-property defines how many transitions exist, and
+    // any duration/delay entries beyond that count are simply unused, not
+    // paired with a phantom additional transition. `transition-duration:
+    // 100ms, 10s` here: the real longest boundary is ~100ms (the one slot
+    // cyclically resolves duration[0 % 1]... actually the single property
+    // slot only ever reads duration[0] = 100ms; the second, 10s entry has
+    // no slot to pair with at all). Before this fix, `Math.max(durations.length,
+    // delays.length, properties.length)` (2) would iterate a phantom second
+    // slot and pick up the unused 10s entry as the "longest" boundary.
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'all',
+          transitionDuration: '100ms, 10s',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    jest.useFakeTimers();
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        ignoreUnknownPropertyEvents: true,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      jest.advanceTimersByTime(150);
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
   test('repeats a shorter duration/delay list CYCLICALLY, per the CSS spec (CIN-376)', () => {
     // Three properties, only two durations (`100ms, 0ms`) — CSS repeats the
     // shorter list from the beginning: the third property (index 2)
