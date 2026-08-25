@@ -250,9 +250,20 @@
   // (recall `acceptedFormats` always unions in the configured `format` — see
   // above), which can turn a previously-rejected `visibleText` into a valid
   // one. If there's a current parse error, re-run the gate on the visible
-  // text. `passesFormatGate` and `defaultErrorMessage` both read
-  // `acceptedFormats` through closure, so this effect re-runs on
-  // `formats`/`format` changes without an explicit dependency pin.
+  // text.
+  //
+  // This effect MUST react only to actual `formats`/`format` prop changes —
+  // never to `visibleText` edits. `void formats; void format;` pins the
+  // reactive dependency explicitly; everything else is read inside
+  // `untrack(...)` so a keystroke alone can never re-trigger this effect.
+  // Without that separation: after an invalid blur/Enter leaves `parseError`
+  // set, reading `visibleText` directly (not untracked) would make EVERY
+  // subsequent keystroke re-run this effect. As soon as the user's
+  // in-progress replacement draft became parseable, `seedFromParts` and the
+  // assignment to `value` would commit it before blur or Enter — and without
+  // firing `onValueChange` — silently breaking ColorField's local-draft
+  // contract (intermediate keystrokes are supposed to stay local until an
+  // explicit commit).
   //
   // When the text now passes AND parses, this RECONCILES the committed
   // state (swatch, hidden form mirror, `committedHex`) via `seedFromParts` —
@@ -267,26 +278,30 @@
   // error. `onValueChange` is never fired here, matching the alpha-effect's
   // "never fire onValueChange on a config change" precedent below.
   $effect(() => {
-    if (parseError === null) return;
-    const text = visibleText.trim();
-    if (text === '') {
-      parseError = null;
-    } else if (!passesFormatGate(text)) {
-      // Refresh the message so its wording reflects the new `formats` set,
-      // not the wording that was current when the error was first raised.
-      parseError = defaultErrorMessage();
-    } else {
-      const parsed = parseInput(text);
-      if (parsed === null) {
+    void formats;
+    void format;
+    untrack(() => {
+      if (parseError === null) return;
+      const text = visibleText.trim();
+      if (text === '') {
+        parseError = null;
+      } else if (!passesFormatGate(text)) {
+        // Refresh the message so its wording reflects the new `formats` set,
+        // not the wording that was current when the error was first raised.
         parseError = defaultErrorMessage();
       } else {
-        seedFromParts(parsed);
-        parseError = null;
-        lastReconciledValue = committedHex;
-        value = committedHex;
+        const parsed = parseInput(text);
+        if (parsed === null) {
+          parseError = defaultErrorMessage();
+        } else {
+          seedFromParts(parsed);
+          parseError = null;
+          lastReconciledValue = committedHex;
+          value = committedHex;
+        }
       }
-    }
-    syncCustomValidity();
+      syncCustomValidity();
+    });
   });
 
   // ── Commit pipeline (blur + Enter) ──────────────────────────────────────
@@ -492,9 +507,22 @@
         <Pipette class="cinder-icon-xs" aria-hidden="true" />
       </Button>
     {/snippet}
+    <!--
+      Pass the field's own `format` through — `ColorFieldOutputFormat` and
+      `ColorPickerFormat` are the same union, so no translation is needed.
+      Without this, the embedded picker stayed at its default `'hex'`
+      regardless of the field's configured format: any interactive picker
+      commit (drag, keyboard) would quantize alpha to an 8-bit hex byte
+      internally BEFORE `handlePickerCommit` ever re-parses and reformats it
+      into the field's actual `format` — so a translucent `/ 0.5` alpha
+      became `/ 0.502` (hex byte round-trip noise) and a near-opaque
+      `/ 0.9996` was silently rounded fully opaque, corrupting the committed
+      precision even though the field's own text-entry commit path is exact.
+    -->
     <ColorPicker
       value={committedHex}
       {alpha}
+      {format}
       disabled={disabled || readonly}
       label="Choose a color"
       onValueCommit={handlePickerCommit}

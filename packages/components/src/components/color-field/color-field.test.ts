@@ -108,6 +108,37 @@ describe('ColorField — color picker trigger', () => {
     expect(hue.getAttribute('aria-disabled')).toBe('true');
     expect(onValueChange).not.toHaveBeenCalled();
   });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b67FF): the embedded
+  // ColorPicker used to stay at its default format="hex" regardless of the
+  // field's own `format`. Any picker-driven commit therefore quantized
+  // alpha to an 8-bit hex byte internally (e.g. an existing `/ 0.5` became
+  // `/ 0.502`) BEFORE handlePickerCommit ever re-parsed and reformatted it
+  // into the field's actual `format` — corrupting the committed precision
+  // even for interactions (like nudging hue) that never touch alpha at all.
+  // The picker now receives the field's `format` directly.
+  test("a picker-driven commit preserves the field value's decimal alpha precision", async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, {
+      id: 'color',
+      value: 'rgb(255 0 0 / 0.5)',
+      alpha: true,
+      format: 'rgb',
+      onValueChange,
+    });
+    await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
+    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+
+    // Nudge hue only — alpha should pass through untouched. If the embedded
+    // picker were still hex by default, this alone would already corrupt
+    // 0.5 into ~0.502 via 8-bit byte quantization.
+    await fireEvent.keyDown(hue, { key: 'ArrowRight' });
+    await tick();
+
+    expect(onValueChange).toHaveBeenCalled();
+    const committed = onValueChange.mock.calls.at(-1)![0];
+    expect(committed).toMatch(/\/\s*0\.5\)$/);
+  });
 });
 
 describe('ColorField — parse round-trips', () => {
@@ -347,6 +378,42 @@ describe('ColorField — no commit during typing', () => {
     await tick();
     expect(onValueChange).not.toHaveBeenCalled();
     expect(input.getAttribute('aria-invalid')).not.toBe('true');
+  });
+
+  // Review thread (PR #1420, PRRT_kwDOSKrFTs6b67FB): the formats/format
+  // reconciliation effect used to also (implicitly) track `visibleText`, so
+  // once an invalid blur left `parseError` set, EVERY subsequent keystroke
+  // re-ran it. As soon as the user's in-progress replacement draft became
+  // parseable, it was silently committed — without blur/Enter and without
+  // firing `onValueChange` — breaking the local-draft contract this exact
+  // describe block is about. The effect is now scoped to actual
+  // `formats`/`format` prop changes only (via `void formats; void format;`
+  // plus `untrack` around everything else), so typing alone — even typing
+  // that happens to make the draft valid — can never trigger it.
+  test('typing a valid replacement after an invalid blur does NOT auto-commit before the next blur/Enter', async () => {
+    const onValueChange = mock<(value: string) => void>(() => {});
+    const { container } = render(ColorField, { id: 'color', onValueChange });
+    const input = getInput(container);
+
+    // Commit something invalid first, so parseError is set.
+    await typeAndBlur(input, 'not-a-color');
+    expect(input.getAttribute('aria-invalid')).toBe('true');
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    // Now type a fully valid replacement WITHOUT blurring. `formats`/
+    // `format` never changed — this must stay a local, uncommitted draft.
+    await fireEvent.input(input, { target: { value: '#ff0000' } });
+    await tick();
+    expect(onValueChange).not.toHaveBeenCalled();
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('');
+
+    // Only the next commit (blur) actually seeds/emits it.
+    await fireEvent.blur(input);
+    await tick();
+    expect(onValueChange).toHaveBeenCalledTimes(1);
+    expect(onValueChange.mock.calls[0]![0]).toBe('#ff0000');
   });
 });
 

@@ -462,6 +462,28 @@
     }),
   );
 
+  /**
+   * Maps each normalized (hex) swatch color back to the ORIGINAL raw
+   * `swatches` string it came from. `ColorSwatchPicker.onValueChange` only
+   * ever hands `handleSwatchChange` the normalized hex string — it has no
+   * way to return the original — but hex normalization is byte-quantized
+   * (see `normalizeSwatch`), so re-parsing that hex string for the commit
+   * would already have destroyed any decimal alpha precision the original
+   * swatch had (e.g. `rgb(255 0 0 / 0.5)` normalizes to `#ff000080`, whose
+   * alpha byte 128 reparses to ~0.502, not 0.5). Looking up the ORIGINAL
+   * string and parsing THAT instead keeps the full precision for the
+   * commit; the hex form remains what's actually used for rendering and
+   * selection matching.
+   */
+  const originalSwatchByNormalizedColor = $derived(
+    new Map(
+      (swatches ?? []).flatMap((swatch): [string, string][] => {
+        const normalized = normalizeSwatch(swatch);
+        return normalized === null ? [] : [[normalized, swatch]];
+      }),
+    ),
+  );
+
   // Always hex, for value-matching against the (always-hex) swatch colors —
   // see `normalizeSwatch` above for why swatch plumbing stays hex-only.
   const currentHexForSwatches = $derived(hexFor(hue, saturation, lightnessValue, alphaValue));
@@ -511,7 +533,11 @@
     selectedColor: Parameters<NonNullable<ColorSwatchPickerProps['onValueChange']>>[0],
   ): void {
     if (disabled) return;
-    const parsed = parseToHsla(selectedColor);
+    // Parse the ORIGINAL raw swatch string, not the (byte-quantized hex)
+    // `selectedColor` ColorSwatchPicker hands back — see
+    // `originalSwatchByNormalizedColor` above for why.
+    const rawSwatch = originalSwatchByNormalizedColor.get(selectedColor) ?? selectedColor;
+    const parsed = parseToHsla(rawSwatch);
     if (!parsed) return;
     commitFromHsla(parsed, 'input');
     const hex = emitValue(parsed.h, parsed.s, parsed.l, gatedAlpha(parsed.a));

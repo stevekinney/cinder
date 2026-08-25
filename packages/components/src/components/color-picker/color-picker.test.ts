@@ -1449,6 +1449,57 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
   });
 });
 
+// Review thread (PR #1420, PRRT_kwDOSKrFTs6b67FI): normalizeSwatch converts
+// every `swatches` entry to hex for rendering/matching (byte-quantized
+// alpha), and ColorSwatchPicker's onValueChange only ever hands
+// handleSwatchChange that (lossy) hex string back — it has no way to return
+// the original. Re-parsing the hex string for the commit would already have
+// destroyed decimal alpha precision: `rgb(255 0 0 / 0.5)` normalizes to
+// `#ff000080`, whose alpha byte 128 reparses to ~0.502, not 0.5. The commit
+// path now looks up and parses the ORIGINAL raw swatch string instead.
+describe('ColorPicker swatch commit preserves decimal alpha precision (P1 regression)', () => {
+  test('clicking a swatch with non-byte-aligned alpha commits the exact decimal, not a byte-rounded one', async () => {
+    let committed = '';
+    const { container } = render(ColorPicker, {
+      value: '#00ff00',
+      alpha: true,
+      format: 'rgb',
+      swatches: ['rgb(255 0 0 / 0.5)', '#00ff00'],
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    expect(committed).toBe('rgb(255 0 0 / 0.5)');
+
+    const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
+    expect(hidden.value).toBe('rgb(255 0 0 / 0.5)');
+  });
+
+  test('a swatch alpha right at the byte-quantization edge (0.502) still commits its own exact decimal', async () => {
+    let committed = '';
+    const { container } = render(ColorPicker, {
+      value: '#00ff00',
+      alpha: true,
+      format: 'rgb',
+      swatches: ['rgb(255 0 0 / 0.998)', '#00ff00'],
+      onValueCommit: (color: string) => {
+        committed = color;
+      },
+    });
+
+    const options = container.querySelectorAll<HTMLElement>('[role="option"]');
+    await fireEvent.click(options[0]!);
+
+    // A naive byte round-trip (0.998 * 255 rounds to 255) would silently
+    // become fully opaque; the real decimal value must survive.
+    expect(committed).toBe('rgb(255 0 0 / 0.998)');
+  });
+});
+
 // Review thread #7 (PR #1420): with bind:value="#ff0000" and format="rgb",
 // only `internalValue` was normalized at mount — the consumer's own bound
 // `value` kept its original, un-normalized syntax. Resolved per the "no
