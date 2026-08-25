@@ -182,6 +182,7 @@
                 3,
                 (complexDrafts[name] ?? serializeYamlFieldValue(fieldValue)).split('\n').length,
               )}
+              variant="code"
               oninput={(event) => handleComplexInput(name, event.currentTarget.value)}
             />
           {:else}
@@ -203,6 +204,7 @@
         error={rawError ?? ''}
         disabled={readonly}
         rows={Math.max(3, rawDraft.split('\n').length)}
+        variant="code"
         oninput={(event) => handleRawInput(event.currentTarget.value)}
       />
     {:else}

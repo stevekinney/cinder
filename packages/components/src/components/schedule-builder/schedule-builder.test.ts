@@ -717,6 +717,7 @@ describe('ScheduleBuilder', () => {
 
       const minuteRawExpression = getByLabelText('Minute') as HTMLInputElement;
       expect((minuteRawExpression.closest('details') as HTMLDetailsElement).open).toBe(false);
+      expect(minuteRawExpression.getAttribute('data-cinder-variant')).toBe('code');
 
       await fireEvent.change(getByLabelText('Minute pattern'), {
         target: { value: 'advanced' },

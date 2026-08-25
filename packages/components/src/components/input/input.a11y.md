@@ -57,6 +57,10 @@ Interactive addons (clear button, password-reveal toggle, unit toggle): pass `tr
 
 **Disabled state and interactive addons:** when `disabled={true}` is passed to `Input`, the inner `<input>` becomes disabled and the group paints disabled styling, but interactive controls rendered inside `leading` / `trailing` snippets remain functionally active unless the consumer disables them independently. The component cannot reach into snippet content. Consumers must mirror the input's disabled state on their addon controls (e.g. `<Button disabled={isDisabled}>...</Button>` where `isDisabled` is the same state passed to `Input`).
 
+## Code variant
+
+`variant="code"` is a purely presentational metric change (font-family, font-size, line-height, tab-size via `[data-cinder-variant='code']`) — it does not alter the accessible name, role, value, or any ARIA wiring, so it carries no additional accessibility review. Nearest neighbour: Badge's existing `monospace` boolean prop and `variant` attribute-selector pattern; this reuses the same `data-cinder-variant` convention rather than introducing a new one. Applied to source-like values (regular expressions, URIs, identifiers) across json-schema-editor, schema-form, the schedule-builder cron editor, and the playground's CSS token editor. A defensive `.cinder-input-field[data-cinder-variant='code'] :where(code):not(...)` rule locks any `<code>` a consumer overlays on the field wrapper to the same explicit font-family/size/line-height/tab-size the control uses (not `font: inherit` — the wrapper itself carries no metric declarations, so the label/description/error/addons stay in their ordinary font, and only a `<code>` overlay matches the control). The rule targets the wrapper rather than `.cinder-input` because `<input>` is a void element and can never have a `<code>` descendant, and it excludes the leading/trailing addon slots so a consumer's own addon content (e.g. a `<code>` badge) keeps its own styling; no current call site renders an overlay.
+
 ## Autocomplete guidance
 
 ### Sign-in forms (required pattern)
