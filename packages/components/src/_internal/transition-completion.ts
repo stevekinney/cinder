@@ -199,27 +199,41 @@ export function waitForTransitionCompletion({
 
   element.addEventListener('transitionend', handleTransitionEnd);
 
-  // Defer attaching `transitioncancel` by one animation frame rather than
-  // listening for it immediately. Closing an element mid-ENTER-transition
-  // retargets the same property to its exit value, which cancels that
-  // in-flight entrance transition — the browser dispatches `transitioncancel`
-  // for it essentially synchronously with the style change that starts this
-  // exit. Since that event's target is this same element, an immediately
-  // attached listener can't tell it apart from a genuine cancellation of the
-  // EXIT itself, and would call `finish()` on the strength of the stale
-  // ENTER's cancellation before the new exit transition has even started —
-  // the retained panel would snap away instead of animating out on a rapid
-  // open-then-close. Waiting a frame lets that leftover event (which fires
-  // before the browser's next rendering opportunity) pass with nothing
-  // listening; only a cancellation that happens genuinely DURING this exit
-  // (a later restyle interrupting it) is caught after that point, and the
-  // fallback timer or `transitionend` still completes things regardless.
+  // Defer attaching `transitioncancel` until AFTER the browser has actually
+  // recalculated style for this exit, rather than listening for it
+  // immediately. Closing an element mid-ENTER-transition retargets the same
+  // property to its exit value, which cancels that in-flight entrance
+  // transition — the browser dispatches `transitioncancel` for it once it
+  // next recalculates style, which can be well before this listener would
+  // otherwise attach. Since that event's target is this same element, an
+  // immediately attached listener can't tell it apart from a genuine
+  // cancellation of the EXIT itself, and would call `finish()` on the
+  // strength of the stale ENTER's cancellation before the new exit
+  // transition has even started — the retained panel would snap away
+  // instead of animating out on a rapid open-then-close.
+  //
+  // A SINGLE `requestAnimationFrame` is not enough (CIN-376 round 16 review):
+  // `isClosing` (which drives the `data-cinder-closing` attribute that
+  // starts this exit's styles) is set from a Svelte `$effect`, which does
+  // not force a style/layout flush — and animation-frame callbacks
+  // themselves run BEFORE the browser's rendering/style-recalculation step
+  // for that frame, not after it. So a single rAF can still fire before the
+  // browser has actually applied the exit style and dispatched the leftover
+  // ENTER's `transitioncancel`, leaving the same race. The standard
+  // "wait until a style change has actually been rendered" technique is a
+  // DOUBLE rAF: the first callback runs before the upcoming frame's
+  // style/layout work, and by the time ITS OWN nested rAF callback runs, the
+  // browser has committed to and rendered that frame — guaranteeing any
+  // `transitioncancel` from the interrupted enter transition has already
+  // been dispatched and missed (nothing was listening yet).
   if (!ignoreCancel) {
     if (typeof requestAnimationFrame === 'function') {
       cancelListenerFrame = requestAnimationFrame(() => {
-        cancelListenerFrame = undefined;
-        if (completed) return;
-        element.addEventListener('transitioncancel', handleTransitionCancel);
+        cancelListenerFrame = requestAnimationFrame(() => {
+          cancelListenerFrame = undefined;
+          if (completed) return;
+          element.addEventListener('transitioncancel', handleTransitionCancel);
+        });
       });
     } else {
       // No `requestAnimationFrame` (SSR/non-browser environment) — attach

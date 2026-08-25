@@ -444,6 +444,19 @@
     }
   }
 
+  /* Explicit-preference override, OUTSIDE the media query: an application
+   * that explicitly sets its preference to reduced motion
+   * (`data-cinder-reduced-motion="true"` / `data-reduced-motion="on"`, see
+   * use-reduced-motion.svelte.ts's `applyReducedMotionPreference`) must
+   * collapse this transition even while the OS-level media query itself
+   * still reports `no-preference` — the media query above only ever reflects
+   * the OS setting, never the app's own explicit override. Mirrors the
+   * explicit-off override above (`[data-cinder-reduced-motion='false']`),
+   * just for the opposite (force-on) direction. */
+  :root[data-cinder-reduced-motion='true'] .cinder-dropdown__menu:not([popover]) {
+    transition: none;
+  }
+
   /* ----------------------------------------
  * Popover-API path exit transition (native equivalent)
  * ----------------------------------------
@@ -490,5 +503,20 @@
       .cinder-dropdown__menu[popover] {
       transition: none;
     }
+  }
+
+  /* Explicit-preference override, OUTSIDE the media query (CIN-376 round 16
+   * review): unlike the fallback branch above, this native Popover-API path
+   * has NO JS teardown (`AnchoredOverlayExitState`/`waitForTransitionCompletion`)
+   * to collapse the wait when reduced motion is active — `menu.hidePopover()`
+   * relies entirely on this CSS transition (via `allow-discrete`) actually
+   * being `none` to skip the wait. Without this selector, an application
+   * that explicitly sets its preference to reduced motion while the OS
+   * media query still reports `no-preference` would still run the full
+   * opacity/translate exit transition here, ignoring the explicit
+   * preference entirely. Mirrors the explicit-off override above, for the
+   * opposite (force-on) direction. */
+  :root[data-cinder-reduced-motion='true'] .cinder-dropdown__menu[popover] {
+    transition: none;
   }
 }

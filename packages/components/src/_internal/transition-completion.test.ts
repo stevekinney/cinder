@@ -297,7 +297,7 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
-  test('a transitioncancel on a tracked property completes immediately by default, once the exit has had a frame to start (CIN-376 round 11)', async () => {
+  test('a transitioncancel on a tracked property completes immediately by default, once the exit has had two frames to start (CIN-376 round 11/16)', async () => {
     const element = document.createElement('div');
     document.body.appendChild(element);
     const originalGetComputedStyle = window.getComputedStyle;
@@ -322,9 +322,10 @@ describe('waitForTransitionCompletion', () => {
         },
       });
 
-      // The `transitioncancel` listener is deliberately deferred by one
-      // animation frame (see the fix below) — before that frame, a cancel
-      // is not observed at all.
+      // The `transitioncancel` listener is deliberately deferred by a DOUBLE
+      // animation frame (see the fix below, CIN-376 round 16) — before both
+      // frames have elapsed, a cancel is not observed at all.
+      await new Promise((resolve) => requestAnimationFrame(resolve));
       await new Promise((resolve) => requestAnimationFrame(resolve));
 
       element.dispatchEvent(createTransitionCancelEvent('opacity'));

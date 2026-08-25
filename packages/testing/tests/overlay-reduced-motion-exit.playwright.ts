@@ -124,28 +124,29 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
     '',
   );
 
-  // Uses the "instant-close" example (`closeDelay={0}`,
-  // packages/playground/src/examples/hover-card/instant-close.example.svelte),
-  // NOT the Overview preview's basic example: the basic example's default
-  // `closeDelay` (150ms) is a REAL debounce timer that has to elapse before
-  // `setOpen(false)` even runs, unrelated to the exit-TRANSITION lifecycle
-  // this test targets. A fixed `page.waitForTimeout(...)` bridging that real
-  // delay is a hard-coded timing wait, which this repository's working
-  // agreements treat as forbidden regardless of how carefully justified
-  // (see AGENTS.md's "no fixed timeouts" guidance) — and a value tuned to
-  // the CURRENT 150ms/120ms figures would silently rot the moment either
-  // changes. `closeDelay={0}` removes the real debounce entirely, so no
-  // wait of any kind is needed: the same non-polling
-  // capture-a-handle-then-`evaluate` pattern Popover uses above works here
-  // too, once there's no artificial delay left to race.
-  const trigger = page
-    .locator('#example-mount-instant-close')
-    .getByRole('button', { name: 'CIN-7' })
-    .first();
-  await trigger.scrollIntoViewIfNeeded();
-  await trigger.hover();
+  // Uses the "controlled" example
+  // (packages/playground/src/examples/hover-card/controlled.example.svelte,
+  // `bind:open` driven by external Show/Hide buttons), NOT hover/pointer
+  // events on any timed example: EVERY hover-driven path — even
+  // `closeDelay={0}` (tried in an earlier round) — still routes through
+  // `scheduleClose()`'s `setTimeout(..., 0)`, which is a REAL later task,
+  // not a synchronous call. `Math.max(0, closeDelay)` does not remove the
+  // timer, only its duration — so a Playwright evaluation task can still run
+  // BEFORE that task fires and observe the card as still connected even
+  // when reduced-motion teardown is entirely correct (fresh review
+  // evidence). Clicking "Hide" flips the bound `open` prop directly, with no
+  // timer indirection at all, so the exit begins synchronously within the
+  // same task as the click.
+  const showButton = page
+    .locator('#example-mount-controlled')
+    .getByRole('button', { name: 'Show' });
+  const hideButton = page
+    .locator('#example-mount-controlled')
+    .getByRole('button', { name: 'Hide' });
+  await showButton.scrollIntoViewIfNeeded();
+  await showButton.click();
 
-  const card = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-7' });
+  const card = page.locator('#example-mount-controlled .cinder-hover-card');
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Capture an `ElementHandle` BEFORE closing, not just the `Locator` — same
@@ -154,7 +155,7 @@ test('HoverCard unmounts immediately under reduced motion', async ({ page }) => 
   const cardHandle = await card.elementHandle();
   if (!cardHandle) throw new Error('HoverCard element handle not found.');
 
-  await page.mouse.move(0, 0);
+  await hideButton.click();
 
   const stillPresent = await cardHandle.evaluate(async (el) => {
     await Promise.resolve();

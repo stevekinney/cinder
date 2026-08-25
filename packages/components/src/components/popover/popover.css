@@ -38,8 +38,22 @@
   /* Exit transition (OVERLAY-POLICY.md § "Transition lifecycle"): the
    component keeps the panel mounted for the duration of this transition
    instead of removing it the instant `open` goes false. Declared after the
-   position-ready rule above so it wins at equal specificity. */
+   position-ready rule above so it wins at equal specificity.
+
+   `visibility: visible` explicitly overrides the position-ready rule's
+   `visibility: hidden` above (CIN-376 round 16 review): a consumer changing
+   a positioning INPUT (`placement`, `offset`, `widthMode`, ...) in the same
+   update that closes the Popover invalidates `createAnchoredOverlay`'s
+   effect — its cleanup briefly resets `positionReady` to `false` before the
+   asynchronous Floating UI recomputation restores it, which on its own
+   would apply `visibility: hidden` mid-fade and make the retained,
+   genuinely-closing panel disappear and reappear instead of smoothly
+   fading out. `opacity`/`pointer-events` alone already handled the
+   ordinary "live `open` flag changes" class of this bug (round 10-12); this
+   covers the narrower "a non-lifecycle positioning input also changes"
+   case the review found beyond that. */
   .cinder-popover[data-cinder-closing] {
+    visibility: visible;
     opacity: 0;
     pointer-events: none;
   }
