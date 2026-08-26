@@ -273,7 +273,7 @@ describe('SvelteKit hydration route failure diagnostics', () => {
       locator,
     };
 
-    await waitForSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation);
+    await waitForSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 5_000);
 
     expect(locator).toHaveBeenCalledWith('[data-dev-ssr-hydrated="true"]');
     expect(waitFor).toHaveBeenCalledWith({ state: 'attached', timeout: 5_000 });
@@ -294,7 +294,7 @@ describe('SvelteKit hydration route failure diagnostics', () => {
     const page = { locator: mock(() => ({ waitFor })) };
 
     await expect(
-      waitForSvelteKitHydrationMarker(page, '/chat-layout', domObservation),
+      waitForSvelteKitHydrationMarker(page, '/chat-layout', domObservation, 5_000),
     ).rejects.toBe(readinessError);
     expect(page.locator).toHaveBeenCalledWith('[data-chat-layout-hydrated="true"]');
     expect(waitFor).toHaveBeenCalledWith({ state: 'attached', timeout: 5_000 });

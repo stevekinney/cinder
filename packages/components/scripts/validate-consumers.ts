@@ -2654,7 +2654,7 @@ async function assertSvelteKitHydrationRouteContent(
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
   if (routePath === '/chat-layout') {
-    await waitForSvelteKitHydrationMarker(page, routePath, domObservation);
+    await waitForSvelteKitHydrationMarker(page, routePath, domObservation, 5_000);
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
     await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
     await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
@@ -2662,7 +2662,7 @@ async function assertSvelteKitHydrationRouteContent(
     return;
   }
 
-  await waitForSvelteKitHydrationMarker(page, routePath, domObservation);
+  await waitForSvelteKitHydrationMarker(page, routePath, domObservation, 5_000);
   if (routePath === '/dev-ssr-navigation') {
     await page.getByText('basicOrderWorkflow').waitFor({ timeout: 5_000 });
     return;
@@ -2786,7 +2786,7 @@ export async function waitForSvelteKitHydrationMarker(
   page: HydrationMarkerPage,
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
-  timeoutMs = 5_000,
+  timeoutMs: number,
 ): Promise<void> {
   const marker = hydrationMarkerForRoute(routePath);
   await page.locator(marker.hydratedSelector).waitFor({ state: 'attached', timeout: timeoutMs });
