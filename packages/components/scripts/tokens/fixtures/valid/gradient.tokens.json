@@ -1,0 +1,16 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "sample": {
+    "$type": "gradient",
+    "$value": [
+      {
+        "color": "{color}",
+        "position": 0
+      },
+      {
+        "color": "{color}",
+        "position": 1
+      }
+    ]
+  }
+}

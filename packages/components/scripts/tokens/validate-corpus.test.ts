@@ -1,92 +1,93 @@
 import { describe, expect, test } from 'bun:test';
-import {
-  findModifierDocument,
-  findModifierDocuments,
-  orderModifierDocuments,
-} from './validate-corpus.ts';
+import type { ResolverDocument } from './types.ts';
+import { combinations, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
+
+const resolver: ResolverDocument = {
+  version: '2025.10',
+  sets: {
+    foundation: {
+      sources: [{ $ref: 'sets/foundation.tokens.json' }, { $ref: 'sets/semantic.tokens.json' }],
+    },
+  },
+  modifiers: {
+    theme: {
+      contexts: {
+        light: [{ $ref: 'themes/light.tokens.json' }],
+        dark: [{ $ref: 'themes/dark.tokens.json' }],
+      },
+      default: 'light',
+    },
+    motion: {
+      contexts: {
+        default: [{ $ref: 'modes/motion-default.tokens.json' }],
+        reduced: [{ $ref: 'modes/motion-reduced.tokens.json' }],
+      },
+      default: 'default',
+    },
+  },
+  resolutionOrder: [
+    { $ref: '#/sets/foundation' },
+    { $ref: '#/modifiers/theme' },
+    { $ref: '#/modifiers/motion' },
+  ],
+};
 
 describe('token corpus validation', () => {
-  test('finds modifier documents through authored metadata instead of file names', () => {
-    const document = {
-      $extensions: { 'com.lostgradient.cinder': { modifier: { theme: 'dark' } } },
-    };
-    expect(
-      findModifierDocument(
-        [{ path: 'renamed.tokens.json', document }],
-        { name: 'theme', values: ['light', 'dark'] },
-        'dark',
-      ),
-    ).toEqual({ path: 'renamed.tokens.json', document });
+  test('parses resolutionOrder references into their target kind and name', () => {
+    expect(parseResolutionOrder(resolver)).toEqual([
+      { kind: 'sets', name: 'foundation' },
+      { kind: 'modifiers', name: 'theme' },
+      { kind: 'modifiers', name: 'motion' },
+    ]);
   });
 
-  test('does not select empty modifier assignment maps', () => {
-    expect(
-      findModifierDocuments(
-        [
-          {
-            path: 'empty.tokens.json',
-            document: { $extensions: { 'com.lostgradient.cinder': { modifier: {} } } },
-          },
-        ],
-        { theme: 'dark' },
-      ),
-    ).toEqual([]);
+  test('resolves the sources for a set entry regardless of modifier selection', () => {
+    expect(sourcesForEntry(resolver, { kind: 'sets', name: 'foundation' }, {})).toEqual([
+      { $ref: 'sets/foundation.tokens.json' },
+      { $ref: 'sets/semantic.tokens.json' },
+    ]);
   });
 
-  test('only selects multi-axis modifier documents for matching combinations', () => {
-    const document = {
-      $extensions: {
-        'com.lostgradient.cinder': { modifier: { theme: 'dark', motion: 'reduced' } },
-      },
-    };
-    const documents = [{ path: 'combined.tokens.json', document }];
-    expect(findModifierDocuments(documents, { theme: 'dark', motion: 'default' })).toEqual([]);
-    expect(findModifierDocuments(documents, { theme: 'dark', motion: 'reduced' })).toEqual(
-      documents,
+  test('resolves the sources for a modifier entry using the selected context', () => {
+    expect(
+      sourcesForEntry(
+        resolver,
+        { kind: 'modifiers', name: 'theme' },
+        { theme: 'dark', motion: 'default' },
+      ),
+    ).toEqual([{ $ref: 'themes/dark.tokens.json' }]);
+    expect(
+      sourcesForEntry(
+        resolver,
+        { kind: 'modifiers', name: 'motion' },
+        { theme: 'dark', motion: 'reduced' },
+      ),
+    ).toEqual([{ $ref: 'modes/motion-reduced.tokens.json' }]);
+  });
+
+  test('computes the cartesian product of every modifier context combination', () => {
+    const combos = combinations(resolver);
+    expect(combos).toHaveLength(4);
+    expect(combos).toEqual(
+      expect.arrayContaining([
+        { theme: 'light', motion: 'default' },
+        { theme: 'light', motion: 'reduced' },
+        { theme: 'dark', motion: 'default' },
+        { theme: 'dark', motion: 'reduced' },
+      ]),
     );
   });
 
-  test('orders selected modifier documents by the resolver axis order', () => {
-    const theme = {
-      path: 'themes/dark.tokens.json',
-      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { theme: 'dark' } } } },
-    };
-    const motion = {
-      path: 'modes/reduced.tokens.json',
-      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { motion: 'reduced' } } } },
-    };
-    expect(
-      orderModifierDocuments(
-        [motion, theme],
-        [
-          { name: 'theme', values: ['dark'] },
-          { name: 'motion', values: ['reduced'] },
-        ],
-      ),
-    ).toEqual([theme, motion]);
+  test('computes a single combination for a resolver with no modifiers', () => {
+    const noModifiers: ResolverDocument = { ...resolver, modifiers: {} };
+    expect(combinations(noModifiers)).toEqual([{}]);
   });
 
-  test('orders combined modifier documents after single-axis documents at the same precedence', () => {
-    const motion = {
-      path: 'z-motion.tokens.json',
-      document: { $extensions: { 'com.lostgradient.cinder': { modifier: { motion: 'reduced' } } } },
+  test('computes one combination per context for a single-modifier resolver', () => {
+    const singleModifier: ResolverDocument = {
+      ...resolver,
+      modifiers: { theme: resolver.modifiers['theme']! },
     };
-    const combined = {
-      path: 'a-combined.tokens.json',
-      document: {
-        $extensions: {
-          'com.lostgradient.cinder': { modifier: { theme: 'dark', motion: 'reduced' } },
-        },
-      },
-    };
-    expect(
-      orderModifierDocuments(
-        [combined, motion],
-        [
-          { name: 'theme', values: ['dark'] },
-          { name: 'motion', values: ['reduced'] },
-        ],
-      ),
-    ).toEqual([motion, combined]);
+    expect(combinations(singleModifier)).toEqual([{ theme: 'light' }, { theme: 'dark' }]);
   });
 });

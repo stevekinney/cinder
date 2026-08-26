@@ -1,141 +1,110 @@
 import { loadResolverDocument, loadTokenDocuments } from './load.ts';
 import { resolveDocuments } from './resolve.ts';
-import { TokenValidationError, type ResolverModifier, type TokenDocument } from './types.ts';
+import { TokenValidationError, type ResolverDocument, type ResolverReference } from './types.ts';
 import {
   validateResolvedToken,
   validateResolverDocument,
   validateTokenDocument,
 } from './validate.ts';
 
-type TokenDocumentEntry = { path: string; document: TokenDocument };
-
-function isObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
-
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
   validateResolverDocument(resolver);
   for (const { path, document } of documents) validateTokenDocument(document, path);
 
-  const knownSources = new Set(documents.map(({ path }) => path));
-  const missingSources = resolver.sets.flatMap((set) =>
-    set.source
-      .filter((source) => !knownSources.has(source))
-      .map((source) => ({
-        path: `$.sets.${set.name}.source`,
-        reason: `source does not exist: ${source}`,
-      })),
-  );
+  const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
+  const knownPaths = new Set(documents.map(({ path }) => path));
+
+  const missingSources = [
+    ...Object.entries(resolver.sets).flatMap(([setName, set]) =>
+      set.sources
+        .filter((source) => !knownPaths.has(source.$ref))
+        .map((source) => ({
+          path: `$.sets.${setName}.sources`,
+          reason: `source does not exist: ${source.$ref}`,
+        })),
+    ),
+    ...Object.entries(resolver.modifiers).flatMap(([modifierName, modifier]) =>
+      Object.entries(modifier.contexts).flatMap(([contextName, sources]) =>
+        sources
+          .filter((source) => !knownPaths.has(source.$ref))
+          .map((source) => ({
+            path: `$.modifiers.${modifierName}.contexts.${contextName}`,
+            reason: `source does not exist: ${source.$ref}`,
+          })),
+      ),
+    ),
+  ];
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
-  const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
-  const referencedPaths = new Set(resolver.sets.flatMap((set) => set.source));
-  const modifiersByName = new Map(resolver.modifiers.map((modifier) => [modifier.name, modifier]));
-  const orderedModifiers = resolver.resolutionOrder.map((name) => modifiersByName.get(name)!);
-  for (const modifierValues of combinations(orderedModifiers))
-    for (const document of findModifierDocuments(documents, modifierValues))
-      referencedPaths.add(document.path);
+  const referencedPaths = new Set<string>([
+    ...Object.values(resolver.sets).flatMap((set) => set.sources.map((source) => source.$ref)),
+    ...Object.values(resolver.modifiers).flatMap((modifier) =>
+      Object.values(modifier.contexts).flatMap((sources) => sources.map((source) => source.$ref)),
+    ),
+  ]);
   const unreferencedDocuments = documents
     .filter(({ path }) => !referencedPaths.has(path))
     .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
   if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
-  for (const set of resolver.sets)
-    for (const modifierValues of combinations(orderedModifiers)) {
-      const sourceDocuments = set.source.flatMap((source) => {
-        const document = documentsByPath.get(source);
-        return document ? [document] : [];
-      });
-      const modifierDocuments = orderModifierDocuments(
-        findModifierDocuments(documents, modifierValues),
-        orderedModifiers,
-      );
-      for (const modifier of orderedModifiers)
-        if (
-          !modifierDocuments.some(
-            ({ document }) =>
-              modifierAssignments(document)?.[modifier.name] === modifierValues[modifier.name],
-          )
-        )
-          throw new TokenValidationError([
-            {
-              path: `$.modifiers.${modifier.name}`,
-              reason: `no token document exists for ${modifier.name}=${modifierValues[modifier.name]}`,
-            },
-          ]);
-      const resolved = resolveDocuments([
-        ...sourceDocuments,
-        ...modifierDocuments.map(({ document }) => document),
-      ]);
-      for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
-    }
+
+  const resolutionOrder = parseResolutionOrder(resolver);
+  for (const modifierValues of combinations(resolver)) {
+    const orderedDocuments = resolutionOrder.flatMap((entry) =>
+      sourcesForEntry(resolver, entry, modifierValues).map(
+        (source) => documentsByPath.get(source.$ref)!,
+      ),
+    );
+    const resolved = resolveDocuments(orderedDocuments);
+    for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
+  }
 }
 
-function combinations(modifiers: ResolverModifier[]): Array<Record<string, string>> {
-  return modifiers.reduce<Array<Record<string, string>>>(
-    (current, modifier) =>
+export type ResolutionOrderEntry = { kind: 'sets' | 'modifiers'; name: string };
+
+function isResolverTargetKind(value: string): value is 'sets' | 'modifiers' {
+  return value === 'sets' || value === 'modifiers';
+}
+
+/**
+ * Parses every resolutionOrder `$ref` into its target kind and name.
+ * `validateResolverDocument` (called by `main` before this runs) already
+ * guarantees each entry is a well-formed, existing `#/sets/<name>` or
+ * `#/modifiers/<name>` pointer, so the non-null assertions below document
+ * that guarantee rather than re-deriving it.
+ */
+export function parseResolutionOrder(resolver: ResolverDocument): ResolutionOrderEntry[] {
+  return resolver.resolutionOrder.map((entry) => {
+    const match = /^#\/(sets|modifiers)\/(.+)$/.exec(entry.$ref)!;
+    const kind = match[1]!;
+    if (!isResolverTargetKind(kind))
+      throw new Error(`resolutionOrder entry did not match a known kind: ${entry.$ref}`);
+    return { kind, name: match[2]! };
+  });
+}
+
+/** The token sources a resolutionOrder entry contributes for one modifier-value combination. */
+export function sourcesForEntry(
+  resolver: ResolverDocument,
+  entry: ResolutionOrderEntry,
+  modifierValues: Record<string, string>,
+): ResolverReference[] {
+  if (entry.kind === 'sets') return resolver.sets[entry.name]!.sources;
+  const modifier = resolver.modifiers[entry.name]!;
+  return modifier.contexts[modifierValues[entry.name]!]!;
+}
+
+/** Every combination of one context value per modifier, cartesian product across all modifiers. */
+export function combinations(resolver: ResolverDocument): Array<Record<string, string>> {
+  return Object.entries(resolver.modifiers).reduce<Array<Record<string, string>>>(
+    (current, [name, modifier]) =>
       current.flatMap((selection) =>
-        modifier.values.map((value) => ({ ...selection, [modifier.name]: value })),
+        Object.keys(modifier.contexts).map((contextName) => ({
+          ...selection,
+          [name]: contextName,
+        })),
       ),
     [{}],
-  );
-}
-
-export function findModifierDocument(
-  documents: TokenDocumentEntry[],
-  modifier: ResolverModifier,
-  value: string | undefined,
-): TokenDocumentEntry | undefined {
-  if (!value) return undefined;
-  return documents.find(({ document }) => {
-    return modifierAssignments(document)?.[modifier.name] === value;
-  });
-}
-
-function modifierAssignments(document: TokenDocument): Record<string, string> | undefined {
-  const extensions = document.$extensions?.['com.lostgradient.cinder'];
-  if (!isObject(extensions) || !isObject(extensions['modifier'])) return undefined;
-  const assignments = extensions['modifier'];
-  if (Object.keys(assignments).length === 0) return undefined;
-  const result: Record<string, string> = {};
-  for (const [name, value] of Object.entries(assignments)) {
-    if (typeof value !== 'string') return undefined;
-    result[name] = value;
-  }
-  return result;
-}
-
-export function findModifierDocuments(
-  documents: TokenDocumentEntry[],
-  modifierValues: Record<string, string>,
-): TokenDocumentEntry[] {
-  return documents.filter(({ document }) => {
-    const assignments = modifierAssignments(document);
-    return (
-      assignments !== undefined &&
-      Object.entries(assignments).every(([name, value]) => modifierValues[name] === value)
-    );
-  });
-}
-
-export function orderModifierDocuments(
-  documents: TokenDocumentEntry[],
-  modifiers: ResolverModifier[],
-): TokenDocumentEntry[] {
-  const modifierPositions = new Map(modifiers.map(({ name }, index) => [name, index]));
-  const position = ({ document }: TokenDocumentEntry): number =>
-    Math.max(
-      ...Object.keys(modifierAssignments(document) ?? {}).map(
-        (name) => modifierPositions.get(name) ?? -1,
-      ),
-    );
-  const specificity = ({ document }: TokenDocumentEntry): number =>
-    Object.keys(modifierAssignments(document) ?? {}).length;
-  return documents.toSorted(
-    (left, right) =>
-      position(left) - position(right) ||
-      specificity(left) - specificity(right) ||
-      left.path.localeCompare(right.path),
   );
 }
 

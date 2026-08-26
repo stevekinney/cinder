@@ -95,13 +95,23 @@ export type TokenDocument = TokenGroup & {
   $schema?: string;
 };
 
-export type ResolverSet = { name: string; source: string[] };
-export type ResolverModifier = { name: string; values: string[]; default?: string };
+/**
+ * DTCG 2025.10 resolver reference object. Cinder only authors $ref entries
+ * (relative file paths for sources, #/sets/<name> or #/modifiers/<name> for
+ * resolutionOrder) -- the spec also allows inline set/modifier/token
+ * documents in these positions, which Cinder does not use.
+ */
+export type ResolverReference = { $ref: string };
+export type ResolverSet = { sources: ResolverReference[] };
+export type ResolverModifier = {
+  contexts: Record<string, ResolverReference[]>;
+  default?: string;
+};
 export type ResolverDocument = {
   version: '2025.10';
-  sets: ResolverSet[];
-  modifiers: ResolverModifier[];
-  resolutionOrder: string[];
+  sets: Record<string, ResolverSet>;
+  modifiers: Record<string, ResolverModifier>;
+  resolutionOrder: ResolverReference[];
 };
 
 export type ValidationIssue = { path: string; reason: string };

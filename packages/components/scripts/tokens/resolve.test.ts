@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { mergeDocuments, resolveDocument } from './resolve.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
+import { assertValidTokenDocument } from './validate.ts';
 
 describe('DTCG resolver', () => {
   test('resolves curly aliases and composite property references', () => {
@@ -15,6 +16,27 @@ describe('DTCG resolver', () => {
     expect(resolved['border.base']?.$value).toEqual({
       color: { colorSpace: 'oklch', components: [0.5, 0.1, 255] },
       width: { value: 2, unit: 'px' },
+      style: 'solid',
+    });
+  });
+
+  test('resolves a property-level JSON Pointer reference into a composite token value', () => {
+    // Distinct from the whole-token curly-brace alias case above: this
+    // reference targets one property ($value) of a dimension token from
+    // inside a border token's `width` member, not the whole dimension token.
+    const resolved = resolveDocument({
+      dimension: { $type: 'dimension', hairline: { $value: { value: 1, unit: 'px' } } },
+      color: { $type: 'color', $value: { colorSpace: 'oklch', components: [0, 0, 0] } },
+      border: {
+        $type: 'border',
+        thin: {
+          $value: { color: '{color}', width: '#/dimension/hairline/$value', style: 'solid' },
+        },
+      },
+    });
+    expect(resolved['border.thin']?.$value).toEqual({
+      color: { colorSpace: 'oklch', components: [0, 0, 0] },
+      width: { value: 1, unit: 'px' },
       style: 'solid',
     });
   });
@@ -140,6 +162,29 @@ describe('DTCG resolver', () => {
       $type: 'number',
       $value: 1,
     });
+  });
+
+  test('round-trips an unrecognized $extensions vendor key byte-for-byte through validate and resolve', () => {
+    // Simulates the load -> validate -> resolve pipeline (loadTokenDocuments()
+    // reads from the real corpus on disk, which this package does not own or
+    // touch; assertValidTokenDocument + resolveDocument exercise the same
+    // validate-then-resolve steps that pipeline runs per document).
+    const extensions = {
+      'com.example.vendor': { unrecognized: { nested: [1, 'two', null, true] } },
+    };
+    const document: TokenDocument = {
+      color: {
+        $type: 'color',
+        $value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] },
+        $extensions: extensions,
+      },
+    };
+
+    assertValidTokenDocument(document);
+    const resolved = resolveDocument(document);
+
+    expect(resolved['color']?.$extensions).toEqual(extensions);
+    expect(JSON.stringify(resolved['color']?.$extensions)).toBe(JSON.stringify(extensions));
   });
 
   test('inherits __proto__ tokens through group extensions', () => {

@@ -1,0 +1,7 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "sample": {
+    "$type": "cubicBezier",
+    "$value": [0.2, 0, 0, 1]
+  }
+}
