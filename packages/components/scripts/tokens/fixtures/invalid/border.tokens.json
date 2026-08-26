@@ -1,0 +1,10 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "sample": {
+    "$type": "border",
+    "$value": {
+      "color": "{color}",
+      "width": "{dimension}"
+    }
+  }
+}

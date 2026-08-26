@@ -6,6 +6,7 @@ import type {
   ValidationIssue,
 } from './types.ts';
 import { TokenValidationError } from './types.ts';
+import { validateResolverDocumentSchema, validateTokenDocumentSchema } from './validate-schema.ts';
 
 const TOKEN_NAME_PATTERN = /^[^${}.][^{}.]*$/;
 const VENDOR_EXTENSION_PATTERN = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
@@ -47,8 +48,8 @@ const DIMENSION_MEMBERS = new Set(['value', 'unit']);
 type JsonObject = Record<string, unknown>;
 type ResolverDocumentShape = {
   version: unknown;
-  sets: unknown[];
-  modifiers: unknown[];
+  sets: JsonObject;
+  modifiers: JsonObject;
   resolutionOrder: unknown[];
 };
 const GROUP_METADATA = new Set([
@@ -433,29 +434,35 @@ function validateGroup(
   validateMetadata(group, path, issues, isDocumentRoot);
   for (const key of Object.keys(group))
     if (key.startsWith('$') && !GROUP_METADATA.has(key))
-      addIssue(issues, path, `unknown reserved property ${key}`);
+      addIssue(issues, path, unknownReservedPropertyReason(key));
   const groupType =
     group['$type'] === undefined ? inheritedType : tokenType(group, inheritedType, path, issues);
   const mayInheritTypeThroughExtension =
     inheritsTypeThroughExtension || (groupType === undefined && group['$extends'] !== undefined);
   for (const [name, value] of Object.entries(group)) {
     if (name === '$root') {
+      // A `$root` token resolves at its group's own path, but reporting issues
+      // there cannot distinguish the root token from the group that holds it --
+      // and a group with a `$root` usually has siblings too. Point at the
+      // document location instead, which is unambiguous and is where the author
+      // has to edit; the token path is that minus the trailing `.$root`.
+      const rootPath = `${path}.$root`;
       if (!isObject(value) || !('$value' in value)) {
-        addIssue(issues, path, '$root must be a token object');
+        addIssue(issues, rootPath, '$root must be a token object');
         continue;
       }
-      validateMetadata(value, path, issues);
+      validateMetadata(value, rootPath, issues);
       const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
       if (nonMetadataChildren.length > 0)
-        addIssue(issues, path, '$root token cannot contain child groups');
+        addIssue(issues, rootPath, '$root token cannot contain child groups');
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, path, `unknown reserved property ${key}`);
+          addIssue(issues, rootPath, unknownReservedPropertyReason(key));
       const type =
         groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
-          : tokenType(value, groupType, path, issues);
-      if (type) validateValue(type, value['$value'], path, issues);
+          : tokenType(value, groupType, rootPath, issues);
+      if (type) validateValue(type, value['$value'], rootPath, issues);
       continue;
     }
     if (name.startsWith('$')) continue;
@@ -479,7 +486,7 @@ function validateGroup(
       validateMetadata(value, childPath, issues);
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, childPath, `unknown reserved property ${key}`);
+          addIssue(issues, childPath, unknownReservedPropertyReason(key));
       const type =
         groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
@@ -506,62 +513,142 @@ export function validateResolvedToken(token: DesignToken, path: string): void {
   if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
+function isResolverReference(value: unknown): value is { $ref: string } {
+  return isObject(value) && typeof value['$ref'] === 'string';
+}
+
+/**
+ * DTCG 2025.10 allows a token to be a JSON Pointer alias via `$ref` in place of
+ * `$value`, and the official format schema accepts that shape. Cinder classifies
+ * tokens by `$value` alone -- in this file, in `resolve.ts`'s `isToken`, and in
+ * `types.ts` -- so a `$ref` token is currently read as a group with unrecognised
+ * metadata. That gap is tracked in CIN-463; until it lands, say so plainly rather
+ * than reporting a spec property as unknown.
+ */
+function unknownReservedPropertyReason(key: string): string {
+  if (key === '$ref')
+    return '$ref token aliases are not supported yet (CIN-463); author aliases as $value: "{path}" or $value: "#/path"';
+  return `unknown reserved property ${key}`;
+}
+
+/**
+ * Parses a resolutionOrder entry's `$ref` (e.g. "#/sets/foundation" or
+ * "#/modifiers/theme") into its target kind and name. JSON Pointer
+ * tilde-escapes are decoded per RFC 6901; returns undefined for anything
+ * that isn't a well-formed pointer into `sets` or `modifiers`.
+ */
+function isResolverTargetKind(value: string): value is 'sets' | 'modifiers' {
+  return value === 'sets' || value === 'modifiers';
+}
+
+export function resolutionOrderTarget(
+  ref: string,
+): { kind: 'sets' | 'modifiers'; name: string } | undefined {
+  // RFC 6901 §6 order: percent-decode the whole fragment, then split
+  // structurally on `/`, then tilde-decode the segment. Decoding before
+  // splitting is what makes `#/sets/foo%2Fbar` decode to the three-segment
+  // pointer `/sets/foo/bar` and be rejected -- a set named `foo/bar` is only
+  // addressable as `#/sets/foo~1bar` -- while `#/sets/high%20contrast`
+  // correctly names `high contrast`.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(ref);
+  } catch {
+    return undefined;
+  }
+  // `[^/]+` rather than `.+`: an unescaped `/` makes this a deeper pointer
+  // than `#/<kind>/<name>`, not a name containing a slash.
+  const match = /^#\/(sets|modifiers)\/([^/]+)$/.exec(decoded);
+  if (!match) return undefined;
+  const [, kind, rawName] = match;
+  if (
+    kind === undefined ||
+    rawName === undefined ||
+    !isResolverTargetKind(kind) ||
+    /~(?:[^01]|$)/.test(rawName)
+  )
+    return undefined;
+  const name = rawName.replaceAll('~1', '/').replaceAll('~0', '~');
+  return { kind, name };
+}
+
+/**
+ * Semantic checks the official DTCG 2025.10 resolver JSON Schema cannot
+ * express: `default` matching a live context key, resolutionOrder entries
+ * resolving to a set or modifier that actually exists (schema can only
+ * constrain the `$ref` string's shape, not cross-reference sibling `sets`/
+ * `modifiers` object keys), resolutionOrder covering every set and modifier
+ * exactly once, and non-empty source/context arrays.
+ */
 export function validateResolverDocument(document: ResolverDocumentShape): void {
   const issues: ValidationIssue[] = [];
   if (document.version !== '2025.10')
     addIssue(issues, '$.version', 'resolver version must be 2025.10');
-  const modifierNames = new Set<string>();
-  for (const modifier of document.modifiers) {
-    if (
-      !isObject(modifier) ||
-      typeof modifier['name'] !== 'string' ||
-      !Array.isArray(modifier['values'])
-    ) {
-      addIssue(issues, '$.modifiers', 'modifier must have a string name and string values');
+
+  const modifierNames = new Set(Object.keys(document.modifiers));
+  for (const [name, modifier] of Object.entries(document.modifiers)) {
+    if (!isObject(modifier) || !isObject(modifier['contexts'])) {
+      addIssue(issues, `$.modifiers.${name}`, 'modifier must have a contexts object');
       continue;
     }
-    const { name, values } = { name: modifier['name'], values: modifier['values'] };
-    if (!name) addIssue(issues, '$.modifiers', 'modifier names must be non-empty strings');
-    if (modifierNames.has(name))
-      addIssue(issues, `$.modifiers.${name}`, 'modifier names must be unique');
-    modifierNames.add(name);
-    if (!values.every(isString))
-      addIssue(issues, `$.modifiers.${name}`, 'modifier values must be strings');
-    if (values.length === 0)
-      addIssue(issues, `$.modifiers.${name}`, 'modifier values must not be empty');
-    if (new Set(values).size !== values.length)
-      addIssue(issues, `$.modifiers.${name}`, 'modifier values must be unique');
+    const contexts = modifier['contexts'];
+    for (const [contextName, sources] of Object.entries(contexts)) {
+      if (!Array.isArray(sources) || sources.length === 0 || !sources.every(isResolverReference))
+        addIssue(
+          issues,
+          `$.modifiers.${name}.contexts.${contextName}`,
+          'context must be a non-empty array of $ref sources',
+        );
+    }
     if (
       modifier['default'] !== undefined &&
-      (!isString(modifier['default']) || !values.includes(modifier['default']))
+      (!isString(modifier['default']) || !Object.keys(contexts).includes(modifier['default']))
     )
-      addIssue(issues, `$.modifiers.${name}`, 'modifier default must be one of its values');
+      addIssue(issues, `$.modifiers.${name}`, 'modifier default must be one of its context names');
   }
-  const setNames = new Set<string>();
-  if (document.sets.length === 0)
-    addIssue(issues, '$.sets', 'resolver must include at least one set');
-  for (const set of document.sets) {
-    if (!isObject(set) || typeof set['name'] !== 'string' || !Array.isArray(set['source'])) {
-      addIssue(issues, '$.sets', 'set must have a string name and string source array');
+
+  const setNames = new Set(Object.keys(document.sets));
+  if (setNames.size === 0) addIssue(issues, '$.sets', 'resolver must include at least one set');
+  for (const [name, set] of Object.entries(document.sets)) {
+    if (
+      !isObject(set) ||
+      !Array.isArray(set['sources']) ||
+      set['sources'].length === 0 ||
+      !set['sources'].every(isResolverReference)
+    )
+      addIssue(issues, `$.sets.${name}`, 'set must have a non-empty array of $ref sources');
+  }
+
+  const resolutionOrderTargets = new Set<string>();
+  for (const [index, entry] of document.resolutionOrder.entries()) {
+    if (!isResolverReference(entry)) {
+      addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entry must be a $ref object');
       continue;
     }
-    if (!set['name']) addIssue(issues, '$.sets', 'set names must be non-empty strings');
-    if (setNames.has(set['name']))
-      addIssue(issues, `$.sets.${set['name']}`, 'set names must be unique');
-    setNames.add(set['name']);
-    if (!set['source'].every(isString))
-      addIssue(issues, `$.sets.${set['name']}`, 'set sources must be strings');
+    const target = resolutionOrderTarget(entry['$ref']);
+    if (!target || !(target.kind === 'sets' ? setNames : modifierNames).has(target.name)) {
+      addIssue(
+        issues,
+        `$.resolutionOrder.${index}`,
+        `resolutionOrder must reference an existing set or modifier: ${entry['$ref']}`,
+      );
+      continue;
+    }
+    const key = `${target.kind}/${target.name}`;
+    if (resolutionOrderTargets.has(key))
+      addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entries must be unique');
+    resolutionOrderTargets.add(key);
   }
-  const resolutionOrderNames = new Set<string>();
-  for (const name of document.resolutionOrder) {
-    if (!isString(name) || !modifierNames.has(name))
-      addIssue(issues, '$.resolutionOrder', `unknown modifier ${String(name)}`);
-    else if (resolutionOrderNames.has(name))
-      addIssue(issues, '$.resolutionOrder', 'modifier names must appear only once');
-    else resolutionOrderNames.add(name);
-  }
-  if (resolutionOrderNames.size !== modifierNames.size)
-    addIssue(issues, '$.resolutionOrder', 'must list every modifier exactly once');
+  const expectedTargets = new Set([
+    ...[...setNames].map((name) => `sets/${name}`),
+    ...[...modifierNames].map((name) => `modifiers/${name}`),
+  ]);
+  if (
+    resolutionOrderTargets.size !== expectedTargets.size ||
+    [...resolutionOrderTargets].some((target) => !expectedTargets.has(target))
+  )
+    addIssue(issues, '$.resolutionOrder', 'must list every set and modifier exactly once');
+
   if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
@@ -572,6 +659,10 @@ export function assertValidTokenDocument(
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source ?? '$', 'document must be an object');
   if (issues.length > 0) throw new TokenValidationError(issues);
+  // First-pass gate: the official DTCG 2025.10 format JSON Schema catches shape
+  // violations structurally, before the semantic checks below run. See
+  // validate-schema.ts for why this precedes (rather than replaces) validateTokenDocument.
+  validateTokenDocumentSchema(document, source ?? '$');
   validateTokenDocument(document, source);
 }
 
@@ -580,10 +671,15 @@ export function assertValidResolverDocument(
 ): asserts document is ResolverDocument {
   if (!isObject(document))
     throw new TokenValidationError([{ path: '$', reason: 'resolver must be an object' }]);
+  // First-pass gate: the official DTCG 2025.10 resolver JSON Schema catches
+  // shape violations structurally, before the semantic checks below run
+  // (see validate-schema.ts for why validateResolverDocumentSchema exists
+  // as a separate, explicitly-called step rather than being folded in here).
+  validateResolverDocumentSchema(document);
   if (
     document['version'] !== '2025.10' ||
-    !Array.isArray(document['sets']) ||
-    !Array.isArray(document['modifiers']) ||
+    !isObject(document['sets']) ||
+    !isObject(document['modifiers']) ||
     !Array.isArray(document['resolutionOrder'])
   )
     throw new TokenValidationError([
@@ -592,33 +688,6 @@ export function assertValidResolverDocument(
         reason: 'resolver must contain version, sets, modifiers, and resolutionOrder',
       },
     ]);
-  const issues: ValidationIssue[] = [];
-  for (const [index, set] of document['sets'].entries()) {
-    if (
-      !isObject(set) ||
-      typeof set['name'] !== 'string' ||
-      !Array.isArray(set['source']) ||
-      !set['source'].every(isString)
-    )
-      addIssue(issues, `$.sets.${index}`, 'set must have a string name and string source array');
-  }
-  for (const [index, modifier] of document['modifiers'].entries()) {
-    if (
-      !isObject(modifier) ||
-      typeof modifier['name'] !== 'string' ||
-      !Array.isArray(modifier['values']) ||
-      !modifier['values'].every(isString) ||
-      (modifier['default'] !== undefined && typeof modifier['default'] !== 'string')
-    )
-      addIssue(
-        issues,
-        `$.modifiers.${index}`,
-        'modifier must have a string name, string values, and optional string default',
-      );
-  }
-  if (!document['resolutionOrder'].every(isString))
-    addIssue(issues, '$.resolutionOrder', 'resolution order must contain strings');
-  if (issues.length > 0) throw new TokenValidationError(issues);
   validateResolverDocument({
     version: document['version'],
     sets: document['sets'],

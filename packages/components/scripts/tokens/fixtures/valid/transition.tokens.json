@@ -1,0 +1,11 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "sample": {
+    "$type": "transition",
+    "$value": {
+      "duration": "{duration}",
+      "delay": "{duration}",
+      "timingFunction": "{easing}"
+    }
+  }
+}

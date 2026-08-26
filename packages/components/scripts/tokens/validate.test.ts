@@ -1,10 +1,47 @@
 import { describe, expect, test } from 'bun:test';
+import { readdirSync, readFileSync } from 'node:fs';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 import { TokenValidationError, type TokenDocument } from './types.ts';
 import {
+  assertValidResolverDocument,
+  assertValidTokenDocument,
   validateResolvedToken,
   validateResolverDocument,
   validateTokenDocument,
 } from './validate.ts';
+
+const scriptDirectory = dirname(fileURLToPath(import.meta.url));
+const fixturesDirectory = join(scriptDirectory, 'fixtures');
+
+function readFixture(subdirectory: 'valid' | 'invalid', name: string): unknown {
+  return JSON.parse(readFileSync(join(fixturesDirectory, subdirectory, name), 'utf8'));
+}
+
+function fixtureNames(subdirectory: 'valid' | 'invalid'): string[] {
+  return readdirSync(join(fixturesDirectory, subdirectory))
+    .filter((name) => name.endsWith('.tokens.json'))
+    .toSorted();
+}
+
+const validFixtureNames = fixtureNames('valid');
+const invalidFixtureNames = fixtureNames('invalid');
+const DTCG_TOKEN_TYPES = [
+  'color',
+  'dimension',
+  'fontFamily',
+  'fontWeight',
+  'duration',
+  'cubicBezier',
+  'number',
+  'strokeStyle',
+  'border',
+  'transition',
+  'shadow',
+  'gradient',
+  'typography',
+];
 
 const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }> = [
   { type: 'color', value: { colorSpace: 'oklch', components: [0.5, 0.1, 255] } },
@@ -60,6 +97,40 @@ const cases: Array<{ type: NonNullable<TokenDocument['$type']>; value: unknown }
 ];
 
 describe('DTCG semantic validation', () => {
+  test('fixtures/valid covers every DTCG type Cinder claims to support', () => {
+    expect(validFixtureNames).toEqual(
+      DTCG_TOKEN_TYPES.map((type) => `${type}.tokens.json`).toSorted(),
+    );
+  });
+
+  test.each(validFixtureNames)(
+    'accepts fixtures/valid/%s through the full load-time gate',
+    (name) => {
+      expect(() =>
+        assertValidTokenDocument(readFixture('valid', name), `fixtures/valid/${name}`),
+      ).not.toThrow();
+    },
+  );
+
+  test.each(invalidFixtureNames)(
+    'rejects fixtures/invalid/%s with a named path and reason',
+    (name) => {
+      let caught: unknown;
+      try {
+        assertValidTokenDocument(readFixture('invalid', name), `fixtures/invalid/${name}`);
+      } catch (error) {
+        caught = error;
+      }
+      expect(caught).toBeInstanceOf(TokenValidationError);
+      const issues = (caught as TokenValidationError).issues;
+      expect(issues.length).toBeGreaterThan(0);
+      for (const issue of issues) {
+        expect(issue.path.length).toBeGreaterThan(0);
+        expect(issue.reason.length).toBeGreaterThan(0);
+      }
+    },
+  );
+
   test.each(cases)('accepts the $type value shape', ({ type, value }) => {
     expect(() => validateTokenDocument({ $type: type, sample: { $value: value } })).not.toThrow();
   });
@@ -101,6 +172,33 @@ describe('DTCG semantic validation', () => {
 
   test('requires a direct or inherited type', () => {
     expect(() => validateTokenDocument({ value: { $value: 1 } })).toThrow('no $type');
+  });
+
+  test('attributes $root token issues to the $root location, not the enclosing group', () => {
+    // A group holding a $root usually has siblings, so reporting at the group
+    // path alone cannot tell the author which one is wrong.
+    expect(() =>
+      validateTokenDocument({
+        accent: {
+          $type: 'number',
+          $root: { $value: 1, $valu: 2 },
+          hover: { $value: 3 },
+        },
+      }),
+    ).toThrow('accent.$root: unknown reserved property $valu');
+  });
+
+  test('rejects a $ref token alias by name rather than as unknown metadata', () => {
+    // The official format schema accepts `$ref` in place of `$value`, but
+    // Cinder classifies tokens by `$value` alone, so the two layers disagree.
+    // Support is tracked in CIN-463; until then the rejection must say so
+    // rather than reporting a spec property as an unknown one.
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $ref: '#/base' },
+      }),
+    ).toThrow(/\$ref token aliases are not supported yet \(CIN-463\)/);
   });
 
   test('accepts root tokens and rejects unknown reserved metadata', () => {
@@ -359,53 +457,125 @@ describe('DTCG semantic validation', () => {
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
-        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
-        modifiers: [{ name: 'theme', values: ['light', 'dark'], default: 'light' }],
-        resolutionOrder: ['theme'],
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+            default: 'light',
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
       }),
     ).not.toThrow();
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
-        sets: [],
-        modifiers: [],
-        resolutionOrder: ['theme'],
+        sets: {},
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
       }),
-    ).toThrow('unknown modifier');
+    ).toThrow('existing set or modifier');
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
-        sets: [
-          { name: 'base', source: ['sets/base.tokens.json'] },
-          { name: 'base', source: ['sets/other.tokens.json'] },
+        sets: { base: { sources: [] } },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/base' }],
+      }),
+    ).toThrow('non-empty array of $ref sources');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: { contexts: { light: [], dark: [{ $ref: 'themes/dark.tokens.json' }] } },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).toThrow('non-empty array of $ref sources');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }],
+      }),
+    ).toThrow('must list every set and modifier exactly once');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+            default: 'sepia',
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).toThrow('default must be one of its context names');
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [
+          { $ref: '#/sets/base' },
+          { $ref: '#/modifiers/theme' },
+          { $ref: '#/modifiers/theme' },
         ],
-        modifiers: [],
-        resolutionOrder: [],
       }),
-    ).toThrow('set names must be unique');
-    expect(() =>
-      validateResolverDocument({
-        version: '2025.10',
-        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
-        modifiers: [{ name: 'theme', values: [] }],
-        resolutionOrder: ['theme'],
-      }),
-    ).toThrow('modifier values must not be empty');
-    expect(() =>
-      validateResolverDocument({
-        version: '2025.10',
-        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
-        modifiers: [{ name: 'theme', values: ['light', 'dark'] }],
-        resolutionOrder: [],
-      }),
-    ).toThrow('must list every modifier exactly once');
-    expect(() =>
-      validateResolverDocument({
-        version: '2025.10',
-        sets: [{ name: 'base', source: ['sets/base.tokens.json'] }],
-        modifiers: [{ name: 'theme', values: ['light', 'light'] }],
-        resolutionOrder: ['theme'],
-      }),
-    ).toThrow('modifier values must be unique');
+    ).toThrow('resolutionOrder entries must be unique');
+  });
+
+  test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {
+    // Regression guard: cinder.resolver.json used to declare
+    // sets/modifiers as arrays of {name, ...} objects and resolutionOrder as
+    // a plain string array. That shape never conformed to the official
+    // DTCG 2025.10 resolver schema (sets/modifiers must be objects keyed by
+    // name; resolutionOrder entries must be $ref objects) even though the
+    // file declared the official $schema URI. CIN-27 migrated the real
+    // corpus file to the conformant shape; this test locks out sliding back.
+    const oldShapeDocument = {
+      version: '2025.10',
+      sets: [{ name: 'foundation', source: ['sets/foundation.tokens.json'] }],
+      modifiers: [{ name: 'theme', values: ['light', 'dark'], default: 'light' }],
+      resolutionOrder: ['theme'],
+    };
+    let caught: unknown;
+    try {
+      assertValidResolverDocument(oldShapeDocument);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    const issues = (caught as TokenValidationError).issues;
+    expect(issues.length).toBeGreaterThan(0);
+    expect(issues.some((issue) => issue.path === '$.sets' && issue.reason.includes('object'))).toBe(
+      true,
+    );
+    expect(
+      issues.some((issue) => issue.path === '$.modifiers' && issue.reason.includes('object')),
+    ).toBe(true);
   });
 });

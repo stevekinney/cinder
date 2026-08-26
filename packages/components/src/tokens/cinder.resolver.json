@@ -1,23 +1,33 @@
 {
   "$schema": "https://www.designtokens.org/schemas/2025.10/resolver.json",
   "version": "2025.10",
-  "sets": [
-    {
-      "name": "foundation",
-      "source": ["sets/foundation.tokens.json", "sets/semantic.tokens.json"]
+  "sets": {
+    "foundation": {
+      "sources": [
+        { "$ref": "sets/foundation.tokens.json" },
+        { "$ref": "sets/semantic.tokens.json" }
+      ]
     }
-  ],
-  "modifiers": [
-    {
-      "name": "theme",
-      "values": ["light", "dark"],
+  },
+  "modifiers": {
+    "theme": {
+      "contexts": {
+        "light": [{ "$ref": "themes/light.tokens.json" }],
+        "dark": [{ "$ref": "themes/dark.tokens.json" }]
+      },
       "default": "light"
     },
-    {
-      "name": "motion",
-      "values": ["default", "reduced"],
+    "motion": {
+      "contexts": {
+        "default": [{ "$ref": "modes/motion-default.tokens.json" }],
+        "reduced": [{ "$ref": "modes/motion-reduced.tokens.json" }]
+      },
       "default": "default"
     }
-  ],
-  "resolutionOrder": ["theme", "motion"]
+  },
+  "resolutionOrder": [
+    { "$ref": "#/sets/foundation" },
+    { "$ref": "#/modifiers/theme" },
+    { "$ref": "#/modifiers/motion" }
+  ]
 }

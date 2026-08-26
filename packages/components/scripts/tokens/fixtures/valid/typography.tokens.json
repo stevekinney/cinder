@@ -1,0 +1,13 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "sample": {
+    "$type": "typography",
+    "$value": {
+      "fontFamily": "{family}",
+      "fontSize": "{dimension}",
+      "fontWeight": "{weight}",
+      "letterSpacing": "{dimension}",
+      "lineHeight": 1.5
+    }
+  }
+}
