@@ -441,22 +441,28 @@ function validateGroup(
     inheritsTypeThroughExtension || (groupType === undefined && group['$extends'] !== undefined);
   for (const [name, value] of Object.entries(group)) {
     if (name === '$root') {
+      // A `$root` token resolves at its group's own path, but reporting issues
+      // there cannot distinguish the root token from the group that holds it --
+      // and a group with a `$root` usually has siblings too. Point at the
+      // document location instead, which is unambiguous and is where the author
+      // has to edit; the token path is that minus the trailing `.$root`.
+      const rootPath = `${path}.$root`;
       if (!isObject(value) || !('$value' in value)) {
-        addIssue(issues, path, '$root must be a token object');
+        addIssue(issues, rootPath, '$root must be a token object');
         continue;
       }
-      validateMetadata(value, path, issues);
+      validateMetadata(value, rootPath, issues);
       const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
       if (nonMetadataChildren.length > 0)
-        addIssue(issues, path, '$root token cannot contain child groups');
+        addIssue(issues, rootPath, '$root token cannot contain child groups');
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, path, unknownReservedPropertyReason(key));
+          addIssue(issues, rootPath, unknownReservedPropertyReason(key));
       const type =
         groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
-          : tokenType(value, groupType, path, issues);
-      if (type) validateValue(type, value['$value'], path, issues);
+          : tokenType(value, groupType, rootPath, issues);
+      if (type) validateValue(type, value['$value'], rootPath, issues);
       continue;
     }
     if (name.startsWith('$')) continue;

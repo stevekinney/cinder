@@ -174,6 +174,20 @@ describe('DTCG semantic validation', () => {
     expect(() => validateTokenDocument({ value: { $value: 1 } })).toThrow('no $type');
   });
 
+  test('attributes $root token issues to the $root location, not the enclosing group', () => {
+    // A group holding a $root usually has siblings, so reporting at the group
+    // path alone cannot tell the author which one is wrong.
+    expect(() =>
+      validateTokenDocument({
+        accent: {
+          $type: 'number',
+          $root: { $value: 1, $valu: 2 },
+          hover: { $value: 3 },
+        },
+      }),
+    ).toThrow('accent.$root: unknown reserved property $valu');
+  });
+
   test('rejects a $ref token alias by name rather than as unknown metadata', () => {
     // The official format schema accepts `$ref` in place of `$value`, but
     // Cinder classifies tokens by `$value` alone, so the two layers disagree.
