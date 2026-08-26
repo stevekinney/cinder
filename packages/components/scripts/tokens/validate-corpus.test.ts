@@ -69,6 +69,33 @@ describe('token corpus validation', () => {
     ]);
   });
 
+  test('applies RFC 6901 decode order: percent-decode the fragment, then split, then tilde-decode', () => {
+    const withName = (ref: string): ResolverDocument => ({
+      version: '2025.10',
+      sets: { 'high contrast': { sources: [{ $ref: 'sets/hc.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: ref }],
+    });
+
+    // %20 decodes to a space inside a single segment, naming a real set.
+    expect(parseResolutionOrder(withName('#/sets/high%20contrast'))).toEqual([
+      { kind: 'sets', name: 'high contrast' },
+    ]);
+
+    // %2F decodes to a literal slash, making this a three-segment pointer
+    // rather than a set named `foo/bar` -- which is only addressable as
+    // `#/sets/foo~1bar`. Decoding after splitting would wrongly accept it.
+    expect(() => parseResolutionOrder(withName('#/sets/foo%2Fbar'))).toThrow();
+
+    // An unescaped slash is a deeper pointer, not a name containing a slash.
+    expect(() => parseResolutionOrder(withName('#/sets/foo/bar'))).toThrow();
+
+    // A malformed percent-escape is rejected, not thrown out of decodeURIComponent.
+    expect(() => parseResolutionOrder(withName('#/sets/bad%2'))).toThrow(
+      /not a well-formed pointer/,
+    );
+  });
+
   test('normalizes source URI references to the globbed repository-relative form', () => {
     expect(normalizeSourcePath('sets/foundation.tokens.json')).toBe('sets/foundation.tokens.json');
     expect(normalizeSourcePath('./sets/foundation.tokens.json')).toBe(

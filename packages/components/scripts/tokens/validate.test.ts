@@ -174,6 +174,19 @@ describe('DTCG semantic validation', () => {
     expect(() => validateTokenDocument({ value: { $value: 1 } })).toThrow('no $type');
   });
 
+  test('rejects a $ref token alias by name rather than as unknown metadata', () => {
+    // The official format schema accepts `$ref` in place of `$value`, but
+    // Cinder classifies tokens by `$value` alone, so the two layers disagree.
+    // Support is tracked in CIN-463; until then the rejection must say so
+    // rather than reporting a spec property as an unknown one.
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $ref: '#/base' },
+      }),
+    ).toThrow(/\$ref token aliases are not supported yet \(CIN-463\)/);
+  });
+
   test('accepts root tokens and rejects unknown reserved metadata', () => {
     expect(() =>
       validateTokenDocument({ group: { $type: 'number', $root: { $value: 1 } } }),

@@ -434,7 +434,7 @@ function validateGroup(
   validateMetadata(group, path, issues, isDocumentRoot);
   for (const key of Object.keys(group))
     if (key.startsWith('$') && !GROUP_METADATA.has(key))
-      addIssue(issues, path, `unknown reserved property ${key}`);
+      addIssue(issues, path, unknownReservedPropertyReason(key));
   const groupType =
     group['$type'] === undefined ? inheritedType : tokenType(group, inheritedType, path, issues);
   const mayInheritTypeThroughExtension =
@@ -451,7 +451,7 @@ function validateGroup(
         addIssue(issues, path, '$root token cannot contain child groups');
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, path, `unknown reserved property ${key}`);
+          addIssue(issues, path, unknownReservedPropertyReason(key));
       const type =
         groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
@@ -480,7 +480,7 @@ function validateGroup(
       validateMetadata(value, childPath, issues);
       for (const key of Object.keys(value))
         if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, childPath, `unknown reserved property ${key}`);
+          addIssue(issues, childPath, unknownReservedPropertyReason(key));
       const type =
         groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
           ? undefined
@@ -512,6 +512,20 @@ function isResolverReference(value: unknown): value is { $ref: string } {
 }
 
 /**
+ * DTCG 2025.10 allows a token to be a JSON Pointer alias via `$ref` in place of
+ * `$value`, and the official format schema accepts that shape. Cinder classifies
+ * tokens by `$value` alone -- in this file, in `resolve.ts`'s `isToken`, and in
+ * `types.ts` -- so a `$ref` token is currently read as a group with unrecognised
+ * metadata. That gap is tracked in CIN-463; until it lands, say so plainly rather
+ * than reporting a spec property as unknown.
+ */
+function unknownReservedPropertyReason(key: string): string {
+  if (key === '$ref')
+    return '$ref token aliases are not supported yet (CIN-463); author aliases as $value: "{path}" or $value: "#/path"';
+  return `unknown reserved property ${key}`;
+}
+
+/**
  * Parses a resolutionOrder entry's `$ref` (e.g. "#/sets/foundation" or
  * "#/modifiers/theme") into its target kind and name. JSON Pointer
  * tilde-escapes are decoded per RFC 6901; returns undefined for anything
@@ -524,7 +538,21 @@ function isResolverTargetKind(value: string): value is 'sets' | 'modifiers' {
 export function resolutionOrderTarget(
   ref: string,
 ): { kind: 'sets' | 'modifiers'; name: string } | undefined {
-  const match = /^#\/(sets|modifiers)\/(.+)$/.exec(ref);
+  // RFC 6901 §6 order: percent-decode the whole fragment, then split
+  // structurally on `/`, then tilde-decode the segment. Decoding before
+  // splitting is what makes `#/sets/foo%2Fbar` decode to the three-segment
+  // pointer `/sets/foo/bar` and be rejected -- a set named `foo/bar` is only
+  // addressable as `#/sets/foo~1bar` -- while `#/sets/high%20contrast`
+  // correctly names `high contrast`.
+  let decoded: string;
+  try {
+    decoded = decodeURIComponent(ref);
+  } catch {
+    return undefined;
+  }
+  // `[^/]+` rather than `.+`: an unescaped `/` makes this a deeper pointer
+  // than `#/<kind>/<name>`, not a name containing a slash.
+  const match = /^#\/(sets|modifiers)\/([^/]+)$/.exec(decoded);
   if (!match) return undefined;
   const [, kind, rawName] = match;
   if (
