@@ -1,0 +1,63 @@
+# chat-room lab
+
+> [!NOTE]
+> Formerly the standalone `stevekinney/chatroom` repository (now archived, where the pre-merge history lives). It moved into this monorepo as `labs/chat-room` on 2026-08-25 and now consumes the workspace packages via `workspace:*` rather than the published npm tarballs.
+
+A testbed for two components from the [`stevekinney/cinder`](https://github.com/stevekinney/cinder) workspace, driven against real data rather than fixtures:
+
+- `Chat` from [`@lostgradient/chat`](https://www.npmjs.com/package/@lostgradient/chat), wired to the Anthropic SDK through a server-side streaming route.
+- `ReviewEditor` from [`@lostgradient/editor`](https://www.npmjs.com/package/@lostgradient/editor), a Markdown editor with anchored review threads, a diff view, and a summary view, exercised by the `review-*` routes under `/exercises`.
+
+It's not a product. The demo route and conversation wiring change often as we try things against the real components, and the point of the `/exercises` routes is to smoke out upstream defects. See [CLAUDE.md](./CLAUDE.md) for the full picture: how work moves between here and `../cinder`, the components' style/adapter/conversation-model contracts, the ReviewEditor anchor coordinate spaces, the Anthropic SDK streaming seam, and the upstream-issue-filing convention.
+
+## Getting started
+
+```sh
+bun install
+```
+
+You'll also need an `.env` file with `ANTHROPIC_API_KEY` set. It is used server-side only, in `src/routes/api/chat/+server.ts`, and must never reach the browser.
+
+Then:
+
+```sh
+bun run dev
+```
+
+## How the upstream packages are consumed
+
+**From the monorepo workspace, always.** `@lostgradient/chat`, `@lostgradient/cinder`, `@lostgradient/editor`, `@lostgradient/markdown`, and `@lostgradient/cinder-mcp` are declared `workspace:*` in `package.json`, so the lab exercises the workspace's local sources — including unreleased changes — rather than the published npm tarballs. (The standalone repository deliberately consumed the published tarballs to catch packaging defects; that boundary now lives with the monorepo's `validate:consumer` fixtures, and the lab's job is exercising the workspace.) `armorer` and `conversationalist` still install from npm because they live in the `agent-bureau` monorepo.
+
+Their peers are declared here too. `@lostgradient/chat` peer-depends on `@lostgradient/cinder`, `@lostgradient/markdown`, and `svelte`; `@lostgradient/editor` adds the `@milkdown/*` and `prosemirror-*` set to that same trio. Neither `conversationalist` nor `zod` is a peer of `@lostgradient/chat` — both are chat's own regular dependencies. chatroom declares `conversationalist` directly anyway, because it imports subpaths chat does not re-export, and its range should stay identical to chat's so both resolve one instance (the `check:peers` script that enforced this was removed with the merge into the monorepo). `zod` is a different case: it is here for the armorer tool schemas, **and** to satisfy a real peer range — `armorer` and `conversationalist` each declare `zod@^4.4.3` as a peer, and neither ships a nested copy, so chatroom's own `zod` is what they resolve against.
+
+There is no version to sync: the lab always sees the workspace's current sources, and a breaking upstream change shows up here as a failing spec, which is the lab working as intended — update the spec to the new contract, or file the regression in `CIN`.
+
+## Scripts
+
+| Script                    | What it does                                                                                                                                                                                                                |
+| ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bun run dev`             | Starts the dev server.                                                                                                                                                                                                      |
+| `bun run build`           | Production build.                                                                                                                                                                                                           |
+| `bun run preview`         | Serves the production build locally.                                                                                                                                                                                        |
+| `bun run check`           | `svelte-kit sync` + `svelte-check` (typechecking).                                                                                                                                                                          |
+| `bun run check:watch`     | Same as `check`, in watch mode.                                                                                                                                                                                             |
+| `bun run check:upstream`  | Checks GitHub `upstream: <owner>/<repo>#<issue>` markers with `gh` and Linear `upstream: <linear-issue-key>` markers with `LINEAR_API_KEY`; closed issues flag their workarounds for removal.                               |
+| `bun run lint`            | `prettier --check` + `eslint`.                                                                                                                                                                                              |
+| `bun run format`          | `prettier --write`.                                                                                                                                                                                                         |
+| `bun run test:playwright` | Installs Playwright browsers and runs the full browser-test matrix (builds + previews the app first, and runs a dev server alongside it so hydration mismatches are observable). This is the gate for application behavior. |
+| `bun run test:unit`       | Runs the fast unit tests only (`check-upstream-issues.test.ts`). This is what `bun run test` aliases, so `turbo run test` at the workspace root stays fast — it does **not** exercise application behavior.                 |
+| `bun run test`            | Alias for `test:unit`, not the browser suite — see above.                                                                                                                                                                   |
+
+`prepare` (`svelte-kit sync`) runs automatically after install and doesn't need to be invoked directly.
+
+## Skills
+
+- **`review-board`** (`.claude/skills/review-board/`): convenes the four adversarial reviewers that must each return PASS before any work here is complete. See [CLAUDE.md](./CLAUDE.md#the-adversarial-review-board).
+
+## Known upstream friction
+
+Tracked upstream issues against Cinder and agent-bureau — see [CLAUDE.md](./CLAUDE.md#known-upstream-friction) for the current list and filing convention. File owned-package work in its Linear team first (`CIN` for Cinder packages and `AB` for agent-bureau), with a native `blocked by` relation to the affected chatroom work; use `gh issue create` only when the owning repository has no Linear team. Run `bun run check:upstream` to see whether any referenced issue has since closed.
+
+## Coverage roadmap
+
+[ROADMAP.md](./ROADMAP.md) tracks what these components still need exercised, with acceptance criteria per item.

@@ -1,0 +1,29 @@
+{
+	"hooks": {
+		"PostToolUse": [
+			{
+				"matcher": "Edit|Write",
+				"hooks": [
+					{
+						"type": "command",
+						"command": "jq -r '.tool_response.filePath // .tool_input.file_path' | { read -r f; case \"$f\" in */CLAUDE.md|CLAUDE.md) jq -n '{systemMessage: \"Reminder: CLAUDE.md changed \u2014 verify AGENTS.md still points at it, and check whether new content needs anything called out separately for Codex or other agent CLIs.\", hookSpecificOutput: {hookEventName: \"PostToolUse\", additionalContext: \"CLAUDE.md was just edited. AGENTS.md points at CLAUDE.md but also carries its own review-board-portability section \u2014 confirm it still resolves correctly, and flag anything Codex-specific that this change should surface.\"}}' ;; esac; } 2>/dev/null"
+					},
+					{
+						"type": "command",
+						"command": "jq -r '[.session_id, (.tool_response.filePath // .tool_input.file_path)] | join(\"|\")' | { IFS='|' read -r sid f; case \"$f\" in *.json|*.md|*.yml|*.yaml|.claude/*|.vscode/*|*.config.*|.env*|*.lock|README*|.prettierrc*|.eslintrc*|tsconfig*) : ;; *) rm -f \"/tmp/claude-cinder-nudge-${sid}\" ;; esac; } 2>/dev/null"
+					}
+				]
+			}
+		],
+		"Stop": [
+			{
+				"hooks": [
+					{
+						"type": "command",
+						"command": "jq -r '.session_id' | { read -r sid; f=\"/tmp/claude-cinder-nudge-${sid}\"; if [ ! -f \"$f\" ]; then touch \"$f\"; ex=(':!*.json' ':!*.md' ':!*.yml' ':!*.yaml' ':!.claude' ':!.vscode' ':!*.config.*' ':!.env*' ':!*.lock' ':!README*' ':!.prettierrc*' ':!.eslintrc*' ':!tsconfig*'); diff=$(git diff HEAD -- . \"${ex[@]}\" 2>/dev/null | head -c 20000); untracked=$(git status --short -- . \"${ex[@]}\" 2>/dev/null | grep '^??' | sed 's/^?? //'); prompt=\"Before wrapping up: review the diff and new files below for hacks, workarounds, or silent accommodations around @lostgradient/cinder, chat, editor, markdown, cinder-mcp, conversationalist, or armorer (undocumented behavior, awkward import ordering, manual peer-dependency installs, forced type casts, style/layer ordering fixes, etc.). If you find one, file it per CLAUDE.md's File-in-Linear-first convention rather than leaving it undocumented \u2014 both owning repos have a Linear team today, so cinder/chat/editor/markdown/cinder-mcp issues go to team CIN and conversationalist/armorer issues go to team AB, and, when the work that surfaced it is itself tracked by a Linear issue, a native blocked by relation from that issue (check it is not a duplicate of #753/#754 first). gh issue create is the fallback only for a repository with no owning Linear team. Read the created issue back rather than trusting the write call: for Linear, re-read the issue and confirm the relation; for GitHub, verify with gh issue view NUMBER --repo OWNER/REPO --json state. Do not assume a posted comment keeps an issue open or counts as tracked, and if your comment says a problem still reproduces while the issue shows closed, reopen it with a short note rather than leaving a closed issue as the only record of an unresolved bug.\"; jq -n --arg prompt \"$prompt\" --arg diff \"$diff\" --arg untracked \"$untracked\" '{hookSpecificOutput: {hookEventName: \"Stop\", additionalContext: ($prompt + \"\\n\\nUncommitted diff (excludes config/docs, truncated at 20000 chars):\\n\" + (if ($diff|length) > 0 then $diff else \"(none)\" end) + \"\\n\\nUntracked new files (excludes config/docs):\\n\" + (if ($untracked|length) > 0 then $untracked else \"(none)\" end))}}'; fi; } 2>/dev/null"
+					}
+				]
+			}
+		]
+	}
+}
