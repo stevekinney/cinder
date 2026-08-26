@@ -219,7 +219,25 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   },
   'tokens:validate': {
     layers: ['unit-tests', 'main-green'],
-    reason: 'Member of lint:invariants — validates corpus syntax and cross-token resolution.',
+    reason:
+      'Validates corpus syntax and cross-token resolution. Reached transitively through ' +
+      '`tokens:check`, which lint:invariants now calls in place of the bare `tokens:validate` ' +
+      'invocation — tokens:check runs tokens:validate first, so this stays true in the same ' +
+      'two layers without lint:invariants running validation twice.',
+  },
+  'tokens:check': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants, replacing the bare `tokens:validate` call. Runs ' +
+      'tokens:validate then `tokens:generate -- --check` so a hand edit to tokens-base.css or ' +
+      'the four resolved-context JSON files (or a corpus change that was not regenerated) fails ' +
+      'the same two layers tokens:validate already gated.',
+  },
+  'tokens:generate': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Invoked via `tokens:check -- --check` (see that row). Not run standalone by name in any ' +
+      'workflow — the write-mode invocation is a local developer/regeneration command.',
   },
   'tokens:inventory': {
     layers: ['unit-tests', 'main-green'],
