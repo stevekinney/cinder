@@ -2647,19 +2647,16 @@ async function assertSvelteKitHydrationRoute(
   }
 }
 
-async function assertSvelteKitHydrationRouteContent(
+export async function assertSvelteKitHydrationRouteContent(
   page: Page,
   errors: BoundedDiagnosticCollection,
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
   if (routePath === '/chat-layout') {
-    await observeSvelteKitHydrationMarkerAlongside(
-      page,
-      routePath,
-      domObservation,
-      page.locator('[data-chat-layout-hydrated="true"]').waitFor({ timeout: 5_000 }),
-    );
+    await page
+      .locator('[data-chat-layout-hydrated="true"]')
+      .waitFor({ state: 'attached', timeout: 5_000 });
     domObservation.hydrationMarkerPresent = true;
     domObservation.hydrationMarkerValue = 'true';
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
@@ -2669,12 +2666,9 @@ async function assertSvelteKitHydrationRouteContent(
     return;
   }
 
-  await observeSvelteKitHydrationMarkerAlongside(
-    page,
-    routePath,
-    domObservation,
-    page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ timeout: 5_000 }),
-  );
+  await page
+    .locator('[data-dev-ssr-hydrated="true"]')
+    .waitFor({ state: 'attached', timeout: 5_000 });
   domObservation.hydrationMarkerPresent = true;
   domObservation.hydrationMarkerValue = 'true';
   if (routePath === '/dev-ssr-navigation') {
@@ -2773,75 +2767,15 @@ type SvelteKitHydrationRouteFailureInput = {
   snapshot: SvelteKitHydrationRouteFailureSnapshot;
 };
 
-function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): {
-  attribute: string;
-  selector: string;
-} {
+function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): { selector: string } {
   if (routePath === '/chat-layout') {
     return {
-      attribute: 'data-chat-layout-hydrated',
       selector: '[data-chat-layout-hydrated]',
     };
   }
   return {
-    attribute: 'data-dev-ssr-hydrated',
     selector: '[data-dev-ssr-hydrated]',
   };
-}
-
-type HydrationMarkerPage = {
-  $: (
-    selector: string,
-  ) => Promise<{ getAttribute: (attribute: string) => Promise<string | null> } | null>;
-};
-
-export async function observeSvelteKitHydrationMarker(
-  page: HydrationMarkerPage,
-  routePath: SvelteKitHydrationRoute,
-  domObservation: SvelteKitHydrationRouteDomObservation,
-  timeoutMs = 5_000,
-): Promise<void> {
-  const marker = hydrationMarkerForRoute(routePath);
-  const observation = await promiseWithTimeout(
-    (async () => {
-      const element = await page.$(marker.selector);
-      return {
-        present: element !== null,
-        value: element ? await element.getAttribute(marker.attribute) : null,
-      };
-    })(),
-    timeoutMs,
-    `hydration marker probe selector=${marker.selector}`,
-  );
-  domObservation.hydrationMarkerPresent = observation.present;
-  domObservation.hydrationMarkerValue = observation.value;
-}
-
-export async function observeSvelteKitHydrationMarkerBestEffort(
-  page: HydrationMarkerPage,
-  routePath: SvelteKitHydrationRoute,
-  domObservation: SvelteKitHydrationRouteDomObservation,
-  timeoutMs = 5_000,
-): Promise<void> {
-  try {
-    await observeSvelteKitHydrationMarker(page, routePath, domObservation, timeoutMs);
-  } catch (error) {
-    domObservation.diagnosticCaptureError = errorMessage(error);
-  }
-}
-
-export async function observeSvelteKitHydrationMarkerAlongside(
-  page: HydrationMarkerPage,
-  routePath: SvelteKitHydrationRoute,
-  domObservation: SvelteKitHydrationRouteDomObservation,
-  readiness: Promise<void>,
-  timeoutMs = 5_000,
-): Promise<void> {
-  const [, readinessResult] = await Promise.allSettled([
-    observeSvelteKitHydrationMarkerBestEffort(page, routePath, domObservation, timeoutMs),
-    readiness,
-  ]);
-  if (readinessResult?.status === 'rejected') throw readinessResult.reason;
 }
 
 function unknownSvelteKitHydrationRouteFailureSnapshot(
