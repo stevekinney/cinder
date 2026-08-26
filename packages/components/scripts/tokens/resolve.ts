@@ -43,7 +43,7 @@ function issue(path: string, reason: string): never {
   throw new TokenValidationError([{ path, reason }]);
 }
 
-function tokenPathFromReference(reference: string): string {
+export function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
   if (reference.startsWith('#/')) {
     let fragment: string;

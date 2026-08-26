@@ -9,7 +9,10 @@
  * overrides -- resolved output is a flat merged map where an inherited token
  * and an overridden token look identical, so it cannot answer that question.
  * The theme document itself is the list of what to emit in that block, and
- * the same is true of the two motion contexts. Reading source documents also
+ * the same is true of the `reduced` and `forced-reduced-motion` motion
+ * contexts, each of which backs its own selector (the `prefers-reduced-motion`
+ * media block and the `data-reduced-motion='on'` override, respectively).
+ * Reading source documents also
  * sidesteps a known limitation of `resolve.ts`'s `mergeGroup`: it replaces a
  * colliding token wholesale, which drops `$description` and `$extensions`
  * (including `cssProperty`) for overridden tokens in fully-resolved output.
@@ -38,14 +41,16 @@ import estreePlugin from 'prettier/plugins/estree';
 import postcssPlugin from 'prettier/plugins/postcss';
 
 import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
-import { mergeDocuments, resolveDocuments } from './resolve.ts';
+import { mergeDocuments, resolveDocuments, tokenPathFromReference } from './resolve.ts';
 import type {
   DesignToken,
   ResolverDocument,
+  ResolverReference,
   TokenDocument,
   TokenGroup,
   TokenType,
 } from './types.ts';
+import { normalizeSourcePath, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..', '..');
@@ -87,7 +92,7 @@ const CSS_PLUGINS = [postcssPlugin];
 // nested groups) but deliberately stops short of alias resolution.
 // ---------------------------------------------------------------------------
 
-type CorpusEntry = {
+export type CorpusEntry = {
   path: string;
   value: unknown;
   type: TokenType | undefined;
@@ -171,8 +176,9 @@ type ShadowLayer = {
   inset?: boolean;
 };
 
+/** Matches both DTCG alias syntaxes: curly-brace (`{a.b.c}`) and JSON Pointer (`#/a/b/c`), the same two forms `validate.ts`'s `isReference` accepts and `resolve.ts` resolves. */
 function isAliasReference(value: unknown): value is string {
-  return typeof value === 'string' && /^\{[^{}]+\}$/.test(value);
+  return typeof value === 'string' && (/^\{[^{}]+\}$/.test(value) || value.startsWith('#/'));
 }
 
 // Runtime type guards narrow `unknown` `$value` payloads to their expected
@@ -191,8 +197,10 @@ function isNumberValue(value: unknown): value is number {
   return typeof value === 'number';
 }
 
-function isCubicBezierValue(value: unknown): value is readonly number[] {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'number');
+function isCubicBezierValue(value: unknown): value is readonly [number, number, number, number] {
+  return (
+    Array.isArray(value) && value.length === 4 && value.every((entry) => typeof entry === 'number')
+  );
 }
 
 function isFontFamilyValue(value: unknown): value is string[] | string {
@@ -202,12 +210,19 @@ function isFontFamilyValue(value: unknown): value is string[] | string {
   );
 }
 
+function isColorComponent(value: unknown): value is number | 'none' {
+  return typeof value === 'number' || value === 'none';
+}
+
 function isColorValue(value: unknown): value is ColorValue {
-  return (
-    isPlainObject(value) &&
-    typeof value['colorSpace'] === 'string' &&
-    Array.isArray(value['components'])
-  );
+  if (!isPlainObject(value)) return false;
+  if (typeof value['colorSpace'] !== 'string') return false;
+  const components = value['components'];
+  if (!Array.isArray(components) || components.length !== 3 || !components.every(isColorComponent))
+    return false;
+  if (value['alpha'] !== undefined && !isColorComponent(value['alpha'])) return false;
+  if (value['hex'] !== undefined && typeof value['hex'] !== 'string') return false;
+  return true;
 }
 
 function isShadowLayerArray(value: unknown): value is readonly ShadowLayer[] {
@@ -223,6 +238,41 @@ function isShadowLayerArray(value: unknown): value is readonly ShadowLayer[] {
         isDimensionOrDuration(layer['spread']),
     )
   );
+}
+
+/** `validate.ts` accepts a shadow `$value` as either a single layer object or an array of layers (DTCG allows both); normalize the single-object form to a one-element array before shape-checking so the generator accepts everything the validator does. */
+function normalizeShadowValue(value: unknown): unknown {
+  return isPlainObject(value) ? [value] : value;
+}
+
+/**
+ * DTCG named font weights per the format module's fontWeight value schema
+ * ("Represents a font weight as per the OpenType wght tag specification"),
+ * mapped to the OpenType usWeightClass numbers the names stand for. CSS
+ * `font-weight` has no keyword for most of these (only `normal`/`bold` are
+ * CSS keywords, and they don't cover the other eight) but accepts any number
+ * in [1, 1000], so every name -- including `normal`/`bold` -- is translated
+ * to its number uniformly rather than passing a subset through as keywords.
+ */
+const DTCG_NAMED_FONT_WEIGHTS: Readonly<Record<string, number>> = {
+  thin: 100,
+  'extra-light': 200,
+  light: 300,
+  normal: 400,
+  medium: 500,
+  'semi-bold': 600,
+  bold: 700,
+  'extra-bold': 800,
+  black: 900,
+  'extra-black': 950,
+};
+
+function isFontWeightValue(value: unknown): value is number | string {
+  return isNumberValue(value) || (typeof value === 'string' && value in DTCG_NAMED_FONT_WEIGHTS);
+}
+
+function formatFontWeight(value: number | string): string {
+  return formatNumber(typeof value === 'number' ? value : DTCG_NAMED_FONT_WEIGHTS[value]!);
 }
 
 /** Precision-safe number-to-string: plain `String()` round-trips every literal in this corpus (verified), EXCEPT results of real arithmetic (the oklch lightness-to-percentage conversion), which route through {@link roundForDisplay} first. */
@@ -264,8 +314,15 @@ function formatColor(value: ColorValue): string {
   // `hex` is optional metadata on `srgb` values; the `components` are the
   // source of truth EXCEPT here, where the current file's own literal is a
   // hex value (the two checkerboard tokens) -- so hex presence signals
-  // "serialize as hex", not "here is a redundant fallback to ignore".
-  if (value.colorSpace === 'srgb' && typeof value.hex === 'string') return collapseHex(value.hex);
+  // "serialize as hex", not "here is a redundant fallback to ignore". A
+  // 6-digit hex has no alpha channel, so it may only stand in for the color
+  // when the value is fully opaque (no alpha, or alpha === 1); otherwise the
+  // hex would silently discard the alpha, so fall through to the
+  // component-based `color()` form below, which carries it explicitly.
+  const isOpaque = value.alpha === undefined || value.alpha === 1;
+  if (value.colorSpace === 'srgb' && typeof value.hex === 'string' && isOpaque) {
+    return collapseHex(value.hex);
+  }
 
   if (value.colorSpace === 'oklch') {
     const [lightness, chroma, hue] = value.components;
@@ -274,6 +331,15 @@ function formatColor(value: ColorValue): string {
     }
     const alpha = typeof value.alpha === 'number' ? ` / ${formatComponent(value.alpha)}` : '';
     return `oklch(${formatOklchLightness(lightness)} ${formatComponent(chroma)} ${formatComponent(hue)}${alpha})`;
+  }
+
+  if (value.colorSpace === 'srgb') {
+    const [red, green, blue] = value.components;
+    if (red === undefined || green === undefined || blue === undefined) {
+      throw new Error(`srgb color value is missing a component: ${JSON.stringify(value)}`);
+    }
+    const alpha = value.alpha !== undefined ? ` / ${formatComponent(value.alpha)}` : '';
+    return `color(srgb ${formatComponent(red)} ${formatComponent(green)} ${formatComponent(blue)}${alpha})`;
   }
 
   throw new Error(
@@ -306,11 +372,37 @@ function formatCubicBezier(value: readonly number[]): string {
   return `cubic-bezier(${value.map(formatNumber).join(', ')})`;
 }
 
+/** CSS Fonts Module generic-family keywords, which must stay bare (unquoted) even though they'd otherwise look like ordinary custom-idents -- quoting one of these turns it into a font named e.g. "sans-serif" instead of the generic fallback. */
+const GENERIC_FONT_FAMILY_KEYWORDS = new Set([
+  'serif',
+  'sans-serif',
+  'cursive',
+  'fantasy',
+  'monospace',
+  'system-ui',
+  'ui-serif',
+  'ui-sans-serif',
+  'ui-monospace',
+  'ui-rounded',
+  'math',
+]);
+
+/** A conservative single-token CSS `<custom-ident>`: letters/digits/`-`/`_`, not digit-led. Every non-generic name in the corpus today (`-apple-system`, `SFMono-Regular`, `BlinkMacSystemFont`, `Roboto`, `Menlo`, `Consolas`) matches this and stays bare; anything that doesn't -- a space (`Segoe UI`), a comma (`ACME, Inc`), an apostrophe, a leading digit -- is not a valid bare identifier and must be quoted as a CSS string instead, per the `family-name = <custom-ident>+ | <string>` grammar. */
+const SAFE_UNQUOTED_FONT_FAMILY_NAME = /^-?[A-Za-z_][A-Za-z0-9_-]*$/;
+
+function escapeFontFamilyString(name: string): string {
+  return name.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
+}
+
+function formatFontFamilyName(name: string): string {
+  if (GENERIC_FONT_FAMILY_KEYWORDS.has(name)) return name;
+  if (SAFE_UNQUOTED_FONT_FAMILY_NAME.test(name)) return name;
+  return `'${escapeFontFamilyString(name)}'`;
+}
+
 function formatFontFamily(value: string[] | string): string {
   const names = Array.isArray(value) ? value : [value];
-  // The DTCG value stores clean, unquoted names; quoting any name containing
-  // a space is required CSS syntax, not a formatting choice.
-  return names.map((name) => (name.includes(' ') ? `'${name}'` : name)).join(', ');
+  return names.map(formatFontFamilyName).join(', ');
 }
 
 function formatShadow(layers: readonly ShadowLayer[]): string {
@@ -331,7 +423,7 @@ function formatShadow(layers: readonly ShadowLayer[]): string {
     .join(', ');
 }
 
-function serializeTypedValue(type: TokenType, value: unknown, path: string): string {
+export function serializeTypedValue(type: TokenType, value: unknown, path: string): string {
   const malformed = (expected: string): never => {
     throw new Error(
       `Token at "${path}" has $type "${type}" but its $value is not a valid ${expected}.`,
@@ -348,20 +440,27 @@ function serializeTypedValue(type: TokenType, value: unknown, path: string): str
         ? formatDuration(value)
         : malformed('{value, unit} duration');
     case 'number':
-    case 'fontWeight':
       return isNumberValue(value) ? formatNumber(value) : malformed('number');
+    case 'fontWeight':
+      return isFontWeightValue(value)
+        ? formatFontWeight(value)
+        : malformed('number in [1, 1000] or named DTCG font weight');
     case 'cubicBezier':
       return isCubicBezierValue(value)
         ? formatCubicBezier(value)
-        : malformed('number[] cubic-bezier');
+        : malformed('four-number cubic-bezier');
     case 'fontFamily':
       return isFontFamilyValue(value)
         ? formatFontFamily(value)
         : malformed('string | string[] font family');
     case 'color':
       return isColorValue(value) ? formatColor(value) : malformed('color');
-    case 'shadow':
-      return isShadowLayerArray(value) ? formatShadow(value) : malformed('shadow layer array');
+    case 'shadow': {
+      const normalizedShadow = normalizeShadowValue(value);
+      return isShadowLayerArray(normalizedShadow)
+        ? formatShadow(normalizedShadow)
+        : malformed('shadow layer object or array');
+    }
     default:
       throw new Error(
         `No direct CSS serialization implemented for token type "${type}" at "${path}". ` +
@@ -370,8 +469,13 @@ function serializeTypedValue(type: TokenType, value: unknown, path: string): str
   }
 }
 
-function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
-  const path = reference.slice(1, -1);
+export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
+  // `tokenPathFromReference` (reused from resolve.ts, the resolver's own
+  // reference parser) handles both curly-brace and `#/` JSON Pointer syntax,
+  // including percent- and tilde-decoding for the latter -- reusing it here
+  // keeps this the single place that turns a reference string into a dotted
+  // token path, matching how the corpus is actually resolved.
+  const path = tokenPathFromReference(reference);
   const target = baseIndex.get(path);
   if (!target?.cssProperty) {
     throw new Error(
@@ -383,7 +487,10 @@ function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): s
 }
 
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
-function serializeEntryValue(entry: CorpusEntry, baseIndex: Map<string, CorpusEntry>): string {
+export function serializeEntryValue(
+  entry: CorpusEntry,
+  baseIndex: Map<string, CorpusEntry>,
+): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
   if (isAliasReference(entry.value)) return resolveAlias(entry.value, baseIndex);
   if (entry.type === undefined) {
@@ -422,8 +529,20 @@ function sanitizeComment(description: string): string {
 // tokens-base.css assembly.
 // ---------------------------------------------------------------------------
 
-function requireDocument(documentsByPath: Map<string, TokenDocument>, ref: string): TokenDocument {
-  const document = documentsByPath.get(ref);
+/**
+ * `documentsByPath` is keyed by the normalized relative path `loadTokenDocuments`
+ * reports (see `load.ts`'s `Glob` scan), but a resolver `$ref` is a URI reference
+ * that may spell the same file differently (`./sets/x.tokens.json`, a percent-escaped
+ * path). `normalizeSourcePath` -- reused from `validate-corpus.ts`, which faces the
+ * identical lookup and already normalizes before comparing -- collapses both to the
+ * same key, so a schema-valid ref that validation accepts also resolves here.
+ */
+export function requireDocument(
+  documentsByPath: Map<string, TokenDocument>,
+  ref: string,
+): TokenDocument {
+  const normalizedRef = normalizeSourcePath(ref);
+  const document = documentsByPath.get(normalizedRef);
   if (!document) {
     throw new Error(`Resolver references "${ref}" but no loaded token document has that path.`);
   }
@@ -432,7 +551,7 @@ function requireDocument(documentsByPath: Map<string, TokenDocument>, ref: strin
 
 function refsFor(
   documentsByPath: Map<string, TokenDocument>,
-  refs: readonly { $ref: string }[],
+  refs: readonly ResolverReference[],
 ): TokenDocument[] {
   return refs.map((ref) => requireDocument(documentsByPath, ref.$ref));
 }
@@ -470,7 +589,7 @@ function renderOverrideDeclarations(
   return lines.join('\n');
 }
 
-async function buildTokensBaseCss(
+export async function buildTokensBaseCss(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<string> {
@@ -497,10 +616,15 @@ async function buildTokensBaseCss(
     darkOverrides,
   );
 
-  // Only the `reduced` motion context feeds tokens-base.css: it backs both
-  // the `prefers-reduced-motion` media block and the `data-reduced-motion`
-  // override, matching the file today. `forced-reduced-motion` is a distinct
-  // resolver context with no corresponding selector in this file.
+  // The `reduced` motion context backs the `prefers-reduced-motion` media
+  // block and the `forced-reduced-motion` context backs the
+  // `data-reduced-motion='on'` override -- two distinct resolver contexts,
+  // matching the two distinct selectors below. They read identically today
+  // only because `modes/motion-reduced.tokens.json` and
+  // `modes/motion-forced-reduced.tokens.json` happen to hold the same
+  // values; each block must still be built from its own context so the two
+  // can diverge without silently mis-wiring the forced block to the
+  // system-preference values.
   const reducedMotionOverrides = new Map<string, CorpusEntry>();
   collectEntries(
     mergeDocuments(refsFor(documentsByPath, motionModifier.contexts['reduced']!)),
@@ -508,11 +632,22 @@ async function buildTokensBaseCss(
     undefined,
     reducedMotionOverrides,
   );
+  const forcedReducedMotionOverrides = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeDocuments(refsFor(documentsByPath, motionModifier.contexts['forced-reduced-motion']!)),
+    '',
+    undefined,
+    forcedReducedMotionOverrides,
+  );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex);
   const darkDeclarations = renderOverrideDeclarations(darkOverrides, baseIndex);
   const lightDeclarations = renderOverrideDeclarations(lightOverrides, baseIndex);
   const reducedMotionDeclarations = renderOverrideDeclarations(reducedMotionOverrides, baseIndex);
+  const forcedReducedMotionDeclarations = renderOverrideDeclarations(
+    forcedReducedMotionOverrides,
+    baseIndex,
+  );
 
   const css = `/**
  * GENERATED FILE. Do not edit by hand.
@@ -559,7 +694,7 @@ ${reducedMotionDeclarations}
 }
 
 :root[data-reduced-motion='on'] {
-${reducedMotionDeclarations}
+${forcedReducedMotionDeclarations}
 }
 `;
 
@@ -586,11 +721,29 @@ const RESOLVED_CONTEXT_COMBOS: readonly ResolvedContextCombo[] = [
   { name: 'dark-reduced-motion', theme: 'dark', motion: 'reduced' },
 ];
 
-async function buildResolvedContexts(
+/**
+ * The token documents one modifier-value combination contributes, in
+ * `resolver.resolutionOrder` order rather than a hardcoded [sets, theme,
+ * motion] order. Mirrors `validate-corpus.ts`'s own per-combination assembly
+ * (`parseResolutionOrder` / `sourcesForEntry`) so the resolved snapshots and
+ * the validator agree on ordering even if the resolver ever reorders or adds
+ * a set/modifier -- `mergeDocuments` keeps only the LAST occurrence of a
+ * colliding token path, so document order determines the resolved value.
+ */
+export function documentsForResolutionOrder(
+  resolver: ResolverDocument,
+  documentsByPath: Map<string, TokenDocument>,
+  modifierValues: Record<string, string>,
+): TokenDocument[] {
+  return parseResolutionOrder(resolver).flatMap((entry) =>
+    refsFor(documentsByPath, sourcesForEntry(resolver, entry, modifierValues)),
+  );
+}
+
+export async function buildResolvedContexts(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<Map<string, string>> {
-  const baseDocuments = refsFor(documentsByPath, resolver.sets['foundation']!.sources);
   const themeModifier = resolver.modifiers['theme']!;
   const motionModifier = resolver.modifiers['motion']!;
 
@@ -603,11 +756,10 @@ async function buildResolvedContexts(
         `Resolver has no "${combo.theme}"/"${combo.motion}" context for "${combo.name}".`,
       );
     }
-    const documents = [
-      ...baseDocuments,
-      ...refsFor(documentsByPath, themeContext),
-      ...refsFor(documentsByPath, motionContext),
-    ];
+    const documents = documentsForResolutionOrder(resolver, documentsByPath, {
+      theme: combo.theme,
+      motion: combo.motion,
+    });
     const resolved = resolveDocuments(documents);
     const json = await format(JSON.stringify(resolved), {
       ...PRETTIER_OPTIONS,
