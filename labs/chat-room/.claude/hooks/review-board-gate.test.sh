@@ -34,7 +34,7 @@
 # One more known gap: the waiver-side newline refusal in `waiver_forbidden_
 # paths` (work-hash.sh, mirroring the gate-side sentinel) has no probe of
 # its own -- three probes in this file now exercise a newline, and the
-# state-dir one added for CHR-19 drives `waiver_forbidden_paths` too, but
+# state-dir one added for CIN-431 drives `waiver_forbidden_paths` too, but
 # deleting only the waiver-side arm still leaves the suite fully green, so
 # the gap is unchanged. Confirmed NOT a fail-open (deleting just that arm still refuses,
 # via `compute_work_hash` running after `waiver_forbidden_paths` clears in
@@ -808,7 +808,7 @@ rm -rf "$d"
 # hash was UNCHANGED and WAIVER_FORBIDDEN was empty. The gate's first design
 # rule is fail closed, so this refuses BY NAME rather than either hiding it (a
 # silent allow) or hashing it (drift with no explanation, which is the livelock
-# CHR-19 killed). Both entry points, because the waiver half is the live half.
+# CIN-431 killed). Both entry points, because the waiver half is the live half.
 for entry in hash waiver; do
   d=$(new_repo) || { no "setup" "could not build a test repo"; break; }
   (cd "$d" && printf '.claude/.review-board-state/\n' > .gitignore && git add -A && git commit -qm ign) >/dev/null 2>&1
@@ -1143,7 +1143,7 @@ rm -rf "$d"
 
 # The negative control for that arm, and the more important half: a genuinely
 # absent state directory must still return quietly. Getting this wrong makes
-# every fresh checkout refuse, which is the livelock CHR-19 exists to remove.
+# every fresh checkout refuse, which is the livelock CIN-431 exists to remove.
 d=$(new_repo) || exit 1
 rm -rf "$d/.claude/.review-board-state"
 res=$(cd "$d" && CLAUDE_PROJECT_DIR="$d" bash -c '. .claude/hooks/work-hash.sh; state_dir_hides_source')

@@ -7,7 +7,9 @@
 > `check:peers` scripts were removed with it. The broader documentation cleanup is tracked in
 > CIN-442 ("Delete the dead weight, update the docs", formerly CHR-11). Until that rewrite
 > lands, treat every remaining `sync:cinder`, `check:peers`, or published-version instruction
-> below as historical — do not run them.
+> below as historical for the workspace `@lostgradient/*` packages — do not run them. The
+> agent-bureau packages (`conversationalist`, `armorer`) still install from npm, so their
+> publish-and-bump cycle in "Filing and resolving upstream issues" remains real.
 > The pre-merge history lives in the archived `stevekinney/chatroom` repository.
 
 ## Project Configuration
@@ -19,7 +21,7 @@
 ## Purpose
 
 This project exists to kick the tires on the `Chat` component from `@lostgradient/chat`
-(installed from npm) and drive it with the Anthropic SDK, working toward a best-in-class chat
+(consumed from the monorepo workspace) and drive it with the Anthropic SDK, working toward a best-in-class chat
 experience. It is a testbed, not a product — expect the demo route and conversation wiring to
 change often as we try things against the real component.
 

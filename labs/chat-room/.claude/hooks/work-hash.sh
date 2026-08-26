@@ -468,7 +468,7 @@ path_is_denied() {
 #
 # Refusing is both the fail-closed answer and the ACTIONABLE one, which is the
 # whole point: the pre-fix behaviour hashed such a file, so the gate drifted with
-# no explanation and every retry made it worse. That is the livelock CHR-19 set
+# no explanation and every retry made it worse. That is the livelock CIN-431 set
 # out to kill. Naming the file kills it without trading it for a silent allow --
 # the same shape as the external-ignore guard, which also refuses by name rather
 # than hiding what it cannot review.
@@ -569,7 +569,7 @@ state_dir_hides_source() {
   # on a mismatch just re-rolls the same dice: against a Playwright-shaped
   # writer in an ignored directory only four segments deep, a reviewer measured
   # 25 false "nests deeper" refusals out of 25 at sustained write rate -- the
-  # unactionable livelock CHR-19 exists to remove, restored at 100% by the fix
+  # unactionable livelock CIN-431 exists to remove, restored at 100% by the fix
   # meant to close it. One walk cannot disagree with itself.
   #
   # The walk goes one level PAST the bound, which is also the only walk that
@@ -1340,7 +1340,7 @@ compute_work_hash() {
     # measured 25 false "nests deeper" refusals out of 25 against a
     # Playwright-shaped writer in an ignored directory only four segments deep,
     # on this repo's own gitignored `test-results/`. That is the unactionable
-    # livelock CHR-19 exists to remove, restored at 100% by the fix meant to
+    # livelock CIN-431 exists to remove, restored at 100% by the fix meant to
     # close it. One walk cannot disagree with itself.
     #
     # The walk goes one level PAST the bound, which is also the only walk that

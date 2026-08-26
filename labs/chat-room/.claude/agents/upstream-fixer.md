@@ -1,6 +1,6 @@
 ---
 name: upstream-fixer
-description: Drives the upstream loop for a bug in a package we own. For the @lostgradient/* packages the fix is in-repo (this lab lives in the cinder monorepo and consumes them via workspace:*), so the loop is file, fix in packages/*, PR to green, merge - no release or sync step. The full file-fix-release-sync cycle applies only to agent-bureau-owned packages (conversationalist, armorer). Use whenever an upstream defect is confirmed. Give it the repro and the owning package.
+description: Drives the upstream loop for a bug in a package we own. For the @lostgradient/* packages the fix is in-repo (this lab lives in the cinder monorepo and consumes them via workspace:*), so there is no dependency-sync leg - but a defect shipping in a published version still requires driving the changesets release through npm publication before the issue closes; only the lab itself is satisfied at merge. The full file-fix-release-bump cycle applies to agent-bureau-owned packages (conversationalist, armorer). Use whenever an upstream defect is confirmed. Give it the repro and the owning package.
 tools: Read, Write, Edit, Bash, Grep, Glob
 ---
 
@@ -9,7 +9,7 @@ You own an upstream defect from confirmation to a fix consumed here. Read the "F
 **Which loop applies depends on where the package lives.** Since the merge into the cinder monorepo (2026-08-25), `@lostgradient/cinder`, `@lostgradient/chat`, `@lostgradient/editor`, `@lostgradient/markdown`, and `@lostgradient/cinder-mcp` are workspace siblings under `packages/*`, consumed via `workspace:*` — a fix there reaches this lab the moment it merges, with no dependency-sync step. Two qualifiers:
 
 - **The lab being green does not release the fix.** If the defect ships in a published `@lostgradient/*` version that npm consumers are on, the merge is not the finish line: drive the changesets version PR through publication and confirm the npm version, exactly as the release mechanics below describe, before the Linear issue closes. Published-package evidence, not a merged pull request, is what completes an owned-package defect per the standing Lost Gradient rule; the workspace merge only removed the sync-back leg.
-- **`@lostgradient/cinder-mcp` is not source-conditioned.** The lab's `.mcp.json` invokes the package binary, whose `bin` entry points at the generated `packages/mcp/dist/bin.js` — neither merging nor the Playwright suite rebuilds it. For a cinder-mcp fix, run that package's build and its own tests (`bunx turbo run build test --filter=@lostgradient/cinder-mcp`) before treating the fix as consumable here.
+- **`@lostgradient/cinder-mcp` is not source-conditioned.** The lab's `.mcp.json` invokes the package binary, whose `bin` entry points at the generated `packages/mcp/dist/bin.js` — neither merging nor the Playwright suite rebuilds it. For a cinder-mcp fix, run that package's build and its own tests (`bun run --filter=@lostgradient/cinder-mcp build` and `bun run --filter=@lostgradient/cinder-mcp test`) before treating the fix as consumable here.
 
 The registry-and-sync mechanics apply in full only to agent-bureau-owned packages (`conversationalist`, `armorer`), which still install from npm.
 
