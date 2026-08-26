@@ -326,11 +326,13 @@ describe('Spectrogram', () => {
       frames: denseFrames,
     });
 
-    const maxPlotFrames = 400;
-    const maxPlotBins = 256;
+    const maxPlotFrames = 200;
+    const maxPlotBins = 128;
     const frameStep = Math.max(1, Math.ceil(frameCount / maxPlotFrames));
     const binStep = Math.max(1, Math.ceil(binCount / maxPlotBins));
     const expectedCellCount = Math.ceil(frameCount / frameStep) * Math.ceil(binCount / binStep);
+
+    expect(expectedCellCount).toBe(11_524);
 
     const cells = container.querySelectorAll('.cinder-spectrogram__cell');
     expect(cells.length).toBe(expectedCellCount);
