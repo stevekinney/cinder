@@ -124,7 +124,7 @@ export default defineConfig({
 		// per-test state keyed by a marker the test generates.
 		{ command: 'bun src/routes/streaming-fixture.ts', port: 4599 },
 		{
-			command: 'npm run build && npm run preview',
+			command: 'bun run build && bun run preview',
 			port: 4173,
 			// Same port as the fixture entry above. `streaming-fixture.ts` exports
 			// `FIXTURE_PORT` so the number has one home, but a `webServer` command is
@@ -143,7 +143,7 @@ export default defineConfig({
 		//
 		// One pair of servers regardless of project count — the webServer plugins
 		// are built once from the top-level config in global setup, not per project.
-		{ command: 'npm run dev -- --port 5175 --strictPort', port: 5175 }
+		{ command: 'bun run dev -- --port 5175 --strictPort', port: 5175 }
 	],
 	testMatch: '**/*.e2e.{ts,js}'
 });
