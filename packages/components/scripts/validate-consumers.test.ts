@@ -267,16 +267,10 @@ describe('SvelteKit hydration route failure diagnostics', () => {
       hydrationMarkerPresent: 'unknown',
       hydrationMarkerValue: 'unknown',
     };
-    const waitFor = mock(async () => undefined);
-    const locator = mock(() => ({ waitFor }));
-    const page = {
-      locator,
-    };
+    const readiness = Promise.resolve();
 
-    await waitForSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 5_000);
+    await waitForSvelteKitHydrationMarker(readiness, domObservation);
 
-    expect(locator).toHaveBeenCalledWith('[data-dev-ssr-hydrated="true"]');
-    expect(waitFor).toHaveBeenCalledWith({ state: 'attached', timeout: 5_000 });
     expect(domObservation.hydrationMarkerPresent).toBe(true);
     expect(domObservation.hydrationMarkerValue).toBe('true');
   });
@@ -288,16 +282,11 @@ describe('SvelteKit hydration route failure diagnostics', () => {
       hydrationMarkerValue: 'unknown',
     };
     const readinessError = new Error('hydration readiness wait failed');
-    const waitFor = mock(async () => {
-      throw readinessError;
-    });
-    const page = { locator: mock(() => ({ waitFor })) };
+    const readiness = Promise.reject(readinessError);
 
-    await expect(
-      waitForSvelteKitHydrationMarker(page, '/chat-layout', domObservation, 5_000),
-    ).rejects.toBe(readinessError);
-    expect(page.locator).toHaveBeenCalledWith('[data-chat-layout-hydrated="true"]');
-    expect(waitFor).toHaveBeenCalledWith({ state: 'attached', timeout: 5_000 });
+    await expect(waitForSvelteKitHydrationMarker(readiness, domObservation)).rejects.toBe(
+      readinessError,
+    );
     expect(domObservation.hydrationMarkerPresent).toBe('unknown');
     expect(domObservation.hydrationMarkerValue).toBe('unknown');
   });
