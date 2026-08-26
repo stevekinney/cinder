@@ -142,6 +142,12 @@ const props = {
 
 let pageHydration: Promise<void> | undefined;
 let pageHydrated = false;
+let pageControlsHydrated = false;
+
+function markPageControlsHydrated(): void {
+  pageControlsHydrated = true;
+  target.setAttribute('data-playground-controls-hydrated', '');
+}
 
 function hydratePage(): Promise<void> {
   if (pageHydration !== undefined) return pageHydration;
@@ -149,6 +155,7 @@ function hydratePage(): Promise<void> {
   const hydration = Promise.all([import('svelte'), import('../../src/component-page.svelte')]).then(async ([svelte, { default: ComponentPage }]) => {
     if (shouldHydrate) {
       svelte.hydrate(ComponentPage, { target, props });
+      markPageControlsHydrated();
       if (overviewPreviewReady !== undefined) await overviewPreviewReady;
       pageHydrated = true;
       return;
@@ -168,6 +175,7 @@ function hydratePage(): Promise<void> {
     // served with an empty \`#app\` anyway, so there is nothing to discard.
     target.replaceChildren();
     svelte.mount(ComponentPage, { target, props });
+    markPageControlsHydrated();
     pageHydrated = true;
   });
   pageHydration = hydration;
@@ -186,6 +194,13 @@ function hydrateAfter(event: Event, replay: () => void): void {
 
 function eventElement(event: Event): Element | null {
   return event.target instanceof Element ? event.target : null;
+}
+
+function interactionTargetIsReady(element: Element): boolean {
+  return (
+    pageHydrated ||
+    (pageControlsHydrated && element.closest('[data-overview-preview-rendered]') === null)
+  );
 }
 
 type ElementLocation = { rootId: string; childIndexes: number[] };
@@ -217,9 +232,9 @@ function resolveElementLocation(location: ElementLocation | undefined): Element 
 document.addEventListener(
   'click',
   (event) => {
-    if (pageHydrated) return;
     const button = eventElement(event)?.closest('button');
     if (button === null) return;
+    if (interactionTargetIsReady(button)) return;
     if (button.getAttribute('aria-label') === 'Copy import') {
       const source = button.closest('.dx-import')?.querySelector('.dx-import__code')?.textContent;
       if (source !== null && source !== undefined) {
@@ -240,9 +255,10 @@ document.addEventListener(
 document.addEventListener(
   'keydown',
   (event) => {
-    if (pageHydrated || !['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+    if (!['ArrowRight', 'ArrowDown', 'ArrowLeft', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
     const eventTarget = eventElement(event);
     if (eventTarget === null || eventTarget.closest('input, textarea, select') !== null) return;
+    if (interactionTargetIsReady(eventTarget)) return;
     const keyboardTarget = eventTarget.closest(
       '[role="tab"], [role="grid"], [role="listbox"], [role="menu"], [role="tree"], [role="treegrid"]',
     );
@@ -271,9 +287,9 @@ document.addEventListener(
 document.addEventListener(
   'click',
   (event) => {
-    if (pageHydrated) return;
     const anchor = eventElement(event)?.closest('a[href^="#"]');
     if (anchor === null) return;
+    if (interactionTargetIsReady(anchor)) return;
     const anchorLocation = elementLocation(anchor);
     hydrateAfter(event, () => {
       const hydratedAnchor = resolveElementLocation(anchorLocation);
@@ -286,7 +302,6 @@ document.addEventListener(
 document.addEventListener(
   'input',
   (event) => {
-    if (pageHydrated) return;
     const input = eventElement(event);
     if (
       !(
@@ -296,6 +311,7 @@ document.addEventListener(
       )
     )
       return;
+    if (interactionTargetIsReady(input)) return;
     const value = input.value;
     const checked =
       input instanceof HTMLInputElement && ['checkbox', 'radio'].includes(input.type)

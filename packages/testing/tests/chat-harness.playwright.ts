@@ -961,20 +961,22 @@ test.describe('chat harness — scroll, unread, jump', () => {
         .toBe('auto');
       const anchor = timeline.getByText('Tell me about alpha.').first();
       await expect(anchor).toBeVisible();
-      const before = await anchor.boundingBox();
-      const beforeTimeline = await timeline.boundingBox();
-      expect(before).not.toBeNull();
-      expect(beforeTimeline).not.toBeNull();
-      const beforeOffset = (before?.y ?? 0) - (beforeTimeline?.y ?? 0);
+      const readAnchorOffset = () =>
+        anchor.evaluate((anchorElement) => {
+          const timelineElement = anchorElement.closest<HTMLElement>('.chat-timeline');
+          if (timelineElement === null) throw new Error('Timeline not found');
+          return (
+            anchorElement.getBoundingClientRect().y - timelineElement.getBoundingClientRect().y
+          );
+        });
+      const beforeOffset = await readAnchorOffset();
 
       await timeline.getByRole('button', { name: /load earlier messages/i }).dispatchEvent('click');
       await expectLoggedEvent(harness, 'onloadhistory');
       await expect(anchor).toBeVisible();
       await expect
         .poll(async () => {
-          const after = await anchor.boundingBox();
-          const afterTimeline = await timeline.boundingBox();
-          return Math.abs((after?.y ?? 0) - (afterTimeline?.y ?? 0) - beforeOffset);
+          return Math.abs((await readAnchorOffset()) - beforeOffset);
         })
         .toBeLessThan(2);
       await expect
