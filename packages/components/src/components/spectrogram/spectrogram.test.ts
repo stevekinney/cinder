@@ -335,7 +335,6 @@ describe('Spectrogram', () => {
     expect(expectedCellCount).toBe(11_524);
 
     const cells = container.querySelectorAll('.cinder-spectrogram__cell');
-    expect(expectedCellCount).toBe(11_524);
     expect(cells.length).toBe(expectedCellCount);
     expect(cells.length).toBeLessThanOrEqual(maxPlotFrames * maxPlotBins);
 
