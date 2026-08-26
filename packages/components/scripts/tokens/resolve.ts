@@ -213,13 +213,26 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
   return token;
 }
 
+/**
+ * Merges documents and applies `$extends` group inheritance (missing members copied in,
+ * `$type` propagated) across the merged tree, WITHOUT resolving any alias reference --
+ * factored out of `buildTokenIndex` so a caller that must keep raw, unresolved `$value`s (a
+ * `{a.b.c}` string means "emit `var(--other-property)`", not "inline a literal") can still get
+ * `$extends` applied before walking the tree, the same way `resolveDocuments` and
+ * `createValueResolver` do.
+ */
+export function mergeAndExpandExtends(documents: TokenDocument[]): TokenDocument {
+  const merged = mergeDocuments(documents);
+  const groups = new Map<string, TokenGroup>();
+  collectGroups(merged, '', groups);
+  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  return merged;
+}
+
 /** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against. */
 function buildTokenIndex(documents: TokenDocument[]): ResolvedTokens {
   const tokens: ResolvedTokens = new Map();
-  const groups = new Map<string, TokenGroup>();
-  const merged = mergeDocuments(documents);
-  collectGroups(merged, '', groups);
-  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  const merged = mergeAndExpandExtends(documents);
   collectTokens(merged, '', tokens);
   return tokens;
 }

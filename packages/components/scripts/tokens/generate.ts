@@ -43,7 +43,7 @@ import postcssPlugin from 'prettier/plugins/postcss';
 import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
 import {
   createValueResolver,
-  mergeDocuments,
+  mergeAndExpandExtends,
   resolveDocuments,
   tokenPathFromReference,
   type ValueResolver,
@@ -397,12 +397,23 @@ const GENERIC_FONT_FAMILY_KEYWORDS = new Set([
 /** A conservative single-token CSS `<custom-ident>`: letters/digits/`-`/`_`, not digit-led. Every non-generic name in the corpus today (`-apple-system`, `SFMono-Regular`, `BlinkMacSystemFont`, `Roboto`, `Menlo`, `Consolas`) matches this and stays bare; anything that doesn't -- a space (`Segoe UI`), a comma (`ACME, Inc`), an apostrophe, a leading digit -- is not a valid bare identifier and must be quoted as a CSS string instead, per the `family-name = <custom-ident>+ | <string>` grammar. */
 const SAFE_UNQUOTED_FONT_FAMILY_NAME = /^-?[A-Za-z_][A-Za-z0-9_-]*$/;
 
+/**
+ * CSS-wide keywords (CSS Values and Units § 3.2), checked case-insensitively. Each one is
+ * syntactically a valid bare `<custom-ident>` -- `inherit` matches
+ * {@link SAFE_UNQUOTED_FONT_FAMILY_NAME} just as cleanly as `Roboto` does -- but emitted bare in
+ * a `font-family` declaration it triggers cascade behavior (`inherit`, `initial`, `unset`,
+ * `revert`, `revert-layer`) instead of naming a font with that literal name, silently changing
+ * what the declaration means. Quoting forces the string interpretation.
+ */
+const CSS_WIDE_KEYWORDS = new Set(['inherit', 'initial', 'revert', 'revert-layer', 'unset']);
+
 function escapeFontFamilyString(name: string): string {
   return name.replaceAll('\\', '\\\\').replaceAll("'", "\\'");
 }
 
 function formatFontFamilyName(name: string): string {
   if (GENERIC_FONT_FAMILY_KEYWORDS.has(name)) return name;
+  if (CSS_WIDE_KEYWORDS.has(name.toLowerCase())) return `'${escapeFontFamilyString(name)}'`;
   if (SAFE_UNQUOTED_FONT_FAMILY_NAME.test(name)) return name;
   return `'${escapeFontFamilyString(name)}'`;
 }
@@ -620,35 +631,26 @@ export async function buildTokensBaseCss(
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<string> {
   const baseDocuments = refsFor(documentsByPath, resolver.sets['foundation']!.sources);
-  const mergedBase = mergeDocuments(baseDocuments);
+  // `mergeAndExpandExtends` (rather than a bare merge) applies `$extends` group inheritance --
+  // a locally overridden member that relies on the extended group's `$type`, and a member the
+  // extending group never redefines at all -- before the raw tree is walked below. Reused from
+  // resolve.ts's `buildTokenIndex` so this structural walk and `createValueResolver`'s alias
+  // resolution (built from these same `baseDocuments` just below) agree on what `$extends`
+  // expands to, matching what `tokens:validate` already accepts.
+  const mergedBase = mergeAndExpandExtends(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
 
   // Resolves a reference nested inside a composite member (a shadow layer's `inset`, one
-  // component of a color, ...) to its literal value, for both base entries and override
-  // entries alike -- the same base-only lookup `resolveAlias` already uses for a WHOLE-value
-  // override alias (an override token referencing a base token by its cssProperty), just
-  // applied to a reference living below the top level of the value instead of at it.
-  const resolveReferences = createValueResolver(baseDocuments);
+  // component of a color, ...) to its literal value, for base entries -- base has no
+  // overriding context, so a resolver built from the base documents alone is correct here.
+  const baseResolveReferences = createValueResolver(baseDocuments);
 
   const themeModifier = resolver.modifiers['theme']!;
   const motionModifier = resolver.modifiers['motion']!;
 
-  const lightOverrides = new Map<string, CorpusEntry>();
-  collectEntries(
-    mergeDocuments(refsFor(documentsByPath, themeModifier.contexts['light']!)),
-    '',
-    undefined,
-    lightOverrides,
-  );
-  const darkOverrides = new Map<string, CorpusEntry>();
-  collectEntries(
-    mergeDocuments(refsFor(documentsByPath, themeModifier.contexts['dark']!)),
-    '',
-    undefined,
-    darkOverrides,
-  );
-
+  const lightDocuments = refsFor(documentsByPath, themeModifier.contexts['light']!);
+  const darkDocuments = refsFor(documentsByPath, themeModifier.contexts['dark']!);
   // The `reduced` motion context backs the `prefers-reduced-motion` media
   // block and the `forced-reduced-motion` context backs the
   // `data-reduced-motion='on'` override -- two distinct resolver contexts,
@@ -658,37 +660,68 @@ export async function buildTokensBaseCss(
   // values; each block must still be built from its own context so the two
   // can diverge without silently mis-wiring the forced block to the
   // system-preference values.
+  const reducedMotionDocuments = refsFor(documentsByPath, motionModifier.contexts['reduced']!);
+  const forcedReducedMotionDocuments = refsFor(
+    documentsByPath,
+    motionModifier.contexts['forced-reduced-motion']!,
+  );
+
+  const lightOverrides = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(lightDocuments), '', undefined, lightOverrides);
+  const darkOverrides = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(darkDocuments), '', undefined, darkOverrides);
   const reducedMotionOverrides = new Map<string, CorpusEntry>();
   collectEntries(
-    mergeDocuments(refsFor(documentsByPath, motionModifier.contexts['reduced']!)),
+    mergeAndExpandExtends(reducedMotionDocuments),
     '',
     undefined,
     reducedMotionOverrides,
   );
   const forcedReducedMotionOverrides = new Map<string, CorpusEntry>();
   collectEntries(
-    mergeDocuments(refsFor(documentsByPath, motionModifier.contexts['forced-reduced-motion']!)),
+    mergeAndExpandExtends(forcedReducedMotionDocuments),
     '',
     undefined,
     forcedReducedMotionOverrides,
   );
 
-  const rootDeclarations = renderBaseDeclarations(baseIndex, resolveReferences);
-  const darkDeclarations = renderOverrideDeclarations(darkOverrides, baseIndex, resolveReferences);
+  // A per-context resolver, each built from base + THAT context's own documents -- a nested
+  // reference inside a context's composite value may target a token the same context also
+  // overrides (a dark color whose component references another token `themes/dark.tokens.json`
+  // also overrides), and a resolver built from `baseDocuments` alone would substitute the
+  // base/foundation value instead of the override. `tokens:validate` resolves the combined
+  // foundation-plus-context documents, so this keeps the generator agreeing with it.
+  const lightResolveReferences = createValueResolver([...baseDocuments, ...lightDocuments]);
+  const darkResolveReferences = createValueResolver([...baseDocuments, ...darkDocuments]);
+  const reducedMotionResolveReferences = createValueResolver([
+    ...baseDocuments,
+    ...reducedMotionDocuments,
+  ]);
+  const forcedReducedMotionResolveReferences = createValueResolver([
+    ...baseDocuments,
+    ...forcedReducedMotionDocuments,
+  ]);
+
+  const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
+  const darkDeclarations = renderOverrideDeclarations(
+    darkOverrides,
+    baseIndex,
+    darkResolveReferences,
+  );
   const lightDeclarations = renderOverrideDeclarations(
     lightOverrides,
     baseIndex,
-    resolveReferences,
+    lightResolveReferences,
   );
   const reducedMotionDeclarations = renderOverrideDeclarations(
     reducedMotionOverrides,
     baseIndex,
-    resolveReferences,
+    reducedMotionResolveReferences,
   );
   const forcedReducedMotionDeclarations = renderOverrideDeclarations(
     forcedReducedMotionOverrides,
     baseIndex,
-    resolveReferences,
+    forcedReducedMotionResolveReferences,
   );
 
   const css = `/**

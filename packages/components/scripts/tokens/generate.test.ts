@@ -714,3 +714,210 @@ describe('D4: references nested inside a composite value are resolved, not seria
     });
   });
 });
+
+// ---------------------------------------------------------------------------
+// Regression tests for the three CIN-29 round-3 review findings.
+// ---------------------------------------------------------------------------
+
+describe('E1: a nested reference inside an override context resolves against that context, not just the base', () => {
+  function overrideResolverFixture() {
+    // A base "lightness" token and a base "composite" color whose lightness component is a
+    // NESTED reference (not a whole-token alias) to it. The dark theme context overrides BOTH
+    // "lightness" (to a different value) AND "composite" (with the identical nested reference)
+    // -- so a correct per-context resolver must resolve "composite"'s reference against dark's
+    // own "lightness" override, not the base/foundation value.
+    const baseDocument: TokenDocument = {
+      test: {
+        lightness: {
+          $type: 'number',
+          $value: 0.3,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-lightness' } },
+        },
+        composite: {
+          $type: 'color',
+          $value: { colorSpace: 'oklch', components: ['{test.lightness}', 0.1, 250] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-composite' } },
+        },
+      },
+    };
+    const themeLightDocument: TokenDocument = {};
+    const themeDarkDocument: TokenDocument = {
+      test: {
+        lightness: { $type: 'number', $value: 0.8 },
+        composite: {
+          $type: 'color',
+          $value: { colorSpace: 'oklch', components: ['{test.lightness}', 0.1, 250] },
+        },
+      },
+    };
+    const motionDefaultDocument: TokenDocument = {};
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'theme-light.json' }],
+            dark: [{ $ref: 'theme-dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', themeLightDocument],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', motionDefaultDocument],
+      ['motion-reduced.json', motionDefaultDocument],
+      ['motion-forced.json', motionDefaultDocument],
+    ]);
+
+    return { resolver, documentsByPath };
+  }
+
+  test('the dark block resolves the nested reference against the dark override, not the base value', async () => {
+    const { resolver, documentsByPath } = overrideResolverFixture();
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    // Two selectors contain the literal substring `[data-theme='dark']` -- the structural
+    // `:root[data-theme='dark'] { color-scheme: dark; }` block (declared first, no
+    // declarations) and the actual override block further down. Take the second match.
+    const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
+    expect(darkBlocks.length).toBe(2);
+    const darkBlock = darkBlocks[1]?.[1];
+    expect(darkBlock).toBeDefined();
+
+    // Pre-fix, a resolver shared across all contexts and built from `baseDocuments` alone
+    // resolves `{test.lightness}` to the BASE value (0.3 -> 30%) even inside the dark block.
+    // Post-fix, it must resolve to dark's own override (0.8 -> 80%).
+    expect(darkBlock).toContain('--test-composite: oklch(80% 0.1 250);');
+    expect(darkBlock).not.toContain('30%');
+  });
+});
+
+describe('E2: CSS-wide keywords are quoted in font-family output instead of emitted bare', () => {
+  test('"inherit" as a font-family name is quoted, not emitted as the bare cascade keyword', () => {
+    // Pre-fix, `inherit` matches SAFE_UNQUOTED_FONT_FAMILY_NAME (it's a valid bare
+    // <custom-ident>) and is emitted bare -- which invokes CSS's `inherit` cascade behavior
+    // instead of naming a font called "inherit".
+    expect(serializeTypedValue('fontFamily', ['inherit'], 'test.font')).toBe("'inherit'");
+  });
+
+  test('every CSS-wide keyword is quoted, checked case-insensitively', () => {
+    // "Unset" and "REVERT" prove the check is case-insensitive -- the keyword is matched
+    // regardless of casing, but the ORIGINAL casing is preserved inside the quotes.
+    for (const keyword of ['initial', 'Unset', 'REVERT', 'revert-layer']) {
+      expect(serializeTypedValue('fontFamily', [keyword], 'test.font')).toBe(`'${keyword}'`);
+    }
+  });
+
+  test('generic-family keywords stay bare (regression)', () => {
+    expect(serializeTypedValue('fontFamily', ['sans-serif'], 'test.font')).toBe('sans-serif');
+    expect(serializeTypedValue('fontFamily', ['system-ui'], 'test.font')).toBe('system-ui');
+  });
+
+  test('an ordinary safe identifier stays bare (regression)', () => {
+    expect(serializeTypedValue('fontFamily', ['Roboto'], 'test.font')).toBe('Roboto');
+  });
+});
+
+describe('E3: $extends group inheritance is applied before entries are collected', () => {
+  function extendsFixture() {
+    const baseDocument: TokenDocument = {
+      foundation: {
+        $type: 'color',
+        swatch: {
+          $value: { colorSpace: 'oklch', components: [0.4, 0.08, 200] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-inherited-swatch' } },
+        },
+      },
+      themed: {
+        // No own $type -- must inherit "color" from the extended group once $extends expands.
+        $extends: '{foundation}',
+        accent: {
+          $value: { colorSpace: 'oklch', components: [0.6, 0.12, 20] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-local-accent' } },
+        },
+        // "swatch" is deliberately NOT redefined here -- it must be inherited from "foundation".
+      },
+    };
+    const themeLightDocument: TokenDocument = {};
+    const themeDarkDocument: TokenDocument = {};
+    const motionDefaultDocument: TokenDocument = {};
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'theme-light.json' }],
+            dark: [{ $ref: 'theme-dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', themeLightDocument],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', motionDefaultDocument],
+      ['motion-reduced.json', motionDefaultDocument],
+      ['motion-forced.json', motionDefaultDocument],
+    ]);
+
+    return { resolver, documentsByPath };
+  }
+
+  test('a locally overridden member gets the extended $type, and an inherited member is emitted', async () => {
+    const { resolver, documentsByPath } = extendsFixture();
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    const rootBlock = /:root\s*\{([^}]*)\}/.exec(css)?.[1];
+    expect(rootBlock).toBeDefined();
+
+    // The locally-defined "accent" member has no own $type -- pre-fix, "themed" never gets
+    // $extends applied, so its $type stays undefined, and generation throws before this
+    // declaration is ever produced. Post-fix it resolves the inherited "color" $type and
+    // serializes normally.
+    expect(rootBlock).toContain('--test-local-accent: oklch(60% 0.12 20);');
+
+    // "swatch" is never redefined under "themed" -- pre-fix it is absent from the output
+    // entirely (only reachable via the un-expanded "foundation" path). Post-fix, $extends
+    // copies it in, so the SAME value is now reachable under BOTH the "foundation" origin
+    // token and the "themed" group that inherited it.
+    const swatchDeclarationCount = (
+      rootBlock!.match(/--test-inherited-swatch: oklch\(40% 0\.08 200\);/g) ?? []
+    ).length;
+    expect(swatchDeclarationCount).toBe(2);
+  });
+});
