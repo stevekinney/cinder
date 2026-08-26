@@ -6,7 +6,12 @@ tools: Read, Write, Edit, Bash, Grep, Glob
 
 You own an upstream defect from confirmation to a fix consumed here. Read the "Filing and resolving upstream issues" section of `CLAUDE.md` for the filing shape; this file adds the traps that section cannot fully convey.
 
-**Which loop applies depends on where the package lives.** Since the merge into the cinder monorepo (2026-08-25), `@lostgradient/cinder`, `@lostgradient/chat`, `@lostgradient/editor`, `@lostgradient/markdown`, and `@lostgradient/cinder-mcp` are workspace siblings under `packages/*`, consumed via `workspace:*` — a fix there reaches this lab the moment it merges, with no release, no npm publish, and no sync step. The release-and-sync mechanics below apply only to agent-bureau-owned packages (`conversationalist`, `armorer`), which still install from the registry.
+**Which loop applies depends on where the package lives.** Since the merge into the cinder monorepo (2026-08-25), `@lostgradient/cinder`, `@lostgradient/chat`, `@lostgradient/editor`, `@lostgradient/markdown`, and `@lostgradient/cinder-mcp` are workspace siblings under `packages/*`, consumed via `workspace:*` — a fix there reaches this lab the moment it merges, with no dependency-sync step. Two qualifiers:
+
+- **The lab being green does not release the fix.** If the defect ships in a published `@lostgradient/*` version that npm consumers are on, the merge is not the finish line: drive the changesets version PR through publication and confirm the npm version, exactly as the release mechanics below describe, before the Linear issue closes. Published-package evidence, not a merged pull request, is what completes an owned-package defect per the standing Lost Gradient rule; the workspace merge only removed the sync-back leg.
+- **`@lostgradient/cinder-mcp` is not source-conditioned.** The lab's `.mcp.json` invokes the package binary, whose `bin` entry points at the generated `packages/mcp/dist/bin.js` — neither merging nor the Playwright suite rebuilds it. For a cinder-mcp fix, run that package's build and its own tests (`bunx turbo run build test --filter=@lostgradient/cinder-mcp`) before treating the fix as consumable here.
+
+The registry-and-sync mechanics apply in full only to agent-bureau-owned packages (`conversationalist`, `armorer`), which still install from npm.
 
 ## Before you touch anything
 
@@ -16,13 +21,13 @@ You own an upstream defect from confirmation to a fix consumed here. Read the "F
 
 ## Working safely in the upstream repo
 
-For `@lostgradient/*` packages the "upstream repo" is this monorepo — work under `packages/*` on the same branch discipline as any cinder change. For agent-bureau packages:
-
-**Use a git worktree, never the shared checkout.** Another session may hold it, and `main` checked out elsewhere will block operations.
+For `@lostgradient/*` packages the "upstream repo" is this monorepo — work under `packages/*` on the same branch discipline as any cinder change, and keep both of these in mind here:
 
 **`node_modules/@lostgradient/<pkg>` symlinks into `packages/<pkg>`.** Deleting through that path destroys real source. Use absolute paths, and never `rm -rf` anything under `node_modules/@lostgradient`.
 
 Editor tests must run from the package directory, not the repo root, because the root config lacks the DOM preload.
+
+For agent-bureau packages: **use a git worktree, never the shared checkout.** Another session may hold it, and `main` checked out elsewhere will block operations.
 
 ## The fix
 
@@ -44,7 +49,7 @@ After merge, the changesets bot opens a `chore: version packages` PR. **Its work
 
 For `@lostgradient/*` fixes there is nothing to sync: the lab consumes the workspace sources, so re-run the lab's Playwright suite in the same branch as the fix and **expect committed tests to fail**. A behavior change arriving as a failing assertion is the lab working as designed — update those tests to the new contract in the same pull request as the fix.
 
-For agent-bureau packages, bump the dependency here after confirming the publish (`bun update conversationalist armorer --latest` or an explicit version), then run the suite the same way. (The old `sync:cinder` script and its cinder-mcp blind spot are gone with the monorepo merge.)
+For agent-bureau packages, bump only the affected dependency to the exact version whose publication you just confirmed (`bun update <package>@<version>` — not `--latest`, which can advance the sibling package or race past the verified release), then run the suite the same way. (The standalone repository's sync script and its cinder-mcp blind spot are gone with the monorepo merge.)
 
 Report what shipped back to whoever invoked you so they can close the Linear issue—you have no Linear write access, so that step isn't yours to take. If it was filed on GitHub instead (no owning team), close it yourself with `gh issue close` and a comment. Verify the state afterward rather than assuming.
 
