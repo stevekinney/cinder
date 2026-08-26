@@ -41,7 +41,13 @@ import estreePlugin from 'prettier/plugins/estree';
 import postcssPlugin from 'prettier/plugins/postcss';
 
 import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
-import { mergeDocuments, resolveDocuments, tokenPathFromReference } from './resolve.ts';
+import {
+  createValueResolver,
+  mergeDocuments,
+  resolveDocuments,
+  tokenPathFromReference,
+  type ValueResolver,
+} from './resolve.ts';
 import type {
   DesignToken,
   ResolverDocument,
@@ -235,7 +241,8 @@ function isShadowLayerArray(value: unknown): value is readonly ShadowLayer[] {
         isDimensionOrDuration(layer['offsetX']) &&
         isDimensionOrDuration(layer['offsetY']) &&
         isDimensionOrDuration(layer['blur']) &&
-        isDimensionOrDuration(layer['spread']),
+        isDimensionOrDuration(layer['spread']) &&
+        (layer['inset'] === undefined || typeof layer['inset'] === 'boolean'),
     )
   );
 }
@@ -329,7 +336,7 @@ function formatColor(value: ColorValue): string {
     if (lightness === undefined || chroma === undefined || hue === undefined) {
       throw new Error(`oklch color value is missing a component: ${JSON.stringify(value)}`);
     }
-    const alpha = typeof value.alpha === 'number' ? ` / ${formatComponent(value.alpha)}` : '';
+    const alpha = value.alpha !== undefined ? ` / ${formatComponent(value.alpha)}` : '';
     return `oklch(${formatOklchLightness(lightness)} ${formatComponent(chroma)} ${formatComponent(hue)}${alpha})`;
   }
 
@@ -423,7 +430,21 @@ function formatShadow(layers: readonly ShadowLayer[]): string {
     .join(', ');
 }
 
-export function serializeTypedValue(type: TokenType, value: unknown, path: string): string {
+/**
+ * `validate.ts` permits a reference (`{a.b.c}` or `#/a/b/c`) at any composite leaf position --
+ * a shadow layer's `color`, a color's individual `components`/`alpha`, a border's `width`, and
+ * so on -- alongside the whole-value alias `serializeEntryValue` already handles before this
+ * function is ever called. `resolveReferences` (identity by default, so existing callers that
+ * pass literal, already-resolved values are unaffected) resolves every such reference, at any
+ * depth, to its literal value before shape-checking and formatting proceed.
+ */
+export function serializeTypedValue(
+  type: TokenType,
+  value: unknown,
+  path: string,
+  resolveReferences: ValueResolver = (raw) => raw,
+): string {
+  const resolvedValue = resolveReferences(value);
   const malformed = (expected: string): never => {
     throw new Error(
       `Token at "${path}" has $type "${type}" but its $value is not a valid ${expected}.`,
@@ -432,31 +453,31 @@ export function serializeTypedValue(type: TokenType, value: unknown, path: strin
 
   switch (type) {
     case 'dimension':
-      return isDimensionOrDuration(value)
-        ? formatDimension(value)
+      return isDimensionOrDuration(resolvedValue)
+        ? formatDimension(resolvedValue)
         : malformed('{value, unit} dimension');
     case 'duration':
-      return isDimensionOrDuration(value)
-        ? formatDuration(value)
+      return isDimensionOrDuration(resolvedValue)
+        ? formatDuration(resolvedValue)
         : malformed('{value, unit} duration');
     case 'number':
-      return isNumberValue(value) ? formatNumber(value) : malformed('number');
+      return isNumberValue(resolvedValue) ? formatNumber(resolvedValue) : malformed('number');
     case 'fontWeight':
-      return isFontWeightValue(value)
-        ? formatFontWeight(value)
+      return isFontWeightValue(resolvedValue)
+        ? formatFontWeight(resolvedValue)
         : malformed('number in [1, 1000] or named DTCG font weight');
     case 'cubicBezier':
-      return isCubicBezierValue(value)
-        ? formatCubicBezier(value)
+      return isCubicBezierValue(resolvedValue)
+        ? formatCubicBezier(resolvedValue)
         : malformed('four-number cubic-bezier');
     case 'fontFamily':
-      return isFontFamilyValue(value)
-        ? formatFontFamily(value)
+      return isFontFamilyValue(resolvedValue)
+        ? formatFontFamily(resolvedValue)
         : malformed('string | string[] font family');
     case 'color':
-      return isColorValue(value) ? formatColor(value) : malformed('color');
+      return isColorValue(resolvedValue) ? formatColor(resolvedValue) : malformed('color');
     case 'shadow': {
-      const normalizedShadow = normalizeShadowValue(value);
+      const normalizedShadow = normalizeShadowValue(resolvedValue);
       return isShadowLayerArray(normalizedShadow)
         ? formatShadow(normalizedShadow)
         : malformed('shadow layer object or array');
@@ -490,13 +511,14 @@ export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEnt
 export function serializeEntryValue(
   entry: CorpusEntry,
   baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver = (raw) => raw,
 ): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
   if (isAliasReference(entry.value)) return resolveAlias(entry.value, baseIndex);
   if (entry.type === undefined) {
     throw new Error(`Token at "${entry.path}" has no $type and no cssRecipe; cannot serialize.`);
   }
-  return serializeTypedValue(entry.type, entry.value, entry.path);
+  return serializeTypedValue(entry.type, entry.value, entry.path, resolveReferences);
 }
 
 /**
@@ -556,14 +578,17 @@ function refsFor(
   return refs.map((ref) => requireDocument(documentsByPath, ref.$ref));
 }
 
-function renderBaseDeclarations(baseIndex: Map<string, CorpusEntry>): string {
+function renderBaseDeclarations(
+  baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver,
+): string {
   const lines: string[] = [];
   for (const entry of baseIndex.values()) {
     if (!entry.cssProperty) {
       throw new Error(`Base corpus token at "${entry.path}" has no cssProperty extension.`);
     }
     if (entry.description) lines.push(`/* ${sanitizeComment(entry.description)} */`);
-    const value = serializeEntryValue(entry, baseIndex);
+    const value = serializeEntryValue(entry, baseIndex, resolveReferences);
     const stylelintDisable = stylelintDisableCommentFor(value);
     if (stylelintDisable) lines.push(stylelintDisable);
     lines.push(`${entry.cssProperty}: ${value};`);
@@ -574,6 +599,7 @@ function renderBaseDeclarations(baseIndex: Map<string, CorpusEntry>): string {
 function renderOverrideDeclarations(
   overrides: Map<string, CorpusEntry>,
   baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver,
 ): string {
   const lines: string[] = [];
   for (const [path, entry] of overrides) {
@@ -581,7 +607,7 @@ function renderOverrideDeclarations(
     if (!base?.cssProperty) {
       throw new Error(`Override token at "${path}" has no matching base token with a cssProperty.`);
     }
-    const value = serializeEntryValue(entry, baseIndex);
+    const value = serializeEntryValue(entry, baseIndex, resolveReferences);
     const stylelintDisable = stylelintDisableCommentFor(value);
     if (stylelintDisable) lines.push(stylelintDisable);
     lines.push(`${base.cssProperty}: ${value};`);
@@ -597,6 +623,13 @@ export async function buildTokensBaseCss(
   const mergedBase = mergeDocuments(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
+
+  // Resolves a reference nested inside a composite member (a shadow layer's `inset`, one
+  // component of a color, ...) to its literal value, for both base entries and override
+  // entries alike -- the same base-only lookup `resolveAlias` already uses for a WHOLE-value
+  // override alias (an override token referencing a base token by its cssProperty), just
+  // applied to a reference living below the top level of the value instead of at it.
+  const resolveReferences = createValueResolver(baseDocuments);
 
   const themeModifier = resolver.modifiers['theme']!;
   const motionModifier = resolver.modifiers['motion']!;
@@ -640,13 +673,22 @@ export async function buildTokensBaseCss(
     forcedReducedMotionOverrides,
   );
 
-  const rootDeclarations = renderBaseDeclarations(baseIndex);
-  const darkDeclarations = renderOverrideDeclarations(darkOverrides, baseIndex);
-  const lightDeclarations = renderOverrideDeclarations(lightOverrides, baseIndex);
-  const reducedMotionDeclarations = renderOverrideDeclarations(reducedMotionOverrides, baseIndex);
+  const rootDeclarations = renderBaseDeclarations(baseIndex, resolveReferences);
+  const darkDeclarations = renderOverrideDeclarations(darkOverrides, baseIndex, resolveReferences);
+  const lightDeclarations = renderOverrideDeclarations(
+    lightOverrides,
+    baseIndex,
+    resolveReferences,
+  );
+  const reducedMotionDeclarations = renderOverrideDeclarations(
+    reducedMotionOverrides,
+    baseIndex,
+    resolveReferences,
+  );
   const forcedReducedMotionDeclarations = renderOverrideDeclarations(
     forcedReducedMotionOverrides,
     baseIndex,
+    resolveReferences,
   );
 
   const css = `/**
@@ -740,6 +782,36 @@ export function documentsForResolutionOrder(
   );
 }
 
+/**
+ * The full modifier-value map for one `RESOLVED_CONTEXT_COMBO`: the combo's own named
+ * modifiers (`theme`/`motion`), plus a value for every OTHER modifier the resolver declares.
+ * `RESOLVED_CONTEXT_COMBOS` is deliberately not generalized to every modifier combination --
+ * the set of published resolved contexts is a packaging decision (CIN-31), and the four named
+ * snapshots stay an explicit list -- so a modifier the combo does not name is filled from that
+ * modifier's own declared `default` context instead. A modifier with no declared default AND
+ * not named by the combo is a genuine authoring gap (the combo can't say what to resolve): fail
+ * with a clear, named error rather than letting `sourcesForEntry` look up
+ * `contexts[undefined]` and throw an unhelpful one.
+ */
+export function modifierValuesForCombo(
+  resolver: ResolverDocument,
+  combo: ResolvedContextCombo,
+): Record<string, string> {
+  const named: Record<string, string> = { theme: combo.theme, motion: combo.motion };
+  const modifierValues: Record<string, string> = {};
+  for (const modifierName of Object.keys(resolver.modifiers)) {
+    const value = named[modifierName] ?? resolver.modifiers[modifierName]!.default;
+    if (value === undefined) {
+      throw new Error(
+        `Resolved-context combo "${combo.name}" does not name a value for modifier ` +
+          `"${modifierName}", and modifier "${modifierName}" has no declared default context.`,
+      );
+    }
+    modifierValues[modifierName] = value;
+  }
+  return modifierValues;
+}
+
 export async function buildResolvedContexts(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
@@ -756,10 +828,8 @@ export async function buildResolvedContexts(
         `Resolver has no "${combo.theme}"/"${combo.motion}" context for "${combo.name}".`,
       );
     }
-    const documents = documentsForResolutionOrder(resolver, documentsByPath, {
-      theme: combo.theme,
-      motion: combo.motion,
-    });
+    const modifierValues = modifierValuesForCombo(resolver, combo);
+    const documents = documentsForResolutionOrder(resolver, documentsByPath, modifierValues);
     const resolved = resolveDocuments(documents);
     const json = await format(JSON.stringify(resolved), {
       ...PRETTIER_OPTIONS,

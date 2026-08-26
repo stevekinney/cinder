@@ -236,7 +236,8 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   'tokens:generate': {
     layers: ['unit-tests', 'main-green'],
     reason:
-      'Invoked via `tokens:check -- --check` (see that row). Not run standalone by name in any ' +
+      'Invoked via `tokens:check`, which runs `tokens:generate -- --check` internally (see that ' +
+      'row) — `tokens:check` itself takes no `--check` flag. Not run standalone by name in any ' +
       'workflow — the write-mode invocation is a local developer/regeneration command.',
   },
   'tokens:inventory': {

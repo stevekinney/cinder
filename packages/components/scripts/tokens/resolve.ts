@@ -213,17 +213,40 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
   return token;
 }
 
-/** Resolves group inheritance, whole-token aliases, and property-level aliases. */
-export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
+/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against. */
+function buildTokenIndex(documents: TokenDocument[]): ResolvedTokens {
   const tokens: ResolvedTokens = new Map();
   const groups = new Map<string, TokenGroup>();
-  const documentCopies = [mergeDocuments(documents)];
-  for (const document of documentCopies) collectGroups(document, '', groups);
+  const merged = mergeDocuments(documents);
+  collectGroups(merged, '', groups);
   for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
-  for (const document of documentCopies) collectTokens(document, '', tokens);
+  collectTokens(merged, '', tokens);
+  return tokens;
+}
+
+/** Resolves group inheritance, whole-token aliases, and property-level aliases. */
+export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
+  const tokens = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
   for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
   return resolved;
+}
+
+export type ValueResolver = (value: unknown) => unknown;
+
+/**
+ * Builds a resolver, against the given documents, for arbitrary raw value trees -- not just
+ * whole tokens. `resolveDocuments` only exposes references already resolved at the top level of
+ * each token's `$value`; a reference nested inside a composite member (a shadow layer's
+ * `inset`, one component of a color, ...) needs the same reference machinery applied to an
+ * arbitrary sub-value, including property-path splitting (`{a.b.c}` / `#/a/b/c` may name a
+ * whole token OR a property within one) and cycle detection. Reuses `resolveValue` --
+ * `resolveDocuments` calls the exact same function on each token's `$value` -- rather than a
+ * second resolver.
+ */
+export function createValueResolver(documents: TokenDocument[]): ValueResolver {
+  const tokens = buildTokenIndex(documents);
+  return (value: unknown) => resolveValue(value, tokens, new Set());
 }
 
 /** Merges ordered documents, retaining only the last occurrence of each token path. */

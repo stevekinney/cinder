@@ -644,3 +644,17 @@ describe('checkPipelineCoverage', () => {
     expect(result.violations).toEqual([]);
   });
 });
+
+describe('CIN-29 review finding: tokens:generate reason text', () => {
+  it('does not claim tokens:check takes a --check flag it does not accept', () => {
+    // tokens:check is `tokens:validate && tokens:generate -- --check` (see package.json) --
+    // the `--check` flag belongs to the `tokens:generate` invocation tokens:check runs
+    // internally, not to `tokens:check` itself. The reason text previously read "Invoked via
+    // `tokens:check -- --check`", which would mislead someone reproducing the invocation
+    // locally into passing a flag `tokens:check` does not accept.
+    const reason = DECLARATION_TABLE['tokens:generate']?.reason;
+    expect(reason).toBeDefined();
+    expect(reason).not.toContain('tokens:check -- --check');
+    expect(reason).toContain('tokens:check`, which runs `tokens:generate -- --check`');
+  });
+});
