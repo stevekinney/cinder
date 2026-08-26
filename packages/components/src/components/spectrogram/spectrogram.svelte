@@ -179,9 +179,10 @@
   // 10x10). A realistic STFT feed (a few hundred frames x 256 bins) can
   // produce tens of thousands of DOM nodes. Sample the plot the same way,
   // sized for visual density rather than the table's 10x10 accessibility
-  // limit: 400 x 256 keeps the worst case at 102,400 <rect> elements.
-  const maxPlotFrames = 400;
-  const maxPlotBins = 256;
+  // limit: 200 x 128 keeps the worst case at 25,600 <rect> elements while
+  // maximum aggregation preserves narrow transients inside every bucket.
+  const maxPlotFrames = 200;
+  const maxPlotBins = 128;
   const plotFrameStep = $derived(Math.max(1, Math.ceil(frames.length / maxPlotFrames)));
   const plotBinStep = $derived(Math.max(1, Math.ceil(binCount / maxPlotBins)));
   const plotFrames = $derived.by(() =>
