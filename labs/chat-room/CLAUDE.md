@@ -6,10 +6,13 @@
 > `../cinder`" is superseded by that move; the `sync-cinder` skill and the `sync:cinder` /
 > `check:peers` scripts were removed with it. The broader documentation cleanup is tracked in
 > CIN-442 ("Delete the dead weight, update the docs", formerly CHR-11). Until that rewrite
-> lands, treat every remaining `sync:cinder`, `check:peers`, or published-version instruction
-> below as historical for the workspace `@lostgradient/*` packages — do not run them. The
-> agent-bureau packages (`conversationalist`, `armorer`) still install from npm, so their
-> publish-and-bump cycle in "Filing and resolving upstream issues" remains real.
+> lands, treat the remaining `sync:cinder`, `check:peers`, and published-version _consumption_
+> instructions below (installing, syncing, or bumping the workspace `@lostgradient/*` packages
+> from npm) as historical — do not run them. Two things stay real: the release steps for an
+> owned package whose defect shipped in a published version (changesets release, npm
+> confirmation — registry consumers still need the publish even though this lab does not), and
+> the agent-bureau packages (`conversationalist`, `armorer`), which still install from npm with
+> their full publish-and-bump cycle.
 > The pre-merge history lives in the archived `stevekinney/chatroom` repository.
 
 ## Project Configuration
