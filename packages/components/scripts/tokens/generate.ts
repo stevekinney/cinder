@@ -32,7 +32,10 @@ import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import * as prettier from 'prettier';
+import { format } from 'prettier';
+import babelPlugin from 'prettier/plugins/babel';
+import estreePlugin from 'prettier/plugins/estree';
+import postcssPlugin from 'prettier/plugins/postcss';
 
 import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
 import { mergeDocuments, resolveDocuments } from './resolve.ts';
@@ -50,6 +53,28 @@ export const tokensBaseCssPath = join(packageRoot, 'src', 'styles', 'tokens-base
 export const resolvedDirectory = join(tokenRoot, 'resolved');
 
 const REGENERATE_COMMAND = 'bun run --filter=@lostgradient/cinder tokens:generate';
+
+/**
+ * Prettier is used here in a way that has to survive two different builds of it.
+ *
+ * The full test suite runs under `--conditions browser --conditions svelte`, and
+ * that resolves `prettier` to `standalone.mjs` — which has no `resolveConfig`
+ * (a Node-only filesystem API) and, more importantly, ships no parsers at all.
+ * Relying on either would pass in isolation and fail in the suite. So the config
+ * that shapes this file's output is mirrored from `.prettierrc.json` explicitly,
+ * and the parser plugins are imported and passed explicitly, which works
+ * identically under both builds.
+ */
+const PRETTIER_OPTIONS = {
+  singleQuote: true,
+  tabWidth: 2,
+  printWidth: 100,
+  endOfLine: 'lf',
+} as const;
+
+/** The `json` parser lives in the babel plugin; `estree` supplies its printer. */
+const JSON_PLUGINS = [babelPlugin, estreePlugin];
+const CSS_PLUGINS = [postcssPlugin];
 
 // ---------------------------------------------------------------------------
 // Corpus tree walking. Collects every `$value`-bearing node in a merged
@@ -538,8 +563,7 @@ ${reducedMotionDeclarations}
 }
 `;
 
-  const options = await prettier.resolveConfig(tokensBaseCssPath);
-  return prettier.format(css, { ...options, filepath: tokensBaseCssPath, parser: 'css' });
+  return format(css, { ...PRETTIER_OPTIONS, parser: 'css', plugins: CSS_PLUGINS });
 }
 
 // ---------------------------------------------------------------------------
@@ -585,12 +609,10 @@ async function buildResolvedContexts(
       ...refsFor(documentsByPath, motionContext),
     ];
     const resolved = resolveDocuments(documents);
-    const jsonPath = join(resolvedDirectory, `${combo.name}.json`);
-    const options = await prettier.resolveConfig(jsonPath);
-    const json = await prettier.format(JSON.stringify(resolved), {
-      ...options,
-      filepath: jsonPath,
+    const json = await format(JSON.stringify(resolved), {
+      ...PRETTIER_OPTIONS,
       parser: 'json',
+      plugins: JSON_PLUGINS,
     });
     outputs.set(combo.name, json);
   }
