@@ -1,0 +1,437 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "button": {
+    "$description": "Button component tokens. Most values alias shared foundation/semantic tokens (kept here, per component, for discoverability and ownership reporting); the height ladder is genuinely Button-owned, using its own tighter Tailwind-style scale instead of the shared `control.height.*` tier (per-component height tokens alias the shared family where the values happen to match, as `height.xs` does here).",
+    "background": {
+      "$type": "color",
+      "$value": "{surface.raised}",
+      "$description": "Secondary (default) button fill.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-button-bg",
+          "public": true,
+          "category": "color",
+          "component": "button",
+          "cssRecipe": null
+        }
+      }
+    },
+    "foreground": {
+      "$type": "color",
+      "$value": "{text}",
+      "$description": "Secondary (default) button label color.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-button-fg",
+          "public": true,
+          "category": "color",
+          "component": "button",
+          "cssRecipe": null
+        }
+      }
+    },
+    "border": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+      "$description": "Secondary (default) button border.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-button-border",
+          "public": true,
+          "category": "color",
+          "component": "button",
+          "cssRecipe": "light-dark(var(--cinder-border), var(--cinder-border-strong))"
+        }
+      }
+    },
+    "radius": {
+      "$type": "dimension",
+      "$root": {
+        "$value": "{radius.medium}",
+        "$description": "Default button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "xs": {
+        "$value": "{radius.small}",
+        "$description": "Extra-small button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius-xs",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "sm": {
+        "$value": "{radius.small}",
+        "$description": "Small button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius-sm",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "md": {
+        "$value": "{radius.medium}",
+        "$description": "Medium button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius-md",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "lg": {
+        "$value": "{radius.medium}",
+        "$description": "Large button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius-lg",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "xl": {
+        "$value": "{radius.medium}",
+        "$description": "Extra-large button corner radius.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-radius-xl",
+            "public": true,
+            "category": "radius",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "height": {
+      "$type": "dimension",
+      "$description": "Button's own tighter Tailwind-style height ladder, distinct from the shared `control.height.*` tier.",
+      "xs": {
+        "$value": "{control.height.xs}",
+        "$description": "Extra-small button height (24px), aliasing the shared control-height tier.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-height-xs",
+            "public": true,
+            "category": "size",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "sm": {
+        "$value": { "value": 1.75, "unit": "rem" },
+        "$description": "Small button height (28px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-height-sm",
+            "public": true,
+            "category": "size",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "md": {
+        "$value": { "value": 2, "unit": "rem" },
+        "$description": "Medium button height (32px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-height-md",
+            "public": true,
+            "category": "size",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "lg": {
+        "$value": { "value": 2.25, "unit": "rem" },
+        "$description": "Large button height (36px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-height-lg",
+            "public": true,
+            "category": "size",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      },
+      "xl": {
+        "$value": { "value": 2.5, "unit": "rem" },
+        "$description": "Extra-large button height (40px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-button-height-xl",
+            "public": true,
+            "category": "size",
+            "component": "button",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "padding": {
+      "$type": "dimension",
+      "x": {
+        "xs": {
+          "$value": "{space.1-5}",
+          "$description": "Extra-small button horizontal padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-x-xs",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "sm": {
+          "$value": "{space.2}",
+          "$description": "Small button horizontal padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-x-sm",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "md": {
+          "$value": "{space.2-5}",
+          "$description": "Medium button horizontal padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-x-md",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "lg": {
+          "$value": "{space.3}",
+          "$description": "Large button horizontal padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-x-lg",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "xl": {
+          "$value": "{space.3-5}",
+          "$description": "Extra-large button horizontal padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-x-xl",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        }
+      },
+      "y": {
+        "xs": {
+          "$value": "{space.0-5}",
+          "$description": "Extra-small button vertical padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-y-xs",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "sm": {
+          "$value": "{space.one}",
+          "$description": "Small button vertical padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-y-sm",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "md": {
+          "$value": "{space.1-5}",
+          "$description": "Medium button vertical padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-y-md",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "lg": {
+          "$value": "{space.2}",
+          "$description": "Large button vertical padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-y-lg",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "xl": {
+          "$value": "{space.2-5}",
+          "$description": "Extra-large button vertical padding.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-padding-y-xl",
+              "public": true,
+              "category": "spacing",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        }
+      }
+    },
+    "font": {
+      "size": {
+        "$type": "dimension",
+        "xs": {
+          "$value": "{font.size.xs}",
+          "$description": "Extra-small button label font size.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-font-size-xs",
+              "public": true,
+              "category": "typography",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "sm": {
+          "$value": "{font.size.sm}",
+          "$description": "Small button label font size.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-font-size-sm",
+              "public": true,
+              "category": "typography",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "md": {
+          "$value": "{font.size.sm}",
+          "$description": "Medium button label font size.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-font-size-md",
+              "public": true,
+              "category": "typography",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "lg": {
+          "$value": "{font.size.md}",
+          "$description": "Large button label font size.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-font-size-lg",
+              "public": true,
+              "category": "typography",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        },
+        "xl": {
+          "$value": "{font.size.lg}",
+          "$description": "Extra-large button label font size.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-button-font-size-xl",
+              "public": true,
+              "category": "typography",
+              "component": "button",
+              "cssRecipe": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "toggle": {
+    "$type": "color",
+    "$description": "Toggle-track tokens. Single-consumer (toggle.css); encode the dark-arm contrast improvement here so toggle.css uses only var() references and stays theme-guard clean.",
+    "track": {
+      "off-resting": {
+        "$value": { "colorSpace": "oklch", "components": [0.85, 0.004, 255] },
+        "$description": "Toggle track color in the off, resting state. Light arm preserves the `border.muted` look; dark arm raises lightness for >=3:1 shape contrast against the surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-toggle-track-off-resting",
+            "public": true,
+            "category": "color",
+            "component": "toggle",
+            "cssRecipe": "light-dark(var(--cinder-border-muted), oklch(45% 0.02 245))"
+          }
+        }
+      },
+      "off-hover-resting": {
+        "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+        "$description": "Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-toggle-track-off-hover-resting",
+            "public": true,
+            "category": "color",
+            "component": "toggle",
+            "cssRecipe": "light-dark(var(--cinder-border), oklch(52% 0.02 245))"
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,5 +1,66 @@
 {
   "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
-  "$extensions": { "com.lostgradient.cinder": { "modifier": { "motion": "default" } } },
-  "motion": { "$type": "duration", "fast": { "$value": { "value": 120, "unit": "ms" } } }
+  "motion": {
+    "$type": "duration",
+    "$root": {
+      "$value": {
+        "value": 200,
+        "unit": "ms"
+      }
+    },
+    "fast": {
+      "$value": {
+        "value": 120,
+        "unit": "ms"
+      }
+    },
+    "instant": {
+      "$value": {
+        "value": 0,
+        "unit": "ms"
+      }
+    },
+    "normal": {
+      "$value": {
+        "value": 200,
+        "unit": "ms"
+      }
+    },
+    "moderate": {
+      "$value": {
+        "value": 280,
+        "unit": "ms"
+      }
+    },
+    "slow": {
+      "$value": {
+        "value": 400,
+        "unit": "ms"
+      }
+    },
+    "spin": {
+      "$value": {
+        "value": 750,
+        "unit": "ms"
+      }
+    },
+    "progress": {
+      "bar": {
+        "indeterminate": {
+          "$value": {
+            "value": 1.6,
+            "unit": "s"
+          }
+        }
+      },
+      "ring": {
+        "spin": {
+          "$value": {
+            "value": 1.4,
+            "unit": "s"
+          }
+        }
+      }
+    }
+  }
 }

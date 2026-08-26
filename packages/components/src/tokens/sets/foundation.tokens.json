@@ -2,6 +2,30 @@
   "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
   "space": {
     "$type": "dimension",
+    "0": {
+      "$value": { "value": 0, "unit": "rem" },
+      "$description": "Zero spacing step, used to explicitly reset a spacing property.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-0",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "0-5": {
+      "$value": { "value": 0.125, "unit": "rem" },
+      "$description": "Spacing scale half-step between 0 and 1 (2px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-0-5",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
     "one": {
       "$value": { "value": 0.25, "unit": "rem" },
       "$description": "Base spacing increment.",
@@ -13,10 +37,215 @@
           "cssRecipe": null
         }
       }
+    },
+    "1-5": {
+      "$value": { "value": 0.375, "unit": "rem" },
+      "$description": "Spacing scale half-step between 1 and 2 (6px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-1-5",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "2": {
+      "$value": { "value": 0.5, "unit": "rem" },
+      "$description": "Spacing scale step (8px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-2",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "2-5": {
+      "$value": { "value": 0.625, "unit": "rem" },
+      "$description": "Spacing scale half-step between 2 and 3 (10px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-2-5",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "3": {
+      "$value": { "value": 0.75, "unit": "rem" },
+      "$description": "Spacing scale step (12px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-3",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "3-5": {
+      "$value": { "value": 0.875, "unit": "rem" },
+      "$description": "Spacing scale half-step between 3 and 4 (14px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-3-5",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "4": {
+      "$value": { "value": 1, "unit": "rem" },
+      "$description": "Spacing scale step (16px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-4",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "5": {
+      "$value": { "value": 1.25, "unit": "rem" },
+      "$description": "Spacing scale step (20px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-5",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "6": {
+      "$value": { "value": 1.5, "unit": "rem" },
+      "$description": "Spacing scale step (24px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-6",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "7": {
+      "$value": { "value": 1.75, "unit": "rem" },
+      "$description": "Spacing scale step (28px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-7",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "8": {
+      "$value": { "value": 2, "unit": "rem" },
+      "$description": "Spacing scale step (32px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-8",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "10": {
+      "$value": { "value": 2.5, "unit": "rem" },
+      "$description": "Spacing scale step (40px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-10",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "12": {
+      "$value": { "value": 3, "unit": "rem" },
+      "$description": "Spacing scale step (48px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-12",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "16": {
+      "$value": { "value": 4, "unit": "rem" },
+      "$description": "Spacing scale step (64px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-16",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "20": {
+      "$value": { "value": 5, "unit": "rem" },
+      "$description": "Spacing scale step (80px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-20",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "24": {
+      "$value": { "value": 6, "unit": "rem" },
+      "$description": "Spacing scale step (96px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-24",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
+    },
+    "32": {
+      "$value": { "value": 8, "unit": "rem" },
+      "$description": "Spacing scale step (128px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-space-32",
+          "public": true,
+          "category": "spacing",
+          "cssRecipe": null
+        }
+      }
     }
   },
   "radius": {
     "$type": "dimension",
+    "$description": "6 / 8 / 12px corner radii. A previous pass stepped the whole scale down to 4/6/8 on the theory that rounding compounds when controls nest — it does, but the fix for a bubbly nested corner is the concentric nesting rule, not shrinking every radius: at 4/6/8, large panels (code blocks, cards, dialogs) read as hard-cornered plates, since a radius proportionate on a 28px button is nearly invisible on a 600px panel. An inner element inset by N inside a rounded container is concentric only at `outer - N`; express the inner radius as `calc(var(--cinder-radius-<outer>) - <inset>)` so it tracks the outer token instead of drifting.",
+    "small": {
+      "$value": { "value": 0.375, "unit": "rem" },
+      "$description": "Compact control corner radius (6px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-radius-sm",
+          "public": true,
+          "category": "radius",
+          "cssRecipe": null
+        }
+      }
+    },
     "medium": {
       "$value": { "value": 0.5, "unit": "rem" },
       "$description": "Default control corner radius.",
@@ -28,10 +257,698 @@
           "cssRecipe": null
         }
       }
+    },
+    "large": {
+      "$value": { "value": 0.75, "unit": "rem" },
+      "$description": "Surface-level corner radius for cards, dialogs, and other large panels (12px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-radius-lg",
+          "public": true,
+          "category": "radius",
+          "cssRecipe": null
+        }
+      }
+    },
+    "full": {
+      "$value": { "value": 9999, "unit": "px" },
+      "$description": "Fully rounded corner radius for pills and circular controls.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-radius-full",
+          "public": true,
+          "category": "radius",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "shadow": {
+    "$type": "shadow",
+    "$description": "Elevation shadows. Each color argument is wrapped in `light-dark()` individually so dark mode paints a light-neutral elevation instead of invisible black-on-dark; within any one token the offsets, blur radii, and spread radii are identical across the light and dark arms, only the color/alpha branches differ per theme.",
+    "small": {
+      "$value": [
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.1 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 1, "unit": "px" },
+          "blur": { "value": 2, "unit": "px" },
+          "spread": { "value": 0, "unit": "px" }
+        },
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.06 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 1, "unit": "px" },
+          "blur": { "value": 1, "unit": "px" },
+          "spread": { "value": 0, "unit": "px" }
+        }
+      ],
+      "$description": "Hairline elevation for barely-raised surfaces. Gained a second hairline layer and higher alphas in this refinement pass (light 0.08 -> 0.1 plus a new 0.06 layer; dark 0.06 -> 0.09 plus a new 0.05 layer) for deeper, crisper elevation. Light and dark themes carry distinct explicit values (see the theme modifier documents) alongside this `light-dark()` recipe.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-shadow-sm",
+          "public": true,
+          "category": "shadow",
+          "cssRecipe": "0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09)), 0 1px 1px light-dark(oklch(0% 0 0 / 0.06), oklch(100% 0 0 / 0.05))"
+        }
+      }
+    },
+    "medium": {
+      "$value": [
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 4, "unit": "px" },
+          "blur": { "value": 6, "unit": "px" },
+          "spread": { "value": -1, "unit": "px" }
+        },
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.1 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 2, "unit": "px" },
+          "blur": { "value": 4, "unit": "px" },
+          "spread": { "value": -2, "unit": "px" }
+        }
+      ],
+      "$description": "Mid elevation for raised surfaces such as popovers.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-shadow-md",
+          "public": true,
+          "category": "shadow",
+          "cssRecipe": "0 4px 6px -1px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.09)), 0 2px 4px -2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.06))"
+        }
+      }
+    },
+    "large": {
+      "$value": [
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.14 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 10, "unit": "px" },
+          "blur": { "value": 15, "unit": "px" },
+          "spread": { "value": -3, "unit": "px" }
+        },
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 4, "unit": "px" },
+          "blur": { "value": 6, "unit": "px" },
+          "spread": { "value": -4, "unit": "px" }
+        }
+      ],
+      "$description": "High elevation for dialogs and drawers.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-shadow-lg",
+          "public": true,
+          "category": "shadow",
+          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(100% 0 0 / 0.11)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(100% 0 0 / 0.07))"
+        }
+      }
+    },
+    "overlay": {
+      "$value": [
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.14 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 10, "unit": "px" },
+          "blur": { "value": 15, "unit": "px" },
+          "spread": { "value": -3, "unit": "px" }
+        },
+        {
+          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
+          "offsetX": { "value": 0, "unit": "px" },
+          "offsetY": { "value": 4, "unit": "px" },
+          "blur": { "value": 6, "unit": "px" },
+          "spread": { "value": -4, "unit": "px" }
+        }
+      ],
+      "$description": "Elevation for modal/drawer overlay panels. Dark mode uses a stronger black shadow rather than the light-neutral lift the other tiers use, since overlay panels sit above a dimmed backdrop rather than page content.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-shadow-overlay",
+          "public": true,
+          "category": "shadow",
+          "cssRecipe": "0 10px 15px -3px light-dark(oklch(0% 0 0 / 0.14), oklch(0% 0 0 / 0.45)), 0 4px 6px -4px light-dark(oklch(0% 0 0 / 0.12), oklch(0% 0 0 / 0.32))"
+        }
+      }
+    }
+  },
+  "control": {
+    "height": {
+      "$type": "dimension",
+      "$description": "Shared height tier for any interactive control that needs to align with its siblings in a toolbar, button group, or form row. Adoption is opt-in per component; Buttons use their own tighter height ladder (see `button.height.*`).",
+      "xs": {
+        "$value": { "value": 1.5, "unit": "rem" },
+        "$description": "Extra-small control height (24px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-control-height-xs",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      },
+      "sm": {
+        "$value": { "value": 2, "unit": "rem" },
+        "$description": "Small control height; the toolbar default (32px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-control-height-sm",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      },
+      "lg": {
+        "$value": { "value": 2.75, "unit": "rem" },
+        "$description": "Large control height; clears the WCAG AAA touch target (44px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-control-height-lg",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "font": {
+    "sans": {
+      "$type": "fontFamily",
+      "$value": [
+        "system-ui",
+        "-apple-system",
+        "BlinkMacSystemFont",
+        "Segoe UI",
+        "Roboto",
+        "Helvetica Neue",
+        "sans-serif"
+      ],
+      "$description": "Default UI font stack.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-sans",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "mono": {
+      "$type": "fontFamily",
+      "$value": [
+        "ui-monospace",
+        "SFMono-Regular",
+        "SF Mono",
+        "Menlo",
+        "Consolas",
+        "Liberation Mono",
+        "monospace"
+      ],
+      "$description": "Monospace font stack for code surfaces.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-mono",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "normal": {
+      "$type": "fontWeight",
+      "$value": 400,
+      "$description": "Normal font weight.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-normal",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "medium": {
+      "$type": "fontWeight",
+      "$value": 500,
+      "$description": "Medium font weight.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-medium",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "semibold": {
+      "$type": "fontWeight",
+      "$value": 600,
+      "$description": "Semibold font weight.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-semibold",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "bold": {
+      "$type": "fontWeight",
+      "$value": 700,
+      "$description": "Bold font weight.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-font-bold",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "size": {
+      "$type": "dimension",
+      "$description": "Font-size scale. Named `font.size.*` in the DTCG corpus rather than `text.*` because the CSS property prefix `--cinder-text-*` would otherwise collide with the `text` semantic color role (`--cinder-text`, `--cinder-text-muted`, ...); `cssProperty` still preserves the real `--cinder-text-*` name.",
+      "2xs": {
+        "$value": { "value": 0.6875, "unit": "rem" },
+        "$description": "Smallest font size (11px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-2xs",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "xs": {
+        "$value": { "value": 0.75, "unit": "rem" },
+        "$description": "Extra-small font size (12px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-xs",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "sm": {
+        "$value": { "value": 0.8125, "unit": "rem" },
+        "$description": "Small font size (13px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-sm",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "base": {
+        "$value": { "value": 0.875, "unit": "rem" },
+        "$description": "Base body font size (14px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-base",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "md": {
+        "$value": { "value": 0.9375, "unit": "rem" },
+        "$description": "Medium font size; the button ladder step between base and lg (15px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-md",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "lg": {
+        "$value": { "value": 1, "unit": "rem" },
+        "$description": "Large font size (16px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-lg",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "xl": {
+        "$value": { "value": 1.125, "unit": "rem" },
+        "$description": "Extra-large font size (18px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-xl",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "2xl": {
+        "$value": { "value": 1.25, "unit": "rem" },
+        "$description": "2xl font size (20px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-2xl",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "3xl": {
+        "$value": { "value": 1.5, "unit": "rem" },
+        "$description": "3xl font size (24px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-3xl",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "4xl": {
+        "$value": { "value": 1.875, "unit": "rem" },
+        "$description": "4xl font size (30px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-4xl",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      },
+      "5xl": {
+        "$value": { "value": 2.25, "unit": "rem" },
+        "$description": "5xl font size (36px).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-text-5xl",
+            "public": true,
+            "category": "typography",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "leading": {
+    "$type": "number",
+    "$description": "Unitless line-height scale.",
+    "none": {
+      "$value": 1,
+      "$description": "No extra line height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-leading-none",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "tight": {
+      "$value": 1.15,
+      "$description": "Tight line height for headings.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-leading-tight",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "snug": {
+      "$value": 1.3,
+      "$description": "Snug line height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-leading-snug",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "normal": {
+      "$value": 1.5,
+      "$description": "Default body line height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-leading-normal",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "relaxed": {
+      "$value": 1.625,
+      "$description": "Relaxed line height for long-form reading.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-leading-relaxed",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "tracking": {
+    "normal": {
+      "$type": "dimension",
+      "$value": { "value": 0, "unit": "rem" },
+      "$description": "Default letter spacing (no adjustment).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tracking-normal",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    },
+    "tight": {
+      "$type": "number",
+      "$value": -0.01,
+      "$description": "Tight letter-spacing, -0.01em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tracking-tight",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": "-0.01em"
+        }
+      }
+    },
+    "wide": {
+      "$type": "number",
+      "$value": 0.02,
+      "$description": "Wide letter-spacing, 0.02em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tracking-wide",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": "0.02em"
+        }
+      }
+    }
+  },
+  "type": {
+    "tab-size": {
+      "$type": "number",
+      "$value": 2,
+      "$description": "Tab width for monospace/code surfaces (`variant=\"code\"` on Input/Textarea, CodeBlock). Tab characters render as this many spaces' worth.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-type-tab-size",
+          "public": true,
+          "category": "typography",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "touch": {
+    "target-min": {
+      "$type": "dimension",
+      "$value": { "value": 44, "unit": "px" },
+      "$description": "Minimum touch target size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-touch-target-min",
+          "public": true,
+          "category": "size",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "content": {
+    "width": {
+      "$type": "dimension",
+      "$description": "Named content-width scale for the Container primitive.",
+      "$root": {
+        "$value": { "value": 72, "unit": "rem" },
+        "$description": "Maximum inline size for primary page content. Caps line length and keeps content readable on wide viewports. Used by page layout styles; consumers can override per scope.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-content-width",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      },
+      "narrow": {
+        "$value": { "value": 40, "unit": "rem" },
+        "$description": "Tighter centered column width.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-content-width-narrow",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      },
+      "wide": {
+        "$value": { "value": 90, "unit": "rem" },
+        "$description": "Roomier centered column width.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-content-width-wide",
+            "public": true,
+            "category": "size",
+            "cssRecipe": null
+          }
+        }
+      },
+      "prose": {
+        "$type": "number",
+        "$value": 65,
+        "$description": "Prose column width, 65ch — caps line length at a readable measure. Expressed as a unitless number with a ch recipe because DTCG dimension units are limited to px and rem.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-content-width-prose",
+            "public": true,
+            "category": "layout",
+            "cssRecipe": "65ch"
+          }
+        }
+      }
+    }
+  },
+  "ease": {
+    "$type": "cubicBezier",
+    "standard": {
+      "$value": [0.2, 0, 0, 1],
+      "$description": "Standard easing curve.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-ease-standard",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "decelerate": {
+      "$value": [0, 0, 0, 1],
+      "$description": "Decelerate-in easing curve.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-ease-decelerate",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "accelerate": {
+      "$value": [0.3, 0, 1, 1],
+      "$description": "Accelerate-out easing curve.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-ease-accelerate",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "in-out": {
+      "$value": [0.4, 0, 0.2, 1],
+      "$description": "Ease-in-out curve.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-ease-in-out",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "spring": {
+      "$value": [0.22, 1, 0.36, 1],
+      "$description": "A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) — a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-ease-spring",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
     }
   },
   "motion": {
     "$type": "duration",
+    "$description": "Transition and repeating-animation durations. All nine tokens in this group are re-declared verbatim (to 0ms) by the `motion=reduced` and `motion=forced-reduced-motion` modifier documents.",
+    "$root": {
+      "$value": { "value": 200, "unit": "ms" },
+      "$description": "Base transition duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "instant": {
+      "$value": { "value": 0, "unit": "ms" },
+      "$description": "Instant (no) transition duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-instant",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
     "fast": {
       "$value": { "value": 120, "unit": "ms" },
       "$description": "Fast interaction duration before a reduced-motion modifier applies.",
@@ -40,6 +957,224 @@
           "cssProperty": "--cinder-duration-fast",
           "public": true,
           "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "normal": {
+      "$value": "{motion}",
+      "$description": "Alias of the base transition duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-normal",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "moderate": {
+      "$value": { "value": 280, "unit": "ms" },
+      "$description": "Moderate transition duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-moderate",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "slow": {
+      "$value": { "value": 400, "unit": "ms" },
+      "$description": "Slow transition duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-slow",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "spin": {
+      "$value": { "value": 750, "unit": "ms" },
+      "$description": "Repeating spin animation duration.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-spin",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
+    "progress": {
+      "bar": {
+        "indeterminate": {
+          "$value": { "value": 1.6, "unit": "s" },
+          "$description": "Repeating indeterminate progress-bar animation duration.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-duration-progress-bar-indeterminate",
+              "public": true,
+              "category": "motion",
+              "cssRecipe": null
+            }
+          }
+        }
+      },
+      "ring": {
+        "spin": {
+          "$value": { "value": 1.4, "unit": "s" },
+          "$description": "Repeating progress-ring spin animation duration.",
+          "$extensions": {
+            "com.lostgradient.cinder": {
+              "cssProperty": "--cinder-duration-progress-ring-spin",
+              "public": true,
+              "category": "motion",
+              "cssRecipe": null
+            }
+          }
+        }
+      }
+    }
+  },
+  "opacity": {
+    "$type": "number",
+    "$description": "Shared opacity values for disabled/muted/faint UI states. No opacity hover tier exists deliberately: state colors preserve text contrast where whole-element opacity would dim labels against an unknown backdrop.",
+    "disabled": {
+      "$value": 0.55,
+      "$description": "Opacity for disabled elements.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-opacity-disabled",
+          "public": true,
+          "category": "opacity",
+          "cssRecipe": null
+        }
+      }
+    },
+    "muted": {
+      "$value": 0.72,
+      "$description": "Opacity for muted elements.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-opacity-muted",
+          "public": true,
+          "category": "opacity",
+          "cssRecipe": null
+        }
+      }
+    },
+    "faint": {
+      "$value": 0.4,
+      "$description": "Opacity for faint elements.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-opacity-faint",
+          "public": true,
+          "category": "opacity",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "z": {
+    "$type": "number",
+    "$description": "Layering order: tooltip < dropdown/popover < backdrop < modal/drawer < toast < focused affordance < drag preview. Backdrop sits between floating surfaces and dialogs so it dims the page and floating surfaces (tooltips, dropdowns) without obscuring the dialog panel it is paired with. Toast sits above modal so confirmations and warnings reach users even when a modal is open.",
+    "tooltip": {
+      "$value": 1000,
+      "$description": "Tooltip layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-tooltip",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "dropdown": {
+      "$value": 1100,
+      "$description": "Dropdown layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-dropdown",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "popover": {
+      "$value": 1100,
+      "$description": "Popover layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-popover",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "backdrop": {
+      "$value": 1150,
+      "$description": "Modal/drawer backdrop layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-backdrop",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "modal": {
+      "$value": 1200,
+      "$description": "Modal/drawer panel layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-modal",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "toast": {
+      "$value": 1300,
+      "$description": "Toast layer, above modal so confirmations reach users even when a modal is open.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-toast",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "focused-affordance": {
+      "$value": 1350,
+      "$description": "Focused-affordance layer.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-focused-affordance",
+          "public": true,
+          "category": "z-index",
+          "cssRecipe": null
+        }
+      }
+    },
+    "drag-preview": {
+      "$value": 1400,
+      "$description": "Drag-preview layer, the topmost tier.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-z-drag-preview",
+          "public": true,
+          "category": "z-index",
           "cssRecipe": null
         }
       }
