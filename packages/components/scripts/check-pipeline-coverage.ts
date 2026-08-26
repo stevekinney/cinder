@@ -206,6 +206,13 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants — same layer set.',
   },
+  'check:timeout-increases': {
+    layers: ['unit-tests'],
+    reason:
+      'Pull-request diff guard in unit-tests.yaml scope job. It is deliberately PR-scoped because ' +
+      'it compares origin/${BASE_REF} against HEAD; non-pull-request events keep the workflow valid ' +
+      'without a base ref.',
+  },
   'tokens:literals': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',

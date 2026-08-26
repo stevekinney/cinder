@@ -108,6 +108,7 @@ repomix-output.xml
 .env
 .env.local
 .env.*.local
+.envrc
 tmp/
 
 # Vercel CLI local state (vercel pull / vercel build write here)

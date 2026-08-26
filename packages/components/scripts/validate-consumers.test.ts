@@ -5,14 +5,24 @@ import { join } from 'node:path';
 
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
-import type { SvelteKitChatHydrationDevServerOptions } from './validate-consumers.ts';
 import {
+  boundedDiagnosticSnapshot,
   bumpPackageVersion,
+  captureSvelteKitHydrationRouteFailureSnapshot,
   chatPeerValidationTarballPath,
+  createBoundedDiagnosticCollection,
+  diagnosticSnapshotFromValues,
   EXAMPLES_CONSUMER_READINESS_PATH,
+  formatSvelteKitHydrationRouteFailure,
+  formatSvelteKitHydrationRuntimeErrors,
+  isBrowserCrashError,
+  observeSvelteKitHydrationMarker,
+  observeSvelteKitHydrationMarkerAlongside,
+  observeSvelteKitHydrationMarkerBestEffort,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
+  recordBoundedDiagnostic,
   removeFixtureEntries,
   resolveChatFixtureCinderVersion,
   runBoundedHydrationTeardown,
@@ -20,6 +30,10 @@ import {
   stopDevelopmentServer,
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
+  wrapSvelteKitHydrationRouteFailure,
+  type SvelteKitChatHydrationDevServerOptions,
+  type SvelteKitHydrationRouteDomObservation,
+  type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
 
 describe('consumer fixture cleanup', () => {
@@ -162,6 +176,339 @@ describe('SvelteKit hydration route matrix', () => {
     ]);
     expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/subpath');
     expect(SVELTEKIT_HYDRATION_ROUTES).not.toContain('/dev-ssr');
+  });
+});
+
+describe('SvelteKit hydration route failure diagnostics', () => {
+  const snapshot: SvelteKitHydrationRouteFailureSnapshot = {
+    browserEvents: diagnosticSnapshotFromValues(['browser:connected']),
+    currentUrl: 'http://127.0.0.1:4173/dev-ssr-tabs',
+    documentReadyState: 'interactive',
+    hydrationMarkerPresent: true,
+    hydrationMarkerSelector: '[data-dev-ssr-hydrated]',
+    hydrationMarkerValue: 'false',
+    nonOkResponses: diagnosticSnapshotFromValues(['500 http://127.0.0.1:4173/api/bootstrap']),
+    requestFailures: diagnosticSnapshotFromValues([
+      'requestfailed route=/dev-ssr-tabs url=http://127.0.0.1:4173/chunk.js failure=net::ERR_FAILED',
+    ]),
+    runtimeErrors: diagnosticSnapshotFromValues(['hydration_mismatch: expected tab trigger']),
+  };
+
+  test('bounds diagnostic collections while tracking omitted events', () => {
+    const collection = createBoundedDiagnosticCollection();
+    for (let index = 0; index < 25; index += 1) {
+      recordBoundedDiagnostic(collection, `event ${index}`);
+    }
+
+    expect(collection.values).toHaveLength(20);
+    expect(collection.omitted).toBe(5);
+    expect(boundedDiagnosticSnapshot(collection)).toEqual({
+      omitted: 5,
+      values: Array.from({ length: 20 }, (_, index) => `event ${index}`),
+    });
+  });
+
+  test('formats a 100-event collection as the first two events plus the true omitted count', () => {
+    const collection = createBoundedDiagnosticCollection();
+    for (let index = 0; index < 100; index += 1) {
+      recordBoundedDiagnostic(collection, `event ${index}`);
+    }
+
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: {
+        ...snapshot,
+        runtimeErrors: boundedDiagnosticSnapshot(collection),
+      },
+    });
+
+    expect(message).toContain('  - event 0');
+    expect(message).toContain('  - event 1');
+    expect(message).toContain('98 additional item(s) omitted');
+    expect(message).not.toContain('event 2');
+    expect(boundedDiagnosticSnapshot(collection).values).not.toContain(
+      '... (80 additional collected item(s) omitted)',
+    );
+  });
+
+  test('captures only immediate diagnostics without evaluating the page', () => {
+    const evaluate = mock(() => {
+      throw new Error('evaluate should not be called');
+    });
+    const page = {
+      evaluate,
+      url: () => 'http://127.0.0.1:4173/dev-ssr-tabs',
+    };
+
+    const captured = captureSvelteKitHydrationRouteFailureSnapshot(page, {
+      browserEvents: ['browser:connected'],
+      domObservation: {
+        documentReadyState: 'complete',
+        hydrationMarkerPresent: true,
+        hydrationMarkerValue: 'true',
+      },
+      errors: diagnosticSnapshotFromValues(['runtime error']),
+      nonOkResponses: diagnosticSnapshotFromValues(['500 http://fixture.test/api']),
+      requestFailures: diagnosticSnapshotFromValues(['request failed']),
+      routePath: '/dev-ssr-tabs',
+    });
+
+    expect(evaluate).not.toHaveBeenCalled();
+    expect(captured.currentUrl).toBe('http://127.0.0.1:4173/dev-ssr-tabs');
+    expect(captured.documentReadyState).toBe('complete');
+    expect(captured.hydrationMarkerPresent).toBe(true);
+    expect(captured.hydrationMarkerValue).toBe('true');
+    expect(captured.runtimeErrors.values).toEqual(['runtime error']);
+  });
+
+  test('captures a present false marker before the hydration readiness wait fails', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const marker = {
+      getAttribute: mock(async (attribute: string) => {
+        expect(attribute).toBe('data-dev-ssr-hydrated');
+        return 'false';
+      }),
+    };
+    const page = {
+      $: mock(async (selector: string) => {
+        expect(selector).toBe('[data-dev-ssr-hydrated]');
+        return marker;
+      }),
+    };
+
+    await observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation);
+    await expect(Promise.reject(new Error('hydration readiness wait failed'))).rejects.toThrow(
+      'hydration readiness wait failed',
+    );
+
+    expect(domObservation.hydrationMarkerPresent).toBe(true);
+    expect(domObservation.hydrationMarkerValue).toBe('false');
+  });
+
+  test('bounds a hydration marker protocol probe that never settles', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await expect(
+      observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 1),
+    ).rejects.toThrow('hydration marker probe selector=[data-dev-ssr-hydrated] timed out');
+  });
+
+  test('bounds a hydration marker attribute read that never settles', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = {
+      $: mock(async () => ({ getAttribute: () => new Promise<string | null>(() => undefined) })),
+    };
+
+    await expect(
+      observeSvelteKitHydrationMarker(page, '/dev-ssr-tabs', domObservation, 1),
+    ).rejects.toThrow('hydration marker probe selector=[data-dev-ssr-hydrated] timed out');
+  });
+
+  test('records a hydration marker diagnostic failure without replacing the route assertion', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await observeSvelteKitHydrationMarkerBestEffort(page, '/dev-ssr-tabs', domObservation, 1);
+
+    expect(domObservation.diagnosticCaptureError).toContain(
+      'hydration marker probe selector=[data-dev-ssr-hydrated] timed out',
+    );
+    expect(domObservation.hydrationMarkerPresent).toBe('unknown');
+    expect(domObservation.hydrationMarkerValue).toBe('unknown');
+  });
+
+  test('shares the hydration readiness window with the diagnostic probe', async () => {
+    const domObservation: SvelteKitHydrationRouteDomObservation = {
+      documentReadyState: 'interactive',
+      hydrationMarkerPresent: 'unknown',
+      hydrationMarkerValue: 'unknown',
+    };
+    const page = { $: mock(() => new Promise<null>(() => undefined)) };
+
+    await expect(
+      observeSvelteKitHydrationMarkerAlongside(
+        page,
+        '/dev-ssr-tabs',
+        domObservation,
+        Promise.reject(new Error('hydration readiness wait failed')),
+        50,
+      ),
+    ).rejects.toThrow('hydration readiness wait failed');
+    expect(domObservation.diagnosticCaptureError).toContain('hydration marker probe');
+  });
+
+  test('wraps route failures with route, network, runtime, and DOM state', () => {
+    const cause = new Error('locator wait timed out');
+    const error = wrapSvelteKitHydrationRouteFailure({
+      cause,
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(error.cause).toBe(cause);
+    expect(error.message).toContain('sveltekit-consumer fixture /dev-ssr-tabs');
+    expect(error.message).toContain('currentUrl: http://127.0.0.1:4173/dev-ssr-tabs');
+    expect(error.message).toContain('documentReadyState: interactive');
+    expect(error.message).toContain(
+      'hydrationMarker: selector=[data-dev-ssr-hydrated] present=true value=false',
+    );
+    expect(error.message).toContain('500 http://127.0.0.1:4173/api/bootstrap');
+    expect(error.message).toContain('net::ERR_FAILED');
+    expect(error.message).toContain('hydration_mismatch');
+  });
+
+  test('bounds repeated diagnostic output', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: {
+        ...snapshot,
+        nonOkResponses: diagnosticSnapshotFromValues(
+          Array.from(
+            { length: 20 },
+            (_, index) => `500 http://fixture.test/network-error-${index}-${'n'.repeat(800)}`,
+          ),
+        ),
+        requestFailures: diagnosticSnapshotFromValues(
+          Array.from({ length: 20 }, (_, index) => `request failure ${index} ${'r'.repeat(800)}`),
+        ),
+        runtimeErrors: diagnosticSnapshotFromValues(
+          Array.from({ length: 20 }, (_, index) => `runtime error ${index} ${'x'.repeat(800)}`),
+        ),
+        browserEvents: diagnosticSnapshotFromValues(
+          Array.from({ length: 20 }, (_, index) => `browser event ${index} ${'b'.repeat(800)}`),
+        ),
+      },
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('item(s) omitted');
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
+  test('bounds the direct hydration runtime-error message', () => {
+    const message = formatSvelteKitHydrationRuntimeErrors('fixture', '/dev-ssr-tabs', {
+      omitted: 3,
+      values: Array.from({ length: 20 }, (_, index) => `runtime error ${index} ${'x'.repeat(800)}`),
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('21 additional collected item(s) omitted');
+  });
+
+  test('caps the cause without starving structured diagnostic categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('c'.repeat(10_000)),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
+  test('caps diagnostic-capture errors without starving structured categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: { ...snapshot, diagnosticCaptureError: 'd'.repeat(10_000) },
+    });
+
+    expect(message.length).toBeLessThanOrEqual(6_000);
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('HTTP error responses');
+    expect(message).toContain('request failures');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
+  test('caps the current URL without starving structured diagnostic categories', () => {
+    const message = formatSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: { ...snapshot, currentUrl: `https://example.test/?state=${'x'.repeat(10_000)}` },
+    });
+
+    expect(message).toContain('char(s) omitted');
+    expect(message).toContain('documentReadyState');
+    expect(message).toContain('page and console errors');
+    expect(message).toContain('browser events');
+  });
+
+  test('classifies browser crashes from the original cause instead of diagnostics', () => {
+    const contentFailure = wrapSvelteKitHydrationRouteFailure({
+      cause: new Error('locator wait timed out'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot: {
+        ...snapshot,
+        runtimeErrors: diagnosticSnapshotFromValues(['application worker crashed']),
+      },
+    });
+    const browserCrash = wrapSvelteKitHydrationRouteFailure({
+      cause: new Error('Target closed'),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(isBrowserCrashError(contentFailure)).toBe(false);
+    expect(isBrowserCrashError(browserCrash)).toBe(true);
+  });
+
+  test('classifies a browser crash found before a deeper original cause', () => {
+    const browserCrash = wrapSvelteKitHydrationRouteFailure({
+      cause: new Error('Target closed', { cause: new Error('socket closed') }),
+      label: 'fixture',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(isBrowserCrashError(browserCrash)).toBe(true);
+  });
+
+  test('falls back to a wrapped browser crash when the cause is absent', () => {
+    const browserCrash = wrapSvelteKitHydrationRouteFailure({
+      cause: undefined,
+      label: 'Target closed',
+      routePath: '/dev-ssr-tabs',
+      snapshot,
+    });
+
+    expect(isBrowserCrashError(browserCrash)).toBe(true);
   });
 });
 
