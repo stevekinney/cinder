@@ -333,8 +333,8 @@ describe('Spectrogram', () => {
     const expectedCellCount = Math.ceil(frameCount / frameStep) * Math.ceil(binCount / binStep);
 
     const cells = container.querySelectorAll('.cinder-spectrogram__cell');
+    expect(expectedCellCount).toBe(11_524);
     expect(cells.length).toBe(expectedCellCount);
-    expect(cells.length).toBe(11_524);
     expect(cells.length).toBeLessThanOrEqual(maxPlotFrames * maxPlotBins);
 
     const plotFrameCount = Math.ceil(frameCount / frameStep);
