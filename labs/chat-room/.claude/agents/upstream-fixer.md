@@ -9,7 +9,7 @@ You own an upstream defect from confirmation to a fix consumed here. Read the "F
 **Which loop applies depends on where the package lives.** Since the merge into the cinder monorepo (2026-08-25), `@lostgradient/cinder`, `@lostgradient/chat`, `@lostgradient/editor`, `@lostgradient/markdown`, and `@lostgradient/cinder-mcp` are workspace siblings under `packages/*`, consumed via `workspace:*` — a fix there reaches this lab the moment it merges, with no dependency-sync step. Two qualifiers:
 
 - **The lab being green does not release the fix.** If the defect ships in a published `@lostgradient/*` version that npm consumers are on, the merge is not the finish line: drive the changesets version PR through publication and confirm the npm version, exactly as the release mechanics below describe, before the Linear issue closes. Published-package evidence, not a merged pull request, is what completes an owned-package defect per the standing Lost Gradient rule; the workspace merge only removed the sync-back leg.
-- **`@lostgradient/cinder-mcp` is not source-conditioned.** The lab's `.mcp.json` invokes the package binary, whose `bin` entry points at the generated `packages/mcp/dist/bin.js` — neither merging nor the Playwright suite rebuilds it. For a cinder-mcp fix, run that package's build and its own tests (`bun run --filter=@lostgradient/cinder-mcp build` and `bun run --filter=@lostgradient/cinder-mcp test`) before treating the fix as consumable here.
+- **"Reaches the lab at merge" holds only for source-conditioned exports.** Any consumed subpath whose export map lacks a `browser`/`svelte` source condition resolves to generated `dist/**` that neither merging nor the lab's Playwright web server rebuilds — that includes `@lostgradient/editor/export`, `/session`, and `/comments`, and `@lostgradient/cinder-mcp` entirely (its `.mcp.json` binary is the generated `packages/mcp/dist/bin.js`). After fixing such a module, rebuild the owning package (`bun run --filter=<pkg> build`, plus `bun run --filter=@lostgradient/cinder-mcp test` for MCP) before trusting the lab's suite as evidence the fix is consumed. Check the export map, don't assume.
 
 The registry-and-sync mechanics apply in full only to agent-bureau-owned packages (`conversationalist`, `armorer`), which still install from npm.
 
@@ -37,15 +37,19 @@ Never bump a timeout, retry count, or wait threshold to make something pass. Tha
 
 Add a changeset explaining why, not just what. Nothing ships without one.
 
-## Release mechanics that will otherwise cost you an hour (agent-bureau packages only)
+## Release mechanics that will otherwise cost you an hour
+
+These apply to **every published owned package** — a `@lostgradient/*` defect that shipped in an npm release needs this leg just as much as an agent-bureau one; only the dependency-bump step at the end is agent-bureau-specific (the lab consumes `@lostgradient/*` from the workspace, so there is nothing to bump here for those).
 
 Drive the PR to green across the full package suites, typecheck, lint, and any generated-artifact check. Work review findings rather than merging over them; a round that finds something real is a reason to expect another round.
 
 After merge, the changesets bot opens a `chore: version packages` PR. **Its workflows sit in `action_required` and will never run until approved** — approve them with `gh api -X POST repos/<owner>/<repo>/actions/runs/<id>/approve`. Merge that PR, then wait for the `release` workflow on `main` to finish. Publishing happens at the end of that workflow, so checking npm before it completes will show the old version and mean nothing.
 
-**Confirm the publish landed** with `npm view <pkg> version` before bumping here. A merged-but-unpublished agent-bureau fix does not reach this lab, which installs those packages from the registry.
+**Confirm the publish landed** with `npm view <pkg> version` before declaring the release leg complete — for any published owned package. For agent-bureau packages that confirmation also gates the dependency bump here, since the lab installs them from the registry.
 
 ## Coming back
+
+**Clean up any `upstream:` marker the fix satisfies.** If the defect had a marked local workaround here, remove the workaround and its marker in the same change (or, if the problem still reproduces, reopen the issue and leave the marker), then run `bun run check:upstream` and expect it green — a closed issue with a live marker fails that check for whoever comes next.
 
 For `@lostgradient/*` fixes there is nothing to sync: the lab consumes the workspace sources, so re-run the lab's Playwright suite in the same branch as the fix and **expect committed tests to fail**. A behavior change arriving as a failing assertion is the lab working as designed — update those tests to the new contract in the same pull request as the fix.
 

@@ -32,8 +32,8 @@ As of Cinder 0.16, `Chat` lives in its own package, `@lostgradient/chat`. As of
 `@lostgradient/chat@0.9.4` it peer-depends on exactly three things: `@lostgradient/cinder` (the
 design primitives), `@lostgradient/markdown`, and `svelte`. `conversationalist` and `zod` are
 **not** peers — they are chat's own regular dependencies, which is precisely what the cinder#753
-fix documented below moved them to. chatroom installs the `@lostgradient/*` packages from npm and
-provides those peers; `@lostgradient/cinder` still supplies the base styles, it's just no longer
+fix documented below moved them to. chatroom consumes the `@lostgradient/*` packages from the
+monorepo workspace (`workspace:*`) and provides those peers; `@lostgradient/cinder` still supplies the base styles, it's just no longer
 where `Chat` itself comes from.
 
 ## Working across `chatroom` and `../cinder`
