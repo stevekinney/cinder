@@ -5,7 +5,14 @@
 > published-package consumption, `bun run sync:cinder`, `check:peers`, or "switching into
 > `../cinder`" is superseded by that move; the `sync-cinder` skill and the `sync:cinder` /
 > `check:peers` scripts were removed with it. The broader documentation cleanup is tracked in
-> the Linear issue formerly known as CHR-11 ("Delete the dead weight, update the docs").
+> CIN-442 ("Delete the dead weight, update the docs", formerly CHR-11). Until that rewrite
+> lands, treat the remaining `sync:cinder`, `check:peers`, and published-version _consumption_
+> instructions below (installing, syncing, or bumping the workspace `@lostgradient/*` packages
+> from npm) as historical — do not run them. Two things stay real: the release steps for an
+> owned package whose defect shipped in a published version (changesets release, npm
+> confirmation — registry consumers still need the publish even though this lab does not), and
+> the agent-bureau packages (`conversationalist`, `armorer`), which still install from npm with
+> their full publish-and-bump cycle.
 > The pre-merge history lives in the archived `stevekinney/chatroom` repository.
 
 ## Project Configuration
@@ -17,7 +24,7 @@
 ## Purpose
 
 This project exists to kick the tires on the `Chat` component from `@lostgradient/chat`
-(installed from npm) and drive it with the Anthropic SDK, working toward a best-in-class chat
+(consumed from the monorepo workspace) and drive it with the Anthropic SDK, working toward a best-in-class chat
 experience. It is a testbed, not a product — expect the demo route and conversation wiring to
 change often as we try things against the real component.
 
@@ -28,8 +35,8 @@ As of Cinder 0.16, `Chat` lives in its own package, `@lostgradient/chat`. As of
 `@lostgradient/chat@0.9.4` it peer-depends on exactly three things: `@lostgradient/cinder` (the
 design primitives), `@lostgradient/markdown`, and `svelte`. `conversationalist` and `zod` are
 **not** peers — they are chat's own regular dependencies, which is precisely what the cinder#753
-fix documented below moved them to. chatroom installs the `@lostgradient/*` packages from npm and
-provides those peers; `@lostgradient/cinder` still supplies the base styles, it's just no longer
+fix documented below moved them to. chatroom consumes the `@lostgradient/*` packages from the
+monorepo workspace (`workspace:*`) and provides those peers; `@lostgradient/cinder` still supplies the base styles, it's just no longer
 where `Chat` itself comes from.
 
 ## Working across `chatroom` and `../cinder`
