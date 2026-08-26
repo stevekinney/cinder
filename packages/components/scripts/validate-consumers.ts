@@ -2767,18 +2767,13 @@ type SvelteKitHydrationRouteFailureInput = {
   snapshot: SvelteKitHydrationRouteFailureSnapshot;
 };
 
-function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): {
-  hydratedSelector: string;
-  selector: string;
-} {
+function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): { selector: string } {
   if (routePath === '/chat-layout') {
     return {
-      hydratedSelector: '[data-chat-layout-hydrated="true"]',
       selector: '[data-chat-layout-hydrated]',
     };
   }
   return {
-    hydratedSelector: '[data-dev-ssr-hydrated="true"]',
     selector: '[data-dev-ssr-hydrated]',
   };
 }
