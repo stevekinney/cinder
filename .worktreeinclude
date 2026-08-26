@@ -1,0 +1,5 @@
+# Gitignored, non-secret files copied into each new worktree that Claude Code
+# creates. Uses .gitignore syntax. Only files that match AND are gitignored
+# are copied, so tracked files are never duplicated. Do not add environment
+# files here: Claude worktrees allow Bash, so Read denies cannot protect copied
+# credentials from shell access.
