@@ -1,5 +1,4 @@
 {
   "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
-  "$extensions": { "com.lostgradient.cinder": { "modifier": { "motion": "default" } } },
-  "motion": { "$type": "duration", "fast": { "$value": { "value": 120, "unit": "ms" } } }
+  "$description": "The default motion context applies no overrides: the base motion tokens in sets/foundation.tokens.json are already the default-motion values. This document exists because the resolver's motion modifier needs a source for every context, and it is deliberately empty. Re-declaring the motion tree here would replace those canonical tokens during resolution, dropping their $description and $extensions and flattening motion.normal's {motion} alias into a literal."
 }

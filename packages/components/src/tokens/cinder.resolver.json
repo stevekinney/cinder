@@ -5,7 +5,9 @@
     "foundation": {
       "sources": [
         { "$ref": "sets/foundation.tokens.json" },
-        { "$ref": "sets/semantic.tokens.json" }
+        { "$ref": "sets/semantic.tokens.json" },
+        { "$ref": "sets/colors.tokens.json" },
+        { "$ref": "sets/components.tokens.json" }
       ]
     }
   },
@@ -20,7 +22,8 @@
     "motion": {
       "contexts": {
         "default": [{ "$ref": "modes/motion-default.tokens.json" }],
-        "reduced": [{ "$ref": "modes/motion-reduced.tokens.json" }]
+        "reduced": [{ "$ref": "modes/motion-reduced.tokens.json" }],
+        "forced-reduced-motion": [{ "$ref": "modes/motion-forced-reduced.tokens.json" }]
       },
       "default": "default"
     }

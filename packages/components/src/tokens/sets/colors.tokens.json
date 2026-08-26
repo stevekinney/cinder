@@ -1,0 +1,357 @@
+{
+  "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
+  "color": {
+    "$type": "color",
+    "$description": "Status and role color triples (background/foreground/border) for soft tinted surfaces, plus muted/subtle derivatives. Used by components like Alert and Toast that need a soft tinted surface with semantically-paired text and border colors; the solid `accent`/`danger`/`info`/`success`/`warning` tokens remain for accent fills such as solid badges.",
+    "accent": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.93472, 0.02816, 256.8] },
+        "$description": "Soft accent-tinted background, mixed 88% toward the current surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-accent-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)"
+          }
+        }
+      },
+      "foreground": {
+        "$value": "{accent.text}",
+        "$description": "Foreground color on the soft accent surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-accent-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": null
+          }
+        }
+      },
+      "border": {
+        "$value": { "colorSpace": "oklch", "components": [0.5, 0.22, 270], "alpha": 0.4 },
+        "$description": "Soft accent-tinted border, the accent color mixed 60% toward transparent.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-accent-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "color-mix(in oklch, var(--cinder-accent), transparent 60%)"
+          }
+        }
+      }
+    },
+    "checker": {
+      "base": {
+        "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" },
+        "$description": "Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-checker-base",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(#fff, oklch(28% 0.02 245))"
+          }
+        }
+      },
+      "tile": {
+        "$value": { "colorSpace": "srgb", "components": [0.8, 0.8, 0.8], "hex": "#cccccc" },
+        "$description": "Transparency checkerboard alternate tile.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-checker-tile",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(#ccc, oklch(38% 0.02 245))"
+          }
+        }
+      }
+    },
+    "danger": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.945, 0.026, 25] },
+        "$description": "Soft danger-tinted surface background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-danger-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25))"
+          }
+        }
+      },
+      "foreground": {
+        "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 25] },
+        "$description": "Foreground color on the soft danger surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-danger-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25))"
+          }
+        }
+      },
+      "border": {
+        "$value": { "colorSpace": "oklch", "components": [0.8, 0.06, 25] },
+        "$description": "Border color on the soft danger surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-danger-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25))"
+          }
+        }
+      },
+      "muted": {
+        "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 338.2] },
+        "$description": "Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-danger-muted",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+          }
+        }
+      },
+      "subtle": {
+        "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 334.6] },
+        "$description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-danger-subtle",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h )"
+          }
+        }
+      }
+    },
+    "info": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.945, 0.03, 230] },
+        "$description": "Soft info-tinted surface background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-info-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230))"
+          }
+        }
+      },
+      "foreground": {
+        "$value": { "colorSpace": "oklch", "components": [0.4, 0.079, 230] },
+        "$description": "Foreground color on the soft info surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-info-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230))"
+          }
+        }
+      },
+      "border": {
+        "$value": { "colorSpace": "oklch", "components": [0.8, 0.05, 230] },
+        "$description": "Border color on the soft info surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-info-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230))"
+          }
+        }
+      },
+      "muted": {
+        "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 239] },
+        "$description": "Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-info-muted",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+          }
+        }
+      },
+      "subtle": {
+        "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 235.4] },
+        "$description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-info-subtle",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h )"
+          }
+        }
+      }
+    },
+    "neutral": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.945, 0.004, 255] },
+        "$description": "Soft neutral-tinted surface background. Neutral retains the status-triple shape so components never need ad hoc surface mixing for the default variant.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-neutral-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245))"
+          }
+        }
+      },
+      "foreground": {
+        "$value": "{text}",
+        "$description": "Foreground color on the soft neutral surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-neutral-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": null
+          }
+        }
+      },
+      "border": {
+        "$value": "{border.control}",
+        "$description": "Border color on the soft neutral surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-neutral-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "success": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.945, 0.045, 145] },
+        "$description": "Soft success-tinted surface background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-success-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145))"
+          }
+        }
+      },
+      "foreground": {
+        "$value": { "colorSpace": "oklch", "components": [0.4, 0.127, 145] },
+        "$description": "Foreground color on the soft success surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-success-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145))"
+          }
+        }
+      },
+      "border": {
+        "$value": { "colorSpace": "oklch", "components": [0.8, 0.05, 145] },
+        "$description": "Border color on the soft success surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-success-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145))"
+          }
+        }
+      },
+      "muted": {
+        "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 184.6] },
+        "$description": "Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-success-muted",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+          }
+        }
+      },
+      "subtle": {
+        "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 181] },
+        "$description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-success-subtle",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h )"
+          }
+        }
+      }
+    },
+    "warning": {
+      "background": {
+        "$value": { "colorSpace": "oklch", "components": [0.945, 0.042, 75] },
+        "$description": "Soft warning-tinted surface background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-warning-bg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75))"
+          }
+        }
+      },
+      "foreground": {
+        "$value": { "colorSpace": "oklch", "components": [0.4, 0.085, 75] },
+        "$description": "Foreground color on the soft warning surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-warning-fg",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75))"
+          }
+        }
+      },
+      "border": {
+        "$value": { "colorSpace": "oklch", "components": [0.8, 0.06, 75] },
+        "$description": "Border color on the soft warning surface.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-warning-border",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75))"
+          }
+        }
+      },
+      "muted": {
+        "$value": { "colorSpace": "oklch", "components": [0.70344, 0.05, 139.8] },
+        "$description": "Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-warning-muted",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+          }
+        }
+      },
+      "subtle": {
+        "$value": { "colorSpace": "oklch", "components": [0.4176, 0.05, 136.2] },
+        "$description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-color-warning-subtle",
+            "public": true,
+            "category": "color",
+            "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h )"
+          }
+        }
+      }
+    }
+  }
+}
