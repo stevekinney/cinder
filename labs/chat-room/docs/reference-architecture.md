@@ -6,9 +6,9 @@
 
 Chatroom's canonical exemplar keeps the `ConversationHistory` in the browser and posts the complete history to the server for each turn. The server owns the agent loop, provider credentials, toolbox, approval policy, and approval secret. This gives us one useful split: the browser owns _conversation state_, while the server owns _execution authority_.
 
-The server-owned session model is a conditional variant, not a co-equal default. [CHR-2](https://linear.app/lost-gradient/issue/CHR-2/decide-the-canonical-state-model-for-the-operative-exemplar) made that decision explicitly. [CHR-15](https://linear.app/lost-gradient/issue/CHR-15/spike-whether-operatives-session-primitives-alone-can-carry-conversation-list) then proved that Operative's public session and durable-run primitives are sufficient for that variant. Bureau remains an internal application and is not a Chatroom dependency.
+The server-owned session model is a conditional variant, not a co-equal default. [CIN-433](https://linear.app/lost-gradient/issue/CIN-433/decide-the-canonical-state-model-for-the-operative-exemplar) made that decision explicitly. [CIN-446](https://linear.app/lost-gradient/issue/CIN-446/spike-whether-operatives-session-primitives-alone-can-carry-conversation-list) then proved that Operative's public session and durable-run primitives are sufficient for that variant. Bureau remains an internal application and is not a Chatroom dependency.
 
-This document is the design authority for CHR-3 through CHR-14. A downstream pull request must link to the exact section that governs each design choice. If implementation evidence contradicts a decision here, update this document in the same pull request _before_ changing the implementation.
+This document is the design authority for CIN-434 through CIN-445. A downstream pull request must link to the exact section that governs each design choice. If implementation evidence contradicts a decision here, update this document in the same pull request _before_ changing the implementation.
 
 <a id="api-surface-and-versioning"></a>
 
@@ -103,9 +103,9 @@ Each frame carries `wireVersion: 1`, a request-local monotonically increasing `s
 
 The exact public baseline types involved are `StreamEvent`, `RunEvent`, and `RunCompletedEvent` from `@lostgradient/operative@0.1.0`. At that version, `withEnhancedStreaming(createAnthropicProviderStream(...), { eventTarget })` supplies the structured `stream:*` events and the `AgentRun` async iterator supplies tool and run lifecycle events. `withStreaming()` alone updates the conversation but does not expose the structured streaming event target required by this wire contract.
 
-Before CHR-5 writes application code, it must verify that the installed `@lostgradient/operative@0.2.0` declarations export those APIs and discriminants or their documented replacements. If the surface changed, this section changes first. Chatroom does not preserve both shapes with a compatibility adapter. The approved `0.2.0` Agent API specification settles the nested `RunCompletedEvent.result` shape but does not settle `StreamEvent`, `withEnhancedStreaming()`, or the tool-event vocabulary.
+Before CIN-436 writes application code, it must verify that the installed `@lostgradient/operative@0.2.0` declarations export those APIs and discriminants or their documented replacements. If the surface changed, this section changes first. Chatroom does not preserve both shapes with a compatibility adapter. The approved `0.2.0` Agent API specification settles the nested `RunCompletedEvent.result` shape but does not settle `StreamEvent`, `withEnhancedStreaming()`, or the tool-event vocabulary.
 
-The published `0.1.0` implementation does not prove the required timing for every event. In particular, CHR-5 requires tool-call events while the provider response is still open. The `0.2.0` registry verification must demonstrate that timing with the real public wrapper. If `stream:tool-call-*` still arrives only after the generate function resolves, that is an upstream blocker, not permission to return to Chatroom's ad hoc `tool_call` frame.
+The published `0.1.0` implementation does not prove the required timing for every event. In particular, CIN-436 requires tool-call events while the provider response is still open. The `0.2.0` registry verification must demonstrate that timing with the real public wrapper. If `stream:tool-call-*` still arrives only after the generate function resolves, that is an upstream blocker, not permission to return to Chatroom's ad hoc `tool_call` frame.
 
 The `0.2.0` contract nests a completed event's terminal data under `result`; the wire follows that shape instead of flattening a second result vocabulary. The route may omit unrelated public events, but it may not rename a selected discriminant or forward internal provider events. Events from the streaming target and the run iterator enter one request-local sequencer before encoding, so their relative order is explicit rather than dependent on two consumers racing to call `controller.enqueue()`.
 
@@ -153,7 +153,7 @@ No automatic host retry is added. Retry policy configured explicitly on `createA
 
 ## Guardrails and context
 
-Guardrails and context management are agent-owned `createAgent` configuration in the `0.2.0` contract. CHR-9 may demonstrate `createPromptInjectionDetector()` and `createContextCompactor()`, but it may not move trust decisions or canonical history into the browser. A tripwire follows the terminal error-frame contract. Compaction changes the model-visible projection, not the browser's authoritative transcript, unless a later decision updates this document explicitly.
+Guardrails and context management are agent-owned `createAgent` configuration in the `0.2.0` contract. CIN-440 may demonstrate `createPromptInjectionDetector()` and `createContextCompactor()`, but it may not move trust decisions or canonical history into the browser. A tripwire follows the terminal error-frame contract. Compaction changes the model-visible projection, not the browser's authoritative transcript, unless a later decision updates this document explicitly.
 
 <a id="lifecycle-and-disposal"></a>
 
@@ -161,7 +161,7 @@ Guardrails and context management are agent-owned `createAgent` configuration in
 
 The canonical stateless route owns one `RunnableAgent` and one `AgentRun` per request and disposes the run after completion, error, or cancellation. Module-scoped objects are the immutable agent configuration, provider client or factory, toolbox, and deployable consumed-approval ledger—not an enhanced-streaming target, live run, or request conversation. Development hot-module replacement must not leave a run, provider connection, request listener, or toolbox listener orphaned.
 
-The server-owned session variant has a different lifecycle because the host owns a session store, a durable run engine, checkpoint storage, and workflow-service reconstruction. CHR-12 must document and test that route family's initialization and disposal boundary rather than borrowing the stateless route's lifecycle by implication. The public `@lostgradient/operative@0.2.0` APIs involved are the root session exports named below plus `createRunEngine()`, `createCheckpointStore()`, and `createRunWorkflow()` from the `/durable` export.
+The server-owned session variant has a different lifecycle because the host owns a session store, a durable run engine, checkpoint storage, and workflow-service reconstruction. CIN-443 must document and test that route family's initialization and disposal boundary rather than borrowing the stateless route's lifecycle by implication. The public `@lostgradient/operative@0.2.0` APIs involved are the root session exports named below plus `createRunEngine()`, `createCheckpointStore()`, and `createRunWorkflow()` from the `/durable` export.
 
 <a id="durability-and-recovery"></a>
 
@@ -169,17 +169,17 @@ The server-owned session variant has a different lifecycle because the host owns
 
 The canonical path is ephemeral by design: a disconnected or restarted request does not reattach to its old `AgentRun`. The browser keeps only conversation history, not executable run state.
 
-Durable recovery belongs to the conditional server-owned variant. CHR-14 must preserve the distinction between live token streaming and recovered durable execution, which may expose only step-level progress. It must compare Operative's session signaling or elicitation path against the stateless `toolbox.resumeApproval()` path here, then update this section with the evidence-backed preferred consumer story.
+Durable recovery belongs to the conditional server-owned variant. CIN-445 must preserve the distinction between live token streaming and recovered durable execution, which may expose only step-level progress. It must compare Operative's session signaling or elicitation path against the stateless `toolbox.resumeApproval()` path here, then update this section with the evidence-backed preferred consumer story.
 
 <a id="server-owned-session-variant"></a>
 
 ## Server-owned session variant
 
-CHR-15 proved the server-owned model with public Operative APIs and no Bureau imports. The root `@lostgradient/operative@0.2.0` session surface is `createSessionStore()`, `createAgentSession()`, `loadAgentSession()`, `saveAgentSession()`, `createSessionHandle()`, and `resumeSession()`. Durable recovery adds `createRunEngine()`, `createCheckpointStore()`, and `createRunWorkflow()` from `@lostgradient/operative@0.2.0/durable`.
+CIN-446 proved the server-owned model with public Operative APIs and no Bureau imports. The root `@lostgradient/operative@0.2.0` session surface is `createSessionStore()`, `createAgentSession()`, `loadAgentSession()`, `saveAgentSession()`, `createSessionHandle()`, and `resumeSession()`. Durable recovery adds `createRunEngine()`, `createCheckpointStore()`, and `createRunWorkflow()` from `@lostgradient/operative@0.2.0/durable`.
 
 Operative deliberately does not own Chatroom's conversation-list index, so the host must maintain the index that maps a user-visible conversation to its session. On restart, the host must reconstruct workflow services through `resolveWorkflowServices`, and it must sweep orphaned `RunRef` records when a durable run can no longer be resumed. [AB-28](https://linear.app/lost-gradient/issue/AB-28) is complete in source but is not published as `0.2.0`; [AB-29](https://linear.app/lost-gradient/issue/AB-29) remains in review, and [AB-30](https://linear.app/lost-gradient/issue/AB-30) remains in backlog. Downstream code must wait for the required registry release rather than importing Bureau internals or recreating those capabilities locally.
 
-CHR-12 through CHR-14 remain a labeled variant until a new decision changes the canonical model. They do not silently replace the browser-owned exemplar, and they do not introduce Bureau as a dependency.
+CIN-443 through CIN-445 remain a labeled variant until a new decision changes the canonical model. They do not silently replace the browser-owned exemplar, and they do not introduce Bureau as a dependency.
 
 <a id="traceability"></a>
 
@@ -187,19 +187,19 @@ CHR-12 through CHR-14 remain a labeled variant until a new decision changes the 
 
 Every implementation issue and pull request must cite these anchors:
 
-| Issue  | Required reference sections                                                                                                                                                                      |
-| ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| CHR-3  | [API surface and versioning](#api-surface-and-versioning), [Conversation ownership](#conversation-ownership), [Cancellation contract](#cancellation-contract), [Error contract](#error-contract) |
-| CHR-4  | [Dependency provenance](#dependency-provenance), [API surface and versioning](#api-surface-and-versioning)                                                                                       |
-| CHR-5  | [Stream wire contract](#stream-wire-contract), [Cancellation contract](#cancellation-contract)                                                                                                   |
-| CHR-6  | [Toolbox and approval ownership](#toolbox-and-approval-ownership), [Conversation ownership](#conversation-ownership)                                                                             |
-| CHR-7  | [Error contract](#error-contract), [Cancellation contract](#cancellation-contract)                                                                                                               |
-| CHR-8  | [API surface and versioning](#api-surface-and-versioning), [Error contract](#error-contract)                                                                                                     |
-| CHR-9  | [Guardrails and context](#guardrails-and-context), [Stream wire contract](#stream-wire-contract)                                                                                                 |
-| CHR-10 | [API surface and versioning](#api-surface-and-versioning), [Stream wire contract](#stream-wire-contract)                                                                                         |
-| CHR-11 | [Dependency provenance](#dependency-provenance), [Credential boundary](#credential-boundary)                                                                                                     |
-| CHR-12 | [State model](#state-model), [Lifecycle and disposal](#lifecycle-and-disposal), [Server-owned session variant](#server-owned-session-variant)                                                    |
-| CHR-13 | [State model](#state-model), [Conversation ownership](#conversation-ownership), [Server-owned session variant](#server-owned-session-variant)                                                    |
-| CHR-14 | [Durability and recovery](#durability-and-recovery), [Toolbox and approval ownership](#toolbox-and-approval-ownership), [Server-owned session variant](#server-owned-session-variant)            |
+| Issue   | Required reference sections                                                                                                                                                                      |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| CIN-434 | [API surface and versioning](#api-surface-and-versioning), [Conversation ownership](#conversation-ownership), [Cancellation contract](#cancellation-contract), [Error contract](#error-contract) |
+| CIN-435 | [Dependency provenance](#dependency-provenance), [API surface and versioning](#api-surface-and-versioning)                                                                                       |
+| CIN-436 | [Stream wire contract](#stream-wire-contract), [Cancellation contract](#cancellation-contract)                                                                                                   |
+| CIN-437 | [Toolbox and approval ownership](#toolbox-and-approval-ownership), [Conversation ownership](#conversation-ownership)                                                                             |
+| CIN-438 | [Error contract](#error-contract), [Cancellation contract](#cancellation-contract)                                                                                                               |
+| CIN-439 | [API surface and versioning](#api-surface-and-versioning), [Error contract](#error-contract)                                                                                                     |
+| CIN-440 | [Guardrails and context](#guardrails-and-context), [Stream wire contract](#stream-wire-contract)                                                                                                 |
+| CIN-441 | [API surface and versioning](#api-surface-and-versioning), [Stream wire contract](#stream-wire-contract)                                                                                         |
+| CIN-442 | [Dependency provenance](#dependency-provenance), [Credential boundary](#credential-boundary)                                                                                                     |
+| CIN-443 | [State model](#state-model), [Lifecycle and disposal](#lifecycle-and-disposal), [Server-owned session variant](#server-owned-session-variant)                                                    |
+| CIN-444 | [State model](#state-model), [Conversation ownership](#conversation-ownership), [Server-owned session variant](#server-owned-session-variant)                                                    |
+| CIN-445 | [Durability and recovery](#durability-and-recovery), [Toolbox and approval ownership](#toolbox-and-approval-ownership), [Server-owned session variant](#server-owned-session-variant)            |
 
 A reviewer should be able to start with a pull request's linked anchor, identify the owner of every piece of state and authority it changes, and then verify the implementation against the exact installed package declarations. If that path is not obvious, the pull request has introduced a new architecture decision and this document must change first.

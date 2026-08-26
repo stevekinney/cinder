@@ -5,7 +5,7 @@
 > published-package consumption, `bun run sync:cinder`, `check:peers`, or "switching into
 > `../cinder`" is superseded by that move; the `sync-cinder` skill and the `sync:cinder` /
 > `check:peers` scripts were removed with it. The broader documentation cleanup is tracked in
-> the Linear issue formerly known as CHR-11 ("Delete the dead weight, update the docs").
+> CIN-442 ("Delete the dead weight, update the docs", formerly CHR-11).
 > The pre-merge history lives in the archived `stevekinney/chatroom` repository.
 
 ## Project Configuration
