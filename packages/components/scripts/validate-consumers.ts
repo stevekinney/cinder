@@ -2647,19 +2647,18 @@ async function assertSvelteKitHydrationRoute(
   }
 }
 
-async function assertSvelteKitHydrationRouteContent(
+export async function assertSvelteKitHydrationRouteContent(
   page: Page,
   errors: BoundedDiagnosticCollection,
   routePath: SvelteKitHydrationRoute,
   domObservation: SvelteKitHydrationRouteDomObservation,
 ): Promise<void> {
   if (routePath === '/chat-layout') {
-    await waitForSvelteKitHydrationMarker(
-      page
-        .locator('[data-chat-layout-hydrated="true"]')
-        .waitFor({ state: 'attached', timeout: 5_000 }),
-      domObservation,
-    );
+    await page
+      .locator('[data-chat-layout-hydrated="true"]')
+      .waitFor({ state: 'attached', timeout: 5_000 });
+    domObservation.hydrationMarkerPresent = true;
+    domObservation.hydrationMarkerValue = 'true';
     await page.getByRole('heading', { name: 'Empty Chat hydration' }).waitFor({ timeout: 5_000 });
     await page.getByText('No messages yet').waitFor({ timeout: 5_000 });
     await page.getByRole('textbox', { name: 'Message' }).waitFor({ timeout: 5_000 });
@@ -2667,10 +2666,11 @@ async function assertSvelteKitHydrationRouteContent(
     return;
   }
 
-  await waitForSvelteKitHydrationMarker(
-    page.locator('[data-dev-ssr-hydrated="true"]').waitFor({ state: 'attached', timeout: 5_000 }),
-    domObservation,
-  );
+  await page
+    .locator('[data-dev-ssr-hydrated="true"]')
+    .waitFor({ state: 'attached', timeout: 5_000 });
+  domObservation.hydrationMarkerPresent = true;
+  domObservation.hydrationMarkerValue = 'true';
   if (routePath === '/dev-ssr-navigation') {
     await page.getByText('basicOrderWorkflow').waitFor({ timeout: 5_000 });
     return;
@@ -2781,16 +2781,6 @@ function hydrationMarkerForRoute(routePath: SvelteKitHydrationRoute): {
     hydratedSelector: '[data-dev-ssr-hydrated="true"]',
     selector: '[data-dev-ssr-hydrated]',
   };
-}
-
-/** Wait for the route's hydration state without issuing a competing diagnostic page read. */
-export async function waitForSvelteKitHydrationMarker(
-  readiness: Promise<void>,
-  domObservation: SvelteKitHydrationRouteDomObservation,
-): Promise<void> {
-  await readiness;
-  domObservation.hydrationMarkerPresent = true;
-  domObservation.hydrationMarkerValue = 'true';
 }
 
 function unknownSvelteKitHydrationRouteFailureSnapshot(
