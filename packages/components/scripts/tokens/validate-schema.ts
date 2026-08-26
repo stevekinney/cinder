@@ -27,6 +27,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
+import addFormats from 'ajv-formats';
 
 import type { ValidationIssue } from './types.ts';
 import { TokenValidationError } from './types.ts';
@@ -34,7 +35,14 @@ import { TokenValidationError } from './types.ts';
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const schemaDirectory = join(scriptDirectory, 'schemas');
 
-const NOOP_SCHEMA_FORMATS = ['uri-reference', 'json-pointer-uri-fragment'];
+/**
+ * The two `format` keywords the vendored DTCG schemas actually apply. Ajv
+ * treats an unknown format as unconstrained, so these are registered with
+ * `ajv-formats`' real validators rather than no-op stubs — otherwise a
+ * malformed `$ref` (a bad percent-escape in a token JSON Pointer, say) would
+ * sail through the official-schema gate that exists to catch exactly that.
+ */
+const SCHEMA_FORMATS = ['uri-reference', 'json-pointer-uri-fragment'] as const;
 
 function isJsonSchemaDocument(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -48,7 +56,7 @@ function loadSchema(fileName: string): object {
 
 function createValidator(schema: object): ValidateFunction {
   const ajv = new Ajv({ allErrors: true, strict: false, logger: false, addUsedSchema: false });
-  for (const format of NOOP_SCHEMA_FORMATS) ajv.addFormat(format, true);
+  addFormats(ajv, [...SCHEMA_FORMATS]);
   return ajv.compile(schema);
 }
 
@@ -122,18 +130,20 @@ export function validateTokenDocumentSchema(document: unknown, source = '$'): vo
 /**
  * Validates a document against the official DTCG 2025.10 resolver JSON Schema.
  *
- * Not wired into `assertValidResolverDocument`: Cinder's `cinder.resolver.json`
- * uses an array-of-`{name, source}` shape for `sets`/`modifiers` and a plain
- * string array for `resolutionOrder`. The official schema requires `sets` and
- * `modifiers` to be objects keyed by name (`{ sources: [...] }` /
- * `{ contexts: { [value]: sources[] } }`), and `resolutionOrder` entries to be
- * `{ "$ref": "#/sets/..." }`-style reference objects. These are genuinely
- * different document models, not a naming quibble -- see the schemas'
- * `resolver/set.json`, `resolver/modifier.json`, and
- * `resolver/resolutionOrder.json` definitions embedded in the vendored file.
- * This function is exported and tested against both the official shape and
- * Cinder's actual shape so the divergence is provable, but it is intentionally
- * not called from the real resolver-loading path.
+ * Wired into `assertValidResolverDocument` as its first-pass gate, alongside
+ * the token-document equivalent above.
+ *
+ * `cinder.resolver.json` previously used an array-of-`{name, source}` shape
+ * for `sets`/`modifiers` and a plain string array for `resolutionOrder`, while
+ * declaring the official schema's `$schema` URI. Those are genuinely different
+ * document models, not a naming quibble: the official schema keys `sets` and
+ * `modifiers` by name (`{ sources: [...] }` / `{ contexts: { [value]: sources[] } }`)
+ * and requires `resolutionOrder` entries to be `{ "$ref": "#/sets/..." }`
+ * reference objects -- see the `resolver/set.json`, `resolver/modifier.json`,
+ * and `resolver/resolutionOrder.json` definitions embedded in the vendored
+ * file. The document was migrated to the conformant shape rather than leaving
+ * this validator unwired, and a regression test pins the old shape as
+ * rejected so it cannot come back.
  */
 export function validateResolverDocumentSchema(document: unknown, source = '$'): void {
   runSchemaValidation(getResolverValidator(), document, source);

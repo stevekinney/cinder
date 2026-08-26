@@ -521,7 +521,7 @@ function isResolverTargetKind(value: string): value is 'sets' | 'modifiers' {
   return value === 'sets' || value === 'modifiers';
 }
 
-function resolutionOrderTarget(
+export function resolutionOrderTarget(
   ref: string,
 ): { kind: 'sets' | 'modifiers'; name: string } | undefined {
   const match = /^#\/(sets|modifiers)\/(.+)$/.exec(ref);

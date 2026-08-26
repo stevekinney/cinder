@@ -1,6 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import type { ResolverDocument } from './types.ts';
-import { combinations, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
+import {
+  combinations,
+  normalizeSourcePath,
+  parseResolutionOrder,
+  sourcesForEntry,
+} from './validate-corpus.ts';
 
 const resolver: ResolverDocument = {
   version: '2025.10',
@@ -33,6 +38,54 @@ const resolver: ResolverDocument = {
 };
 
 describe('token corpus validation', () => {
+  test('decodes RFC 6901 tilde escapes so the decoded name still finds its set', () => {
+    const escaped: ResolverDocument = {
+      version: '2025.10',
+      sets: { 'foo/bar': { sources: [{ $ref: 'sets/foo-bar.tokens.json' }] } },
+      modifiers: {
+        'a~b': {
+          contexts: {
+            one: [{ $ref: 'modes/one.tokens.json' }],
+            two: [{ $ref: 'modes/two.tokens.json' }],
+          },
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/foo~1bar' }, { $ref: '#/modifiers/a~0b' }],
+    };
+
+    const parsed = parseResolutionOrder(escaped);
+    expect(parsed).toEqual([
+      { kind: 'sets', name: 'foo/bar' },
+      { kind: 'modifiers', name: 'a~b' },
+    ]);
+
+    // Validation accepts these references, so the lookup they feed must find
+    // the entry rather than reading `.sources` off undefined.
+    expect(sourcesForEntry(escaped, parsed[0]!, {})).toEqual([
+      { $ref: 'sets/foo-bar.tokens.json' },
+    ]);
+    expect(sourcesForEntry(escaped, parsed[1]!, { 'a~b': 'two' })).toEqual([
+      { $ref: 'modes/two.tokens.json' },
+    ]);
+  });
+
+  test('normalizes source URI references to the globbed repository-relative form', () => {
+    expect(normalizeSourcePath('sets/foundation.tokens.json')).toBe('sets/foundation.tokens.json');
+    expect(normalizeSourcePath('./sets/foundation.tokens.json')).toBe(
+      'sets/foundation.tokens.json',
+    );
+    expect(normalizeSourcePath('themes/../sets/foundation.tokens.json')).toBe(
+      'sets/foundation.tokens.json',
+    );
+    expect(normalizeSourcePath('sets/with%20space.tokens.json')).toBe(
+      'sets/with space.tokens.json',
+    );
+  });
+
+  test('leaves a malformed percent-escape undecoded rather than throwing', () => {
+    expect(normalizeSourcePath('sets/bad%2.tokens.json')).toBe('sets/bad%2.tokens.json');
+  });
+
   test('parses resolutionOrder references into their target kind and name', () => {
     expect(parseResolutionOrder(resolver)).toEqual([
       { kind: 'sets', name: 'foundation' },

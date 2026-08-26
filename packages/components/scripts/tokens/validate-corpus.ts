@@ -1,11 +1,33 @@
+import { posix } from 'node:path';
+
 import { loadResolverDocument, loadTokenDocuments } from './load.ts';
 import { resolveDocuments } from './resolve.ts';
 import { TokenValidationError, type ResolverDocument, type ResolverReference } from './types.ts';
 import {
+  resolutionOrderTarget,
   validateResolvedToken,
   validateResolverDocument,
   validateTokenDocument,
 } from './validate.ts';
+
+/**
+ * Normalizes a source `$ref` into the repository-relative form `loadTokenDocuments`
+ * reports. The resolver schema types these as URI references, so `./sets/x.tokens.json`
+ * and `sets/x.tokens.json` name the same file; comparing the raw strings against
+ * globbed paths would report a file that exists as missing. Percent-escapes are
+ * decoded for the same reason, and a malformed escape is left as-is so the failure
+ * surfaces as a clear "source does not exist" rather than a decoding crash --
+ * ajv's `uri-reference` format catches genuinely malformed references upstream.
+ */
+export function normalizeSourcePath(reference: string): string {
+  let decoded = reference;
+  try {
+    decoded = decodeURIComponent(reference);
+  } catch {
+    // Leave the reference undecoded; the existence check reports it.
+  }
+  return posix.normalize(decoded).replace(/^\.\//, '');
+}
 
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
@@ -18,7 +40,7 @@ async function main(): Promise<void> {
   const missingSources = [
     ...Object.entries(resolver.sets).flatMap(([setName, set]) =>
       set.sources
-        .filter((source) => !knownPaths.has(source.$ref))
+        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
         .map((source) => ({
           path: `$.sets.${setName}.sources`,
           reason: `source does not exist: ${source.$ref}`,
@@ -27,7 +49,7 @@ async function main(): Promise<void> {
     ...Object.entries(resolver.modifiers).flatMap(([modifierName, modifier]) =>
       Object.entries(modifier.contexts).flatMap(([contextName, sources]) =>
         sources
-          .filter((source) => !knownPaths.has(source.$ref))
+          .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
           .map((source) => ({
             path: `$.modifiers.${modifierName}.contexts.${contextName}`,
             reason: `source does not exist: ${source.$ref}`,
@@ -38,9 +60,13 @@ async function main(): Promise<void> {
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
   const referencedPaths = new Set<string>([
-    ...Object.values(resolver.sets).flatMap((set) => set.sources.map((source) => source.$ref)),
+    ...Object.values(resolver.sets).flatMap((set) =>
+      set.sources.map((source) => normalizeSourcePath(source.$ref)),
+    ),
     ...Object.values(resolver.modifiers).flatMap((modifier) =>
-      Object.values(modifier.contexts).flatMap((sources) => sources.map((source) => source.$ref)),
+      Object.values(modifier.contexts).flatMap((sources) =>
+        sources.map((source) => normalizeSourcePath(source.$ref)),
+      ),
     ),
   ]);
   const unreferencedDocuments = documents
@@ -52,7 +78,7 @@ async function main(): Promise<void> {
   for (const modifierValues of combinations(resolver)) {
     const orderedDocuments = resolutionOrder.flatMap((entry) =>
       sourcesForEntry(resolver, entry, modifierValues).map(
-        (source) => documentsByPath.get(source.$ref)!,
+        (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
       ),
     );
     const resolved = resolveDocuments(orderedDocuments);
@@ -62,24 +88,19 @@ async function main(): Promise<void> {
 
 export type ResolutionOrderEntry = { kind: 'sets' | 'modifiers'; name: string };
 
-function isResolverTargetKind(value: string): value is 'sets' | 'modifiers' {
-  return value === 'sets' || value === 'modifiers';
-}
-
 /**
- * Parses every resolutionOrder `$ref` into its target kind and name.
- * `validateResolverDocument` (called by `main` before this runs) already
- * guarantees each entry is a well-formed, existing `#/sets/<name>` or
- * `#/modifiers/<name>` pointer, so the non-null assertions below document
- * that guarantee rather than re-deriving it.
+ * Parses every resolutionOrder `$ref` into its target kind and name, reusing
+ * validation's own parser so the two paths cannot drift. That matters for
+ * RFC 6901 tilde-escapes: a set named `a/b` is referenced as `#/sets/a~1b`,
+ * and decoding it here is what keeps the later `resolver.sets[name]` lookup
+ * in `sourcesForEntry` finding the entry that validation already accepted.
  */
 export function parseResolutionOrder(resolver: ResolverDocument): ResolutionOrderEntry[] {
   return resolver.resolutionOrder.map((entry) => {
-    const match = /^#\/(sets|modifiers)\/(.+)$/.exec(entry.$ref)!;
-    const kind = match[1]!;
-    if (!isResolverTargetKind(kind))
-      throw new Error(`resolutionOrder entry did not match a known kind: ${entry.$ref}`);
-    return { kind, name: match[2]! };
+    const target = resolutionOrderTarget(entry.$ref);
+    if (!target)
+      throw new Error(`resolutionOrder entry is not a well-formed pointer: ${entry.$ref}`);
+    return target;
   });
 }
 

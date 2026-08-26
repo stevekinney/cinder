@@ -200,4 +200,19 @@ describe('JSON Schema validation (resolver)', () => {
     expect(issues.length).toBeGreaterThan(0);
     expect(issues.some((issue) => issue.path === '$.version')).toBe(true);
   });
+
+  test('enforces the uri-reference format rather than treating it as unconstrained', () => {
+    // The schemas apply `format: uri-reference` to source and resolutionOrder
+    // `$ref` values. Registering those formats as no-op stubs would let a
+    // malformed reference through the gate that exists to catch it, so this
+    // pins that the real ajv-formats validators are wired in.
+    expect(() =>
+      validateResolverDocumentSchema({
+        version: '2025.10',
+        sets: { foundation: { sources: [{ $ref: 'sets/bad%2x.tokens.json' }] } },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/foundation' }],
+      }),
+    ).toThrow();
+  });
 });
