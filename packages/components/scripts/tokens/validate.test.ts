@@ -810,13 +810,7 @@ describe('DTCG semantic validation', () => {
     );
   });
 
-  test('accepts a set referenced by a non-ordered set that is itself unreachable from any other ordered position', () => {
-    // "base" is referenced only by "a" (ordered) -- a second reference from
-    // an entirely disconnected part of the graph is not constructible here,
-    // since every set must ultimately trace back to some ordered ancestor
-    // (the "must list every set and modifier exactly once" check already
-    // enforces that) -- so this just confirms the ordinary single-ordered-
-    // ancestor case, with an unrelated standalone set alongside it, is fine.
+  test('accepts an ordinary single-ordered-ancestor chain alongside an unrelated standalone set', () => {
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
@@ -829,6 +823,28 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/standalone' }],
       }),
     ).not.toThrow();
+  });
+
+  test('rejects a closed cycle of sets that reference only each other, unreachable from any ordered position', () => {
+    // "a" -> "b" -> "a": each is "referenced by another set", so the
+    // resolutionOrder-exemption above wrongly treats both as covered -- but
+    // neither is EVER required to be ordered, so the whole cycle is
+    // unreachable from any actual ordered set, and its documents would
+    // silently never be included in the resolved output. An unrelated
+    // "standalone" set is directly ordered so the "must list every set"
+    // check doesn't fire for an unrelated reason.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          a: { sources: [{ $ref: '#/sets/b' }, { $ref: 'sets/a.tokens.json' }] },
+          b: { sources: [{ $ref: '#/sets/a' }, { $ref: 'sets/b.tokens.json' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/standalone' }],
+      }),
+    ).toThrow(/set "a" is referenced internally but not reachable from any ordered set/);
   });
 
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {

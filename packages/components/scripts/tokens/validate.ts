@@ -834,6 +834,30 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     }
   }
 
+  // The `expectedTargets`/`unlistedTargets` check above exempts any set
+  // referenced by another set from needing its own resolutionOrder entry --
+  // but that exemption is unsound for a CLOSED CYCLE of sets that reference
+  // only each other (e.g. "a" -> "b" -> "a"): each member is "referenced by
+  // another set", so both are exempted, and neither is ever required to be
+  // ordered. The cycle is then unreachable from every actual ordered
+  // position, and `buildTokensBaseCss`/`buildBaseDocuments` silently omit
+  // its documents entirely. `reachingOrderedSets` (computed above) already
+  // captures every set genuinely reachable from an ordered position --
+  // anything internally referenced but absent from it is unreachable,
+  // cycle or not.
+  for (const setName of setReferencedByAnotherSet) {
+    const directlyOrdered = resolutionOrderTargets.has(`sets/${setName}`);
+    if (!directlyOrdered && !reachingOrderedSets.has(setName)) {
+      addIssue(
+        issues,
+        '$.resolutionOrder',
+        `set "${setName}" is referenced internally but not reachable from any ordered set ` +
+          '(possibly part of a closed cycle of sets that only reference each other) -- ' +
+          'its documents would never be included',
+      );
+    }
+  }
+
   // A set referenced only by a modifier context, with no path into the base
   // (neither listed in resolutionOrder itself nor reachable through another
   // set that is), has no base declaration for its tokens -- generation has
