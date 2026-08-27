@@ -709,6 +709,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   const internallyReferencedSetNames = setReferencedByAnotherSet;
 
   const resolutionOrderTargets = new Set<string>();
+  const explicitSetOrderPath = new Map<string, string>();
   for (const [index, entry] of document.resolutionOrder.entries()) {
     if (!isResolverReference(entry)) {
       addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entry must be a $ref object');
@@ -727,6 +728,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     if (resolutionOrderTargets.has(key))
       addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entries must be unique');
     resolutionOrderTargets.add(key);
+    if (target.kind === 'sets') explicitSetOrderPath.set(target.name, `$.resolutionOrder.${index}`);
   }
   const expectedTargets = new Set([
     ...[...setNames]
@@ -739,6 +741,30 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   );
   if (unlistedTargets.length > 0)
     addIssue(issues, '$.resolutionOrder', 'must list every set and modifier exactly once');
+
+  // A set referenced by another SET is exempt from resolutionOrder because it
+  // still contributes through that set's own expansion -- but nothing stops
+  // it from ALSO being listed explicitly. That double inclusion is never
+  // correct: `buildResolvedContexts` walks the full resolutionOrder, so if a
+  // modifier sits between the referencing set and the explicit entry (e.g.
+  // "A, theme, B" where A internally references B), expanding A re-applies
+  // B's values AFTER the modifier, silently resetting whatever the modifier
+  // just overrode -- while `buildTokensBaseCss` collects every set into
+  // `:root` once and emits theme documents separately, so the generated CSS
+  // and the resolved JSON snapshots disagree about which value wins. Reject
+  // the combination outright rather than let it surface as that disagreement
+  // later.
+  for (const setName of setReferencedByAnotherSet) {
+    const explicitPath = explicitSetOrderPath.get(setName);
+    if (explicitPath !== undefined) {
+      addIssue(
+        issues,
+        explicitPath,
+        `set "${setName}" is already referenced internally by another ordered set and must not ` +
+          'also appear in resolutionOrder -- it would be included twice',
+      );
+    }
+  }
 
   // A set referenced only by a modifier context, with no path into the base
   // (neither listed in resolutionOrder itself nor reachable through another

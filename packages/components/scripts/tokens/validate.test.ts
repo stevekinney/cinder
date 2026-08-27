@@ -715,6 +715,41 @@ describe('DTCG semantic validation', () => {
     ).not.toThrow();
   });
 
+  test('rejects a set that is both internally referenced by another set and explicitly ordered', () => {
+    // If set "extended" references "base" internally AND "base" is ALSO
+    // listed explicitly in resolutionOrder alongside a modifier
+    // ("extended, theme, base"), "base"'s values get applied twice --
+    // once via extended's own expansion, once again via its explicit
+    // position AFTER the theme modifier, silently resetting whatever the
+    // modifier just overrode. buildTokensBaseCss and the resolved-context
+    // snapshots would then disagree about which value wins. Reject the
+    // combination outright rather than let that disagreement surface later.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [
+          { $ref: '#/sets/extended' },
+          { $ref: '#/modifiers/theme' },
+          { $ref: '#/sets/base' },
+        ],
+      }),
+    ).toThrow(
+      /set "base" is already referenced internally by another ordered set and must not also appear in resolutionOrder/,
+    );
+  });
+
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {
     // Regression guard: cinder.resolver.json used to declare
     // sets/modifiers as arrays of {name, ...} objects and resolutionOrder as
