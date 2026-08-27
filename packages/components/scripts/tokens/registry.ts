@@ -227,10 +227,22 @@ export function buildTokenRegistryFromIndexes(
     if (entry.component !== undefined && entry.component.trim() === '') {
       throw new Error(`Base corpus token at "${entry.path}" has a blank component extension.`);
     }
-    if (entry.public && entry.cssProperty.startsWith('--_cinder-')) {
+    // Both directions. Guarding only public-with-private-prefix left the inverse
+    // accepted: a token marked private keeping a `--cinder-*` name, which the
+    // registry reports as private while validateDocSections still requires and
+    // the docs generator still publishes its row in the documented public
+    // namespace. The prefix and the flag are one contract, not two.
+    const hasPrivatePrefix = entry.cssProperty.startsWith('--_cinder-');
+    if (entry.public && hasPrivatePrefix) {
       throw new Error(
         `Base corpus token at "${entry.path}" is marked public but its cssProperty ` +
           `"${entry.cssProperty}" uses the private --_cinder- prefix.`,
+      );
+    }
+    if (!entry.public && !hasPrivatePrefix) {
+      throw new Error(
+        `Base corpus token at "${entry.path}" is marked private but its cssProperty ` +
+          `"${entry.cssProperty}" uses the public --cinder- prefix.`,
       );
     }
 

@@ -553,10 +553,17 @@ export async function renderDocTable(
   resolveReferences: ValueResolver,
 ): Promise<string> {
   const header = '| Token | Default | Description |\n| --- | --- | --- |\n';
+  // Index once rather than rescanning every corpus entry per row. `set` keeps the
+  // FIRST claimant, matching registry.ts's canonical-path rule, so `$extends`
+  // duplicates resolve identically here and in the registry.
+  const entryByCssProperty = new Map<string, CorpusEntry>();
+  for (const candidate of baseIndex.values()) {
+    if (candidate.cssProperty && !entryByCssProperty.has(candidate.cssProperty)) {
+      entryByCssProperty.set(candidate.cssProperty, candidate);
+    }
+  }
   const rows = section.cssProperties.map((cssProperty) => {
-    const entry = [...baseIndex.values()].find(
-      (candidate) => candidate.cssProperty === cssProperty,
-    );
+    const entry = entryByCssProperty.get(cssProperty);
     if (!entry) {
       throw new Error(
         `No base corpus entry has cssProperty "${cssProperty}" (section "${section.slug}").`,
