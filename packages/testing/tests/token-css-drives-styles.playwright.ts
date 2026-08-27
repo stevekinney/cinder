@@ -75,10 +75,6 @@ async function longestTransitionSeconds(locator: Locator): Promise<number> {
   return Math.max(...parts);
 }
 
-async function borderColor(locator: Locator): Promise<string> {
-  return locator.evaluate((element) => getComputedStyle(element).borderTopColor);
-}
-
 test.describe('generated token CSS drives visible styles', () => {
   test('reduced motion zeroes both the duration token and a Button transition', async ({
     page,
@@ -120,37 +116,97 @@ test.describe('generated token CSS drives visible styles', () => {
 
   test('a token override scoped to one component does not leak to another', async ({ page }) => {
     await gotoDocumentationPage(page, '/page/card');
+    await expect(page.locator('.cinder-accordion').first()).toBeVisible();
 
     /*
-     * Card and Accordion are unrelated components that both read
-     * `--cinder-border` for their border color, and both appear on this page in
-     * separate subtrees — which is what makes a scoped override's
-     * non-leakage observable.
+     * Both components are DISCOVERED by responding to `--cinder-border`, not
+     * named up front.
+     *
+     * Naming them went wrong twice. The ticket's suggested pair used a token
+     * CIN-33 had renamed away; the pair I chose to replace it (Card and
+     * Accordion) merely painted the same colour — Card does not read this token
+     * at all on this page, so overriding it moved nothing and the "the other one
+     * did not move" assertion was passing for no reason. Requiring a measured
+     * response is what stops this test from quietly proving nothing.
+     *
+     * It runs as one evaluate because the point is a single style
+     * recalculation: `getComputedStyle` flushes synchronously, so the before and
+     * after reads cannot straddle an unrelated repaint.
      */
-    const card = page.locator('.cinder-card').first();
-    const accordion = page.locator('.cinder-accordion').first();
-    await expect(card).toBeVisible();
-    await expect(accordion).toBeVisible();
+    const OVERRIDE = 'rgb(255, 0, 255)';
+    const result = await page.evaluate((override) => {
+      /** The component class of an element, if it carries one. */
+      const componentName = (element: Element): string | null =>
+        Array.from(element.classList).find((name) => /^cinder-[a-z-]+$/.test(name)) ?? null;
 
-    await expect.poll(async () => borderColor(card)).not.toBe('');
-    const cardBefore = await borderColor(card);
-    const accordionBefore = await borderColor(accordion);
+      /** True when overriding the token actually moves this element's border. */
+      const responds = (element: Element): boolean => {
+        const styled = element as HTMLElement;
+        const before = getComputedStyle(styled).borderTopColor;
+        styled.style.setProperty('--cinder-border', override);
+        const after = getComputedStyle(styled).borderTopColor;
+        styled.style.removeProperty('--cinder-border');
+        return after === override && before !== override;
+      };
 
-    /*
-     * Load-bearing precondition: they must START equal. If the two components
-     * did not actually share the token, the "unaffected" assertion below would
-     * hold for a completely uninteresting reason and prove nothing about
-     * leakage.
-     */
-    expect(cardBefore).toBe(accordionBefore);
+      const responders = Array.from(document.querySelectorAll('[class*="cinder-"]')).filter(
+        (element) => componentName(element) !== null && responds(element),
+      );
 
-    const override = 'rgb(255, 0, 255)';
-    await card.evaluate((element, value) => {
-      element.style.setProperty('--cinder-border', value);
-    }, override);
+      const subject = responders[0];
+      if (subject === undefined) return { found: false as const };
 
-    await expect.poll(async () => borderColor(card)).toBe(override);
-    expect(await borderColor(accordion)).toBe(accordionBefore);
+      /*
+       * The other element must be a DIFFERENT component and outside the
+       * subject's subtree — a descendant would inherit the override, which is
+       * correct cascade behaviour rather than a leak.
+       */
+      const other = responders.find(
+        (element) =>
+          componentName(element) !== componentName(subject) &&
+          !subject.contains(element) &&
+          !element.contains(subject),
+      );
+      if (other === undefined) return { found: false as const };
+
+      const subjectBefore = getComputedStyle(subject).borderTopColor;
+      const otherBefore = getComputedStyle(other).borderTopColor;
+
+      (subject as HTMLElement).style.setProperty('--cinder-border', override);
+      const subjectAfter = getComputedStyle(subject).borderTopColor;
+      const otherAfter = getComputedStyle(other).borderTopColor;
+      (subject as HTMLElement).style.removeProperty('--cinder-border');
+
+      return {
+        found: true as const,
+        subjectName: componentName(subject),
+        otherName: componentName(other),
+        subjectBefore,
+        otherBefore,
+        subjectAfter,
+        otherAfter,
+      };
+    }, OVERRIDE);
+
+    expect(
+      result.found,
+      'this page has no two unrelated components that both paint from --cinder-border',
+    ).toBe(true);
+    if (!result.found) return;
+
+    /* Both genuinely read the same token, so a leak would be visible. */
+    expect(
+      result.subjectBefore,
+      `${result.subjectName} and ${result.otherName} should start equal`,
+    ).toBe(result.otherBefore);
+
+    /* The override moved the component it was set on... */
+    expect(result.subjectAfter, `${result.subjectName} should take the override`).toBe(OVERRIDE);
+
+    /* ...and left the unrelated one alone. */
+    expect(result.otherAfter, `${result.otherName} must not inherit the override`).toBe(
+      result.otherBefore,
+    );
   });
 
   test('theme reach extends past color to a dimension token', async ({ page }) => {
