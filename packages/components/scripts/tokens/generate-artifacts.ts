@@ -547,7 +547,12 @@ export async function renderDocTable(
       '|',
       '\\|',
     );
-    return `| \`${cssProperty}\` | \`${value}\` | ${description} |`;
+    // Escape pipes in the value as well as the description. GFM treats `|` as a
+    // column delimiter even inside a backtick code span, so a token serializing to
+    // a value containing one -- a fontFamily whose family name is `A|B` becomes the
+    // valid CSS string 'A|B' -- would commit a structurally malformed row that the
+    // drift parser still happily reads back.
+    return `| \`${cssProperty}\` | \`${value.replaceAll('|', '\\|')}\` | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });
@@ -687,6 +692,13 @@ export function readPlaygroundColorTokenGroups(
       typeof rawGroup['id'] !== 'string' ||
       typeof rawGroup['label'] !== 'string' ||
       rawGroup['label'].trim() === '' ||
+      // No whitespace in an id: color-token-panel.svelte interpolates it into
+      // both `id="color-token-group-{id}"` and `aria-labelledby`, and
+      // aria-labelledby parses whitespace as an ID-reference SEPARATOR -- so a
+      // group id like "status solid" silently leaves the section unnamed to
+      // assistive technology rather than failing visibly.
+      /\s/.test(rawGroup['id']) ||
+      rawGroup['id'].trim() === '' ||
       !Array.isArray(rawGroup['members'])
     ) {
       throw new Error(

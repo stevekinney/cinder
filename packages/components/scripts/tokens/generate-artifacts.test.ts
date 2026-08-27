@@ -226,3 +226,64 @@ describe('CIN-30 review round 2', () => {
     ).toThrow();
   });
 });
+
+describe('CIN-30 review round 3', () => {
+  test('a group id containing whitespace is rejected before it reaches aria-labelledby', () => {
+    // color-token-panel.svelte interpolates the id into both `id=` and
+    // `aria-labelledby`, and aria-labelledby parses whitespace as an
+    // ID-reference SEPARATOR -- so "status solid" would leave the section
+    // unnamed to assistive technology rather than failing visibly.
+    const withSpacedId = {
+      playgroundGroups: [
+        {
+          id: 'status solid',
+          label: 'Status',
+          members: [{ cssProperty: '--test-accent', label: 'Accent' }],
+        },
+      ],
+    };
+    expect(() => readPlaygroundColorTokenGroups(resolverWithExtensions(withSpacedId))).toThrow();
+
+    const withBlankId = {
+      playgroundGroups: [
+        { id: '   ', label: 'Status', members: [{ cssProperty: '--test-accent', label: 'A' }] },
+      ],
+    };
+    expect(() => readPlaygroundColorTokenGroups(resolverWithExtensions(withBlankId))).toThrow();
+  });
+
+  test('a pipe in a serialized value is escaped so the table row stays well-formed', async () => {
+    // GFM treats `|` as a column delimiter even inside a backtick code span, so
+    // a fontFamily whose family name contains one would commit a malformed row
+    // that the drift parser still reads back successfully.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'font.piped',
+        {
+          path: 'font.piped',
+          value: ['A|B'],
+          type: 'fontFamily',
+          description: 'A piped family.',
+          cssProperty: '--test-font-piped',
+          cssRecipe: undefined,
+          public: true,
+          category: 'typography',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'piped',
+      heading: 'Piped',
+      cssProperties: ['--test-font-piped'],
+    };
+    const table = await renderDocTable(section, baseIndex, (value) => value);
+
+    // Exactly three unescaped cell delimiters on the row: leading, between the
+    // two cells, and between value and description, plus the trailing one.
+    const row = table.split('\n').find((line) => line.includes('--test-font-piped')) ?? '';
+    expect(row).toContain('A\\|B');
+    expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
+  });
+});

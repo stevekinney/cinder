@@ -35,6 +35,15 @@ import { mergeAndExpandExtends } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 import { parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
 
+/**
+ * The theme contexts `buildTokensBaseCss` emits a selector for. The registry's
+ * `themeAware` facet means "light or dark overrides this token", so it must
+ * track what the CSS actually emits rather than every context the resolver
+ * happens to declare -- otherwise a future third context would mark tokens
+ * theme-aware that no generated selector overrides.
+ */
+const EMITTED_THEME_CONTEXTS = new Set(['light', 'dark']);
+
 export type TokenRegistryEntry = {
   /** Dotted corpus path, e.g. `space.4` or `button.radius.xs`. */
   path: string;
@@ -155,7 +164,13 @@ export function themeAwarePaths(
   if (!themeModifier) return new Set();
 
   const aware = new Set<string>();
-  for (const themeName of Object.keys(themeModifier.contexts)) {
+  // Only the contexts buildTokensBaseCss actually emits a selector for. The
+  // registry contract defines themeAware as "light or dark overrides this", so
+  // counting a future third context (say `high-contrast`) would advertise
+  // tokens as theme-aware that no generated theme selector overrides.
+  for (const themeName of Object.keys(themeModifier.contexts).filter((name) =>
+    EMITTED_THEME_CONTEXTS.has(name),
+  )) {
     const ownDocuments = refsFor(documentsByPath, themeModifier.contexts[themeName]!);
     const scopeDocuments = documentsForResolutionOrder(
       resolver,
@@ -202,6 +217,15 @@ export function buildTokenRegistryFromIndexes(
     }
     if (entry.public === undefined) {
       throw new Error(`Base corpus token at "${entry.path}" has no public extension.`);
+    }
+    // Nothing in corpus validation relates these two free-form extension fields,
+    // so without this a token could advertise an internal implementation detail
+    // as part of the public surface to every registry consumer.
+    if (entry.public && entry.cssProperty.startsWith('--_cinder-')) {
+      throw new Error(
+        `Base corpus token at "${entry.path}" is marked public but its cssProperty ` +
+          `"${entry.cssProperty}" uses the private --_cinder- prefix.`,
+      );
     }
 
     const registryEntry: TokenRegistryEntry = {
