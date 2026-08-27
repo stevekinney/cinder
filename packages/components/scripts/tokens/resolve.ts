@@ -276,7 +276,13 @@ export function createValueResolver(documents: TokenDocument[]): ValueResolver {
   return (value: unknown) => resolveValue(value, tokens, new Set());
 }
 
-/** Merges ordered documents, retaining only the last occurrence of each token path. */
+/**
+ * Merges ordered documents. A later document's token wins on VALUE and on
+ * generation metadata, but no longer replaces the earlier token wholesale:
+ * `mergeToken` keeps identity and documentation from the token being overridden
+ * when the override does not restate them. "Last occurrence wins" therefore
+ * still describes `$value`, and no longer describes the whole token.
+ */
 export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
   const result: TokenDocument = Object.create(null);
   for (const document of documents) mergeGroup(result, document);

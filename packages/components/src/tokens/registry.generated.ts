@@ -846,7 +846,7 @@ export const TOKEN_REGISTRY = {
       themeAware: true,
       deprecated: false,
       description:
-        'Page canvas background, distinct from `surface.base` (a card body). Part of the light-mode-anchors-at-white ramp: inset 0.960 -> bg 0.984 -> surface 0.994 -> raised 1.000.',
+        'Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness.',
     },
     {
       path: 'surface.base',
@@ -943,7 +943,7 @@ export const TOKEN_REGISTRY = {
       themeAware: true,
       deprecated: false,
       description:
-        'Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` (pure white), so it is the only thing making that control read as a control; must not be lightened past ~0.85.',
+        'Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill.',
     },
     {
       path: 'border.faint',
