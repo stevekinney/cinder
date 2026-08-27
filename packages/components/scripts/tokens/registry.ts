@@ -52,6 +52,22 @@ const EMITTED_THEME_CONTEXTS = new Set(['light', 'dark']);
 const PUBLIC_TOKEN_PREFIX = '--cinder-';
 const PRIVATE_TOKEN_PREFIX = '--_cinder-';
 
+/**
+ * The full grammar a `cssProperty` must satisfy, not just its prefix.
+ *
+ * CSS itself permits uppercase and underscores in a custom-property name, and
+ * the generators would happily emit one -- but `tokens-doc-drift.test.ts`
+ * parses generated rows with a `[a-z0-9-]+` suffix, so a token named
+ * `--cinder-fontAxis` would generate CSS and a documentation row and then be
+ * reported by the required drift gate as MISSING, pointing at documentation
+ * rather than at the name. Rather than widen the parser to accept names the
+ * design system does not actually use, the contract is enforced here, at the
+ * boundary that owns it, where the error can name the offending token.
+ *
+ * Keep this in step with that test's row pattern: the two are one contract.
+ */
+const CSS_PROPERTY_PATTERN = /^--_?cinder-[a-z0-9-]+$/;
+
 export type TokenRegistryEntry = {
   /** Dotted corpus path, e.g. `space.4` or `button.radius.xs`. */
   path: string;
@@ -248,6 +264,14 @@ export function buildTokenRegistryFromIndexes(
         `Base corpus token at "${entry.path}" is marked ` +
           `${entry.public ? 'public' : 'private'} but its cssProperty ` +
           `"${entry.cssProperty}" does not use the ${requiredPrefix} prefix.`,
+      );
+    }
+    if (!CSS_PROPERTY_PATTERN.test(entry.cssProperty)) {
+      throw new Error(
+        `Base corpus token at "${entry.path}" has cssProperty ` +
+          `"${entry.cssProperty}", which is outside the kebab-case grammar ` +
+          `${String(CSS_PROPERTY_PATTERN)} that the generated documentation is ` +
+          `parsed with. Rename the token to lowercase letters, digits, and hyphens.`,
       );
     }
 

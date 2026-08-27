@@ -17,7 +17,9 @@
  *     module from)
  *   - `docs/tokens.md`'s generated token tables, rewritten between
  *     `<!-- BEGIN/END GENERATED TOKEN TABLE -->` markers (Stage 5 deliverable
- *     2) -- hand-written prose outside the markers is never touched
+ *     2) -- hand-written prose outside the markers is preserved (Prettier
+ *     reformats the spliced document as a whole, so that prose keeps its
+ *     content and structure but not necessarily its exact bytes)
  *   - `packages/playground/src/shell-app/color-token-registry.generated.ts`
  *     (Stage 5 deliverable 3's data half; `color-token-registry.ts` stays
  *     hand-written and imports this). The data itself -- group membership,
@@ -625,8 +627,11 @@ export async function renderDocTable(
 
 /**
  * Rewrites every `<!-- BEGIN/END GENERATED TOKEN TABLE -->` block in
- * `existingMarkdown` in place, leaving everything outside those markers --
- * headings, prose, callouts -- byte-identical. Fails loudly (rather than
+ * `existingMarkdown` in place. Content outside those markers -- headings,
+ * prose, callouts -- is preserved but NOT byte-identical: the spliced document
+ * is handed to Prettier as a whole, which is what keeps `tokens:generate
+ * -- --check` stable against the commit hook's own formatting pass, and which
+ * can also normalize whitespace in the surrounding prose. Fails loudly (rather than
  * silently skipping) when a marker names a section `DOC_SECTIONS` does not
  * know, or when a `DOC_SECTIONS` entry has no matching marker in the file, so
  * a heading/marker edit and this generator's curation can never silently

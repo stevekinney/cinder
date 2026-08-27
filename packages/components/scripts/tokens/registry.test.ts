@@ -22,6 +22,10 @@
  *   - A4: the public/private prefix guard must check each namespace
  *     POSITIVELY. The two prefixes are disjoint, so deriving the public case
  *     from `!startsWith('--_cinder-')` admitted a third namespace entirely.
+ *   - A5: the `cssProperty` grammar must match what
+ *     `tokens-doc-drift.test.ts` parses back. CSS permits uppercase and
+ *     underscores; that parser's row pattern does not, so a token using them
+ *     would generate fine and then be reported as MISSING by the drift gate.
  *
  * None of these fixtures touch the real corpus under `src/tokens/`, so a fix
  * here can never change what `tokens:generate` emits for the committed
@@ -278,5 +282,46 @@ describe('A4: the public/private prefix guard checks each namespace positively',
   test('accepts each flag paired with its own prefix', () => {
     expect(build('--cinder-swatch', true)).not.toThrow();
     expect(build('--_cinder-swatch', false)).not.toThrow();
+  });
+});
+
+describe('A5: the cssProperty grammar matches what the drift parser can read back', () => {
+  function build(cssProperty: string) {
+    const resolver = fixtureResolver();
+    const documentsByPath = fixtureDocuments({
+      foundation: {
+        $type: 'dimension',
+        swatch: {
+          $value: { value: 1, unit: 'rem' },
+          $extensions: {
+            'com.lostgradient.cinder': { cssProperty, public: true },
+          },
+        },
+      },
+    });
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return () =>
+      buildTokenRegistryFromIndexes(baseIndex, themeAwarePaths(resolver, documentsByPath));
+  }
+
+  // CSS permits both of these and the generators would emit them, but
+  // `tokens-doc-drift.test.ts` parses rows with a `[a-z0-9-]+` suffix. Such a
+  // token would generate CSS and a documentation row, then be reported by the
+  // required drift gate as MISSING -- an error pointing at the documentation
+  // rather than at the name that caused it.
+  test('rejects an uppercase character in the suffix', () => {
+    expect(build('--cinder-fontAxis')).toThrow(/outside the kebab-case grammar/);
+  });
+
+  test('rejects an underscore in the suffix', () => {
+    expect(build('--cinder-type-font_axis')).toThrow(/outside the kebab-case grammar/);
+  });
+
+  test('rejects a bare prefix with no suffix', () => {
+    expect(build('--cinder-')).toThrow(/outside the kebab-case grammar/);
+  });
+
+  test('accepts lowercase, digits, and hyphens under either prefix', () => {
+    expect(build('--cinder-space-4')).not.toThrow();
   });
 });
