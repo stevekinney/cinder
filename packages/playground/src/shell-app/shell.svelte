@@ -44,6 +44,15 @@
   let colorTokenPanelModule = $state<Promise<ColorTokenPanelModule> | null>(null);
 
   let isInspectorOpen = $state(false);
+
+  /*
+   * Panel opening awaits a dynamic import, so two quick clicks with both chunks
+   * uncached race: whichever import resolved LAST would win, and the visible
+   * panel would follow network timing rather than the reader's last click.
+   * Every open and close claims a token; a completion holding a stale one is
+   * discarded.
+   */
+  let latestPanelRequest = 0;
   let inspectorModule = $state<Promise<ColorTokenPanelModule> | null>(null);
 
   $effect(() => {
@@ -95,6 +104,7 @@
   });
 
   function closeColorPanel(): void {
+    latestPanelRequest += 1;
     isColorPanelOpen = false;
     /*
      * Selected by its accessible name, not by `data-testid`. Focus restoration
@@ -113,6 +123,7 @@
       closeColorPanel();
       return;
     }
+    const request = ++latestPanelRequest;
     try {
       colorTokenPanelModule ??= import('./color-token-panel.svelte');
       await colorTokenPanelModule;
@@ -121,11 +132,13 @@
       console.error('[cinder playground] failed to load the color token panel:', error);
       return;
     }
+    if (request !== latestPanelRequest) return;
     isInspectorOpen = false;
     isColorPanelOpen = true;
   }
 
   function closeInspector(): void {
+    latestPanelRequest += 1;
     isInspectorOpen = false;
     requestAnimationFrame(() => {
       document
@@ -139,6 +152,7 @@
       closeInspector();
       return;
     }
+    const request = ++latestPanelRequest;
     try {
       inspectorModule ??= import('./token-inspector-panel.svelte');
       await inspectorModule;
@@ -147,6 +161,7 @@
       console.error('[cinder playground] failed to load the token inspector:', error);
       return;
     }
+    if (request !== latestPanelRequest) return;
     isColorPanelOpen = false;
     isInspectorOpen = true;
   }

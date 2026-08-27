@@ -225,6 +225,54 @@ test.describe('token inspector panel', () => {
     await expect(page.getByTestId('color-token-panel')).toHaveCount(0);
   });
 
+  test('the last click wins even when a slower panel chunk resolves later', async ({ page }) => {
+    /*
+     * Both panels load their chunk on demand, so two quick clicks race: without
+     * a guard, whichever import resolved LAST would win and the visible panel
+     * would follow network timing instead of the reader's last click.
+     *
+     * Chunks are content-hashed (`chunk-<hash>.js`), so they cannot be singled
+     * out by name — an earlier version of this test routed on a filename that
+     * never matched, which made it inert. Instead the route is installed AFTER
+     * the page has loaded, so it only sees chunks fetched by a click, and it
+     * stops delaying once the colour panel's fetch is in flight. The inspector,
+     * clicked second, therefore loads fast while the colour panel is still
+     * outstanding.
+     */
+    await page.goto('/', { waitUntil: 'load' });
+    await expect(page.getByTestId('color-token-panel-toggle')).toBeVisible();
+
+    let delayChunks = true;
+    await page.route('**/shell-bundle/chunk-*.js', async (route) => {
+      if (delayChunks) await new Promise((resolve) => setTimeout(resolve, 1500));
+      await route.continue();
+    });
+
+    const colorChunk = page.waitForRequest((request) =>
+      request.url().includes('/shell-bundle/chunk-'),
+    );
+    const colorChunkArrived = page.waitForResponse((response) =>
+      response.url().includes('/shell-bundle/chunk-'),
+    );
+    await page.getByTestId('color-token-panel-toggle').click();
+    await colorChunk;
+    delayChunks = false;
+
+    await page.getByTestId('token-inspector-toggle').click();
+    await expect(page.getByTestId('token-inspector-panel')).toBeVisible();
+
+    /*
+     * Wait for the DELAYED chunk to actually arrive before judging. Asserting
+     * straight after the click would pass trivially: the colour panel is not
+     * open yet at that moment whether or not the guard exists.
+     */
+    await colorChunkArrived;
+    await page.waitForTimeout(250);
+
+    await expect(page.getByTestId('color-token-panel')).toHaveCount(0);
+    await expect(page.getByTestId('token-inspector-panel')).toBeVisible();
+  });
+
   test('reports each token in both themes, and theme-aware ones differ', async ({ page }) => {
     const panel = await openInspector(page);
 
