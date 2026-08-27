@@ -894,6 +894,7 @@ export function validatePlaygroundColorTokenGroups(
   const duplicates = new Set<string>();
   const unknown: string[] = [];
   const nonColor: string[] = [];
+  const nonPublic: string[] = [];
   for (const group of groups) {
     for (const token of group.tokens) {
       if (seen.has(token.name)) duplicates.add(token.name);
@@ -906,7 +907,15 @@ export function validatePlaygroundColorTokenGroups(
         continue;
       }
       const path = registry.cssPropertyToPath[token.name]!;
-      if (entryByPath.get(path)?.category !== 'color') nonColor.push(token.name);
+      const entry = entryByPath.get(path);
+      if (entry?.category !== 'color') nonColor.push(token.name);
+      // Category alone is not enough. A private `--_cinder-*` token can carry
+      // `category: "color"`, and the panel writes each control's value straight
+      // to the document root -- so listing one would expose and let a user
+      // redefine an implementation token the package reserves from
+      // customization. Public is the customization contract; category only says
+      // what kind of value it holds.
+      if (entry !== undefined && !entry.public) nonPublic.push(token.name);
     }
   }
   if (unknown.length > 0) {
@@ -919,6 +928,12 @@ export function validatePlaygroundColorTokenGroups(
     throw new Error(
       `cinder.resolver.json's playgroundGroups references cssProperties that are not ` +
         `category: "color" tokens: ${nonColor.join(', ')}.`,
+    );
+  }
+  if (nonPublic.length > 0) {
+    throw new Error(
+      `cinder.resolver.json's playgroundGroups references private cssProperties, which the ` +
+        `package reserves from customization: ${nonPublic.join(', ')}.`,
     );
   }
   if (duplicates.size > 0) {

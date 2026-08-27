@@ -29,7 +29,12 @@ import {
   validatePlaygroundColorTokenGroups,
 } from './generate-artifacts.ts';
 import { type CorpusEntry, loadCorpus } from './generate.ts';
-import { buildBaseIndex, buildTokenRegistryFromIndexes, themeAwarePaths } from './registry.ts';
+import {
+  type TokenRegistry,
+  buildBaseIndex,
+  buildTokenRegistryFromIndexes,
+  themeAwarePaths,
+} from './registry.ts';
 import type { ResolverDocument } from './types.ts';
 
 function resolverWithExtensions(extensions: Record<string, unknown>): ResolverDocument {
@@ -636,5 +641,58 @@ describe('CIN-30 review round 12: a blank cssRecipe is rejected', () => {
 
   test('a real cssRecipe still passes', () => {
     expect(build('1rem')).not.toThrow();
+  });
+});
+
+describe('CIN-30 review round 13: playground groups exclude private tokens', () => {
+  function registryFor(cssProperty: string, isPublic: boolean): TokenRegistry {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/foundation' }],
+    };
+    const documentsByPath = new Map([
+      [
+        'base.json',
+        {
+          accent: {
+            $type: 'color',
+            $value: { colorSpace: 'oklch', components: [0.6, 0.1, 250] },
+            $extensions: {
+              'com.lostgradient.cinder': { cssProperty, public: isPublic, category: 'color' },
+            },
+          },
+        },
+      ],
+    ]);
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return buildTokenRegistryFromIndexes(baseIndex, themeAwarePaths(resolver, documentsByPath));
+  }
+
+  function groupsFor(cssProperty: string): readonly PlaygroundColorTokenGroup[] {
+    return [{ id: 'brand', label: 'Brand', tokens: [{ name: cssProperty, label: 'Accent' }] }];
+  }
+
+  // `category: "color"` says what KIND of value a token holds; `public` is the
+  // customization contract. The panel writes each control's value straight to
+  // the document root, so listing a private token would expose and let a user
+  // redefine an implementation detail the package reserves.
+  test('a private color token in a group is rejected, not just a non-color one', () => {
+    expect(() =>
+      validatePlaygroundColorTokenGroups(
+        groupsFor('--_cinder-accent'),
+        registryFor('--_cinder-accent', false),
+      ),
+    ).toThrow(/references private cssProperties.*--_cinder-accent/s);
+  });
+
+  test('a public color token is still accepted', () => {
+    expect(() =>
+      validatePlaygroundColorTokenGroups(
+        groupsFor('--cinder-accent'),
+        registryFor('--cinder-accent', true),
+      ),
+    ).not.toThrow();
   });
 });
