@@ -289,6 +289,18 @@ function resolveReference(
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
     if (!token) continue;
+    // Known gap, tracked in CIN-477: `resolveToken` is called eagerly here,
+    // before this function knows whether the remainder targets metadata
+    // (needing only `rawRefs`/the raw token object, no recursion at all) or
+    // the token's resolved value. When `candidatePath` equals the path
+    // currently being resolved -- a token pointing to its OWN metadata, e.g.
+    // `copy: { $ref: '#/copy/$description' }` -- this eager call trips the
+    // `resolving.has(path)` circular-alias guard and rejects a valid
+    // self-referencing metadata pointer that needs no resolution at all.
+    // Fixing it means selecting the metadata base before this call, in both
+    // this loop and the `#/$root` branch above -- deferred rather than
+    // reworked this late in review; nothing in the real corpus exercises a
+    // self-referencing metadata pointer.
     const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving);
     const propertySegments = segments.slice(end);
     // `$root`, when present AND `candidatePath` actually names a GROUP that

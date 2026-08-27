@@ -41,6 +41,16 @@ export function normalizeSourcePath(reference: string): string {
  * misclassified it as a filesystem reference and reported a nonexistent file
  * named `#%2Fsets%2Fbase` instead of expanding the set.
  */
+// Known gap, tracked in CIN-478: checking the DECODED string's prefix is
+// correct for `#%2Fsets%2Fbase` (a literal `#` with its following `/`
+// percent-encoded -- still genuinely a fragment) but wrong for an on-disk
+// source path that legitimately percent-encodes a literal `#` in its own
+// FILENAME (`%23%2Fsets%2Fbase`, decoding to a relative path, not a
+// fragment) -- per RFC 3986, percent-encoding never turns `%23` into a
+// fragment delimiter; only a literal, undecoded leading `#` is one.
+// Classification should check the RAW string for `#/` first. Deferred
+// rather than reworked this late in review; nothing in the real corpus uses
+// a filename containing `#`.
 function isInternalReference(reference: string): boolean {
   let decoded = reference;
   try {
