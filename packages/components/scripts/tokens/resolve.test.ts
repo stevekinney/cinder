@@ -271,6 +271,53 @@ describe('DTCG resolver', () => {
     expect(Object.keys(resolved)).toContain('copy');
   });
 
+  test('resolves a $ref alias that targets a group root token', () => {
+    // Regression: `resolveReference`'s `$root` branch returned the entire
+    // resolved `DesignToken` object (`{ $value, $type, ... }`) rather than
+    // extracting `$value`, so a whole-token $ref to a `$root` token produced
+    // a nested-object $value instead of the referenced value.
+    const resolved = resolveDocument({
+      group: { $type: 'number', $root: { $value: 1 } },
+      copy: { $ref: '#/group/$root' },
+    });
+    expect(resolved['copy']?.$value).toBe(1);
+    expect(resolved['copy']?.$type).toBe('number');
+  });
+
+  test('resolves a $ref alias that targets a document root token', () => {
+    const resolved = resolveDocument({
+      $type: 'number',
+      $root: { $value: 1 },
+      copy: { $ref: '#/$root' },
+    });
+    expect(resolved['copy']?.$value).toBe(1);
+    expect(resolved['copy']?.$type).toBe('number');
+  });
+
+  test('resolves a bare JSON Pointer to a group root token (no trailing $value)', () => {
+    // The embedded-alias equivalent of the two $ref cases above: a $value
+    // string alias to a bare `#/group/$root`/`#/$root` pointer must extract
+    // $value too, not the whole DesignToken object.
+    const resolved = resolveDocument({
+      group: { $type: 'number', $root: { $value: 1 } },
+      copy: { $type: 'number', $value: '#/group/$root' },
+    });
+    expect(resolved['copy']?.$value).toBe(1);
+  });
+
+  test('rejects a resolved token carrying both $value and $ref', () => {
+    // Validation (assertValidTokenDocument) is what normally enforces this;
+    // this is the resolve-time backstop for a caller that reaches
+    // resolveDocuments directly, so $ref is never silently preferred over an
+    // untouched $value with no diagnostic.
+    expect(() =>
+      resolveDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $value: 2, $ref: '#/base' },
+      }),
+    ).toThrow(/mutually exclusive/);
+  });
+
   test('inherits __proto__ tokens through group extensions', () => {
     const document = JSON.parse(
       '{"base":{"$type":"number","__proto__":{"$value":1}},"derived":{"$extends":"{base}"}}',

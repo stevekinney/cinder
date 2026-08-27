@@ -55,7 +55,12 @@ import type {
   TokenGroup,
   TokenType,
 } from './types.ts';
-import { normalizeSourcePath, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
+import {
+  expandContextSources,
+  normalizeSourcePath,
+  parseResolutionOrder,
+  sourcesForEntry,
+} from './validate-corpus.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..', '..');
@@ -138,7 +143,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isToken(value: unknown): value is DesignToken {
-  return isPlainObject(value) && '$value' in value;
+  // Mirrors resolve.ts's `isToken`: a DTCG 2025.10 `$ref` whole-token alias
+  // is mutually exclusive with `$value`, so a node declaring either is
+  // token-shaped. This walker classifies the RAW, unresolved corpus (see the
+  // module doc above) -- checking `$value` alone was the CIN-463 "live trap"
+  // recurring a third time here, independent of resolve.ts's own copy: a
+  // `$ref`-only node fell through to `isTokenGroup`, was walked as an empty
+  // group, and silently vanished from `tokens-base.css` and the generated
+  // registry (both of which reuse `collectEntries` below) even though it
+  // validated and resolved correctly.
+  return isPlainObject(value) && ('$value' in value || '$ref' in value);
 }
 
 function isTokenGroup(value: unknown): value is TokenGroup {
@@ -180,9 +194,18 @@ function toEntry(
       ? token.$deprecated
       : undefined;
   const deprecated = ownDeprecated ?? inheritedDeprecated;
+  // A `$ref` whole-token alias has no `$value` of its own -- the reference
+  // string ITSELF is the raw, unresolved value this walker records (mirroring
+  // how an ordinary embedded `{a.b.c}`/`#/a/b/c` alias is kept raw rather than
+  // resolved here; see the module doc above). `isAliasReference` in
+  // `serializeEntryValue` recognizes both forms identically, so a `$ref`
+  // token flows through the exact same `var(--referenced-property)` emission
+  // path as an ordinary aliased `$value`, rather than a second alias-handling
+  // code path.
+  const value = token.$ref ?? token.$value;
   return {
     path,
-    value: token.$value,
+    value,
     type: token.$type ?? inheritedType,
     description: token.$description,
     cssProperty,
@@ -773,11 +796,18 @@ export async function buildTokensBaseCss(
   // overriding context, so a resolver built from the base documents alone is correct here.
   const baseResolveReferences = createValueResolver(baseDocuments);
 
-  const themeModifier = resolver.modifiers['theme']!;
-  const motionModifier = resolver.modifiers['motion']!;
-
-  const lightDocuments = refsFor(documentsByPath, themeModifier.contexts['light']!);
-  const darkDocuments = refsFor(documentsByPath, themeModifier.contexts['dark']!);
+  // `expandContextSources` (not a raw `resolver.modifiers['theme'].contexts[...]` read via
+  // `refsFor`) -- a theme or motion context may itself list a
+  // resolver-internal `#/sets/<name>` source rather than only plain document
+  // `$ref`s, and that internal reference needs expanding to the document
+  // `$ref`s it stands for before `refsFor`'s `requireDocument` lookup runs.
+  // `requireDocument` looks for a literal ON-DISK document named
+  // `#/sets/<name>` and throws otherwise, so a resolver `tokens:validate`
+  // already accepts (`sourcesForEntry` in `validate-corpus.ts` expands the
+  // identical reference for its own resolution-order walk) could not be
+  // generated without this expansion happening here too.
+  const lightDocuments = refsFor(documentsByPath, expandContextSources(resolver, 'theme', 'light'));
+  const darkDocuments = refsFor(documentsByPath, expandContextSources(resolver, 'theme', 'dark'));
   // The `reduced` motion context backs the `prefers-reduced-motion` media
   // block and the `forced-reduced-motion` context backs the
   // `data-reduced-motion='on'` override -- two distinct resolver contexts,
@@ -787,10 +817,13 @@ export async function buildTokensBaseCss(
   // values; each block must still be built from its own context so the two
   // can diverge without silently mis-wiring the forced block to the
   // system-preference values.
-  const reducedMotionDocuments = refsFor(documentsByPath, motionModifier.contexts['reduced']!);
+  const reducedMotionDocuments = refsFor(
+    documentsByPath,
+    expandContextSources(resolver, 'motion', 'reduced'),
+  );
   const forcedReducedMotionDocuments = refsFor(
     documentsByPath,
-    motionModifier.contexts['forced-reduced-motion']!,
+    expandContextSources(resolver, 'motion', 'forced-reduced-motion'),
   );
 
   // For EACH override context, "the documents in scope" are exactly what `resolutionOrder`

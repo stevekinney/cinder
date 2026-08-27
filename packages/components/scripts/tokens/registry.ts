@@ -33,7 +33,7 @@ import {
 } from './generate.ts';
 import { mergeAndExpandExtends } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
-import { parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
+import { expandContextSources, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
 
 /**
  * The theme contexts `buildTokensBaseCss` emits a selector for. The registry's
@@ -195,7 +195,15 @@ export function themeAwarePaths(
   for (const themeName of Object.keys(themeModifier.contexts).filter((name) =>
     EMITTED_THEME_CONTEXTS.has(name),
   )) {
-    const ownDocuments = refsFor(documentsByPath, themeModifier.contexts[themeName]!);
+    // `expandContextSources`, not a raw `themeModifier.contexts[themeName]`
+    // read -- the same resolver-internal `#/sets/<name>` expansion
+    // `buildTokensBaseCss` in `generate.ts` needs for the identical reason:
+    // an unexpanded internal reference reaches `refsFor`'s `requireDocument`,
+    // which looks for a literal on-disk document by that name and throws.
+    const ownDocuments = refsFor(
+      documentsByPath,
+      expandContextSources(resolver, 'theme', themeName),
+    );
     const scopeDocuments = documentsForResolutionOrder(
       resolver,
       documentsByPath,

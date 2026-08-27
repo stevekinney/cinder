@@ -367,6 +367,71 @@ describe('B4: resolver source refs are normalized before document lookup', () =>
   });
 });
 
+describe('CIN-464 review: buildTokensBaseCss expands resolver-internal set references', () => {
+  // Regression: `buildTokensBaseCss` built `lightDocuments`/`darkDocuments`
+  // and both motion override document lists straight from
+  // `themeModifier.contexts[...]`/`motionModifier.contexts[...]` via
+  // `refsFor`, bypassing the same `#/sets/<name>` expansion
+  // `validate-corpus.ts`'s `sourcesForEntry` already applies for the
+  // equivalent resolution-order walk (used just below, for `*ScopeDocuments`,
+  // via `documentsForResolutionOrder`). A theme or motion context that
+  // referenced a set reached `requireDocument`, which looks for an on-disk
+  // document literally named `#/sets/<name>` and throws -- a resolver
+  // `tokens:validate` already accepted could not be generated.
+  test('a theme context referencing a set via #/sets/<name> does not throw', async () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        lightOverrides: { sources: [{ $ref: 'light.json' }] },
+      },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: '#/sets/lightOverrides' }],
+            dark: [{ $ref: 'dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-default.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-default.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      [
+        'base.json',
+        {
+          color: {
+            $type: 'color',
+            $value: { colorSpace: 'srgb', components: [0, 0, 0] },
+            $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-color' } },
+          },
+        },
+      ],
+      [
+        'light.json',
+        { color: { $type: 'color', $value: { colorSpace: 'srgb', components: [1, 1, 1] } } },
+      ],
+      ['dark.json', {}],
+      ['motion-default.json', {}],
+    ]);
+
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    expect(css).toContain('--cinder-color');
+  });
+});
+
 describe('C1: isColorValue rejects a malformed color shape instead of serializing NaN%', () => {
   test('a components array with the wrong length throws', () => {
     expect(() =>
@@ -1401,6 +1466,84 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
 
     expect(entries.get('derived.gutter')?.deprecated).toBe(false);
     expect(entries.get('derived.other')?.deprecated).toBe(false);
+  });
+
+  // Regression: `resolveExtends` read the extended group's OWN `$deprecated`
+  // property directly, which is `undefined` for a group that only inherits
+  // deprecation from an ANCESTOR (via ordinary nesting, not $extends) --
+  // ancestor-to-descendant propagation for ordinary nesting happens later, in
+  // `collectEntries` at generation time, well after `$extends` has already
+  // run. A group extending such a target lost the deprecation entirely, even
+  // though every token under the target is itself effectively deprecated by
+  // the time generation walks it.
+  test('a group extending a target that only inherits $deprecated from an ancestor is deprecated too', () => {
+    const entries = entriesFor([
+      {
+        outer: {
+          $type: 'dimension',
+          $deprecated: 'Use space.* instead.',
+          base: { gutter: { $value: 1 } },
+        },
+        derived: { $extends: '{outer.base}' },
+      },
+    ]);
+
+    expect(entries.get('outer.base.gutter')?.deprecated).toBe('Use space.* instead.');
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
+  });
+});
+
+describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value', () => {
+  // Regression: `generate.ts` kept its OWN `isToken` copy, independent of
+  // resolve.ts's (which CIN-463 already fixed) -- checking `$value` alone
+  // classified a `$ref`-only node as an (empty) group, so it silently
+  // vanished from `tokens-base.css` and the generated registry (both walk
+  // the raw corpus via `collectEntries`) even though it validated and
+  // resolved correctly.
+  test('a $ref token is not dropped from the collected entries', () => {
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(
+      {
+        base: {
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
+        },
+        copy: {
+          $ref: '{base}',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
+        },
+      },
+      '',
+      undefined,
+      into,
+    );
+
+    expect(into.has('copy')).toBe(true);
+    expect(into.get('copy')?.value).toBe('{base}');
+  });
+
+  test('a $ref token in a base index resolves to the referenced cssProperty via var()', () => {
+    const baseIndex = new Map<string, CorpusEntry>();
+    collectEntries(
+      {
+        base: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
+        },
+        copy: {
+          $ref: '{base}',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
+        },
+      },
+      '',
+      undefined,
+      baseIndex,
+    );
+
+    const copyEntry = baseIndex.get('copy');
+    expect(copyEntry).toBeDefined();
+    expect(serializeEntryValue(copyEntry!, baseIndex)).toBe('var(--cinder-base)');
   });
 });
 

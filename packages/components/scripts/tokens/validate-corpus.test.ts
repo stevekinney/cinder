@@ -253,7 +253,12 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
       expandSetSources(cyclic, 'a');
       throw new Error('expected expandSetSources to throw');
     } catch (error) {
-      expect(String(error)).toContain('$.sets.a.sources');
+      // The reference SITE, not the set being re-visited: `a`'s sources name
+      // `b`, and `b`'s sources are what names `a` again and closes the loop
+      // -- `b.sources` is the array actually containing the offending
+      // back-reference, so that is what the error should point a reader at,
+      // rather than `a.sources` (the earlier, non-cyclic hop).
+      expect(String(error)).toContain('$.sets.b.sources');
     }
   });
 
@@ -301,5 +306,65 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(expandSetSources(missingFile, 'base')).toEqual([
       { $ref: 'sets/does-not-exist.tokens.json' },
     ]);
+  });
+
+  test('an unknown set referenced from another set is reported at the referencing sources array', () => {
+    // Regression: the thrown path used to be `$.sets.<missing>`, which does
+    // not exist in the document and does not point a reader at the actual
+    // reference site.
+    const missingSet: ResolverDocument = {
+      version: '2025.10',
+      sets: { extended: { sources: [{ $ref: '#/sets/does-not-exist' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/extended' }],
+    };
+
+    expect(() => expandSetSources(missingSet, 'extended')).toThrow(
+      /resolver-internal reference names an unknown set/,
+    );
+    try {
+      expandSetSources(missingSet, 'extended');
+      throw new Error('expected expandSetSources to throw');
+    } catch (error) {
+      expect(String(error)).toContain('$.sets.extended.sources');
+      expect(String(error)).not.toContain('$.sets.does-not-exist');
+    }
+  });
+
+  test('an unknown set referenced from a modifier context is reported at the referencing context', () => {
+    const missingSet: ResolverDocument = {
+      version: '2025.10',
+      sets: {},
+      modifiers: { theme: { contexts: { light: [{ $ref: '#/sets/does-not-exist' }] } } },
+      resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+    };
+
+    try {
+      expandContextSources(missingSet, 'theme', 'light');
+      throw new Error('expected expandContextSources to throw');
+    } catch (error) {
+      expect(String(error)).toContain('$.modifiers.theme.contexts.light');
+      expect(String(error)).not.toContain('$.sets.does-not-exist');
+    }
+  });
+
+  test('a percent-encoded internal set reference is classified as internal, not a file path', () => {
+    // `#%2Fsets%2Fbase` percent-decodes to `#/sets/base`. `resolutionOrderTarget`
+    // (validate.ts) decodes before parsing and correctly recognizes it as
+    // internal; a raw, undecoded `startsWith('#/')` classification check here
+    // disagreed, treating the identical reference as an on-disk file and
+    // reporting it as a nonexistent document named `#%2Fsets%2Fbase` instead
+    // of expanding the set.
+    const encoded: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+        extended: { sources: [{ $ref: '#%2Fsets%2Fbase' }] },
+      },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/extended' }],
+    };
+
+    expect(expandSetSources(encoded, 'extended')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
   });
 });

@@ -325,3 +325,49 @@ describe('A5: the cssProperty grammar matches what the drift parser can read bac
     expect(build('--cinder-space-4')).not.toThrow();
   });
 });
+
+describe('CIN-464 review: themeAwarePaths expands resolver-internal set references', () => {
+  // Regression: `themeAwarePaths` built its `ownDocuments` straight from
+  // `themeModifier.contexts[themeName]` via `refsFor`, bypassing the same
+  // `#/sets/<name>` expansion `validate-corpus.ts`'s `sourcesForEntry` already
+  // applies for the equivalent resolution-order walk. A theme context that
+  // referenced a set (rather than only plain document `$ref`s) reached
+  // `requireDocument`, which looks for an on-disk document literally named
+  // `#/sets/<name>` and throws -- a resolver `tokens:validate` already
+  // accepted could not be turned into a registry.
+  test('a theme context referencing a set via #/sets/<name> resolves without throwing', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        lightOverrides: { sources: [{ $ref: 'light.json' }] },
+      },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: '#/sets/lightOverrides' }],
+            dark: [{ $ref: 'dark.json' }],
+          },
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      [
+        'base.json',
+        {
+          color: {
+            $type: 'color',
+            $value: { colorSpace: 'srgb', components: [0, 0, 0] },
+            $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-color' } },
+          },
+        },
+      ],
+      ['light.json', { color: { $value: { colorSpace: 'srgb', components: [1, 1, 1] } } }],
+      ['dark.json', {}],
+    ]);
+
+    const aware = themeAwarePaths(resolver, documentsByPath);
+    expect(aware.has('color')).toBe(true);
+  });
+});
