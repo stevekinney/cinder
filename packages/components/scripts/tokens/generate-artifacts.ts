@@ -90,16 +90,18 @@ const TYPESCRIPT_PLUGINS = [typescriptPlugin, estreePlugin, babelPlugin];
  * twice, or a section here has no matching marker in docs/tokens.md.
  */
 /**
- * `headings` is the LITERAL trail of Markdown headings the marker sits under,
- * outermost first, not a prose label. `buildTokensDocMarkdown` requires it to
- * be a SUFFIX of the marker's actual heading trail, so a section may declare
- * just its own heading (`['Spacing']`) without repeating the document title,
- * while a nested one pins its parent too (`['Button', 'Base']`).
+ * `headings` is the trail of enclosing Markdown headings written EXACTLY as
+ * they appear in the document -- hashes included -- outermost first, below the
+ * document title. `buildTokensDocMarkdown` compares it to the marker's actual
+ * trail for equality.
  *
- * A leaf alone is not enough: the six button sections are nested as
- * `### Base` / `### Size: xs` beneath `## Button`, and matching only the leaf
- * would let `### Base` and its marker move under a different `##` parent
- * unnoticed.
+ * Two earlier, weaker forms each left a hole. Matching the leaf label alone let
+ * `### Base` and its marker move beneath a different `##` parent, since the six
+ * button sections nest under `## Button`. Matching a suffix of label-only
+ * entries then let a section be DEMOTED -- `## Spacing` becoming `### Spacing`
+ * under `## Typography` still ends in `Spacing`. Carrying the hashes pins the
+ * level and the ancestry together, and has the side benefit of being checkable
+ * against the document by eye.
  */
 export type DocSection = {
   slug: string;
@@ -110,7 +112,7 @@ export type DocSection = {
 const DOC_SECTIONS: readonly DocSection[] = [
   {
     slug: 'spacing',
-    headings: ['Spacing'],
+    headings: ['## Spacing'],
     cssProperties: [
       '--cinder-space-0',
       '--cinder-space-0-5',
@@ -135,7 +137,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'radii-and-shadows',
-    headings: ['Radii and shadows'],
+    headings: ['## Radii and shadows'],
     cssProperties: [
       '--cinder-radius-sm',
       '--cinder-radius-md',
@@ -149,7 +151,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'control-heights',
-    headings: ['Control heights'],
+    headings: ['## Control heights'],
     cssProperties: [
       '--cinder-control-height-xs',
       '--cinder-control-height-sm',
@@ -158,7 +160,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'typography',
-    headings: ['Typography'],
+    headings: ['## Typography'],
     cssProperties: [
       '--cinder-font-sans',
       '--cinder-font-mono',
@@ -191,7 +193,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'layout',
-    headings: ['Layout'],
+    headings: ['## Layout'],
     cssProperties: [
       '--cinder-content-width',
       '--cinder-content-width-prose',
@@ -201,7 +203,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'motion',
-    headings: ['Motion'],
+    headings: ['## Motion'],
     cssProperties: [
       '--cinder-duration-instant',
       '--cinder-duration-fast',
@@ -221,7 +223,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'surfaces',
-    headings: ['Surfaces'],
+    headings: ['## Surfaces'],
     cssProperties: [
       '--cinder-bg',
       '--cinder-surface',
@@ -239,7 +241,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'text-colors',
-    headings: ['Text colors'],
+    headings: ['## Text colors'],
     cssProperties: [
       '--cinder-text',
       '--cinder-text-muted',
@@ -250,7 +252,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'borders',
-    headings: ['Borders'],
+    headings: ['## Borders'],
     cssProperties: [
       '--cinder-border',
       '--cinder-border-faint',
@@ -262,7 +264,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'opacity',
-    headings: ['Opacity'],
+    headings: ['## Opacity'],
     cssProperties: [
       '--cinder-opacity-disabled',
       '--cinder-opacity-muted',
@@ -271,7 +273,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'accent',
-    headings: ['Accent'],
+    headings: ['## Accent'],
     cssProperties: [
       '--cinder-accent',
       '--cinder-accent-contrast',
@@ -284,7 +286,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'semantic-aliases',
-    headings: ['Semantic aliases'],
+    headings: ['## Semantic aliases'],
     cssProperties: [
       '--cinder-pad-control',
       '--cinder-pad-card',
@@ -296,7 +298,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'status-solid',
-    headings: ['Status — solid'],
+    headings: ['## Status — solid'],
     cssProperties: [
       '--cinder-info',
       '--cinder-success',
@@ -318,7 +320,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'status-semantic-triples',
-    headings: ['Status — semantic triples'],
+    headings: ['## Status — semantic triples'],
     cssProperties: [
       '--cinder-color-info-bg',
       '--cinder-color-info-fg',
@@ -350,12 +352,12 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'transparency-checkerboard',
-    headings: ['Transparency checkerboard'],
+    headings: ['## Transparency checkerboard'],
     cssProperties: ['--cinder-color-checker-base', '--cinder-color-checker-tile'],
   },
   {
     slug: 'chart-series',
-    headings: ['Chart series'],
+    headings: ['## Chart series'],
     cssProperties: [
       '--cinder-chart-series-1',
       '--cinder-chart-series-2',
@@ -369,7 +371,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'focus-ring',
-    headings: ['Focus ring'],
+    headings: ['## Focus ring'],
     cssProperties: [
       '--cinder-ring-width',
       '--cinder-ring-offset',
@@ -380,7 +382,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'z-index-layers',
-    headings: ['Z-index layers'],
+    headings: ['## Z-index layers'],
     cssProperties: [
       '--cinder-z-tooltip',
       '--cinder-z-dropdown',
@@ -394,7 +396,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'overlay-surfaces',
-    headings: ['Overlay surfaces'],
+    headings: ['## Overlay surfaces'],
     cssProperties: [
       '--cinder-overlay-backdrop',
       '--cinder-overlay-blur',
@@ -404,7 +406,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'scrollbars',
-    headings: ['Scrollbars'],
+    headings: ['## Scrollbars'],
     cssProperties: [
       '--cinder-scrollbar-size',
       '--cinder-scrollbar-track',
@@ -414,7 +416,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-base',
-    headings: ['Button', 'Base'],
+    headings: ['## Button', '### Base'],
     cssProperties: [
       '--cinder-button-bg',
       '--cinder-button-fg',
@@ -424,7 +426,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xs',
-    headings: ['Button', 'Size: xs'],
+    headings: ['## Button', '### Size: xs'],
     cssProperties: [
       '--cinder-button-padding-x-xs',
       '--cinder-button-padding-y-xs',
@@ -435,7 +437,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-sm',
-    headings: ['Button', 'Size: sm'],
+    headings: ['## Button', '### Size: sm'],
     cssProperties: [
       '--cinder-button-padding-x-sm',
       '--cinder-button-padding-y-sm',
@@ -446,7 +448,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-md',
-    headings: ['Button', 'Size: md'],
+    headings: ['## Button', '### Size: md'],
     cssProperties: [
       '--cinder-button-padding-x-md',
       '--cinder-button-padding-y-md',
@@ -457,7 +459,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-lg',
-    headings: ['Button', 'Size: lg'],
+    headings: ['## Button', '### Size: lg'],
     cssProperties: [
       '--cinder-button-padding-x-lg',
       '--cinder-button-padding-y-lg',
@@ -468,7 +470,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xl',
-    headings: ['Button', 'Size: xl'],
+    headings: ['## Button', '### Size: xl'],
     cssProperties: [
       '--cinder-button-padding-x-xl',
       '--cinder-button-padding-y-xl',
@@ -509,6 +511,13 @@ const GENERATED_MARKER_FRAGMENTS = [
   '<!-- END GENERATED TOKEN TABLE',
 ] as const;
 
+/**
+ * Checked against the NORMALIZED cell, not the raw source string. `toTableCell`
+ * collapses interior line breaks to single spaces, so normalization can
+ * SYNTHESIZE a marker that the raw text does not contain -- a description
+ * carrying `<!-- END\nGENERATED TOKEN TABLE -->` passes a raw scan and then
+ * collapses into the exact closing marker.
+ */
 function assertNoGeneratedMarkers(text: string, field: string, cssProperty: string): void {
   for (const fragment of GENERATED_MARKER_FRAGMENTS) {
     if (text.includes(fragment)) {
@@ -626,16 +635,16 @@ export async function renderDocTable(
         `No base corpus entry has cssProperty "${cssProperty}" (section "${section.slug}").`,
       );
     }
-    const value = serializeEntryValue(entry, baseIndex, resolveReferences);
-    assertNoGeneratedMarkers(value, 'value', cssProperty);
-    assertNoGeneratedMarkers(entry.description ?? '', 'description', cssProperty);
+    const value = toTableCell(serializeEntryValue(entry, baseIndex, resolveReferences));
     const description = toTableCell(entry.description ?? '');
+    assertNoGeneratedMarkers(value, 'value', cssProperty);
+    assertNoGeneratedMarkers(description, 'description', cssProperty);
     // Escape pipes in the value as well as the description. GFM treats `|` as a
     // column delimiter even inside a backtick code span, so a token serializing to
     // a value containing one -- a fontFamily whose family name is `A|B` becomes the
     // valid CSS string 'A|B' -- would commit a structurally malformed row that the
     // drift parser still happily reads back.
-    return `| ${toCodeSpan(cssProperty)} | ${toCodeSpan(toTableCell(value))} | ${description} |`;
+    return `| ${toCodeSpan(cssProperty)} | ${toCodeSpan(value)} | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });
@@ -661,18 +670,15 @@ function enclosingHeadings(markdown: string, offset: number): string[] {
     const text = match?.[2];
     if (hashes === undefined || text === undefined) continue;
     if (hashes.length < level) {
-      trail.unshift(text.trim());
+      trail.unshift(`${hashes} ${text.trim()}`);
       level = hashes.length;
     }
   }
-  return trail;
-}
-
-/** Whether `expected` is a suffix of `actual`, comparing element by element. */
-function isHeadingSuffix(actual: readonly string[], expected: readonly string[]): boolean {
-  if (expected.length === 0 || expected.length > actual.length) return false;
-  const offset = actual.length - expected.length;
-  return expected.every((heading, index) => actual[offset + index] === heading);
+  // The document title encloses everything, so declaring it in all 26 sections
+  // would be noise. Dropping exactly one leading `#` heading keeps the
+  // comparison anchored rather than a suffix match: a demoted section gains an
+  // ancestor and no longer matches, which a suffix match would have accepted.
+  return trail[0]?.startsWith('# ') ? trail.slice(1) : trail;
 }
 
 /**
@@ -731,11 +737,15 @@ export async function buildTokensDocMarkdown(
     // drift test compares tokens globally rather than per section, so nothing
     // anywhere noticed.
     //
-    // Matched as a SUFFIX of the enclosing trail rather than against the leaf
-    // alone: the button sections are `### Base` beneath `## Button`, and a leaf
-    // comparison would let that pair move under another `##` parent intact.
+    // Compared for EQUALITY against the full trail below the document title,
+    // hashes included. A suffix match over label-only entries accepted a
+    // demoted section, and a leaf-only match accepted a nested pair moved under
+    // another parent.
     const trail = enclosingHeadings(existingMarkdown, start);
-    if (!isHeadingSuffix(trail, section.headings)) {
+    const trailMatchesDeclaration =
+      trail.length === section.headings.length &&
+      section.headings.every((heading, index) => trail[index] === heading);
+    if (!trailMatchesDeclaration) {
       throw new Error(
         `docs/tokens.md has the "${slug}" generated-table marker under headings ` +
           `${trail.length === 0 ? '(none)' : trail.map((h) => `"${h}"`).join(' > ')}, but ` +

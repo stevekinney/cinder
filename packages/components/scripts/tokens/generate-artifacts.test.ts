@@ -511,7 +511,7 @@ describe('CIN-30 review round 11: markers must stay under their declared heading
   // compares tokens globally rather than per section -- still passing.
   test('a marker moved under a different heading is rejected', async () => {
     await expect(build('## Typography')).rejects.toThrow(
-      /marker under headings "Design tokens" > "Typography", but DOC_SECTIONS declares it belongs under "Spacing"/,
+      /marker under headings "## Typography", but DOC_SECTIONS declares it belongs under "## Spacing"/,
     );
   });
 
@@ -561,7 +561,7 @@ describe('CIN-30 review round 12: nested markers pin their parent heading', () =
   // section and `tokens:generate -- --check` would stabilise on it.
   test('a nested marker moved under a different parent is rejected', async () => {
     await expect(build(buttonBase('## Typography'))).rejects.toThrow(
-      /"Typography" > "Base", but DOC_SECTIONS declares it belongs under "Button" > "Base"/,
+      /"## Typography" > "### Base", but DOC_SECTIONS declares it belongs under "## Button" > "### Base"/,
     );
   });
 
@@ -694,5 +694,62 @@ describe('CIN-30 review round 13: playground groups exclude private tokens', () 
         registryFor('--cinder-accent', true),
       ),
     ).not.toThrow();
+  });
+});
+describe('CIN-30 review round 14', () => {
+  // `toTableCell` collapses interior line breaks, so normalization can
+  // SYNTHESIZE a marker the raw source does not contain. Validating the raw
+  // string accepted this and then wrote the exact closing marker into the block.
+  test('a marker split across a newline is caught after normalization', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'recipe.split',
+        {
+          path: 'recipe.split',
+          value: { value: 1, unit: 'rem' },
+          type: 'dimension',
+          description: 'Ends <!-- END\nGENERATED TOKEN TABLE --> here.',
+          cssProperty: '--cinder-test-split',
+          cssRecipe: undefined,
+          public: true,
+          category: 'spacing',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'split',
+      headings: ['## Split'],
+      cssProperties: ['--cinder-test-split'],
+    };
+
+    await expect(renderDocTable(section, baseIndex, (value) => value)).rejects.toThrow(
+      /description for "--cinder-test-split" contains the generated-table marker/,
+    );
+  });
+
+  // A suffix match over label-only entries accepted a DEMOTED section: turning
+  // `## Spacing` into `### Spacing` beneath `## Typography` still ends in
+  // "Spacing", so the spacing table would nest under Typography unnoticed.
+  test('a demoted section heading is rejected, not just a moved one', async () => {
+    const { resolver, documentsByPath } = await loadCorpus();
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    const markdown = [
+      '# Design tokens',
+      '',
+      '## Typography',
+      '',
+      '### Spacing',
+      '',
+      '<!-- BEGIN GENERATED TOKEN TABLE: spacing -->',
+      'stale',
+      '<!-- END GENERATED TOKEN TABLE -->',
+      '',
+    ].join('\n');
+
+    await expect(buildTokensDocMarkdown(markdown, baseIndex, (value) => value)).rejects.toThrow(
+      /"## Typography" > "### Spacing", but DOC_SECTIONS declares it belongs under "## Spacing"/,
+    );
   });
 });

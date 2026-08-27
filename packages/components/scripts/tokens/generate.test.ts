@@ -1328,3 +1328,44 @@ describe('CIN-30 review round 11: group $deprecated inherits like $type', () => 
     expect(entries.get('space.gutter')?.deprecated).toBeUndefined();
   });
 });
+describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
+  function entry(path: string, type: 'fontFamily' | 'fontWeight'): CorpusEntry {
+    return {
+      path,
+      value: 'normal',
+      type,
+      description: undefined,
+      cssProperty: '--cinder-test-normal',
+      cssRecipe: undefined,
+      public: true,
+      category: 'typography',
+      component: undefined,
+      deprecated: undefined,
+    };
+  }
+
+  // Serialization is type-directed: `fontFamily: "normal"` emits `normal` while
+  // `fontWeight: "normal"` emits `400`. Hashing only the raw $value called this
+  // pair identical, so the first-claimant docs index documented one form while
+  // the CSS and the drift test's last-write map used the other -- regeneration
+  // then produced documentation the required drift test rejected.
+  test('two entries sharing a value but differing in type are a conflict', () => {
+    const entries = new Map<string, CorpusEntry>([
+      ['type.family', entry('type.family', 'fontFamily')],
+      ['type.weight', entry('type.weight', 'fontWeight')],
+    ]);
+
+    expect(() => assertUniqueCssProperties(entries)).toThrow(
+      /--cinder-test-normal is claimed with conflicting values by type\.family, type\.weight/,
+    );
+  });
+
+  test('two entries agreeing on value AND type are still permitted', () => {
+    const entries = new Map<string, CorpusEntry>([
+      ['type.family', entry('type.family', 'fontFamily')],
+      ['type.alias', entry('type.alias', 'fontFamily')],
+    ]);
+
+    expect(() => assertUniqueCssProperties(entries)).not.toThrow();
+  });
+});

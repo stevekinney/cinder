@@ -714,7 +714,19 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
   const byProperty = new Map<string, Map<string, string[]>>();
   for (const [path, entry] of entries) {
     if (!entry.cssProperty) continue;
-    const emitted = JSON.stringify({ value: entry.value, cssRecipe: entry.cssRecipe });
+    // `type` belongs in the key, not just the value: serialization is
+    // type-directed, so two entries can share a raw `$value` and still emit
+    // different CSS -- `fontFamily: "normal"` emits `normal` while
+    // `fontWeight: "normal"` emits `400`. Hashing the value alone called that
+    // pair identical, and the disagreement then surfaced downstream, where the
+    // first-claimant docs index documented one form while the CSS and the drift
+    // test's last-write map used the other, so regeneration produced
+    // documentation the required drift test rejected.
+    const emitted = JSON.stringify({
+      type: entry.type,
+      value: entry.value,
+      cssRecipe: entry.cssRecipe,
+    });
     const paths = byProperty.get(entry.cssProperty) ?? new Map<string, string[]>();
     paths.set(emitted, [...(paths.get(emitted) ?? []), path]);
     byProperty.set(entry.cssProperty, paths);
