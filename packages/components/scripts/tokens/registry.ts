@@ -221,6 +221,12 @@ export function buildTokenRegistryFromIndexes(
     // Nothing in corpus validation relates these two free-form extension fields,
     // so without this a token could advertise an internal implementation detail
     // as part of the public surface to every registry consumer.
+    if (entry.category !== undefined && entry.category.trim() === '') {
+      throw new Error(`Base corpus token at "${entry.path}" has a blank category extension.`);
+    }
+    if (entry.component !== undefined && entry.component.trim() === '') {
+      throw new Error(`Base corpus token at "${entry.path}" has a blank component extension.`);
+    }
     if (entry.public && entry.cssProperty.startsWith('--_cinder-')) {
       throw new Error(
         `Base corpus token at "${entry.path}" is marked public but its cssProperty ` +
@@ -257,8 +263,14 @@ export function buildTokenRegistryFromIndexes(
     }
     (cssPropertyToPaths[entry.cssProperty] ??= []).push(entry.path);
 
-    if (entry.category) (byCategory[entry.category] ??= []).push(entry.path);
-    if (entry.component) (byComponent[entry.component] ??= []).push(entry.path);
+    // Test for presence, not truthiness. `toEntry` preserves a blank
+    // `category`/`component` (the DTCG schema does not validate vendor-extension
+    // contents), so a truthiness check would keep the empty string on the entry
+    // while omitting the token from the index -- leaving the registry internally
+    // inconsistent, with indexed consumers silently missing it. Blank grouping
+    // names are rejected outright instead.
+    if (entry.category !== undefined) (byCategory[entry.category] ??= []).push(entry.path);
+    if (entry.component !== undefined) (byComponent[entry.component] ??= []).push(entry.path);
   }
 
   return {

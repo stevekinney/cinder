@@ -108,7 +108,11 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   for (const match of markdown.matchAll(rowPattern)) {
     if (!match[1] || !match[2]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
-    tokens.set(match[1], normalizeTokenValue(match[2]));
+    // Undo the generator's Markdown-table pipe escaping before comparing. The
+    // generator writes `\|` so GFM does not read the pipe as a column delimiter,
+    // while the corpus side holds the raw `|` -- decoding here keeps both sides
+    // of this comparison talking about the same value.
+    tokens.set(match[1], normalizeTokenValue(match[2].replaceAll('\\|', '|')));
   }
   return { duplicates: duplicates.toSorted(), tokens };
 }
