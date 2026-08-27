@@ -461,8 +461,47 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
 ];
 
-const DOC_MARKER_PATTERN =
-  /<!-- BEGIN GENERATED TOKEN TABLE: ([a-z0-9-]+) -->\n[\s\S]*?<!-- END GENERATED TOKEN TABLE -->/g;
+/**
+ * `\r?\n` rather than `\n`: the repository has no `.gitattributes` pinning
+ * `eol`, so a checkout with `core.autocrlf=true` gives `docs/tokens.md` CRLF
+ * endings. Matching only `\n` would then find no blocks at all and the
+ * generator would report every marker missing while every marker is present.
+ */
+export const DOC_MARKER_PATTERN =
+  /<!-- BEGIN GENERATED TOKEN TABLE: ([a-z0-9-]+) -->\r?\n[\s\S]*?<!-- END GENERATED TOKEN TABLE -->/g;
+
+/**
+ * The literal marker text `buildTokensDocMarkdown` splices on. Corpus strings
+ * are interpolated into the generated block, so a description or value
+ * containing one of these would be written inside the table and then read back
+ * as the block's own delimiter on the next scan: the rewrite would terminate at
+ * the injected text, leave the real remainder stranded, and `tokens:generate
+ * -- --check` could never stabilize -- a self-inflicted, permanent failure of a
+ * required gate.
+ *
+ * This is rejected rather than escaped on purpose. Neutralizing the text would
+ * change how a cell is represented, which under this file's own rule means the
+ * drift parser has to change with it; and there is no representation that both
+ * hides the marker from this regex and still renders inside a code span, where
+ * HTML entities are not decoded. Refusing to emit a document that cannot be
+ * regenerated stably is the honest boundary.
+ */
+const GENERATED_MARKER_FRAGMENTS = [
+  '<!-- BEGIN GENERATED TOKEN TABLE',
+  '<!-- END GENERATED TOKEN TABLE',
+] as const;
+
+function assertNoGeneratedMarkers(text: string, field: string, cssProperty: string): void {
+  for (const fragment of GENERATED_MARKER_FRAGMENTS) {
+    if (text.includes(fragment)) {
+      throw new Error(
+        `The ${field} for "${cssProperty}" contains the generated-table marker ` +
+          `"${fragment}", which would terminate the block it is written into. ` +
+          `Remove the marker text from the token source.`,
+      );
+    }
+  }
+}
 
 /**
  * Every `DOC_SECTIONS` cssProperty must resolve to a real corpus token, must
@@ -570,6 +609,8 @@ export async function renderDocTable(
       );
     }
     const value = serializeEntryValue(entry, baseIndex, resolveReferences);
+    assertNoGeneratedMarkers(value, 'value', cssProperty);
+    assertNoGeneratedMarkers(entry.description ?? '', 'description', cssProperty);
     const description = toTableCell(entry.description ?? '');
     // Escape pipes in the value as well as the description. GFM treats `|` as a
     // column delimiter even inside a backtick code span, so a token serializing to

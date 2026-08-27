@@ -20,6 +20,7 @@
 import { describe, expect, test } from 'bun:test';
 
 import {
+  DOC_MARKER_PATTERN,
   type DocSection,
   type PlaygroundColorTokenGroup,
   buildTokensDocMarkdown,
@@ -409,5 +410,65 @@ describe('CIN-30 review round 6', () => {
     // inside it cannot close it early.
     expect(row).toContain('``');
     expect(row).toContain('A`B');
+  });
+});
+
+describe('CIN-30 review round 9', () => {
+  function markerEntry(field: 'description' | 'cssRecipe', text: string) {
+    const entry: CorpusEntry = {
+      path: 'recipe.marker',
+      value: { value: 1, unit: 'rem' },
+      type: 'dimension',
+      description: field === 'description' ? text : 'A token.',
+      cssProperty: '--cinder-test-marker',
+      cssRecipe: field === 'cssRecipe' ? text : undefined,
+      public: true,
+      category: 'spacing',
+      component: undefined,
+      deprecated: undefined,
+    };
+    return new Map<string, CorpusEntry>([['recipe.marker', entry]]);
+  }
+
+  const section: DocSection = {
+    slug: 'marker',
+    heading: 'Marker',
+    cssProperties: ['--cinder-test-marker'],
+  };
+
+  // Writing marker text into the block makes the NEXT scan stop at the injected
+  // text: the rewrite keeps only the truncated prefix, strands the remainder,
+  // and `tokens:generate -- --check` can never stabilize again.
+  test('a description carrying the END marker is rejected instead of written into the block', async () => {
+    const index = markerEntry('description', 'Ends <!-- END GENERATED TOKEN TABLE --> here.');
+    await expect(renderDocTable(section, index, (value) => value)).rejects.toThrow(
+      /description for "--cinder-test-marker" contains the generated-table marker/,
+    );
+  });
+
+  test('a value carrying the BEGIN marker is rejected too, not just a description', async () => {
+    const index = markerEntry('cssRecipe', '<!-- BEGIN GENERATED TOKEN TABLE: spacing -->');
+    await expect(renderDocTable(section, index, (value) => value)).rejects.toThrow(
+      /value for "--cinder-test-marker" contains the generated-table marker/,
+    );
+  });
+
+  test('a description with no marker text still renders', async () => {
+    const index = markerEntry('description', 'A spacing token.');
+    const table = await renderDocTable(section, index, (value) => value);
+    expect(table).toContain('--cinder-test-marker');
+  });
+
+  // The repository pins no `eol` in .gitattributes, so a checkout with
+  // core.autocrlf=true hands the generator CRLF markers. Matching only `\n`
+  // found zero blocks, and buildTokensDocMarkdown then reports every
+  // DOC_SECTIONS entry as a missing marker while every marker is present.
+  test('DOC_MARKER_PATTERN matches a CRLF block, not only an LF one', () => {
+    const lf =
+      '<!-- BEGIN GENERATED TOKEN TABLE: spacing -->\nstale\n<!-- END GENERATED TOKEN TABLE -->';
+    const crlf = lf.replaceAll('\n', '\r\n');
+
+    expect([...lf.matchAll(DOC_MARKER_PATTERN)].map((match) => match[1])).toEqual(['spacing']);
+    expect([...crlf.matchAll(DOC_MARKER_PATTERN)].map((match) => match[1])).toEqual(['spacing']);
   });
 });
