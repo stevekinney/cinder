@@ -203,6 +203,18 @@ function resolveExtends(
     // `$deprecated` is itself only inherited from ITS OWN ancestor rather
     // than declared directly (`effectiveGroupDeprecated`, not a bare property
     // read).
+    // Known gap, tracked in CIN-475: `groups` is the single MERGED tree
+    // `collectGroups` built -- when the extend target lives only in a
+    // separate lookup document scope (theme/motion overrides extending a
+    // foundation group via `mergeAndExpandExtends(ownDocuments,
+    // lookupDocuments)`), and that lookup-scope ancestor's `$deprecated` is
+    // shadowed by the override's own non-deprecated group of the same name,
+    // `effectiveGroupDeprecated` walks the OVERRIDING tree's ancestor chain
+    // here, not the lookup scope's, and misses it. Deferred rather than
+    // reworked this late in review: fixing it means deciding a real
+    // precedence rule across two independent document scopes, not a
+    // one-line change, and nothing in the real corpus exercises it (no group
+    // is `$deprecated` anywhere today).
     const effectiveExtendedDeprecated = effectiveGroupDeprecated(extendedPath, groups);
     if (group.$deprecated === undefined && effectiveExtendedDeprecated !== undefined)
       group.$deprecated = effectiveExtendedDeprecated;

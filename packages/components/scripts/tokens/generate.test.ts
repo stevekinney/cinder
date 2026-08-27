@@ -1615,6 +1615,39 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     expect(entries.get('outer.base.gutter')?.deprecated).toBe('Use space.* instead.');
     expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
   });
+
+  test('CIN-475 (known gap, not fixed here): a nested $extends target only in the lookup scope loses its deprecation when shadowed', () => {
+    // `mergeAndExpandExtends(ownDocuments, lookupDocuments)` is how theme/motion
+    // override contexts extend a foundation group -- here "outer.base" exists only
+    // in the lookup scope and inherits $deprecated from the lookup scope's own
+    // "outer". The override document ALSO declares its own non-deprecated "outer"
+    // (a sibling override, not itself extending anything), which collectGroups loads
+    // AFTER the lookup scope and so shadows it in the merged groups map.
+    // effectiveGroupDeprecated then walks the OVERRIDING "outer", not the lookup
+    // scope's, and misses the deprecation. This test PINS today's known-limited
+    // behavior (undefined) rather than the eventually-correct one, so CIN-475
+    // landing is a deliberate, visible test change.
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(
+      mergeAndExpandExtends(
+        [{ outer: { other: { $value: 1 } }, derived: { $extends: '{outer.base}' } }],
+        [
+          {
+            outer: {
+              $type: 'dimension',
+              $deprecated: 'Use space.* instead.',
+              base: { gutter: { $value: 1 } },
+            },
+          },
+        ],
+      ),
+      '',
+      undefined,
+      into,
+    );
+
+    expect(into.get('derived.gutter')?.deprecated).toBeUndefined();
+  });
 });
 
 describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value', () => {
