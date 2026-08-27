@@ -55,7 +55,7 @@ describe('B1: validatePlaygroundColorTokenGroups requires category: "color"', ()
           value: { value: 1, unit: 'rem' },
           type: 'dimension',
           description: undefined,
-          cssProperty: '--test-space-4',
+          cssProperty: '--cinder-test-space-4',
           cssRecipe: undefined,
           public: true,
           category: 'space',
@@ -70,15 +70,15 @@ describe('B1: validatePlaygroundColorTokenGroups requires category: "color"', ()
       {
         id: 'test-group',
         label: 'Test group',
-        tokens: [{ name: '--test-space-4', label: 'Space 4' }],
+        tokens: [{ name: '--cinder-test-space-4', label: 'Space 4' }],
       },
     ];
 
     // Pre-fix, the only check was "does cssPropertyToPath know this
-    // property" -- true here, since --test-space-4 is a real corpus token --
+    // property" -- true here, since --cinder-test-space-4 is a real corpus token --
     // so this call returned normally instead of throwing.
     expect(() => validatePlaygroundColorTokenGroups(groups, registry)).toThrow(
-      /not category: "color" tokens: --test-space-4/,
+      /not category: "color" tokens: --cinder-test-space-4/,
     );
   });
 
@@ -91,7 +91,7 @@ describe('B1: validatePlaygroundColorTokenGroups requires category: "color"', ()
           value: { colorSpace: 'oklch', components: [0.6, 0.12, 20] },
           type: 'color',
           description: undefined,
-          cssProperty: '--test-accent',
+          cssProperty: '--cinder-test-accent',
           cssRecipe: undefined,
           public: true,
           category: 'color',
@@ -106,7 +106,7 @@ describe('B1: validatePlaygroundColorTokenGroups requires category: "color"', ()
       {
         id: 'test-group',
         label: 'Test group',
-        tokens: [{ name: '--test-accent', label: 'Accent' }],
+        tokens: [{ name: '--cinder-test-accent', label: 'Accent' }],
       },
     ];
 
@@ -119,14 +119,14 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
     const section: DocSection = {
       slug: 'test-section',
       heading: 'Test section',
-      cssProperties: ['--test-token'],
+      cssProperties: ['--cinder-test-token'],
     };
     const entry: CorpusEntry = {
       path: 'test.token',
       value: { value: 1, unit: 'rem' },
       type: 'dimension',
       description: 'Line one.\nLine two.',
-      cssProperty: '--test-token',
+      cssProperty: '--cinder-test-token',
       cssRecipe: undefined,
     };
     const baseIndex = new Map<string, CorpusEntry>([[entry.path, entry]]);
@@ -138,7 +138,7 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
     // is no longer prefixed by `|`, so it is not part of any table row --
     // splitting one token's row into a malformed fragment.
     expect(table).not.toContain('Line one.\nLine two.');
-    const rowLines = table.split('\n').filter((line) => line.includes('--test-token'));
+    const rowLines = table.split('\n').filter((line) => line.includes('--cinder-test-token'));
     expect(rowLines).toHaveLength(1);
     expect(rowLines[0]).toContain('Line one. Line two.');
   });
@@ -151,20 +151,20 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
     const section: DocSection = {
       slug: 'test-section-cr',
       heading: 'Test section',
-      cssProperties: ['--test-token-cr'],
+      cssProperties: ['--cinder-test-token-cr'],
     };
     const entry: CorpusEntry = {
       path: 'test.token.cr',
       value: { value: 1, unit: 'rem' },
       type: 'dimension',
       description: 'Line one.\rLine two.',
-      cssProperty: '--test-token-cr',
+      cssProperty: '--cinder-test-token-cr',
       cssRecipe: undefined,
     };
     const baseIndex = new Map<string, CorpusEntry>([[entry.path, entry]]);
 
     const table = await renderDocTable(section, baseIndex, (value) => value);
-    const rowLines = table.split('\n').filter((line) => line.includes('--test-token-cr'));
+    const rowLines = table.split('\n').filter((line) => line.includes('--cinder-test-token-cr'));
     expect(rowLines).toHaveLength(1);
     expect(rowLines[0]).toContain('Line one. Line two.');
   });
@@ -194,13 +194,13 @@ describe('CIN-30 review round 2', () => {
     // resolve.test.ts supports. An empty string is falsy, so the pre-fix
     // `if (!path)` reported this legitimately-present token as unknown and threw
     // "references cssProperties that are not in the corpus".
-    const baseIndex = new Map<string, CorpusEntry>([colorEntry('', '--test-root')]);
+    const baseIndex = new Map<string, CorpusEntry>([colorEntry('', '--cinder-test-root')]);
     const registry = buildTokenRegistryFromIndexes(baseIndex, new Set<string>());
 
-    expect(registry.cssPropertyToPath['--test-root']).toBe('');
+    expect(registry.cssPropertyToPath['--cinder-test-root']).toBe('');
 
     const groups: readonly PlaygroundColorTokenGroup[] = [
-      { id: 'roots', label: 'Roots', tokens: [{ name: '--test-root', label: 'Root' }] },
+      { id: 'roots', label: 'Roots', tokens: [{ name: '--cinder-test-root', label: 'Root' }] },
     ];
     expect(() => validatePlaygroundColorTokenGroups(groups, registry)).not.toThrow();
   });
@@ -210,7 +210,11 @@ describe('CIN-30 review round 2', () => {
     // the generated registry, leaving a nameless section or colour control.
     const withBlankGroupLabel = {
       playgroundGroups: [
-        { id: 'g', label: '   ', members: [{ cssProperty: '--test-accent', label: 'Accent' }] },
+        {
+          id: 'g',
+          label: '   ',
+          members: [{ cssProperty: '--cinder-test-accent', label: 'Accent' }],
+        },
       ],
     };
     expect(() =>
@@ -219,7 +223,7 @@ describe('CIN-30 review round 2', () => {
 
     const withBlankMemberLabel = {
       playgroundGroups: [
-        { id: 'g', label: 'Group', members: [{ cssProperty: '--test-accent', label: '' }] },
+        { id: 'g', label: 'Group', members: [{ cssProperty: '--cinder-test-accent', label: '' }] },
       ],
     };
     expect(() =>
@@ -239,7 +243,7 @@ describe('CIN-30 review round 3', () => {
         {
           id: 'status solid',
           label: 'Status',
-          members: [{ cssProperty: '--test-accent', label: 'Accent' }],
+          members: [{ cssProperty: '--cinder-test-accent', label: 'Accent' }],
         },
       ],
     };
@@ -247,7 +251,11 @@ describe('CIN-30 review round 3', () => {
 
     const withBlankId = {
       playgroundGroups: [
-        { id: '   ', label: 'Status', members: [{ cssProperty: '--test-accent', label: 'A' }] },
+        {
+          id: '   ',
+          label: 'Status',
+          members: [{ cssProperty: '--cinder-test-accent', label: 'A' }],
+        },
       ],
     };
     expect(() => readPlaygroundColorTokenGroups(resolverWithExtensions(withBlankId))).toThrow();
@@ -265,7 +273,7 @@ describe('CIN-30 review round 3', () => {
           value: ['A|B'],
           type: 'fontFamily',
           description: 'A piped family.',
-          cssProperty: '--test-font-piped',
+          cssProperty: '--cinder-test-font-piped',
           cssRecipe: undefined,
           public: true,
           category: 'typography',
@@ -277,13 +285,13 @@ describe('CIN-30 review round 3', () => {
     const section: DocSection = {
       slug: 'piped',
       heading: 'Piped',
-      cssProperties: ['--test-font-piped'],
+      cssProperties: ['--cinder-test-font-piped'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
 
     // Exactly three unescaped cell delimiters on the row: leading, between the
     // two cells, and between value and description, plus the trailing one.
-    const row = table.split('\n').find((line) => line.includes('--test-font-piped')) ?? '';
+    const row = table.split('\n').find((line) => line.includes('--cinder-test-font-piped')) ?? '';
     expect(row).toContain('A\\|B');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
   });
@@ -304,7 +312,7 @@ describe('CIN-30 review round 5', () => {
           value: { value: 1, unit: 'rem' },
           type: 'dimension',
           description: 'Line one.\nLine two.',
-          cssProperty: '--test-multiline',
+          cssProperty: '--cinder-test-multiline',
           cssRecipe: '0 1px 2px rgb(0 0 0 / 0.1),\n  0 2px 4px rgb(0 0 0 / 0.1)',
           public: true,
           category: 'shadow',
@@ -316,10 +324,10 @@ describe('CIN-30 review round 5', () => {
     const section: DocSection = {
       slug: 'multi',
       heading: 'Multi',
-      cssProperties: ['--test-multiline'],
+      cssProperties: ['--cinder-test-multiline'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
-    const rows = table.split('\n').filter((line) => line.includes('--test-multiline'));
+    const rows = table.split('\n').filter((line) => line.includes('--cinder-test-multiline'));
 
     // Exactly one row carries the token, and neither cell leaked a line break.
     expect(rows).toHaveLength(1);
@@ -380,7 +388,7 @@ describe('CIN-30 review round 6', () => {
           value: ['A`B'],
           type: 'fontFamily',
           description: 'A ticked family.',
-          cssProperty: '--test-font-ticked',
+          cssProperty: '--cinder-test-font-ticked',
           cssRecipe: undefined,
           public: true,
           category: 'typography',
@@ -392,10 +400,10 @@ describe('CIN-30 review round 6', () => {
     const section: DocSection = {
       slug: 'ticked',
       heading: 'Ticked',
-      cssProperties: ['--test-font-ticked'],
+      cssProperties: ['--cinder-test-font-ticked'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
-    const row = table.split('\n').find((line) => line.includes('--test-font-ticked')) ?? '';
+    const row = table.split('\n').find((line) => line.includes('--cinder-test-font-ticked')) ?? '';
 
     // The value's span is delimited by a run of two, so the single backtick
     // inside it cannot close it early.

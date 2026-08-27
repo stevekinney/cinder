@@ -19,6 +19,9 @@
  *     a free-form `category`/`component` extension value that collides with
  *     an `Object.prototype` member name, without silently dropping data or
  *     throwing.
+ *   - A4: the public/private prefix guard must check each namespace
+ *     POSITIVELY. The two prefixes are disjoint, so deriving the public case
+ *     from `!startsWith('--_cinder-')` admitted a third namespace entirely.
  *
  * None of these fixtures touch the real corpus under `src/tokens/`, so a fix
  * here can never change what `tokens:generate` emits for the committed
@@ -58,20 +61,20 @@ describe('A1: buildBaseIndex enforces assertUniqueCssProperties', () => {
         one: {
           $value: { value: 1, unit: 'rem' },
           $extensions: {
-            'com.lostgradient.cinder': { cssProperty: '--test-space', public: true },
+            'com.lostgradient.cinder': { cssProperty: '--cinder-test-space', public: true },
           },
         },
         uno: {
           $value: { value: 2, unit: 'rem' },
           $extensions: {
-            'com.lostgradient.cinder': { cssProperty: '--test-space', public: true },
+            'com.lostgradient.cinder': { cssProperty: '--cinder-test-space', public: true },
           },
         },
       },
     };
 
     expect(() => buildBaseIndex(fixtureResolver(), fixtureDocuments(baseDocument))).toThrow(
-      /--test-space is claimed with conflicting values by space\.one, space\.uno/,
+      /--cinder-test-space is claimed with conflicting values by space\.one, space\.uno/,
     );
   });
 });
@@ -84,7 +87,7 @@ describe('A2: cssPropertyToPath is a deterministic canonical path, and cssProper
         swatch: {
           $value: { value: 1, unit: 'rem' },
           $extensions: {
-            'com.lostgradient.cinder': { cssProperty: '--test-swatch', public: true },
+            'com.lostgradient.cinder': { cssProperty: '--cinder-test-swatch', public: true },
           },
         },
       },
@@ -111,7 +114,7 @@ describe('A2: cssPropertyToPath is a deterministic canonical path, and cssProper
     // cssProperty, so this test is actually exercising the multi-claimant
     // case and not silently degenerating to the single-claimant case.
     const claimants = registry.entries
-      .filter((entry) => entry.cssProperty === '--test-swatch')
+      .filter((entry) => entry.cssProperty === '--cinder-test-swatch')
       .map((entry) => entry.path)
       .toSorted();
     expect(claimants).toEqual(['foundation.swatch', 'themed.swatch']);
@@ -120,7 +123,7 @@ describe('A2: cssPropertyToPath is a deterministic canonical path, and cssProper
     // traversal order (foundation is declared first in the document). Pre-fix,
     // cssPropertyToPath was last-write-wins and returned "themed.swatch" here
     // instead.
-    expect(registry.cssPropertyToPath['--test-swatch']).toBe('foundation.swatch');
+    expect(registry.cssPropertyToPath['--cinder-test-swatch']).toBe('foundation.swatch');
   });
 
   test('cssPropertyToPaths exposes every path that claims the cssProperty, in traversal order', () => {
@@ -132,14 +135,14 @@ describe('A2: cssPropertyToPath is a deterministic canonical path, and cssProper
       themeAwarePaths(resolver, documentsByPath),
     );
 
-    expect(registry.cssPropertyToPaths['--test-swatch']).toEqual([
+    expect(registry.cssPropertyToPaths['--cinder-test-swatch']).toEqual([
       'foundation.swatch',
       'themed.swatch',
     ]);
     // The canonical single-path map always agrees with the first entry of the
     // full-list map.
-    expect(registry.cssPropertyToPaths['--test-swatch']?.[0]).toBe(
-      registry.cssPropertyToPath['--test-swatch'],
+    expect(registry.cssPropertyToPaths['--cinder-test-swatch']?.[0]).toBe(
+      registry.cssPropertyToPath['--cinder-test-swatch'],
     );
   });
 });
@@ -153,7 +156,7 @@ describe('A3: registry indexes tolerate __proto__ keys instead of corrupting sil
     // creating a property, which would not exercise this bug at all.
     const baseDocument = JSON.parse(
       '{"$type":"dimension","__proto__":{"$value":{"value":1,"unit":"rem"},' +
-        '"$extensions":{"com.lostgradient.cinder":{"cssProperty":"--test-proto-token","public":true}}}}',
+        '"$extensions":{"com.lostgradient.cinder":{"cssProperty":"--cinder-test-proto-token","public":true}}}}',
     ) as TokenDocument;
 
     const resolver = fixtureResolver();
@@ -171,8 +174,8 @@ describe('A3: registry indexes tolerate __proto__ keys instead of corrupting sil
     expect(Object.prototype.hasOwnProperty.call(registry.pathToCssProperty, '__proto__')).toBe(
       true,
     );
-    expect(registry.pathToCssProperty['__proto__']).toBe('--test-proto-token');
-    expect(registry.cssPropertyToPath['--test-proto-token']).toBe('__proto__');
+    expect(registry.pathToCssProperty['__proto__']).toBe('--cinder-test-proto-token');
+    expect(registry.cssPropertyToPath['--cinder-test-proto-token']).toBe('__proto__');
 
     // JSON.stringify only serializes OWN enumerable properties -- so a
     // dropped own property (the pre-fix bug) also silently vanishes from the
@@ -182,7 +185,10 @@ describe('A3: registry indexes tolerate __proto__ keys instead of corrupting sil
     // object-literal sets the prototype (a no-op for a string value) rather
     // than creating an own property, which would make this assertion
     // spuriously pass pre-fix by comparing two equally-empty objects.
-    const expected = JSON.parse('{"__proto__":"--test-proto-token"}') as Record<string, string>;
+    const expected = JSON.parse('{"__proto__":"--cinder-test-proto-token"}') as Record<
+      string,
+      string
+    >;
     expect(JSON.parse(JSON.stringify(registry.pathToCssProperty))).toEqual(expected);
   });
 
@@ -193,7 +199,7 @@ describe('A3: registry indexes tolerate __proto__ keys instead of corrupting sil
         $value: { value: 1, unit: 'rem' },
         $extensions: {
           'com.lostgradient.cinder': {
-            cssProperty: '--test-swatch-category',
+            cssProperty: '--cinder-test-swatch-category',
             // A free-form category value that collides with an
             // Object.prototype member name. Pre-fix, `byCategory['__proto__']`
             // reads back `Object.prototype` (truthy, not undefined) instead
@@ -220,5 +226,57 @@ describe('A3: registry indexes tolerate __proto__ keys instead of corrupting sil
     );
     expect(Object.prototype.hasOwnProperty.call(registry.byCategory, '__proto__')).toBe(true);
     expect(registry.byCategory['__proto__']).toEqual(['swatch']);
+  });
+});
+
+describe('A4: the public/private prefix guard checks each namespace positively', () => {
+  function fixtureWithProperty(cssProperty: string, isPublic: boolean): TokenDocument {
+    return {
+      foundation: {
+        $type: 'dimension',
+        swatch: {
+          $value: { value: 1, unit: 'rem' },
+          $extensions: {
+            'com.lostgradient.cinder': { cssProperty, public: isPublic },
+          },
+        },
+      },
+    };
+  }
+
+  function build(cssProperty: string, isPublic: boolean) {
+    const resolver = fixtureResolver();
+    const documentsByPath = fixtureDocuments(fixtureWithProperty(cssProperty, isPublic));
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return () =>
+      buildTokenRegistryFromIndexes(baseIndex, themeAwarePaths(resolver, documentsByPath));
+  }
+
+  // The two namespaces are DISJOINT -- `--_cinder-` diverges from `--cinder-`
+  // at the third character -- so "not private" does not imply "public". A
+  // guard that derived the public case from `!startsWith('--_cinder-')`
+  // admitted any third namespace, and the registry then advertised a name
+  // outside the package's contract to every CIN-31/32/34 consumer.
+  test('rejects a public token in a third namespace, not just one using the private prefix', () => {
+    expect(build('--vendor-foo', true)).toThrow(/"--vendor-foo" does not use the --cinder- prefix/);
+  });
+
+  test('rejects a private token in a third namespace', () => {
+    expect(build('--vendor-foo', false)).toThrow(
+      /"--vendor-foo" does not use the --_cinder- prefix/,
+    );
+  });
+
+  test('rejects a public token wearing the private prefix', () => {
+    expect(build('--_cinder-swatch', true)).toThrow(/does not use the --cinder- prefix/);
+  });
+
+  test('rejects a private token wearing the public prefix', () => {
+    expect(build('--cinder-swatch', false)).toThrow(/does not use the --_cinder- prefix/);
+  });
+
+  test('accepts each flag paired with its own prefix', () => {
+    expect(build('--cinder-swatch', true)).not.toThrow();
+    expect(build('--_cinder-swatch', false)).not.toThrow();
   });
 });

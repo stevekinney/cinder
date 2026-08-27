@@ -44,6 +44,14 @@ import { parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
  */
 const EMITTED_THEME_CONTEXTS = new Set(['light', 'dark']);
 
+/**
+ * The two custom-property namespaces the package owns. They are disjoint --
+ * `--_cinder-` diverges from `--cinder-` at the third character -- so neither
+ * prefix is the complement of the other and a name can satisfy neither.
+ */
+const PUBLIC_TOKEN_PREFIX = '--cinder-';
+const PRIVATE_TOKEN_PREFIX = '--_cinder-';
+
 export type TokenRegistryEntry = {
   /** Dotted corpus path, e.g. `space.4` or `button.radius.xs`. */
   path: string;
@@ -227,22 +235,19 @@ export function buildTokenRegistryFromIndexes(
     if (entry.component !== undefined && entry.component.trim() === '') {
       throw new Error(`Base corpus token at "${entry.path}" has a blank component extension.`);
     }
-    // Both directions. Guarding only public-with-private-prefix left the inverse
-    // accepted: a token marked private keeping a `--cinder-*` name, which the
-    // registry reports as private while validateDocSections still requires and
-    // the docs generator still publishes its row in the documented public
-    // namespace. The prefix and the flag are one contract, not two.
-    const hasPrivatePrefix = entry.cssProperty.startsWith('--_cinder-');
-    if (entry.public && hasPrivatePrefix) {
+    // Both branches check positively for the prefix the flag requires. Deriving
+    // either from the absence of the other admits a third namespace: a
+    // `--vendor-foo` token marked public does not start with `--_cinder-`, so a
+    // negative public check accepts it and the registry then advertises a name
+    // that is not part of the package's `--cinder-` contract at all. The prefix
+    // and the flag are one contract, not two, and neither prefix is the
+    // complement of the other.
+    const requiredPrefix = entry.public ? PUBLIC_TOKEN_PREFIX : PRIVATE_TOKEN_PREFIX;
+    if (!entry.cssProperty.startsWith(requiredPrefix)) {
       throw new Error(
-        `Base corpus token at "${entry.path}" is marked public but its cssProperty ` +
-          `"${entry.cssProperty}" uses the private --_cinder- prefix.`,
-      );
-    }
-    if (!entry.public && !hasPrivatePrefix) {
-      throw new Error(
-        `Base corpus token at "${entry.path}" is marked private but its cssProperty ` +
-          `"${entry.cssProperty}" uses the public --cinder- prefix.`,
+        `Base corpus token at "${entry.path}" is marked ` +
+          `${entry.public ? 'public' : 'private'} but its cssProperty ` +
+          `"${entry.cssProperty}" does not use the ${requiredPrefix} prefix.`,
       );
     }
 
