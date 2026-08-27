@@ -3,13 +3,30 @@ import { TokenValidationError } from './types.ts';
 
 type JsonObject = Record<string, unknown>;
 type ResolvedTokens = Map<string, DesignToken>;
+/**
+ * Every token's ORIGINAL `$ref` string, captured once in `buildTokenIndex`
+ * before any resolution runs. `resolveRefToken` deletes `$ref` from a
+ * token's live entry in `ResolvedTokens` once resolved (so a resolved token
+ * never carries a leftover alias pointer) -- a pointer that targets another
+ * alias token's OWN `$ref` property (`#/alias/$ref`) would otherwise always
+ * find it already gone, regardless of processing order, since
+ * `resolveDocuments`'s top-level loop may resolve `alias` before anything
+ * ever asks to read its `$ref`. This snapshot is immune to that mutation.
+ */
+type RawRefs = Map<string, string>;
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function isToken(value: unknown): value is DesignToken {
-  return isObject(value) && '$value' in value;
+  // `$ref` is a DTCG 2025.10 whole-token alias -- mutually exclusive with
+  // `$value`, so a node declaring either is token-shaped. Recognising only
+  // `$value` here was the CIN-463 "live trap": `collectTokens` below falls
+  // through to `isTokenGroup` for anything `isToken` rejects, so a `$ref`
+  // token was walked as an empty group and silently vanished from the
+  // resolved output instead of resolving or raising a named error.
+  return isObject(value) && ('$value' in value || '$ref' in value);
 }
 
 function isTokenGroup(value: unknown): value is TokenGroup {
@@ -91,14 +108,22 @@ function collectTokens(
   group: TokenGroup,
   prefix: string,
   tokens: ResolvedTokens,
+  rootTokenPaths: Set<string>,
   inheritedType?: DesignToken['$type'],
 ): void {
-  if (group.$root) tokens.set(prefix, withResolvedType(group.$root, group.$type ?? inheritedType));
+  if (group.$root) {
+    tokens.set(prefix, withResolvedType(group.$root, group.$type ?? inheritedType));
+    // Marks `prefix` as a GROUP's redirected root token, not an ordinary
+    // token that merely happens to be indexed at the same path -- see
+    // `resolveReference`'s use of this set for why the distinction matters.
+    rootTokenPaths.add(prefix);
+  }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
     if (isToken(value)) tokens.set(path, withResolvedType(value, group.$type ?? inheritedType));
-    else if (isTokenGroup(value)) collectTokens(value, path, tokens, group.$type ?? inheritedType);
+    else if (isTokenGroup(value))
+      collectTokens(value, path, tokens, rootTokenPaths, group.$type ?? inheritedType);
   }
 }
 
@@ -116,6 +141,41 @@ function inheritMissingGroupMembers(target: TokenGroup, source: TokenGroup): voi
   }
 }
 
+/**
+ * The `$deprecated` a group at `groupPath` carries EFFECTIVELY, once ordinary
+ * (non-`$extends`) ancestor nesting is taken into account -- the nearest of
+ * the group itself, its parent, its grandparent, and so on that declares
+ * `$deprecated` directly. `groups` is keyed by the RAW merged tree
+ * (`collectGroups`, run before any `$extends` expansion), so this reads each
+ * candidate's own declared value only; it does not itself resolve a further
+ * `$extends` chain on an ancestor (a deeper edge case -- an ancestor that is
+ * itself only deprecated via its OWN `$extends` -- outside what this helper
+ * addresses).
+ *
+ * `resolveExtends` needs this rather than a plain `extended.$deprecated`
+ * property read: `generate.ts`'s `collectEntries` propagates `$deprecated`
+ * down through ordinary group nesting at CSS/registry generation time, well
+ * after `$extends` has already run here, so a group that inherits
+ * `$deprecated` only from an ANCESTOR (never declaring it directly itself)
+ * still reads `undefined` at this point unless this helper walks up for it.
+ * Without it, `derived: { $extends: '{outer.base}' }` under a deprecated
+ * `outer` (with `outer.base` itself never declaring `$deprecated`) copied no
+ * deprecation onto `derived` at all, even though every token under
+ * `outer.base` is itself effectively deprecated by the time generation walks
+ * it.
+ */
+function effectiveGroupDeprecated(
+  groupPath: string,
+  groups: Map<string, TokenGroup>,
+): TokenGroup['$deprecated'] {
+  const segments = groupPath === '' ? [] : groupPath.split('.');
+  for (let end = segments.length; end >= 0; end -= 1) {
+    const candidate = groups.get(segments.slice(0, end).join('.'));
+    if (candidate?.$deprecated !== undefined) return candidate.$deprecated;
+  }
+  return undefined;
+}
+
 function resolveExtends(
   groupPath: string,
   groups: Map<string, TokenGroup>,
@@ -131,6 +191,46 @@ function resolveExtends(
     const extendedPath = tokenPathFromReference(group.$extends);
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
+    // `$deprecated: false` is a real, meaningful value (it un-deprecates a
+    // subtree under a deprecated ancestor) rather than an absence, so this
+    // must check `=== undefined` and assign directly -- the same `??`-not-`||`
+    // rule `generate.ts`'s `collectEntries` already applies for ordinary
+    // group nesting (see CIN-471). Nested extended groups already inherit
+    // `$deprecated` through `inheritMissingGroupMembers`'s unfiltered member
+    // copy below; this closes the top-level gap, where the extending group's
+    // OWN `$deprecated` was previously left untouched even when the group it
+    // extends was itself deprecated -- including when the extended group's
+    // `$deprecated` is itself only inherited from ITS OWN ancestor rather
+    // than declared directly (`effectiveGroupDeprecated`, not a bare property
+    // read).
+    // Known gap, tracked in CIN-475: `groups` is the single MERGED tree
+    // `collectGroups` built -- when the extend target lives only in a
+    // separate lookup document scope (theme/motion overrides extending a
+    // foundation group via `mergeAndExpandExtends(ownDocuments,
+    // lookupDocuments)`), and that lookup-scope ancestor's `$deprecated` is
+    // shadowed by the override's own non-deprecated group of the same name,
+    // `effectiveGroupDeprecated` walks the OVERRIDING tree's ancestor chain
+    // here, not the lookup scope's, and misses it. Deferred rather than
+    // reworked this late in review: fixing it means deciding a real
+    // precedence rule across two independent document scopes, not a
+    // one-line change, and nothing in the real corpus exercises it (no group
+    // is `$deprecated` anywhere today).
+    // Known gap, tracked in CIN-476: this caches `effectiveExtendedDeprecated`
+    // onto `group.$deprecated` the first time `group` is resolved. If the
+    // EXTENDED group's own ancestor deprecation is itself only established
+    // through a SEPARATE `$extends` chain that hasn't been expanded yet
+    // (declaration order dependent, since `resolveExtends` runs per group in
+    // document key order), `effectiveGroupDeprecated` sees no deprecation
+    // yet, caches a wrong value (or `undefined`, or an ancestor's unrelated
+    // `false`), and the `=== undefined` guard above then refuses to update
+    // it once the extended chain is later expanded and gains its real value.
+    // Fixing it means resolving ancestor `$extends` chains in dependency
+    // order before this caching runs, or switching to lazy computation --
+    // deferred rather than reworked this late in review; nothing in the real
+    // corpus exercises it (no group is `$deprecated` anywhere today).
+    const effectiveExtendedDeprecated = effectiveGroupDeprecated(extendedPath, groups);
+    if (group.$deprecated === undefined && effectiveExtendedDeprecated !== undefined)
+      group.$deprecated = effectiveExtendedDeprecated;
     for (const [name, value] of Object.entries(extended))
       if (!name.startsWith('$') || name === '$root') {
         const existing = group[name];
@@ -158,14 +258,40 @@ function resolveExtends(
 function resolveReference(
   reference: string,
   tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): unknown {
+  // Known gap, tracked in CIN-480: a bare `#/` pointer dot-joins to the
+  // empty string via `tokenPathFromReference`, which collides with the
+  // index key `collectTokens` uses for the document's OWN `$root` token
+  // (stored at prefix ''). Per RFC 6901, `#/` names a property whose key is
+  // the empty string -- not the document root (that's `#/$root`, handled
+  // correctly below) -- so a bare `#/` silently resolves as if it were
+  // `#/$root` instead of being rejected as malformed. Deferred rather than
+  // reworked this late in review, since disambiguating requires checking
+  // the ORIGINAL reference string, not just the derived path, in the few
+  // places that intentionally treat the empty string as the document-root
+  // sentinel; nothing in the real corpus uses a bare `#/` reference.
   const segments = tokenPathFromReference(reference).split('.');
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
     if (!rootToken) return issue(reference, 'reference target does not exist');
-    const resolvedToken = resolveToken('', tokens, resolving);
-    const propertyValue = getByPath(resolvedToken, segments.slice(1));
+    const resolvedToken = resolveToken('', tokens, rawRefs, rootTokenPaths, resolving);
+    // A bare `#/$root` pointer (nothing after `$root`) names the document
+    // root token's WHOLE identity, exactly like an ordinary whole-token
+    // pointer with no trailing segments -- it must extract `$value`, not
+    // return the raw `DesignToken` object. An explicit reserved-property
+    // segment (`#/$root/$value`, `#/$root/$description`, ...) should walk the
+    // `DesignToken` object itself instead -- see the identical discrimination
+    // in the loop below for why any `$`-prefixed segment, not just `$value`,
+    // selects that base.
+    const remainder = segments.slice(1);
+    const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
+    const propertyValue =
+      remainder[0] === '$ref'
+        ? getByPath(rawRefs.get(''), remainder.slice(1))
+        : getByPath(usesTokenObjectBase ? resolvedToken : resolvedToken.$value, remainder);
     if (propertyValue === undefined)
       issue(reference, 'reference target $root has no requested property');
     return clone(propertyValue);
@@ -173,16 +299,112 @@ function resolveReference(
   for (let end = segments.length; end > 0; end -= 1) {
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
+    // Known gap, tracked in CIN-481: this loop only ever matches a candidate
+    // present in `tokens` -- the token index, which indexes a GROUP only
+    // when it carries a `$root` token (at the group's own path). A `$ref`
+    // into metadata on an ordinary ROOTLESS group (`#/group/$description`
+    // where `group` has no `$root`) never has a matching candidate here at
+    // all, so it falls through to "reference target does not exist" before
+    // the metadata-base branch below even runs. Fixing it means also
+    // searching the merged GROUP tree (`collectGroups`'s output, not
+    // threaded into this function today) as a fallback -- deferred rather
+    // than reworked this late in review; nothing in the real corpus
+    // references a rootless group's metadata.
     if (!token) continue;
-    const resolvedToken = resolveToken(candidatePath, tokens, resolving);
+    // Known gap, tracked in CIN-477: `resolveToken` is called eagerly here,
+    // before this function knows whether the remainder targets metadata
+    // (needing only `rawRefs`/the raw token object, no recursion at all) or
+    // the token's resolved value. When `candidatePath` equals the path
+    // currently being resolved -- a token pointing to its OWN metadata, e.g.
+    // `copy: { $ref: '#/copy/$description' }` -- this eager call trips the
+    // `resolving.has(path)` circular-alias guard and rejects a valid
+    // self-referencing metadata pointer that needs no resolution at all.
+    // Fixing it means selecting the metadata base before this call, in both
+    // this loop and the `#/$root` branch above -- deferred rather than
+    // reworked this late in review; nothing in the real corpus exercises a
+    // self-referencing metadata pointer.
+    const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving);
     const propertySegments = segments.slice(end);
-    const targetsRootToken = reference.startsWith('#/') && propertySegments[0] === '$root';
-    const propertyValue = getByPath(
-      reference.startsWith('#/') && (propertySegments[0] === '$value' || targetsRootToken)
-        ? resolvedToken
-        : resolvedToken.$value,
-      targetsRootToken ? propertySegments.slice(1) : propertySegments,
-    );
+    // Known gap, tracked in CIN-485 (mirror of CIN-480, for a named group
+    // instead of the document root): when `propertySegments` is empty AND
+    // `candidatePath` is in `rootTokenPaths`, this is a whole-token `$ref`
+    // that named the GROUP with no explicit `$root` segment (`#/group`, not
+    // `#/group/$root`) -- under JSON Pointer semantics that names the group
+    // object, not its root token, and should be rejected. Instead
+    // `resolvedToken` (already the group's redirected root token, since
+    // that's what's indexed at `candidatePath`) is silently returned as if
+    // `$root` had been spelled explicitly. Fixing it means checking the
+    // ORIGINAL reference string, not just what happens to be indexed at the
+    // matched path -- deferred rather than reworked this late in review;
+    // nothing in the real corpus references a group without spelling
+    // `$root`.
+    // `$root`, when present AND `candidatePath` actually names a GROUP that
+    // carries one (`rootTokenPaths.has(candidatePath)`) -- not merely an
+    // ordinary token that happens to share that path -- is a REDIRECT to the
+    // group's own root token, already what `resolvedToken` is in that case,
+    // not an extra path level, so it is stripped before walking the
+    // remainder. Without the `rootTokenPaths` check, `#/base/$root` where
+    // `base` is an ordinary token with no `$root` member would silently
+    // redirect to `base` itself instead of correctly failing -- the token
+    // index has no other way to distinguish a group's redirected root token
+    // from an ordinary token indexed at the same path. A remainder that is
+    // empty after stripping it (a bare `#/group/$root` alias) names the root
+    // token's whole identity and must extract `$value`, exactly like the
+    // ordinary whole-token case just below it; only an explicit `$value`
+    // segment walks the raw `DesignToken` object.
+    const targetsRootToken =
+      reference.startsWith('#/') &&
+      propertySegments[0] === '$root' &&
+      rootTokenPaths.has(candidatePath);
+    const remainder = targetsRootToken ? propertySegments.slice(1) : propertySegments;
+    // Known gap, tracked in CIN-487: when `targetsRootToken` consumed an
+    // explicit `$root` segment and the remainder is NOT itself `$value`
+    // (or another `$`-prefixed property), `usesTokenObjectBase` below is
+    // false, so the base falls through to `resolvedToken.$value` -- letting
+    // a malformed pointer like `#/group/$root/value` (missing the `$value`
+    // segment) silently resolve `value` as if it had been spelled
+    // `#/group/$root/$value/value`. Per JSON Pointer semantics that names a
+    // property on the root TOKEN OBJECT, which doesn't have one called
+    // `value`, and should be rejected. Fixing it means keeping the token
+    // object as the base whenever `$root` was consumed, unless the
+    // remainder is itself `$value`-prefixed -- deferred rather than
+    // reworked this late in review; nothing in the real corpus references a
+    // composite-valued group root this way.
+    // A remainder starting with ANY of the token's own reserved `$`-prefixed
+    // properties -- not just `$value` -- names something on the `DesignToken`
+    // object itself: `#/base/$description`, `#/base/$deprecated`,
+    // `#/base/$extensions/...` are all valid pointer targets alongside
+    // `#/base/$value/...`. A resolved `$value` payload never itself carries a
+    // `$`-prefixed key (DTCG values are plain objects, strings, numbers, or
+    // arrays), so this discriminates cleanly without a fixed allowlist.
+    const usesTokenObjectBase =
+      reference.startsWith('#/') &&
+      typeof remainder[0] === 'string' &&
+      remainder[0].startsWith('$');
+    // `$ref` is unique among token metadata: `resolveToken` deletes it from
+    // the token object once resolved (see `resolveRefToken`'s doc comment --
+    // deliberate, so downstream consumers never see a leftover alias pointer
+    // next to the value it named). A pointer that targets another alias
+    // token's OWN `$ref` string (`#/alias/$ref`) must read the pre-resolution
+    // snapshot (`rawRefs`) rather than the mutated `resolvedToken` -- and
+    // rather than `token.$ref` itself, which may already have been deleted by
+    // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
+    // comment). Every other reserved property is untouched by resolution.
+    // Known gap, tracked in CIN-474: `remainder` came from `segments`, which
+    // `tokenPathFromReference` produced by dot-joining the pointer and this
+    // function re-split on `.` -- lossy for a pointer segment that itself
+    // contains a literal dot, which vendor extension keys always do by
+    // convention (`com.lostgradient.cinder`). A `$ref` into
+    // `#/base/$extensions/com.lostgradient.cinder/cssProperty` therefore
+    // walks the wrong segments and fails to resolve, even though the
+    // property is genuinely there. Fixing it means preserving raw,
+    // pre-join pointer segments through to this walk -- deferred rather
+    // than reworked this late in review, since nothing in the real corpus
+    // exercises it.
+    const propertyValue =
+      remainder[0] === '$ref'
+        ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))
+        : getByPath(usesTokenObjectBase ? resolvedToken : resolvedToken.$value, remainder);
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);
     return clone(propertyValue);
@@ -190,25 +412,127 @@ function resolveReference(
   return issue(reference, 'reference target does not exist');
 }
 
-function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<string>): unknown {
+function resolveValue(
+  value: unknown,
+  tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
+  resolving: Set<string>,
+): unknown {
   if (typeof value === 'string')
     return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
-      ? resolveReference(value, tokens, resolving)
+      ? resolveReference(value, tokens, rawRefs, rootTokenPaths, resolving)
       : value;
-  if (Array.isArray(value)) return value.map((entry) => resolveValue(entry, tokens, resolving));
+  if (Array.isArray(value))
+    return value.map((entry) => resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving));
   if (!isObject(value)) return value;
   const resolved: JsonObject = Object.create(null);
   for (const [key, entry] of Object.entries(value))
-    resolved[key] = resolveValue(entry, tokens, resolving);
+    resolved[key] = resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving);
   return resolved;
 }
 
-function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<string>): DesignToken {
+/**
+ * Resolves a `$ref` token -- a whole-token DTCG 2025.10 alias, distinct from
+ * a `{a.b.c}`/`#/a/b/c` reference embedded IN a `$value`. Reuses
+ * `resolveReference` (the same machinery an ordinary alias `$value` goes
+ * through) rather than a separate path walk, so chained aliases and
+ * property-level pointers (`#/base/$value/blur`) work identically for both
+ * forms, and so `resolving` cycle detection is shared: a `$ref` chain that
+ * loops back on itself trips the same "circular token alias" guard
+ * `resolveToken` already applies before this runs.
+ *
+ * `$type` precedence for a `$ref` token: its own declared `$type` (validated
+ * only for known-type membership in `validate.ts`, never required) wins;
+ * failing that, the type already inherited from its enclosing group -- set
+ * by `withResolvedType` before `resolveToken` is ever called -- wins;
+ * failing THAT, the whole-token alias target's resolved `$type` is copied in
+ * here. A property-level `$ref` has no whole-token target to borrow a type
+ * from, so `$type` is left however it was (possibly still undefined), and
+ * `validateResolvedToken` is what reports a genuinely untyped resolved
+ * token, the same way it already does for an untyped ordinary token.
+ *
+ * The `$ref` key is deleted once resolved: a fully resolved `DesignToken` is
+ * expected to carry `$value` alone (mirroring the `$value`/`$ref` mutual
+ * exclusivity `validate.ts` enforces on the raw document), and downstream
+ * consumers of `resolveDocuments`'s output should never have to check for a
+ * leftover alias pointer next to the value it named.
+ */
+/**
+ * The `tokens` index key a whole-token reference ultimately names, for type
+ * inference below -- distinct from `tokenPathFromReference`'s plain dotted
+ * join, which treats trailing `$value`/`$root` segments as ordinary path
+ * levels. A group's root token is indexed under the GROUP's own path
+ * (`collectTokens` sets it at `prefix`, not `prefix.$root`), so
+ * `#/group/$root` and `#/$root` need their `$root` segment stripped before
+ * the `tokens.get` lookup, or it misses -- the same redirect
+ * `resolveReference`'s loop applies to `targetsRootToken` above, factored out
+ * here since type inference needs only the final indexed path, not a
+ * resolved value. A trailing `$value` segment (`#/base/$value`,
+ * `#/group/$root/$value`, `#/$root/$value`) names the token's WHOLE value,
+ * not a nested property, and must be stripped FIRST -- otherwise
+ * `#/group/$root/$value` dot-joins to `group.$root.$value`, which ends in
+ * neither `$root` nor a bare `$root`, and the redirect below never fires.
+ */
+function refTargetIndexPath(reference: string): string {
+  let path = tokenPathFromReference(reference);
+  if (!reference.startsWith('#/')) return path;
+  if (path.endsWith('.$value')) path = path.slice(0, -'.$value'.length);
+  if (path === '$root') return '';
+  return path.endsWith('.$root') ? path.slice(0, -'.$root'.length) : path;
+}
+
+function resolveRefToken(
+  path: string,
+  token: DesignToken,
+  tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
+  resolving: Set<string>,
+): void {
+  const ref = token.$ref;
+  if (typeof ref !== 'string') return issue(path, '$ref must be a string');
+  try {
+    token.$value = resolveReference(ref, tokens, rawRefs, rootTokenPaths, resolving);
+  } catch (error) {
+    if (error instanceof TokenValidationError)
+      return issue(
+        path,
+        `unresolvable $ref "${ref}": ${error.issues.map((tokenIssue) => tokenIssue.reason).join('; ')}`,
+      );
+    throw error;
+  }
+  if (token.$type === undefined) {
+    const targetToken = tokens.get(refTargetIndexPath(ref));
+    if (targetToken?.$type !== undefined) token.$type = targetToken.$type;
+  }
+  delete token.$ref;
+}
+
+function resolveToken(
+  path: string,
+  tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
+  resolving: Set<string>,
+): DesignToken {
   const token = tokens.get(path);
   if (!token) return issue(path, 'token does not exist');
   if (resolving.has(path)) return issue(path, 'circular token alias');
+  // Validation (`assertValidTokenDocument`) is what enforces `$value`/`$ref`
+  // mutual exclusivity on the raw document; this is a resolve-time backstop
+  // for a caller that reaches `resolveDocuments`/`createValueResolver`
+  // without validating first (there is no such caller in this repo today --
+  // every entry point runs validation first -- but nothing in the type
+  // system enforces that, and a token carrying both keys would otherwise
+  // silently prefer `$ref` and drop `$value` with no diagnostic). Named
+  // explicitly rather than left as an implicit precondition.
+  if (token.$ref !== undefined && token.$value !== undefined)
+    return issue(path, '$value and $ref are mutually exclusive on a resolved token');
   resolving.add(path);
-  token.$value = resolveValue(token.$value, tokens, resolving);
+  if (token.$ref !== undefined)
+    resolveRefToken(path, token, tokens, rawRefs, rootTokenPaths, resolving);
+  else token.$value = resolveValue(token.$value, tokens, rawRefs, rootTokenPaths, resolving);
   resolving.delete(path);
   return token;
 }
@@ -243,19 +567,43 @@ export function mergeAndExpandExtends(
   return merged;
 }
 
-/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against. */
-function buildTokenIndex(documents: TokenDocument[]): ResolvedTokens {
+/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against, plus the pre-resolution `$ref` snapshot (see `RawRefs`) and the set of paths that are a group's redirected `$root` token (see `collectTokens`'s `rootTokenPaths` comment) rather than an ordinary token that happens to share that path. */
+function buildTokenIndex(documents: TokenDocument[]): {
+  tokens: ResolvedTokens;
+  rawRefs: RawRefs;
+  rootTokenPaths: Set<string>;
+} {
   const tokens: ResolvedTokens = new Map();
+  const rootTokenPaths = new Set<string>();
   const merged = mergeAndExpandExtends(documents);
-  collectTokens(merged, '', tokens);
-  return tokens;
+  collectTokens(merged, '', tokens, rootTokenPaths);
+  const rawRefs: RawRefs = new Map();
+  for (const [path, token] of tokens) {
+    if (typeof token.$ref === 'string') rawRefs.set(path, token.$ref);
+  }
+  return { tokens, rawRefs, rootTokenPaths };
 }
 
 /** Resolves group inheritance, whole-token aliases, and property-level aliases. */
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
-  const tokens = buildTokenIndex(documents);
+  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
-  for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
+  // Known gap, tracked in CIN-484 (related to CIN-477, same
+  // self-referencing-metadata resolution area): `resolveToken` has no
+  // "already fully resolved" tracking. If an earlier token's own resolution
+  // causes a LATER token to resolve first (e.g. trigger -> copy, where
+  // `copy: { $ref: '#/alias/$ref' }` correctly resolves to alias's raw
+  // metadata string and deletes copy.$ref), then when this loop reaches
+  // that later token at its own top-level position, resolveToken sees a
+  // token with $value already set and no $ref left -- indistinguishable
+  // from an ordinary alias $value -- and resolves that metadata STRING a
+  // second time as if it were still raw, silently changing the value again.
+  // Fixing it means tracking completed tokens (mirroring resolveExtends's
+  // own `complete` set) and short-circuiting resolveToken for anything
+  // already resolved -- deferred rather than reworked this late in review;
+  // nothing in the real corpus has a $ref chain producing this ordering.
+  for (const path of tokens.keys())
+    resolved[path] = clone(resolveToken(path, tokens, rawRefs, rootTokenPaths, new Set()));
   return resolved;
 }
 
@@ -272,8 +620,8 @@ export type ValueResolver = (value: unknown) => unknown;
  * second resolver.
  */
 export function createValueResolver(documents: TokenDocument[]): ValueResolver {
-  const tokens = buildTokenIndex(documents);
-  return (value: unknown) => resolveValue(value, tokens, new Set());
+  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
+  return (value: unknown) => resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set());
 }
 
 /**

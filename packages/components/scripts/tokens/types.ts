@@ -73,8 +73,19 @@ export type TokenType =
 export type TokenExtensions = Record<string, unknown>;
 
 export type DesignToken = {
-  /** Parsed JSON remains unknown until it is validated for the token's $type. */
-  $value: unknown;
+  /**
+   * Parsed JSON remains unknown until it is validated for the token's $type.
+   * Optional because a DTCG 2025.10 `$ref` token declares `$ref` instead of
+   * `$value` -- the two are mutually exclusive (see CIN-463) -- and gains a
+   * `$value` only once `resolve.ts` resolves the alias.
+   */
+  $value?: unknown;
+  /**
+   * DTCG 2025.10 whole-token alias: a JSON Pointer to another token, in
+   * place of `$value`. `resolve.ts` deletes this once the token is resolved,
+   * so a fully resolved `DesignToken` never carries both `$ref` and `$value`.
+   */
+  $ref?: string;
   $type?: TokenType;
   $description?: string;
   $deprecated?: boolean | string;

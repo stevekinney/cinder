@@ -61,7 +61,14 @@ const GROUP_METADATA = new Set([
   '$root',
   '$schema',
 ]);
-const TOKEN_METADATA = new Set(['$value', '$type', '$description', '$deprecated', '$extensions']);
+const TOKEN_METADATA = new Set([
+  '$value',
+  '$ref',
+  '$type',
+  '$description',
+  '$deprecated',
+  '$extensions',
+]);
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -75,6 +82,17 @@ function isCubicBezier(value: unknown): value is [number, number, number, number
 
 function isReference(value: unknown): value is string {
   return typeof value === 'string' && (/^\{[^{}]+\}$/.test(value) || value.startsWith('#/'));
+}
+
+/**
+ * A node is token-shaped if it declares either the value form (`$value`) or
+ * the DTCG 2025.10 alias form (`$ref`) -- as opposed to a group, which
+ * declares neither and instead nests further named children. Checking both
+ * keys (rather than `$value` alone) is what CIN-463 fixes: previously a
+ * `$ref`-only node fell through to being validated as an (empty) group.
+ */
+function hasTokenValue(value: JsonObject): boolean {
+  return '$value' in value || '$ref' in value;
 }
 
 function addIssue(issues: ValidationIssue[], path: string, reason: string): void {
@@ -423,6 +441,60 @@ function validateMetadata(
   }
 }
 
+/**
+ * Validates a token-shaped node ($root's value, or an ordinary named leaf)
+ * once both callers in `validateGroup` agree it declares `$value` and/or
+ * `$ref` rather than nesting further groups.
+ *
+ * $type for a `$ref` token: unlike a `$value` token, `$ref` does not require
+ * a declared or inherited `$type` here -- the acceptance case for CIN-463
+ * (`{ copy: { $ref: "#/base" } }` at the document root, with no ancestor
+ * group typing it) has nowhere to inherit one from. `resolve.ts` fills the
+ * resolved `$type` in from the reference target when the `$ref` token
+ * declares none of its own; `validateResolvedToken` is what actually
+ * enforces "every resolved token has a $type", after that fallback has run.
+ * If a `$ref` token DOES declare its own `$type`, it is still checked here
+ * for membership in the known type set, just never used to check a value
+ * shape (there is no `$value` to check until resolution).
+ */
+function validateTokenNode(
+  value: JsonObject,
+  path: string,
+  groupType: TokenType | undefined,
+  mayInheritTypeThroughExtension: boolean,
+  issues: ValidationIssue[],
+  isRoot = false,
+): void {
+  validateMetadata(value, path, issues);
+  const hasValue = '$value' in value;
+  const hasRef = '$ref' in value;
+  if (hasValue && hasRef) addIssue(issues, path, 'a token cannot declare both $value and $ref');
+  const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
+  if (nonMetadataChildren.length > 0)
+    addIssue(
+      issues,
+      path,
+      isRoot
+        ? '$root token cannot contain child groups'
+        : 'a token with $value or $ref cannot contain child groups',
+    );
+  for (const key of Object.keys(value))
+    if (key.startsWith('$') && !TOKEN_METADATA.has(key))
+      addIssue(issues, path, unknownReservedPropertyReason(key));
+  if (hasRef && !hasValue) {
+    if (typeof value['$ref'] !== 'string' || !value['$ref'].startsWith('#/'))
+      addIssue(issues, path, '$ref must be a JSON Pointer reference');
+    if (value['$type'] !== undefined && !isTokenType(value['$type']))
+      addIssue(issues, path, `unknown $type ${JSON.stringify(value['$type'])}`);
+    return;
+  }
+  const type =
+    groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
+      ? undefined
+      : tokenType(value, groupType, path, issues);
+  if (type) validateValue(type, value['$value'], path, issues);
+}
+
 function validateGroup(
   group: JsonObject,
   path: string,
@@ -447,22 +519,11 @@ function validateGroup(
       // document location instead, which is unambiguous and is where the author
       // has to edit; the token path is that minus the trailing `.$root`.
       const rootPath = `${path}.$root`;
-      if (!isObject(value) || !('$value' in value)) {
+      if (!isObject(value) || !hasTokenValue(value)) {
         addIssue(issues, rootPath, '$root must be a token object');
         continue;
       }
-      validateMetadata(value, rootPath, issues);
-      const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
-      if (nonMetadataChildren.length > 0)
-        addIssue(issues, rootPath, '$root token cannot contain child groups');
-      for (const key of Object.keys(value))
-        if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, rootPath, unknownReservedPropertyReason(key));
-      const type =
-        groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
-          ? undefined
-          : tokenType(value, groupType, rootPath, issues);
-      if (type) validateValue(type, value['$value'], rootPath, issues);
+      validateTokenNode(value, rootPath, groupType, mayInheritTypeThroughExtension, issues, true);
       continue;
     }
     if (name.startsWith('$')) continue;
@@ -479,19 +540,8 @@ function validateGroup(
       addIssue(issues, childPath, 'token or group must be an object');
       continue;
     }
-    if ('$value' in value) {
-      const nonMetadataChildren = Object.keys(value).filter((key) => !key.startsWith('$'));
-      if (nonMetadataChildren.length > 0)
-        addIssue(issues, childPath, 'a token with $value cannot contain child groups');
-      validateMetadata(value, childPath, issues);
-      for (const key of Object.keys(value))
-        if (key.startsWith('$') && !TOKEN_METADATA.has(key))
-          addIssue(issues, childPath, unknownReservedPropertyReason(key));
-      const type =
-        groupType === undefined && mayInheritTypeThroughExtension && value['$type'] === undefined
-          ? undefined
-          : tokenType(value, groupType, childPath, issues);
-      if (type) validateValue(type, value['$value'], childPath, issues);
+    if (hasTokenValue(value)) {
+      validateTokenNode(value, childPath, groupType, mayInheritTypeThroughExtension, issues);
       continue;
     }
     validateGroup(value, childPath, groupType, issues, false, mayInheritTypeThroughExtension);
@@ -517,17 +567,7 @@ function isResolverReference(value: unknown): value is { $ref: string } {
   return isObject(value) && typeof value['$ref'] === 'string';
 }
 
-/**
- * DTCG 2025.10 allows a token to be a JSON Pointer alias via `$ref` in place of
- * `$value`, and the official format schema accepts that shape. Cinder classifies
- * tokens by `$value` alone -- in this file, in `resolve.ts`'s `isToken`, and in
- * `types.ts` -- so a `$ref` token is currently read as a group with unrecognised
- * metadata. That gap is tracked in CIN-463; until it lands, say so plainly rather
- * than reporting a spec property as unknown.
- */
 function unknownReservedPropertyReason(key: string): string {
-  if (key === '$ref')
-    return '$ref token aliases are not supported yet (CIN-463); author aliases as $value: "{path}" or $value: "#/path"';
   return `unknown reserved property ${key}`;
 }
 
@@ -577,13 +617,75 @@ export function resolutionOrderTarget(
  * express: `default` matching a live context key, resolutionOrder entries
  * resolving to a set or modifier that actually exists (schema can only
  * constrain the `$ref` string's shape, not cross-reference sibling `sets`/
- * `modifiers` object keys), resolutionOrder covering every set and modifier
- * exactly once, and non-empty source/context arrays.
+ * `modifiers` object keys), non-empty source/context arrays, and
+ * resolutionOrder covering every set and modifier exactly once -- EXCEPT a
+ * set that is reached only through a resolver-internal `#/sets/<name>`
+ * reference from another set's `sources` or a modifier context (CIN-464):
+ * that set contributes its documents at the position of whatever references
+ * it, so requiring it in resolutionOrder too would be redundant. Such a set
+ * MAY still appear in resolutionOrder as well -- nothing here forbids it --
+ * it is simply no longer REQUIRED to.
  */
 export function validateResolverDocument(document: ResolverDocumentShape): void {
   const issues: ValidationIssue[] = [];
   if (document.version !== '2025.10')
     addIssue(issues, '$.version', 'resolver version must be 2025.10');
+
+  // CIN-464: a set or modifier context source may itself be a
+  // resolver-internal `#/sets/<name>` reference rather than a token-document
+  // path (see `validate-corpus.ts`'s `expandSetSources`/`expandContextSources`,
+  // which resolve these into the referenced set's own documents). A set
+  // pulled in only through another SET, or only through a MODIFIER CONTEXT
+  // -- never named directly in `resolutionOrder` -- still contributes its
+  // documents, at the position of whatever references it, so it must NOT
+  // also be required in `resolutionOrder` itself below. This function only
+  // has the resolver's STRUCTURE to work with, never the actual token
+  // documents, so it cannot check whether a modifier-context-only set's
+  // individual token paths already have a base declaration from some other
+  // set -- see the "context-only override set" note further below for why
+  // that check does not belong here.
+  // Keyed by CHILD set name -> the set of PARENT set names that reference it
+  // internally. More than one parent referencing the same child means that
+  // child gets expanded more than once into the resolved document tree --
+  // reject that below (see the "Reject a child set expanded by multiple
+  // ordered parents" check) rather than let it surface as the same
+  // CSS-vs-resolved-JSON disagreement the single-parent-plus-explicit-listing
+  // case already guards against.
+  const parentsReferencingSet = new Map<string, Set<string>>();
+  // Direct set-to-set reference edges (parent -> the child set names its own
+  // sources reference), used below to compute each ORDERED set's full
+  // transitive descendant closure -- the direct-parents-only version of that
+  // check missed a child reachable through a CHAIN of internal references
+  // (e.g. resolutionOrder "A, theme, Wrapper" where A -> Base and
+  // Wrapper -> B -> Base: Base's only DIRECT parents are A and B, and only A
+  // is itself ordered, so a direct-parent check sees no conflict even though
+  // Base is genuinely expanded at both ordered positions).
+  const setDirectChildren = new Map<string, Set<string>>();
+  const setReferencedByAnotherSet = new Set<string>();
+  const setReferencedByModifierContext = new Set<string>();
+  function noteSetReferencedByAnotherSet(parentName: string, sources: unknown): void {
+    if (!Array.isArray(sources)) return;
+    for (const source of sources) {
+      if (!isResolverReference(source)) continue;
+      const target = resolutionOrderTarget(source['$ref']);
+      if (target?.kind !== 'sets') continue;
+      setReferencedByAnotherSet.add(target.name);
+      const parents = parentsReferencingSet.get(target.name) ?? new Set();
+      parents.add(parentName);
+      parentsReferencingSet.set(target.name, parents);
+      const children = setDirectChildren.get(parentName) ?? new Set();
+      children.add(target.name);
+      setDirectChildren.set(parentName, children);
+    }
+  }
+  function noteSetReferencedByModifierContext(sources: unknown): void {
+    if (!Array.isArray(sources)) return;
+    for (const source of sources) {
+      if (!isResolverReference(source)) continue;
+      const target = resolutionOrderTarget(source['$ref']);
+      if (target?.kind === 'sets') setReferencedByModifierContext.add(target.name);
+    }
+  }
 
   const modifierNames = new Set(Object.keys(document.modifiers));
   for (const [name, modifier] of Object.entries(document.modifiers)) {
@@ -599,6 +701,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
           `$.modifiers.${name}.contexts.${contextName}`,
           'context must be a non-empty array of $ref sources',
         );
+      else noteSetReferencedByModifierContext(sources);
     }
     if (
       modifier['default'] !== undefined &&
@@ -617,9 +720,15 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       !set['sources'].every(isResolverReference)
     )
       addIssue(issues, `$.sets.${name}`, 'set must have a non-empty array of $ref sources');
+    else noteSetReferencedByAnotherSet(name, set['sources']);
   }
+  const internallyReferencedSetNames = new Set([
+    ...setReferencedByAnotherSet,
+    ...setReferencedByModifierContext,
+  ]);
 
   const resolutionOrderTargets = new Set<string>();
+  const explicitSetOrderPath = new Map<string, string>();
   for (const [index, entry] of document.resolutionOrder.entries()) {
     if (!isResolverReference(entry)) {
       addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entry must be a $ref object');
@@ -638,16 +747,153 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     if (resolutionOrderTargets.has(key))
       addIssue(issues, `$.resolutionOrder.${index}`, 'resolutionOrder entries must be unique');
     resolutionOrderTargets.add(key);
+    if (target.kind === 'sets') explicitSetOrderPath.set(target.name, `$.resolutionOrder.${index}`);
   }
   const expectedTargets = new Set([
-    ...[...setNames].map((name) => `sets/${name}`),
+    ...[...setNames]
+      .filter((name) => !internallyReferencedSetNames.has(name))
+      .map((name) => `sets/${name}`),
     ...[...modifierNames].map((name) => `modifiers/${name}`),
   ]);
-  if (
-    resolutionOrderTargets.size !== expectedTargets.size ||
-    [...resolutionOrderTargets].some((target) => !expectedTargets.has(target))
-  )
+  const unlistedTargets = [...expectedTargets].filter(
+    (target) => !resolutionOrderTargets.has(target),
+  );
+  if (unlistedTargets.length > 0)
     addIssue(issues, '$.resolutionOrder', 'must list every set and modifier exactly once');
+
+  // A set referenced by another SET is exempt from resolutionOrder because it
+  // still contributes through that set's own expansion -- but nothing stops
+  // it from ALSO being listed explicitly. That double inclusion is never
+  // correct: `buildResolvedContexts` walks the full resolutionOrder, so if a
+  // modifier sits between the referencing set and the explicit entry (e.g.
+  // "A, theme, B" where A internally references B), expanding A re-applies
+  // B's values AFTER the modifier, silently resetting whatever the modifier
+  // just overrode -- while `buildTokensBaseCss` collects every set into
+  // `:root` once and emits theme documents separately, so the generated CSS
+  // and the resolved JSON snapshots disagree about which value wins. Reject
+  // the combination outright rather than let it surface as that disagreement
+  // later.
+  for (const setName of setReferencedByAnotherSet) {
+    const explicitPath = explicitSetOrderPath.get(setName);
+    if (explicitPath !== undefined) {
+      addIssue(
+        issues,
+        explicitPath,
+        `set "${setName}" is already referenced internally by another ordered set and must not ` +
+          'also appear in resolutionOrder -- it would be included twice',
+      );
+    }
+  }
+
+  // The single-parent-plus-explicit-listing case above doesn't cover a child
+  // set reachable from TWO DIFFERENT ordered positions through a chain of
+  // internal references -- e.g. resolutionOrder "A, theme, Wrapper" where
+  // A -> Base directly, and Wrapper -> B -> Base (Base's only DIRECT parents
+  // are A and B; only A is itself ordered, so a direct-parents-only check
+  // sees no conflict even though Base is genuinely expanded again through
+  // Wrapper's own recursive expansion). Compute each ordered set's full
+  // TRANSITIVE descendant closure and reject any set reachable from more
+  // than one ordered position -- this subsumes the direct-parent case above,
+  // since a direct parent is a one-hop descendant.
+  function transitiveDescendants(setName: string): Set<string> {
+    const seen = new Set<string>();
+    const stack = [setName];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      for (const child of setDirectChildren.get(current) ?? []) {
+        if (seen.has(child)) continue; // also guards against a reference cycle
+        seen.add(child);
+        stack.push(child);
+      }
+    }
+    return seen;
+  }
+  const reachingOrderedSets = new Map<string, Set<string>>();
+  for (const target of resolutionOrderTargets) {
+    if (!target.startsWith('sets/')) continue;
+    const orderedSetName = target.slice('sets/'.length);
+    for (const descendant of transitiveDescendants(orderedSetName)) {
+      const reachers = reachingOrderedSets.get(descendant) ?? new Set();
+      reachers.add(orderedSetName);
+      reachingOrderedSets.set(descendant, reachers);
+    }
+  }
+  for (const [setName, orderedAncestors] of reachingOrderedSets) {
+    if (orderedAncestors.size > 1) {
+      addIssue(
+        issues,
+        '$.resolutionOrder',
+        `set "${setName}" is reachable from more than one ordered set ` +
+          `(${[...orderedAncestors].sort().join(', ')}) and would be expanded more than once`,
+      );
+    }
+  }
+
+  // Reachability for the closed-cycle check below is broader than
+  // `reachingOrderedSets` above: a set reachable ONLY through a chain
+  // rooted at a modifier context (e.g. theme.light -> lightOverrides ->
+  // sharedOverrides, where neither lightOverrides nor sharedOverrides is
+  // itself ordered) is legitimately consumed by generation, per the
+  // context-only-override exemption -- `reachingOrderedSets` is seeded only
+  // from directly ordered sets and would wrongly flag `sharedOverrides` as
+  // an unreachable closed cycle. Every modifier-context-referenced set is
+  // therefore also a valid entry point here, not just ordered sets. This
+  // does NOT feed the multi-ordered-position check above, which is
+  // specifically about two DISTINCT ordered resolutionOrder positions
+  // double-expanding the same set within one resolved combination --
+  // mutually exclusive modifier contexts don't have that problem.
+  const reachableFromAnyEntryPoint = new Set(reachingOrderedSets.keys());
+  for (const target of resolutionOrderTargets) {
+    if (target.startsWith('sets/')) reachableFromAnyEntryPoint.add(target.slice('sets/'.length));
+  }
+  for (const rootSetName of setReferencedByModifierContext) {
+    reachableFromAnyEntryPoint.add(rootSetName);
+    for (const descendant of transitiveDescendants(rootSetName))
+      reachableFromAnyEntryPoint.add(descendant);
+  }
+
+  // The `expectedTargets`/`unlistedTargets` check above exempts any set
+  // referenced by another set from needing its own resolutionOrder entry --
+  // but that exemption is unsound for a CLOSED CYCLE of sets that reference
+  // only each other (e.g. "a" -> "b" -> "a"): each member is "referenced by
+  // another set", so both are exempted, and neither is ever required to be
+  // ordered. The cycle is then unreachable from every actual entry point,
+  // and `buildTokensBaseCss`/`buildBaseDocuments` silently omit its
+  // documents entirely. `reachableFromAnyEntryPoint` (computed above)
+  // already captures every set genuinely reachable from an ordered
+  // position OR a modifier context -- anything internally referenced but
+  // absent from it is unreachable, cycle or not.
+  for (const setName of setReferencedByAnotherSet) {
+    const directlyOrdered = resolutionOrderTargets.has(`sets/${setName}`);
+    if (!directlyOrdered && !reachableFromAnyEntryPoint.has(setName)) {
+      addIssue(
+        issues,
+        '$.resolutionOrder',
+        `set "${setName}" is referenced internally but not reachable from any ordered set ` +
+          '(possibly part of a closed cycle of sets that only reference each other) -- ' +
+          'its documents would never be included',
+      );
+    }
+  }
+
+  // NOTE: an earlier version of this file rejected a modifier context's
+  // internal set reference whenever the referenced SET (not its individual
+  // token paths) had no independent path into resolutionOrder's base. That
+  // check operated at the wrong granularity: this function only has the
+  // resolver's STRUCTURE to work with, never the actual token documents, so
+  // it can only reason about set names, not the token paths a set actually
+  // contributes. A context-only override set (e.g. "lightOverrides",
+  // referenced solely by theme's "light" context) is a legitimate,
+  // already-generator-supported pattern -- see generate.test.ts's "a theme
+  // context referencing a set via #/sets/<name> does not throw" -- whenever
+  // its OVERRIDE tokens share paths with a base declaration contributed by
+  // some OTHER set. The set-level check could not see that and rejected
+  // exactly this shape, a false positive against an already-shipped,
+  // already-tested pattern. Removed rather than narrowed: token-path-level
+  // reachability can only be checked where token documents are actually
+  // loaded (validate-corpus.ts or generation), and generation already
+  // rejects a genuinely-unreachable override with a clear "no matching base
+  // token" error at the correct granularity.
 
   if (issues.length > 0) throw new TokenValidationError(issues);
 }

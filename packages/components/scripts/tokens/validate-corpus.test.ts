@@ -1,7 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import type { ResolverDocument } from './types.ts';
 import {
+  buildContextSourcesIndex,
   combinations,
+  expandContextSources,
+  expandSetSources,
   normalizeSourcePath,
   parseResolutionOrder,
   sourcesForEntry,
@@ -169,5 +172,236 @@ describe('token corpus validation', () => {
       modifiers: { theme: resolver.modifiers['theme']! },
     };
     expect(combinations(singleModifier)).toEqual([{ theme: 'light' }, { theme: 'dark' }]);
+  });
+});
+
+describe('CIN-464: resolver-internal set references in source lists', () => {
+  test("expands a set source referencing another set to that set's own documents, in order", () => {
+    const withInternalRef: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+        extended: {
+          sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }],
+        },
+      },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/extended' }],
+    };
+
+    expect(expandSetSources(withInternalRef, 'extended')).toEqual([
+      { $ref: 'sets/base.tokens.json' },
+      { $ref: 'sets/extra.tokens.json' },
+    ]);
+    expect(sourcesForEntry(withInternalRef, { kind: 'sets', name: 'extended' }, {})).toEqual([
+      { $ref: 'sets/base.tokens.json' },
+      { $ref: 'sets/extra.tokens.json' },
+    ]);
+  });
+
+  test("a referenced set's own sources may contain further internal references", () => {
+    const chained: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+        middle: { sources: [{ $ref: '#/sets/base' }] },
+        top: { sources: [{ $ref: '#/sets/middle' }] },
+      },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/top' }],
+    };
+
+    expect(expandSetSources(chained, 'top')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
+  });
+
+  test("a modifier context referencing a set expands to that set's documents", () => {
+    const withInternalRef: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+            dark: [{ $ref: 'themes/dark.tokens.json' }],
+          },
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+    };
+
+    expect(expandContextSources(withInternalRef, 'theme', 'light')).toEqual([
+      { $ref: 'sets/base.tokens.json' },
+      { $ref: 'themes/light.tokens.json' },
+    ]);
+    expect(
+      sourcesForEntry(withInternalRef, { kind: 'modifiers', name: 'theme' }, { theme: 'light' }),
+    ).toEqual([{ $ref: 'sets/base.tokens.json' }, { $ref: 'themes/light.tokens.json' }]);
+  });
+
+  test('rejects a cycle between two sets with a named path and reason', () => {
+    const cyclic: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        a: { sources: [{ $ref: '#/sets/b' }] },
+        b: { sources: [{ $ref: '#/sets/a' }] },
+      },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/a' }],
+    };
+
+    expect(() => expandSetSources(cyclic, 'a')).toThrow(/cyclic set reference/);
+    try {
+      expandSetSources(cyclic, 'a');
+      throw new Error('expected expandSetSources to throw');
+    } catch (error) {
+      // The reference SITE, not the set being re-visited: `a`'s sources name
+      // `b`, and `b`'s sources are what names `a` again and closes the loop
+      // -- `b.sources` is the array actually containing the offending
+      // back-reference, so that is what the error should point a reader at,
+      // rather than `a.sources` (the earlier, non-cyclic hop).
+      expect(String(error)).toContain('$.sets.b.sources');
+    }
+  });
+
+  test('rejects a set referencing a modifier with a named path and reason', () => {
+    const setReferencingModifier: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: '#/modifiers/theme' }] } },
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: 'themes/light.tokens.json' }] } },
+      },
+      resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+    };
+
+    expect(() => expandSetSources(setReferencingModifier, 'base')).toThrow(
+      'a set may not reference a modifier',
+    );
+  });
+
+  test('rejects a modifier context referencing another modifier with a named path and reason', () => {
+    const contextReferencingModifier: ResolverDocument = {
+      version: '2025.10',
+      sets: {},
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: '#/modifiers/motion' }] } },
+        motion: { contexts: { default: [{ $ref: 'modes/motion-default.tokens.json' }] } },
+      },
+      resolutionOrder: [{ $ref: '#/modifiers/theme' }, { $ref: '#/modifiers/motion' }],
+    };
+
+    expect(() => expandContextSources(contextReferencingModifier, 'theme', 'light')).toThrow(
+      'a modifier context may not reference another modifier',
+    );
+  });
+
+  test('still reports a genuinely missing on-disk file clearly, not as a malformed reference', () => {
+    const missingFile: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'sets/does-not-exist.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+
+    // expandSetSources itself only expands internal refs -- it does not check
+    // on-disk existence, so a plain file $ref simply passes through.
+    expect(expandSetSources(missingFile, 'base')).toEqual([
+      { $ref: 'sets/does-not-exist.tokens.json' },
+    ]);
+  });
+
+  test('an unknown set referenced from another set is reported at the referencing sources array', () => {
+    // Regression: the thrown path used to be `$.sets.<missing>`, which does
+    // not exist in the document and does not point a reader at the actual
+    // reference site.
+    const missingSet: ResolverDocument = {
+      version: '2025.10',
+      sets: { extended: { sources: [{ $ref: '#/sets/does-not-exist' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/extended' }],
+    };
+
+    expect(() => expandSetSources(missingSet, 'extended')).toThrow(
+      /resolver-internal reference names an unknown set/,
+    );
+    try {
+      expandSetSources(missingSet, 'extended');
+      throw new Error('expected expandSetSources to throw');
+    } catch (error) {
+      expect(String(error)).toContain('$.sets.extended.sources');
+      expect(String(error)).not.toContain('$.sets.does-not-exist');
+    }
+  });
+
+  test('an unknown set referenced from a modifier context is reported at the referencing context', () => {
+    const missingSet: ResolverDocument = {
+      version: '2025.10',
+      sets: {},
+      modifiers: { theme: { contexts: { light: [{ $ref: '#/sets/does-not-exist' }] } } },
+      resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+    };
+
+    try {
+      expandContextSources(missingSet, 'theme', 'light');
+      throw new Error('expected expandContextSources to throw');
+    } catch (error) {
+      expect(String(error)).toContain('$.modifiers.theme.contexts.light');
+      expect(String(error)).not.toContain('$.sets.does-not-exist');
+    }
+  });
+
+  test('a percent-encoded internal set reference is classified as internal, not a file path', () => {
+    // `#%2Fsets%2Fbase` percent-decodes to `#/sets/base`. `resolutionOrderTarget`
+    // (validate.ts) decodes before parsing and correctly recognizes it as
+    // internal; a raw, undecoded `startsWith('#/')` classification check here
+    // disagreed, treating the identical reference as an on-disk file and
+    // reporting it as a nonexistent document named `#%2Fsets%2Fbase` instead
+    // of expanding the set.
+    const encoded: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+        extended: { sources: [{ $ref: '#%2Fsets%2Fbase' }] },
+      },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/extended' }],
+    };
+
+    expect(expandSetSources(encoded, 'extended')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
+  });
+});
+
+describe('buildContextSourcesIndex keys are collision-free', () => {
+  test('a modifier/context split that would collide under any single-string-key delimiter still resolves correctly', () => {
+    // Modifier "a" context "b:c" and modifier "a:b" context "c" concatenate
+    // to the same string under ANY fixed delimiter -- a single-map string
+    // key cannot distinguish them no matter which separator is chosen. Two-
+    // level indexing has no joint-key space to collide in.
+    const sourcesForAB = [{ $ref: 'sets/a-bc.tokens.json' }];
+    const sourcesForABC = [{ $ref: 'sets/ab-c.tokens.json' }];
+    const index = buildContextSourcesIndex([
+      { modifierName: 'a', contextName: 'b:c', sources: sourcesForAB },
+      { modifierName: 'a:b', contextName: 'c', sources: sourcesForABC },
+    ]);
+
+    expect(index.get('a')?.get('b:c')).toEqual(sourcesForAB);
+    expect(index.get('a:b')?.get('c')).toEqual(sourcesForABC);
+    // Neither entry leaked into the other modifier's namespace.
+    expect(index.get('a')?.get('c')).toBeUndefined();
+    expect(index.get('a:b')?.get('b:c')).toBeUndefined();
+  });
+
+  test('multiple contexts under one modifier and multiple modifiers all coexist', () => {
+    const light = [{ $ref: 'sets/light.tokens.json' }];
+    const dark = [{ $ref: 'sets/dark.tokens.json' }];
+    const reduced = [{ $ref: 'sets/reduced.tokens.json' }];
+    const index = buildContextSourcesIndex([
+      { modifierName: 'theme', contextName: 'light', sources: light },
+      { modifierName: 'theme', contextName: 'dark', sources: dark },
+      { modifierName: 'motion', contextName: 'reduced', sources: reduced },
+    ]);
+
+    expect(index.get('theme')?.get('light')).toEqual(light);
+    expect(index.get('theme')?.get('dark')).toEqual(dark);
+    expect(index.get('motion')?.get('reduced')).toEqual(reduced);
   });
 });

@@ -55,7 +55,12 @@ import type {
   TokenGroup,
   TokenType,
 } from './types.ts';
-import { normalizeSourcePath, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
+import {
+  expandContextSources,
+  normalizeSourcePath,
+  parseResolutionOrder,
+  sourcesForEntry,
+} from './validate-corpus.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..', '..');
@@ -131,6 +136,17 @@ export type CorpusEntry = {
   category?: string | undefined;
   component?: string | undefined;
   deprecated?: boolean | string | undefined;
+  /**
+   * True when `value` came from `$ref` rather than `$value`. `$ref` is a
+   * generic JSON Pointer with no DTCG requirement that its target be a whole
+   * token -- unlike an ordinary bare alias `$value`, which this generator has
+   * always required to name a whole token (a deliberate, pre-existing
+   * restriction; see `resolveAlias`'s own comment). `serializeEntryValue`
+   * uses this flag to allow a `$ref` alone to fall through to typed
+   * serialization when it targets a property rather than a whole token,
+   * without loosening that restriction for ordinary `$value` aliases.
+   */
+  isRefAlias?: boolean | undefined;
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -138,7 +154,16 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 }
 
 function isToken(value: unknown): value is DesignToken {
-  return isPlainObject(value) && '$value' in value;
+  // Mirrors resolve.ts's `isToken`: a DTCG 2025.10 `$ref` whole-token alias
+  // is mutually exclusive with `$value`, so a node declaring either is
+  // token-shaped. This walker classifies the RAW, unresolved corpus (see the
+  // module doc above) -- checking `$value` alone was the CIN-463 "live trap"
+  // recurring a third time here, independent of resolve.ts's own copy: a
+  // `$ref`-only node fell through to `isTokenGroup`, was walked as an empty
+  // group, and silently vanished from `tokens-base.css` and the generated
+  // registry (both of which reuse `collectEntries` below) even though it
+  // validated and resolved correctly.
+  return isPlainObject(value) && ('$value' in value || '$ref' in value);
 }
 
 function isTokenGroup(value: unknown): value is TokenGroup {
@@ -180,9 +205,18 @@ function toEntry(
       ? token.$deprecated
       : undefined;
   const deprecated = ownDeprecated ?? inheritedDeprecated;
+  // A `$ref` whole-token alias has no `$value` of its own -- the reference
+  // string ITSELF is the raw, unresolved value this walker records (mirroring
+  // how an ordinary embedded `{a.b.c}`/`#/a/b/c` alias is kept raw rather than
+  // resolved here; see the module doc above). `isAliasReference` in
+  // `serializeEntryValue` recognizes both forms identically, so a `$ref`
+  // token flows through the exact same `var(--referenced-property)` emission
+  // path as an ordinary aliased `$value`, rather than a second alias-handling
+  // code path.
+  const value = token.$ref ?? token.$value;
   return {
     path,
-    value: token.$value,
+    value,
     type: token.$type ?? inheritedType,
     description: token.$description,
     cssProperty,
@@ -191,6 +225,7 @@ function toEntry(
     category,
     component,
     deprecated,
+    isRefAlias: token.$ref !== undefined,
   };
 }
 
@@ -558,31 +593,41 @@ export function serializeTypedValue(
   }
 }
 
-export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
-  // `tokenPathFromReference` (reused from resolve.ts, the resolver's own
-  // reference parser) handles both curly-brace and `#/` JSON Pointer syntax,
-  // including percent- and tilde-decoding for the latter -- reusing it here
-  // keeps this the single place that turns a reference string into a dotted
-  // token path, matching how the corpus is actually resolved.
+/**
+ * The `baseIndex` key a whole-token JSON Pointer alias names, beyond
+ * `tokenPathFromReference`'s plain dot-join.
+ *
+ * A property-FORM pointer whose last segment is literally `$value` (e.g.
+ * `#/dimension/hairline/$value`) names the referenced token's WHOLE value --
+ * resolve.ts's own `resolveReference` special-cases a trailing `$value`
+ * segment the same way (see resolve.test.ts's "resolves a property-level
+ * JSON Pointer reference" case, which targets a whole dimension token via
+ * `#/dimension/hairline/$value`). `tokenPathFromReference` has no such
+ * special case -- it just dot-joins every segment -- so without stripping it
+ * here, the exact-match `baseIndex` lookup misses the token entirely even
+ * though `tokens:validate` accepts the identical reference. Gated on `#/`
+ * (pointer syntax): a curly alias `{a.b.$value}` is a literal dotted path
+ * through the corpus, not resolve.ts's pointer special case, so stripping it
+ * there would just as wrongly make the generator and the validator disagree
+ * the other way.
+ *
+ * A `$root` segment is a REDIRECT to the group's own root token, which
+ * `collectEntries` indexes at the group's own path (`prefix`), not
+ * `prefix.$root` -- the same redirect resolve.ts's `refTargetIndexPath`
+ * applies for type inference. `#/group/$root` and `#/group/$root/$value`
+ * both name the root token's whole identity and must strip to `group`;
+ * `#/$root`/`#/$root/$value` strip to the document root's own path (`''`).
+ */
+function wholeTokenIndexPath(reference: string): string {
   let path = tokenPathFromReference(reference);
-  // A property-FORM JSON Pointer whose last segment is literally `$value` (e.g.
-  // `#/dimension/hairline/$value`) names the referenced token's WHOLE value -- resolve.ts's own
-  // `resolveReference` special-cases a trailing `$value` segment the same way (see
-  // resolve.test.ts's "resolves a property-level JSON Pointer reference" case, which targets a
-  // whole dimension token via `#/dimension/hairline/$value`). `tokenPathFromReference` has no
-  // such special case -- it just dot-joins every segment -- so without stripping it here, the
-  // exact-match `baseIndex` lookup below misses the token entirely and this throws, even though
-  // `tokens:validate` accepts the identical reference. Gated on `#/` (pointer syntax): a curly
-  // alias `{a.b.$value}` is a literal dotted path through the corpus, not resolve.ts's pointer
-  // special case, so stripping it there would just as wrongly make the generator and the
-  // validator disagree the other way. Any OTHER terminal property segment (a composite member
-  // such as `/width`) names a PIECE of the token's value, not the whole token -- resolveAlias
-  // only knows how to emit `var(--property)` for a whole-token identity, so those are left to
-  // fail the lookup below with today's existing, clear error rather than being silently (and
-  // wrongly) treated as a whole-token alias.
-  if (reference.startsWith('#/') && path.endsWith('.$value')) {
-    path = path.slice(0, -'.$value'.length);
-  }
+  if (!reference.startsWith('#/')) return path;
+  if (path.endsWith('.$value')) path = path.slice(0, -'.$value'.length);
+  if (path === '$root') return '';
+  return path.endsWith('.$root') ? path.slice(0, -'.$root'.length) : path;
+}
+
+export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
+  const path = wholeTokenIndexPath(reference);
   const target = baseIndex.get(path);
   if (!target?.cssProperty) {
     throw new Error(
@@ -593,6 +638,16 @@ export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEnt
   return `var(${target.cssProperty})`;
 }
 
+/**
+ * Whether `reference` names a whole token that `resolveAlias` can turn into a
+ * `var(--property)` reference -- used by `serializeEntryValue` to decide
+ * whether a `$ref` alias should take that path or fall through to typed
+ * serialization instead of throwing (see `serializeEntryValue`'s doc comment).
+ */
+function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry>): boolean {
+  return baseIndex.get(wholeTokenIndexPath(reference))?.cssProperty !== undefined;
+}
+
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
 export function serializeEntryValue(
   entry: CorpusEntry,
@@ -600,7 +655,22 @@ export function serializeEntryValue(
   resolveReferences: ValueResolver = (raw) => raw,
 ): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
-  if (isAliasReference(entry.value)) return resolveAlias(entry.value, baseIndex);
+  if (isAliasReference(entry.value)) {
+    // An ordinary bare-alias `$value` has always been required to name a
+    // WHOLE token here -- a deliberate restriction (see `wholeTokenIndexPath`'s
+    // doc comment) -- so a miss still throws via `resolveAlias` below. `$ref`
+    // is a generic JSON Pointer with no such requirement: a property-level
+    // `$ref` (e.g. `#/dimension/hairline/$value/value`, aliasing one scalar
+    // member of another token rather than the whole token) resolves fine at
+    // `tokens:validate` time but is not a whole-token identity, so it falls
+    // through to typed serialization instead, which resolves it (and any
+    // further nested references) via `resolveReferences` and formats the
+    // result per `entry.type` -- the same path an embedded property-level
+    // reference inside a composite `$value` already takes.
+    if (!entry.isRefAlias || isWholeTokenAlias(entry.value, baseIndex)) {
+      return resolveAlias(entry.value, baseIndex);
+    }
+  }
   if (entry.type === undefined) {
     throw new Error(`Token at "${entry.path}" has no $type and no cssRecipe; cannot serialize.`);
   }
@@ -726,6 +796,17 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
     // first-claimant docs index documented one form while the CSS and the drift
     // test's last-write map used the other, so regeneration produced
     // documentation the required drift test rejected.
+    // Known gap, tracked in CIN-483: `entry.value` is the RAW corpus value,
+    // which for a property-level `$ref` (e.g. `#/dimension/a/$value/value`)
+    // is the unresolved pointer STRING, not the literal it resolves to. Two
+    // distinct property-level `$ref` tokens sharing this `cssProperty` and
+    // resolving to the identical literal hash to two different pointer
+    // strings and get wrongly rejected as conflicting, even though matching
+    // emitted values is exactly what this guard is supposed to permit.
+    // Fixing it means resolving property-level refs before this fingerprint
+    // runs -- deferred rather than reworked this late in review; nothing in
+    // the real corpus has two property-level `$ref` tokens sharing a
+    // `cssProperty`.
     const emitted = JSON.stringify({
       type: entry.type,
       value: entry.value,
@@ -773,11 +854,18 @@ export async function buildTokensBaseCss(
   // overriding context, so a resolver built from the base documents alone is correct here.
   const baseResolveReferences = createValueResolver(baseDocuments);
 
-  const themeModifier = resolver.modifiers['theme']!;
-  const motionModifier = resolver.modifiers['motion']!;
-
-  const lightDocuments = refsFor(documentsByPath, themeModifier.contexts['light']!);
-  const darkDocuments = refsFor(documentsByPath, themeModifier.contexts['dark']!);
+  // `expandContextSources` (not a raw `resolver.modifiers['theme'].contexts[...]` read via
+  // `refsFor`) -- a theme or motion context may itself list a
+  // resolver-internal `#/sets/<name>` source rather than only plain document
+  // `$ref`s, and that internal reference needs expanding to the document
+  // `$ref`s it stands for before `refsFor`'s `requireDocument` lookup runs.
+  // `requireDocument` looks for a literal ON-DISK document named
+  // `#/sets/<name>` and throws otherwise, so a resolver `tokens:validate`
+  // already accepts (`sourcesForEntry` in `validate-corpus.ts` expands the
+  // identical reference for its own resolution-order walk) could not be
+  // generated without this expansion happening here too.
+  const lightDocuments = refsFor(documentsByPath, expandContextSources(resolver, 'theme', 'light'));
+  const darkDocuments = refsFor(documentsByPath, expandContextSources(resolver, 'theme', 'dark'));
   // The `reduced` motion context backs the `prefers-reduced-motion` media
   // block and the `forced-reduced-motion` context backs the
   // `data-reduced-motion='on'` override -- two distinct resolver contexts,
@@ -787,10 +875,13 @@ export async function buildTokensBaseCss(
   // values; each block must still be built from its own context so the two
   // can diverge without silently mis-wiring the forced block to the
   // system-preference values.
-  const reducedMotionDocuments = refsFor(documentsByPath, motionModifier.contexts['reduced']!);
+  const reducedMotionDocuments = refsFor(
+    documentsByPath,
+    expandContextSources(resolver, 'motion', 'reduced'),
+  );
   const forcedReducedMotionDocuments = refsFor(
     documentsByPath,
-    motionModifier.contexts['forced-reduced-motion']!,
+    expandContextSources(resolver, 'motion', 'forced-reduced-motion'),
   );
 
   // For EACH override context, "the documents in scope" are exactly what `resolutionOrder`

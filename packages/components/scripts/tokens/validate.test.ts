@@ -188,17 +188,59 @@ describe('DTCG semantic validation', () => {
     ).toThrow('accent.$root: unknown reserved property $valu');
   });
 
-  test('rejects a $ref token alias by name rather than as unknown metadata', () => {
-    // The official format schema accepts `$ref` in place of `$value`, but
-    // Cinder classifies tokens by `$value` alone, so the two layers disagree.
-    // Support is tracked in CIN-463; until then the rejection must say so
-    // rather than reporting a spec property as an unknown one.
+  test('accepts a $ref token alias in place of $value (CIN-463)', () => {
+    // No $type declared or inherited anywhere in this document -- a $ref
+    // token borrows its type from the reference target at resolution time
+    // (see resolve.ts's resolveRefToken), so validate.ts must not require
+    // one here.
     expect(() =>
       validateTokenDocument({
         base: { $type: 'number', $value: 1 },
         copy: { $ref: '#/base' },
       }),
-    ).toThrow(/\$ref token aliases are not supported yet \(CIN-463\)/);
+    ).not.toThrow();
+  });
+
+  test('accepts a $ref token that declares its own $type', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $ref: '#/base' },
+      }),
+    ).not.toThrow();
+  });
+
+  test('rejects a $ref token declaring an unknown $type', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'nonsense', $ref: '#/base' },
+      }),
+    ).toThrow('unknown $type');
+  });
+
+  test('rejects a token declaring both $value and $ref', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $value: 2, $ref: '#/base' },
+      }),
+    ).toThrow('copy: a token cannot declare both $value and $ref');
+  });
+
+  test('rejects a $ref that is not a JSON Pointer', () => {
+    // The vendored format schema types the token-level $ref as
+    // jsonPointerReference only -- curly-brace syntax is not a legal $ref,
+    // even though it IS legal inside a $value.
+    expect(() => validateTokenDocument({ copy: { $ref: '{base}' } })).toThrow(
+      '$ref must be a JSON Pointer reference',
+    );
+  });
+
+  test('rejects a $ref token with a nested child group', () => {
+    expect(() =>
+      validateTokenDocument({ copy: { $ref: '#/base', nested: { $value: 1 } } }),
+    ).toThrow('cannot contain child groups');
   });
 
   test('accepts root tokens and rejects unknown reserved metadata', () => {
@@ -546,6 +588,280 @@ describe('DTCG semantic validation', () => {
         ],
       }),
     ).toThrow('resolutionOrder entries must be unique');
+  });
+
+  test('CIN-464: a set reached only via an internal reference need not appear in resolutionOrder', () => {
+    // `extended`'s sources reference `#/sets/base`; `base` contributes its
+    // documents through that reference (see validate-corpus.ts's
+    // expandSetSources) rather than as its own resolutionOrder entry, so
+    // requiring it there too would be redundant -- and, listed at its own
+    // position, would re-inject its documents ahead of whatever `extended`
+    // is meant to layer over them.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: {
+            sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }],
+          },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/extended' }],
+      }),
+    ).not.toThrow();
+
+    // A set that no one references internally is still required, even when
+    // other sets in the same document are internally referenced.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/extended' }],
+      }),
+    ).toThrow('must list every set and modifier exactly once');
+  });
+
+  test('accepts a set referenced only by a modifier context, with no independent resolutionOrder entry', () => {
+    // A modifier context internally referencing a set that is NEVER
+    // otherwise ordered -- and never referenced by another SET either -- is
+    // a legitimate, already-generator-supported shape: an earlier version
+    // of this check rejected it, reasoning the referenced set had "no path
+    // into the base." That reasoning was unsound. This function only sees
+    // the resolver's STRUCTURE (set/modifier names), never the actual token
+    // documents, so it cannot know whether the override set's individual
+    // token PATHS already have a base declaration contributed by some OTHER
+    // set -- exactly the pattern generate.test.ts's "a theme context
+    // referencing a set via #/sets/<name> does not throw" already exercises
+    // and generates correctly (a "lightOverrides" set supplying only the
+    // light-theme value for a color token whose base declaration comes from
+    // an unrelated "foundation" set). Token-path-level reachability can only
+    // be checked where documents are actually loaded (validate-corpus.ts or
+    // generation), and generation already raises a clear "no matching base
+    // token" error for a genuinely-unreachable override at that point.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+  });
+
+  test('accepts a set referenced by a modifier context when it also has a path into the base', () => {
+    // Same shape as the rejection above, but `base` is ALSO listed directly
+    // in resolutionOrder, giving it a real base declaration for the modifier
+    // context to override -- this is the legitimate version of the pattern.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+
+    // Also legitimate: `base` is reached from the base through another SET
+    // (`extended`), not listed directly, but a modifier context also
+    // references it internally -- `extended` gives it a base path.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }] },
+        },
+        modifiers: {
+          theme: { contexts: { light: [{ $ref: '#/sets/base' }] } },
+        },
+        resolutionOrder: [{ $ref: '#/sets/extended' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+  });
+
+  test('rejects a set that is both internally referenced by another set and explicitly ordered', () => {
+    // If set "extended" references "base" internally AND "base" is ALSO
+    // listed explicitly in resolutionOrder alongside a modifier
+    // ("extended, theme, base"), "base"'s values get applied twice --
+    // once via extended's own expansion, once again via its explicit
+    // position AFTER the theme modifier, silently resetting whatever the
+    // modifier just overrode. buildTokensBaseCss and the resolved-context
+    // snapshots would then disagree about which value wins. Reject the
+    // combination outright rather than let that disagreement surface later.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [
+          { $ref: '#/sets/extended' },
+          { $ref: '#/modifiers/theme' },
+          { $ref: '#/sets/base' },
+        ],
+      }),
+    ).toThrow(
+      /set "base" is already referenced internally by another ordered set and must not also appear in resolutionOrder/,
+    );
+  });
+
+  test('rejects a child set referenced internally by two different ordered parent sets', () => {
+    // Neither "base" itself nor a duplicate of it appears in resolutionOrder
+    // here -- the single-parent-plus-explicit-listing check above doesn't
+    // catch this shape. Both "a" and "c" (directly ordered, with a modifier
+    // between them) reference "base" internally, so its values get expanded
+    // twice: once via "a", again via "c" after the modifier, resetting
+    // whatever the modifier just overrode -- the same CSS-vs-resolved-JSON
+    // disagreement, reached a different way.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          c: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/c.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [
+          { $ref: '#/sets/a' },
+          { $ref: '#/modifiers/theme' },
+          { $ref: '#/sets/c' },
+        ],
+      }),
+    ).toThrow(
+      /set "base" is reachable from more than one ordered set \(a, c\) and would be expanded more than once/,
+    );
+  });
+
+  test('rejects a child set reachable from two ordered positions through a CHAIN of internal references', () => {
+    // "base" is referenced directly by "a" (ordered), and also transitively
+    // by "wrapper" (ordered) -> "b" -> "base". "base"'s only DIRECT parents
+    // are "a" and "b", and only "a" is itself ordered -- a direct-parents-only
+    // check sees no conflict, but "wrapper"'s own recursive expansion still
+    // pulls "base" in a second time. Both ordered positions genuinely
+    // contribute "base" to the resolved tree, so this must be rejected the
+    // same as the direct two-ordered-parents case.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          b: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/b.tokens.json' }] },
+          wrapper: { sources: [{ $ref: '#/sets/b' }, { $ref: 'sets/wrapper.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/wrapper' }],
+      }),
+    ).toThrow(
+      /set "base" is reachable from more than one ordered set \(a, wrapper\) and would be expanded more than once/,
+    );
+  });
+
+  test('accepts an ordinary single-ordered-ancestor chain alongside an unrelated standalone set', () => {
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/standalone' }],
+      }),
+    ).not.toThrow();
+  });
+
+  test('rejects a closed cycle of sets that reference only each other, unreachable from any ordered position', () => {
+    // "a" -> "b" -> "a": each is "referenced by another set", so the
+    // resolutionOrder-exemption above wrongly treats both as covered -- but
+    // neither is EVER required to be ordered, so the whole cycle is
+    // unreachable from any actual ordered set, and its documents would
+    // silently never be included in the resolved output. An unrelated
+    // "standalone" set is directly ordered so the "must list every set"
+    // check doesn't fire for an unrelated reason.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          a: { sources: [{ $ref: '#/sets/b' }, { $ref: 'sets/a.tokens.json' }] },
+          b: { sources: [{ $ref: '#/sets/a' }, { $ref: 'sets/b.tokens.json' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/standalone' }],
+      }),
+    ).toThrow(/set "a" is referenced internally but not reachable from any ordered set/);
+  });
+
+  test('accepts a set reachable only through a chain rooted at a modifier context', () => {
+    // theme.light -> lightOverrides -> sharedOverrides: neither
+    // "lightOverrides" nor "sharedOverrides" is itself ordered or referenced
+    // by another SET -- their only entry point is the modifier context.
+    // That's a legitimate, generator-supported chain (the context-only
+    // override exemption applies transitively), not a closed cycle -- the
+    // reachability check for the closed-cycle rejection must treat a
+    // modifier-context reference as a valid entry point too, not just a
+    // directly ordered set.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          lightOverrides: {
+            sources: [{ $ref: '#/sets/sharedOverrides' }, { $ref: 'themes/light.tokens.json' }],
+          },
+          sharedOverrides: { sources: [{ $ref: 'shared/overrides.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/lightOverrides' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+            default: 'light',
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
   });
 
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {

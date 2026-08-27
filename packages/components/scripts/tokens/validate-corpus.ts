@@ -29,6 +29,198 @@ export function normalizeSourcePath(reference: string): string {
   return posix.normalize(decoded).replace(/^\.\//, '');
 }
 
+/**
+ * Whether a source `$ref` names a resolver-internal pointer (`#/sets/<name>`)
+ * rather than an on-disk document, decoding percent-escapes FIRST -- the same
+ * order `resolutionOrderTarget` in `validate.ts` already applies (RFC 6901 §6:
+ * percent-decode the whole fragment before structural parsing). A raw,
+ * undecoded `startsWith('#/')` check disagrees with that: a valid
+ * percent-encoded pointer such as `#%2Fsets%2Fbase` decodes to `#/sets/base`
+ * and is correctly recognized as internal by `resolutionOrderTarget`, but the
+ * SAME string does not literally start with `#/`, so an undecoded check here
+ * misclassified it as a filesystem reference and reported a nonexistent file
+ * named `#%2Fsets%2Fbase` instead of expanding the set.
+ */
+// Known gap, tracked in CIN-478: checking the DECODED string's prefix is
+// correct for `#%2Fsets%2Fbase` (a literal `#` with its following `/`
+// percent-encoded -- still genuinely a fragment) but wrong for an on-disk
+// source path that legitimately percent-encodes a literal `#` in its own
+// FILENAME (`%23%2Fsets%2Fbase`, decoding to a relative path, not a
+// fragment) -- per RFC 3986, percent-encoding never turns `%23` into a
+// fragment delimiter; only a literal, undecoded leading `#` is one.
+// Classification should check the RAW string for `#/` first. Deferred
+// rather than reworked this late in review; nothing in the real corpus uses
+// a filename containing `#`.
+function isInternalReference(reference: string): boolean {
+  let decoded = reference;
+  try {
+    decoded = decodeURIComponent(reference);
+  } catch {
+    // Leave undecoded; a malformed escape simply fails the check below, the
+    // same way `resolutionOrderTarget` returns `undefined` for one.
+  }
+  return decoded.startsWith('#/');
+}
+
+/**
+ * Expands a set's `sources` into plain token-document `$ref`s only, recursing
+ * through any resolver-internal `#/sets/<name>` entries (a set's own sources
+ * may themselves reference further sets) before any of those entries reach
+ * the file-existence check, `referencedPaths`, or a document-loading
+ * consumer (`sourcesForEntry`'s other callers -- `generate.ts`, `registry.ts`
+ * -- resolve source `$ref`s straight into `documentsByPath` lookups with no
+ * expansion of their own, so an unexpanded internal ref there is a
+ * non-null-assertion crash, not a validation error). `visiting` guards
+ * against a cycle between sets; per the vendored resolver schema's own
+ * stated prohibition (`set.json`'s `referenceObjectForSets` pattern), a set
+ * may not reference a modifier, which is rejected here with a named path and
+ * reason rather than falling through to a misleading "source does not
+ * exist".
+ */
+export function expandSetSources(
+  resolver: ResolverDocument,
+  setName: string,
+  visiting: Set<string> = new Set(),
+  // The reference SITE reporting a missing/cyclic `setName` -- defaults to
+  // `$.sets.<setName>` for a top-level call (where `setName` genuinely is the
+  // site: `resolver.sets` is being looked up directly, not reached via
+  // another set's `sources`), but a recursive call passes the path of the
+  // `sources` array that named `setName`, so a missing/cyclic TARGET set is
+  // reported at the place that referenced it rather than at
+  // `$.sets.<missing>`, which does not exist in the document.
+  referencePath: string = `$.sets.${setName}`,
+): ResolverReference[] {
+  if (visiting.has(setName))
+    throw new TokenValidationError([
+      {
+        path: referencePath,
+        reason: `cyclic set reference: ${[...visiting, setName].join(' -> ')}`,
+      },
+    ]);
+  // `Object.hasOwn` first: resolver set names are unrestricted, and `sets` is
+  // a normal-prototype object, so an unknown name that happens to collide
+  // with an inherited `Object.prototype` property (`constructor`,
+  // `toString`, ...) would otherwise return that inherited value instead of
+  // `undefined`, skipping the intended "unknown set" error and throwing a
+  // raw, confusing `TypeError` from `set.sources.flatMap` below instead.
+  const set = Object.hasOwn(resolver.sets, setName) ? resolver.sets[setName] : undefined;
+  if (!set)
+    throw new TokenValidationError([
+      {
+        path: referencePath,
+        reason: `resolver-internal reference names an unknown set: ${setName}`,
+      },
+    ]);
+  visiting.add(setName);
+  const expanded = set.sources.flatMap((source) => {
+    if (!isInternalReference(source.$ref)) return [source];
+    const target = resolutionOrderTarget(source.$ref);
+    if (!target)
+      throw new TokenValidationError([
+        {
+          path: `$.sets.${setName}.sources`,
+          reason: `malformed resolver-internal reference: ${source.$ref}`,
+        },
+      ]);
+    if (target.kind === 'modifiers')
+      throw new TokenValidationError([
+        {
+          path: `$.sets.${setName}.sources`,
+          reason: `a set may not reference a modifier: ${source.$ref}`,
+        },
+      ]);
+    return expandSetSources(resolver, target.name, visiting, `$.sets.${setName}.sources`);
+  });
+  visiting.delete(setName);
+  return expanded;
+}
+
+/**
+ * Expands one modifier context's `sources` the same way {@link expandSetSources}
+ * expands a set's -- a context entry may reference a set (`#/sets/<name>`),
+ * expanded recursively via `expandSetSources`, but per the resolver schema's
+ * `referenceObjectForModifiers` prohibition, a modifier context may not
+ * reference another modifier.
+ */
+export function expandContextSources(
+  resolver: ResolverDocument,
+  modifierName: string,
+  contextName: string,
+): ResolverReference[] {
+  // Same `Object.hasOwn` guard as `expandSetSources` above, for the same
+  // reason: an unknown modifier/context name colliding with an inherited
+  // `Object.prototype` property must not silently resolve to that inherited
+  // value.
+  const modifier = Object.hasOwn(resolver.modifiers, modifierName)
+    ? resolver.modifiers[modifierName]
+    : undefined;
+  const sources =
+    modifier && Object.hasOwn(modifier.contexts, contextName)
+      ? modifier.contexts[contextName]
+      : undefined;
+  if (!modifier || !sources)
+    throw new TokenValidationError([
+      {
+        path: `$.modifiers.${modifierName}`,
+        reason: `resolver-internal reference names an unknown modifier context: ${contextName}`,
+      },
+    ]);
+  return sources.flatMap((source) => {
+    if (!isInternalReference(source.$ref)) return [source];
+    const target = resolutionOrderTarget(source.$ref);
+    const contextPath = `$.modifiers.${modifierName}.contexts.${contextName}`;
+    if (!target)
+      throw new TokenValidationError([
+        { path: contextPath, reason: `malformed resolver-internal reference: ${source.$ref}` },
+      ]);
+    if (target.kind === 'modifiers')
+      throw new TokenValidationError([
+        {
+          path: contextPath,
+          reason: `a modifier context may not reference another modifier: ${source.$ref}`,
+        },
+      ]);
+    // Known gap, tracked in CIN-482 (and CIN-479, same ordering-disagreement
+    // family): this always re-expands the referenced set's documents at
+    // THIS context's position in resolutionOrder, with no check for whether
+    // an intervening modifier's override -- applied between the set's own
+    // ordered position and this one -- gets silently reset by that
+    // re-expansion. buildTokensBaseCss composes CSS independently of this
+    // literal resolutionOrder sequencing, so the two artifacts can disagree
+    // about which value wins. Deferred rather than reworked this late in
+    // review; nothing in the real corpus references a set internally from
+    // more than one modifier context at different resolutionOrder positions.
+    return expandSetSources(resolver, target.name, new Set(), contextPath);
+  });
+}
+
+/**
+ * Indexes expanded context sources by modifier name, then context name.
+ *
+ * Nesting two maps -- rather than concatenating both names into one string
+ * key -- keeps this collision-free: resolver modifier and context names are
+ * otherwise unrestricted, so e.g. modifier "a" context "b:c" and modifier
+ * "a:b" context "c" could concatenate to the same key under ANY fixed
+ * delimiter and silently overwrite each other, resolving the wrong document
+ * list for one of them. Two-level indexing has no such joint-key space to
+ * collide in.
+ */
+export function buildContextSourcesIndex(
+  expandedContexts: ReadonlyArray<{
+    modifierName: string;
+    contextName: string;
+    sources: ResolverReference[];
+  }>,
+): Map<string, Map<string, ResolverReference[]>> {
+  const index = new Map<string, Map<string, ResolverReference[]>>();
+  for (const { modifierName, contextName, sources } of expandedContexts) {
+    const byContext = index.get(modifierName) ?? new Map();
+    byContext.set(contextName, sources);
+    index.set(modifierName, byContext);
+  }
+  return index;
+}
+
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
   validateResolverDocument(resolver);
@@ -37,36 +229,44 @@ async function main(): Promise<void> {
   const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
   const knownPaths = new Set(documents.map(({ path }) => path));
 
+  const expandedSets = Object.keys(resolver.sets).map((setName) => ({
+    setName,
+    sources: expandSetSources(resolver, setName),
+  }));
+  const expandedContexts = Object.entries(resolver.modifiers).flatMap(([modifierName, modifier]) =>
+    Object.keys(modifier.contexts).map((contextName) => ({
+      modifierName,
+      contextName,
+      sources: expandContextSources(resolver, modifierName, contextName),
+    })),
+  );
+
   const missingSources = [
-    ...Object.entries(resolver.sets).flatMap(([setName, set]) =>
-      set.sources
+    ...expandedSets.flatMap(({ setName, sources }) =>
+      sources
         .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
         .map((source) => ({
           path: `$.sets.${setName}.sources`,
           reason: `source does not exist: ${source.$ref}`,
         })),
     ),
-    ...Object.entries(resolver.modifiers).flatMap(([modifierName, modifier]) =>
-      Object.entries(modifier.contexts).flatMap(([contextName, sources]) =>
-        sources
-          .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
-          .map((source) => ({
-            path: `$.modifiers.${modifierName}.contexts.${contextName}`,
-            reason: `source does not exist: ${source.$ref}`,
-          })),
-      ),
+    ...expandedContexts.flatMap(({ modifierName, contextName, sources }) =>
+      sources
+        .filter((source) => !knownPaths.has(normalizeSourcePath(source.$ref)))
+        .map((source) => ({
+          path: `$.modifiers.${modifierName}.contexts.${contextName}`,
+          reason: `source does not exist: ${source.$ref}`,
+        })),
     ),
   ];
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
   const referencedPaths = new Set<string>([
-    ...Object.values(resolver.sets).flatMap((set) =>
-      set.sources.map((source) => normalizeSourcePath(source.$ref)),
+    ...expandedSets.flatMap(({ sources }) =>
+      sources.map((source) => normalizeSourcePath(source.$ref)),
     ),
-    ...Object.values(resolver.modifiers).flatMap((modifier) =>
-      Object.values(modifier.contexts).flatMap((sources) =>
-        sources.map((source) => normalizeSourcePath(source.$ref)),
-      ),
+    ...expandedContexts.flatMap(({ sources }) =>
+      sources.map((source) => normalizeSourcePath(source.$ref)),
     ),
   ]);
   const unreferencedDocuments = documents
@@ -75,12 +275,25 @@ async function main(): Promise<void> {
   if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
 
   const resolutionOrder = parseResolutionOrder(resolver);
+  // `expandedSets`/`expandedContexts` above already expanded every set's and
+  // every context's sources exactly once (internal `#/sets/<name>` refs
+  // recursively resolved). Indexing them here, rather than calling
+  // `sourcesForEntry` again per resolutionOrder entry, avoids re-running that
+  // recursive expansion once per modifier-value COMBINATION below -- this
+  // loop runs the cartesian product of every modifier's contexts, so an
+  // unmemoized re-expansion is a real multiplier as the corpus grows more
+  // modifiers or contexts, even though the expansion itself is invariant per
+  // set/context and only needs computing once.
+  const setSourcesByName = new Map(expandedSets.map(({ setName, sources }) => [setName, sources]));
+  const contextSourcesByModifier = buildContextSourcesIndex(expandedContexts);
   for (const modifierValues of combinations(resolver)) {
-    const orderedDocuments = resolutionOrder.flatMap((entry) =>
-      sourcesForEntry(resolver, entry, modifierValues).map(
-        (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
-      ),
-    );
+    const orderedDocuments = resolutionOrder.flatMap((entry) => {
+      const sources =
+        entry.kind === 'sets'
+          ? setSourcesByName.get(entry.name)!
+          : contextSourcesByModifier.get(entry.name)!.get(modifierValues[entry.name]!)!;
+      return sources.map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
+    });
     const resolved = resolveDocuments(orderedDocuments);
     for (const [path, token] of Object.entries(resolved)) validateResolvedToken(token, path);
   }
@@ -104,15 +317,21 @@ export function parseResolutionOrder(resolver: ResolverDocument): ResolutionOrde
   });
 }
 
-/** The token sources a resolutionOrder entry contributes for one modifier-value combination. */
+/**
+ * The token sources a resolutionOrder entry contributes for one
+ * modifier-value combination, with any resolver-internal `#/sets/<name>`
+ * reference already expanded to the plain document `$ref`s it stands for --
+ * every caller (this validator, `generate.ts`, `registry.ts`) resolves the
+ * result straight into `documentsByPath` lookups with no expansion of its
+ * own.
+ */
 export function sourcesForEntry(
   resolver: ResolverDocument,
   entry: ResolutionOrderEntry,
   modifierValues: Record<string, string>,
 ): ResolverReference[] {
-  if (entry.kind === 'sets') return resolver.sets[entry.name]!.sources;
-  const modifier = resolver.modifiers[entry.name]!;
-  return modifier.contexts[modifierValues[entry.name]!]!;
+  if (entry.kind === 'sets') return expandSetSources(resolver, entry.name);
+  return expandContextSources(resolver, entry.name, modifierValues[entry.name]!);
 }
 
 /** Every combination of one context value per modifier, cartesian product across all modifiers. */

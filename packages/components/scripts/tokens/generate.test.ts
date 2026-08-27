@@ -17,7 +17,12 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import { createValueResolver, resolveDocuments } from './resolve.ts';
+import {
+  createValueResolver,
+  mergeAndExpandExtends,
+  resolveDocuments,
+  type ValueResolver,
+} from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -364,6 +369,71 @@ describe('B4: resolver source refs are normalized before document lookup', () =>
 
     expect(requireDocument(documentsByPath, './sets/foundation.tokens.json')).toBe(document);
     expect(requireDocument(documentsByPath, 'sets/./foundation.tokens.json')).toBe(document);
+  });
+});
+
+describe('CIN-464 review: buildTokensBaseCss expands resolver-internal set references', () => {
+  // Regression: `buildTokensBaseCss` built `lightDocuments`/`darkDocuments`
+  // and both motion override document lists straight from
+  // `themeModifier.contexts[...]`/`motionModifier.contexts[...]` via
+  // `refsFor`, bypassing the same `#/sets/<name>` expansion
+  // `validate-corpus.ts`'s `sourcesForEntry` already applies for the
+  // equivalent resolution-order walk (used just below, for `*ScopeDocuments`,
+  // via `documentsForResolutionOrder`). A theme or motion context that
+  // referenced a set reached `requireDocument`, which looks for an on-disk
+  // document literally named `#/sets/<name>` and throws -- a resolver
+  // `tokens:validate` already accepted could not be generated.
+  test('a theme context referencing a set via #/sets/<name> does not throw', async () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        lightOverrides: { sources: [{ $ref: 'light.json' }] },
+      },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: '#/sets/lightOverrides' }],
+            dark: [{ $ref: 'dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-default.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-default.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      [
+        'base.json',
+        {
+          color: {
+            $type: 'color',
+            $value: { colorSpace: 'srgb', components: [0, 0, 0] },
+            $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-color' } },
+          },
+        },
+      ],
+      [
+        'light.json',
+        { color: { $type: 'color', $value: { colorSpace: 'srgb', components: [1, 1, 1] } } },
+      ],
+      ['dark.json', {}],
+      ['motion-default.json', {}],
+    ]);
+
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    expect(css).toContain('--cinder-color');
   });
 });
 
@@ -1194,6 +1264,125 @@ describe('F3: a property-form JSON Pointer whose terminal segment is $value reso
   });
 });
 
+describe('a $ref whole-token alias to a $root token normalizes like resolve.ts does', () => {
+  function rootBaseIndex(): Map<string, CorpusEntry> {
+    return new Map([
+      [
+        'space',
+        {
+          path: 'space',
+          value: { value: 4, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-space',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        '',
+        {
+          path: '',
+          value: { value: 0, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-root',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+  }
+
+  test('#/group/$root resolves to the group\'s own baseIndex entry, not "group.$root"', () => {
+    // `collectEntries` indexes a group's `$root` token at the group's OWN path
+    // (`into.set(prefix, ...)`), not `prefix.$root` -- `tokenPathFromReference`'s
+    // plain dot-join would otherwise look up the wrong key and throw.
+    expect(resolveAlias('#/space/$root', rootBaseIndex())).toBe('var(--test-space)');
+  });
+
+  test('#/group/$root/$value resolves the same way, stripping both segments', () => {
+    expect(resolveAlias('#/space/$root/$value', rootBaseIndex())).toBe('var(--test-space)');
+  });
+
+  test('a bare #/$root resolves to the document root token', () => {
+    expect(resolveAlias('#/$root', rootBaseIndex())).toBe('var(--test-root)');
+  });
+
+  test('#/$root/$value resolves the same way', () => {
+    expect(resolveAlias('#/$root/$value', rootBaseIndex())).toBe('var(--test-root)');
+  });
+});
+
+describe('a property-level $ref falls through to typed serialization instead of throwing', () => {
+  test('a $ref targeting a scalar member of another token serializes that resolved value, not var(...)', () => {
+    // `$ref` is a generic JSON Pointer with no DTCG requirement that its
+    // target be a whole token, unlike an ordinary bare-alias $value (which
+    // this generator has always required to name a whole token). A property-
+    // level $ref resolves fine at `tokens:validate` time but has no matching
+    // baseIndex entry, so it must fall through to `serializeTypedValue`
+    // (via `resolveReferences`) instead of throwing the way an ordinary
+    // $value alias to a non-whole-token path still does.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'dimension.hairline',
+        {
+          path: 'dimension.hairline',
+          value: { value: 1, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-hairline',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        'space.tight',
+        {
+          path: 'space.tight',
+          value: '#/dimension/hairline/$value/value',
+          type: 'number',
+          description: undefined,
+          cssProperty: '--test-tight',
+          cssRecipe: undefined,
+          isRefAlias: true,
+        },
+      ],
+    ]);
+    const resolveReferences: ValueResolver = (raw) =>
+      raw === '#/dimension/hairline/$value/value' ? 1 : raw;
+    const entry = baseIndex.get('space.tight')!;
+    expect(serializeEntryValue(entry, baseIndex, resolveReferences)).toBe('1');
+  });
+
+  test('an ordinary $value alias to a non-whole-token path still throws (unchanged, not loosened by the $ref fix)', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'border.thin',
+        {
+          path: 'border.thin',
+          value: { color: '#000', width: { value: 1, unit: 'px' }, style: 'solid' },
+          type: 'border',
+          description: undefined,
+          cssProperty: '--test-border-thin',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        'border.derived',
+        {
+          path: 'border.derived',
+          value: '#/border/thin/width',
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-derived',
+          cssRecipe: undefined,
+          isRefAlias: false,
+        },
+      ],
+    ]);
+    const entry = baseIndex.get('border.derived')!;
+    expect(() => serializeEntryValue(entry, baseIndex)).toThrow(/does not resolve to a base token/);
+  });
+});
+
 describe('CIN-29 review round 5', () => {
   function entry(
     path: string,
@@ -1328,6 +1517,218 @@ describe('CIN-30 review round 11: group $deprecated inherits like $type', () => 
     expect(entries.get('space.gutter')?.deprecated).toBeUndefined();
   });
 });
+
+describe('CIN-471: $deprecated carries through $extends expansion', () => {
+  function entriesFor(documents: Parameters<typeof mergeAndExpandExtends>[0]) {
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(mergeAndExpandExtends(documents), '', undefined, into);
+    return into;
+  }
+
+  // `mergeAndExpandExtends` (via `resolveExtends`) already copies an extended
+  // group's members and `$type` into the group that extends it; before this
+  // fix it dropped `$deprecated`, so a group extending a deprecated group
+  // came out looking current -- registry consumers had no way to know.
+  test('a group extending a $deprecated group yields deprecated descendants', () => {
+    const entries = entriesFor([
+      {
+        legacy: { $type: 'dimension', $deprecated: 'Use space.* instead.', gutter: { $value: 1 } },
+        derived: { $extends: '{legacy}' },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
+  });
+
+  test("a descendant's own $deprecated wins over the extended group's", () => {
+    const entries = entriesFor([
+      {
+        legacy: {
+          $type: 'dimension',
+          $deprecated: 'Group reason.',
+          gutter: { $value: 1 },
+        },
+        derived: {
+          $extends: '{legacy}',
+          gutter: { $value: 2, $deprecated: 'Token reason.' },
+        },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Token reason.');
+  });
+
+  // `$deprecated: false` is a real value, not an absence -- it un-deprecates a
+  // subtree even beneath a deprecated `$extends` target, the same "??" rule
+  // `collectEntries` already applies to ordinary group nesting.
+  test('a descendant under a $deprecated: false group inside a deprecated extend target is not deprecated', () => {
+    const entries = entriesFor([
+      {
+        legacy: {
+          $type: 'dimension',
+          $deprecated: true,
+          kept: { $deprecated: false, gutter: { $value: 1 } },
+        },
+        derived: { $extends: '{legacy}' },
+      },
+    ]);
+
+    expect(entries.get('derived.kept.gutter')?.deprecated).toBe(false);
+  });
+
+  // Guards `group.$deprecated === undefined` rather than unconditionally
+  // taking the extended group's value: an extending group that declares its
+  // OWN $deprecated (including the real value `false`) must keep it, not
+  // have it overwritten by what it extends.
+  test('an extending group keeps its own $deprecated: false over a deprecated extend target', () => {
+    const entries = entriesFor([
+      {
+        legacy: { $type: 'dimension', $deprecated: true, gutter: { $value: 1 } },
+        derived: { $extends: '{legacy}', $deprecated: false, other: { $value: 2 } },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe(false);
+    expect(entries.get('derived.other')?.deprecated).toBe(false);
+  });
+
+  // Regression: `resolveExtends` read the extended group's OWN `$deprecated`
+  // property directly, which is `undefined` for a group that only inherits
+  // deprecation from an ANCESTOR (via ordinary nesting, not $extends) --
+  // ancestor-to-descendant propagation for ordinary nesting happens later, in
+  // `collectEntries` at generation time, well after `$extends` has already
+  // run. A group extending such a target lost the deprecation entirely, even
+  // though every token under the target is itself effectively deprecated by
+  // the time generation walks it.
+  test('a group extending a target that only inherits $deprecated from an ancestor is deprecated too', () => {
+    const entries = entriesFor([
+      {
+        outer: {
+          $type: 'dimension',
+          $deprecated: 'Use space.* instead.',
+          base: { gutter: { $value: 1 } },
+        },
+        derived: { $extends: '{outer.base}' },
+      },
+    ]);
+
+    expect(entries.get('outer.base.gutter')?.deprecated).toBe('Use space.* instead.');
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
+  });
+
+  test('CIN-475 (known gap, not fixed here): a nested $extends target only in the lookup scope loses its deprecation when shadowed', () => {
+    // `mergeAndExpandExtends(ownDocuments, lookupDocuments)` is how theme/motion
+    // override contexts extend a foundation group -- here "outer.base" exists only
+    // in the lookup scope and inherits $deprecated from the lookup scope's own
+    // "outer". The override document ALSO declares its own non-deprecated "outer"
+    // (a sibling override, not itself extending anything), which collectGroups loads
+    // AFTER the lookup scope and so shadows it in the merged groups map.
+    // effectiveGroupDeprecated then walks the OVERRIDING "outer", not the lookup
+    // scope's, and misses the deprecation. This test PINS today's known-limited
+    // behavior (undefined) rather than the eventually-correct one, so CIN-475
+    // landing is a deliberate, visible test change.
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(
+      mergeAndExpandExtends(
+        [{ outer: { other: { $value: 1 } }, derived: { $extends: '{outer.base}' } }],
+        [
+          {
+            outer: {
+              $type: 'dimension',
+              $deprecated: 'Use space.* instead.',
+              base: { gutter: { $value: 1 } },
+            },
+          },
+        ],
+      ),
+      '',
+      undefined,
+      into,
+    );
+
+    expect(into.get('derived.gutter')?.deprecated).toBeUndefined();
+  });
+
+  test('CIN-476 (known gap, not fixed here): declaration order determines whether an ancestor extends chain is resolved before it is cached', () => {
+    // "derived" (declared first) extends "outer.child" -- a plain nested
+    // group with no $extends of its own. "outer" (declared second) extends
+    // "legacy", which is where the real deprecation reason lives. Because
+    // resolveExtends processes groups in `groups.keys()` order (collectGroups's
+    // traversal order, which follows document declaration order), "derived"
+    // is resolved BEFORE "outer" -- effectiveGroupDeprecated walks up from
+    // "outer.child" through the not-yet-expanded "outer" (still undefined)
+    // to the document root's declared $deprecated: false, and caches that.
+    // Once "outer" is later expanded and gains "Legacy reason.", "derived"'s
+    // cached false is never revisited. This test PINS today's known-limited
+    // behavior (false, not "Legacy reason.") so CIN-476 landing is a
+    // deliberate, visible test change.
+    const entries = entriesFor([
+      {
+        $deprecated: false,
+        derived: { $extends: '{outer.child}' },
+        outer: { $extends: '{legacy}', child: { grandchild: { $value: 1 } } },
+        legacy: { $deprecated: 'Legacy reason.', marker: { $value: true } },
+      },
+    ]);
+
+    expect(entries.get('derived.grandchild')?.deprecated).toBe(false);
+  });
+});
+
+describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value', () => {
+  // Regression: `generate.ts` kept its OWN `isToken` copy, independent of
+  // resolve.ts's (which CIN-463 already fixed) -- checking `$value` alone
+  // classified a `$ref`-only node as an (empty) group, so it silently
+  // vanished from `tokens-base.css` and the generated registry (both walk
+  // the raw corpus via `collectEntries`) even though it validated and
+  // resolved correctly.
+  test('a $ref token is not dropped from the collected entries', () => {
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(
+      {
+        base: {
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
+        },
+        copy: {
+          $ref: '#/base',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
+        },
+      },
+      '',
+      undefined,
+      into,
+    );
+
+    expect(into.has('copy')).toBe(true);
+    expect(into.get('copy')?.value).toBe('#/base');
+  });
+
+  test('a $ref token in a base index resolves to the referenced cssProperty via var()', () => {
+    const baseIndex = new Map<string, CorpusEntry>();
+    collectEntries(
+      {
+        base: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
+        },
+        copy: {
+          $ref: '#/base',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
+        },
+      },
+      '',
+      undefined,
+      baseIndex,
+    );
+
+    const copyEntry = baseIndex.get('copy');
+    expect(copyEntry).toBeDefined();
+    expect(serializeEntryValue(copyEntry!, baseIndex)).toBe('var(--cinder-base)');
+  });
+});
+
 describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
   function entry(path: string, type: 'fontFamily' | 'fontWeight'): CorpusEntry {
     return {
