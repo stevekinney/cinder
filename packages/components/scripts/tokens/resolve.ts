@@ -287,6 +287,17 @@ function resolveReference(
     // rather than `token.$ref` itself, which may already have been deleted by
     // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
     // comment). Every other reserved property is untouched by resolution.
+    // Known gap, tracked in CIN-474: `remainder` came from `segments`, which
+    // `tokenPathFromReference` produced by dot-joining the pointer and this
+    // function re-split on `.` -- lossy for a pointer segment that itself
+    // contains a literal dot, which vendor extension keys always do by
+    // convention (`com.lostgradient.cinder`). A `$ref` into
+    // `#/base/$extensions/com.lostgradient.cinder/cssProperty` therefore
+    // walks the wrong segments and fails to resolve, even though the
+    // property is genuinely there. Fixing it means preserving raw,
+    // pre-join pointer segments through to this walk -- deferred rather
+    // than reworked this late in review, since nothing in the real corpus
+    // exercises it.
     const propertyValue =
       remainder[0] === '$ref'
         ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))

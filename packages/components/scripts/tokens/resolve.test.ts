@@ -77,6 +77,26 @@ describe('DTCG resolver', () => {
     expect(resolved['alias']).toMatchObject({ $type: 'number', $value: 1 });
   });
 
+  test('CIN-474 (known gap, not fixed here): a $ref into a dotted vendor extension key does not yet resolve', () => {
+    // `tokenPathFromReference` dot-joins the pointer and `resolveReference`
+    // re-splits on '.' to walk the remainder -- lossy for a pointer segment
+    // that itself contains a literal dot, which vendor extension keys always
+    // do by convention ("com.lostgradient.cinder"). This test PINS today's
+    // known-limited behavior (throws) rather than the eventually-correct one,
+    // so CIN-474 landing is a deliberate, visible test change, not a silent
+    // behavior shift discovered later.
+    expect(() =>
+      resolveDocument({
+        base: {
+          $type: 'color',
+          $value: { colorSpace: 'oklch', components: [0, 0, 0] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-base' } },
+        },
+        copy: { $type: 'string', $ref: '#/base/$extensions/com.lostgradient.cinder/cssProperty' },
+      }),
+    ).toThrow(/has no requested property/);
+  });
+
   test('resolves JSON Pointer aliases', () => {
     const resolved = resolveDocument({
       group: { $type: 'number', base: { $value: 2 }, copy: { $value: '#/group/base' } },
