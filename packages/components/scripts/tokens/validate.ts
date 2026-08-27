@@ -864,6 +864,20 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // nothing to override. Reject it here, at validation time, rather than
   // letting it surface later as a confusing "no matching base token" error
   // during CSS generation.
+  //
+  // Known gap, tracked in CIN-479: this only checks that the set is
+  // reachable SOMEWHERE in resolutionOrder -- not that its ordered position
+  // precedes this modifier's own position. With resolutionOrder
+  // [theme, base] and theme's context internally referencing #/sets/base,
+  // documentsForResolutionOrder resolves base -> light-override -> base
+  // again (the later explicit entry), so the resolved JSON reverts to base
+  // while buildTokensBaseCss still lets the light override win via selector
+  // specificity -- the two artifacts disagree. Fixing it means tracking each
+  // ordered position's INDEX, not just membership, and requiring the
+  // referenced set's (or its ordered ancestor's) position to strictly
+  // precede this modifier's. Deferred rather than reworked this late in
+  // review; nothing in the real corpus orders a modifier before the set it
+  // references.
   for (const [setName, contextPath] of setReferencedByModifierContext) {
     const reachableFromBase =
       resolutionOrderTargets.has(`sets/${setName}`) || setReferencedByAnotherSet.has(setName);

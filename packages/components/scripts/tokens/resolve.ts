@@ -262,6 +262,17 @@ function resolveReference(
   rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): unknown {
+  // Known gap, tracked in CIN-480: a bare `#/` pointer dot-joins to the
+  // empty string via `tokenPathFromReference`, which collides with the
+  // index key `collectTokens` uses for the document's OWN `$root` token
+  // (stored at prefix ''). Per RFC 6901, `#/` names a property whose key is
+  // the empty string -- not the document root (that's `#/$root`, handled
+  // correctly below) -- so a bare `#/` silently resolves as if it were
+  // `#/$root` instead of being rejected as malformed. Deferred rather than
+  // reworked this late in review, since disambiguating requires checking
+  // the ORIGINAL reference string, not just the derived path, in the few
+  // places that intentionally treat the empty string as the document-root
+  // sentinel; nothing in the real corpus uses a bare `#/` reference.
   const segments = tokenPathFromReference(reference).split('.');
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
