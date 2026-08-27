@@ -108,14 +108,22 @@ function collectTokens(
   group: TokenGroup,
   prefix: string,
   tokens: ResolvedTokens,
+  rootTokenPaths: Set<string>,
   inheritedType?: DesignToken['$type'],
 ): void {
-  if (group.$root) tokens.set(prefix, withResolvedType(group.$root, group.$type ?? inheritedType));
+  if (group.$root) {
+    tokens.set(prefix, withResolvedType(group.$root, group.$type ?? inheritedType));
+    // Marks `prefix` as a GROUP's redirected root token, not an ordinary
+    // token that merely happens to be indexed at the same path -- see
+    // `resolveReference`'s use of this set for why the distinction matters.
+    rootTokenPaths.add(prefix);
+  }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
     if (isToken(value)) tokens.set(path, withResolvedType(value, group.$type ?? inheritedType));
-    else if (isTokenGroup(value)) collectTokens(value, path, tokens, group.$type ?? inheritedType);
+    else if (isTokenGroup(value))
+      collectTokens(value, path, tokens, rootTokenPaths, group.$type ?? inheritedType);
   }
 }
 
@@ -226,13 +234,14 @@ function resolveReference(
   reference: string,
   tokens: ResolvedTokens,
   rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): unknown {
   const segments = tokenPathFromReference(reference).split('.');
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
     if (!rootToken) return issue(reference, 'reference target does not exist');
-    const resolvedToken = resolveToken('', tokens, rawRefs, resolving);
+    const resolvedToken = resolveToken('', tokens, rawRefs, rootTokenPaths, resolving);
     // A bare `#/$root` pointer (nothing after `$root`) names the document
     // root token's WHOLE identity, exactly like an ordinary whole-token
     // pointer with no trailing segments -- it must extract `$value`, not
@@ -255,17 +264,26 @@ function resolveReference(
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
     if (!token) continue;
-    const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, resolving);
+    const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving);
     const propertySegments = segments.slice(end);
-    const targetsRootToken = reference.startsWith('#/') && propertySegments[0] === '$root';
-    // `$root`, when present, is a REDIRECT to the group's own root token --
-    // already what `resolvedToken` is once `candidatePath` matched a group
-    // that carries one -- not an extra path level, so it is stripped before
-    // walking the remainder. A remainder that is empty after stripping it
-    // (a bare `#/group/$root` alias) names the root token's whole identity
-    // and must extract `$value`, exactly like the ordinary whole-token case
-    // just below it; only an explicit `$value` segment walks the raw
-    // `DesignToken` object.
+    // `$root`, when present AND `candidatePath` actually names a GROUP that
+    // carries one (`rootTokenPaths.has(candidatePath)`) -- not merely an
+    // ordinary token that happens to share that path -- is a REDIRECT to the
+    // group's own root token, already what `resolvedToken` is in that case,
+    // not an extra path level, so it is stripped before walking the
+    // remainder. Without the `rootTokenPaths` check, `#/base/$root` where
+    // `base` is an ordinary token with no `$root` member would silently
+    // redirect to `base` itself instead of correctly failing -- the token
+    // index has no other way to distinguish a group's redirected root token
+    // from an ordinary token indexed at the same path. A remainder that is
+    // empty after stripping it (a bare `#/group/$root` alias) names the root
+    // token's whole identity and must extract `$value`, exactly like the
+    // ordinary whole-token case just below it; only an explicit `$value`
+    // segment walks the raw `DesignToken` object.
+    const targetsRootToken =
+      reference.startsWith('#/') &&
+      propertySegments[0] === '$root' &&
+      rootTokenPaths.has(candidatePath);
     const remainder = targetsRootToken ? propertySegments.slice(1) : propertySegments;
     // A remainder starting with ANY of the token's own reserved `$`-prefixed
     // properties -- not just `$value` -- names something on the `DesignToken`
@@ -313,18 +331,19 @@ function resolveValue(
   value: unknown,
   tokens: ResolvedTokens,
   rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): unknown {
   if (typeof value === 'string')
     return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
-      ? resolveReference(value, tokens, rawRefs, resolving)
+      ? resolveReference(value, tokens, rawRefs, rootTokenPaths, resolving)
       : value;
   if (Array.isArray(value))
-    return value.map((entry) => resolveValue(entry, tokens, rawRefs, resolving));
+    return value.map((entry) => resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving));
   if (!isObject(value)) return value;
   const resolved: JsonObject = Object.create(null);
   for (const [key, entry] of Object.entries(value))
-    resolved[key] = resolveValue(entry, tokens, rawRefs, resolving);
+    resolved[key] = resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving);
   return resolved;
 }
 
@@ -383,12 +402,13 @@ function resolveRefToken(
   token: DesignToken,
   tokens: ResolvedTokens,
   rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): void {
   const ref = token.$ref;
   if (typeof ref !== 'string') return issue(path, '$ref must be a string');
   try {
-    token.$value = resolveReference(ref, tokens, rawRefs, resolving);
+    token.$value = resolveReference(ref, tokens, rawRefs, rootTokenPaths, resolving);
   } catch (error) {
     if (error instanceof TokenValidationError)
       return issue(
@@ -408,6 +428,7 @@ function resolveToken(
   path: string,
   tokens: ResolvedTokens,
   rawRefs: RawRefs,
+  rootTokenPaths: Set<string>,
   resolving: Set<string>,
 ): DesignToken {
   const token = tokens.get(path);
@@ -424,8 +445,9 @@ function resolveToken(
   if (token.$ref !== undefined && token.$value !== undefined)
     return issue(path, '$value and $ref are mutually exclusive on a resolved token');
   resolving.add(path);
-  if (token.$ref !== undefined) resolveRefToken(path, token, tokens, rawRefs, resolving);
-  else token.$value = resolveValue(token.$value, tokens, rawRefs, resolving);
+  if (token.$ref !== undefined)
+    resolveRefToken(path, token, tokens, rawRefs, rootTokenPaths, resolving);
+  else token.$value = resolveValue(token.$value, tokens, rawRefs, rootTokenPaths, resolving);
   resolving.delete(path);
   return token;
 }
@@ -460,24 +482,29 @@ export function mergeAndExpandExtends(
   return merged;
 }
 
-/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against, plus the pre-resolution `$ref` snapshot (see `RawRefs`) both resolve against for a `$ref`-into-`$ref` pointer. */
-function buildTokenIndex(documents: TokenDocument[]): { tokens: ResolvedTokens; rawRefs: RawRefs } {
+/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against, plus the pre-resolution `$ref` snapshot (see `RawRefs`) and the set of paths that are a group's redirected `$root` token (see `collectTokens`'s `rootTokenPaths` comment) rather than an ordinary token that happens to share that path. */
+function buildTokenIndex(documents: TokenDocument[]): {
+  tokens: ResolvedTokens;
+  rawRefs: RawRefs;
+  rootTokenPaths: Set<string>;
+} {
   const tokens: ResolvedTokens = new Map();
+  const rootTokenPaths = new Set<string>();
   const merged = mergeAndExpandExtends(documents);
-  collectTokens(merged, '', tokens);
+  collectTokens(merged, '', tokens, rootTokenPaths);
   const rawRefs: RawRefs = new Map();
   for (const [path, token] of tokens) {
     if (typeof token.$ref === 'string') rawRefs.set(path, token.$ref);
   }
-  return { tokens, rawRefs };
+  return { tokens, rawRefs, rootTokenPaths };
 }
 
 /** Resolves group inheritance, whole-token aliases, and property-level aliases. */
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
-  const { tokens, rawRefs } = buildTokenIndex(documents);
+  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
   for (const path of tokens.keys())
-    resolved[path] = clone(resolveToken(path, tokens, rawRefs, new Set()));
+    resolved[path] = clone(resolveToken(path, tokens, rawRefs, rootTokenPaths, new Set()));
   return resolved;
 }
 
@@ -494,8 +521,8 @@ export type ValueResolver = (value: unknown) => unknown;
  * second resolver.
  */
 export function createValueResolver(documents: TokenDocument[]): ValueResolver {
-  const { tokens, rawRefs } = buildTokenIndex(documents);
-  return (value: unknown) => resolveValue(value, tokens, rawRefs, new Set());
+  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
+  return (value: unknown) => resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set());
 }
 
 /**

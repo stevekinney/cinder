@@ -750,6 +750,64 @@ describe('DTCG semantic validation', () => {
     );
   });
 
+  test('rejects a child set referenced internally by two different ordered parent sets', () => {
+    // Neither "base" itself nor a duplicate of it appears in resolutionOrder
+    // here -- the single-parent-plus-explicit-listing check above doesn't
+    // catch this shape. Both "a" and "c" (directly ordered, with a modifier
+    // between them) reference "base" internally, so its values get expanded
+    // twice: once via "a", again via "c" after the modifier, resetting
+    // whatever the modifier just overrode -- the same CSS-vs-resolved-JSON
+    // disagreement, reached a different way.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          c: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/c.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [
+          { $ref: '#/sets/a' },
+          { $ref: '#/modifiers/theme' },
+          { $ref: '#/sets/c' },
+        ],
+      }),
+    ).toThrow(
+      /set "base" is referenced internally by more than one ordered set \(a, c\) and would be expanded more than once/,
+    );
+  });
+
+  test('accepts a child set referenced by only one DIRECTLY ordered parent, even if another (transitively reachable) set also references it', () => {
+    // "base" is referenced by both "a" (directly ordered) and "b" (only
+    // reachable through "wrapper", never itself ordered) -- only "a"'s
+    // expansion actually happens at a fixed position in the resolved
+    // document tree, so there is no real double-expansion here. The check
+    // must not flag a set merely for having more than one referencing
+    // parent in the document; only more than one ORDERED parent is a
+    // genuine conflict.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          b: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/b.tokens.json' }] },
+          wrapper: { sources: [{ $ref: '#/sets/b' }, { $ref: 'sets/wrapper.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/wrapper' }],
+      }),
+    ).not.toThrow();
+  });
+
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {
     // Regression guard: cinder.resolver.json used to declare
     // sets/modifiers as arrays of {name, ...} objects and resolutionOrder as

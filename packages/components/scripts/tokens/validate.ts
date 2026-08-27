@@ -647,14 +647,26 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // legitimate exemption. Only `setReferencedByAnotherSet` counts toward the
   // resolutionOrder exemption; modifier-context references are tracked
   // separately and checked below instead.
+  // Keyed by CHILD set name -> the set of PARENT set names that reference it
+  // internally. More than one parent referencing the same child means that
+  // child gets expanded more than once into the resolved document tree --
+  // reject that below (see the "Reject a child set expanded by multiple
+  // ordered parents" check) rather than let it surface as the same
+  // CSS-vs-resolved-JSON disagreement the single-parent-plus-explicit-listing
+  // case already guards against.
+  const parentsReferencingSet = new Map<string, Set<string>>();
   const setReferencedByAnotherSet = new Set<string>();
   const setReferencedByModifierContext = new Map<string, string>();
-  function noteSetReferencedByAnotherSet(sources: unknown): void {
+  function noteSetReferencedByAnotherSet(parentName: string, sources: unknown): void {
     if (!Array.isArray(sources)) return;
     for (const source of sources) {
       if (!isResolverReference(source)) continue;
       const target = resolutionOrderTarget(source['$ref']);
-      if (target?.kind === 'sets') setReferencedByAnotherSet.add(target.name);
+      if (target?.kind !== 'sets') continue;
+      setReferencedByAnotherSet.add(target.name);
+      const parents = parentsReferencingSet.get(target.name) ?? new Set();
+      parents.add(parentName);
+      parentsReferencingSet.set(target.name, parents);
     }
   }
   function noteSetReferencedByModifierContext(sources: unknown, contextPath: string): void {
@@ -704,7 +716,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       !set['sources'].every(isResolverReference)
     )
       addIssue(issues, `$.sets.${name}`, 'set must have a non-empty array of $ref sources');
-    else noteSetReferencedByAnotherSet(set['sources']);
+    else noteSetReferencedByAnotherSet(name, set['sources']);
   }
   const internallyReferencedSetNames = setReferencedByAnotherSet;
 
@@ -762,6 +774,30 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
         explicitPath,
         `set "${setName}" is already referenced internally by another ordered set and must not ` +
           'also appear in resolutionOrder -- it would be included twice',
+      );
+    }
+  }
+
+  // The single-parent-plus-explicit-listing case above doesn't cover a child
+  // set referenced internally by TWO DIFFERENT ordered parent sets (neither
+  // of which is itself the explicit listing) -- e.g. "A, theme, C" where both
+  // A and C reference the same child B. Each parent's expansion re-applies
+  // B's values at its own position, so B still ends up applied twice with a
+  // modifier potentially between the two expansions, the same
+  // CSS-vs-resolved-JSON disagreement as the case above. Reject a child
+  // referenced by more than one DIRECTLY ORDERED parent (a parent reachable
+  // only transitively, itself never listed in resolutionOrder, cannot
+  // actually cause a second expansion, so it doesn't count here).
+  for (const [childName, parents] of parentsReferencingSet) {
+    const orderedParents = [...parents].filter((parentName) =>
+      resolutionOrderTargets.has(`sets/${parentName}`),
+    );
+    if (orderedParents.length > 1) {
+      addIssue(
+        issues,
+        '$.resolutionOrder',
+        `set "${childName}" is referenced internally by more than one ordered set ` +
+          `(${orderedParents.sort().join(', ')}) and would be expanded more than once`,
       );
     }
   }

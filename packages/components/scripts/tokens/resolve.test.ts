@@ -145,6 +145,20 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe(1);
   });
 
+  test('rejects a $root pointer into an ordinary token that has no $root member', () => {
+    // "base" is an ordinary token, not a group with a $root child --
+    // #/base/$root names a location that does not exist. Without checking
+    // that "base" is actually a group's redirected root token, the loop
+    // would strip "$root" unconditionally and silently resolve to "base"'s
+    // own value, treating a malformed pointer as if it were valid.
+    expect(() =>
+      resolveDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $ref: '#/base/$root' },
+      }),
+    ).toThrow(/has no requested property/);
+  });
+
   test('rejects circular aliases and group extensions', () => {
     expect(() =>
       resolveDocument({
