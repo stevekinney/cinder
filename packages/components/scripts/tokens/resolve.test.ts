@@ -61,6 +61,22 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('the document root token');
   });
 
+  test("resolves a $ref pointer into another alias token's own $ref, reading it before resolution deletes it", () => {
+    // resolveRefToken deletes `$ref` from its token once resolved (so a
+    // resolved token never carries a leftover alias pointer). Reading
+    // `#/alias/$ref` therefore must capture the raw value BEFORE `alias`
+    // itself gets resolved, or it always finds nothing.
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      alias: { $ref: '#/base' },
+      copy: { $type: 'string', $ref: '#/alias/$ref' },
+    });
+    expect(resolved['copy']?.$value).toBe('#/base');
+    // `alias` itself still resolves normally -- reading its raw $ref for
+    // `copy` must not disturb `alias`'s own resolution.
+    expect(resolved['alias']).toMatchObject({ $type: 'number', $value: 1 });
+  });
+
   test('resolves JSON Pointer aliases', () => {
     const resolved = resolveDocument({
       group: { $type: 'number', base: { $value: 2 }, copy: { $value: '#/group/base' } },

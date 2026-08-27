@@ -654,6 +654,29 @@ describe('DTCG semantic validation', () => {
     ).toThrow(/references set "base", which has no path into the base/);
   });
 
+  test('names the FIRST context that references an unreachable set, not the last-processed one', () => {
+    // `noteSetReferencedByModifierContext` used a plain `Map.set`, which
+    // overwrites the recorded reference site when multiple contexts
+    // reference the same unreachable set -- losing evidence of every context
+    // but whichever was processed last (object key order here: "light" then
+    // "dark").
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: '#/sets/base' }, { $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+      }),
+    ).toThrow(/\$\.modifiers\.theme\.contexts\.light/);
+  });
+
   test('accepts a set referenced by a modifier context when it also has a path into the base', () => {
     // Same shape as the rejection above, but `base` is ALSO listed directly
     // in resolutionOrder, giving it a real base declaration for the modifier

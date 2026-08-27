@@ -662,7 +662,11 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     for (const source of sources) {
       if (!isResolverReference(source)) continue;
       const target = resolutionOrderTarget(source['$ref']);
-      if (target?.kind === 'sets') setReferencedByModifierContext.set(target.name, contextPath);
+      // Keep the FIRST-seen reference site: `.set()` would overwrite it when
+      // multiple contexts reference the same unreachable set, silently
+      // discarding evidence of every context but the last-processed one.
+      if (target?.kind === 'sets' && !setReferencedByModifierContext.has(target.name))
+        setReferencedByModifierContext.set(target.name, contextPath);
     }
   }
 

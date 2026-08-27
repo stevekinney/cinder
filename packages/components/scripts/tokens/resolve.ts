@@ -3,6 +3,17 @@ import { TokenValidationError } from './types.ts';
 
 type JsonObject = Record<string, unknown>;
 type ResolvedTokens = Map<string, DesignToken>;
+/**
+ * Every token's ORIGINAL `$ref` string, captured once in `buildTokenIndex`
+ * before any resolution runs. `resolveRefToken` deletes `$ref` from a
+ * token's live entry in `ResolvedTokens` once resolved (so a resolved token
+ * never carries a leftover alias pointer) -- a pointer that targets another
+ * alias token's OWN `$ref` property (`#/alias/$ref`) would otherwise always
+ * find it already gone, regardless of processing order, since
+ * `resolveDocuments`'s top-level loop may resolve `alias` before anything
+ * ever asks to read its `$ref`. This snapshot is immune to that mutation.
+ */
+type RawRefs = Map<string, string>;
 
 function isObject(value: unknown): value is JsonObject {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
@@ -214,13 +225,14 @@ function resolveExtends(
 function resolveReference(
   reference: string,
   tokens: ResolvedTokens,
+  rawRefs: RawRefs,
   resolving: Set<string>,
 ): unknown {
   const segments = tokenPathFromReference(reference).split('.');
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
     if (!rootToken) return issue(reference, 'reference target does not exist');
-    const resolvedToken = resolveToken('', tokens, resolving);
+    const resolvedToken = resolveToken('', tokens, rawRefs, resolving);
     // A bare `#/$root` pointer (nothing after `$root`) names the document
     // root token's WHOLE identity, exactly like an ordinary whole-token
     // pointer with no trailing segments -- it must extract `$value`, not
@@ -231,8 +243,10 @@ function resolveReference(
     // selects that base.
     const remainder = segments.slice(1);
     const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
-    const base = usesTokenObjectBase ? resolvedToken : resolvedToken.$value;
-    const propertyValue = getByPath(base, remainder);
+    const propertyValue =
+      remainder[0] === '$ref'
+        ? getByPath(rawRefs.get(''), remainder.slice(1))
+        : getByPath(usesTokenObjectBase ? resolvedToken : resolvedToken.$value, remainder);
     if (propertyValue === undefined)
       issue(reference, 'reference target $root has no requested property');
     return clone(propertyValue);
@@ -241,7 +255,7 @@ function resolveReference(
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
     if (!token) continue;
-    const resolvedToken = resolveToken(candidatePath, tokens, resolving);
+    const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, resolving);
     const propertySegments = segments.slice(end);
     const targetsRootToken = reference.startsWith('#/') && propertySegments[0] === '$root';
     // `$root`, when present, is a REDIRECT to the group's own root token --
@@ -264,10 +278,19 @@ function resolveReference(
       reference.startsWith('#/') &&
       typeof remainder[0] === 'string' &&
       remainder[0].startsWith('$');
-    const propertyValue = getByPath(
-      usesTokenObjectBase ? resolvedToken : resolvedToken.$value,
-      remainder,
-    );
+    // `$ref` is unique among token metadata: `resolveToken` deletes it from
+    // the token object once resolved (see `resolveRefToken`'s doc comment --
+    // deliberate, so downstream consumers never see a leftover alias pointer
+    // next to the value it named). A pointer that targets another alias
+    // token's OWN `$ref` string (`#/alias/$ref`) must read the pre-resolution
+    // snapshot (`rawRefs`) rather than the mutated `resolvedToken` -- and
+    // rather than `token.$ref` itself, which may already have been deleted by
+    // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
+    // comment). Every other reserved property is untouched by resolution.
+    const propertyValue =
+      remainder[0] === '$ref'
+        ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))
+        : getByPath(usesTokenObjectBase ? resolvedToken : resolvedToken.$value, remainder);
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);
     return clone(propertyValue);
@@ -275,16 +298,22 @@ function resolveReference(
   return issue(reference, 'reference target does not exist');
 }
 
-function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<string>): unknown {
+function resolveValue(
+  value: unknown,
+  tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  resolving: Set<string>,
+): unknown {
   if (typeof value === 'string')
     return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
-      ? resolveReference(value, tokens, resolving)
+      ? resolveReference(value, tokens, rawRefs, resolving)
       : value;
-  if (Array.isArray(value)) return value.map((entry) => resolveValue(entry, tokens, resolving));
+  if (Array.isArray(value))
+    return value.map((entry) => resolveValue(entry, tokens, rawRefs, resolving));
   if (!isObject(value)) return value;
   const resolved: JsonObject = Object.create(null);
   for (const [key, entry] of Object.entries(value))
-    resolved[key] = resolveValue(entry, tokens, resolving);
+    resolved[key] = resolveValue(entry, tokens, rawRefs, resolving);
   return resolved;
 }
 
@@ -342,12 +371,13 @@ function resolveRefToken(
   path: string,
   token: DesignToken,
   tokens: ResolvedTokens,
+  rawRefs: RawRefs,
   resolving: Set<string>,
 ): void {
   const ref = token.$ref;
   if (typeof ref !== 'string') return issue(path, '$ref must be a string');
   try {
-    token.$value = resolveReference(ref, tokens, resolving);
+    token.$value = resolveReference(ref, tokens, rawRefs, resolving);
   } catch (error) {
     if (error instanceof TokenValidationError)
       return issue(
@@ -363,7 +393,12 @@ function resolveRefToken(
   delete token.$ref;
 }
 
-function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<string>): DesignToken {
+function resolveToken(
+  path: string,
+  tokens: ResolvedTokens,
+  rawRefs: RawRefs,
+  resolving: Set<string>,
+): DesignToken {
   const token = tokens.get(path);
   if (!token) return issue(path, 'token does not exist');
   if (resolving.has(path)) return issue(path, 'circular token alias');
@@ -378,8 +413,8 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
   if (token.$ref !== undefined && token.$value !== undefined)
     return issue(path, '$value and $ref are mutually exclusive on a resolved token');
   resolving.add(path);
-  if (token.$ref !== undefined) resolveRefToken(path, token, tokens, resolving);
-  else token.$value = resolveValue(token.$value, tokens, resolving);
+  if (token.$ref !== undefined) resolveRefToken(path, token, tokens, rawRefs, resolving);
+  else token.$value = resolveValue(token.$value, tokens, rawRefs, resolving);
   resolving.delete(path);
   return token;
 }
@@ -414,19 +449,24 @@ export function mergeAndExpandExtends(
   return merged;
 }
 
-/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against. */
-function buildTokenIndex(documents: TokenDocument[]): ResolvedTokens {
+/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against, plus the pre-resolution `$ref` snapshot (see `RawRefs`) both resolve against for a `$ref`-into-`$ref` pointer. */
+function buildTokenIndex(documents: TokenDocument[]): { tokens: ResolvedTokens; rawRefs: RawRefs } {
   const tokens: ResolvedTokens = new Map();
   const merged = mergeAndExpandExtends(documents);
   collectTokens(merged, '', tokens);
-  return tokens;
+  const rawRefs: RawRefs = new Map();
+  for (const [path, token] of tokens) {
+    if (typeof token.$ref === 'string') rawRefs.set(path, token.$ref);
+  }
+  return { tokens, rawRefs };
 }
 
 /** Resolves group inheritance, whole-token aliases, and property-level aliases. */
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
-  const tokens = buildTokenIndex(documents);
+  const { tokens, rawRefs } = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
-  for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
+  for (const path of tokens.keys())
+    resolved[path] = clone(resolveToken(path, tokens, rawRefs, new Set()));
   return resolved;
 }
 
@@ -443,8 +483,8 @@ export type ValueResolver = (value: unknown) => unknown;
  * second resolver.
  */
 export function createValueResolver(documents: TokenDocument[]): ValueResolver {
-  const tokens = buildTokenIndex(documents);
-  return (value: unknown) => resolveValue(value, tokens, new Set());
+  const { tokens, rawRefs } = buildTokenIndex(documents);
+  return (value: unknown) => resolveValue(value, tokens, rawRefs, new Set());
 }
 
 /**
