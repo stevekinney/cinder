@@ -152,20 +152,38 @@ const TOKENS_BASE_PATH = join(
 );
 
 describe('color token registry', () => {
-  test('contains the expected global color-token inventory', () => {
-    expect(COLOR_TOKEN_NAMES).toHaveLength(84);
-    expect(COLOR_TOKEN_GROUPS.map((group) => group.id)).toEqual([
-      'accent',
-      'status-solid',
-      'charts',
-      'status-triples',
-      'surfaces',
-      'text',
-      'borders',
-      'focus',
-      'overlay',
-      'scrollbars',
-    ]);
+  /**
+   * `COLOR_TOKEN_GROUPS` is generated (CIN-30) from the corpus itself --
+   * `cinder.resolver.json`'s foundation set's
+   * `$extensions["com.lostgradient.cinder"].playgroundGroups` -- not from a
+   * curated list hand-maintained in `generate-artifacts.ts` (see that file's
+   * `readPlaygroundColorTokenGroups`). A hardcoded `toHaveLength(84)` and a
+   * literal group-id array here would need a hand-edit on every corpus
+   * change with no actual protective value -- the ONLY source for either
+   * number is the same generated data this test would be comparing it
+   * against. Structural invariants over that generated data (no duplicate
+   * token across groups, no duplicate/empty group, the derived flat list
+   * actually matches the generated groups) stay meaningful without ever
+   * needing a bump: they catch a broken generator or a bad hand-edit to the
+   * curation list, which a hardcoded count could not.
+   */
+  test('contains a well-formed, non-trivial global color-token inventory', () => {
+    expect(COLOR_TOKEN_GROUPS.length).toBeGreaterThan(0);
+
+    const groupIds = COLOR_TOKEN_GROUPS.map((group) => group.id);
+    expect(new Set(groupIds).size).toBe(groupIds.length);
+
+    for (const group of COLOR_TOKEN_GROUPS) {
+      expect(group.id.length).toBeGreaterThan(0);
+      expect(group.tokens.length).toBeGreaterThan(0);
+    }
+
+    const expectedTokenCount = COLOR_TOKEN_GROUPS.reduce(
+      (total, group) => total + group.tokens.length,
+      0,
+    );
+    expect(COLOR_TOKEN_NAMES).toHaveLength(expectedTokenCount);
+    expect(new Set(COLOR_TOKEN_NAMES).size).toBe(COLOR_TOKEN_NAMES.length);
   });
 
   test('every registered token is declared in tokens-base.css', async () => {

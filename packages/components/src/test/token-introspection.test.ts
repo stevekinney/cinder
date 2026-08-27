@@ -59,6 +59,17 @@ describe('readRootTokenNames', () => {
     expect(readRootTokenNames(css)).toEqual(new Set(['--cinder-accent', '--cinder-space-4']));
   });
 
+  // B3 (CIN-30 review): docs/tokens.md's own intro states the scope is
+  // "--cinder-*" (public) AND "--_cinder-*" (internal) -- so a helper this
+  // scoped to only the public prefix silently fails a supported internal
+  // token declared in :root. This is what made completeness.test.ts's
+  // `readRootTokenNames`-based check narrower than the corpus's own
+  // `cssProperty` scope, which includes both prefixes.
+  test('collects --_cinder-* internal declaration names alongside --cinder-*', () => {
+    const css = `:root {\n  --cinder-accent: red;\n  --_cinder-internal: red;\n}\n`;
+    expect(readRootTokenNames(css)).toEqual(new Set(['--cinder-accent', '--_cinder-internal']));
+  });
+
   test('ignores tokens inside comments', () => {
     const css = [
       ':root {',

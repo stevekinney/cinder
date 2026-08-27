@@ -5807,7 +5807,7 @@
     "test:memory-canary": "bun run scripts/memory-canary.ts",
     "tokens:audit": "bun run scripts/check-component-css-token-usage.ts",
     "tokens:check": "bun run tokens:validate && bun run tokens:generate -- --check",
-    "tokens:generate": "bun run scripts/tokens/generate.ts",
+    "tokens:generate": "bun run scripts/tokens/generate-artifacts.ts",
     "tokens:inventory": "bun run scripts/tokens/inventory.ts",
     "tokens:literals": "bun run scripts/check-design-token-literals.ts",
     "tokens:validate": "bun run scripts/tokens/validate-corpus.ts",

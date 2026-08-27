@@ -31,7 +31,6 @@
  * adding generator formatting logic.
  */
 
-import { mkdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -60,10 +59,21 @@ import { normalizeSourcePath, parseResolutionOrder, sourcesForEntry } from './va
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(scriptDirectory, '..', '..');
+const repoRoot = join(packageRoot, '..', '..');
 export const tokensBaseCssPath = join(packageRoot, 'src', 'styles', 'tokens-base.css');
 export const resolvedDirectory = join(tokenRoot, 'resolved');
+export const registryJsonPath = join(tokenRoot, 'registry.generated.json');
+export const tokensDocPath = join(repoRoot, 'docs', 'tokens.md');
+export const colorTokenRegistryGeneratedPath = join(
+  packageRoot,
+  '..',
+  'playground',
+  'src',
+  'shell-app',
+  'color-token-registry.generated.ts',
+);
 
-const REGENERATE_COMMAND = 'bun run --filter=@lostgradient/cinder tokens:generate';
+export const REGENERATE_COMMAND = 'bun run --filter=@lostgradient/cinder tokens:generate';
 
 /**
  * Prettier is used here in a way that has to survive two different builds of it.
@@ -76,7 +86,7 @@ const REGENERATE_COMMAND = 'bun run --filter=@lostgradient/cinder tokens:generat
  * and the parser plugins are imported and passed explicitly, which works
  * identically under both builds.
  */
-const PRETTIER_OPTIONS = {
+export const PRETTIER_OPTIONS = {
   singleQuote: true,
   tabWidth: 2,
   printWidth: 100,
@@ -84,7 +94,7 @@ const PRETTIER_OPTIONS = {
 } as const;
 
 /** The `json` parser lives in the babel plugin; `estree` supplies its printer. */
-const JSON_PLUGINS = [babelPlugin, estreePlugin];
+export const JSON_PLUGINS = [babelPlugin, estreePlugin];
 const CSS_PLUGINS = [postcssPlugin];
 
 // ---------------------------------------------------------------------------
@@ -105,6 +115,18 @@ export type CorpusEntry = {
   description: string | undefined;
   cssProperty: string | undefined;
   cssRecipe: string | undefined;
+  /**
+   * The remaining `com.lostgradient.cinder` extension fields and the DTCG
+   * `$deprecated` flag, carried through purely for {@link registry.ts}'s
+   * `buildTokenRegistry` -- CSS generation in this file never reads them.
+   * Kept on `CorpusEntry` itself (rather than a second, parallel tree walk)
+   * so the registry reuses the exact same `collectEntries` traversal that
+   * produces `tokens-base.css`, instead of re-deriving corpus structure.
+   */
+  public?: boolean | undefined;
+  category?: string | undefined;
+  component?: string | undefined;
+  deprecated?: boolean | string | undefined;
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -130,12 +152,30 @@ function toEntry(
   path: string,
   token: DesignToken,
   inheritedType: TokenType | undefined,
+  inheritedDeprecated: boolean | string | undefined,
 ): CorpusEntry {
   const extensions = cinderExtensions(token);
   const cssProperty =
     typeof extensions?.['cssProperty'] === 'string' ? extensions['cssProperty'] : undefined;
   const cssRecipe =
     typeof extensions?.['cssRecipe'] === 'string' ? extensions['cssRecipe'] : undefined;
+  const category =
+    typeof extensions?.['category'] === 'string' ? extensions['category'] : undefined;
+  const component =
+    typeof extensions?.['component'] === 'string' ? extensions['component'] : undefined;
+  const isPublic = typeof extensions?.['public'] === 'boolean' ? extensions['public'] : undefined;
+  // DTCG makes `$deprecated` inheritable the same way `$type` is, and the
+  // flattened corpus keeps no group records -- so without carrying the
+  // ancestor state down, a `$deprecated` group whose children do not repeat the
+  // field loses it entirely and every descendant is reported `deprecated:
+  // false`, letting registry consumers surface a deprecated group's tokens as
+  // current. A token's own `$deprecated` still wins: a group can deprecate its
+  // children, and a child can carry its own (more specific) reason string.
+  const ownDeprecated =
+    typeof token.$deprecated === 'boolean' || typeof token.$deprecated === 'string'
+      ? token.$deprecated
+      : undefined;
+  const deprecated = ownDeprecated ?? inheritedDeprecated;
   return {
     path,
     value: token.$value,
@@ -143,22 +183,35 @@ function toEntry(
     description: token.$description,
     cssProperty,
     cssRecipe,
+    public: isPublic,
+    category,
+    component,
+    deprecated,
   };
 }
 
-function collectEntries(
+export function collectEntries(
   group: TokenGroup,
   prefix: string,
   inheritedType: TokenType | undefined,
   into: Map<string, CorpusEntry>,
+  inheritedDeprecated?: boolean | string,
 ): void {
   const groupType = group.$type ?? inheritedType;
-  if (isToken(group.$root)) into.set(prefix, toEntry(prefix, group.$root, groupType));
+  // `false` on a group is a real value, not an absence: it un-deprecates a
+  // subtree beneath a deprecated ancestor, so `??` rather than `||` here.
+  const groupDeprecated =
+    typeof group.$deprecated === 'boolean' || typeof group.$deprecated === 'string'
+      ? group.$deprecated
+      : inheritedDeprecated;
+  if (isToken(group.$root)) {
+    into.set(prefix, toEntry(prefix, group.$root, groupType, groupDeprecated));
+  }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isPlainObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (isToken(value)) into.set(path, toEntry(path, value, groupType));
-    else if (isTokenGroup(value)) collectEntries(value, path, groupType, into);
+    if (isToken(value)) into.set(path, toEntry(path, value, groupType, groupDeprecated));
+    else if (isTokenGroup(value)) collectEntries(value, path, groupType, into, groupDeprecated);
   }
 }
 
@@ -661,7 +714,19 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
   const byProperty = new Map<string, Map<string, string[]>>();
   for (const [path, entry] of entries) {
     if (!entry.cssProperty) continue;
-    const emitted = JSON.stringify({ value: entry.value, cssRecipe: entry.cssRecipe });
+    // `type` belongs in the key, not just the value: serialization is
+    // type-directed, so two entries can share a raw `$value` and still emit
+    // different CSS -- `fontFamily: "normal"` emits `normal` while
+    // `fontWeight: "normal"` emits `400`. Hashing the value alone called that
+    // pair identical, and the disagreement then surfaced downstream, where the
+    // first-claimant docs index documented one form while the CSS and the drift
+    // test's last-write map used the other, so regeneration produced
+    // documentation the required drift test rejected.
+    const emitted = JSON.stringify({
+      type: entry.type,
+      value: entry.value,
+      cssRecipe: entry.cssRecipe,
+    });
     const paths = byProperty.get(entry.cssProperty) ?? new Map<string, string[]>();
     paths.set(emitted, [...(paths.get(emitted) ?? []), path]);
     byProperty.set(entry.cssProperty, paths);
@@ -1056,7 +1121,17 @@ export function findDriftedPaths(
   return drifted;
 }
 
-async function readExisting(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
+/**
+ * Reads the currently-committed content at each of `paths` (`undefined` for a
+ * missing/unreadable file). Exported so `generate-artifacts.ts` -- the actual
+ * `tokens:generate` CLI entry point, which also writes the docs, registry,
+ * and playground-data outputs this file knows nothing about -- can compare
+ * ALL generated outputs (this file's CSS/JSON plus its own) against the
+ * committed tree with one shared helper instead of two divergent ones.
+ */
+export async function readExisting(
+  paths: Iterable<string>,
+): Promise<Map<string, string | undefined>> {
   const existing = new Map<string, string | undefined>();
   for (const path of paths) {
     existing.set(
@@ -1068,26 +1143,3 @@ async function readExisting(paths: Iterable<string>): Promise<Map<string, string
   }
   return existing;
 }
-
-async function main(): Promise<void> {
-  const check = process.argv.includes('--check');
-  const generated = await buildGeneratedOutputs();
-
-  if (check) {
-    const existing = await readExisting(generated.keys());
-    const drifted = findDriftedPaths(generated, existing);
-    if (drifted.length > 0) {
-      throw new Error(
-        `Generated token output drifted from the committed files:\n${drifted
-          .map((path) => `  - ${path}`)
-          .join('\n')}\nRun ${REGENERATE_COMMAND}.`,
-      );
-    }
-    return;
-  }
-
-  await mkdir(resolvedDirectory, { recursive: true });
-  for (const [path, content] of generated) await Bun.write(path, content);
-}
-
-if (import.meta.main) await main();

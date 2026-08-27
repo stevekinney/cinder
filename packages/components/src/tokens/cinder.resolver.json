@@ -8,7 +8,161 @@
         { "$ref": "sets/semantic.tokens.json" },
         { "$ref": "sets/colors.tokens.json" },
         { "$ref": "sets/components.tokens.json" }
-      ]
+      ],
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "playgroundGroups": [
+            {
+              "id": "accent",
+              "label": "Accent",
+              "members": [
+                { "cssProperty": "--cinder-accent", "label": "Accent fill" },
+                { "cssProperty": "--cinder-accent-contrast", "label": "Accent contrast" },
+                { "cssProperty": "--cinder-accent-text", "label": "Accent text" },
+                { "cssProperty": "--cinder-accent-text-hover", "label": "Accent text hover" },
+                { "cssProperty": "--cinder-accent-hover", "label": "Accent fill hover" },
+                { "cssProperty": "--cinder-accent-active", "label": "Accent fill active" },
+                {
+                  "cssProperty": "--cinder-accent-active-on-fill",
+                  "label": "Accent active on fill"
+                }
+              ]
+            },
+            {
+              "id": "status-solid",
+              "label": "Status Solids",
+              "members": [
+                { "cssProperty": "--cinder-info", "label": "Info" },
+                { "cssProperty": "--cinder-success", "label": "Success" },
+                { "cssProperty": "--cinder-warning", "label": "Warning" },
+                { "cssProperty": "--cinder-danger", "label": "Danger" },
+                { "cssProperty": "--cinder-info-contrast", "label": "Info contrast" },
+                { "cssProperty": "--cinder-success-contrast", "label": "Success contrast" },
+                { "cssProperty": "--cinder-warning-contrast", "label": "Warning contrast" },
+                { "cssProperty": "--cinder-danger-contrast", "label": "Danger contrast" },
+                { "cssProperty": "--cinder-danger-hover", "label": "Danger hover" },
+                { "cssProperty": "--cinder-danger-active", "label": "Danger active" },
+                { "cssProperty": "--cinder-info-hover", "label": "Info hover" },
+                { "cssProperty": "--cinder-info-active", "label": "Info active" },
+                { "cssProperty": "--cinder-success-hover", "label": "Success hover" },
+                { "cssProperty": "--cinder-success-active", "label": "Success active" },
+                { "cssProperty": "--cinder-warning-hover", "label": "Warning hover" },
+                { "cssProperty": "--cinder-warning-active", "label": "Warning active" }
+              ]
+            },
+            {
+              "id": "charts",
+              "label": "Chart Series",
+              "members": [
+                { "cssProperty": "--cinder-chart-series-1", "label": "Series 1" },
+                { "cssProperty": "--cinder-chart-series-2", "label": "Series 2" },
+                { "cssProperty": "--cinder-chart-series-3", "label": "Series 3" },
+                { "cssProperty": "--cinder-chart-series-4", "label": "Series 4" },
+                { "cssProperty": "--cinder-chart-series-5", "label": "Series 5" },
+                { "cssProperty": "--cinder-chart-series-6", "label": "Series 6" },
+                { "cssProperty": "--cinder-chart-series-7", "label": "Series 7" },
+                { "cssProperty": "--cinder-chart-series-8", "label": "Series 8" }
+              ]
+            },
+            {
+              "id": "status-triples",
+              "label": "Status Surfaces",
+              "members": [
+                { "cssProperty": "--cinder-color-info-bg", "label": "Info background" },
+                { "cssProperty": "--cinder-color-info-fg", "label": "Info foreground" },
+                { "cssProperty": "--cinder-color-info-border", "label": "Info border" },
+                { "cssProperty": "--cinder-color-success-bg", "label": "Success background" },
+                { "cssProperty": "--cinder-color-success-fg", "label": "Success foreground" },
+                { "cssProperty": "--cinder-color-success-border", "label": "Success border" },
+                { "cssProperty": "--cinder-color-warning-bg", "label": "Warning background" },
+                { "cssProperty": "--cinder-color-warning-fg", "label": "Warning foreground" },
+                { "cssProperty": "--cinder-color-warning-border", "label": "Warning border" },
+                { "cssProperty": "--cinder-color-danger-bg", "label": "Danger background" },
+                { "cssProperty": "--cinder-color-danger-fg", "label": "Danger foreground" },
+                { "cssProperty": "--cinder-color-danger-border", "label": "Danger border" },
+                { "cssProperty": "--cinder-color-neutral-bg", "label": "Neutral background" },
+                { "cssProperty": "--cinder-color-neutral-fg", "label": "Neutral foreground" },
+                { "cssProperty": "--cinder-color-neutral-border", "label": "Neutral border" },
+                { "cssProperty": "--cinder-color-accent-bg", "label": "Accent background" },
+                { "cssProperty": "--cinder-color-accent-fg", "label": "Accent foreground" },
+                { "cssProperty": "--cinder-color-accent-border", "label": "Accent border" },
+                { "cssProperty": "--cinder-color-info-muted", "label": "Muted info" },
+                { "cssProperty": "--cinder-color-info-subtle", "label": "Subtle info" },
+                { "cssProperty": "--cinder-color-success-muted", "label": "Muted success" },
+                { "cssProperty": "--cinder-color-success-subtle", "label": "Subtle success" },
+                { "cssProperty": "--cinder-color-warning-muted", "label": "Muted warning" },
+                { "cssProperty": "--cinder-color-warning-subtle", "label": "Subtle warning" },
+                { "cssProperty": "--cinder-color-danger-muted", "label": "Muted danger" },
+                { "cssProperty": "--cinder-color-danger-subtle", "label": "Subtle danger" }
+              ]
+            },
+            {
+              "id": "surfaces",
+              "label": "Surfaces",
+              "members": [
+                { "cssProperty": "--cinder-bg", "label": "Page background" },
+                { "cssProperty": "--cinder-surface", "label": "Surface" },
+                { "cssProperty": "--cinder-surface-raised", "label": "Raised surface" },
+                { "cssProperty": "--cinder-surface-raised-hover", "label": "Raised surface hover" },
+                {
+                  "cssProperty": "--cinder-surface-raised-pressed",
+                  "label": "Raised surface pressed"
+                },
+                { "cssProperty": "--cinder-surface-inset", "label": "Inset surface" },
+                { "cssProperty": "--cinder-surface-hover", "label": "Surface hover" },
+                { "cssProperty": "--cinder-surface-pressed", "label": "Surface pressed" },
+                { "cssProperty": "--cinder-surface-inverse", "label": "Inverse surface" }
+              ]
+            },
+            {
+              "id": "text",
+              "label": "Text and Disabled Fill",
+              "members": [
+                { "cssProperty": "--cinder-text", "label": "Text" },
+                { "cssProperty": "--cinder-text-muted", "label": "Muted text" },
+                { "cssProperty": "--cinder-text-subtle", "label": "Subtle text" },
+                { "cssProperty": "--cinder-text-disabled", "label": "Disabled text" },
+                { "cssProperty": "--cinder-fill-disabled", "label": "Disabled fill" },
+                { "cssProperty": "--cinder-text-inverse", "label": "Inverse text" }
+              ]
+            },
+            {
+              "id": "borders",
+              "label": "Borders",
+              "members": [
+                { "cssProperty": "--cinder-border", "label": "Border" },
+                { "cssProperty": "--cinder-border-faint", "label": "Faint border" },
+                { "cssProperty": "--cinder-border-muted", "label": "Muted border" },
+                { "cssProperty": "--cinder-border-strong", "label": "Strong border" },
+                { "cssProperty": "--cinder-border-inverse", "label": "Inverse border" }
+              ]
+            },
+            {
+              "id": "focus",
+              "label": "Focus Ring",
+              "members": [
+                { "cssProperty": "--cinder-ring-offset-color", "label": "Ring offset color" },
+                { "cssProperty": "--cinder-ring-color", "label": "Ring color" },
+                { "cssProperty": "--cinder-ring-on-accent", "label": "Ring on accent" }
+              ]
+            },
+            {
+              "id": "overlay",
+              "label": "Overlay",
+              "members": [{ "cssProperty": "--cinder-overlay-backdrop", "label": "Backdrop" }]
+            },
+            {
+              "id": "scrollbars",
+              "label": "Scrollbars",
+              "members": [
+                { "cssProperty": "--cinder-scrollbar-track", "label": "Track" },
+                { "cssProperty": "--cinder-scrollbar-thumb", "label": "Thumb" },
+                { "cssProperty": "--cinder-scrollbar-thumb-hover", "label": "Thumb hover" }
+              ]
+            }
+          ]
+        }
+      }
     }
   },
   "modifiers": {
