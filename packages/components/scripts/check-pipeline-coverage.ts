@@ -266,10 +266,6 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'row) — `tokens:check` itself takes no `--check` flag. Not run standalone by name in any ' +
       'workflow — the write-mode invocation is a local developer/regeneration command.',
   },
-  'tokens:inventory': {
-    layers: ['unit-tests', 'main-green'],
-    reason: 'Member of lint:invariants with --check — prevents generated inventory drift.',
-  },
   'check:pipeline-coverage': {
     layers: ['unit-tests', 'main-green'],
     reason: 'This script. Appended to lint:invariants so it runs everywhere the invariants run.',

@@ -17,7 +17,7 @@ const TOKENS_BASE_PATH = join(import.meta.dir, 'tokens-base.css');
 
 function extractReducedMotionRootBlock(css: string): string {
   const reducedMotionMatch = css.match(
-    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root:not\(\[data-cinder-reduced-motion='false'\]\):not\(\[data-reduced-motion='off'\]\)\s*\{([\s\S]*?)\n\s*\}\s*\}/m,
+    /@media\s*\(prefers-reduced-motion:\s*reduce\)\s*\{\s*:root:not\(\[data-cinder-reduced-motion='false'\]\):not\(\[data-reduced-motion='off'\]\):not\(\s*\[data-reduced-motion='on'\]\s*\)\s*\{([\s\S]*?)\n\s*\}\s*\}/m,
   );
 
   if (!reducedMotionMatch?.[1]) {

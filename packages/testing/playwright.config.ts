@@ -67,20 +67,28 @@ export default defineConfig({
     {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
-      // The reduced-motion exit-transition test only belongs to the
-      // `chromium-reduced-motion` project below.
-      testIgnore: '**/overlay-reduced-motion-exit.playwright.ts',
+      // The reduced-motion exit-transition and cascade-precedence tests only
+      // belong to the `chromium-reduced-motion` project below.
+      testIgnore: [
+        '**/overlay-reduced-motion-exit.playwright.ts',
+        '**/reduced-motion-cascade-precedence.playwright.ts',
+      ],
     },
     // CIN-376: emulates `prefers-reduced-motion: reduce` at the browser-context
     // level (not per-test `themeContextOptions`/`contextOptions` overrides) so
     // exit-transition tests can assert every anchored overlay's
     // `AnchoredOverlayExitState`/`waitForTransitionCompletion` teardown still
     // unmounts immediately under reduced motion, not just under the default
-    // no-preference project. Scoped to its own test file via `testMatch` so it
-    // doesn't re-run the entire suite a second time.
+    // no-preference project. CIN-468's cascade-precedence test needs the same
+    // context-level emulation to prove which reduced-motion CSS block a real
+    // browser applies. Scoped to just these two test files via `testMatch` so
+    // it doesn't re-run the entire suite a second time.
     {
       name: 'chromium-reduced-motion',
-      testMatch: '**/overlay-reduced-motion-exit.playwright.ts',
+      testMatch: [
+        '**/overlay-reduced-motion-exit.playwright.ts',
+        '**/reduced-motion-cascade-precedence.playwright.ts',
+      ],
       use: {
         ...devices['Desktop Chrome'],
         contextOptions: { reducedMotion: 'reduce' },

@@ -932,7 +932,7 @@ ${lightDeclarations}
 }
 
 @media (prefers-reduced-motion: reduce) {
-  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) {
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
 ${reducedMotionDeclarations}
   }
 }
