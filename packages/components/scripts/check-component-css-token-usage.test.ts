@@ -18,16 +18,37 @@ import {
 } from './check-component-css-token-usage.ts';
 
 describe('parseGlobalTokens', () => {
-  test('collects LHS custom-property declarations', () => {
-    const css = ':root {\n  --cinder-space-4: 1rem;\n  --cinder-radius-md: 0.5rem;\n}';
-    const tokens = parseGlobalTokens(css);
+  function registry(entries: ReadonlyArray<{ cssProperty: string; public: boolean }>): string {
+    return JSON.stringify({ entries });
+  }
+
+  test('collects the public tokens the registry declares', () => {
+    const tokens = parseGlobalTokens(
+      registry([
+        { cssProperty: '--cinder-space-4', public: true },
+        { cssProperty: '--cinder-radius-md', public: true },
+      ]),
+    );
     expect(tokens.has('--cinder-space-4')).toBe(true);
     expect(tokens.has('--cinder-radius-md')).toBe(true);
   });
 
-  test('does not collect a var() reference as a declaration', () => {
-    const tokens = parseGlobalTokens('.x { color: var(--cinder-accent); }');
-    expect(tokens.has('--cinder-accent')).toBe(false);
+  // The distinction the old CSS scan could not make at all: a private token is
+  // declared and emitted like any other, but it is not a global a component may
+  // reference, so it must not count as one here.
+  test('excludes a private token even though the registry lists it', () => {
+    const tokens = parseGlobalTokens(
+      registry([
+        { cssProperty: '--cinder-accent', public: true },
+        { cssProperty: '--_cinder-internal-gap', public: false },
+      ]),
+    );
+    expect(tokens.has('--cinder-accent')).toBe(true);
+    expect(tokens.has('--_cinder-internal-gap')).toBe(false);
+  });
+
+  test('an empty registry yields no globals rather than throwing', () => {
+    expect(parseGlobalTokens(registry([])).size).toBe(0);
   });
 });
 

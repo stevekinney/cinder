@@ -217,6 +217,15 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',
   },
+  'tokens:privacy': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — same layer set as its siblings. Asserts the COMMITTED ' +
+      'registry advertises no private property as public. registry.ts enforces the same rule ' +
+      'while building the registry; this one guards the artifact that ships, so a generator ' +
+      'bug, a hand edit to registry.generated.json, or a bad merge fails here even though the ' +
+      'generator-side guard passed.',
+  },
   'tokens:validate': {
     layers: ['unit-tests', 'main-green'],
     reason:
