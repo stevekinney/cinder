@@ -507,7 +507,25 @@ export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEnt
   // including percent- and tilde-decoding for the latter -- reusing it here
   // keeps this the single place that turns a reference string into a dotted
   // token path, matching how the corpus is actually resolved.
-  const path = tokenPathFromReference(reference);
+  let path = tokenPathFromReference(reference);
+  // A property-FORM JSON Pointer whose last segment is literally `$value` (e.g.
+  // `#/dimension/hairline/$value`) names the referenced token's WHOLE value -- resolve.ts's own
+  // `resolveReference` special-cases a trailing `$value` segment the same way (see
+  // resolve.test.ts's "resolves a property-level JSON Pointer reference" case, which targets a
+  // whole dimension token via `#/dimension/hairline/$value`). `tokenPathFromReference` has no
+  // such special case -- it just dot-joins every segment -- so without stripping it here, the
+  // exact-match `baseIndex` lookup below misses the token entirely and this throws, even though
+  // `tokens:validate` accepts the identical reference. Gated on `#/` (pointer syntax): a curly
+  // alias `{a.b.$value}` is a literal dotted path through the corpus, not resolve.ts's pointer
+  // special case, so stripping it there would just as wrongly make the generator and the
+  // validator disagree the other way. Any OTHER terminal property segment (a composite member
+  // such as `/width`) names a PIECE of the token's value, not the whole token -- resolveAlias
+  // only knows how to emit `var(--property)` for a whole-token identity, so those are left to
+  // fail the lookup below with today's existing, clear error rather than being silently (and
+  // wrongly) treated as a whole-token alias.
+  if (reference.startsWith('#/') && path.endsWith('.$value')) {
+    path = path.slice(0, -'.$value'.length);
+  }
   const target = baseIndex.get(path);
   if (!target?.cssProperty) {
     throw new Error(
@@ -666,41 +684,83 @@ export async function buildTokensBaseCss(
     motionModifier.contexts['forced-reduced-motion']!,
   );
 
+  // For EACH override context, "the documents in scope" are exactly what `resolutionOrder`
+  // composes for it -- the base sets, then the theme document, then the motion document, in
+  // resolver order -- with the ONE other modifier this block doesn't name filled from its own
+  // declared default (`modifierValuesForContext`, the same default-fill `modifierValuesForCombo`
+  // already applies for the resolved-context snapshots). This single composed scope feeds BOTH
+  // `$extends` expansion just below (so an override's `$extends` can reach a foundation group
+  // that the override document alone would never contain) and nested-reference resolution
+  // further down (so a composite value's nested reference can see whichever other modifier's
+  // document is in scope, not just the base) -- the same scope `tokens:validate` resolves for the
+  // equivalent full combo, so the generator agrees with it in both places instead of composing
+  // documents differently for structure than for lookup.
+  const lightScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForContext(resolver, 'theme', 'light'),
+  );
+  const darkScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForContext(resolver, 'theme', 'dark'),
+  );
+  const reducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForContext(resolver, 'motion', 'reduced'),
+  );
+  const forcedReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForContext(resolver, 'motion', 'forced-reduced-motion'),
+  );
+
+  // `mergeAndExpandExtends(ownDocuments, scopeDocuments)` still merges and returns only the
+  // override's OWN documents (so this context's membership -- which tokens it actually overrides
+  // -- and declaration order are unchanged from before), but now looks up `$extends` TARGETS
+  // against the wider composed scope, so a theme or motion document's `$extends` can reach a
+  // foundation group.
   const lightOverrides = new Map<string, CorpusEntry>();
-  collectEntries(mergeAndExpandExtends(lightDocuments), '', undefined, lightOverrides);
+  collectEntries(
+    mergeAndExpandExtends(lightDocuments, lightScopeDocuments),
+    '',
+    undefined,
+    lightOverrides,
+  );
   const darkOverrides = new Map<string, CorpusEntry>();
-  collectEntries(mergeAndExpandExtends(darkDocuments), '', undefined, darkOverrides);
+  collectEntries(
+    mergeAndExpandExtends(darkDocuments, darkScopeDocuments),
+    '',
+    undefined,
+    darkOverrides,
+  );
   const reducedMotionOverrides = new Map<string, CorpusEntry>();
   collectEntries(
-    mergeAndExpandExtends(reducedMotionDocuments),
+    mergeAndExpandExtends(reducedMotionDocuments, reducedMotionScopeDocuments),
     '',
     undefined,
     reducedMotionOverrides,
   );
   const forcedReducedMotionOverrides = new Map<string, CorpusEntry>();
   collectEntries(
-    mergeAndExpandExtends(forcedReducedMotionDocuments),
+    mergeAndExpandExtends(forcedReducedMotionDocuments, forcedReducedMotionScopeDocuments),
     '',
     undefined,
     forcedReducedMotionOverrides,
   );
 
-  // A per-context resolver, each built from base + THAT context's own documents -- a nested
-  // reference inside a context's composite value may target a token the same context also
-  // overrides (a dark color whose component references another token `themes/dark.tokens.json`
-  // also overrides), and a resolver built from `baseDocuments` alone would substitute the
-  // base/foundation value instead of the override. `tokens:validate` resolves the combined
-  // foundation-plus-context documents, so this keeps the generator agreeing with it.
-  const lightResolveReferences = createValueResolver([...baseDocuments, ...lightDocuments]);
-  const darkResolveReferences = createValueResolver([...baseDocuments, ...darkDocuments]);
-  const reducedMotionResolveReferences = createValueResolver([
-    ...baseDocuments,
-    ...reducedMotionDocuments,
-  ]);
-  const forcedReducedMotionResolveReferences = createValueResolver([
-    ...baseDocuments,
-    ...forcedReducedMotionDocuments,
-  ]);
+  // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
+  // a nested reference inside a context's composite value may target a token that a DIFFERENT
+  // modifier's document overrides (a reduced-motion composite referencing a token the dark theme
+  // also overrides), and a resolver built from base-plus-this-context-alone would miss that
+  // override entirely and silently substitute the base/foundation value.
+  const lightResolveReferences = createValueResolver(lightScopeDocuments);
+  const darkResolveReferences = createValueResolver(darkScopeDocuments);
+  const reducedMotionResolveReferences = createValueResolver(reducedMotionScopeDocuments);
+  const forcedReducedMotionResolveReferences = createValueResolver(
+    forcedReducedMotionScopeDocuments,
+  );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
   const darkDeclarations = renderOverrideDeclarations(
@@ -816,33 +876,70 @@ export function documentsForResolutionOrder(
 }
 
 /**
- * The full modifier-value map for one `RESOLVED_CONTEXT_COMBO`: the combo's own named
- * modifiers (`theme`/`motion`), plus a value for every OTHER modifier the resolver declares.
- * `RESOLVED_CONTEXT_COMBOS` is deliberately not generalized to every modifier combination --
- * the set of published resolved contexts is a packaging decision (CIN-31), and the four named
- * snapshots stay an explicit list -- so a modifier the combo does not name is filled from that
- * modifier's own declared `default` context instead. A modifier with no declared default AND
- * not named by the combo is a genuine authoring gap (the combo can't say what to resolve): fail
- * with a clear, named error rather than letting `sourcesForEntry` look up
- * `contexts[undefined]` and throw an unhelpful one.
+ * The full modifier-value map when only SOME modifiers are named explicitly: every OTHER
+ * modifier the resolver declares is filled from its own declared `default` context. Shared by
+ * `modifierValuesForCombo` (a resolved-context snapshot, which names `theme` and `motion`
+ * together) and `modifierValuesForContext` (a single override block, which names only the one
+ * modifier it varies) so both describe "the rest of the corpus" identically. A modifier with no
+ * declared default AND not named by the caller is a genuine authoring gap -- the caller can't say
+ * what to resolve -- so this fails with a clear, named error rather than letting `sourcesForEntry`
+ * look up `contexts[undefined]` and throw an unhelpful one.
  */
-export function modifierValuesForCombo(
+function modifierValuesWithDefaults(
   resolver: ResolverDocument,
-  combo: ResolvedContextCombo,
+  named: Record<string, string>,
+  describeCaller: string,
 ): Record<string, string> {
-  const named: Record<string, string> = { theme: combo.theme, motion: combo.motion };
   const modifierValues: Record<string, string> = {};
   for (const modifierName of Object.keys(resolver.modifiers)) {
     const value = named[modifierName] ?? resolver.modifiers[modifierName]!.default;
     if (value === undefined) {
       throw new Error(
-        `Resolved-context combo "${combo.name}" does not name a value for modifier ` +
-          `"${modifierName}", and modifier "${modifierName}" has no declared default context.`,
+        `${describeCaller} does not name a value for modifier "${modifierName}", and modifier ` +
+          `"${modifierName}" has no declared default context.`,
       );
     }
     modifierValues[modifierName] = value;
   }
   return modifierValues;
+}
+
+/**
+ * The full modifier-value map for one `RESOLVED_CONTEXT_COMBO`: the combo's own named
+ * modifiers (`theme`/`motion`), plus a value for every OTHER modifier the resolver declares.
+ * `RESOLVED_CONTEXT_COMBOS` is deliberately not generalized to every modifier combination --
+ * the set of published resolved contexts is a packaging decision (CIN-31), and the four named
+ * snapshots stay an explicit list.
+ */
+export function modifierValuesForCombo(
+  resolver: ResolverDocument,
+  combo: ResolvedContextCombo,
+): Record<string, string> {
+  return modifierValuesWithDefaults(
+    resolver,
+    { theme: combo.theme, motion: combo.motion },
+    `Resolved-context combo "${combo.name}"`,
+  );
+}
+
+/**
+ * The full modifier-value map for building ONE override context in isolation -- e.g. the "dark"
+ * theme block or the "reduced" motion block in `tokens-base.css`, each of which varies a single
+ * modifier while every other modifier stays at its own declared default. This is the same
+ * default-fill `modifierValuesForCombo` applies for the resolved-context snapshots, so an
+ * override block's composed document scope and a snapshot's agree on what "the rest of the
+ * corpus" means whenever a block only varies one axis.
+ */
+export function modifierValuesForContext(
+  resolver: ResolverDocument,
+  modifierName: string,
+  contextName: string,
+): Record<string, string> {
+  return modifierValuesWithDefaults(
+    resolver,
+    { [modifierName]: contextName },
+    `Override context "${modifierName}.${contextName}"`,
+  );
 }
 
 export async function buildResolvedContexts(

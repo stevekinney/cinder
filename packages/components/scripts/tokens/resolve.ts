@@ -220,10 +220,24 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
  * `{a.b.c}` string means "emit `var(--other-property)`", not "inline a literal") can still get
  * `$extends` applied before walking the tree, the same way `resolveDocuments` and
  * `createValueResolver` do.
+ *
+ * `lookupDocuments` (defaults to `documents` itself) is where `$extends` TARGETS are looked up --
+ * distinct from `documents`, which is both what gets merged/mutated and what gets returned. A
+ * caller that must return only ITS OWN documents' tree (an override context, whose returned shape
+ * determines which tokens that context is considered to "define") but whose `$extends` may
+ * reference a group that lives only in a broader document set (e.g. a foundation group the
+ * override document never itself contains) passes that broader set as `lookupDocuments`. Own
+ * groups are collected AFTER (and so take precedence over) the lookup groups, so `resolveExtends`
+ * still mutates and returns the caller's own tree -- a target found only in `lookupDocuments`
+ * contributes members by being copied in, never by becoming part of the returned tree itself.
  */
-export function mergeAndExpandExtends(documents: TokenDocument[]): TokenDocument {
+export function mergeAndExpandExtends(
+  documents: TokenDocument[],
+  lookupDocuments: TokenDocument[] = documents,
+): TokenDocument {
   const merged = mergeDocuments(documents);
   const groups = new Map<string, TokenGroup>();
+  if (lookupDocuments !== documents) collectGroups(mergeDocuments(lookupDocuments), '', groups);
   collectGroups(merged, '', groups);
   for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
   return merged;

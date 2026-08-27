@@ -14,7 +14,7 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import { createValueResolver } from './resolve.ts';
+import { createValueResolver, resolveDocuments } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -919,5 +919,274 @@ describe('E3: $extends group inheritance is applied before entries are collected
       rootBlock!.match(/--test-inherited-swatch: oklch\(40% 0\.08 200\);/g) ?? []
     ).length;
     expect(swatchDeclarationCount).toBe(2);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Regression tests for the follow-up CIN-29 review round: two defects
+// introduced by the E1/E3 fixes above (each context composing its OWN
+// documents in isolation, for BOTH $extends expansion and nested-reference
+// resolution), plus one independent JSON-Pointer defect. None touch the real
+// corpus under src/tokens/, so a fix here can never change what
+// tokens:generate emits for the committed files.
+// ---------------------------------------------------------------------------
+
+describe("F1: an override context's $extends can reference a foundation group, not just its own document", () => {
+  function extendsAcrossDocumentsFixture() {
+    const baseDocument: TokenDocument = {
+      palette: {
+        $type: 'color',
+        accent: {
+          $value: { colorSpace: 'oklch', components: [0.4, 0.08, 200] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-palette-accent' } },
+        },
+      },
+      'alt-palette': {
+        $type: 'color',
+        accent: {
+          $value: { colorSpace: 'oklch', components: [0.7, 0.15, 30] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-alt-palette-accent' } },
+        },
+      },
+    };
+    const themeLightDocument: TokenDocument = {};
+    // Dark's own group is named "palette" -- matching foundation's own token path, so
+    // `renderOverrideDeclarations` finds foundation's cssProperty for it -- but `$extends` a
+    // DIFFERENT foundation group, "alt-palette". Naming it after its OWN group would make the
+    // `$extends` lookup find dark's own (still-expanding) group and report a circular reference
+    // instead of exercising the cross-document lookup this test is about.
+    const themeDarkDocument: TokenDocument = {
+      palette: { $extends: '{alt-palette}' },
+    };
+    const motionDefaultDocument: TokenDocument = {};
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'theme-light.json' }],
+            dark: [{ $ref: 'theme-dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', themeLightDocument],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', motionDefaultDocument],
+      ['motion-reduced.json', motionDefaultDocument],
+      ['motion-forced.json', motionDefaultDocument],
+    ]);
+
+    return { resolver, documentsByPath };
+  }
+
+  test("the dark block emits the extended group's member instead of generation throwing", async () => {
+    const { resolver, documentsByPath } = extendsAcrossDocumentsFixture();
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
+    expect(darkBlocks.length).toBe(2);
+    const darkBlock = darkBlocks[1]?.[1];
+    expect(darkBlock).toBeDefined();
+
+    // Dark's own "palette" group never defines "accent" itself -- it only reaches it through
+    // `$extends: "{alt-palette}"`, a group that lives in the FOUNDATION document, not dark's own.
+    // Pre-fix, dark's own document is expanded in isolation, so "alt-palette" is not a group
+    // `$extends` can find there, and generation throws before this assertion is ever reached.
+    expect(darkBlock).toContain('--test-palette-accent: oklch(70% 0.15 30);');
+  });
+});
+
+describe('F2: a nested reference inside a motion override resolves against the theme context too, not just the base', () => {
+  function motionNestedReferenceFixture() {
+    // A base "lightness" number and a base "composite" color whose lightness component is a
+    // NESTED reference to it. BOTH themes override "lightness" to the SAME new value (0.9) --
+    // the bug this isolates is that the reduced-motion resolver saw NO theme document AT ALL
+    // (not merely the wrong one), so making light and dark agree keeps the expected value the
+    // same however the "other axis" ends up getting composed, while still proving the fix: only
+    // seeing base-plus-motion resolves the nested reference to the untouched base value (0.3).
+    const baseDocument: TokenDocument = {
+      test: {
+        lightness: {
+          $type: 'number',
+          $value: 0.3,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-lightness' } },
+        },
+        composite: {
+          $type: 'color',
+          $value: { colorSpace: 'oklch', components: ['{test.lightness}', 0.1, 250] },
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-composite' } },
+        },
+      },
+    };
+    const themeLightDocument: TokenDocument = {
+      test: { lightness: { $type: 'number', $value: 0.9 } },
+    };
+    const themeDarkDocument: TokenDocument = {
+      test: { lightness: { $type: 'number', $value: 0.9 } },
+    };
+    const motionDefaultDocument: TokenDocument = {};
+    // "reduced" overrides ONLY "composite" -- it deliberately does NOT redefine "lightness"
+    // itself, so the nested `{test.lightness}` reference inside it can only resolve correctly by
+    // seeing a THEME document too, not by the motion context redefining lightness on its own.
+    const motionReducedDocument: TokenDocument = {
+      test: {
+        composite: {
+          $type: 'color',
+          $value: { colorSpace: 'oklch', components: ['{test.lightness}', 0.1, 250] },
+        },
+      },
+    };
+    const motionForcedDocument: TokenDocument = {};
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'theme-light.json' }],
+            dark: [{ $ref: 'theme-dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', themeLightDocument],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', motionDefaultDocument],
+      ['motion-reduced.json', motionReducedDocument],
+      ['motion-forced.json', motionForcedDocument],
+    ]);
+
+    return { resolver, documentsByPath };
+  }
+
+  test("the reduced-motion CSS block agrees with the generator's own dark+reduced resolved combo", async () => {
+    const { resolver, documentsByPath } = motionNestedReferenceFixture();
+
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    const mediaBlock = /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\{([^}]*)\}\s*\}/.exec(
+      css,
+    )?.[1];
+    expect(mediaBlock).toBeDefined();
+    const declaredValue = /--test-composite:\s*([^;]+);/.exec(mediaBlock!)?.[1];
+    expect(declaredValue).toBeDefined();
+
+    // The generator's OWN OTHER output for the exact combo the media block is theoretically
+    // standing in for (dark theme, reduced motion): resolve the same documents `tokens:validate`
+    // would resolve for that full combo (`documentsForResolutionOrder` + `resolveDocuments`, the
+    // SAME machinery `buildResolvedContexts` uses for the committed JSON snapshots), and
+    // serialize the fully-resolved value the same way `buildTokensBaseCss` does. Pre-fix, the CSS
+    // side bakes in the untouched FOUNDATION value (30%) because the resolver it used never saw
+    // either theme document; post-fix the two agree.
+    const combo = documentsForResolutionOrder(resolver, documentsByPath, {
+      theme: 'dark',
+      motion: 'reduced',
+    });
+    const resolved = resolveDocuments(combo);
+    const resolvedComposite = resolved['test.composite'];
+    expect(resolvedComposite).toBeDefined();
+    const expectedValue = serializeTypedValue('color', resolvedComposite!.$value, 'test.composite');
+
+    expect(declaredValue).toBe(expectedValue);
+    expect(declaredValue).not.toContain('30%');
+  });
+});
+
+describe('F3: a property-form JSON Pointer whose terminal segment is $value resolves like the whole-token alias it names', () => {
+  function hairlineBaseIndex(): Map<string, CorpusEntry> {
+    return new Map([
+      [
+        'dimension.hairline',
+        {
+          path: 'dimension.hairline',
+          value: { value: 1, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-hairline',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+  }
+
+  test('resolveAlias strips a trailing $value segment before the baseIndex lookup', () => {
+    // `resolve.test.ts`'s "resolves a property-level JSON Pointer reference into a composite
+    // token value" case accepts exactly this shape (`#/dimension/hairline/$value`) as a
+    // whole-token alias -- resolve.ts's own resolver special-cases a trailing `$value` segment
+    // the same way `{dimension.hairline}` would resolve. Pre-fix, `tokenPathFromReference` dot-joins
+    // every segment with no such special case, so the lookup below misses the token entirely.
+    expect(resolveAlias('#/dimension/hairline/$value', hairlineBaseIndex())).toBe(
+      'var(--test-hairline)',
+    );
+  });
+
+  test('a curly alias ending in .$value is a literal dotted path, not the pointer special case', () => {
+    // `{a.b.$value}` is not resolve.ts's pointer-form special case -- it is a literal dotted
+    // path through the corpus (an actual property named "$value" would be pathological, but the
+    // curly syntax has no notion of "the whole token" the way a trailing pointer segment does).
+    // Stripping it here would make the generator accept a shape the validator does not, the same
+    // class of generator/validator disagreement this fix exists to close. The path is looked up
+    // as literally "dimension.hairline.$value", which this baseIndex does not contain, so this
+    // still throws -- proving the fix is gated on `#/` pointer syntax, not a blanket strip.
+    expect(() => resolveAlias('{dimension.hairline.$value}', hairlineBaseIndex())).toThrow(
+      /does not resolve to a base token/,
+    );
+  });
+
+  test('a terminal composite-member segment (not $value) is left to fail the lookup, not silently reinterpreted', () => {
+    // `#/border/thin/width` names a PIECE of the "border.thin" token's value, not the whole
+    // token -- resolveAlias only knows how to emit `var(--property)` for a whole-token identity,
+    // so this deliberately still throws rather than being treated as an alias to "border.thin".
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'border.thin',
+        {
+          path: 'border.thin',
+          value: { color: '#000', width: { value: 1, unit: 'px' }, style: 'solid' },
+          type: 'border',
+          description: undefined,
+          cssProperty: '--test-border-thin',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+    expect(() => resolveAlias('#/border/thin/width', baseIndex)).toThrow(
+      /does not resolve to a base token/,
+    );
   });
 });
