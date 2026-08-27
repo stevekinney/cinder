@@ -215,6 +215,19 @@ function resolveExtends(
     // precedence rule across two independent document scopes, not a
     // one-line change, and nothing in the real corpus exercises it (no group
     // is `$deprecated` anywhere today).
+    // Known gap, tracked in CIN-476: this caches `effectiveExtendedDeprecated`
+    // onto `group.$deprecated` the first time `group` is resolved. If the
+    // EXTENDED group's own ancestor deprecation is itself only established
+    // through a SEPARATE `$extends` chain that hasn't been expanded yet
+    // (declaration order dependent, since `resolveExtends` runs per group in
+    // document key order), `effectiveGroupDeprecated` sees no deprecation
+    // yet, caches a wrong value (or `undefined`, or an ancestor's unrelated
+    // `false`), and the `=== undefined` guard above then refuses to update
+    // it once the extended chain is later expanded and gains its real value.
+    // Fixing it means resolving ancestor `$extends` chains in dependency
+    // order before this caching runs, or switching to lazy computation --
+    // deferred rather than reworked this late in review; nothing in the real
+    // corpus exercises it (no group is `$deprecated` anywhere today).
     const effectiveExtendedDeprecated = effectiveGroupDeprecated(extendedPath, groups);
     if (group.$deprecated === undefined && effectiveExtendedDeprecated !== undefined)
       group.$deprecated = effectiveExtendedDeprecated;

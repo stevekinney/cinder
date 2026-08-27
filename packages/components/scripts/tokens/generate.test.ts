@@ -1648,6 +1648,31 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
 
     expect(into.get('derived.gutter')?.deprecated).toBeUndefined();
   });
+
+  test('CIN-476 (known gap, not fixed here): declaration order determines whether an ancestor extends chain is resolved before it is cached', () => {
+    // "derived" (declared first) extends "outer.child" -- a plain nested
+    // group with no $extends of its own. "outer" (declared second) extends
+    // "legacy", which is where the real deprecation reason lives. Because
+    // resolveExtends processes groups in `groups.keys()` order (collectGroups's
+    // traversal order, which follows document declaration order), "derived"
+    // is resolved BEFORE "outer" -- effectiveGroupDeprecated walks up from
+    // "outer.child" through the not-yet-expanded "outer" (still undefined)
+    // to the document root's declared $deprecated: false, and caches that.
+    // Once "outer" is later expanded and gains "Legacy reason.", "derived"'s
+    // cached false is never revisited. This test PINS today's known-limited
+    // behavior (false, not "Legacy reason.") so CIN-476 landing is a
+    // deliberate, visible test change.
+    const entries = entriesFor([
+      {
+        $deprecated: false,
+        derived: { $extends: '{outer.child}' },
+        outer: { $extends: '{legacy}', child: { grandchild: { $value: 1 } } },
+        legacy: { $deprecated: 'Legacy reason.', marker: { $value: true } },
+      },
+    ]);
+
+    expect(entries.get('derived.grandchild')?.deprecated).toBe(false);
+  });
 });
 
 describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value', () => {
