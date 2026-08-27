@@ -8,7 +8,11 @@ const SURFACE_TOKEN_NAME = '--cinder-surface';
 // `packages/playground/src/shell-app/color-token-registry.ts`, which
 // `color-token-registry.test.ts` pins independently. Registering a token in the
 // panel changes both.
-const EXPECTED_COLOR_TOKEN_COUNT = 84;
+//
+// 84 -> 83 in CIN-33: `--cinder-color-accent-fg` was a pure alias of
+// `--cinder-accent-text` and folded into it, so the panel no longer lists the
+// same property in two groups. One token left the panel; none lost editability.
+const EXPECTED_COLOR_TOKEN_COUNT = 83;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
 const LIGHT_BULK_OVERRIDE = '#118833';
 const DARK_BULK_OVERRIDE = '#884422';
