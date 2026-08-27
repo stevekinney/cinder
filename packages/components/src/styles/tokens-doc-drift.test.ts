@@ -1,9 +1,16 @@
 /**
  * Drift test for docs/tokens.md.
  *
- * The doc is hand-maintained, so this test makes sure it stays in sync with
- * the actual `--cinder-*` declarations in tokens-base.css. It compares names
- * and authored values; CSS functions remain part of that exact contract.
+ * Since CIN-30, docs/tokens.md's token tables are GENERATED (see
+ * `generate-artifacts.ts`) from the DTCG corpus at `src/tokens/`, between
+ * `<!-- BEGIN/END GENERATED TOKEN TABLE -->` markers -- `tokens:generate
+ * -- --check` already fails on any drift between the committed doc and a
+ * fresh generation. This test's value-drift check reads the same corpus data
+ * the generator does (not `tokens-base.css`, and not by shelling out to the
+ * generator itself) as an independent, faster-to-diagnose cross-check: it
+ * fails with a clear per-token diff rather than the generator's file-level
+ * "drifted, regenerate" error. The other test in this file (focus-ring-policy
+ * and theming doc references) is unrelated to CIN-30 and unchanged.
  *
  * Test files may use `any` per project conventions.
  */
@@ -13,6 +20,14 @@ import { join } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
+import { loadCorpus, serializeEntryValue } from '../../scripts/tokens/generate.ts';
+import {
+  buildBaseDocuments,
+  buildBaseIndex,
+  buildTokenRegistryFromIndexes,
+  themeAwarePaths,
+} from '../../scripts/tokens/registry.ts';
+import { createValueResolver } from '../../scripts/tokens/resolve.ts';
 import { readRootTokenValues } from '../test/token-introspection.ts';
 
 const PACKAGE_ROOT = join(import.meta.dir, '..', '..');
@@ -21,6 +36,32 @@ const TOKENS_CSS = join(PACKAGE_ROOT, 'src', 'styles', 'tokens-base.css');
 const TOKENS_DOC = join(REPO_ROOT, 'docs', 'tokens.md');
 const FOCUS_RING_POLICY_DOC = join(REPO_ROOT, 'docs', 'focus-ring-policy.md');
 const THEMING_DOC = join(REPO_ROOT, 'docs', 'theming.md');
+
+/**
+ * The corpus's own view of "every base token's `:root` value", built the
+ * same way `generate-artifacts.ts` builds it for docs/tokens.md's "Default"
+ * column -- `buildBaseIndex` (Stage 4's `baseIndex`, factored out to
+ * `registry.ts`) plus a resolver over the same base documents, so a
+ * mismatch here means the doc and the corpus disagree, not that this test's
+ * own derivation differs from the generator's.
+ */
+async function readCorpusTokenValues(): Promise<Map<string, string>> {
+  const { resolver, documentsByPath } = await loadCorpus();
+  const baseIndex = buildBaseIndex(resolver, documentsByPath);
+  const baseDocuments = buildBaseDocuments(resolver, documentsByPath);
+  const resolveReferences = createValueResolver(baseDocuments);
+  const registry = buildTokenRegistryFromIndexes(
+    baseIndex,
+    themeAwarePaths(resolver, documentsByPath),
+  );
+
+  const values = new Map<string, string>();
+  for (const entry of registry.entries) {
+    const corpusEntry = baseIndex.get(entry.path)!;
+    values.set(entry.cssProperty, serializeEntryValue(corpusEntry, baseIndex, resolveReferences));
+  }
+  return values;
+}
 
 function normalizeTokenValue(value: string): string {
   let normalized = '';
@@ -69,29 +110,28 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
 }
 
 describe('docs/tokens.md drift', () => {
-  test('documents exactly the tokens declared in tokens-base.css', async () => {
-    const [css, doc] = await Promise.all([
-      readFile(TOKENS_CSS, 'utf8'),
+  test('documents exactly the tokens declared in the corpus', async () => {
+    const [corpusTokens, doc] = await Promise.all([
+      readCorpusTokenValues(),
       readFile(TOKENS_DOC, 'utf8'),
     ]);
 
-    const cssTokens = readRootTokenValues(css);
     const { duplicates, tokens: docTokens } = extractDocTokens(doc);
 
     // Sanity floor: a parser regression that silently returns a tiny set would
-    // otherwise show up as a confusing "missing from CSS: [137 tokens]" diff
+    // otherwise show up as a confusing "missing from corpus: [137 tokens]" diff
     // rather than a clear "the parser broke" signal. The real count sits well
     // above 100; 50 leaves room to delete tokens without lowering this floor.
-    expect(cssTokens.size).toBeGreaterThan(50);
+    expect(corpusTokens.size).toBeGreaterThan(50);
     expect(docTokens.size).toBeGreaterThan(50);
 
-    const missingFromDoc = [...cssTokens.keys()]
+    const missingFromDoc = [...corpusTokens.keys()]
       .filter((token) => !docTokens.has(token))
       .toSorted();
-    const missingFromCss = [...docTokens.keys()]
-      .filter((token) => !cssTokens.has(token))
+    const missingFromCorpus = [...docTokens.keys()]
+      .filter((token) => !corpusTokens.has(token))
       .toSorted();
-    const mismatchedValues = [...cssTokens]
+    const mismatchedValues = [...corpusTokens]
       .flatMap(([token, value]) => {
         const documented = docTokens.get(token);
         return documented === undefined || documented === normalizeTokenValue(value)
@@ -100,10 +140,10 @@ describe('docs/tokens.md drift', () => {
       })
       .toSorted();
 
-    expect({ duplicates, missingFromDoc, missingFromCss, mismatchedValues }).toEqual({
+    expect({ duplicates, missingFromDoc, missingFromCorpus, mismatchedValues }).toEqual({
       duplicates: [],
       missingFromDoc: [],
-      missingFromCss: [],
+      missingFromCorpus: [],
       mismatchedValues: [],
     });
   });
