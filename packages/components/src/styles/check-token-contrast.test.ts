@@ -557,6 +557,37 @@ describe('shipped CSS agrees with the resolved values these assertions use', () 
     expect(comparable.length).toBeGreaterThan(20);
   });
 
+  // Every `var()` in the stylesheet must point at a property the stylesheet
+  // itself declares.
+  //
+  // This is what closes the remaining hole in the allowlist below. That
+  // allowlist recognizes an alias or recipe as a legitimate SHAPE, which means
+  // a corrupted alias -- `light-dark(var(--wrong), oklch(...))` -- would be
+  // accepted as legitimately-shaped and excluded from the numeric comparison,
+  // while the contrast assertions kept reading the still-correct resolved JSON.
+  //
+  // Enumerating an expected shape per aliased token would also catch it, but at
+  // the cost of a hand-maintained list of every non-literal token -- precisely
+  // the kind of parallel inventory this stage exists to delete. A referential
+  // integrity check needs no list, cannot go stale, and catches a bad reference
+  // in ANY declaration rather than only in the ones someone remembered to
+  // enumerate.
+  it('every var() reference resolves to a property this stylesheet declares', () => {
+    const declared = new Set(
+      [...css.matchAll(/^\s*(--[a-zA-Z0-9_-]+)\s*:/gm)].map((match) => match[1]),
+    );
+    const referenced = [...css.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g)].map((match) => match[1]);
+
+    // Guards against the regexes silently matching nothing.
+    expect(declared.size).toBeGreaterThan(100);
+    expect(referenced.length).toBeGreaterThan(10);
+
+    const dangling = [...new Set(referenced)]
+      .filter((name) => !declared.has(name))
+      .sort((a, b) => String(a).localeCompare(String(b)));
+    expect(dangling).toEqual([]);
+  });
+
   // The skip-versus-fail distinction, pinned. A color token declared in the
   // stylesheet must be readable and structurally sound; if generation emitted
   // `var(...)`, dropped an arm, or left the value unterminated, the filter above
