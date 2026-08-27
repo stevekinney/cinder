@@ -224,10 +224,14 @@ function resolveReference(
     // A bare `#/$root` pointer (nothing after `$root`) names the document
     // root token's WHOLE identity, exactly like an ordinary whole-token
     // pointer with no trailing segments -- it must extract `$value`, not
-    // return the raw `DesignToken` object. Only an EXPLICIT `$value` segment
-    // (`#/$root/$value`, ...) should walk the `DesignToken` object itself.
+    // return the raw `DesignToken` object. An explicit reserved-property
+    // segment (`#/$root/$value`, `#/$root/$description`, ...) should walk the
+    // `DesignToken` object itself instead -- see the identical discrimination
+    // in the loop below for why any `$`-prefixed segment, not just `$value`,
+    // selects that base.
     const remainder = segments.slice(1);
-    const base = remainder[0] === '$value' ? resolvedToken : resolvedToken.$value;
+    const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
+    const base = usesTokenObjectBase ? resolvedToken : resolvedToken.$value;
     const propertyValue = getByPath(base, remainder);
     if (propertyValue === undefined)
       issue(reference, 'reference target $root has no requested property');
@@ -249,7 +253,17 @@ function resolveReference(
     // just below it; only an explicit `$value` segment walks the raw
     // `DesignToken` object.
     const remainder = targetsRootToken ? propertySegments.slice(1) : propertySegments;
-    const usesTokenObjectBase = reference.startsWith('#/') && remainder[0] === '$value';
+    // A remainder starting with ANY of the token's own reserved `$`-prefixed
+    // properties -- not just `$value` -- names something on the `DesignToken`
+    // object itself: `#/base/$description`, `#/base/$deprecated`,
+    // `#/base/$extensions/...` are all valid pointer targets alongside
+    // `#/base/$value/...`. A resolved `$value` payload never itself carries a
+    // `$`-prefixed key (DTCG values are plain objects, strings, numbers, or
+    // arrays), so this discriminates cleanly without a fixed allowlist.
+    const usesTokenObjectBase =
+      reference.startsWith('#/') &&
+      typeof remainder[0] === 'string' &&
+      remainder[0].startsWith('$');
     const propertyValue = getByPath(
       usesTokenObjectBase ? resolvedToken : resolvedToken.$value,
       remainder,
@@ -303,17 +317,23 @@ function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<str
 /**
  * The `tokens` index key a whole-token reference ultimately names, for type
  * inference below -- distinct from `tokenPathFromReference`'s plain dotted
- * join, which treats a trailing `$root` segment as one more path level. A
- * group's root token is indexed under the GROUP's own path (`collectTokens`
- * sets it at `prefix`, not `prefix.$root`), so `#/group/$root` and
- * `#/$root` need their `$root` segment stripped before the `tokens.get`
- * lookup, or it misses -- the same redirect `resolveReference`'s loop
- * applies to `targetsRootToken` above, factored out here since type
- * inference needs only the final indexed path, not a resolved value.
+ * join, which treats trailing `$value`/`$root` segments as ordinary path
+ * levels. A group's root token is indexed under the GROUP's own path
+ * (`collectTokens` sets it at `prefix`, not `prefix.$root`), so
+ * `#/group/$root` and `#/$root` need their `$root` segment stripped before
+ * the `tokens.get` lookup, or it misses -- the same redirect
+ * `resolveReference`'s loop applies to `targetsRootToken` above, factored out
+ * here since type inference needs only the final indexed path, not a
+ * resolved value. A trailing `$value` segment (`#/base/$value`,
+ * `#/group/$root/$value`, `#/$root/$value`) names the token's WHOLE value,
+ * not a nested property, and must be stripped FIRST -- otherwise
+ * `#/group/$root/$value` dot-joins to `group.$root.$value`, which ends in
+ * neither `$root` nor a bare `$root`, and the redirect below never fires.
  */
 function refTargetIndexPath(reference: string): string {
-  const path = tokenPathFromReference(reference);
+  let path = tokenPathFromReference(reference);
   if (!reference.startsWith('#/')) return path;
+  if (path.endsWith('.$value')) path = path.slice(0, -'.$value'.length);
   if (path === '$root') return '';
   return path.endsWith('.$root') ? path.slice(0, -'.$root'.length) : path;
 }

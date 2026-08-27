@@ -635,16 +635,34 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // resolver-internal `#/sets/<name>` reference rather than a token-document
   // path (see `validate-corpus.ts`'s `expandSetSources`/`expandContextSources`,
   // which resolve these into the referenced set's own documents). A set
-  // pulled in only this way -- never named directly in `resolutionOrder` --
-  // still contributes its documents, at the position of whatever references
-  // it, so it must NOT also be required in `resolutionOrder` itself below.
-  const internallyReferencedSetNames = new Set<string>();
-  function noteInternalSetReferences(sources: unknown): void {
+  // pulled in only through another SET -- never named directly in
+  // `resolutionOrder` -- still contributes its documents, at the position of
+  // whatever references it, so it must NOT also be required in
+  // `resolutionOrder` itself below. A set referenced only through a MODIFIER
+  // CONTEXT is different: `buildTokensBaseCss`/`buildBaseDocuments` build the
+  // base index exclusively from `resolutionOrder`'s set entries, and a CSS
+  // custom-property override has nothing to override without a base
+  // declaration -- so a set reachable ONLY via a modifier context, with no
+  // path into the base, is a validated-but-ungenerable shape, not a
+  // legitimate exemption. Only `setReferencedByAnotherSet` counts toward the
+  // resolutionOrder exemption; modifier-context references are tracked
+  // separately and checked below instead.
+  const setReferencedByAnotherSet = new Set<string>();
+  const setReferencedByModifierContext = new Map<string, string>();
+  function noteSetReferencedByAnotherSet(sources: unknown): void {
     if (!Array.isArray(sources)) return;
     for (const source of sources) {
       if (!isResolverReference(source)) continue;
       const target = resolutionOrderTarget(source['$ref']);
-      if (target?.kind === 'sets') internallyReferencedSetNames.add(target.name);
+      if (target?.kind === 'sets') setReferencedByAnotherSet.add(target.name);
+    }
+  }
+  function noteSetReferencedByModifierContext(sources: unknown, contextPath: string): void {
+    if (!Array.isArray(sources)) return;
+    for (const source of sources) {
+      if (!isResolverReference(source)) continue;
+      const target = resolutionOrderTarget(source['$ref']);
+      if (target?.kind === 'sets') setReferencedByModifierContext.set(target.name, contextPath);
     }
   }
 
@@ -662,7 +680,8 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
           `$.modifiers.${name}.contexts.${contextName}`,
           'context must be a non-empty array of $ref sources',
         );
-      else noteInternalSetReferences(sources);
+      else
+        noteSetReferencedByModifierContext(sources, `$.modifiers.${name}.contexts.${contextName}`);
     }
     if (
       modifier['default'] !== undefined &&
@@ -681,8 +700,9 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       !set['sources'].every(isResolverReference)
     )
       addIssue(issues, `$.sets.${name}`, 'set must have a non-empty array of $ref sources');
-    else noteInternalSetReferences(set['sources']);
+    else noteSetReferencedByAnotherSet(set['sources']);
   }
+  const internallyReferencedSetNames = setReferencedByAnotherSet;
 
   const resolutionOrderTargets = new Set<string>();
   for (const [index, entry] of document.resolutionOrder.entries()) {
@@ -715,6 +735,26 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   );
   if (unlistedTargets.length > 0)
     addIssue(issues, '$.resolutionOrder', 'must list every set and modifier exactly once');
+
+  // A set referenced only by a modifier context, with no path into the base
+  // (neither listed in resolutionOrder itself nor reachable through another
+  // set that is), has no base declaration for its tokens -- generation has
+  // nothing to override. Reject it here, at validation time, rather than
+  // letting it surface later as a confusing "no matching base token" error
+  // during CSS generation.
+  for (const [setName, contextPath] of setReferencedByModifierContext) {
+    const reachableFromBase =
+      resolutionOrderTargets.has(`sets/${setName}`) || setReferencedByAnotherSet.has(setName);
+    if (!reachableFromBase) {
+      addIssue(
+        issues,
+        contextPath,
+        `references set "${setName}", which has no path into the base ` +
+          '(not in resolutionOrder and not referenced by another set) -- ' +
+          'a modifier context can only override a base token, not introduce one',
+      );
+    }
+  }
 
   if (issues.length > 0) throw new TokenValidationError(issues);
 }

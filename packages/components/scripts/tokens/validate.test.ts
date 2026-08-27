@@ -611,24 +611,6 @@ describe('DTCG semantic validation', () => {
       }),
     ).not.toThrow();
 
-    // The same exemption applies when a modifier context, not a set, is what
-    // reaches `base` through the internal reference.
-    expect(() =>
-      validateResolverDocument({
-        version: '2025.10',
-        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
-        modifiers: {
-          theme: {
-            contexts: {
-              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
-              dark: [{ $ref: 'themes/dark.tokens.json' }],
-            },
-          },
-        },
-        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
-      }),
-    ).not.toThrow();
-
     // A set that no one references internally is still required, even when
     // other sets in the same document are internally referenced.
     expect(() =>
@@ -643,6 +625,71 @@ describe('DTCG semantic validation', () => {
         resolutionOrder: [{ $ref: '#/sets/extended' }],
       }),
     ).toThrow('must list every set and modifier exactly once');
+  });
+
+  test('rejects a set referenced only by a modifier context, with no path into the base', () => {
+    // A set reached through another SET is exempt from resolutionOrder
+    // (verified above) because it still contributes to the BASE via the
+    // referencing set's own expansion. A set reached ONLY through a modifier
+    // context is different: `buildTokensBaseCss`/`buildBaseDocuments` build
+    // the base index exclusively from `resolutionOrder`'s set entries, so a
+    // set with no base path has nothing for the override to override --
+    // generation would fail with "no matching base token" for a shape
+    // validation otherwise accepted as fine. This must be rejected here,
+    // clearly, rather than surfacing later as a confusing generation error.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+      }),
+    ).toThrow(/references set "base", which has no path into the base/);
+  });
+
+  test('accepts a set referenced by a modifier context when it also has a path into the base', () => {
+    // Same shape as the rejection above, but `base` is ALSO listed directly
+    // in resolutionOrder, giving it a real base declaration for the modifier
+    // context to override -- this is the legitimate version of the pattern.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+
+    // Also legitimate: `base` is reached from the base through another SET
+    // (`extended`), not listed directly, but a modifier context also
+    // references it internally -- `extended` gives it a base path.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }] },
+        },
+        modifiers: {
+          theme: { contexts: { light: [{ $ref: '#/sets/base' }] } },
+        },
+        resolutionOrder: [{ $ref: '#/sets/extended' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
   });
 
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {

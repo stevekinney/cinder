@@ -41,6 +41,26 @@ describe('DTCG resolver', () => {
     });
   });
 
+  test('resolves a $ref pointer into token metadata other than $value', () => {
+    // The earlier property-level fix only special-cased a remainder starting
+    // with `$value`; any other reserved token property ($description here,
+    // but the same applies to $deprecated/$extensions) fell through to
+    // looking inside `resolvedToken.$value`, where it doesn't exist.
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1, $description: 'the base token' },
+      copy: { $type: 'string', $ref: '#/base/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('the base token');
+  });
+
+  test('resolves a bare #/$root pointer into metadata other than $value', () => {
+    const resolved = resolveDocument({
+      $root: { $type: 'number', $value: 1, $description: 'the document root token' },
+      copy: { $type: 'string', $ref: '#/$root/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('the document root token');
+  });
+
   test('resolves JSON Pointer aliases', () => {
     const resolved = resolveDocument({
       group: { $type: 'number', base: { $value: 2 }, copy: { $value: '#/group/base' } },
@@ -228,6 +248,27 @@ describe('DTCG resolver', () => {
       third: { $ref: '#/second' },
     });
     expect(resolved['third']).toMatchObject({ $type: 'number', $value: 1 });
+  });
+
+  test('infers $type from the target of a $ref ending in a $value segment, with no own $type', () => {
+    // refTargetIndexPath (used for type inference) only stripped a trailing
+    // `$root` segment, not `$value` -- `#/base/$value` dot-joined to
+    // `base.$value`, which never matches the `tokens` index (`base` does),
+    // so a $ref token with no own $type and a $value-suffixed target
+    // resolved its VALUE correctly but silently ended up untyped.
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      copy: { $ref: '#/base/$value' },
+    });
+    expect(resolved['copy']).toMatchObject({ $type: 'number', $value: 1 });
+  });
+
+  test('infers $type from a $root target reached via a $value-suffixed $ref, with no own $type', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', $root: { $value: 1 } },
+      copy: { $ref: '#/group/$root/$value' },
+    });
+    expect(resolved['copy']).toMatchObject({ $type: 'number', $value: 1 });
   });
 
   test('resolves a property-level $ref pointing into a composite token', () => {

@@ -87,7 +87,13 @@ export function expandSetSources(
         reason: `cyclic set reference: ${[...visiting, setName].join(' -> ')}`,
       },
     ]);
-  const set = resolver.sets[setName];
+  // `Object.hasOwn` first: resolver set names are unrestricted, and `sets` is
+  // a normal-prototype object, so an unknown name that happens to collide
+  // with an inherited `Object.prototype` property (`constructor`,
+  // `toString`, ...) would otherwise return that inherited value instead of
+  // `undefined`, skipping the intended "unknown set" error and throwing a
+  // raw, confusing `TypeError` from `set.sources.flatMap` below instead.
+  const set = Object.hasOwn(resolver.sets, setName) ? resolver.sets[setName] : undefined;
   if (!set)
     throw new TokenValidationError([
       {
@@ -131,8 +137,17 @@ export function expandContextSources(
   modifierName: string,
   contextName: string,
 ): ResolverReference[] {
-  const modifier = resolver.modifiers[modifierName];
-  const sources = modifier?.contexts[contextName];
+  // Same `Object.hasOwn` guard as `expandSetSources` above, for the same
+  // reason: an unknown modifier/context name colliding with an inherited
+  // `Object.prototype` property must not silently resolve to that inherited
+  // value.
+  const modifier = Object.hasOwn(resolver.modifiers, modifierName)
+    ? resolver.modifiers[modifierName]
+    : undefined;
+  const sources =
+    modifier && Object.hasOwn(modifier.contexts, contextName)
+      ? modifier.contexts[contextName]
+      : undefined;
   if (!modifier || !sources)
     throw new TokenValidationError([
       {
