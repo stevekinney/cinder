@@ -474,8 +474,11 @@ const DOC_MARKER_PATTERN =
 function validateDocSections(registry: TokenRegistry): void {
   const allCssProperties = DOC_SECTIONS.flatMap((section) => section.cssProperties);
 
+  // Membership, not truthiness: `collectEntries` gives a document-level `$root`
+  // token the path "" (a shape `resolve.test.ts` supports), and an empty string is
+  // falsy, so a truthiness check would report a legitimately-present token absent.
   const unknown = allCssProperties.filter(
-    (cssProperty) => !registry.cssPropertyToPath[cssProperty],
+    (cssProperty) => !Object.hasOwn(registry.cssPropertyToPath, cssProperty),
   );
   if (unknown.length > 0) {
     throw new Error(
@@ -683,6 +686,7 @@ export function readPlaygroundColorTokenGroups(
       !isPlainRecord(rawGroup) ||
       typeof rawGroup['id'] !== 'string' ||
       typeof rawGroup['label'] !== 'string' ||
+      rawGroup['label'].trim() === '' ||
       !Array.isArray(rawGroup['members'])
     ) {
       throw new Error(
@@ -694,7 +698,8 @@ export function readPlaygroundColorTokenGroups(
       if (
         !isPlainRecord(rawMember) ||
         typeof rawMember['cssProperty'] !== 'string' ||
-        typeof rawMember['label'] !== 'string'
+        typeof rawMember['label'] !== 'string' ||
+        rawMember['label'].trim() === ''
       ) {
         throw new Error(
           `cinder.resolver.json's playgroundGroups[${groupIndex}].members[${memberIndex}] must be ` +
@@ -732,11 +737,13 @@ export function validatePlaygroundColorTokenGroups(
       if (seen.has(token.name)) duplicates.add(token.name);
       seen.add(token.name);
 
-      const path = registry.cssPropertyToPath[token.name];
-      if (!path) {
+      // Membership, not truthiness -- see validateDocSections: a document-level
+      // `$root` colour token resolves to the empty-string path.
+      if (!Object.hasOwn(registry.cssPropertyToPath, token.name)) {
         unknown.push(token.name);
         continue;
       }
+      const path = registry.cssPropertyToPath[token.name]!;
       if (entryByPath.get(path)?.category !== 'color') nonColor.push(token.name);
     }
   }

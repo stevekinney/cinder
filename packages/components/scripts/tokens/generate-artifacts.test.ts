@@ -22,11 +22,27 @@ import { describe, expect, test } from 'bun:test';
 import {
   type DocSection,
   type PlaygroundColorTokenGroup,
+  readPlaygroundColorTokenGroups,
   renderDocTable,
   validatePlaygroundColorTokenGroups,
 } from './generate-artifacts.ts';
 import type { CorpusEntry } from './generate.ts';
 import { buildTokenRegistryFromIndexes } from './registry.ts';
+import type { ResolverDocument } from './types.ts';
+
+function resolverWithExtensions(extensions: Record<string, unknown>): ResolverDocument {
+  return {
+    version: '2025.10',
+    sets: {
+      foundation: {
+        sources: [{ $ref: 'sets/foundation.tokens.json' }],
+        $extensions: { 'com.lostgradient.cinder': extensions },
+      },
+    },
+    modifiers: {},
+    resolutionOrder: [{ $ref: '#/sets/foundation' }],
+  } as ResolverDocument;
+}
 
 describe('B1: validatePlaygroundColorTokenGroups requires category: "color"', () => {
   test('rejects a valid-but-non-color cssProperty instead of waving it through', () => {
@@ -150,5 +166,63 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
     const rowLines = table.split('\n').filter((line) => line.includes('--test-token-cr'));
     expect(rowLines).toHaveLength(1);
     expect(rowLines[0]).toContain('Line one. Line two.');
+  });
+});
+
+describe('CIN-30 review round 2', () => {
+  function colorEntry(path: string, cssProperty: string): [string, CorpusEntry] {
+    return [
+      path,
+      {
+        path,
+        value: { colorSpace: 'oklch', components: [0.5, 0.1, 250] },
+        type: 'color',
+        description: undefined,
+        cssProperty,
+        cssRecipe: undefined,
+        public: true,
+        category: 'color',
+        component: undefined,
+        deprecated: undefined,
+      },
+    ];
+  }
+
+  test('a document-level $root token is found by membership, not truthiness', () => {
+    // `collectEntries` gives a document-level `$root` token the path "" -- a shape
+    // resolve.test.ts supports. An empty string is falsy, so the pre-fix
+    // `if (!path)` reported this legitimately-present token as unknown and threw
+    // "references cssProperties that are not in the corpus".
+    const baseIndex = new Map<string, CorpusEntry>([colorEntry('', '--test-root')]);
+    const registry = buildTokenRegistryFromIndexes(baseIndex, new Set<string>());
+
+    expect(registry.cssPropertyToPath['--test-root']).toBe('');
+
+    const groups: readonly PlaygroundColorTokenGroup[] = [
+      { id: 'roots', label: 'Roots', tokens: [{ name: '--test-root', label: 'Root' }] },
+    ];
+    expect(() => validatePlaygroundColorTokenGroups(groups, registry)).not.toThrow();
+  });
+
+  test('a blank or whitespace-only label is rejected rather than reaching the UI', () => {
+    // Pre-fix these passed a bare `typeof === "string"` check and were emitted into
+    // the generated registry, leaving a nameless section or colour control.
+    const withBlankGroupLabel = {
+      playgroundGroups: [
+        { id: 'g', label: '   ', members: [{ cssProperty: '--test-accent', label: 'Accent' }] },
+      ],
+    };
+    expect(() =>
+      readPlaygroundColorTokenGroups(resolverWithExtensions(withBlankGroupLabel)),
+    ).toThrow();
+
+    const withBlankMemberLabel = {
+      playgroundGroups: [
+        { id: 'g', label: 'Group', members: [{ cssProperty: '--test-accent', label: '' }] },
+      ],
+    };
+    expect(() =>
+      readPlaygroundColorTokenGroups(resolverWithExtensions(withBlankMemberLabel)),
+    ).toThrow();
   });
 });

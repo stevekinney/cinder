@@ -100,7 +100,11 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // prose (e.g. "override `--cinder-accent` to re-derive both") don't count.
   const tokens = new Map<string, string>();
   const duplicates: string[] = [];
-  const rowPattern = /^\|\s*`(--cinder-[a-z0-9-]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
+  // Matches internal `--_cinder-*` tokens as well as public `--cinder-*` ones:
+  // the corpus side of this comparison reads every registry entry, and the docs
+  // generator emits a row for each, so a narrower pattern here would report a
+  // correctly generated internal token as missing from the doc.
+  const rowPattern = /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
     if (!match[1] || !match[2]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
