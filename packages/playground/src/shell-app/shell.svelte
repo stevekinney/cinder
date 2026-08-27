@@ -15,6 +15,7 @@
    */
   import { Button } from '@lostgradient/cinder/button';
   import Palette from 'lucide-svelte/icons/palette';
+  import Table from 'lucide-svelte/icons/table';
   import type { Component } from 'svelte';
 
   import ComponentPage from '../component-page.svelte';
@@ -33,11 +34,17 @@
   /** Accessible name of the panel trigger; also the focus-restoration hook. */
   const COLOR_PANEL_LABEL = 'Color token panel';
 
+  /** Accessible name of the inspector trigger; also its focus-restoration hook. */
+  const INSPECTOR_LABEL = 'Token inspector';
+
   let isColorPanelOpen = $state(false);
   type ColorTokenPanelModule = {
     default: Component<{ onClose: () => void }>;
   };
   let colorTokenPanelModule = $state<Promise<ColorTokenPanelModule> | null>(null);
+
+  let isInspectorOpen = $state(false);
+  let inspectorModule = $state<Promise<ColorTokenPanelModule> | null>(null);
 
   $effect(() => {
     store.applyActiveColorTokenOverridesToDocument(document);
@@ -65,6 +72,22 @@
       if (event.key !== 'Escape') return;
       if (isColorTokenPickerEscape(event)) return;
       closeColorPanel();
+    };
+
+    window.addEventListener('keydown', onKeydown);
+    return () => window.removeEventListener('keydown', onKeydown);
+  });
+
+  /*
+   * The inspector is read-only, so it has no picker popover to absorb the first
+   * Escape the way the colour panel does — one press closes it.
+   */
+  $effect(() => {
+    if (!isInspectorOpen) return;
+
+    const onKeydown = (event: KeyboardEvent): void => {
+      if (event.key !== 'Escape') return;
+      closeInspector();
     };
 
     window.addEventListener('keydown', onKeydown);
@@ -99,6 +122,37 @@
     isColorPanelOpen = true;
   }
 
+  function closeInspector(): void {
+    isInspectorOpen = false;
+    requestAnimationFrame(() => {
+      document.querySelector<HTMLElement>(`button[aria-label="${INSPECTOR_LABEL}"]`)?.focus();
+    });
+  }
+
+  async function toggleInspector(): Promise<void> {
+    if (isInspectorOpen) {
+      closeInspector();
+      return;
+    }
+    try {
+      inspectorModule ??= import('./token-inspector-panel.svelte');
+      await inspectorModule;
+    } catch (error) {
+      inspectorModule = null;
+      console.error('[cinder playground] failed to load the token inspector:', error);
+      return;
+    }
+    isInspectorOpen = true;
+  }
+
+  function getInspectorModule(): Promise<ColorTokenPanelModule> {
+    if (inspectorModule === null) {
+      throw new Error('Token inspector module was requested before loading.');
+    }
+
+    return inspectorModule;
+  }
+
   function getColorTokenPanelModule(): Promise<ColorTokenPanelModule> {
     if (colorTokenPanelModule === null) {
       throw new Error('Color token panel module was requested before loading.');
@@ -126,6 +180,18 @@
     >
       <Palette size={17} strokeWidth={1.5} aria-hidden="true" />
     </Button>
+    <Button
+      variant="ghost"
+      size="sm"
+      iconOnly
+      aria-label={INSPECTOR_LABEL}
+      {...isInspectorOpen ? { 'aria-controls': 'token-inspector-panel' } : {}}
+      aria-expanded={isInspectorOpen}
+      data-testid="token-inspector-toggle"
+      onclick={() => void toggleInspector()}
+    >
+      <Table size={17} strokeWidth={1.5} aria-hidden="true" />
+    </Button>
   {/snippet}
 
   {#snippet overlays()}
@@ -133,6 +199,12 @@
       {#await getColorTokenPanelModule() then module}
         {@const ColorTokenPanel = module.default}
         <ColorTokenPanel onClose={closeColorPanel} />
+      {/await}
+    {/if}
+    {#if isInspectorOpen}
+      {#await getInspectorModule() then module}
+        {@const TokenInspectorPanel = module.default}
+        <TokenInspectorPanel onClose={closeInspector} />
       {/await}
     {/if}
   {/snippet}

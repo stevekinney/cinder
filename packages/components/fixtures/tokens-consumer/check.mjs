@@ -22,9 +22,16 @@
  *   3. The registry module's runtime data agrees with the index and with the
  *      resolved contexts, so the artifacts are internally consistent rather
  *      than merely present.
+ *   4. (CIN-34) The generated CSS ships too, and declares every custom property
+ *      the registry advertises. That makes this fixture cover all FOUR artifact
+ *      types a consumer can reach for — generated CSS, unresolved token JSON,
+ *      resolved token JSON, and registry types — rather than the JSON three.
  */
 
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
+import { dirname, resolve as resolvePath } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import tokenIndex from '@lostgradient/cinder/tokens' with { type: 'json' };
 import resolver from '@lostgradient/cinder/tokens/resolver' with { type: 'json' };
@@ -122,7 +129,56 @@ for (const [name, context] of RESOLVED_CONTEXTS) {
   }
 }
 
+/**
+ * The fourth artifact type: the generated stylesheet.
+ *
+ * Node cannot `import` CSS, so the subpath is resolved and the file read. That
+ * still proves the thing that matters — that `./styles/tokens` resolves from a
+ * real install of the packed tarball, which is exactly the failure mode this
+ * fixture exists for (an `exports` entry pointing at a path `files` excludes).
+ *
+ * `tokens.css` is an aggregator of `@import`s, so the declarations live in the
+ * files it pulls in; reading only the entry would assert nothing about tokens.
+ */
+function readCssGraph(specifier) {
+  const entry = fileURLToPath(import.meta.resolve(specifier));
+  const seen = new Set();
+  const chunks = [];
+
+  const visit = (file) => {
+    if (seen.has(file)) return;
+    seen.add(file);
+    const source = readFileSync(file, 'utf8');
+    chunks.push(source);
+    for (const match of source.matchAll(/@import\s+['"]([^'"]+)['"]/g)) {
+      const target = match[1];
+      // Only relative imports are part of the package's own graph.
+      if (target.startsWith('.')) visit(resolvePath(dirname(file), target));
+    }
+  };
+
+  visit(entry);
+  return { css: chunks.join('\n'), files: seen.size };
+}
+
+const { css: tokenCss, files: cssFileCount } = readCssGraph('@lostgradient/cinder/styles/tokens');
+assert.ok(tokenCss.length > 0, 'the generated token stylesheet is not empty');
+
+const declaredProperties = new Set(
+  [...tokenCss.matchAll(/(--cinder-[a-z0-9-]+)\s*:/g)].map((match) => match[1]),
+);
+const advertised = TOKEN_REGISTRY.entries.filter((entry) => entry.public);
+const undeclared = advertised
+  .map((entry) => entry.cssProperty)
+  .filter((property) => !declaredProperties.has(property));
+assert.deepEqual(
+  undeclared,
+  [],
+  'every public token the registry advertises is declared in the shipped CSS',
+);
+
 console.log(
   `tokens-consumer — ok: ${TOKEN_REGISTRY.entries.length} tokens across ` +
-    `${RESOLVED_CONTEXTS.length} resolved contexts, ${tokenIndex.sources.length} source documents.`,
+    `${RESOLVED_CONTEXTS.length} resolved contexts, ${tokenIndex.sources.length} source documents, ` +
+    `${advertised.length} public properties declared across ${cssFileCount} stylesheet(s).`,
 );
