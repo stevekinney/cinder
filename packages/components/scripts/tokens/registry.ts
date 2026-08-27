@@ -23,12 +23,13 @@
  */
 
 import {
-  type CorpusEntry,
+  assertUniqueCssProperties,
   collectEntries,
   documentsForResolutionOrder,
   loadCorpus,
   modifierValuesForContext,
   requireDocument,
+  type CorpusEntry,
 } from './generate.ts';
 import { mergeAndExpandExtends } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
@@ -58,8 +59,28 @@ export type TokenRegistry = {
   entries: readonly TokenRegistryEntry[];
   /** Token path -> CSS custom property. */
   pathToCssProperty: Readonly<Record<string, string>>;
-  /** CSS custom property -> token path (the reverse of {@link TokenRegistry.pathToCssProperty}). */
+  /**
+   * CSS custom property -> a single CANONICAL token path (deterministic --
+   * the first path to claim the property in corpus traversal order, never
+   * "whichever happened to be assigned last"). The reverse of
+   * {@link TokenRegistry.pathToCssProperty}, but not always its exact
+   * inverse: `$extends` inheritance can legitimately produce two token paths
+   * for one `cssProperty` (the extending group inherits the member, and its
+   * `cssProperty`, verbatim -- `assertUniqueCssProperties` in `generate.ts`
+   * permits this specific case because both paths emit an identical
+   * declaration). When that happens, this map still returns exactly one
+   * path so the common "what token backs this CSS property" lookup stays
+   * simple; see {@link TokenRegistry.cssPropertyToPaths} for the full list.
+   */
   cssPropertyToPath: Readonly<Record<string, string>>;
+  /**
+   * CSS custom property -> every token path that claims it, in corpus
+   * traversal order (length 1 in the overwhelming common case; length > 1
+   * only for the `$extends`-inherited-verbatim case described above).
+   * `cssPropertyToPaths[property][0]` always equals
+   * `cssPropertyToPath[property]`.
+   */
+  cssPropertyToPaths: Readonly<Record<string, readonly string[]>>;
   /** Category name -> the token paths in that category, in corpus traversal order. */
   byCategory: Readonly<Record<string, readonly string[]>>;
   /** Component name -> the token paths scoped to that component, in corpus traversal order. */
@@ -94,6 +115,17 @@ export function buildBaseDocuments(
  * orders, `$extends` already expanded) -- the exact same construction
  * `buildTokensBaseCss` performs for `baseIndex`, factored out here so the
  * registry and `tokens-base.css` generation can never structurally diverge.
+ *
+ * Also enforces the same `assertUniqueCssProperties` invariant
+ * `buildTokensBaseCss` enforces before it ever emits CSS. This module is a
+ * shared entry point -- `generate-artifacts.ts` (the `tokens:generate` CLI,
+ * which already runs `buildTokensBaseCss` first) is only one caller; a test,
+ * or a future CIN-31/32/34 consumer, can call `buildBaseIndex` directly
+ * without going through `tokens:generate` at all, and would otherwise accept
+ * a conflicting `cssProperty` mapping that CSS generation would have
+ * rejected -- producing an ambiguous `cssPropertyToPath` (see
+ * {@link buildTokenRegistryFromIndexes}) on a last-write-wins basis with no
+ * error.
  */
 export function buildBaseIndex(
   resolver: ResolverDocument,
@@ -103,6 +135,7 @@ export function buildBaseIndex(
   const mergedBase = mergeAndExpandExtends(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
+  assertUniqueCssProperties(baseIndex);
   return baseIndex;
 }
 
@@ -147,10 +180,21 @@ export function buildTokenRegistryFromIndexes(
   themeAware: ReadonlySet<string>,
 ): TokenRegistry {
   const entries: TokenRegistryEntry[] = [];
-  const pathToCssProperty: Record<string, string> = {};
-  const cssPropertyToPath: Record<string, string> = {};
-  const byCategory: Record<string, string[]> = {};
-  const byComponent: Record<string, string[]> = {};
+  // Every string-keyed index below is built with `Object.create(null)` rather
+  // than an object literal. A token path or a free-form `category`/`component`
+  // extension value can legitimately be `__proto__` (`resolve.test.ts` asserts
+  // this is a supported token path), and assigning into an ordinary object
+  // under that key hits the inherited prototype setter instead of creating an
+  // own property: the entry silently vanishes from `JSON.stringify` output,
+  // a lookup returns `Object.prototype` instead of `undefined`, and a later
+  // `(byCategory[entry.category] ??= []).push(...)` throws because
+  // `Object.prototype` has no `.push`. `Object.create(null)` sidesteps all of
+  // that -- every key becomes a real own property, `__proto__` included.
+  const pathToCssProperty: Record<string, string> = Object.create(null);
+  const cssPropertyToPath: Record<string, string> = Object.create(null);
+  const cssPropertyToPaths: Record<string, string[]> = Object.create(null);
+  const byCategory: Record<string, string[]> = Object.create(null);
+  const byComponent: Record<string, string[]> = Object.create(null);
 
   for (const entry of baseIndex.values()) {
     if (!entry.cssProperty) {
@@ -173,18 +217,34 @@ export function buildTokenRegistryFromIndexes(
     entries.push(registryEntry);
 
     pathToCssProperty[entry.path] = entry.cssProperty;
-    // A cssProperty may legitimately be claimed by more than one path only when
-    // `$extends` inheritance produces two paths for one identical declaration
-    // (see generate.ts's `assertUniqueCssProperties`, which `tokens:generate`
-    // already runs before this registry is ever built) -- so the LAST path
-    // to claim a property here is interchangeable with any other claimant.
-    cssPropertyToPath[entry.cssProperty] = entry.path;
+
+    // A cssProperty may legitimately be claimed by more than one path only
+    // when `$extends` inheritance produces two paths for one identical
+    // declaration (see generate.ts's `assertUniqueCssProperties`, which
+    // `buildBaseIndex` above already runs before any registry is built from
+    // its output -- conflicting, non-identical claims never reach this loop).
+    // `cssPropertyToPath` keeps the FIRST path to claim a property
+    // (deterministic corpus-traversal order) as the canonical answer, rather
+    // than last-write-wins, so the common "one token per property" lookup is
+    // stable; `cssPropertyToPaths` records every claimant for a caller that
+    // needs the full set.
+    if (!(entry.cssProperty in cssPropertyToPath)) {
+      cssPropertyToPath[entry.cssProperty] = entry.path;
+    }
+    (cssPropertyToPaths[entry.cssProperty] ??= []).push(entry.path);
 
     if (entry.category) (byCategory[entry.category] ??= []).push(entry.path);
     if (entry.component) (byComponent[entry.component] ??= []).push(entry.path);
   }
 
-  return { entries, pathToCssProperty, cssPropertyToPath, byCategory, byComponent };
+  return {
+    entries,
+    pathToCssProperty,
+    cssPropertyToPath,
+    cssPropertyToPaths,
+    byCategory,
+    byComponent,
+  };
 }
 
 /** Loads the corpus from disk and builds the {@link TokenRegistry}. */

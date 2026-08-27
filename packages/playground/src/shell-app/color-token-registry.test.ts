@@ -153,16 +153,19 @@ const TOKENS_BASE_PATH = join(
 
 describe('color token registry', () => {
   /**
-   * `COLOR_TOKEN_GROUPS` is generated (CIN-30) from a curated list in
-   * `generate-artifacts.ts`, so a hardcoded `toHaveLength(84)` and a literal
-   * group-id array here would need a hand-edit on every corpus change with no
-   * actual protective value -- the ONLY source for either number is the same
-   * generated data this test would be comparing it against. Structural
-   * invariants over that generated data (no duplicate token across groups, no
-   * duplicate/empty group, the derived flat list actually matches the
-   * generated groups) stay meaningful without ever needing a bump: they catch
-   * a broken generator or a bad hand-edit to the curation list, which a
-   * hardcoded count could not.
+   * `COLOR_TOKEN_GROUPS` is generated (CIN-30) from the corpus itself --
+   * `cinder.resolver.json`'s foundation set's
+   * `$extensions["com.lostgradient.cinder"].playgroundGroups` -- not from a
+   * curated list hand-maintained in `generate-artifacts.ts` (see that file's
+   * `readPlaygroundColorTokenGroups`). A hardcoded `toHaveLength(84)` and a
+   * literal group-id array here would need a hand-edit on every corpus
+   * change with no actual protective value -- the ONLY source for either
+   * number is the same generated data this test would be comparing it
+   * against. Structural invariants over that generated data (no duplicate
+   * token across groups, no duplicate/empty group, the derived flat list
+   * actually matches the generated groups) stay meaningful without ever
+   * needing a bump: they catch a broken generator or a bad hand-edit to the
+   * curation list, which a hardcoded count could not.
    */
   test('contains a well-formed, non-trivial global color-token inventory', () => {
     expect(COLOR_TOKEN_GROUPS.length).toBeGreaterThan(0);

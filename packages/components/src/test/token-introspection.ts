@@ -45,18 +45,25 @@ export function extractRootBlock(css: string): string {
 }
 
 /**
- * Returns the set of `--cinder-*` custom property names declared directly in
- * the top-level `:root { ... }` block of a token stylesheet (see
- * {@link extractRootBlock}). Comments are inherently excluded — PostCSS
- * parses them as separate nodes, not declarations — so a
- * `/* --cinder-future: reserved *\/` aside can never be mistaken for a real
- * declaration.
+ * Returns the set of `--cinder-*` AND `--_cinder-*` custom property names
+ * declared directly in the top-level `:root { ... }` block of a token
+ * stylesheet (see {@link extractRootBlock}). Comments are inherently
+ * excluded — PostCSS parses them as separate nodes, not declarations — so
+ * a `/* --cinder-future: reserved *\/` aside can never be mistaken for a
+ * real declaration.
  */
 export function readRootTokenNames(css: string): Set<string> {
   return new Set(readRootTokenValues(css).keys());
 }
 
-/** Returns authored `--cinder-*` values from the top-level `:root` block. */
+/**
+ * Returns authored `--cinder-*` AND `--_cinder-*` values from the top-level
+ * `:root` block. Both prefixes are in scope — `--_cinder-*` is
+ * docs/tokens.md's own stated internal-token namespace (its intro:
+ * "Internal-only custom properties use `--_cinder-*`"), so a completeness
+ * check built on this helper (`completeness.test.ts`) must see internal
+ * declarations too, not just the public `--cinder-*` surface.
+ */
 export function readRootTokenValues(css: string): Map<string, string> {
   const root = parse(css);
   const values = new Map<string, string>();
@@ -67,7 +74,10 @@ export function readRootTokenValues(css: string): Map<string, string> {
     found = true;
 
     for (const node of rule.nodes) {
-      if (node.type === 'decl' && node.prop.startsWith('--cinder-')) {
+      if (
+        node.type === 'decl' &&
+        (node.prop.startsWith('--cinder-') || node.prop.startsWith('--_cinder-'))
+      ) {
         values.set(node.prop, node.value);
       }
     }

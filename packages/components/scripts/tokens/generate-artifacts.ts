@@ -87,7 +87,7 @@ const TYPESCRIPT_PLUGINS = [typescriptPlugin, estreePlugin, babelPlugin];
  * (below) fails `tokens:generate` loudly if a corpus token is left out, listed
  * twice, or a section here has no matching marker in docs/tokens.md.
  */
-type DocSection = { slug: string; heading: string; cssProperties: readonly string[] };
+export type DocSection = { slug: string; heading: string; cssProperties: readonly string[] };
 
 const DOC_SECTIONS: readonly DocSection[] = [
   {
@@ -508,7 +508,23 @@ function validateDocSections(registry: TokenRegistry): void {
   }
 }
 
-async function renderDocTable(
+/**
+ * Normalizes a `$description` for a single Markdown table cell. Sanitization
+ * elsewhere in this function only escapes `|`, which is not enough on its
+ * own: an embedded newline is interpolated straight into a `| ... | ... |`
+ * table row, and everything after it parses as new Markdown outside that
+ * row -- silently truncating or structurally breaking the generated table.
+ * Collapsing every run of whitespace containing a newline (any of `\n`,
+ * `\r\n`, or `\r`) to a single space keeps the description on one line
+ * without otherwise touching normal inline whitespace, and `.trim()` drops a
+ * leading/trailing collapse left by a description that opens or closes with
+ * a line break.
+ */
+function normalizeDescriptionForTable(description: string): string {
+  return description.replaceAll(/\s*[\r\n]\s*/g, ' ').trim();
+}
+
+export async function renderDocTable(
   section: DocSection,
   baseIndex: Map<string, CorpusEntry>,
   resolveReferences: ValueResolver,
@@ -524,7 +540,10 @@ async function renderDocTable(
       );
     }
     const value = serializeEntryValue(entry, baseIndex, resolveReferences);
-    const description = (entry.description ?? '').replaceAll('|', '\\|');
+    const description = normalizeDescriptionForTable(entry.description ?? '').replaceAll(
+      '|',
+      '\\|',
+    );
     return `| \`${cssProperty}\` | \`${value}\` | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
@@ -555,6 +574,19 @@ export async function buildTokensDocMarkdown(
     const slug = match[1];
     if (slug === undefined) continue;
     const start = match.index;
+    // `RegExpMatchArray.index` is typed `number | undefined` because the type
+    // covers `String.prototype.match` with a non-global pattern (which can
+    // return `null` overall, but TypeScript still carries the optional
+    // modifier through this shared array type). Every match here comes from
+    // `matchAll`, which always sets `index` -- but that guarantee lives in
+    // the DOM/ECMAScript spec, not in this array's type, so a bare `!`
+    // would assert past a real (if here unreachable) code path instead of
+    // documenting why it can't happen.
+    if (start === undefined) {
+      throw new Error(
+        `Unexpected match with no index while scanning docs/tokens.md for generated-table markers.`,
+      );
+    }
     const end = start + match[0].length;
     const section = sectionsBySlug.get(slug);
     if (!section) {
@@ -598,8 +630,8 @@ export async function buildTokensDocMarkdown(
 // packages/playground/src/shell-app/color-token-registry.generated.ts
 // ---------------------------------------------------------------------------
 
-type PlaygroundColorToken = { name: string; label: string };
-type PlaygroundColorTokenGroup = {
+export type PlaygroundColorToken = { name: string; label: string };
+export type PlaygroundColorTokenGroup = {
   id: string;
   label: string;
   tokens: readonly PlaygroundColorToken[];
@@ -631,7 +663,7 @@ function isPlainRecord(value: unknown): value is Record<string, unknown> {
  * separately checks the referenced `cssProperty`s are real, current corpus
  * tokens.
  */
-function readPlaygroundColorTokenGroups(
+export function readPlaygroundColorTokenGroups(
   resolver: ResolverDocument,
 ): readonly PlaygroundColorTokenGroup[] {
   const foundationSet = resolver.sets['foundation'];
@@ -677,28 +709,47 @@ function readPlaygroundColorTokenGroups(
 
 /**
  * Every `playgroundGroups` member's `cssProperty` must resolve to a real
- * corpus token and must not be listed twice -- protects the corpus-authored
- * curation against a typo or a stale reference left behind by a token rename
- * or removal.
+ * corpus token, must not be listed twice, and must be a `category: "color"`
+ * token -- protects the corpus-authored curation against a typo or a stale
+ * reference left behind by a token rename or removal, AND against a
+ * valid-but-wrong reference like `--cinder-space-4`: that cssProperty exists
+ * in the corpus, so an existence-only check waves it through, the generated
+ * color panel then offers a color picker for a spacing property, and
+ * `applyColorTokenOverridesToDocument()` applies whatever the user picks
+ * there via `style`.
  */
-function validatePlaygroundColorTokenGroups(
+export function validatePlaygroundColorTokenGroups(
   groups: readonly PlaygroundColorTokenGroup[],
   registry: TokenRegistry,
 ): void {
+  const entryByPath = new Map(registry.entries.map((entry) => [entry.path, entry]));
   const seen = new Set<string>();
   const duplicates = new Set<string>();
   const unknown: string[] = [];
+  const nonColor: string[] = [];
   for (const group of groups) {
     for (const token of group.tokens) {
       if (seen.has(token.name)) duplicates.add(token.name);
       seen.add(token.name);
-      if (!registry.cssPropertyToPath[token.name]) unknown.push(token.name);
+
+      const path = registry.cssPropertyToPath[token.name];
+      if (!path) {
+        unknown.push(token.name);
+        continue;
+      }
+      if (entryByPath.get(path)?.category !== 'color') nonColor.push(token.name);
     }
   }
   if (unknown.length > 0) {
     throw new Error(
       `cinder.resolver.json's playgroundGroups references cssProperties that are not in the ` +
         `corpus: ${unknown.join(', ')}.`,
+    );
+  }
+  if (nonColor.length > 0) {
+    throw new Error(
+      `cinder.resolver.json's playgroundGroups references cssProperties that are not ` +
+        `category: "color" tokens: ${nonColor.join(', ')}.`,
     );
   }
   if (duplicates.size > 0) {
