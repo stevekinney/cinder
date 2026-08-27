@@ -159,7 +159,7 @@
     block-size: 1.25rem;
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-inset);
-    animation: cinder-feed-log-skeleton-pulse 1.4s ease-in-out infinite;
+    animation: cinder-feed-log-skeleton-pulse var(--cinder-duration-pulse) ease-in-out infinite;
   }
 
   .cinder-feed-log__skeleton:nth-child(2) {

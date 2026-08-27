@@ -41,7 +41,7 @@ import { fileURLToPath } from 'node:url';
 
 import { describe, expect, it } from 'bun:test';
 
-const TOKENS_PATH = join(dirname(fileURLToPath(import.meta.url)), 'tokens-base.css');
+const TOKENS_DIRECTORY = join(dirname(fileURLToPath(import.meta.url)), '..', 'tokens');
 
 // ---------------------------------------------------------------------------
 // Color math
@@ -241,80 +241,177 @@ function simulateCvd(color: OklchColor, type: keyof typeof CVD_MATRICES): Lab {
 // CSS value parsing — paren-depth tokenizer, not a per-line regex
 // ---------------------------------------------------------------------------
 
-/** Strip `/* … *\/` comments from CSS source. */
-function stripCssComments(source: string): string {
-  return source.replace(/\/\*[\s\S]*?\*\//g, '');
+/**
+ * The registry and the two resolved contexts this gate reads.
+ *
+ * Everything below used to be CSS parsing: read `tokens-base.css`, strip
+ * comments, walk paren depth to capture a multiline value, split
+ * `light-dark(a, b)` at its top-level comma, parse each `oklch(L% C H)`
+ * literal, and re-implement `oklch(from … calc(l - X) c h)` in TypeScript so
+ * derived tokens had a value at all.
+ *
+ * None of that is needed now. Each resolved context already holds one literal
+ * typed value per token, per theme, with derivations resolved -- `accent.text`
+ * arrives as `0.45` rather than as an expression this file has to evaluate. So
+ * the gate reads the same values the package publishes instead of
+ * re-deriving them from the CSS those values generated, and a token that
+ * adopts richer CSS syntax can no longer drift past a hand-written parser.
+ */
+/**
+ * Parse a generated JSON artifact into a plain record. `JSON.parse` is typed
+ * `any`, so the result is narrowed through `unknown` rather than asserted
+ * straight into a shape -- an artifact that is not an object should fail here
+ * naming the file, not later as a confusing property access.
+ */
+function readJsonRecord(...pathSegments: readonly string[]): Record<string, unknown> {
+  const filePath = join(...pathSegments);
+  const parsed: unknown = JSON.parse(readFileSync(filePath, 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+    throw new Error(`${filePath} is not a JSON object`);
+  }
+  return parsed as Record<string, unknown>;
+}
+
+/** The registry's `cssProperty -> corpus path` map, validated at load. */
+function readCssPropertyToPath(): Record<string, string> {
+  const map = readJsonRecord(TOKENS_DIRECTORY, 'registry.generated.json')['cssPropertyToPath'];
+  if (typeof map !== 'object' || map === null || Array.isArray(map)) {
+    throw new Error('registry.generated.json has no cssPropertyToPath object');
+  }
+  return map as Record<string, string>;
+}
+
+const cssPropertyToPath = readCssPropertyToPath();
+
+const resolvedContexts = {
+  light: readJsonRecord(TOKENS_DIRECTORY, 'resolved', 'light.json'),
+  dark: readJsonRecord(TOKENS_DIRECTORY, 'resolved', 'dark.json'),
+};
+
+/**
+ * One token's `$value` from a resolved context, or `undefined` when the context
+ * does not carry that path.
+ */
+function readResolvedValue(arm: 'light' | 'dark', path: string): unknown {
+  const token = resolvedContexts[arm][path];
+  if (token === undefined) return undefined;
+  if (typeof token !== 'object' || token === null) {
+    throw new Error(`resolved ${arm} entry for ${path} is not an object`);
+  }
+  return (token as { $value?: unknown }).$value;
 }
 
 /**
- * Read the full value of one custom property from the (comment-stripped) `:root` block,
- * balancing parentheses so a multiline `light-dark(oklch(...), oklch(...))` is captured
- * whole. Throws if the token is absent or its value never balances — a silent miss here
- * would let an un-asserted token regress.
+ * The DTCG color subset these tokens are authored in: `oklch` with three
+ * numeric components. Hard-fails on anything else -- a token that grows an
+ * alpha channel, a `none` component, or a different color space trips the gate
+ * loudly rather than being silently mis-read, which is the same contract the
+ * old literal parser held.
  */
-function readTokenValue(css: string, tokenName: string): string {
+function parseResolvedColor(value: unknown, tokenName: string, arm: string): OklchColor {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`${tokenName} (${arm}) has no object $value`);
+  }
+  const color = value as { colorSpace?: unknown; components?: unknown; alpha?: unknown };
+  if (color.colorSpace !== 'oklch') {
+    throw new Error(`${tokenName} (${arm}) is not oklch: ${JSON.stringify(color.colorSpace)}`);
+  }
+  if (color.alpha !== undefined) {
+    throw new Error(`${tokenName} (${arm}) carries an alpha channel this gate does not model`);
+  }
+  const components = color.components;
+  if (!Array.isArray(components) || components.length !== 3) {
+    throw new Error(`${tokenName} (${arm}) does not have three oklch components`);
+  }
+  const [l, c, h] = components;
+  if (typeof l !== 'number' || typeof c !== 'number' || typeof h !== 'number') {
+    throw new Error(`${tokenName} (${arm}) has a non-numeric oklch component`);
+  }
+  return { l, c, h };
+}
+
+type TokenArms = { light: OklchColor; dark: OklchColor };
+
+/**
+ * Both theme arms of one token, by its CSS custom-property name. Throws when a
+ * property has no corpus token or is absent from a resolved context, so a
+ * renamed or deleted token fails here instead of quietly dropping an assertion.
+ */
+function readOklchToken(tokenName: string): TokenArms {
+  const path = cssPropertyToPath[tokenName];
+  if (path === undefined) {
+    throw new Error(`${tokenName} has no corpus token in the generated registry`);
+  }
+  const read = (arm: 'light' | 'dark'): OklchColor => {
+    const value = readResolvedValue(arm, path);
+    if (value === undefined) {
+      throw new Error(`${tokenName} (${path}) is absent from the resolved ${arm} context`);
+    }
+    return parseResolvedColor(value, tokenName, arm);
+  };
+  return { light: read('light'), dark: read('dark') };
+}
+
+/**
+ * A number token's resolved value, e.g. `--cinder-opacity-disabled` -> 0.55.
+ * Opacities participate in the contrast math (a muted foreground is composited
+ * against its background), so they come from resolved output like the colors.
+ */
+function readNumberToken(tokenName: string): number {
+  const path = cssPropertyToPath[tokenName];
+  if (path === undefined) {
+    throw new Error(`${tokenName} has no corpus token in the generated registry`);
+  }
+  const value = readResolvedValue('light', path);
+  if (typeof value !== 'number') {
+    throw new Error(`${tokenName} is not a number token: ${JSON.stringify(value)}`);
+  }
+  return value;
+}
+
+/**
+ * The generated stylesheet, read ONLY for the handful of assertions that are
+ * about CSS shape rather than about a color value: that one token is emitted as
+ * a literal `var(--other)` alias rather than a duplicated value, and that
+ * `--cinder-type-tab-size` is declared at all.
+ *
+ * Those cannot move to resolved output, and should not: resolution follows an
+ * alias to the value it points at, which is exactly what these assertions exist
+ * to distinguish. Every assertion about a color VALUE reads resolved output;
+ * only assertions about the emitted CSS text read the CSS.
+ */
+const css = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), 'tokens-base.css'),
+  'utf8',
+).replace(/\/\*[\s\S]*?\*\//g, '');
+
+/**
+ * The full value of one custom property from the comment-stripped stylesheet,
+ * balancing parentheses so a multiline value is captured whole. Throws when the
+ * token is absent -- a silent miss would drop an assertion.
+ */
+function readTokenValue(source: string, tokenName: string): string {
   const marker = `${tokenName}:`;
-  const start = css.indexOf(marker);
+  const start = source.indexOf(marker);
   if (start === -1) throw new Error(`token ${tokenName} not found in tokens-base.css`);
-  let index = start + marker.length;
   let depth = 0;
   let value = '';
-  for (; index < css.length; index += 1) {
-    const ch = css[index];
-    if (ch === '(') depth += 1;
-    else if (ch === ')') depth -= 1;
-    else if (ch === ';' && depth === 0) {
-      return value.trim().replace(/\s+/g, ' ');
-    }
-    value += ch;
+  for (let index = start + marker.length; index < source.length; index += 1) {
+    const character = source[index];
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    else if (character === ';' && depth === 0) return value.trim().replace(/\s+/g, ' ');
+    value += character;
   }
   throw new Error(`token ${tokenName} value never terminated (unbalanced parens?)`);
 }
 
 /**
- * Parse the literal `oklch(L% C H)` subset these tokens are authored in — `L` as a percentage,
- * `C` and `H` as bare unsigned decimals, space-separated, no alpha and no relative-color syntax.
- * This is deliberately NOT a full CSS Color 4 OKLCH parser: it covers exactly the shapes shipped
- * in `tokens-base.css` today and HARD-FAILS on anything else (signed/exponent numbers, `none`,
- * `deg`, slash alpha, `oklch(from …)`), so a token that evolves past this subset trips the gate
- * loudly instead of being silently mis-read. If the tokens ever adopt richer syntax, widen this
- * parser (or swap in a real color parser) rather than letting it guess.
- */
-function parseOklch(fn: string): OklchColor {
-  const match = fn.match(/^oklch\(\s*([\d.]+)%\s+([\d.]+)\s+([\d.]+)\s*\)$/);
-  if (!match) throw new Error(`unparseable oklch literal: "${fn}"`);
-  return { l: Number(match[1]) / 100, c: Number(match[2]), h: Number(match[3]) };
-}
-
-/** Split the inner arguments of `light-dark(<a>, <b>)` at the top-level comma. */
-function splitLightDark(value: string): [string, string] {
-  const match = value.match(/^light-dark\(\s*([\s\S]+)\)$/);
-  const inner = match?.[1];
-  if (inner === undefined) throw new Error(`expected light-dark(...), got "${value}"`);
-  let depth = 0;
-  for (let i = 0; i < inner.length; i += 1) {
-    const char = inner[i];
-    if (char === '(') depth += 1;
-    else if (char === ')') depth -= 1;
-    else if (char === ',' && depth === 0) {
-      return [inner.slice(0, i).trim(), inner.slice(i + 1).trim()];
-    }
-  }
-  throw new Error(`light-dark value has no top-level comma: "${value}"`);
-}
-
-type TokenArms = { light: OklchColor; dark: OklchColor };
-
-/** Read a `light-dark(oklch(...), oklch(...))` token and parse both arms. */
-function readOklchToken(css: string, tokenName: string): TokenArms {
-  const [light, dark] = splitLightDark(readTokenValue(css, tokenName));
-  return { light: parseOklch(light), dark: parseOklch(dark) };
-}
-
-/**
  * Resolve a relative-color derivation of the shape
- * `oklch(from var(--cinder-accent) calc(l - X) c h)` against a parsed base color,
- * for the specific derivations used in tokens-base.css (a calc on L, keeping c and h).
+ * `oklch(from var(--cinder-accent) calc(l - X) c h)` against a parsed base color.
+ * Retained because several assertions derive a value that has no token of its
+ * own -- a hover state computed in a component rule rather than declared in the
+ * corpus. Tokens that DO exist are read directly.
  */
 function deriveFromAccent(base: OklchColor, lDelta: number): OklchColor {
   return { l: base.l + lDelta, c: base.c, h: base.h };
@@ -324,60 +421,58 @@ function deriveFromAccent(base: OklchColor, lDelta: number): OklchColor {
 // The gate
 // ---------------------------------------------------------------------------
 
-const css = stripCssComments(readFileSync(TOKENS_PATH, 'utf8'));
-
-const accent = readOklchToken(css, '--cinder-accent');
-const accentContrast = readOklchToken(css, '--cinder-accent-contrast');
-const accentText = readOklchToken(css, '--cinder-accent-text');
-const info = readOklchToken(css, '--cinder-info');
-const infoContrast = readOklchToken(css, '--cinder-info-contrast');
-const neutralBg = readOklchToken(css, '--cinder-color-neutral-bg');
-const infoBg = readOklchToken(css, '--cinder-color-info-bg');
-const infoFg = readOklchToken(css, '--cinder-color-info-fg');
-const successBg = readOklchToken(css, '--cinder-color-success-bg');
-const successFg = readOklchToken(css, '--cinder-color-success-fg');
-const warningBg = readOklchToken(css, '--cinder-color-warning-bg');
-const warningFg = readOklchToken(css, '--cinder-color-warning-fg');
-const dangerBg = readOklchToken(css, '--cinder-color-danger-bg');
-const dangerFg = readOklchToken(css, '--cinder-color-danger-fg');
-const success = readOklchToken(css, '--cinder-success');
-const warning = readOklchToken(css, '--cinder-warning');
-const danger = readOklchToken(css, '--cinder-danger');
-const successContrast = readOklchToken(css, '--cinder-success-contrast');
-const warningContrast = readOklchToken(css, '--cinder-warning-contrast');
-const dangerContrast = readOklchToken(css, '--cinder-danger-contrast');
-const infoBorder = readOklchToken(css, '--cinder-color-info-border');
-const successBorder = readOklchToken(css, '--cinder-color-success-border');
-const warningBorder = readOklchToken(css, '--cinder-color-warning-border');
-const dangerBorder = readOklchToken(css, '--cinder-color-danger-border');
+const accent = readOklchToken('--cinder-accent');
+const accentContrast = readOklchToken('--cinder-accent-contrast');
+const accentText = readOklchToken('--cinder-accent-text');
+const info = readOklchToken('--cinder-info');
+const infoContrast = readOklchToken('--cinder-info-contrast');
+const neutralBg = readOklchToken('--cinder-color-neutral-bg');
+const infoBg = readOklchToken('--cinder-color-info-bg');
+const infoFg = readOklchToken('--cinder-color-info-fg');
+const successBg = readOklchToken('--cinder-color-success-bg');
+const successFg = readOklchToken('--cinder-color-success-fg');
+const warningBg = readOklchToken('--cinder-color-warning-bg');
+const warningFg = readOklchToken('--cinder-color-warning-fg');
+const dangerBg = readOklchToken('--cinder-color-danger-bg');
+const dangerFg = readOklchToken('--cinder-color-danger-fg');
+const success = readOklchToken('--cinder-success');
+const warning = readOklchToken('--cinder-warning');
+const danger = readOklchToken('--cinder-danger');
+const successContrast = readOklchToken('--cinder-success-contrast');
+const warningContrast = readOklchToken('--cinder-warning-contrast');
+const dangerContrast = readOklchToken('--cinder-danger-contrast');
+const infoBorder = readOklchToken('--cinder-color-info-border');
+const successBorder = readOklchToken('--cinder-color-success-border');
+const warningBorder = readOklchToken('--cinder-color-warning-border');
+const dangerBorder = readOklchToken('--cinder-color-danger-border');
 // Authored (not relative-derived) so the gamut gate can parse them directly — red (h 25)
 // clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
-const dangerHover = readOklchToken(css, '--cinder-danger-hover');
-const dangerActive = readOklchToken(css, '--cinder-danger-active');
-const infoHover = readOklchToken(css, '--cinder-info-hover');
-const infoActive = readOklchToken(css, '--cinder-info-active');
-const successHover = readOklchToken(css, '--cinder-success-hover');
-const successActive = readOklchToken(css, '--cinder-success-active');
-const warningHover = readOklchToken(css, '--cinder-warning-hover');
-const warningActive = readOklchToken(css, '--cinder-warning-active');
-const bg = readOklchToken(css, '--cinder-bg');
-const surface = readOklchToken(css, '--cinder-surface');
-const surfaceInset = readOklchToken(css, '--cinder-surface-inset');
-const surfaceRaised = readOklchToken(css, '--cinder-surface-raised');
-const text = readOklchToken(css, '--cinder-text');
-const borderFaint = readOklchToken(css, '--cinder-border-faint');
-const borderMuted = readOklchToken(css, '--cinder-border-muted');
-const border = readOklchToken(css, '--cinder-border');
-const borderStrong = readOklchToken(css, '--cinder-border-strong');
-const opacityDisabled = Number(readTokenValue(css, '--cinder-opacity-disabled'));
-const opacityMuted = Number(readTokenValue(css, '--cinder-opacity-muted'));
-const opacityFaint = Number(readTokenValue(css, '--cinder-opacity-faint'));
+const dangerHover = readOklchToken('--cinder-danger-hover');
+const dangerActive = readOklchToken('--cinder-danger-active');
+const infoHover = readOklchToken('--cinder-info-hover');
+const infoActive = readOklchToken('--cinder-info-active');
+const successHover = readOklchToken('--cinder-success-hover');
+const successActive = readOklchToken('--cinder-success-active');
+const warningHover = readOklchToken('--cinder-warning-hover');
+const warningActive = readOklchToken('--cinder-warning-active');
+const bg = readOklchToken('--cinder-bg');
+const surface = readOklchToken('--cinder-surface');
+const surfaceInset = readOklchToken('--cinder-surface-inset');
+const surfaceRaised = readOklchToken('--cinder-surface-raised');
+const text = readOklchToken('--cinder-text');
+const borderFaint = readOklchToken('--cinder-border-faint');
+const borderMuted = readOklchToken('--cinder-border-muted');
+const border = readOklchToken('--cinder-border');
+const borderStrong = readOklchToken('--cinder-border-strong');
+const opacityDisabled = readNumberToken('--cinder-opacity-disabled');
+const opacityMuted = readNumberToken('--cinder-opacity-muted');
+const opacityFaint = readNumberToken('--cinder-opacity-faint');
 
 // The active command-palette item paints --cinder-accent-contrast text on a solid
 // --cinder-accent fill (command-item.css), so that pair is gated here too.
 
 const chartSeries = Array.from({ length: 8 }, (_, i) =>
-  readOklchToken(css, `--cinder-chart-series-${i + 1}`),
+  readOklchToken(`--cinder-chart-series-${i + 1}`),
 );
 
 const AA_TEXT = 4.5;
@@ -414,20 +509,208 @@ describe('ciede2000 reference correctness (zero-chroma branch)', () => {
   });
 });
 
-describe('CSS value tokenizer', () => {
-  it('captures a multiline light-dark with nested oklch as one value', () => {
-    const sample = `:root {\n  --x: light-dark(\n    oklch(50% 0.2 270),\n    oklch(72% 0.14 270)\n  );\n}`;
-    const [light, dark] = splitLightDark(readTokenValue(sample, '--x'));
-    expect(parseOklch(light)).toEqual({ l: 0.5, c: 0.2, h: 270 });
-    expect(parseOklch(dark)).toEqual({ l: 0.72, c: 0.14, h: 270 });
+describe('shipped CSS agrees with the resolved values these assertions use', () => {
+  // Moving the contrast math onto resolved output made every assertion below
+  // read the SOURCE OF TRUTH rather than the artifact browsers consume. That is
+  // the right source for the math -- but on its own it would leave the emitted
+  // stylesheet unvalidated: a generator bug that swapped a `light-dark()` arm or
+  // mangled a value would regenerate deterministically, satisfy
+  // `tokens:generate -- --check`, and never fail a contrast assertion.
+  //
+  // This closes that hole from the other side. Every token emitted as a literal
+  // two-arm `light-dark(oklch(...), oklch(...))` must match the two resolved
+  // values, so the contrast results stay anchored to what actually ships
+  // without re-deriving colors from CSS. Aliases and recipe-driven values are
+  // skipped here and covered by the CSS-shape assertions instead.
+  // No `/` inside either arm: an alpha channel is deliberately outside what
+  // `parseResolvedColor` models, so those tokens belong to the CSS-shape
+  // assertions rather than to this numeric comparison.
+  const LITERAL_TWO_ARM = /^light-dark\(\s*oklch\([^()/]*\)\s*,\s*oklch\([^()/]*\)\s*\)$/;
+
+  /**
+   * Every property this gate runs a contrast or gamut assertion against. These
+   * must not be skipped for ANY reason: a malformed declaration for one of them
+   * is precisely the failure this block exists to catch, so a filter that
+   * quietly dropped it would restore the hole from the other side.
+   */
+  const CONTRAST_ASSERTED = Object.keys(cssPropertyToPath).filter((property) => {
+    const path = cssPropertyToPath[property];
+    if (path === undefined) return false;
+    const light = readResolvedValue('light', path);
+    return typeof light === 'object' && light !== null && 'colorSpace' in light;
   });
 
+  const comparable = Object.keys(cssPropertyToPath)
+    .filter((property) => css.includes(`${property}:`))
+    .filter((property) => {
+      try {
+        return LITERAL_TWO_ARM.test(readTokenValue(css, property));
+      } catch {
+        return false;
+      }
+    })
+    .sort();
+
+  it('compares a meaningful number of tokens rather than silently matching none', () => {
+    // Guards the filters above: a regex or naming change that stopped matching
+    // would otherwise turn this whole block into a vacuous pass.
+    expect(comparable.length).toBeGreaterThan(20);
+  });
+
+  // Every `var()` in the stylesheet must point at a property the stylesheet
+  // itself declares.
+  //
+  // This is what closes the remaining hole in the allowlist below. That
+  // allowlist recognizes an alias or recipe as a legitimate SHAPE, which means
+  // a corrupted alias -- `light-dark(var(--wrong), oklch(...))` -- would be
+  // accepted as legitimately-shaped and excluded from the numeric comparison,
+  // while the contrast assertions kept reading the still-correct resolved JSON.
+  //
+  // Enumerating an expected shape per aliased token would also catch it, but at
+  // the cost of a hand-maintained list of every non-literal token -- precisely
+  // the kind of parallel inventory this stage exists to delete. A referential
+  // integrity check needs no list, cannot go stale, and catches a bad reference
+  // in ANY declaration rather than only in the ones someone remembered to
+  // enumerate.
+  it('every var() reference resolves to a property this stylesheet declares', () => {
+    const declared = new Set(
+      [...css.matchAll(/^\s*(--[a-zA-Z0-9_-]+)\s*:/gm)].map((match) => match[1]),
+    );
+    const referenced = [...css.matchAll(/var\(\s*(--[a-zA-Z0-9_-]+)/g)].map((match) => match[1]);
+
+    // Guards against the regexes silently matching nothing.
+    expect(declared.size).toBeGreaterThan(100);
+    expect(referenced.length).toBeGreaterThan(10);
+
+    const dangling = [...new Set(referenced)]
+      .filter((name) => !declared.has(name))
+      .sort((a, b) => String(a).localeCompare(String(b)));
+    expect(dangling).toEqual([]);
+  });
+
+  // The skip-versus-fail distinction, pinned. A color token declared in the
+  // stylesheet must be readable and structurally sound; if generation emitted
+  // `var(...)`, dropped an arm, or left the value unterminated, the filter above
+  // would silently exclude it and the coarse count would still pass.
+  it('every declared color token has a well-formed value, none silently skipped', () => {
+    const malformed: string[] = [];
+    for (const property of CONTRAST_ASSERTED) {
+      if (!css.includes(`${property}:`)) continue;
+      let value: string;
+      try {
+        value = readTokenValue(css, property);
+      } catch (error) {
+        malformed.push(`${property}: unreadable (${String(error)})`);
+        continue;
+      }
+      // An alias or a recipe is a legitimate shape; a light-dark() that does not
+      // parse as two literal arms is not.
+      if (value.startsWith('light-dark(') && !LITERAL_TWO_ARM.test(value)) {
+        // Legitimate shapes this numeric comparison does not cover: an alias, a
+        // recipe, an alpha channel, or a hex arm -- `color.checker.base` keeps a
+        // historical `#fff` in its light arm on purpose. Anything else that
+        // claims to be `light-dark()` and is not two parseable arms is malformed.
+        const legitimate = /var\(|color-mix\(|oklch\(from|\/|#[0-9a-fA-F]{3,8}\b/.test(value);
+        if (legitimate) continue;
+        malformed.push(`${property}: ${value}`);
+      }
+    }
+    expect(malformed).toEqual([]);
+  });
+
+  for (const property of comparable) {
+    it(`${property} emits the resolved light and dark values`, () => {
+      const arms = readOklchToken(property);
+      const numbers = [...readTokenValue(css, property).matchAll(/[\d.]+/g)].map((match) =>
+        Number(match[0]),
+      );
+      expect(numbers).toHaveLength(6);
+
+      const [lightL, lightC, lightH, darkL, darkC, darkH] = numbers as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+      ];
+      expect(lightL / 100).toBeCloseTo(arms.light.l, 4);
+      expect(lightC).toBeCloseTo(arms.light.c, 4);
+      expect(lightH).toBeCloseTo(arms.light.h, 3);
+      expect(darkL / 100).toBeCloseTo(arms.dark.l, 4);
+      expect(darkC).toBeCloseTo(arms.dark.c, 4);
+      expect(darkH).toBeCloseTo(arms.dark.h, 3);
+    });
+  }
+});
+
+describe('resolved-value reader', () => {
+  it('reads both theme arms of a real token from resolved output', () => {
+    const accentArms = readOklchToken('--cinder-accent');
+    // Sourced from the published resolved contexts, not re-derived from CSS.
+    expect(accentArms.light).toEqual({ l: 0.5, c: 0.22, h: 270 });
+    expect(accentArms.dark).toEqual({ l: 0.72, c: 0.14, h: 270 });
+  });
+
+  // `accent.text` is authored as a relative-color derivation of `accent`. The
+  // old reader had to re-implement `calc(l - 0.05)` in TypeScript to know its
+  // value; resolution has already applied it.
+  it('reads a derived token as a literal value, without re-deriving it', () => {
+    expect(readOklchToken('--cinder-accent-text').light.l).toBeCloseTo(0.45, 5);
+  });
+
+  it('throws on a token with no corpus entry rather than skipping the assertion', () => {
+    expect(() => readOklchToken('--cinder-not-a-real-token')).toThrow(
+      /no corpus token in the generated registry/,
+    );
+  });
+
+  it('rejects a color space this gate does not model', () => {
+    expect(() =>
+      parseResolvedColor({ colorSpace: 'srgb', components: [1, 1, 1] }, '--x', 'light'),
+    ).toThrow(/is not oklch/);
+  });
+
+  // Compositing a translucent foreground is not modelled here, so a token that
+  // grows an alpha channel must fail loudly rather than be read as opaque.
+  it('rejects an alpha channel rather than silently ignoring it', () => {
+    expect(() =>
+      parseResolvedColor(
+        { colorSpace: 'oklch', components: [0.5, 0.2, 270], alpha: 0.5 },
+        '--x',
+        'light',
+      ),
+    ).toThrow(/alpha channel/);
+  });
+
+  it('rejects a malformed component list', () => {
+    expect(() =>
+      parseResolvedColor({ colorSpace: 'oklch', components: [0.5, 0.2] }, '--x', 'light'),
+    ).toThrow(/three oklch components/);
+  });
+
+  it('reads a number token from resolved output', () => {
+    expect(readNumberToken('--cinder-opacity-disabled')).toBeCloseTo(0.55, 5);
+  });
+});
+
+describe('CSS shape reader', () => {
+  // Retained for the assertions that are about the emitted CSS text rather than
+  // a color value -- an alias must stay an alias, which resolution erases.
   it('throws on an absent token rather than silently skipping it', () => {
     expect(() => readTokenValue(':root { --a: 1; }', '--missing')).toThrow();
   });
 
   it('throws on an unbalanced value rather than degrading', () => {
     expect(() => readTokenValue(':root { --a: light-dark(oklch(50% 0.2 270)', '--a')).toThrow();
+  });
+
+  it('captures a multiline value as one string', () => {
+    const sample =
+      ':root {\n  --x: light-dark(\n    oklch(50% 0.2 270),\n    oklch(72% 0.14 270)\n  );\n}';
+    expect(readTokenValue(sample, '--x')).toBe(
+      'light-dark( oklch(50% 0.2 270), oklch(72% 0.14 270) )',
+    );
   });
 });
 

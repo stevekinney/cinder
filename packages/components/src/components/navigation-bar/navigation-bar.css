@@ -196,8 +196,8 @@
 
     /* Open → visible, slide in */
     transition:
-      transform 200ms ease,
-      opacity 200ms ease;
+      transform var(--cinder-duration-normal) ease,
+      opacity var(--cinder-duration-normal) ease;
   }
 
   /* Closed steady-state: instant, no transition to play. */

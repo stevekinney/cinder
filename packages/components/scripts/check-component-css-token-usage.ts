@@ -10,14 +10,15 @@
  *
  * Every `var(--cinder-*)` reference in component styling is classified into one
  * category, and the report groups by category so a fixer knows the right action:
- *   - `global`         — a documented token declared in `tokens-base.css`. OK.
+ *   - `global`         — a public token declared in the DTCG corpus (read from
+ *                        the generated registry). OK.
  *   - `component-owned` — `--cinder-<this-file's-component>-*`. A public component
  *     override variable, valid even when only ever read-with-fallback / JS-set. OK.
  *   - `private`         — `--_cinder-*`. An implementation detail. OK.
  *   - `runtime`         — a JS/inline-style-set state variable on the runtime
  *     allowlist (read OUTSIDE its owning component). OK, documented.
  *   - `unresolved`      — none of the above. This is the debt: a stale name to
- *     rename, a missing token to add to `tokens-base.css`, or a cross-component
+ *     rename, a missing token to add to the DTCG corpus, or a cross-component
  *     reference that should be a shared token. REPORTED.
  *
  * The ownership prefix is the CURRENT FILE's own component-directory name, NOT
@@ -44,7 +45,7 @@ import { fileURLToPath } from 'node:url';
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const componentsRoot = resolve(scriptDirectory, '..');
 const componentsSource = join(componentsRoot, 'src');
-const tokensBasePath = join(componentsSource, 'styles', 'tokens-base.css');
+const tokenRegistryPath = join(componentsSource, 'tokens', 'registry.generated.json');
 const defaultBaselinePath = join(scriptDirectory, 'token-usage-baseline.json');
 
 /**
@@ -130,17 +131,62 @@ export function extractStyleSurface(source: string, isSvelte: boolean): string {
   return result;
 }
 
+/** One field of an already-narrowed object, without asserting a shape over it. */
+function readField(source: object, field: string): unknown {
+  return Object.hasOwn(source, field)
+    ? (Object.getOwnPropertyDescriptor(source, field)?.value as unknown)
+    : undefined;
+}
+
 /**
- * Parses the set of globally declared `--cinder-*` token names from a stylesheet
- * body (intended to be `tokens-base.css`). A declaration is a custom property on
- * the left-hand side of a `:` (`  --cinder-space-4: 1rem;`). Pure for testability.
+ * The public global tokens, read from the generated registry rather than
+ * scraped out of `tokens-base.css`.
+ *
+ * Parsing the CSS asked the wrong question. It found what the stylesheet
+ * HAPPENS TO DECLARE, so a component could only be caught referencing a token
+ * after that token had been generated into CSS -- and a name that appeared in
+ * the CSS for any reason counted as a documented token. The registry answers
+ * what the design system DECLARES to be public, which is the question the
+ * check is actually asking, and it is available before any CSS is emitted.
+ *
+ * The two agree exactly on the current corpus: 216 tokens, no difference in
+ * either direction. That is not a coincidence to rely on quietly -- CIN-30's
+ * completeness check inside `tokens:check` requires every emitted custom
+ * property to have a corpus entry, so the sets are held equal by a gate.
+ *
+ * `public` is filtered on deliberately: a private `--_cinder-*` token is not a
+ * global a component may reference, and the registry is the only source that
+ * knows the difference. The CSS scan could not distinguish them at all.
  */
-export function parseGlobalTokens(tokensBaseSource: string): Set<string> {
+export function parseGlobalTokens(registrySource: string): Set<string> {
+  // Narrowed through `unknown` rather than asserted straight out of
+  // `JSON.parse`, whose return is `any`: a malformed registry should fail here
+  // with a named reason, not as a confusing property access downstream.
+  const parsed: unknown = JSON.parse(registrySource);
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('The token registry is not a JSON object.');
+  }
+  const entries = (parsed as { entries?: unknown }).entries;
+  if (!Array.isArray(entries)) {
+    throw new Error('The token registry has no `entries` array.');
+  }
+
   const tokens = new Set<string>();
-  const declaration = /(--cinder-[a-z0-9-]+)\s*:/g;
-  let match: RegExpExecArray | null;
-  while ((match = declaration.exec(tokensBaseSource)) !== null) {
-    if (match[1]) tokens.add(match[1]);
+  for (const [index, entry] of entries.entries()) {
+    // Validated per entry, not just at the top level: a malformed artifact
+    // should name the offending index here rather than surface as a TypeError
+    // from reading `.public` off a string several frames away.
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error(`The token registry's entries[${index}] is not an object.`);
+    }
+    const cssProperty = readField(entry, 'cssProperty');
+    const isPublic = readField(entry, 'public');
+    if (typeof cssProperty !== 'string' || typeof isPublic !== 'boolean') {
+      throw new Error(
+        `The token registry's entries[${index}] is missing a string cssProperty or boolean public.`,
+      );
+    }
+    if (isPublic) tokens.add(cssProperty);
   }
   return tokens;
 }
@@ -452,7 +498,7 @@ async function main(): Promise<void> {
     ? resolve(process.cwd(), baselineArgument)
     : defaultBaselinePath;
 
-  const globals = parseGlobalTokens(await Bun.file(tokensBasePath).text());
+  const globals = parseGlobalTokens(await Bun.file(tokenRegistryPath).text());
   const flags = await scan(globals, sourceRoot);
   const unresolved = flags.filter((flag) => flag.category === 'unresolved');
 
@@ -491,7 +537,7 @@ async function main(): Promise<void> {
       );
     }
     process.stderr.write(
-      `\nDeclare the token in tokens-base.css, rename it to an existing token, use the ` +
+      `\nDeclare the token in the DTCG corpus under src/tokens/, rename it to an existing token, use the ` +
         `component-owned prefix, or (after an intentional fix) run tokens:audit --update-baseline.\n`,
     );
     process.exitCode = 1;

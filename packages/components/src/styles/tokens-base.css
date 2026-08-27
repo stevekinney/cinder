@@ -169,6 +169,8 @@
   --cinder-duration-slow: 400ms;
   /* Repeating spin animation duration. */
   --cinder-duration-spin: 750ms;
+  /* Repeating pulse animation duration, for the breathing opacity loop shared by status indicators and skeleton placeholders. Numerically equal to `motion.progress.ring.spin` today, but deliberately its own token: a pulse and a spinner are unrelated motions and either may be retuned without the other. */
+  --cinder-duration-pulse: 1.4s;
   /* Repeating indeterminate progress-bar animation duration. */
   --cinder-duration-progress-bar-indeterminate: 1.6s;
   /* Repeating progress-ring spin animation duration. */
@@ -782,6 +784,7 @@
     --cinder-duration-moderate: 0ms;
     --cinder-duration-slow: 0ms;
     --cinder-duration-spin: 0ms;
+    --cinder-duration-pulse: 0ms;
     --cinder-duration-progress-bar-indeterminate: 0ms;
     --cinder-duration-progress-ring-spin: 0ms;
   }
@@ -795,6 +798,7 @@
   --cinder-duration-moderate: 0ms;
   --cinder-duration-slow: 0ms;
   --cinder-duration-spin: 0ms;
+  --cinder-duration-pulse: 0ms;
   --cinder-duration-progress-bar-indeterminate: 0ms;
   --cinder-duration-progress-ring-spin: 0ms;
 }

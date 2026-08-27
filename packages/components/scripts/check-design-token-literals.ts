@@ -6,13 +6,14 @@
  * hard-codes values that already have Cinder tokens. This script detects three
  * classes of bypass:
  *
- *   1. Transition/animation timing literals — `0.15s`, `150ms`, `0.6s`, `0.1s`,
- *      `0.8s` — in `transition:` or `animation:` property values. These should use
- *      `var(--cinder-duration-*)` tokens. Spin-style `linear infinite` animations
- *      must use `var(--cinder-duration-spin)`.
+ *   1. Transition/animation timing literals in `transition:` or `animation:`
+ *      property values. The literal set is DERIVED from the `duration` tokens the
+ *      corpus declares, in both their `ms` and `s` spellings, so retuning a
+ *      duration re-points this guard automatically. These should use
+ *      `var(--cinder-duration-*)` tokens.
  *
- *   2. Font-weight literals — `font-weight: 500` or `font-weight: 600` — which
- *      should use `var(--cinder-font-medium)` or `var(--cinder-font-semibold)`.
+ *   2. Font-weight literals, derived from the `fontWeight` tokens the corpus
+ *      declares, which should use the matching `var(--cinder-font-*)` token.
  *
  *   3. Raw focus/selection ring widths — `outline: 2px`, `box-shadow: 0 0 0 2px`,
  *      or `box-shadow: 0 0 0 4px` in focus-visible and selection contexts — which
@@ -31,6 +32,7 @@
  */
 
 import { Glob } from 'bun';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,14 +53,158 @@ const componentsSource = join(componentsRoot, 'src', 'components');
  *     The scan strips `var(…)` call sites before matching, so fallback values are
  *     not counted as raw literals.
  */
-const TIMING_LITERAL_PATTERN =
-  /^\s*(?:transition|animation)\s*:.*?\b(?:0\.15s|150ms|0\.6s|0\.1s|0\.8s)\b/m;
+/** One field of an already-narrowed object, without asserting a shape over it. */
+function readField(source: object, field: string): unknown {
+  return Object.hasOwn(source, field)
+    ? (Object.getOwnPropertyDescriptor(source, field)?.value as unknown)
+    : undefined;
+}
+
+/** A token's `cssProperty` from the Cinder vendor extension, when it has one. */
+function readCinderCssProperty(token: object): string | undefined {
+  const extensions = readField(token, '$extensions');
+  if (typeof extensions !== 'object' || extensions === null) return undefined;
+  const cinder = readField(extensions, 'com.lostgradient.cinder');
+  if (typeof cinder !== 'object' || cinder === null) return undefined;
+  const cssProperty = readField(cinder, 'cssProperty');
+  return typeof cssProperty === 'string' ? cssProperty : undefined;
+}
 
 /**
- * Font-weight literals that should use design tokens.
- * Matches `font-weight: 500` and `font-weight: 600`.
+ * Every token in the resolved light context, narrowed to the two fields the
+ * literal patterns are derived from. Light is used because durations and font
+ * weights do not vary by theme; a token that ever did would need both arms.
  */
-const FONT_WEIGHT_LITERAL_PATTERN = /^\s*font-weight\s*:\s*(?:500|600)\s*;/m;
+function readTypedTokens(): ReadonlyArray<{
+  type: string;
+  value: unknown;
+  cssProperty: string | undefined;
+}> {
+  const parsed: unknown = JSON.parse(
+    readFileSync(join(componentsRoot, 'src', 'tokens', 'resolved', 'light.json'), 'utf8'),
+  );
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('resolved/light.json is not a JSON object');
+  }
+  const tokens: Array<{ type: string; value: unknown; cssProperty: string | undefined }> = [];
+  for (const entry of Object.values(parsed)) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const type = readField(entry, '$type');
+    if (typeof type !== 'string') continue;
+    tokens.push({
+      type,
+      value: readField(entry, '$value'),
+      cssProperty: readCinderCssProperty(entry),
+    });
+  }
+  return tokens;
+}
+
+const typedTokens = readTypedTokens();
+
+/**
+ * The CSS literal forms of every duration token, both `ms` and `s` spellings.
+ *
+ * Derived from the corpus rather than hand-listed. The hand-written list this
+ * replaces had gone stale: it flagged `0.15s`, `150ms`, `0.6s`, `0.1s`, and
+ * `0.8s`, none of which correspond to any current token, while the real values
+ * (120ms, 200ms, 280ms, 400ms, 750ms, 1.4s, 1.6s) went unguarded. Deriving them
+ * means retuning a duration re-points the guard automatically instead of
+ * quietly leaving it checking for the previous values.
+ *
+ * `0` is excluded: a bare `0` in a transition is not a token bypass.
+ */
+export function durationLiterals(): readonly string[] {
+  const literals = new Set<string>();
+  for (const token of typedTokens) {
+    if (token.type !== 'duration') continue;
+    if (typeof token.value !== 'object' || token.value === null) continue;
+    const amount = readField(token.value, 'value');
+    const unit = readField(token.value, 'unit');
+    if (typeof amount !== 'number' || typeof unit !== 'string') continue;
+    const milliseconds = unit === 's' ? amount * 1000 : amount;
+    if (milliseconds === 0) continue;
+    literals.add(`${formatNumber(milliseconds)}ms`);
+    literals.add(`${formatNumber(milliseconds / 1000)}s`);
+  }
+  return [...literals].sort();
+}
+
+/**
+ * Font-weight values that have a token, paired with the custom property to use
+ * instead.
+ *
+ * The pairing matters as much as the matcher. When the guard covered only 500
+ * and 600 it could name `--cinder-font-medium` / `--cinder-font-semibold`
+ * unconditionally; now that it covers every `fontWeight` token, telling someone
+ * who wrote `font-weight: 400` to use `--cinder-font-medium` would change
+ * normal text to medium. Diagnostics are derived from the same source as the
+ * matcher so the advice cannot drift from what is enforced.
+ */
+export function fontWeightTokens(): ReadonlyMap<string, string> {
+  const byValue = new Map<string, string>();
+  for (const token of typedTokens) {
+    if (token.type !== 'fontWeight') continue;
+    if (typeof token.value !== 'number') continue;
+    if (token.cssProperty === undefined) continue;
+    byValue.set(String(token.value), token.cssProperty);
+  }
+  return new Map([...byValue].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function fontWeightLiterals(): readonly string[] {
+  return [...fontWeightTokens().keys()];
+}
+
+/** `500 -> var(--cinder-font-medium)`, for the report and the closing message. */
+function describeFontWeightMapping(): string {
+  return [...fontWeightTokens()]
+    .map(([value, property]) => `${value} -> var(${property})`)
+    .join(', ');
+}
+
+/** Trims a float to its shortest CSS spelling: 0.2 not 0.200, 120 not 120.0. */
+function formatNumber(value: number): string {
+  return String(Number(value.toFixed(6)));
+}
+
+function escapeForPattern(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Spans the WHOLE declaration, from the property to its terminating `;`, with
+ * the `s` flag so `[^;{}]` may cross newlines.
+ *
+ * The previous pattern used `.*?` under `m` alone, which stops at the first
+ * newline — so a formatted multi-value declaration hid its durations entirely:
+ *
+ *     transition:
+ *       transform 200ms ease,
+ *       opacity 200ms ease;
+ *
+ * Two real bypasses (`navigation-bar.css`, `choice-grid-item.css`) sat behind
+ * that blind spot and reported clean. `[^;{}]` rather than `[\s\S]` keeps the
+ * match inside one declaration, so an unterminated value cannot run on into the
+ * next rule and flag a literal that belongs to something else.
+ */
+export const TIMING_LITERAL_PATTERN = new RegExp(
+  `(?:transition|animation)\\s*:[^;{}]*?\\b(?:${durationLiterals()
+    .map(escapeForPattern)
+    .join('|')})\\b`,
+  's',
+);
+
+/**
+ * Font-weight literals that should use design tokens, derived from the
+ * `fontWeight` tokens the corpus declares. The previous hand-written pattern
+ * covered only 500 and 600, silently permitting raw `400` and `700` even though
+ * both have tokens.
+ */
+export const FONT_WEIGHT_LITERAL_PATTERN = new RegExp(
+  `^\\s*font-weight\\s*:\\s*(?:${fontWeightLiterals().join('|')})\\s*;`,
+  'm',
+);
 
 /**
  * Focus/selection ring width literals — specifically those that should use tokens.
@@ -82,7 +228,7 @@ const FONT_WEIGHT_LITERAL_PATTERN = /^\s*font-weight\s*:\s*(?:500|600)\s*;/m;
  *   - `outline: 2px solid white` — deliberate lightbox white-over-photo contrast
  *     (documented allowlist exception in focus-ring-policy.md).
  */
-const RING_WIDTH_LITERAL_PATTERN =
+export const RING_WIDTH_LITERAL_PATTERN =
   /^\s*outline\s*:\s*2px\s+solid\s+transparent\b|0\s+0\s+0\s+(?:2|4)px\s+var\(--cinder-ring/m;
 
 // ── Allowlist ─────────────────────────────────────────────────────────────────
@@ -221,10 +367,8 @@ function renderReport(violations: LiteralViolation[]): string {
     'design-token-literals audit — raw design-token literals detected in component CSS:\n\n';
 
   const classDescriptions: Record<LiteralClass, string> = {
-    timing:
-      'Timing literals (0.15s / 150ms / 0.6s / 0.1s / 0.8s) — use var(--cinder-duration-*) tokens.',
-    'font-weight':
-      'Font-weight literals (500 / 600) — use var(--cinder-font-medium) or var(--cinder-font-semibold).',
+    timing: `Timing literals (${durationLiterals().join(' / ')}) — use var(--cinder-duration-*) tokens.`,
+    'font-weight': `Font-weight literals — use the matching token: ${describeFontWeightMapping()}.`,
     'ring-width':
       'Ring-width literals (outline: 2px / 0 0 0 2px / 0 0 0 4px) — use var(--cinder-ring-width) with calc() where needed.',
   };
@@ -251,7 +395,7 @@ async function main(): Promise<void> {
     process.stderr.write(
       `\nFound ${violations.length} raw design-token literal(s) in component CSS.\n` +
         `Replace timing literals with var(--cinder-duration-*) tokens,\n` +
-        `font-weight literals with var(--cinder-font-medium) or var(--cinder-font-semibold),\n` +
+        `font-weight literals with the matching token (${describeFontWeightMapping()}),\n` +
         `and ring-width literals with var(--cinder-ring-width) (using calc() for offsets).\n`,
     );
     process.exitCode = 1;
