@@ -225,7 +225,7 @@ async function main(): Promise<void> {
   const setSourcesByName = new Map(expandedSets.map(({ setName, sources }) => [setName, sources]));
   const contextSourcesByKey = new Map(
     expandedContexts.map(({ modifierName, contextName, sources }) => [
-      `${modifierName} ${contextName}`,
+      `${modifierName}::${contextName}`,
       sources,
     ]),
   );
@@ -234,7 +234,7 @@ async function main(): Promise<void> {
       const sources =
         entry.kind === 'sets'
           ? setSourcesByName.get(entry.name)!
-          : contextSourcesByKey.get(`${entry.name} ${modifierValues[entry.name]}`)!;
+          : contextSourcesByKey.get(`${entry.name}::${modifierValues[entry.name]}`)!;
       return sources.map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
     });
     const resolved = resolveDocuments(orderedDocuments);
