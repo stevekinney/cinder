@@ -580,7 +580,18 @@ export async function buildTokensDocMarkdown(
     );
   }
 
-  return rewritten;
+  // Format the SPLICED document, not just each table. Tables are formatted in
+  // isolation above, but prettier's markdown printer also normalises the
+  // surrounding document -- it puts a blank line either side of an HTML
+  // comment node, which the splice above does not. Without this pass the
+  // committed file and the generator's output can never agree: lint-staged
+  // reformats on commit, `tokens:generate -- --check` regenerates without
+  // that formatting, and CI reports drift on a file nobody edited.
+  return format(rewritten, {
+    ...PRETTIER_OPTIONS,
+    parser: 'markdown',
+    plugins: MARKDOWN_PLUGINS,
+  });
 }
 
 // ---------------------------------------------------------------------------
