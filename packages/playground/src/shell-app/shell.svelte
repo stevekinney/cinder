@@ -38,10 +38,11 @@
   const INSPECTOR_LABEL = 'Token inspector';
 
   let isColorPanelOpen = $state(false);
-  type ColorTokenPanelModule = {
+  /** Both toolbar panels present the same surface: a lazily-loaded overlay that closes itself. */
+  type PanelModule = {
     default: Component<{ onClose: () => void }>;
   };
-  let colorTokenPanelModule = $state<Promise<ColorTokenPanelModule> | null>(null);
+  let colorTokenPanelModule = $state<Promise<PanelModule> | null>(null);
 
   let isInspectorOpen = $state(false);
 
@@ -53,7 +54,7 @@
    * discarded.
    */
   let latestPanelRequest = 0;
-  let inspectorModule = $state<Promise<ColorTokenPanelModule> | null>(null);
+  let inspectorModule = $state<Promise<PanelModule> | null>(null);
 
   $effect(() => {
     store.applyActiveColorTokenOverridesToDocument(document);
@@ -166,7 +167,7 @@
     isInspectorOpen = true;
   }
 
-  function getInspectorModule(): Promise<ColorTokenPanelModule> {
+  function getInspectorModule(): Promise<PanelModule> {
     if (inspectorModule === null) {
       throw new Error('Token inspector module was requested before loading.');
     }
@@ -174,7 +175,7 @@
     return inspectorModule;
   }
 
-  function getColorTokenPanelModule(): Promise<ColorTokenPanelModule> {
+  function getPanelModule(): Promise<PanelModule> {
     if (colorTokenPanelModule === null) {
       throw new Error('Color token panel module was requested before loading.');
     }
@@ -217,7 +218,7 @@
 
   {#snippet overlays()}
     {#if isColorPanelOpen}
-      {#await getColorTokenPanelModule() then module}
+      {#await getPanelModule() then module}
         {@const ColorTokenPanel = module.default}
         <ColorTokenPanel onClose={closeColorPanel} />
       {/await}
