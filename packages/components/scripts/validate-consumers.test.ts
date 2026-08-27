@@ -42,7 +42,13 @@ describe('Vite Node runtime contract', () => {
 
   test('accepts Node 22.12 and newer supported runtimes', () => {
     expect(isSupportedViteNodeVersion('v22.12.0')).toBe(true);
+    expect(isSupportedViteNodeVersion('v22.12.0+custom.1')).toBe(true);
     expect(isSupportedViteNodeVersion('v24.0.0')).toBe(true);
+  });
+
+  test('rejects prerelease versions even when they meet the version floor', () => {
+    expect(isSupportedViteNodeVersion('v22.12.0-rc.1')).toBe(false);
+    expect(isSupportedViteNodeVersion('v24.0.0-nightly')).toBe(false);
   });
 });
 

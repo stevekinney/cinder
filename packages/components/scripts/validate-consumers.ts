@@ -171,9 +171,9 @@ const ALLOWED_NODE_DIRECTORIES = [
 
 const DISALLOWED_NODE_DIRECTORY_PREFIXES = ['/tmp/', '/private/tmp/', '/var/tmp/'];
 
-/** Vite 8 requires Node 22.12.0 or newer on the Node 22 line. */
+/** Cinder consumer validation requires Node 22.12.0 or newer; prereleases are rejected. */
 export function isSupportedViteNodeVersion(version: string): boolean {
-  const match = /^v(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  const match = /^v(\d+)\.(\d+)\.(\d+)(?:\+[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/.exec(version);
   if (match === null) return false;
   const majorVersion = Number(match[1]);
   const minorVersion = Number(match[2]);
@@ -211,9 +211,10 @@ function resolveRealNodeBinary(): string {
     if (resolvedPathCandidate !== null) return resolvedPathCandidate;
   }
   fail(
-    'Node is required on PATH or in a standard system directory (/usr/local/bin, /usr/bin, /opt/homebrew/bin, /opt/local/bin) for the node-consumer fixture.\n' +
-      '  Install Node 22.12+ and re-run. Phase 1 verifies the "node" export condition under real\n' +
-      '  Node, not Bun, so Bun shims and temporary-directory PATH entries are rejected.',
+    'Node is required on PATH or in a standard system directory (/usr/local/bin, /usr/bin, /opt/homebrew/bin, /opt/local/bin) for Cinder consumer validation.\n' +
+      '  Install Node 22.12+ and re-run. Consumer validation verifies the "node" export condition\n' +
+      '  under real Node and launches the SvelteKit Vite fixture with it, so Bun shims and\n' +
+      '  temporary-directory PATH entries are rejected.',
   );
 }
 
@@ -225,7 +226,7 @@ async function ensureNodeOnPath(): Promise<void> {
   }
   const version = versionResult.stdout.toString().trim();
   if (!isSupportedViteNodeVersion(version)) {
-    fail(`Node >= 22.12 required for Vite 8. Found ${version}.`);
+    fail(`Cinder consumer validation requires Node >= 22.12. Found ${version}.`);
   }
   process.stdout.write(`[validate-consumers] using node ${version} at ${nodeBinaryPath}\n`);
 }
@@ -1402,6 +1403,23 @@ type SvelteKitChatHydrationPreparationDependencies = SvelteKitChatHydrationDevSe
   preoptimize?: (fixtureDirectory: string, signal: AbortSignal) => Promise<void>;
 };
 
+function buildViteDevCommand(
+  resolvedNodeBinaryPath: string,
+  fixtureDirectory: string,
+  httpPort: number,
+): string[] {
+  return [
+    resolvedNodeBinaryPath,
+    resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'),
+    'dev',
+    '--host',
+    '127.0.0.1',
+    '--port',
+    String(httpPort),
+    '--strictPort',
+  ];
+}
+
 export function startSvelteKitChatHydrationDevServer(
   fixtureDirectory: string,
   httpPort: number,
@@ -1412,16 +1430,7 @@ export function startSvelteKitChatHydrationDevServer(
     ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
       Bun.spawn(command, options));
   return startServer(
-    [
-      dependencies.nodeBinaryPath ?? nodeBinaryPath,
-      resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'),
-      'dev',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(httpPort),
-      '--strictPort',
-    ],
+    buildViteDevCommand(dependencies.nodeBinaryPath ?? nodeBinaryPath, fixtureDirectory, httpPort),
     {
       cwd: fixtureDirectory,
       detached: true,
@@ -1580,29 +1589,17 @@ export async function preoptimizeSvelteKitChatHydration(
 async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: string): Promise<void> {
   const httpPort = await pickEphemeralPort();
   let devSsrAssertionsPassed = false;
-  const devServer = Bun.spawn(
-    [
-      nodeBinaryPath,
-      resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'),
-      'dev',
-      '--host',
-      '127.0.0.1',
-      '--port',
-      String(httpPort),
-      '--strictPort',
-    ],
-    {
-      cwd: fixtureDirectory,
-      detached: true,
-      stdout: 'pipe',
-      stderr: 'pipe',
-      env: {
-        ...Bun.env,
-        TZ: 'UTC',
-        LANG: 'en_US.UTF-8',
-      },
+  const devServer = Bun.spawn(buildViteDevCommand(nodeBinaryPath, fixtureDirectory, httpPort), {
+    cwd: fixtureDirectory,
+    detached: true,
+    stdout: 'pipe',
+    stderr: 'pipe',
+    env: {
+      ...Bun.env,
+      TZ: 'UTC',
+      LANG: 'en_US.UTF-8',
     },
-  );
+  });
   const unregisterDevServerProcessGroup = registerHookProcessGroup(devServer.pid);
   const devServerStdout = devServer.stdout
     ? new Response(devServer.stdout).text()
