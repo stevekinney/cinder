@@ -82,7 +82,7 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/tooltip', { waitUntil: 'load' });
   const overview = page.getByRole('region', { name: 'Overview preview' });
   await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
-    'data-overview-preview-rendered',
+    'data-example-preview-ready',
     '',
   );
 
