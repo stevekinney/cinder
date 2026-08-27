@@ -63,7 +63,7 @@
        physical, moving the indicator in the wrong direction. */
     left: 0;
     inline-size: 0;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     transition:
       inline-size 160ms ease,
       transform 160ms ease;

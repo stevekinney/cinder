@@ -198,7 +198,7 @@
        the accent is the button face, so an accent ring would be invisible
        against it and fail WCAG 1.4.11 (3:1) against the page. */
     --_cinder-button-ring: var(--cinder-ring-color);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     border-color: transparent;
   }
@@ -215,14 +215,14 @@
 
   .cinder-button[data-cinder-variant='secondary'] {
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     border-color: var(--cinder-border);
   }
 
   .cinder-button[data-cinder-variant='danger'] {
-    --_cinder-button-ring: var(--cinder-danger);
-    background: var(--cinder-danger);
-    color: var(--cinder-danger-contrast);
+    --_cinder-button-ring: var(--cinder-status-danger-solid);
+    background: var(--cinder-status-danger-solid);
+    color: var(--cinder-status-danger-contrast);
     border-color: transparent;
   }
 
@@ -240,29 +240,29 @@
      * while still meeting WCAG 1.4.3 AA (4.5:1) against the typical page surfaces
      * in both themes: light-dark oklch(32% 0.014 245 / 82% 0.02 245) clears 4.5:1
      * against --cinder-surface (L≈98.5%/20%) and --cinder-surface-raised (L≈100%/26%).
-     * Switching to --cinder-text (L≈20%/92%) would meet a higher bar but remove
+     * Switching to --cinder-text-default (L≈20%/92%) would meet a higher bar but remove
      * the visual hierarchy distinction from secondary buttons. */
     color: var(--cinder-text-muted);
     border-color: transparent;
   }
 
   .cinder-button[data-cinder-variant='ghost-danger'] {
-    --_cinder-button-ring: var(--cinder-danger);
+    --_cinder-button-ring: var(--cinder-status-danger-solid);
     background: transparent;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     border-color: transparent;
   }
 
   .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost'] {
     background: var(--cinder-surface);
-    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+    background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text-default) 4%);
     border-color: var(--cinder-border-muted);
   }
 
   .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'] {
-    background: var(--cinder-color-danger-bg);
-    background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
-    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    background: color-mix(in oklch, var(--cinder-status-danger-background), transparent 35%);
+    border-color: var(--cinder-status-danger-border);
   }
 
   .cinder-button[data-cinder-variant='ghost']:disabled:not([data-cinder-loading]),
@@ -275,14 +275,14 @@
 
   .cinder-button[data-cinder-variant='ghost-danger'][data-cinder-loading] {
     background: transparent;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     border-color: transparent;
   }
 
   .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading] {
-    background: var(--cinder-color-danger-bg);
-    background: color-mix(in oklch, var(--cinder-color-danger-bg), transparent 35%);
-    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    background: color-mix(in oklch, var(--cinder-status-danger-background), transparent 35%);
+    border-color: var(--cinder-status-danger-border);
   }
 
   .cinder-button[data-cinder-variant='ghost-danger']:disabled:not([data-cinder-loading]),
@@ -290,7 +290,7 @@
       [data-cinder-loading]
     ) {
     background: transparent;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     border-color: transparent;
     opacity: 0.6;
   }
@@ -314,14 +314,14 @@
   }
 
   /* soft — tinted accent background, accent foreground, no border.
- * Background uses color-mix so it resolves against the theme-aware --cinder-accent token
+ * Background uses color-mix so it resolves against the theme-aware --cinder-accent-solid token
  * in both light and dark themes. Contrast ratios must be verified mechanically (WebAIM
  * contrast checker) before shipping; see button.a11y.md for the verification procedure. */
   .cinder-button[data-cinder-variant='soft'] {
     /* Ring uses --cinder-ring-color for consistency with primary and to keep a
        single focus semantic; the bright fill-accent is reserved for fills/text. */
     --_cinder-button-ring: var(--cinder-ring-color);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 88%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 88%);
     color: var(--cinder-accent-text);
     border-color: transparent;
   }
@@ -342,9 +342,9 @@
 
   /* soft-danger — tinted danger background, danger foreground, no border. */
   .cinder-button[data-cinder-variant='soft-danger'] {
-    --_cinder-button-ring: var(--cinder-danger);
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
+    --_cinder-button-ring: var(--cinder-status-danger-solid);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
     border-color: transparent;
   }
 
@@ -372,7 +372,7 @@
     }
 
     .cinder-button[data-cinder-variant='primary']:hover:not(:disabled):not([aria-disabled='true']) {
-      background: var(--cinder-accent-hover);
+      background: var(--cinder-accent-solid-hover);
       border-color: transparent;
     }
 
@@ -383,7 +383,7 @@
     }
 
     .cinder-button[data-cinder-variant='danger']:hover:not(:disabled):not([aria-disabled='true']) {
-      background: var(--cinder-danger-hover);
+      background: var(--cinder-status-danger-solid-hover);
       border-color: transparent;
     }
 
@@ -396,33 +396,33 @@
       ) {
       background: var(--cinder-surface-hover);
       border-color: var(--cinder-border);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
 
     .cinder-button[data-cinder-variant='ghost-danger']:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-color-danger-bg);
-      color: var(--cinder-color-danger-fg);
+      background: var(--cinder-status-danger-background);
+      color: var(--cinder-status-danger-text);
     }
 
     .cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']:hover:not(
         :disabled
       ):not([aria-disabled='true']) {
-      background: var(--cinder-color-danger-bg);
-      border-color: var(--cinder-color-danger-border);
-      color: var(--cinder-color-danger-fg);
+      background: var(--cinder-status-danger-background);
+      border-color: var(--cinder-status-danger-border);
+      color: var(--cinder-status-danger-text);
     }
 
     .cinder-button[data-cinder-variant='soft']:hover:not(:disabled):not([aria-disabled='true']) {
-      background: color-mix(in oklch, var(--cinder-accent), transparent 80%);
+      background: color-mix(in oklch, var(--cinder-accent-solid), transparent 80%);
     }
 
     .cinder-button[data-cinder-variant='soft-danger']:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-color-danger-border);
-      color: var(--cinder-color-danger-fg);
+      background: var(--cinder-status-danger-border);
+      color: var(--cinder-status-danger-text);
     }
   }
 
@@ -431,8 +431,8 @@
  * so they fire on tap. */
   .cinder-button[data-cinder-variant='primary']:active:not(:disabled):not([aria-disabled='true']) {
     /* Use the gentler on-fill pressed token so the --cinder-accent-contrast label stays AA-legible
-       on the pressed fill (the general --cinder-accent-active would drop the label below 4.5:1). */
-    background: var(--cinder-accent-active-on-fill);
+       on the pressed fill (the general --cinder-accent-solid-active would drop the label below 4.5:1). */
+    background: var(--cinder-accent-solid-active-on-fill);
   }
 
   .cinder-button[data-cinder-variant='secondary']:active:not(:disabled):not(
@@ -442,7 +442,7 @@
   }
 
   .cinder-button[data-cinder-variant='danger']:active:not(:disabled):not([aria-disabled='true']) {
-    background: var(--cinder-danger-active);
+    background: var(--cinder-status-danger-solid-active);
   }
 
   .cinder-button[data-cinder-variant='ghost']:active:not(:disabled):not([aria-disabled='true']) {
@@ -452,19 +452,19 @@
   .cinder-button[data-cinder-variant='ghost-danger']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-color-danger-border);
-    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-status-danger-border);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-button[data-cinder-variant='soft']:active:not(:disabled):not([aria-disabled='true']) {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 74%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 74%);
   }
 
   .cinder-button[data-cinder-variant='soft-danger']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-danger);
-    color: var(--cinder-danger-contrast);
+    background: var(--cinder-status-danger-solid);
+    color: var(--cinder-status-danger-contrast);
   }
 
   /* Ring replaces the border while focused rather than stacking on it — the two

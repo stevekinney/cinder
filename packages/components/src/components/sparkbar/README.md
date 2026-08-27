@@ -14,7 +14,7 @@ Compact labeled meter with a thin horizontal fill bar for inline cost, token, bu
 
 ## Theming
 
-Sparkbar inherits its foreground from `currentColor` and keeps its background transparent. The default `accent` fill uses the first resolved `--cinder-chart-series-*` color, and a partial `theme` can override that palette. The `success` and `warning` variants keep their semantic status tokens; the meter's filled position communicates magnitude independently of color.
+Sparkbar inherits its foreground from `currentColor` and keeps its background transparent. The default `accent.solid` fill uses the first resolved `--cinder-chart-series-*` color, and a partial `theme` can override that palette. The `status.success.solid` and `status.warning.solid` variants keep their semantic status tokens; the meter's filled position communicates magnitude independently of color.
 
 ## Props
 
@@ -31,7 +31,7 @@ Sparkbar inherits its foreground from `currentColor` and keeps its background tr
 | `theme`         | { background?: `string`; foreground?: `string`; grid?: `string`; muted?: `string`; palette?: `string`[] } | no       | —       | Partial visual theme override. Omitted fields inherit the surrounding application.    |
 | `trailing`      | `string`                                                                                                  | no       | —       | Optional trailing value such as a cost, token count, or percentage.                   |
 | `value`         | `number`                                                                                                  | yes      | —       | Current bounded value.                                                                |
-| `variant`       | `"accent"` \| `"success"` \| `"warning"`                                                                  | no       | —       | Fill color intent. Default `accent`.                                                  |
+| `variant`       | `"accent"` \| `"success"` \| `"warning"`                                                                  | no       | —       | Fill color intent. Default `accent.solid`.                                            |
 
 <!-- generated:props:end -->
 

@@ -16,7 +16,7 @@
     font-size: var(--cinder-text-2xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);

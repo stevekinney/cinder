@@ -72,13 +72,13 @@
   .cinder-color-swatch-picker__swatch[data-cinder-alpha] {
     /* structural-pattern: transparency checkerboard beneath the color layer — a
      * shared grid signalling "see-through" in both light and dark chrome. */
-    background-color: var(--cinder-color-checker-base);
+    background-color: var(--cinder-checker-base);
     background-image:
       linear-gradient(var(--swatch-color), var(--swatch-color)),
-      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,

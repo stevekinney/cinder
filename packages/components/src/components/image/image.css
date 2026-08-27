@@ -25,7 +25,7 @@
     object-fit: cover;
     image-rendering: auto;
     opacity: 0;
-    transition: opacity var(--cinder-duration) var(--cinder-ease-standard);
+    transition: opacity var(--cinder-duration-base) var(--cinder-ease-standard);
   }
 
   .cinder-image[data-cinder-loaded] .cinder-image__img {

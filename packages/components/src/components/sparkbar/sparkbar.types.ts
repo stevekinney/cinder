@@ -16,7 +16,7 @@ export type SparkbarProps = HTMLAttributes<HTMLDivElement> & {
   trailing?: string;
   /** Track thickness and text scale. Default `md`. */
   size?: SparkbarSize;
-  /** Fill color intent. Default `accent`. */
+  /** Fill color intent. Default `accent.solid`. */
   variant?: SparkbarVariant;
   /** Partial visual theme override. Omitted fields inherit the surrounding application. */
   theme?: ChartTheme;
@@ -40,7 +40,7 @@ export type SparkbarSchemaProps = {
   trailing?: string;
   /** Track thickness and text scale. Default `md`. */
   size?: SparkbarSize;
-  /** Fill color intent. Default `accent`. */
+  /** Fill color intent. Default `accent.solid`. */
   variant?: SparkbarVariant;
   /** Partial visual theme override. Omitted fields inherit the surrounding application. */
   theme?: ChartThemeSchema;

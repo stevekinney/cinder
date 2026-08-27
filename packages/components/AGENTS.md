@@ -332,7 +332,7 @@ matches the convention `@lostgradient/cinder` uses internally and in `related[]`
   by targeting that class.
 - **CSS custom properties:** all public design tokens use the `--cinder-`
   prefix (`--cinder-color-text`, `--cinder-space-md`). The token namespaces
-  are `color`, `space`, `radius`, `ring`, `type`, `motion`, and `shadow`.
+  are `color`, `space`, `radius`, `ring`, `type`, `motion.base`, and `shadow`.
 - **Private custom properties — DO NOT REDEFINE.** Any variable matching
   `--_cinder-*` (underscore after the dash) is an internal implementation
   detail. Redefining one will break the component at the next patch release.

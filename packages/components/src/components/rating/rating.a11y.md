@@ -41,6 +41,6 @@ Pointer hover previews a value visually but never commits it. Pointer-leave clea
 
 ## Color Contrast
 
-The fill color uses `--cinder-warning` against the empty `--cinder-border-strong`, giving a clear visual distinction. Critically, the rating is **not communicated by color alone**: each option has a text label (`3 stars of 5`) and `aria-checked` carries the committed state. A user with low color vision can still tell the rating from screen-reader output or from the readonly text equivalent.
+The fill color uses `--cinder-status-warning-solid` against the empty `--cinder-border-strong`, giving a clear visual distinction. Critically, the rating is **not communicated by color alone**: each option has a text label (`3 stars of 5`) and `aria-checked` carries the committed state. A user with low color vision can still tell the rating from screen-reader output or from the readonly text equivalent.
 
 In Windows High Contrast Mode (`forced-colors: active`) the fill switches to the system `Highlight` color so the rating remains visible.

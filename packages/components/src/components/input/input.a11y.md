@@ -31,10 +31,10 @@ When `disabled={true}` is passed, the native `disabled` attribute is set on `<in
 
 ## Color Contrast
 
-- Label text uses `--cinder-text` (light: oklch 20%, dark: oklch 92%) against the page background, satisfying WCAG AA 4.5:1 for normal text.
+- Label text uses `--cinder-text-default` (light: oklch 20%, dark: oklch 92%) against the page background, satisfying WCAG AA 4.5:1 for normal text.
 - Placeholder text uses `--cinder-text-subtle` which is intentionally lower contrast. Placeholders are not a substitute for labels — the visible `<label>` element carries the accessible name.
-- Error text uses `--cinder-danger` which is calibrated to pass WCAG AA contrast against the component surface in both light and dark modes.
-- The error-state border uses `--cinder-danger` as a redundant visual cue alongside `aria-invalid`. Color alone is not relied upon — the error text below the input provides the message in all cases.
+- Error text uses `--cinder-status-danger-solid` which is calibrated to pass WCAG AA contrast against the component surface in both light and dark modes.
+- The error-state border uses `--cinder-status-danger-solid` as a redundant visual cue alongside `aria-invalid`. Color alone is not relied upon — the error text below the input provides the message in all cases.
 
 ## Content Guidance
 

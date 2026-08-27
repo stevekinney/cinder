@@ -59,7 +59,7 @@
     padding: var(--cinder-space-1-5) var(--cinder-space-2);
     border: 0;
     border-radius: var(--cinder-radius-full);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     cursor: pointer;
     font-size: var(--cinder-text-xs);
@@ -72,7 +72,7 @@
 
   @media (hover: hover) {
     .cinder-selection-popover__button:hover {
-      background: var(--cinder-accent-hover);
+      background: var(--cinder-accent-solid-hover);
     }
   }
 
@@ -112,7 +112,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
@@ -120,7 +120,7 @@
   }
 
   .cinder-selection-popover__textarea:focus {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
   }
 
   .cinder-selection-popover__textarea:focus,
@@ -171,18 +171,18 @@
   @media (hover: hover) {
     .cinder-selection-popover__cancel:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
   .cinder-selection-popover__submit {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
   }
 
   @media (hover: hover) {
     .cinder-selection-popover__submit:hover:not(:disabled) {
-      background: var(--cinder-accent-hover);
+      background: var(--cinder-accent-solid-hover);
     }
   }
 

@@ -8,12 +8,12 @@ Two stacked aria-live regions follow [WAI-ARIA Authoring Practices: Alert and St
 
 ## Two regions, two priorities
 
-| Variant                      | Region                                      | aria-live   | role     |
-| ---------------------------- | ------------------------------------------- | ----------- | -------- |
-| `info`, `success`, `warning` | `.cinder-toast-region__channel` (polite)    | `polite`    | `status` |
-| `danger`                     | `.cinder-toast-region__channel` (assertive) | `assertive` | `alert`  |
+| Variant                                                             | Region                                      | aria-live   | role     |
+| ------------------------------------------------------------------- | ------------------------------------------- | ----------- | -------- |
+| `status.info.solid`, `status.success.solid`, `status.warning.solid` | `.cinder-toast-region__channel` (polite)    | `polite`    | `status` |
+| `status.danger.solid`                                               | `.cinder-toast-region__channel` (assertive) | `assertive` | `alert`  |
 
-Both regions carry `aria-atomic="true"` and `aria-relevant="additions"`. They render in the same visual position but route announcements through independent live-region queues so a `success` toast and a simultaneous `danger` toast don't collapse into a single ambiguous announcement.
+Both regions carry `aria-atomic="true"` and `aria-relevant="additions"`. They render in the same visual position but route announcements through independent live-region queues so a `status.success.solid` toast and a simultaneous `status.danger.solid` toast don't collapse into a single ambiguous announcement.
 
 ## Region scope
 
@@ -31,9 +31,9 @@ Hovering or focusing the region pauses active auto-dismiss timers for the whole 
 
 ## Deduplication
 
-Calling `show(message, { id })` with an id that's already active replaces the existing entry instead of stacking a duplicate. Replacement searches both live-region channels, so an `info` toast can become a `danger` toast without leaving an orphan in the polite region.
+Calling `show(message, { id })` with an id that's already active replaces the existing entry instead of stacking a duplicate. Replacement searches both live-region channels, so an `status.info.solid` toast can become a `status.danger.solid` toast without leaving an orphan in the polite region.
 
-`toast.promise()` uses the same id replacement path. Loading toasts are polite and sticky; rejected promises resolve into the assertive `danger` region. Late promise settlements are ignored if the loading toast was dismissed or superseded.
+`toast.promise()` uses the same id replacement path. Loading toasts are polite and sticky; rejected promises resolve into the assertive `status.danger.solid` region. Late promise settlements are ignored if the loading toast was dismissed or superseded.
 
 ## Action button
 

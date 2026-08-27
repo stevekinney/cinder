@@ -66,7 +66,7 @@
     max-width: max-content;
     background: var(--cinder-surface-raised);
     border-radius: var(--cinder-radius-lg);
-    animation: participant-typing-enter var(--cinder-duration) var(--cinder-ease-decelerate);
+    animation: participant-typing-enter var(--cinder-duration-base) var(--cinder-ease-decelerate);
   }
 
   @keyframes participant-typing-enter {

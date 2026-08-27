@@ -244,9 +244,9 @@
   }
 
   .diff-line[data-selected='true'] {
-    outline: var(--cinder-ring-width) solid var(--cinder-accent);
+    outline: var(--cinder-ring-width) solid var(--cinder-accent-solid);
     outline-offset: calc(var(--cinder-ring-width) * -1);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
     z-index: 1;
   }
 
@@ -271,26 +271,26 @@
 
   /* Added lines (DEP-47: underline provides non-color indicator for a11y) */
   .diff-line-added .diff-text {
-    background: var(--cinder-color-success-bg);
+    background: var(--cinder-status-success-background);
     text-decoration: underline;
-    text-decoration-color: var(--cinder-success);
+    text-decoration-color: var(--cinder-status-success-solid);
     text-decoration-thickness: 2px;
     text-underline-offset: 2px;
   }
 
   .diff-line-added .diff-gutter {
-    background: var(--cinder-color-success-border);
-    color: var(--cinder-color-success-fg);
+    background: var(--cinder-status-success-border);
+    color: var(--cinder-status-success-text);
   }
 
   /* Removed lines */
   .diff-line-removed .diff-text {
-    background: var(--cinder-color-danger-bg);
+    background: var(--cinder-status-danger-background);
   }
 
   .diff-line-removed .diff-gutter {
-    background: var(--cinder-color-danger-border);
-    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-status-danger-border);
+    color: var(--cinder-status-danger-text);
   }
 
   .diff-line-removed del {
@@ -310,12 +310,12 @@
 
   /* Modified lines (unified view) */
   .diff-line-modified .diff-text {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 85%);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 85%);
   }
 
   .diff-line-modified .diff-gutter {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 60%);
-    color: var(--cinder-color-info-fg);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 60%);
+    color: var(--cinder-status-info-text);
   }
 
   .word-changes {
@@ -323,44 +323,44 @@
   }
 
   .word-removed {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
     text-decoration: line-through;
     border-radius: 2px;
     padding: 0 2px;
-    box-shadow: inset 0 0 0 1px var(--cinder-color-danger-border);
+    box-shadow: inset 0 0 0 1px var(--cinder-status-danger-border);
   }
 
   /* DEP-47: underline provides non-color indicator for a11y */
   .word-added {
-    background: var(--cinder-color-success-bg);
-    color: var(--cinder-color-success-fg);
+    background: var(--cinder-status-success-background);
+    color: var(--cinder-status-success-text);
     text-decoration: underline;
-    text-decoration-color: var(--cinder-success);
+    text-decoration-color: var(--cinder-status-success-solid);
     text-decoration-thickness: 2px;
     text-underline-offset: 2px;
     border-radius: 2px;
     padding: 0 2px;
-    box-shadow: inset 0 0 0 1px var(--cinder-color-success-border);
+    box-shadow: inset 0 0 0 1px var(--cinder-status-success-border);
   }
 
   /* Modified in final view (highlight subtly) */
   .diff-line-modified-final .diff-text {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 85%);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 85%);
   }
 
   .diff-line-modified-final .diff-gutter {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 65%);
-    color: var(--cinder-color-info-fg);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 65%);
+    color: var(--cinder-status-info-text);
   }
 
   /* Modified in original view (highlight subtly) */
   .diff-line-modified-original .diff-text {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 85%);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 85%);
   }
 
   .diff-line-modified-original .diff-gutter {
-    background: color-mix(in oklch, var(--cinder-color-info-bg), transparent 65%);
-    color: var(--cinder-color-info-fg);
+    background: color-mix(in oklch, var(--cinder-status-info-background), transparent 65%);
+    color: var(--cinder-status-info-text);
   }
 </style>

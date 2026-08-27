@@ -13,7 +13,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-label[data-disabled] {

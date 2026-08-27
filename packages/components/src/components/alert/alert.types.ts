@@ -1,13 +1,13 @@
 import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
-/** Visual severity variants for the Alert component. `danger` is the canonical spelling shared by banner and callout. */
+/** Visual severity variants for the Alert component. `status.danger.solid` is the canonical spelling shared by banner and callout. */
 export type AlertVariant =
   | 'info'
   | 'success'
   | 'warning'
   | 'danger'
-  /** @deprecated Use `danger`. */
+  /** @deprecated Use `status.danger.solid`. */
   | 'error';
 
 /**
@@ -43,7 +43,7 @@ export type AlertProps = Omit<
  */
 export interface AlertSchemaProps {
   /**
-   * Visual severity variant. `danger` is the canonical failure-severity spelling, consistent with banner and callout.
+   * Visual severity variant. `status.danger.solid` is the canonical failure-severity spelling, consistent with banner and callout.
    * `error` remains accepted as a deprecated alias.
    * @default "info"
    */

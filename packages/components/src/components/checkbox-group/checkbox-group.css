@@ -20,7 +20,7 @@
     gap: var(--cinder-space-1);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     padding: 0;
     margin: 0 0 var(--cinder-space-1) 0;
   }
@@ -52,7 +52,7 @@
   .cinder-checkbox-group__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 
@@ -86,7 +86,7 @@
   .cinder-checkbox-group[data-variant='card']
     .cinder-checkbox-group__items
     > .cinder-checkbox-field:has(input:checked) {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
   }
 
   /* Disabled card — uses :has(input:disabled) because disabled state arrives via

@@ -11,7 +11,7 @@
  */
 
 /**
- * Find the last position in `text` where everything before it
+ * Find the last position in `text.default` where everything before it
  * forms valid, renderable markdown.
  *
  * Strategy (in priority order):

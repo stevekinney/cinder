@@ -39,15 +39,15 @@
   }
 
   .cinder-diff-statistics__stat--added {
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-diff-statistics__stat--removed {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-diff-statistics__stat--modified {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-diff-statistics__stat--none {
@@ -63,18 +63,18 @@
   }
 
   .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--added {
-    background: var(--cinder-color-success-bg);
-    color: var(--cinder-color-success-fg);
+    background: var(--cinder-status-success-background);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--removed {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-diff-statistics[data-cinder-variant='compact'] .cinder-diff-statistics__stat--modified {
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
   }
 
   /* compact + density="toolbar": opt the compact stat pills into the shared

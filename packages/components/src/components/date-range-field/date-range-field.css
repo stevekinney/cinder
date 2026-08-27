@@ -20,7 +20,7 @@
   .cinder-date-range-field__legend {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
   }
 
@@ -60,7 +60,7 @@
   @media (hover: hover) {
     .cinder-date-range-field__preset-btn:hover:not(:disabled) {
       border-color: var(--cinder-border-strong);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
@@ -73,8 +73,8 @@
   }
 
   .cinder-date-range-field__preset-btn[aria-pressed='true'] {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    border-color: var(--cinder-accent);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+    border-color: var(--cinder-accent-solid);
     color: var(--cinder-accent-text);
   }
 
@@ -111,7 +111,7 @@
     font-size: var(--cinder-text-sm);
     font-family: inherit;
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -137,7 +137,7 @@
   }
 
   .cinder-date-range-field__date-input[aria-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-date-range-field__date-input:disabled {
@@ -175,7 +175,7 @@
   .cinder-date-range-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 

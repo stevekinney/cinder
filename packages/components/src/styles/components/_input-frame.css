@@ -3,7 +3,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     transition:
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -20,7 +20,7 @@
 
   .cinder-_input-frame[aria-invalid='true'],
   .cinder-_input-frame[data-invalid] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   /* On focus, swap the danger border for a danger-colored focus ring so the
@@ -35,7 +35,8 @@
     border-color: transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--cinder-status-danger-solid);
   }
 
   .cinder-_input-frame:disabled,
@@ -48,7 +49,7 @@
 
   @supports selector(:user-invalid) {
     .cinder-_input-frame:user-invalid:not([aria-invalid='true']):not([data-invalid]) {
-      border-color: var(--cinder-danger);
+      border-color: var(--cinder-status-danger-solid);
     }
   }
 
@@ -60,7 +61,7 @@
     }
 
     /* In forced-colors mode the box-shadow danger ring is suppressed and
-       --cinder-danger is not a system color, so the focused invalid state
+       --cinder-status-danger-solid is not a system color, so the focused invalid state
        above would otherwise read as a plain neutral focus outline with no
        error signal. Restore an error-emphasis affordance with the `Mark`
        system color (the WHCM keyword for flagged/annotated content). */

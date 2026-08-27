@@ -43,7 +43,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
   }
 
@@ -91,7 +91,7 @@
     border: 1px solid var(--cinder-border, currentColor);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface, transparent);
-    color: var(--cinder-text, currentColor);
+    color: var(--cinder-text-default, currentColor);
     font: inherit;
     cursor: pointer;
   }
@@ -116,7 +116,7 @@
     outline: none;
     cursor: default;
     border-radius: var(--cinder-radius-sm);
-    --cinder-tree-drop-line-color: var(--cinder-accent);
+    --cinder-tree-drop-line-color: var(--cinder-accent-solid);
     --cinder-tree-drop-line-thickness: 2px;
     --cinder-tree-item-dragging-opacity: 0.55;
   }
@@ -208,7 +208,7 @@
     flex: 0 0 auto;
     width: 1rem;
     height: 1rem;
-    accent-color: var(--cinder-accent, currentColor);
+    accent-color: var(--cinder-accent-solid, currentColor);
     pointer-events: auto;
   }
 
@@ -257,7 +257,7 @@
   }
 
   .cinder-tree-item[data-cinder-selected] > .cinder-tree-item__row {
-    background-color: color-mix(in srgb, var(--cinder-accent) 15%, transparent);
+    background-color: color-mix(in srgb, var(--cinder-accent-solid) 15%, transparent);
     color: var(--cinder-accent-text);
   }
 
@@ -311,7 +311,7 @@
   .cinder-tree-item__highlight {
     padding: 0;
     border-radius: 0.125rem;
-    background-color: color-mix(in srgb, var(--cinder-accent) 20%, transparent);
+    background-color: color-mix(in srgb, var(--cinder-accent-solid) 20%, transparent);
     color: inherit;
   }
 
@@ -325,7 +325,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
   }
 
@@ -343,7 +343,7 @@
   }
 
   .cinder-tree-item__rename-input[aria-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-tree-item__children {

@@ -28,7 +28,7 @@
   }
 
   .cinder-segmented-control-label {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
   }
@@ -230,8 +230,8 @@
     .cinder-segmented-control-option:hover:not(:disabled):not([aria-disabled='true']):not(
         [data-cinder-selected]
       ):not([data-cinder-current]):not([data-cinder-pressed]) {
-      background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-      color: var(--cinder-text);
+      background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+      color: var(--cinder-text-default);
     }
 
     /* Selected/pressed segments get hover feedback too, so they don't read as
@@ -251,7 +251,7 @@
     .cinder-segmented-control-option[data-cinder-pressed]:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-accent-hover);
+      background: var(--cinder-accent-solid-hover);
     }
   }
 
@@ -276,13 +276,13 @@
   /* ── Selected (single mode) ─────────────────────────────────────────────── */
 
   .cinder-segmented-control-option[data-cinder-selected] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     box-shadow: var(--cinder-shadow-sm);
   }
 
   .cinder-segmented-control-option[data-cinder-current] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     box-shadow: var(--cinder-shadow-sm);
   }
@@ -294,7 +294,7 @@
   /* ── Pressed (multiple mode) ────────────────────────────────────────────── */
 
   .cinder-segmented-control-option[data-cinder-pressed] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     box-shadow: var(--cinder-shadow-sm);
   }
@@ -438,7 +438,7 @@
     inset-inline: 0;
     inset-block-end: 0;
     block-size: 2px;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-full);
   }
 

@@ -40,5 +40,5 @@ Segments use a monospace font so every character is the same width. The masked m
 
 ## Color Contrast
 
-- Segment text uses `--cinder-text`, satisfying WCAG AA 4.5:1 against the segment surface in both light and dark modes.
-- Error borders use `--cinder-danger` as a redundant visual cue alongside `aria-invalid="true"`. The `error` text below the segments provides the message in every case.
+- Segment text uses `--cinder-text-default`, satisfying WCAG AA 4.5:1 against the segment surface in both light and dark modes.
+- Error borders use `--cinder-status-danger-solid` as a redundant visual cue alongside `aria-invalid="true"`. The `error` text below the segments provides the message in every case.

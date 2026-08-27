@@ -24,10 +24,10 @@
 
     border-radius: var(--cinder-radius-md);
     /* Dark-overlay in both themes.
-     * Light: --cinder-surface-inverse → --cinder-text (dark ink bg);
+     * Light: --cinder-surface-inverse → --cinder-text-default (dark ink bg);
      *        --cinder-text-inverse → --cinder-surface (near-white text).
      * Dark:  --cinder-surface-inverse → --cinder-surface-raised (elevated dark
-     *        surface); --cinder-text-inverse → --cinder-text (near-white, ~8.3:1).
+     *        surface); --cinder-text-inverse → --cinder-text-default (near-white, ~8.3:1).
      *        --cinder-border-inverse adds 1px strong border so tooltip separates
      *        from the dark stage. Both arms render a dark overlay with legible
      *        light text — no theme inversion occurs. */

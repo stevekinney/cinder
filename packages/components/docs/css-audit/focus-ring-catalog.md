@@ -89,8 +89,8 @@ documented as exceptions.
 | `segmented-control/segmented-control.css:175`    | `.cinder-segmented-control-option:focus-visible`    | literal `outline: 2px` (instead of var) — plain colors                        |
 
 Note: `textarea` also has an `[aria-invalid='true']:focus-visible` variant that
-uses `--cinder-danger` for the inner stop (textarea.css:93). Plain
-`var(--cinder-danger)` rather than a `--_cinder-X-ring` override — same family,
+uses `--cinder-status-danger-solid` for the inner stop (textarea.css:93). Plain
+`var(--cinder-status-danger-solid)` rather than a `--_cinder-X-ring` override — same family,
 same exception logic. Left inline.
 
 ### Bucket B — Outline-only focus ring

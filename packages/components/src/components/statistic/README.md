@@ -28,7 +28,7 @@ snippet. The flat `@lostgradient/cinder/statistic` subpath remains exported for
 
 ## Theming
 
-With no `theme`, Statistic paints its value from `--cinder-text` and its label, icon, and change description from `--cinder-text-muted`, keeping the background transparent. The muted token is what separates the label from the value, so it is a real token rather than an opacity on inherited text — the label is body text and has to clear the 4.5:1 contrast floor on its own.
+With no `theme`, Statistic paints its value from `--cinder-text-default` and its label, icon, and change description from `--cinder-text-muted`, keeping the background transparent. The muted token is what separates the label from the value, so it is a real token rather than an opacity on inherited text — the label is body text and has to clear the 4.5:1 contrast floor on its own.
 
 Pass a partial `theme` when a statistic needs an explicit local foreground, muted color, or background — on a custom-coloured panel, for instance. Supplying a `theme` switches the omitted fields back to inheriting `currentColor` from the surrounding application, so a partial theme never mixes your explicit colours with the global tokens: `theme={{ foreground: 'white', background: 'black' }}` leaves the label inheriting white rather than dropping the app's dark muted token onto a black surface. To make an unthemed-looking Statistic follow an ancestor's `color` instead of the tokens, ask for it explicitly with `theme={{ foreground: 'currentColor', muted: 'currentColor' }}`.
 

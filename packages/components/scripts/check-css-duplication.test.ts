@@ -140,7 +140,7 @@ describe('declarationMultiset', () => {
   test('discovers compound-leaf selectors from sidecar CSS', () => {
     expect(
       componentClassNamesFromStylesheet(
-        parse('.cinder-table__row--selected { color: var(--cinder-accent); }'),
+        parse('.cinder-table__row--selected { color: var(--cinder-accent-solid); }'),
       ),
     ).toEqual(['cinder-table__row--selected']);
   });

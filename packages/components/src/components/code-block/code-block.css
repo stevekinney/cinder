@@ -98,7 +98,7 @@
     font-size: var(--cinder-code-block-font-size);
     line-height: var(--cinder-code-block-line-height);
     tab-size: var(--cinder-type-tab-size);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     /* Use near-white in light mode so github-light token colors (e.g. #d73a49
      * keyword red) clear 4.5:1 WCAG AA. In dark mode keep the deep inset so
      * github-dark tokens maintain contrast on a very dark surface. */
@@ -280,7 +280,7 @@
   @media (hover: hover) {
     .cinder-code-block .cinder-code-block__header .cinder-copy-button:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       border-color: transparent;
     }
   }

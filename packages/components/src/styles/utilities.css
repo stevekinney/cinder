@@ -36,11 +36,11 @@
   clip-path: none;
   white-space: normal;
   background: var(--cinder-surface, #fff);
-  color: var(--cinder-text, #000);
+  color: var(--cinder-text-default, #000);
   border: 1px solid var(--cinder-border, currentColor);
   /* Fallback retained deliberately: every custom property in this rule that
      affects the PAINTED BOX carries one (--cinder-space-2, --cinder-space-3,
-     --cinder-surface, --cinder-text, --cinder-border), because a skip link has to
+     --cinder-surface, --cinder-text-default, --cinder-border), because a skip link has to
      stay usable if the base token sheet has not loaded. Without it the radius
      would compute to 0 in exactly that scenario. Value tracks --cinder-radius-md.
      --cinder-z-focused-affordance is the deliberate exception: an unresolved
@@ -200,10 +200,10 @@ svg.cinder-icon-lg {
 }
 
 .cinder-markdown-content :where(li[data-item-type='task'][data-checked='true'])::before {
-  border-color: var(--cinder-accent);
+  border-color: var(--cinder-accent-solid);
   background:
     linear-gradient(var(--cinder-surface), var(--cinder-surface)) center / 40% 40% no-repeat,
-    var(--cinder-accent);
+    var(--cinder-accent-solid);
 }
 
 .cinder-markdown-content :where(blockquote) {

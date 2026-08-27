@@ -53,7 +53,7 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 
 ## Soft variant contrast
 
-`soft` and `soft-danger` use `color-mix(in oklch, var(--cinder-accent|danger), transparent 88%)` as the background. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-color-accent-soft-bg`/`-fg` tokens with explicit values that meet the threshold.
+`soft` and `soft-danger` use `color-mix(in oklch, var(--cinder-accent-solid|danger), transparent 88%)` as the background. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-color-accent-soft-bg`/`-fg` tokens with explicit values that meet the threshold.
 
 ## Variant guidance
 
@@ -61,7 +61,7 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 - `secondary`: medium-emphasis, outline-flavored (surface fill + border).
 - `soft`: medium-emphasis, tinted fill, no border. Good for secondary actions in colored contexts.
 - `soft-danger`: same as soft but uses danger tint. For destructive secondary actions.
-- `danger`: high-emphasis destructive action.
+- `status.danger.solid`: high-emphasis destructive action.
 - `ghost`: low-emphasis, transparent background.
 - `ghost-danger`: low-emphasis destructive action.
 

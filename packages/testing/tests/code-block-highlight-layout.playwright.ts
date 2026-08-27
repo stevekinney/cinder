@@ -63,7 +63,7 @@ test('CodeBlock highlighting does not move surrounding layout', async ({ page })
     sentinel.dataset['testid'] = 'code-block-sentinel';
     sentinel.style.marginBlockStart = '16px';
     sentinel.style.blockSize = '24px';
-    sentinel.style.background = 'var(--cinder-accent)';
+    sentinel.style.background = 'var(--cinder-accent-solid)';
     element.after(sentinel);
   });
   await block.locator('.cinder-code-block__viewport').evaluate((viewport) => {

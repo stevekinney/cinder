@@ -168,7 +168,7 @@
   }
 
   .cinder-carousel__dot[aria-current='true']::before {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     opacity: 1;
   }
 

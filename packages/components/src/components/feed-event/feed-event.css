@@ -85,26 +85,26 @@
    * the tone is never the only signal (see FeedEventTone docs). */
   .cinder-feed-event[data-cinder-tone='info'] .cinder-feed-event-rail,
   .cinder-feed-event[data-cinder-tone='info'] .cinder-feed-event-dot {
-    background: var(--cinder-info);
-    color: var(--cinder-info-contrast);
+    background: var(--cinder-status-info-solid);
+    color: var(--cinder-status-info-contrast);
   }
 
   .cinder-feed-event[data-cinder-tone='success'] .cinder-feed-event-rail,
   .cinder-feed-event[data-cinder-tone='success'] .cinder-feed-event-dot {
-    background: var(--cinder-success);
-    color: var(--cinder-success-contrast);
+    background: var(--cinder-status-success-solid);
+    color: var(--cinder-status-success-contrast);
   }
 
   .cinder-feed-event[data-cinder-tone='warning'] .cinder-feed-event-rail,
   .cinder-feed-event[data-cinder-tone='warning'] .cinder-feed-event-dot {
-    background: var(--cinder-warning);
-    color: var(--cinder-warning-contrast);
+    background: var(--cinder-status-warning-solid);
+    color: var(--cinder-status-warning-contrast);
   }
 
   .cinder-feed-event[data-cinder-tone='error'] .cinder-feed-event-rail,
   .cinder-feed-event[data-cinder-tone='error'] .cinder-feed-event-dot {
-    background: var(--cinder-danger);
-    color: var(--cinder-danger-contrast);
+    background: var(--cinder-status-danger-solid);
+    color: var(--cinder-status-danger-contrast);
   }
 
   /* Minimal-variant rail stays transparent; only the inner dot takes the tone. */

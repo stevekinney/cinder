@@ -46,7 +46,7 @@ const schema = {
     variant: {
       enum: ['bubble', 'flat'],
       description:
-        "Visual treatment for message bubbles.\n- `'bubble'` (default): colored backgrounds differentiate user from assistant.\n- `'flat'`: no bubble backgrounds; role is communicated via alignment and role label.\n  Text-on-surface contrast meets WCAG AA via `--cinder-text` on `--cinder-surface-inset`.",
+        "Visual treatment for message bubbles.\n- `'bubble'` (default): colored backgrounds differentiate user from assistant.\n- `'flat'`: no bubble backgrounds; role is communicated via alignment and role label.\n  Text-on-surface contrast meets WCAG AA via `--cinder-text-default` on `--cinder-surface-inset`.",
     },
     bottomThreshold: {
       type: 'number',

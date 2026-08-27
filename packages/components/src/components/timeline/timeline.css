@@ -112,19 +112,19 @@
   }
 
   .cinder-timeline-item[data-cinder-tone='info'] .cinder-timeline-item__marker {
-    color: var(--cinder-info);
+    color: var(--cinder-status-info-solid);
   }
 
   .cinder-timeline-item[data-cinder-tone='success'] .cinder-timeline-item__marker {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
 
   .cinder-timeline-item[data-cinder-tone='warning'] .cinder-timeline-item__marker {
-    color: var(--cinder-warning);
+    color: var(--cinder-status-warning-solid);
   }
 
   .cinder-timeline-item[data-cinder-tone='error'] .cinder-timeline-item__marker {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .cinder-timeline-item__header {
@@ -137,7 +137,7 @@
   .cinder-timeline-item__title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-timeline-item__time {

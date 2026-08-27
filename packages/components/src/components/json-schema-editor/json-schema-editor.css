@@ -130,7 +130,7 @@
     cursor: pointer;
     font-family: inherit;
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   @media (hover: hover) {
@@ -207,12 +207,12 @@
   }
 
   .cinder-jse-enum-editor__error {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin-block: var(--cinder-space-1) 0;
   }
 
   .cinder-jse-property-row[data-cinder-invalid] > .cinder-table__cell:first-child {
-    border-inline-start: 2px solid var(--cinder-color-danger-border);
+    border-inline-start: 2px solid var(--cinder-status-danger-border);
   }
 
   .cinder-jse-property-row__key {
@@ -281,7 +281,7 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-jse-property-row__detail-cell {
@@ -394,15 +394,15 @@
   }
 
   .cinder-jse-diff-line--added {
-    background: var(--cinder-color-success-bg);
+    background: var(--cinder-status-success-background);
   }
 
   .cinder-jse-diff-line--removed {
-    background: var(--cinder-color-danger-bg);
+    background: var(--cinder-status-danger-background);
   }
 
   .cinder-jse-diff-line--modified {
-    background: var(--cinder-color-warning-bg);
+    background: var(--cinder-status-warning-background);
   }
 
   /* ===== Form view ===== */

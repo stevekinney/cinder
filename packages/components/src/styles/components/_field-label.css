@@ -12,7 +12,7 @@
     display: inline-flex;
     align-items: center;
     align-self: center;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
     line-height: 0;
     flex-shrink: 0;

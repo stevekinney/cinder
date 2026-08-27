@@ -23,7 +23,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
@@ -67,7 +67,7 @@
     inline-size: 0.875rem;
     block-size: 0.875rem;
     border: 2px solid color-mix(in oklch, var(--cinder-text-muted), transparent 65%);
-    border-top-color: var(--cinder-text);
+    border-top-color: var(--cinder-text-default);
     border-radius: 9999px;
   }
 

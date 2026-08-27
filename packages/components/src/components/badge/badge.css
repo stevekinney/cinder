@@ -17,7 +17,7 @@
     white-space: nowrap;
 
     background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
 
     transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
@@ -48,39 +48,39 @@
  * ---------------------------------------- */
 
   .cinder-badge[data-cinder-variant='neutral'] {
-    background: var(--cinder-color-neutral-bg);
-    color: var(--cinder-color-neutral-fg);
-    border-color: var(--cinder-color-neutral-border);
+    background: var(--cinder-status-neutral-background);
+    color: var(--cinder-status-neutral-text);
+    border-color: var(--cinder-status-neutral-border);
   }
 
   .cinder-badge[data-cinder-variant='success'] {
-    background: var(--cinder-color-success-bg);
-    color: var(--cinder-color-success-fg);
-    border-color: var(--cinder-color-success-border);
+    background: var(--cinder-status-success-background);
+    color: var(--cinder-status-success-text);
+    border-color: var(--cinder-status-success-border);
   }
 
   .cinder-badge[data-cinder-variant='warning'] {
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
-    border-color: var(--cinder-color-warning-border);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
+    border-color: var(--cinder-status-warning-border);
   }
 
   .cinder-badge[data-cinder-variant='danger'] {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
-    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
+    border-color: var(--cinder-status-danger-border);
   }
 
   .cinder-badge[data-cinder-variant='info'] {
-    background: var(--cinder-color-info-bg);
-    color: var(--cinder-color-info-fg);
-    border-color: var(--cinder-color-info-border);
+    background: var(--cinder-status-info-background);
+    color: var(--cinder-status-info-text);
+    border-color: var(--cinder-status-info-border);
   }
 
   .cinder-badge[data-cinder-variant='accent'] {
-    background: var(--cinder-color-accent-bg);
-    color: var(--cinder-color-accent-fg);
-    border-color: var(--cinder-color-accent-border);
+    background: var(--cinder-accent-background);
+    color: var(--cinder-accent-text);
+    border-color: var(--cinder-accent-border);
   }
 
   /* ----------------------------------------

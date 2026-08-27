@@ -9,7 +9,7 @@ import type { HTMLAnchorAttributes, HTMLButtonAttributes } from 'svelte/elements
  * covers the transparent-background case, and (c) 27+ call sites depend on `secondary` today.
  *
  * `soft` / `soft-danger` use a tinted fill with no border — mid-emphasis between `ghost` and
- * `primary`/`danger`. Background is `color-mix(in oklch, accent, transparent 88%)` so it
+ * `primary`/`status.danger.solid`. Background is `color-mix(in oklch, accent, transparent 88%)` so it
  * resolves against the current theme's accent/danger color in both light and dark modes.
  *
  * @default `"secondary"`

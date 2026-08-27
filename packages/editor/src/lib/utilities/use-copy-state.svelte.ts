@@ -41,7 +41,7 @@ export interface CopyState<TKey extends string = string> {
   /** The key of the item currently in the confirmed state, or null if none. */
   readonly copiedKey: TKey | null;
   /**
-   * Copy `text` to the clipboard and set the confirmed state for `key`.
+   * Copy `text.default` to the clipboard and set the confirmed state for `key`.
    * Returns true if the copy succeeded.
    */
   trigger(key: TKey, text: string): Promise<boolean>;

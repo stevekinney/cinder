@@ -723,13 +723,13 @@
   }
 
   .chat-input:focus-within {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
   }
 
   .chat-input-dragover {
     border-style: dashed;
-    border-color: var(--cinder-accent);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 95%);
+    border-color: var(--cinder-accent-solid);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 95%);
   }
 
   /* Attachment previews */
@@ -796,7 +796,7 @@
 
   @media (hover: hover) {
     .chat-input-attachment-remove:hover::before {
-      background: var(--cinder-danger);
+      background: var(--cinder-status-danger-solid);
     }
   }
 
@@ -852,7 +852,7 @@
     overflow-y: auto;
     font: inherit;
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: transparent;
     border: none;
     border-radius: 0;
@@ -901,7 +901,7 @@
     padding: 0 var(--cinder-space-1);
     font-family: inherit;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
@@ -925,7 +925,7 @@
     padding: 0;
     border: none;
     border-radius: var(--cinder-radius-full);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     cursor: pointer;
     transition:
@@ -935,7 +935,7 @@
 
   @media (hover: hover) {
     .chat-input-send:hover:not(:disabled) {
-      background: color-mix(in oklch, var(--cinder-accent), black 15%);
+      background: color-mix(in oklch, var(--cinder-accent-solid), black 15%);
     }
   }
 
@@ -957,15 +957,15 @@
 
   /* Stop button variant - danger-tinted to signal urgency during streaming */
   .chat-input-send[data-stop] {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
-    border: 1px solid var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
+    border: 1px solid var(--cinder-status-danger-border);
   }
 
   @media (hover: hover) {
     .chat-input-send[data-stop]:hover {
-      background: var(--cinder-color-danger-border);
-      border-color: var(--cinder-danger);
+      background: var(--cinder-status-danger-border);
+      border-color: var(--cinder-status-danger-solid);
     }
   }
 
@@ -995,7 +995,7 @@
   .chat-input-error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   /* Screen reader only */

@@ -18,7 +18,7 @@
  * color-scheme arm at paint time and, in current versions, serializes
  * `getComputedStyle().backgroundColor` (and friends) for an OKLCH-authored
  * value back as `oklch(L C H)` — NOT `rgb()`. Reading a raw custom property
- * (`getPropertyValue('--cinder-bg')`) would instead return the unresolved
+ * (`getPropertyValue('--cinder-surface-canvas')`) would instead return the unresolved
  * `light-dark(...)` substitution string, which cannot be compared per-theme.
  * So we read the PAINTED color off real elements and parse it. The parser
  * accepts both the modern `oklch()` serialization and the legacy `rgb()` form
@@ -81,7 +81,7 @@ const PARSE_OKLCH_FN = `
 const WCAG_CONTRAST_FN = `
   function linearRgbFromColor(cssColor) {
     // Chromium serializes a resolved \`oklch(from …)\` derivation (e.g.
-    // --cinder-accent-active-on-fill) as \`oklab(L a b)\`, NOT \`oklch()\` — so we
+    // --cinder-accent-solid-active-on-fill) as \`oklab(L a b)\`, NOT \`oklch()\` — so we
     // accept oklab directly, reading L/a/b without the C/H → a/b step.
     const oklabMatch = cssColor.match(/oklab\\(([^)]+)\\)/i);
     if (oklabMatch) {
@@ -177,7 +177,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
   //    single pale wash.
   //
   //    We measure painted backgrounds of real surface elements:
-  //      - --cinder-bg            → playground page body background
+  //      - --cinder-surface-canvas            → playground page body background
   //      - --cinder-surface-raised → secondary button fill (button.css:214)
   //      - --cinder-surface       → table body background  (table.css:24)
   //      - --cinder-surface-inset → table header background (table.css:53)
@@ -428,8 +428,8 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
   // 6. Pressed primary button keeps its label AA-legible (regression guard).
   //
   //    The primary Button paints --cinder-accent-contrast (dark ink) on its fill.
-  //    Its :active rule swaps the fill to --cinder-accent-active-on-fill. The
-  //    GENERAL --cinder-accent-active (a −0.15 lightness step) would, on the
+  //    Its :active rule swaps the fill to --cinder-accent-solid-active-on-fill. The
+  //    GENERAL --cinder-accent-solid-active (a −0.15 lightness step) would, on the
   //    darker L=0.66 accent, resolve to L=0.51 where the dark-ink label drops to
   //    ~4.09:1 — below WCAG AA. The dedicated on-fill token darkens by a gentler
   //    −0.11 step so the pressed label clears 4.5:1 in BOTH themes. We resolve
@@ -459,7 +459,7 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
             // token forces an independent style resolution.
             //
             // The fallback is a loud sentinel: if a token is absent (e.g. a stale
-            // CSS bundle that predates --cinder-accent-active-on-fill) var() falls
+            // CSS bundle that predates --cinder-accent-solid-active-on-fill) var() falls
             // back to it rather than silently inheriting the button color and
             // reading as a benign ratio. We use an explicit `rgb(255 0 255)` so the
             // computed value is stable and can be compared exactly below — a missing
@@ -473,10 +473,10 @@ test.describe('theme-parity — light surface ladder + button vividness floor', 
               probe.remove();
               return resolved;
             };
-            const pressedFill = read('--cinder-accent-active-on-fill');
+            const pressedFill = read('--cinder-accent-solid-active-on-fill');
             const label = read('--cinder-accent-contrast');
             // A token that failed to resolve hits the magenta fallback. Catch it
-            // explicitly: otherwise a missing --cinder-accent-active-on-fill would
+            // explicitly: otherwise a missing --cinder-accent-solid-active-on-fill would
             // read as magenta and could still clear 4.5:1 against the dark-ink
             // label — a false pass for the very regression this guard protects.
             if (pressedFill === FALLBACK || label === FALLBACK) {

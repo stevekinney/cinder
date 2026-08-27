@@ -84,7 +84,7 @@ The implementation should:
 - add regression coverage for the visual contract and the toolbar-nested review
   editor composition
 
-The follow-up should use existing design tokens such as `--cinder-accent`,
+The follow-up should use existing design tokens such as `--cinder-accent-solid`,
 `--cinder-border-muted`, spacing variables, and radius variables already used by
 the component CSS. It should not add new tokens unless the implementation proves
 there is a real token gap.

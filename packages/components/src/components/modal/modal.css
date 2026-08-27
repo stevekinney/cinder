@@ -11,7 +11,7 @@
     border: none;
     border-radius: var(--cinder-radius-lg);
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     max-width: min(90vw, 32rem);
     width: 100%;
 
@@ -195,7 +195,7 @@
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /* ----------------------------------------
@@ -232,7 +232,7 @@
   @media (hover: hover) {
     .cinder-modal__close:hover {
       background: color-mix(in oklch, currentColor, transparent 85%);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

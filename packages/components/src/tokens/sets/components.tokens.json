@@ -18,7 +18,7 @@
     },
     "foreground": {
       "$type": "color",
-      "$value": "{text}",
+      "$value": "{text.default}",
       "$description": "Secondary (default) button label color.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -32,7 +32,10 @@
     },
     "border": {
       "$type": "color",
-      "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.63, 0.006, 255]
+      },
       "$description": "Secondary (default) button border.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -142,7 +145,10 @@
         }
       },
       "sm": {
-        "$value": { "value": 1.75, "unit": "rem" },
+        "$value": {
+          "value": 1.75,
+          "unit": "rem"
+        },
         "$description": "Small button height (28px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -155,7 +161,10 @@
         }
       },
       "md": {
-        "$value": { "value": 2, "unit": "rem" },
+        "$value": {
+          "value": 2,
+          "unit": "rem"
+        },
         "$description": "Medium button height (32px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -168,7 +177,10 @@
         }
       },
       "lg": {
-        "$value": { "value": 2.25, "unit": "rem" },
+        "$value": {
+          "value": 2.25,
+          "unit": "rem"
+        },
         "$description": "Large button height (36px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -181,7 +193,10 @@
         }
       },
       "xl": {
-        "$value": { "value": 2.5, "unit": "rem" },
+        "$value": {
+          "value": 2.5,
+          "unit": "rem"
+        },
         "$description": "Extra-large button height (40px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -407,7 +422,10 @@
     "$description": "Toggle-track tokens. Single-consumer (toggle.css); encode the dark-arm contrast improvement here so toggle.css uses only var() references and stays theme-guard clean.",
     "track": {
       "off-resting": {
-        "$value": { "colorSpace": "oklch", "components": [0.85, 0.004, 255] },
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.85, 0.004, 255]
+        },
         "$description": "Toggle track color in the off, resting state. Light arm preserves the `border.muted` look; dark arm raises lightness for >=3:1 shape contrast against the surface.",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -420,7 +438,10 @@
         }
       },
       "off-hover-resting": {
-        "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.63, 0.006, 255]
+        },
         "$description": "Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable.",
         "$extensions": {
           "com.lostgradient.cinder": {

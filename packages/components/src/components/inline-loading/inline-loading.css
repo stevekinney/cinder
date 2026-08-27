@@ -20,11 +20,11 @@
   }
 
   .cinder-inline-loading[data-cinder-status='finished'] {
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-inline-loading[data-cinder-status='error'] {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-inline-loading__indicator {

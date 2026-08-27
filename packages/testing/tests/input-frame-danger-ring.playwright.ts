@@ -39,7 +39,7 @@ test.describe('input-frame danger ring — focused invalid-state error affordanc
     expect(landed, 'Tab walk should reach the invalid select').toBe(true);
     await expect(select).toBeFocused();
 
-    const dangerColor = await resolvedTokenColor(select, '--cinder-danger');
+    const dangerColor = await resolvedTokenColor(select, '--cinder-status-danger-solid');
     const result = await select.evaluate((element) => {
       const styles = getComputedStyle(element as HTMLElement);
       // Paint the border color onto a 1×1 canvas and read its alpha channel so

@@ -108,9 +108,9 @@ export const PREVIEW_RECIPES: Readonly<Record<string, PreviewRecipe>> = {
     referenceHtml:
       '<div style="padding:var(--cinder-space-4);border-radius:var(--cinder-radius-md);background:var(--cinder-surface);color:var(--cinder-text-muted);font-size:var(--cinder-text-sm)">Reference surface (default tone)</div>',
     childrenHtml:
-      '<div style="padding:var(--cinder-space-4);color:var(--cinder-text);font-size:var(--cinder-text-sm)">This Surface, at the selected tone</div>',
+      '<div style="padding:var(--cinder-space-4);color:var(--cinder-text-default);font-size:var(--cinder-text-sm)">This Surface, at the selected tone</div>',
     snippetChildren:
-      '{#snippet children()}\n  <div style="padding: var(--cinder-space-4); color: var(--cinder-text); font-size: var(--cinder-text-sm);">This Surface, at the selected tone</div>\n{/snippet}',
+      '{#snippet children()}\n  <div style="padding: var(--cinder-space-4); color: var(--cinder-text-default); font-size: var(--cinder-text-sm);">This Surface, at the selected tone</div>\n{/snippet}',
   },
   'focus-trap': { prefersFeaturedExample: true },
   'click-away-listener': { prefersFeaturedExample: true },

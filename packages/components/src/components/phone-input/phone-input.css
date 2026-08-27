@@ -22,7 +22,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-phone-input-field__label[data-disabled] {
@@ -57,7 +57,7 @@
   }
 
   .cinder-phone-input__country .cinder-select option {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-phone-input__country-summary {
@@ -67,7 +67,7 @@
     inset-inline-start: var(--cinder-space-3);
     max-inline-size: calc(100% - var(--cinder-space-10));
     overflow: hidden;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     line-height: 1;
     text-overflow: ellipsis;
@@ -103,6 +103,6 @@
   .cinder-phone-input-field__error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 }

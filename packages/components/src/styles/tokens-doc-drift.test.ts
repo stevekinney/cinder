@@ -97,7 +97,7 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // Doc lists tokens as inline code in table rows: `` `--cinder-space-4` ``.
   // We deliberately only count tokens that appear inside backticks at the start
   // of a table cell (i.e. `| \`--cinder-...\``) so that incidental mentions in
-  // prose (e.g. "override `--cinder-accent` to re-derive both") don't count.
+  // prose (e.g. "override `--cinder-accent-solid` to re-derive both") don't count.
   const tokens = new Map<string, string>();
   const duplicates: string[] = [];
   // Matches internal `--_cinder-*` tokens as well as public `--cinder-*` ones:
@@ -197,9 +197,9 @@ describe('docs/tokens.md drift', () => {
     for (const token of [
       '--cinder-surface',
       '--cinder-surface-raised',
-      '--cinder-text',
+      '--cinder-text-default',
       '--cinder-border',
-      '--cinder-accent',
+      '--cinder-accent-solid',
     ]) {
       const [light, dark] =
         value(token)

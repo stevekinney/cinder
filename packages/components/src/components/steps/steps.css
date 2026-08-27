@@ -183,7 +183,7 @@
   }
 
   [data-cinder-state='complete'] .cinder-steps__marker {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
   }
 
@@ -307,7 +307,7 @@
   .cinder-steps__label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     line-height: var(--cinder-leading-tight);
   }
 
@@ -337,7 +337,7 @@
   }
 
   .cinder-steps__connector[data-cinder-state='complete'] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
   }
 
   /* ----------------------------------------

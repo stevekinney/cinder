@@ -4,8 +4,8 @@ import type { HTMLAttributes } from 'svelte/elements';
  * Visual + semantic variants for {@link Callout}.
  *
  * Matches `banner.svelte` so both components draw from the same semantic
- * tokens (`--cinder-info`, `--cinder-success`, `--cinder-warning`,
- * `--cinder-danger`). `alert.svelte` uses `error` instead of `danger`;
+ * tokens (`--cinder-status-info-solid`, `--cinder-status-success-solid`, `--cinder-status-warning-solid`,
+ * `--cinder-status-danger-solid`). `alert.svelte` uses `error` instead of `status.danger.solid`;
  * that divergence is tracked in `banner.a11y.md`.
  */
 export type CalloutVariant = 'info' | 'success' | 'warning' | 'danger';

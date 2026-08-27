@@ -15,7 +15,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-multi-select__label[data-disabled] {
@@ -30,7 +30,7 @@
     min-height: var(--cinder-control-height-sm, 2rem);
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border-color: var(--cinder-border);
     text-align: left;
@@ -62,7 +62,7 @@
 
   .cinder-multi-select__trigger[aria-invalid='true'],
   .cinder-multi-select__trigger[data-cinder-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-multi-select__summary {
@@ -80,7 +80,7 @@
     height: 1.25rem;
     border-radius: var(--cinder-radius-full);
     padding: 0 var(--cinder-space-1);
-    background: color-mix(in oklab, var(--cinder-accent) 14%, transparent);
+    background: color-mix(in oklab, var(--cinder-accent-solid) 14%, transparent);
     color: var(--cinder-accent-text);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-semibold);
@@ -105,7 +105,7 @@
 
   @media (hover: hover) {
     .cinder-multi-select__clear:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }
@@ -220,8 +220,8 @@
   }
 
   .cinder-multi-select__checkbox-box[data-cinder-checked] {
-    background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
+    border-color: var(--cinder-accent-solid);
   }
 
   .cinder-multi-select__checkbox-box[data-cinder-disabled] {
@@ -244,7 +244,7 @@
 
   .cinder-multi-select__option-label {
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-multi-select__option-description {
@@ -274,11 +274,11 @@
   }
 
   .cinder-multi-select__warning {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-multi-select__error {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   /* The shared `_form-field-error.css` partial (imported by the required

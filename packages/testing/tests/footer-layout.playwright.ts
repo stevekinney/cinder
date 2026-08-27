@@ -20,7 +20,7 @@ test.describe('Footer responsive layout', () => {
             --cinder-space-6: 1.5rem;
             --cinder-border-muted: #d1d5db;
             --cinder-surface: #ffffff;
-            --cinder-text: #111827;
+            --cinder-text-default: #111827;
             --cinder-text-muted: #4b5563;
             --cinder-text-sm: 0.875rem;
             --cinder-text-lg: 1.125rem;
@@ -173,7 +173,7 @@ test.describe('Footer responsive layout', () => {
           --cinder-space-6: 1.5rem;
           --cinder-border-muted: #d1d5db;
           --cinder-surface: #ffffff;
-          --cinder-text: #111827;
+          --cinder-text-default: #111827;
           --cinder-text-muted: #4b5563;
           --cinder-text-sm: 0.875rem;
           --cinder-text-lg: 1.125rem;

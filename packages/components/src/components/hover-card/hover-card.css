@@ -14,7 +14,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     box-shadow: var(--cinder-shadow-lg);
     opacity: 0;
     transform: translateY(2px) scale(0.98);

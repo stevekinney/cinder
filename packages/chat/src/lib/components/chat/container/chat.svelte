@@ -2801,8 +2801,8 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    border: 2px dashed var(--cinder-accent);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+    border: 2px dashed var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-md);
     pointer-events: none;
   }
@@ -2917,7 +2917,7 @@
   .chat-empty-prompt {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
@@ -2930,7 +2930,7 @@
   @media (hover: hover) {
     .chat-empty-prompt:hover {
       background: var(--cinder-surface-hover);
-      border-color: var(--cinder-accent);
+      border-color: var(--cinder-accent-solid);
     }
   }
 
@@ -2957,7 +2957,7 @@
   .chat-unread-divider-line {
     flex: 1;
     height: 1px;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
   }
 
   .chat-unread-divider-label {
@@ -2967,7 +2967,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
     border-radius: var(--cinder-radius-full);
   }
 
@@ -2986,7 +2986,7 @@
     max-width: max-content;
     background: var(--cinder-surface-raised);
     border-radius: var(--cinder-radius-lg);
-    animation: typing-indicator-enter var(--cinder-duration) var(--cinder-ease-decelerate);
+    animation: typing-indicator-enter var(--cinder-duration-base) var(--cinder-ease-decelerate);
   }
 
   @keyframes typing-indicator-enter {
@@ -3096,7 +3096,7 @@
    * Variant — flat: remove bubble backgrounds; role is communicated via
    * alignment and role label only. Text renders on --cinder-surface-inset
    * (the timeline background in default surfaceMode), which meets WCAG AA
-   * for --cinder-text. The `:global()` reach is required because bubble CSS
+   * for --cinder-text-default. The `:global()` reach is required because bubble CSS
    * lives in chat-message.svelte (a child component).
    * ========================================================================== */
 

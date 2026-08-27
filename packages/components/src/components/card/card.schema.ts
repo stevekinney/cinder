@@ -19,7 +19,7 @@ const schema = {
     tone: {
       enum: ['default', 'danger'],
       description:
-        'Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions.',
+        'Container risk treatment. `status.danger.solid` renders a danger-zone surface for high-risk settings or destructive actions.',
     },
     bodyTone: {
       enum: ['default', 'muted'],

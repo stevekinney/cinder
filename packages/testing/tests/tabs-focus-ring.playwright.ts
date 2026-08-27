@@ -283,7 +283,7 @@ test.describe('Tabs — focus-visible ring is complete and unclipped in the tab 
       const active = list.querySelector('.cinder-tab[data-cinder-active]');
       if (!(active instanceof HTMLElement)) throw new Error('no active tab');
       const after = getComputedStyle(active, '::after');
-      const accentToken = getComputedStyle(active).getPropertyValue('--cinder-accent').trim();
+      const accentToken = getComputedStyle(active).getPropertyValue('--cinder-accent-solid').trim();
       const probe = document.createElement('span');
       probe.style.color = accentToken;
       document.body.append(probe);

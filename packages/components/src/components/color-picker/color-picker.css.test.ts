@@ -76,8 +76,8 @@ const colorSwatchPickerCss = loadCss('../color-swatch-picker/color-swatch-picker
 
 describe('color checker tokens', () => {
   test('checkerboard tokens keep the light arm and define a distinct dark arm', () => {
-    const base = lightDarkArms(declarationValue(tokensCss, '--cinder-color-checker-base'));
-    const tile = lightDarkArms(declarationValue(tokensCss, '--cinder-color-checker-tile'));
+    const base = lightDarkArms(declarationValue(tokensCss, '--cinder-checker-base'));
+    const tile = lightDarkArms(declarationValue(tokensCss, '--cinder-checker-tile'));
 
     expect(base).toEqual(['#fff', 'oklch(28% 0.02 245)']);
     expect(tile).toEqual(['#ccc', 'oklch(38% 0.02 245)']);
@@ -89,8 +89,8 @@ describe('color checker tokens', () => {
     const componentSources = [colorPickerCss, colorFieldCss, colorSwatchPickerCss];
 
     for (const source of componentSources) {
-      expect(source).toContain('var(--cinder-color-checker-base)');
-      expect(source).toContain('var(--cinder-color-checker-tile)');
+      expect(source).toContain('var(--cinder-checker-base)');
+      expect(source).toContain('var(--cinder-checker-tile)');
       expect(source).not.toContain('--_cinder-color-picker-checker-');
       expect(source).not.toContain('--_cinder-color-field-checker-');
       expect(source).not.toContain('--_cinder-color-swatch-picker-checker-');

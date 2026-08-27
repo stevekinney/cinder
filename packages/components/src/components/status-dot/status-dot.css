@@ -20,7 +20,7 @@
     gap: var(--cinder-space-1-5);
     font-size: var(--cinder-text-sm);
     line-height: 1.25;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     vertical-align: middle;
   }
 
@@ -33,11 +33,11 @@
   }
 
   .cinder-status-dot[data-cinder-state='connected'] {
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-status-dot[data-cinder-state='connecting'] {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-status-dot[data-cinder-state='disconnected'] {
@@ -45,7 +45,7 @@
   }
 
   .cinder-status-dot[data-cinder-state='error'] {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-status-dot__indicator {
@@ -79,7 +79,7 @@
  * ---------------------------------------- */
 
   .cinder-status-dot[data-cinder-status='online'] {
-    --cinder-status-dot-color: var(--cinder-success);
+    --cinder-status-dot-color: var(--cinder-status-success-solid);
   }
 
   .cinder-status-dot[data-cinder-status='offline'] {
@@ -87,15 +87,15 @@
   }
 
   .cinder-status-dot[data-cinder-status='warning'] {
-    --cinder-status-dot-color: var(--cinder-warning);
+    --cinder-status-dot-color: var(--cinder-status-warning-solid);
   }
 
   .cinder-status-dot[data-cinder-status='danger'] {
-    --cinder-status-dot-color: var(--cinder-danger);
+    --cinder-status-dot-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-status-dot[data-cinder-status='pending'] {
-    --cinder-status-dot-color: var(--cinder-info);
+    --cinder-status-dot-color: var(--cinder-status-info-solid);
   }
 
   .cinder-status-dot[data-cinder-status='neutral'] {
@@ -103,11 +103,11 @@
   }
 
   .cinder-status-dot[data-cinder-status='success'] {
-    --cinder-status-dot-color: var(--cinder-success);
+    --cinder-status-dot-color: var(--cinder-status-success-solid);
   }
 
   .cinder-status-dot[data-cinder-status='accent'] {
-    --cinder-status-dot-color: var(--cinder-accent);
+    --cinder-status-dot-color: var(--cinder-accent-solid);
   }
 
   .cinder-status-dot[data-cinder-state='connecting'] .cinder-status-dot__indicator {

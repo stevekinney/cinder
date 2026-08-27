@@ -15,7 +15,7 @@
   .cinder-combobox__label {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-combobox__label[data-disabled] {
@@ -34,7 +34,7 @@
     font-size: var(--cinder-text-sm);
     font-family: inherit;
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -60,7 +60,7 @@
   }
 
   .cinder-combobox__input[aria-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-combobox__input:disabled {
@@ -91,7 +91,7 @@
   .cinder-combobox__option {
     cursor: pointer;
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-combobox__option-avatar {
@@ -158,7 +158,7 @@
   .cinder-combobox__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 

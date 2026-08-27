@@ -36,7 +36,7 @@
     >
       <h2
         id={popoverHeadingId}
-        style="margin: 0; font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-semibold); color: var(--cinder-text);"
+        style="margin: 0; font-size: var(--cinder-text-sm); font-weight: var(--cinder-font-semibold); color: var(--cinder-text-default);"
       >
         Account settings
       </h2>

@@ -57,7 +57,7 @@ test.describe('table scroll recipe', () => {
       <style>
         :root {
           --cinder-text-sm: 14px;
-          --cinder-text: #111827;
+          --cinder-text-default: #111827;
           --cinder-text-muted: #4b5563;
           --cinder-surface: #ffffff;
           --cinder-surface-inset: #f9fafb;

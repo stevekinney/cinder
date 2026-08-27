@@ -27,7 +27,7 @@ test('selection uses a background fill instead of an oversized inset shadow', as
   expect(css).toMatch(
     /\.cinder-data-grid__cell\[data-cinder-selected\]\s*\{[^}]*background:\s*color-mix\(/,
   );
-  expect(css).toContain('var(--cinder-text) 14%');
+  expect(css).toContain('var(--cinder-text-default) 14%');
 });
 
 afterEach(() => {

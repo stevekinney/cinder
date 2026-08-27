@@ -6,7 +6,7 @@
  * var(--cinder-accent-contrast)`) in addition to its accent fill. The ring sits
  * ON the accent fill, so unlike the shared `_floating-surface.css` ring (which
  * sits on a neutral hover surface and uses `--cinder-ring-color`), it must
- * contrast against `--cinder-accent` itself. `--cinder-ring-color` collapses to
+ * contrast against `--cinder-accent-solid` itself. `--cinder-ring-color` collapses to
  * ~1.1:1 on the accent fill (invisible); `--cinder-accent-contrast` is the token
  * already proven to clear AA on that fill.
  *
@@ -77,7 +77,7 @@ const ACTIVE_SELECTOR = '.cinder-command-item[data-cinder-active]';
 describe('command-item active state — WCAG 1.4.11 ring', () => {
   test('active rule keeps the accent fill background', () => {
     const rule = findTopLevelRule(ACTIVE_SELECTOR);
-    expect(declValue(rule, 'background')).toBe('var(--cinder-accent)');
+    expect(declValue(rule, 'background')).toBe('var(--cinder-accent-solid)');
   });
 
   test('active rule keeps the accent contrast foreground color', () => {

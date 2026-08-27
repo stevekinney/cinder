@@ -40,7 +40,7 @@
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
     .cinder-navigation-item:hover:not([aria-disabled='true']) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background-color: var(--cinder-surface-hover);
     }
   }
@@ -95,8 +95,8 @@
  * ---------------------------------------- */
 
   .cinder-navigation-item[data-active='true'] {
-    color: var(--cinder-text);
-    border-bottom-color: var(--cinder-accent);
+    color: var(--cinder-text-default);
+    border-bottom-color: var(--cinder-accent-solid);
   }
 
   /* ----------------------------------------
@@ -138,7 +138,7 @@
 
   .cinder-navigation-item[data-variant='vertical'][data-active='true'] {
     border-bottom-color: transparent;
-    border-inline-start-color: var(--cinder-accent);
+    border-inline-start-color: var(--cinder-accent-solid);
     background-color: var(--cinder-surface-inset);
   }
 

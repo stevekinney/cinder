@@ -138,7 +138,7 @@
     display: inline-block;
     width: 2px;
     height: 1.1em;
-    background: var(--cinder-text);
+    background: var(--cinder-text-default);
     vertical-align: text-bottom;
     margin-inline-start: 1px;
     animation: cursor-blink 1s step-end infinite;

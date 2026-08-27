@@ -47,7 +47,7 @@
     'flex: 1 1 24rem; min-width: min(100%, 20rem); max-width: 36rem; line-height: 1.6; user-select: text; cursor: text;';
   const paragraphStyle = 'margin: 0 0 var(--cinder-space-3);';
   const anchorBaseStyle =
-    'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';
+    'border-radius: var(--cinder-radius-sm); color: inherit; text-decoration-color: var(--cinder-accent-solid); text-decoration-thickness: 0.1em; text-underline-offset: 0.15em; cursor: pointer;';
   const panelStyle =
     'flex: 1 1 14rem; max-width: 18rem; padding: var(--cinder-space-3); border: 1px solid var(--cinder-border-muted); border-radius: var(--cinder-radius-md); background: var(--cinder-surface);';
   const headingStyle =
@@ -58,8 +58,8 @@
 
   function getAnchorStyle(active: boolean): string {
     const background = active
-      ? 'background: color-mix(in oklch, var(--cinder-accent), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 32%);'
-      : 'background: color-mix(in oklch, var(--cinder-accent), transparent 84%);';
+      ? 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 72%); outline: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 32%);'
+      : 'background: color-mix(in oklch, var(--cinder-accent-solid), transparent 84%);';
     return `${anchorBaseStyle} ${background}`;
   }
 

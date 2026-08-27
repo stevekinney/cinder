@@ -5,7 +5,7 @@
  *
  * Small standalone status pill for a live connection. Color is driven
  * exclusively from the `data-cinder-status` attribute via the existing
- * semantic status tokens (`--cinder-success`, `--cinder-warning`,
+ * semantic status tokens (`--cinder-status-success-solid`, `--cinder-status-warning-solid`,
  * `--cinder-text-muted`) — never hard-code hex values when consuming this
  * component. `polling` is deliberately quieter than `live`: it carries no
  * motion and a lighter font-weight so it can never be mistaken for push,
@@ -114,16 +114,16 @@
  * ---------------------------------------- */
 
   .cinder-connection-indicator[data-cinder-status='connecting'] {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-connection-indicator[data-cinder-status='live'] {
     /* -fg, not the fill — see the connecting/reconnecting rows, which already use it. */
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-connection-indicator[data-cinder-status='reconnecting'] {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-connection-indicator[data-cinder-status='polling'] {
@@ -132,7 +132,7 @@
   }
 
   .cinder-connection-indicator[data-cinder-status='stale'] {
-    color: var(--cinder-color-info-fg);
+    color: var(--cinder-status-info-text);
   }
 
   .cinder-connection-indicator[data-cinder-status='closed'] {

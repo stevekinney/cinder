@@ -39,11 +39,11 @@ describe('parseGlobalTokens', () => {
   test('excludes a private token even though the registry lists it', () => {
     const tokens = parseGlobalTokens(
       registry([
-        { cssProperty: '--cinder-accent', public: true },
+        { cssProperty: '--cinder-accent-solid', public: true },
         { cssProperty: '--_cinder-internal-gap', public: false },
       ]),
     );
-    expect(tokens.has('--cinder-accent')).toBe(true);
+    expect(tokens.has('--cinder-accent-solid')).toBe(true);
     expect(tokens.has('--_cinder-internal-gap')).toBe(false);
   });
 
@@ -54,8 +54,8 @@ describe('parseGlobalTokens', () => {
 
 describe('findReferences — var() reference extraction', () => {
   test('captures a simple reference with its line number', () => {
-    const refs = findReferences('a\n.x { color: var(--cinder-accent); }');
-    expect(refs).toEqual([{ name: '--cinder-accent', lineNumber: 2 }]);
+    const refs = findReferences('a\n.x { color: var(--cinder-accent-solid); }');
+    expect(refs).toEqual([{ name: '--cinder-accent-solid', lineNumber: 2 }]);
   });
 
   test('captures BOTH names in a nested var() fallback', () => {
@@ -92,9 +92,9 @@ describe('findDeclaredNames — what a component owns', () => {
   });
 
   test('does NOT collect a plain var() reference as declared', () => {
-    expect(findDeclaredNames('.x { color: var(--cinder-accent); }').has('--cinder-accent')).toBe(
-      false,
-    );
+    expect(
+      findDeclaredNames('.x { color: var(--cinder-accent-solid); }').has('--cinder-accent-solid'),
+    ).toBe(false);
   });
 
   test('does NOT falsely collect a name that appears as a var() fallback', () => {
@@ -142,14 +142,14 @@ describe('matchesPrefix — hyphen-boundary safety', () => {
 });
 
 describe('classifyReference — the resolution model', () => {
-  const globals = new Set(['--cinder-accent', '--cinder-space-4']);
+  const globals = new Set(['--cinder-accent-solid', '--cinder-space-4']);
 
   test('private --_cinder-* is private', () => {
     expect(classifyReference('--_cinder-x', [], new Set(), globals)).toBe('private');
   });
 
   test('a declared global token is global', () => {
-    expect(classifyReference('--cinder-accent', [], new Set(), globals)).toBe('global');
+    expect(classifyReference('--cinder-accent-solid', [], new Set(), globals)).toBe('global');
   });
 
   test('a reference matching the file prefix is component-owned', () => {

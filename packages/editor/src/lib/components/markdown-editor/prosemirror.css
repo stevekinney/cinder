@@ -48,7 +48,7 @@
   /* Selected-node styling, not keyboard focus. Keep the geometry distinct from
      the shared focus ring while using a theme token instead of an upstream literal. */
   .ProseMirror-selectednode {
-    outline: 2px solid var(--cinder-accent);
+    outline: 2px solid var(--cinder-accent-solid);
   }
 
   /* Make sure li selections wrap around markers */
@@ -63,7 +63,7 @@
     right: -2px;
     top: -2px;
     bottom: -2px;
-    border: 2px solid var(--cinder-accent);
+    border: 2px solid var(--cinder-accent-solid);
     pointer-events: none;
   }
 

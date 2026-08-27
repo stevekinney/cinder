@@ -14,12 +14,12 @@ const sample = `
 
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-cinder-reduced-motion='false']) {
-    --cinder-duration: 0ms;
+    --cinder-duration-base: 0ms;
   }
 }
 
 :root[data-reduced-motion='on'] {
-  --cinder-duration: 0ms;
+  --cinder-duration-base: 0ms;
 }
 `;
 
@@ -47,8 +47,8 @@ describe('token inventory', () => {
         needsCssRecipe: true,
       },
       {
-        cssProperty: '--cinder-duration',
-        proposedPath: 'duration',
+        cssProperty: '--cinder-duration-base',
+        proposedPath: 'duration.base',
         section: 'unclassified',
         source: 'reduced-motion',
         value: '0ms',
@@ -56,8 +56,8 @@ describe('token inventory', () => {
         needsCssRecipe: false,
       },
       {
-        cssProperty: '--cinder-duration',
-        proposedPath: 'duration',
+        cssProperty: '--cinder-duration-base',
+        proposedPath: 'duration.base',
         section: 'unclassified',
         source: 'forced-reduced-motion',
         value: '0ms',
@@ -83,7 +83,7 @@ describe('token inventory', () => {
       '| `--cinder-derived` | `derived` | spacing | default | `--cinder-color` | yes |',
     );
     expect(output).toContain(
-      '| `--cinder-duration` | `duration` | unclassified | reduced-motion | — | no |',
+      '| `--cinder-duration-base` | `duration.base` | unclassified | reduced-motion | — | no |',
     );
   });
 

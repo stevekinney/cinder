@@ -76,7 +76,7 @@
     margin: 0;
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-radius: var(--cinder-radius-sm);
@@ -102,9 +102,9 @@
   }
 
   .cinder-payload-inspector__notice--warning {
-    background: var(--cinder-color-warning-bg);
-    border-color: var(--cinder-color-warning-border);
-    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-status-warning-background);
+    border-color: var(--cinder-status-warning-border);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-payload-inspector__empty {

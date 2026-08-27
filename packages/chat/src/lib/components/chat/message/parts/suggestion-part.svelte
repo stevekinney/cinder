@@ -47,7 +47,7 @@
   .chat-suggestion-chip {
     --cinder-chat-suggestion-bg: var(--cinder-surface-raised);
     --cinder-chat-suggestion-border: var(--cinder-border);
-    --cinder-chat-suggestion-text: var(--cinder-text);
+    --cinder-chat-suggestion-text: var(--cinder-text-default);
     --cinder-chat-suggestion-bg-hover: var(--cinder-surface-hover);
 
     display: inline-flex;
@@ -92,7 +92,7 @@
     @media (hover: hover) {
       &:hover {
         background: var(--cinder-chat-suggestion-bg-hover);
-        border-color: var(--cinder-accent, var(--cinder-chat-suggestion-border));
+        border-color: var(--cinder-accent-solid, var(--cinder-chat-suggestion-border));
       }
     }
   }

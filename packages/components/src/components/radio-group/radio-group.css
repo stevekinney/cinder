@@ -20,7 +20,7 @@
     gap: var(--cinder-space-1);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     padding: 0;
     margin: 0 0 var(--cinder-space-1) 0;
   }
@@ -45,7 +45,7 @@
   .cinder-radio-group__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 
@@ -123,8 +123,8 @@
   }
 
   .cinder-radio:checked {
-    background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
+    border-color: var(--cinder-accent-solid);
   }
 
   /* Sibling indicator: a circular dot drawn with `mask-image` so the inner
@@ -196,8 +196,8 @@
   }
 
   .cinder-radio[aria-invalid='true'] {
-    --_cinder-radio-ring: var(--cinder-danger);
-    border-color: var(--cinder-danger);
+    --_cinder-radio-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   /* Also carries FormFieldFrame's generic `.cinder-form-field__label` class;
@@ -208,7 +208,7 @@
   .cinder-radio-row__label.cinder-form-field__label {
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
   }
 
@@ -283,13 +283,13 @@
 
   /* Selection reinforcement — NOT the sole indicator. */
   .cinder-radio-group[data-variant='card'] .cinder-radio-row--checked {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
     background: var(--cinder-surface-raised);
   }
 
   /* Invalid state on the card surface. Driven by the row's modifier class. */
   .cinder-radio-group[data-variant='card'] .cinder-radio-row--invalid {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   /* Disabled card — driven by the row's modifier class. */

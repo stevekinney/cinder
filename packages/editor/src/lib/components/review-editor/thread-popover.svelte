@@ -342,7 +342,7 @@
 
   @media (hover: hover) {
     .thread-popover-close:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }
@@ -377,7 +377,7 @@
     font-style: normal;
     color: var(--cinder-accent-text);
     padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
     border-radius: var(--cinder-radius-sm);
   }
 

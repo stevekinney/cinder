@@ -25,7 +25,7 @@
  *
  * INPUTS — each composing element sets these per variant, on the SAME element as
  * the class (so they resolve with no inheritance distance):
- *   --_cinder-status-base            the status base color, e.g. var(--cinder-info)
+ *   --_cinder-status-base            the status base color, e.g. var(--cinder-status-info-solid)
  *   --_cinder-status-fg-chroma-light foreground chroma in light mode  (info 0.12 → danger 0.18)
  *   --_cinder-status-fg-chroma-dark  foreground chroma in dark mode   (info 0.12 → danger 0.16)
  *   --_cinder-status-stripe-chroma   stripe chroma, both modes        (info 0.13 → danger 0.18)

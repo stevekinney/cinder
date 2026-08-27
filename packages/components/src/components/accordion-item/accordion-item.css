@@ -50,7 +50,7 @@
     font-size: var(--cinder-accordion-item-trigger-font-size, var(--cinder-text-base));
     font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-semibold));
     line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     text-align: start;
 
     background: var(--cinder-surface-raised);

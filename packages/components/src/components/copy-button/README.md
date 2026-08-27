@@ -11,7 +11,7 @@ Button that copies a given text value to the clipboard with visual feedback.
 
 <div style="display: flex; align-items: center; gap: 0.5rem;">
   <code
-    style="padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text); border-radius: 4px;"
+    style="padding: 0.25rem 0.5rem; background-color: var(--cinder-surface-inset); color: var(--cinder-text-default); border-radius: 4px;"
     >npx cinder install</code
   >
   <CopyButton value="npx cinder install" label="Copy install command" />

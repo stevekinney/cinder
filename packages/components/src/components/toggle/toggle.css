@@ -19,7 +19,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
   }
 
@@ -76,7 +76,7 @@
  * ---------------------------------------- */
 
   .cinder-toggle[data-cinder-checked] {
-    background: var(--cinder-toggle-track-on, var(--cinder-accent));
+    background: var(--cinder-toggle-track-on, var(--cinder-accent-solid));
   }
 
   /* ----------------------------------------
@@ -114,7 +114,7 @@
     }
 
     .cinder-toggle[data-cinder-checked]:hover:not(:disabled) {
-      background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-hover));
+      background: var(--cinder-toggle-track-on-hover, var(--cinder-accent-solid-hover));
     }
   }
 

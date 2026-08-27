@@ -470,7 +470,7 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await expect(page.locator('#creation-editor .comment-anchor')).toHaveCount(0);
 	});
 
-	test('the anchor a UI-created thread ships has no `type` at all — not `text`', async ({
+	test('the anchor a UI-created thread ships has no `type` at all — not `text.default`', async ({
 		page
 	}) => {
 		await ready(page);

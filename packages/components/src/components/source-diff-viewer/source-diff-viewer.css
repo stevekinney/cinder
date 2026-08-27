@@ -7,7 +7,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
@@ -23,8 +23,8 @@
   .cinder-source-diff-viewer__notice {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border-bottom: 1px solid var(--cinder-border-muted);
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
     font-family: var(--cinder-font-sans);
     font-size: var(--cinder-text-xs);
   }
@@ -44,7 +44,7 @@
 
   .cinder-source-diff-viewer__file-path {
     overflow-wrap: anywhere;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
     white-space: break-spaces;
   }
@@ -95,11 +95,11 @@
   }
 
   .cinder-source-diff-viewer__line[data-cinder-line-kind='addition'] {
-    background: var(--cinder-color-success-bg);
+    background: var(--cinder-status-success-background);
   }
 
   .cinder-source-diff-viewer__line[data-cinder-line-kind='removal'] {
-    background: var(--cinder-color-danger-bg);
+    background: var(--cinder-status-danger-background);
   }
 
   .cinder-source-diff-viewer__line[data-cinder-line-kind='context'],
@@ -119,7 +119,7 @@
     padding: 0 var(--cinder-space-3);
     overflow-wrap: anywhere;
     white-space: break-spaces;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
   }
 

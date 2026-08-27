@@ -269,7 +269,7 @@
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -282,7 +282,7 @@
   }
 
   .comment-composer-textarea:focus {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
     box-shadow: var(--_cinder-focus-ring-shadow);
@@ -295,7 +295,7 @@
   }
 
   .comment-composer-textarea[data-has-error='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   @media (forced-colors: active) {
@@ -308,7 +308,7 @@
   .comment-composer-error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .comment-composer-footer {

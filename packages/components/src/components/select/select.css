@@ -21,7 +21,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-select-field__label[data-disabled] {
@@ -48,7 +48,7 @@
 
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
 
     background-color: var(--cinder-surface-raised);
 
@@ -160,12 +160,12 @@
  * ---------------------------------------- */
 
   .cinder-select[aria-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   @media (hover: hover) {
     .cinder-select[aria-invalid='true']:hover:not(:disabled) {
-      border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
     }
   }
 
@@ -183,7 +183,7 @@
   .cinder-select-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 

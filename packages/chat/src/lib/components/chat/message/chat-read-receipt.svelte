@@ -92,7 +92,7 @@
 
   /* read: accent color */
   .chat-read-receipt[data-cinder-receipt-status='read'] {
-    color: var(--cinder-accent);
+    color: var(--cinder-accent-solid);
   }
 
   .chat-read-receipt-icon {

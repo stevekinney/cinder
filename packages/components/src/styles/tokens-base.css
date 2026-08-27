@@ -155,14 +155,12 @@
   --cinder-ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
   /* A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) — a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot. */
   --cinder-ease-spring: cubic-bezier(0.22, 1, 0.36, 1);
-  /* Base transition duration. */
-  --cinder-duration: 200ms;
   /* Instant (no) transition duration. */
   --cinder-duration-instant: 0ms;
   /* Fast interaction duration before a reduced-motion modifier applies. */
   --cinder-duration-fast: 120ms;
   /* Alias of the base transition duration. */
-  --cinder-duration-normal: var(--cinder-duration);
+  --cinder-duration-normal: var(--cinder-duration-base);
   /* Moderate transition duration. */
   --cinder-duration-moderate: 280ms;
   /* Slow transition duration. */
@@ -175,6 +173,8 @@
   --cinder-duration-progress-bar-indeterminate: 1.6s;
   /* Repeating progress-ring spin animation duration. */
   --cinder-duration-progress-ring-spin: 1.4s;
+  /* Base transition duration. */
+  --cinder-duration-base: 200ms;
   /* Opacity for disabled elements. */
   --cinder-opacity-disabled: 0.55;
   /* Opacity for muted elements. */
@@ -197,38 +197,38 @@
   --cinder-z-focused-affordance: 1350;
   /* Drag-preview layer, the topmost tier. */
   --cinder-z-drag-preview: 1400;
-  /* Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness. */
-  --cinder-bg: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
   /* Default semantic surface. Theme modifiers provide its dark value. */
   --cinder-surface: light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245));
   /* Elevated semantic surface. Theme modifiers provide its dark value. */
   --cinder-surface-raised: light-dark(oklch(100% 0 255), oklch(28% 0.045 245));
   /* Hover state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white. */
   --cinder-surface-raised-hover: light-dark(
-    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 6%),
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%),
     color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)
   );
   /* Pressed state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white. */
   --cinder-surface-raised-pressed: light-dark(
-    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 12%),
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%),
     color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)
   );
   /* Sunken region inside a card body (code blocks, wells, recessed sub-regions). */
   --cinder-surface-inset: light-dark(oklch(96% 0.005 255), oklch(11% 0.03 245));
   /* Hover state of the default surface. Light mode washes toward the accent rather than darkening toward black: once the light ramp is anchored at white, its four resting tiers occupy only 0.040 lightness points, so a proportional lightness-only mix would be wider than the whole ramp it has to stay clear of. A light-mode hover that washes toward the brand accent separates by chroma and hue as well, staying legible at a lightness step small enough to fit the ramp. */
   --cinder-surface-hover: light-dark(
-    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%),
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%),
     color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)
   );
   /* Pressed state of the default surface. Same accent-wash rationale as `surface.hover`, at a stronger mix percentage. */
   --cinder-surface-pressed: light-dark(
-    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 12%),
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%),
     color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)
   );
   /* Inverse surface, used by Tooltip to stay a dark overlay in both themes. Light arm mirrors the text/surface swap (dark bg, light fg); dark arm uses the elevated surface + near-white text so the tooltip reads as a dark elevated layer rather than inverting to light. */
-  --cinder-surface-inverse: light-dark(var(--cinder-text), var(--cinder-surface-raised));
+  --cinder-surface-inverse: light-dark(var(--cinder-text-default), var(--cinder-surface-raised));
   /* Upcoming step marker background. Keeps the inset treatment in light mode (surface-inset is visibly recessed vs surface), but lifts to surface in dark mode where surface-inset is nearly invisible against the dark stage. */
   --cinder-surface-upcoming-marker: light-dark(var(--cinder-surface-inset), var(--cinder-surface));
+  /* Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness. */
+  --cinder-surface-canvas: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
   /* Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill. */
   --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
   /* Decorative-only hairline. Never use as a control boundary: it is intentionally below the WCAG 1.4.11 3:1 non-text threshold. */
@@ -239,8 +239,6 @@
   --cinder-border-strong: light-dark(oklch(60% 0.008 255), oklch(66% 0.06 245));
   /* Border for surfaces using `surface.inverse` (Tooltip). Transparent in light mode; adds a 1px delineation in dark mode only. */
   --cinder-border-inverse: light-dark(transparent, var(--cinder-border-strong));
-  /* Default body text color. */
-  --cinder-text: light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245));
   /* Muted (secondary) text color. */
   --cinder-text-muted: light-dark(oklch(32% 0.014 245), oklch(82% 0.02 245));
   /* Subtle (tertiary) text color. */
@@ -248,65 +246,43 @@
   /* Disabled text color. Clears the 3:1 UI floor in both themes even though disabled controls are exempt from WCAG text contrast; a disabled control still has to be visible as a control. */
   --cinder-text-disabled: light-dark(oklch(52% 0.01 245), oklch(64% 0.02 245));
   /* Text color for use on `surface.inverse` (Tooltip). */
-  --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text));
+  --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text-default));
+  /* Default body text color. */
+  --cinder-text-default: light-dark(oklch(20% 0.018 245), oklch(92% 0.02 245));
   /* Neutral fill for disabled solid controls (disabled-checked checkbox/radio) so they stop misusing `text.disabled` (a text-lightness token) as an assertive fill. The glyph on top must use `text.disabled`, not `accent.contrast`: accent-contrast is dark ink in both arms and would be near-invisible on the dark-arm fill. */
   --cinder-fill-disabled: light-dark(oklch(86% 0.006 255), oklch(30% 0.015 245));
-  /* Brand accent fill color. */
-  --cinder-accent: light-dark(oklch(50% 0.22 270), oklch(72% 0.14 270));
   /* Label color for solid accent fills. Light arm flips to white (the indigo fill is dark enough); dark arm keeps dark ink against the bright dark-mode fill. */
   --cinder-accent-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.035 245));
-  /* Hover step for solid accent fills, derived as a darker step of `accent` (l - 0.08, c and h held constant). */
-  --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
-  /* Active/pressed step for solid accent fills, derived as a darker step of `accent` (l - 0.15, c and h held constant). */
-  --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
-  /* Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.active` so label-bearing and non-label consumers can diverge if ever needed. */
-  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   /* Accent used as text/icon on light surfaces. The light-mode fill accent (L=0.50) reads as a foreground at only ~4.7:1, just clearing AA, so this dedicated, slightly darker foreground token stays necessary for comfortable link/icon legibility. The dark arm matches the dark-mode accent fill. */
   --cinder-accent-text: light-dark(oklch(45% 0.22 270), oklch(72% 0.14 270));
-  /* Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white). */
+  /* Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.solid.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white). */
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
-  /* Danger status fill color. */
-  --cinder-danger: light-dark(oklch(50% 0.202 25), oklch(72% 0.172 25));
-  /* Label color for solid danger fills. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it, so the dark arm uses a near-black ink instead. */
-  --cinder-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
-  /* Hover step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness. */
-  --cinder-danger-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
-  /* Active/pressed step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness. */
-  --cinder-danger-active: light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25));
-  /* Info status fill color. */
-  --cinder-info: light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230));
-  /* Label color for solid info fills. */
-  --cinder-info-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 230));
-  /* Hover step for solid info fills. */
-  --cinder-info-hover: light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230));
-  /* Active/pressed step for solid info fills. */
-  --cinder-info-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230));
-  /* Success status fill color. */
-  --cinder-success: light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145));
-  /* Label color for solid success fills. */
-  --cinder-success-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 145));
-  /* Hover step for solid success fills. */
-  --cinder-success-hover: light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145));
-  /* Active/pressed step for solid success fills. */
-  --cinder-success-active: light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145));
-  /* Warning status fill color. */
-  --cinder-warning: light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75));
-  /* Label color for solid warning fills. */
-  --cinder-warning-contrast: light-dark(oklch(100% 0 0), oklch(20% 0.04 75));
-  /* Hover step for solid warning fills. */
-  --cinder-warning-hover: light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75));
-  /* Active/pressed step for solid warning fills. */
-  --cinder-warning-active: light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75));
+  /* Brand accent fill color. */
+  --cinder-accent-solid: light-dark(oklch(50% 0.22 270), oklch(72% 0.14 270));
+  /* Active/pressed step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.15, c and h held constant). */
+  --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
+  /* Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.solid.active` so label-bearing and non-label consumers can diverge if ever needed. */
+  --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
+  /* Hover step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.08, c and h held constant). */
+  --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
+  /* Soft accent-tinted background, mixed 88% toward the current surface. */
+  --cinder-accent-background: color-mix(
+    in oklch,
+    var(--cinder-accent-solid),
+    var(--cinder-surface) 88%
+  );
+  /* Soft accent-tinted border, the accent color mixed 60% toward transparent. */
+  --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
   /* Focus ring stroke width. A floor, not a preference: WCAG 2.4.13 wants an indicator at least as large as a 2px-thick perimeter of the control. */
   --cinder-ring-width: 2px;
   /* Focus ring offset from the control edge. */
   --cinder-ring-offset: 2px;
   /* Focus ring offset band color. The ring is a two-stop box-shadow and box-shadow cannot paint a transparent gap, so the offset band has to be some real color. Pinned to `surface.raised` (the top of the ramp) so the band disappears into raised surfaces, where controls overwhelmingly live, and reads as a light halo on recessed tiers. */
   --cinder-ring-offset-color: var(--cinder-surface-raised);
-  /* Focus ring color, relative to `accent` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue. */
+  /* Focus ring color, relative to `accent.solid` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue. */
   --cinder-ring-color: light-dark(
-    oklch(from var(--cinder-accent) 0.55 0.16 h),
-    oklch(from var(--cinder-accent) 0.7 0.14 h)
+    oklch(from var(--cinder-accent-solid) 0.55 0.16 h),
+    oklch(from var(--cinder-accent-solid) 0.7 0.14 h)
   );
   /* Ring color tuned for use on solid accent/fill surfaces (FloatingAction primary variant). Light arm is a near-black that contrasts both the accent fill and the page background; dark arm is a near-white that contrasts the bright dark-mode accent and the dark page background. */
   --cinder-ring-on-accent: light-dark(oklch(15% 0.035 245), oklch(100% 0 0));
@@ -350,90 +326,116 @@
   --cinder-pad-control: var(--cinder-space-2-5);
   /* Default card padding. */
   --cinder-pad-card: var(--cinder-space-4);
-  /* Soft accent-tinted background, mixed 88% toward the current surface. */
-  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
-  /* Foreground color on the soft accent surface. */
-  --cinder-color-accent-fg: var(--cinder-accent-text);
-  /* Soft accent-tinted border, the accent color mixed 60% toward transparent. */
-  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
-  /* Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome. */
-  --cinder-color-checker-base: light-dark(#fff, oklch(28% 0.02 245));
-  /* Transparency checkerboard alternate tile. */
-  --cinder-color-checker-tile: light-dark(#ccc, oklch(38% 0.02 245));
+  /* Label color for solid success fills. */
+  --cinder-status-success-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 145));
+  /* Success status fill color. */
+  --cinder-status-success-solid: light-dark(oklch(50% 0.157 145), oklch(78% 0.14 145));
+  /* Active/pressed step for solid success fills. */
+  --cinder-status-success-solid-active: light-dark(oklch(35% 0.1 145), oklch(62% 0.14 145));
+  /* Hover step for solid success fills. */
+  --cinder-status-success-solid-hover: light-dark(oklch(42% 0.12 145), oklch(70% 0.14 145));
+  /* Soft success-tinted surface background. */
+  --cinder-status-success-background: light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145));
+  /* Foreground color on the soft success surface. */
+  --cinder-status-success-text: light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145));
+  /* Border color on the soft success surface. */
+  --cinder-status-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
+  /* Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  /* Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  /* Label color for solid warning fills. */
+  --cinder-status-warning-contrast: light-dark(oklch(100% 0 0), oklch(20% 0.04 75));
+  /* Warning status fill color. */
+  --cinder-status-warning-solid: light-dark(oklch(54% 0.113 75), oklch(82% 0.156 75));
+  /* Active/pressed step for solid warning fills. */
+  --cinder-status-warning-solid-active: light-dark(oklch(38% 0.07 75), oklch(66% 0.13 75));
+  /* Hover step for solid warning fills. */
+  --cinder-status-warning-solid-hover: light-dark(oklch(42% 0.08 75), oklch(74% 0.156 75));
+  /* Soft warning-tinted surface background. */
+  --cinder-status-warning-background: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75));
+  /* Foreground color on the soft warning surface. */
+  --cinder-status-warning-text: light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75));
+  /* Border color on the soft warning surface. */
+  --cinder-status-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
+  /* Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  /* Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  /* Label color for solid danger fills. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it, so the dark arm uses a near-black ink instead. */
+  --cinder-status-danger-contrast: light-dark(oklch(100% 0 0), oklch(12% 0.02 25));
+  /* Danger status fill color. */
+  --cinder-status-danger-solid: light-dark(oklch(50% 0.202 25), oklch(72% 0.172 25));
+  /* Active/pressed step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness. */
+  --cinder-status-danger-solid-active: light-dark(oklch(35% 0.142 25), oklch(60% 0.172 25));
+  /* Hover step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness. */
+  --cinder-status-danger-solid-hover: light-dark(oklch(42% 0.171 25), oklch(64% 0.172 25));
   /* Soft danger-tinted surface background. */
-  --cinder-color-danger-bg: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
+  --cinder-status-danger-background: light-dark(oklch(94.5% 0.026 25), oklch(28% 0.09 25));
   /* Foreground color on the soft danger surface. */
-  --cinder-color-danger-fg: light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25));
+  --cinder-status-danger-text: light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25));
   /* Border color on the soft danger surface. */
-  --cinder-color-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
-  /* Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-muted: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
+  --cinder-status-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
   /* Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
+  --cinder-status-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
   );
+  /* Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  /* Label color for solid info fills. */
+  --cinder-status-info-contrast: light-dark(oklch(100% 0 0), oklch(15% 0.03 230));
+  /* Info status fill color. */
+  --cinder-status-info-solid: light-dark(oklch(50% 0.098 230), oklch(78% 0.13 230));
+  /* Active/pressed step for solid info fills. */
+  --cinder-status-info-solid-active: light-dark(oklch(35% 0.065 230), oklch(62% 0.12 230));
+  /* Hover step for solid info fills. */
+  --cinder-status-info-solid-hover: light-dark(oklch(42% 0.079 230), oklch(70% 0.13 230));
   /* Soft info-tinted surface background. */
-  --cinder-color-info-bg: light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230));
+  --cinder-status-info-background: light-dark(oklch(94.5% 0.03 230), oklch(28% 0.057 230));
   /* Foreground color on the soft info surface. */
-  --cinder-color-info-fg: light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230));
+  --cinder-status-info-text: light-dark(oklch(40% 0.079 230), oklch(88% 0.071 230));
   /* Border color on the soft info surface. */
-  --cinder-color-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
-  /* Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-muted: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
+  --cinder-status-info-border: light-dark(oklch(80% 0.05 230), oklch(45% 0.08 230));
   /* Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
+  --cinder-status-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  /* Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
+  --cinder-status-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
   );
   /* Soft neutral-tinted surface background. Neutral retains the status-triple shape so components never need ad hoc surface mixing for the default variant. */
-  --cinder-color-neutral-bg: light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245));
+  --cinder-status-neutral-background: light-dark(oklch(94.5% 0.004 255), oklch(28% 0.04 245));
   /* Foreground color on the soft neutral surface. */
-  --cinder-color-neutral-fg: var(--cinder-text);
+  --cinder-status-neutral-text: var(--cinder-text-default);
   /* Border color on the soft neutral surface. */
-  --cinder-color-neutral-border: var(--cinder-border);
-  /* Soft success-tinted surface background. */
-  --cinder-color-success-bg: light-dark(oklch(94.5% 0.045 145), oklch(28% 0.07 145));
-  /* Foreground color on the soft success surface. */
-  --cinder-color-success-fg: light-dark(oklch(40% 0.127 145), oklch(88% 0.11 145));
-  /* Border color on the soft success surface. */
-  --cinder-color-success-border: light-dark(oklch(80% 0.05 145), oklch(45% 0.09 145));
-  /* Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-muted: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  /* Soft warning-tinted surface background. */
-  --cinder-color-warning-bg: light-dark(oklch(94.5% 0.042 75), oklch(28% 0.06 75));
-  /* Foreground color on the soft warning surface. */
-  --cinder-color-warning-fg: light-dark(oklch(40% 0.085 75), oklch(90% 0.08 75));
-  /* Border color on the soft warning surface. */
-  --cinder-color-warning-border: light-dark(oklch(80% 0.06 75), oklch(50% 0.1 75));
-  /* Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-muted: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
+  --cinder-status-neutral-border: var(--cinder-border);
+  /* Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome. */
+  --cinder-checker-base: light-dark(#fff, oklch(28% 0.02 245));
+  /* Transparency checkerboard alternate tile. */
+  --cinder-checker-tile: light-dark(#ccc, oklch(38% 0.02 245));
   /* Secondary (default) button fill. */
   --cinder-button-bg: var(--cinder-surface-raised);
   /* Secondary (default) button label color. */
-  --cinder-button-fg: var(--cinder-text);
+  --cinder-button-fg: var(--cinder-text-default);
   /* Secondary (default) button border. */
   --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
   /* Default button corner radius. */
@@ -508,7 +510,6 @@
   /* Structural: not a design token. */
   color-scheme: dark;
 
-  --cinder-bg: oklch(15% 0.035 245);
   --cinder-surface: oklch(21% 0.04 245);
   --cinder-surface-raised: oklch(28% 0.045 245);
   --cinder-surface-raised-hover: color-mix(
@@ -526,41 +527,32 @@
   --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%);
   --cinder-surface-inverse: var(--cinder-surface-raised);
   --cinder-surface-upcoming-marker: var(--cinder-surface);
+  --cinder-surface-canvas: oklch(15% 0.035 245);
   --cinder-border: oklch(58% 0.05 245);
   --cinder-border-faint: oklch(33% 0.03 245);
   --cinder-border-muted: oklch(38% 0.04 245);
   --cinder-border-strong: oklch(66% 0.06 245);
   --cinder-border-inverse: var(--cinder-border-strong);
-  --cinder-text: oklch(92% 0.02 245);
   --cinder-text-muted: oklch(82% 0.02 245);
   --cinder-text-subtle: oklch(72% 0.02 245);
   --cinder-text-disabled: oklch(64% 0.02 245);
-  --cinder-text-inverse: var(--cinder-text);
+  --cinder-text-inverse: var(--cinder-text-default);
+  --cinder-text-default: oklch(92% 0.02 245);
   --cinder-fill-disabled: oklch(30% 0.015 245);
-  --cinder-accent: oklch(72% 0.14 270);
   --cinder-accent-contrast: oklch(15% 0.035 245);
-  --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
-  --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
-  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   --cinder-accent-text: oklch(72% 0.14 270);
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
-  --cinder-danger: oklch(72% 0.172 25);
-  --cinder-danger-contrast: oklch(12% 0.02 25);
-  --cinder-danger-hover: oklch(64% 0.172 25);
-  --cinder-danger-active: oklch(60% 0.172 25);
-  --cinder-info: oklch(78% 0.13 230);
-  --cinder-info-contrast: oklch(15% 0.03 230);
-  --cinder-info-hover: oklch(70% 0.13 230);
-  --cinder-info-active: oklch(62% 0.12 230);
-  --cinder-success: oklch(78% 0.14 145);
-  --cinder-success-contrast: oklch(15% 0.03 145);
-  --cinder-success-hover: oklch(70% 0.14 145);
-  --cinder-success-active: oklch(62% 0.14 145);
-  --cinder-warning: oklch(82% 0.156 75);
-  --cinder-warning-contrast: oklch(20% 0.04 75);
-  --cinder-warning-hover: oklch(74% 0.156 75);
-  --cinder-warning-active: oklch(66% 0.13 75);
-  --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
+  --cinder-accent-background: color-mix(
+    in oklch,
+    var(--cinder-accent-solid),
+    var(--cinder-surface) 88%
+  );
+  --cinder-accent-solid: oklch(72% 0.14 270);
+  --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
+  --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
+  --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
+  --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
+  --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.7 0.14 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(100% 0 0);
   --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
@@ -573,60 +565,8 @@
     0 10px 15px -3px oklch(100% 0 0 / 0.11), 0 4px 6px -4px oklch(100% 0 0 / 0.07);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);
-  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
-  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
-  --cinder-color-accent-fg: var(--cinder-accent-text);
-  --cinder-color-checker-base: oklch(28% 0.02 245);
-  --cinder-color-checker-tile: oklch(38% 0.02 245);
-  --cinder-color-danger-bg: oklch(28% 0.09 25);
-  --cinder-color-danger-fg: oklch(90% 0.05 25);
-  --cinder-color-danger-border: oklch(50% 0.11 25);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-muted: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-info-bg: oklch(28% 0.057 230);
-  --cinder-color-info-fg: oklch(88% 0.071 230);
-  --cinder-color-info-border: oklch(45% 0.08 230);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-muted: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-neutral-bg: oklch(28% 0.04 245);
-  --cinder-color-neutral-fg: var(--cinder-text);
-  --cinder-color-neutral-border: var(--cinder-border);
-  --cinder-color-success-bg: oklch(28% 0.07 145);
-  --cinder-color-success-fg: oklch(88% 0.11 145);
-  --cinder-color-success-border: oklch(45% 0.09 145);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-muted: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-warning-bg: oklch(28% 0.06 75);
-  --cinder-color-warning-fg: oklch(90% 0.08 75);
-  --cinder-color-warning-border: oklch(50% 0.1 75);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-muted: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
   --cinder-button-bg: var(--cinder-surface-raised);
-  --cinder-button-fg: var(--cinder-text);
+  --cinder-button-fg: var(--cinder-text-default);
   --cinder-button-border: var(--cinder-border-strong);
   --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
   --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
@@ -638,65 +578,124 @@
   --cinder-chart-series-6: oklch(81% 0.152 80);
   --cinder-chart-series-7: oklch(85% 0.078 235);
   --cinder-chart-series-8: oklch(89% 0.19 120);
+  --cinder-status-success-background: oklch(28% 0.07 145);
+  --cinder-status-success-text: oklch(88% 0.11 145);
+  --cinder-status-success-border: oklch(45% 0.09 145);
+  --cinder-status-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-success-contrast: oklch(15% 0.03 145);
+  --cinder-status-success-solid: oklch(78% 0.14 145);
+  --cinder-status-success-solid-active: oklch(62% 0.14 145);
+  --cinder-status-success-solid-hover: oklch(70% 0.14 145);
+  --cinder-status-warning-background: oklch(28% 0.06 75);
+  --cinder-status-warning-text: oklch(90% 0.08 75);
+  --cinder-status-warning-border: oklch(50% 0.1 75);
+  --cinder-status-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-contrast: oklch(20% 0.04 75);
+  --cinder-status-warning-solid: oklch(82% 0.156 75);
+  --cinder-status-warning-solid-active: oklch(66% 0.13 75);
+  --cinder-status-warning-solid-hover: oklch(74% 0.156 75);
+  --cinder-status-neutral-background: oklch(28% 0.04 245);
+  --cinder-status-neutral-text: var(--cinder-text-default);
+  --cinder-status-neutral-border: var(--cinder-border);
+  --cinder-status-danger-background: oklch(28% 0.09 25);
+  --cinder-status-danger-text: oklch(90% 0.05 25);
+  --cinder-status-danger-border: oklch(50% 0.11 25);
+  --cinder-status-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-contrast: oklch(12% 0.02 25);
+  --cinder-status-danger-solid: oklch(72% 0.172 25);
+  --cinder-status-danger-solid-active: oklch(60% 0.172 25);
+  --cinder-status-danger-solid-hover: oklch(64% 0.172 25);
+  --cinder-status-info-background: oklch(28% 0.057 230);
+  --cinder-status-info-text: oklch(88% 0.071 230);
+  --cinder-status-info-border: oklch(45% 0.08 230);
+  --cinder-status-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-contrast: oklch(15% 0.03 230);
+  --cinder-status-info-solid: oklch(78% 0.13 230);
+  --cinder-status-info-solid-active: oklch(62% 0.12 230);
+  --cinder-status-info-solid-hover: oklch(70% 0.13 230);
+  --cinder-checker-base: oklch(28% 0.02 245);
+  --cinder-checker-tile: oklch(38% 0.02 245);
 }
 
 [data-theme='light'] {
   /* Structural: not a design token. */
   color-scheme: light;
 
-  --cinder-bg: oklch(98.4% 0.003 255);
   --cinder-surface: oklch(99.4% 0.002 255);
   --cinder-surface-raised: oklch(100% 0 255);
   --cinder-surface-raised-hover: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    var(--cinder-accent) 6%
+    var(--cinder-accent-solid) 6%
   );
   --cinder-surface-raised-pressed: color-mix(
     in oklch,
     var(--cinder-surface-raised),
-    var(--cinder-accent) 12%
+    var(--cinder-accent-solid) 12%
   );
   --cinder-surface-inset: oklch(96% 0.005 255);
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%);
-  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 12%);
-  --cinder-surface-inverse: var(--cinder-text);
+  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%);
+  --cinder-surface-pressed: color-mix(
+    in oklch,
+    var(--cinder-surface),
+    var(--cinder-accent-solid) 12%
+  );
+  --cinder-surface-inverse: var(--cinder-text-default);
   --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
+  --cinder-surface-canvas: oklch(98.4% 0.003 255);
   --cinder-border: oklch(63% 0.006 255);
   --cinder-border-faint: oklch(92% 0.003 255);
   --cinder-border-muted: oklch(85% 0.004 255);
   --cinder-border-strong: oklch(60% 0.008 255);
   --cinder-border-inverse: transparent;
-  --cinder-text: oklch(20% 0.018 245);
   --cinder-text-muted: oklch(32% 0.014 245);
   --cinder-text-subtle: oklch(42% 0.012 245);
   --cinder-text-disabled: oklch(52% 0.01 245);
   --cinder-text-inverse: var(--cinder-surface);
+  --cinder-text-default: oklch(20% 0.018 245);
   --cinder-fill-disabled: oklch(86% 0.006 255);
-  --cinder-accent: oklch(50% 0.22 270);
   --cinder-accent-contrast: oklch(100% 0 0);
-  --cinder-accent-hover: oklch(from var(--cinder-accent) calc(l - 0.08) c h);
-  --cinder-accent-active: oklch(from var(--cinder-accent) calc(l - 0.15) c h);
-  --cinder-accent-active-on-fill: oklch(from var(--cinder-accent) calc(l - 0.11) c h);
   --cinder-accent-text: oklch(45% 0.22 270);
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
-  --cinder-danger: oklch(50% 0.202 25);
-  --cinder-danger-contrast: oklch(100% 0 0);
-  --cinder-danger-hover: oklch(42% 0.171 25);
-  --cinder-danger-active: oklch(35% 0.142 25);
-  --cinder-info: oklch(50% 0.098 230);
-  --cinder-info-contrast: oklch(100% 0 0);
-  --cinder-info-hover: oklch(42% 0.079 230);
-  --cinder-info-active: oklch(35% 0.065 230);
-  --cinder-success: oklch(50% 0.157 145);
-  --cinder-success-contrast: oklch(100% 0 0);
-  --cinder-success-hover: oklch(42% 0.12 145);
-  --cinder-success-active: oklch(35% 0.1 145);
-  --cinder-warning: oklch(54% 0.113 75);
-  --cinder-warning-contrast: oklch(100% 0 0);
-  --cinder-warning-hover: oklch(42% 0.08 75);
-  --cinder-warning-active: oklch(38% 0.07 75);
-  --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
+  --cinder-accent-background: color-mix(
+    in oklch,
+    var(--cinder-accent-solid),
+    var(--cinder-surface) 88%
+  );
+  --cinder-accent-solid: oklch(50% 0.22 270);
+  --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
+  --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
+  --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
+  --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
+  --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.55 0.16 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(15% 0.035 245);
   --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
@@ -708,60 +707,8 @@
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
-  --cinder-color-accent-bg: color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%);
-  --cinder-color-accent-border: color-mix(in oklch, var(--cinder-accent), transparent 60%);
-  --cinder-color-accent-fg: var(--cinder-accent-text);
-  --cinder-color-checker-base: #fff;
-  --cinder-color-checker-tile: #ccc;
-  --cinder-color-danger-bg: oklch(94.5% 0.026 25);
-  --cinder-color-danger-fg: oklch(42% 0.16 25);
-  --cinder-color-danger-border: oklch(80% 0.06 25);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-muted: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-danger-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-info-bg: oklch(94.5% 0.03 230);
-  --cinder-color-info-fg: oklch(40% 0.079 230);
-  --cinder-color-info-border: oklch(80% 0.05 230);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-muted: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-info-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-neutral-bg: oklch(94.5% 0.004 255);
-  --cinder-color-neutral-fg: var(--cinder-text);
-  --cinder-color-neutral-border: var(--cinder-border);
-  --cinder-color-success-bg: oklch(94.5% 0.045 145);
-  --cinder-color-success-fg: oklch(40% 0.127 145);
-  --cinder-color-success-border: oklch(80% 0.05 145);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-muted: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-success-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
-  --cinder-color-warning-bg: oklch(94.5% 0.042 75);
-  --cinder-color-warning-fg: oklch(40% 0.085 75);
-  --cinder-color-warning-border: oklch(80% 0.06 75);
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-muted: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h
-  );
-  /* stylelint-disable-next-line declaration-property-value-disallowed-list -- canonical status-mixing formula, the intentional shared contract; component CSS must still use the named tier instead of recreating it. */
-  --cinder-color-warning-subtle: oklch(
-    from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h
-  );
   --cinder-button-bg: var(--cinder-surface-raised);
-  --cinder-button-fg: var(--cinder-text);
+  --cinder-button-fg: var(--cinder-text-default);
   --cinder-button-border: var(--cinder-border);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);
@@ -773,11 +720,75 @@
   --cinder-chart-series-6: oklch(56% 0.148 44);
   --cinder-chart-series-7: oklch(59% 0.126 120);
   --cinder-chart-series-8: oklch(63% 0.098 205);
+  --cinder-status-success-background: oklch(94.5% 0.045 145);
+  --cinder-status-success-text: oklch(40% 0.127 145);
+  --cinder-status-success-border: oklch(80% 0.05 145);
+  --cinder-status-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-success-contrast: oklch(100% 0 0);
+  --cinder-status-success-solid: oklch(50% 0.157 145);
+  --cinder-status-success-solid-active: oklch(35% 0.1 145);
+  --cinder-status-success-solid-hover: oklch(42% 0.12 145);
+  --cinder-status-warning-background: oklch(94.5% 0.042 75);
+  --cinder-status-warning-text: oklch(40% 0.085 75);
+  --cinder-status-warning-border: oklch(80% 0.06 75);
+  --cinder-status-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-contrast: oklch(100% 0 0);
+  --cinder-status-warning-solid: oklch(54% 0.113 75);
+  --cinder-status-warning-solid-active: oklch(38% 0.07 75);
+  --cinder-status-warning-solid-hover: oklch(42% 0.08 75);
+  --cinder-status-neutral-background: oklch(94.5% 0.004 255);
+  --cinder-status-neutral-text: var(--cinder-text-default);
+  --cinder-status-neutral-border: var(--cinder-border);
+  --cinder-status-danger-background: oklch(94.5% 0.026 25);
+  --cinder-status-danger-text: oklch(42% 0.16 25);
+  --cinder-status-danger-border: oklch(80% 0.06 25);
+  --cinder-status-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-contrast: oklch(100% 0 0);
+  --cinder-status-danger-solid: oklch(50% 0.202 25);
+  --cinder-status-danger-solid-active: oklch(35% 0.142 25);
+  --cinder-status-danger-solid-hover: oklch(42% 0.171 25);
+  --cinder-status-info-background: oklch(94.5% 0.03 230);
+  --cinder-status-info-text: oklch(40% 0.079 230);
+  --cinder-status-info-border: oklch(80% 0.05 230);
+  --cinder-status-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-contrast: oklch(100% 0 0);
+  --cinder-status-info-solid: oklch(50% 0.098 230);
+  --cinder-status-info-solid-active: oklch(35% 0.065 230);
+  --cinder-status-info-solid-hover: oklch(42% 0.079 230);
+  --cinder-checker-base: #fff;
+  --cinder-checker-tile: #ccc;
 }
 
 @media (prefers-reduced-motion: reduce) {
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']) {
-    --cinder-duration: 0ms;
     --cinder-duration-fast: 0ms;
     --cinder-duration-instant: 0ms;
     --cinder-duration-normal: 0ms;
@@ -787,11 +798,11 @@
     --cinder-duration-pulse: 0ms;
     --cinder-duration-progress-bar-indeterminate: 0ms;
     --cinder-duration-progress-ring-spin: 0ms;
+    --cinder-duration-base: 0ms;
   }
 }
 
 :root[data-reduced-motion='on'] {
-  --cinder-duration: 0ms;
   --cinder-duration-fast: 0ms;
   --cinder-duration-instant: 0ms;
   --cinder-duration-normal: 0ms;
@@ -801,4 +812,5 @@
   --cinder-duration-pulse: 0ms;
   --cinder-duration-progress-bar-indeterminate: 0ms;
   --cinder-duration-progress-ring-spin: 0ms;
+  --cinder-duration-base: 0ms;
 }

@@ -262,10 +262,10 @@ describe('Autocomplete — suggestions and free-form input', () => {
 
   test('match highlight uses the theme-aware warning surface tokens, not a hard-coded light value', async () => {
     // Regression: the highlight previously hard-coded a near-white background
-    // (`oklch(from var(--cinder-warning) 96.5% …)`) in BOTH themes with
+    // (`oklch(from var(--cinder-status-warning-solid) 96.5% …)`) in BOTH themes with
     // `color: inherit`, so in dark mode the matched glyph became a white-on-white
-    // box and the letter disappeared. The fix uses the `--cinder-color-warning-bg`
-    // / `--cinder-color-warning-fg` light-dark() pair, which contrasts in either
+    // box and the letter disappeared. The fix uses the `--cinder-status-warning-background`
+    // / `--cinder-status-warning-text` light-dark() pair, which contrasts in either
     // theme. happy-dom does not apply stylesheets, so assert against the CSS source.
     const css = await Bun.file(new URL('./autocomplete.css', import.meta.url)).text();
     // Strip CSS comments first — the explanatory comment in this rule intentionally
@@ -277,10 +277,10 @@ describe('Autocomplete — suggestions and free-form input', () => {
     );
     const ruleBody = matchRule.slice(0, matchRule.indexOf('}'));
     // Pin to the actual background:/color: declarations.
-    expect(ruleBody).toMatch(/background:\s*var\(--cinder-color-warning-bg\)/);
-    expect(ruleBody).toMatch(/color:\s*var\(--cinder-color-warning-fg\)/);
+    expect(ruleBody).toMatch(/background:\s*var\(--cinder-status-warning-background\)/);
+    expect(ruleBody).toMatch(/color:\s*var\(--cinder-status-warning-text\)/);
     // The broken hard-coded near-white background must be gone from the declarations.
-    expect(ruleBody).not.toMatch(/oklch\(from var\(--cinder-warning\)/);
+    expect(ruleBody).not.toMatch(/oklch\(from var\(--cinder-status-warning-solid\)/);
     // color: inherit was the second half of the bug (light text on light bg).
     expect(ruleBody).not.toMatch(/color:\s*inherit/);
   });

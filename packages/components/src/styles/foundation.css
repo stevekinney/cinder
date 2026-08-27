@@ -68,8 +68,8 @@
 
 :where(body) {
   min-height: 100dvh;
-  background-color: var(--cinder-bg);
-  color: var(--cinder-text);
+  background-color: var(--cinder-surface-canvas);
+  color: var(--cinder-text-default);
   font-size: var(--cinder-text-base);
 }
 
@@ -141,15 +141,15 @@
 }
 
 ::selection {
-  background: color-mix(in oklch, var(--cinder-accent), transparent 70%);
-  color: var(--cinder-text);
+  background: color-mix(in oklch, var(--cinder-accent-solid), transparent 70%);
+  color: var(--cinder-text-default);
 }
 
 :where(h1, h2, h3, h4, h5, h6) {
   line-height: var(--cinder-leading-tight);
   letter-spacing: var(--cinder-tracking-tight);
   font-weight: var(--cinder-font-semibold);
-  color: var(--cinder-text);
+  color: var(--cinder-text-default);
   overflow-wrap: break-word;
   text-wrap: balance;
 }
@@ -271,7 +271,7 @@
 :where(label) {
   font-size: var(--cinder-text-sm);
   font-weight: var(--cinder-font-medium);
-  color: var(--cinder-text);
+  color: var(--cinder-text-default);
 }
 
 :where(img, picture, video, canvas, svg) {

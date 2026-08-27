@@ -13,7 +13,7 @@
   .cinder-time-field.cinder-form-field {
     display: grid;
     gap: var(--cinder-space-2);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-time-field__label,
@@ -48,7 +48,7 @@
     padding-inline-start: var(--cinder-space-3);
     padding-inline-end: var(--cinder-space-8);
     min-inline-size: 12rem;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -83,6 +83,6 @@
   }
 
   .cinder-time-field__error {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 }

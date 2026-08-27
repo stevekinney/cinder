@@ -299,7 +299,7 @@ describe('PricingCard CSS contract', () => {
       css.match(/data-cinder-selected[^}]*\}/g)?.[0] ??
       '';
     // Should use token-based accent, not raw color value
-    expect(css).toContain('var(--cinder-accent)');
+    expect(css).toContain('var(--cinder-accent-solid)');
     // Should not use raw hex or rgb colors
     expect(selectedBlock).not.toMatch(/#[0-9a-fA-F]{3,6}\b/);
   });

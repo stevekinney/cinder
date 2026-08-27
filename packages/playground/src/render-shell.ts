@@ -133,26 +133,26 @@ export const DEPICT_THEME_VARIABLES = `      /* Palette for the \`depict\` Shiki
       :root {
         /* Editor chrome (theme \`colors\`). */
         --surface-inset: var(--cinder-surface-inset);
-        --text: var(--cinder-text);
+        --text: var(--cinder-text-default);
 
         /* Token scopes (theme \`tokenColors\`). Hues are borrowed from the
            status/accent token families so the palette stays inside the
            design system and re-themes with it. */
         --syntax-comment: var(--cinder-text-subtle);
-        --syntax-string: var(--cinder-color-success-fg);
+        --syntax-string: var(--cinder-status-success-text);
         --syntax-keyword: var(--cinder-accent-text);
-        --syntax-function: var(--cinder-color-info-fg);
-        --syntax-variable: var(--cinder-text);
-        --syntax-type: var(--cinder-color-info-fg);
-        --syntax-number: var(--cinder-color-warning-fg);
+        --syntax-function: var(--cinder-status-info-text);
+        --syntax-variable: var(--cinder-text-default);
+        --syntax-type: var(--cinder-status-info-text);
+        --syntax-number: var(--cinder-status-warning-text);
         --syntax-operator: var(--cinder-text-subtle);
-        --syntax-constant: var(--cinder-color-warning-fg);
+        --syntax-constant: var(--cinder-status-warning-text);
         --syntax-property: var(--cinder-text-muted);
-        --syntax-tag: var(--cinder-color-danger-fg);
-        --syntax-attribute: var(--cinder-color-warning-fg);
-        --syntax-regex: var(--cinder-color-danger-fg);
-        --syntax-inserted: var(--cinder-color-success-fg);
-        --syntax-deleted: var(--cinder-color-danger-fg);
+        --syntax-tag: var(--cinder-status-danger-text);
+        --syntax-attribute: var(--cinder-status-warning-text);
+        --syntax-regex: var(--cinder-status-danger-text);
+        --syntax-inserted: var(--cinder-status-success-text);
+        --syntax-deleted: var(--cinder-status-danger-text);
       }`;
 
 /** Escape a string for safe use in HTML text content and attribute values. */
@@ -423,7 +423,7 @@ ${DEPICT_THEME_VARIABLES}
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         background: var(--cinder-surface-raised);
-        color: var(--cinder-text);
+        color: var(--cinder-text-default);
       }
     </style>
   </head>

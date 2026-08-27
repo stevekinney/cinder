@@ -8,7 +8,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background-color: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-share-card__preview {
@@ -27,7 +27,7 @@
     font-weight: var(--cinder-font-semibold);
     font-size: var(--cinder-text-sm);
     margin: 0;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-share-card__description {
@@ -73,7 +73,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
@@ -109,8 +109,8 @@
   }
 
   .cinder-share-card__action[data-cinder-copied] {
-    color: var(--cinder-color-success-fg);
-    border-color: var(--cinder-color-success-border);
+    color: var(--cinder-status-success-text);
+    border-color: var(--cinder-status-success-border);
   }
 
   .cinder-share-card__action-icon {

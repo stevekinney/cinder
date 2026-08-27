@@ -82,7 +82,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-xs);
     font-family: inherit;
     box-shadow: var(--cinder-shadow-md);
@@ -115,7 +115,7 @@
   .cinder-feed-log__truncation-notice {
     padding: var(--cinder-space-1) var(--cinder-space-3);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
     font-size: var(--cinder-text-xs);
     border-block-end: 1px solid var(--cinder-border-muted);
     flex-shrink: 0;

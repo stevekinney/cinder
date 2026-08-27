@@ -50,7 +50,7 @@ describe('COLOR_PROBES — raw color class detection', () => {
   });
 
   test('does NOT match a var() token reference (the desired state)', () => {
-    const line = 'color: var(--cinder-color-danger-fg);';
+    const line = 'color: var(--cinder-status-danger-text);';
     for (const { pattern } of COLOR_PROBES) {
       expect(new RegExp(pattern.source).test(line)).toBe(false);
     }

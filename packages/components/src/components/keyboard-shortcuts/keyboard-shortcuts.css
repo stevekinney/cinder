@@ -9,7 +9,7 @@
   .cinder-keyboard-shortcuts__heading {
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
   }
 
@@ -55,7 +55,7 @@
 
   .cinder-keyboard-shortcuts__action {
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     flex: 1;
   }
 

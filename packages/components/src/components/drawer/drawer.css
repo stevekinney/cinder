@@ -160,7 +160,7 @@
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     flex: 1;
     min-width: 0;
   }
@@ -188,7 +188,7 @@
   @media (hover: hover) {
     .cinder-drawer__close:hover {
       background: color-mix(in oklch, currentColor, transparent 85%);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

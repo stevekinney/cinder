@@ -442,8 +442,8 @@ describe('Button icon-only ghost CSS contract', () => {
       source,
       ".cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger']",
     );
-    expectDeclaration(ghostDangerBlock, 'background', 'var(--cinder-color-danger-bg)');
-    expectDeclaration(ghostDangerBlock, 'border-color', 'var(--cinder-color-danger-border)');
+    expectDeclaration(ghostDangerBlock, 'background', 'var(--cinder-status-danger-background)');
+    expectDeclaration(ghostDangerBlock, 'border-color', 'var(--cinder-status-danger-border)');
     expectColorMixBackgroundHasFallback(ghostDangerBlock);
   });
 
@@ -461,8 +461,8 @@ describe('Button icon-only ghost CSS contract', () => {
       source,
       ".cinder-button[data-cinder-icon-only][data-cinder-variant='ghost-danger'][data-cinder-loading]",
     );
-    expectDeclaration(iconOnlyLoadingBlock, 'background', 'var(--cinder-color-danger-bg)');
-    expectDeclaration(iconOnlyLoadingBlock, 'border-color', 'var(--cinder-color-danger-border)');
+    expectDeclaration(iconOnlyLoadingBlock, 'background', 'var(--cinder-status-danger-background)');
+    expectDeclaration(iconOnlyLoadingBlock, 'border-color', 'var(--cinder-status-danger-border)');
     expectColorMixBackgroundHasFallback(iconOnlyLoadingBlock);
 
     expect(source.indexOf(iconOnlyLoadingBlock)).toBeGreaterThan(

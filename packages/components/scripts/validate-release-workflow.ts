@@ -1024,7 +1024,7 @@ function validateWorkflowLevelEnvironmentContexts(): void {
           `${fileName} calls \`${functionName}()\` in its workflow-level \`env:\` block:\n` +
             `  ${line.trim()}\n\n` +
             '`hashFiles` needs a checked-out workspace, and the status functions\n' +
-            '(`success`, `failure`, `cancelled`, `always`) describe a job that has not\n' +
+            '(`status.success.solid`, `failure`, `cancelled`, `always`) describe a job that has not\n' +
             'started — none are available before a job is assigned to a runner. GitHub\n' +
             'rejects the ENTIRE workflow file, so every job fails before it starts.\n' +
             'Move the value to the job or step that needs it.',

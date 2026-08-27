@@ -90,7 +90,7 @@
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
     .cinder-tab:hover:not([data-cinder-disabled]) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }
@@ -110,7 +110,7 @@
   .cinder-tab[data-cinder-active]::after {
     content: '';
     position: absolute;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     pointer-events: none;
   }
 

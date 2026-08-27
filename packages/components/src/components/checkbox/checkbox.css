@@ -83,13 +83,13 @@
  * drawn by the aria-hidden sibling indicator with `mask-image` so the icon
  * color tracks `--cinder-accent-contrast` through theme switches. */
   .cinder-checkbox:checked {
-    background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
+    border-color: var(--cinder-accent-solid);
   }
 
   .cinder-checkbox--indicator[data-cinder-checked] {
-    background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
+    border-color: var(--cinder-accent-solid);
   }
 
   .cinder-checkbox-field__control {
@@ -152,8 +152,8 @@
   }
 
   .cinder-checkbox:indeterminate {
-    background: var(--cinder-accent);
-    border-color: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
+    border-color: var(--cinder-accent-solid);
   }
 
   /* Disabled state */
@@ -182,8 +182,8 @@
 
   /* Error / invalid state */
   .cinder-checkbox[aria-invalid='true'] {
-    --_cinder-checkbox-ring: var(--cinder-danger);
-    border-color: var(--cinder-danger);
+    --_cinder-checkbox-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   /* Label */
@@ -194,7 +194,7 @@
     gap: var(--cinder-space-1);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
   }
 
@@ -225,7 +225,7 @@
   .cinder-checkbox-field .cinder-form-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
     padding-inline-start: calc(1.125rem + var(--cinder-space-2));
   }

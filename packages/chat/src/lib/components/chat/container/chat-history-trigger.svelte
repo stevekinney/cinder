@@ -69,7 +69,7 @@
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -84,7 +84,7 @@
   @media (hover: hover) {
     .chat-history-trigger-button:not(:disabled):hover {
       background: var(--cinder-surface-hover);
-      border-color: var(--cinder-accent);
+      border-color: var(--cinder-accent-solid);
     }
   }
 

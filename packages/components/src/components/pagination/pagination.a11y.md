@@ -28,7 +28,7 @@ If you require an immediate announcement after page change, insert a visually hi
 
 ## Color and Contrast
 
-- The current page button uses `--cinder-accent` (background) and `--cinder-accent-contrast` (text). Ensure your token values meet WCAG 2.1 SC 1.4.3 minimum contrast ratio of 4.5:1 for normal text.
+- The current page button uses `--cinder-accent-solid` (background) and `--cinder-accent-contrast` (text). Ensure your token values meet WCAG 2.1 SC 1.4.3 minimum contrast ratio of 4.5:1 for normal text.
 - Disabled step buttons use `--cinder-text-disabled` (or fallback `--cinder-text-muted`). Disabled controls are exempt from the WCAG contrast requirement per SC 1.4.3, but sufficient contrast is still a usability best practice.
 - Focus rings are implemented via `box-shadow` using `--cinder-ring-color`, `--cinder-ring-width`, and `--cinder-ring-offset`. A `forced-colors: active` media query restores a solid `outline` for Windows High Contrast mode, where `box-shadow` is suppressed by the OS.
 

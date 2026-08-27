@@ -25,7 +25,7 @@
   }
 
   .cinder-selectable-row[data-cinder-selected] {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
   }
 
   .cinder-selectable-row__primary {
@@ -39,7 +39,7 @@
     border: 0;
     border-radius: inherit;
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     text-align: start;
     text-decoration: none;

@@ -270,7 +270,7 @@
     flex: 1;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
   }
 
@@ -304,7 +304,7 @@
   @media (hover: hover) {
     .sidebar-header :global(.actions-trigger:hover) {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
@@ -326,14 +326,14 @@
     flex-direction: column;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-3);
-    background: var(--cinder-color-danger-bg);
-    border-bottom: 1px solid var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    border-bottom: 1px solid var(--cinder-status-danger-border);
   }
 
   .confirm-message {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 
@@ -349,8 +349,8 @@
     flex-direction: column;
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-3);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 95%);
-    border-bottom: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 80%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 95%);
+    border-bottom: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 80%);
   }
 
   .document-comment-header {
@@ -408,8 +408,8 @@
   }
 
   .thread-item[data-active] {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    border-color: var(--cinder-accent);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+    border-color: var(--cinder-accent-solid);
   }
 
   .thread-orphaned {
@@ -438,7 +438,7 @@
 
   .thread-preview {
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
     display: -webkit-box;
     -webkit-line-clamp: 2;
@@ -455,13 +455,13 @@
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     padding: var(--cinder-space-0-5) var(--cinder-space-1-5);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
     border-radius: var(--cinder-radius-sm);
     width: fit-content;
   }
 
   .thread-item[data-document='true'] {
-    border-inline-start: 2px solid var(--cinder-accent);
+    border-inline-start: 2px solid var(--cinder-accent-solid);
   }
 
   .empty-state {

@@ -93,13 +93,13 @@ describe('DiffStatistics', () => {
   test('compact status pills use matched foreground tokens', async () => {
     const css = await Bun.file(new URL('./diff-statistics.css', import.meta.url)).text();
     expect(css).toMatch(
-      /data-cinder-variant='compact'[\s\S]*?__stat--added[\s\S]*?background:\s*var\(--cinder-color-success-bg\)[\s\S]*?color:\s*var\(--cinder-color-success-fg\)/,
+      /data-cinder-variant='compact'[\s\S]*?__stat--added[\s\S]*?background:\s*var\(--cinder-status-success-background\)[\s\S]*?color:\s*var\(--cinder-status-success-text\)/,
     );
     expect(css).toMatch(
-      /data-cinder-variant='compact'[\s\S]*?__stat--removed[\s\S]*?background:\s*var\(--cinder-color-danger-bg\)[\s\S]*?color:\s*var\(--cinder-color-danger-fg\)/,
+      /data-cinder-variant='compact'[\s\S]*?__stat--removed[\s\S]*?background:\s*var\(--cinder-status-danger-background\)[\s\S]*?color:\s*var\(--cinder-status-danger-text\)/,
     );
     expect(css).toMatch(
-      /data-cinder-variant='compact'[\s\S]*?__stat--modified[\s\S]*?background:\s*var\(--cinder-color-warning-bg\)[\s\S]*?color:\s*var\(--cinder-color-warning-fg\)/,
+      /data-cinder-variant='compact'[\s\S]*?__stat--modified[\s\S]*?background:\s*var\(--cinder-status-warning-background\)[\s\S]*?color:\s*var\(--cinder-status-warning-text\)/,
     );
   });
 

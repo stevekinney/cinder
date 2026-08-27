@@ -19,7 +19,7 @@
     border-radius: 0;
     margin: 0;
     font-size: var(--cinder-text-base);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     user-select: none;
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -27,10 +27,10 @@
   }
 
   .cinder-command-item[data-cinder-active] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     /* Keyboard-cursor ring for WCAG 1.4.11 (non-text contrast, ≥3:1). The ring
-       sits ON the accent fill, so it must contrast against --cinder-accent — NOT
+       sits ON the accent fill, so it must contrast against --cinder-accent-solid — NOT
        against a neutral surface. --cinder-ring-color is engineered for ~4.5:1
        against near-white surfaces and collapses to ~1.1–1.3:1 on the accent fill
        (invisible), which is why the shared _floating-surface.css ring works there

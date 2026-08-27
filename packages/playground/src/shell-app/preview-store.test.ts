@@ -305,15 +305,15 @@ describe('color token overrides', () => {
   it('stores overrides per theme', () => {
     const store = new PreviewStore('light');
 
-    expect(store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)')).toBe(
-      true,
-    );
-    expect(store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)')).toBe(
-      true,
-    );
+    expect(
+      store.setColorTokenOverride('light', '--cinder-accent-solid', 'oklch(60% 0.2 195)'),
+    ).toBe(true);
+    expect(
+      store.setColorTokenOverride('dark', '--cinder-accent-solid', 'oklch(78% 0.16 195)'),
+    ).toBe(true);
 
-    expect(store.colorTokenOverrides.light['--cinder-accent']).toBe('oklch(60% 0.2 195)');
-    expect(store.colorTokenOverrides.dark['--cinder-accent']).toBe('oklch(78% 0.16 195)');
+    expect(store.colorTokenOverrides.light['--cinder-accent-solid']).toBe('oklch(60% 0.2 195)');
+    expect(store.colorTokenOverrides.dark['--cinder-accent-solid']).toBe('oklch(78% 0.16 195)');
   });
 
   it('restores validated color overrides across full-page shell navigation', () => {
@@ -321,45 +321,45 @@ describe('color token overrides', () => {
     installSessionStorage();
 
     const firstPageStore = new PreviewStore('light');
-    firstPageStore.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
+    firstPageStore.setColorTokenOverride('light', '--cinder-accent-solid', 'oklch(60% 0.2 195)');
 
     const nextPageStore = new PreviewStore('light');
     expect(nextPageStore.colorTokenOverrides.light).toEqual({
-      '--cinder-accent': 'oklch(60% 0.2 195)',
+      '--cinder-accent-solid': 'oklch(60% 0.2 195)',
     });
   });
 
   it('resets one token or the full active-theme override set', () => {
     const store = new PreviewStore('light');
-    store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
-    store.setColorTokenOverride('light', '--cinder-bg', 'oklch(97% 0.02 245)');
-    store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');
+    store.setColorTokenOverride('light', '--cinder-accent-solid', 'oklch(60% 0.2 195)');
+    store.setColorTokenOverride('light', '--cinder-surface-canvas', 'oklch(97% 0.02 245)');
+    store.setColorTokenOverride('dark', '--cinder-accent-solid', 'oklch(78% 0.16 195)');
 
-    store.resetColorTokenOverride('light', '--cinder-bg');
+    store.resetColorTokenOverride('light', '--cinder-surface-canvas');
     expect(store.colorTokenOverrides.light).toEqual({
-      '--cinder-accent': 'oklch(60% 0.2 195)',
+      '--cinder-accent-solid': 'oklch(60% 0.2 195)',
     });
 
     store.resetColorTokenOverrides('light');
     expect(store.colorTokenOverrides.light).toEqual({});
     expect(store.colorTokenOverrides.dark).toEqual({
-      '--cinder-accent': 'oklch(78% 0.16 195)',
+      '--cinder-accent-solid': 'oklch(78% 0.16 195)',
     });
   });
 
   it('rejects unknown tokens and unsafe values', () => {
     const store = new PreviewStore('light');
-    expect(store.setColorTokenOverride('light', '--cinder-accent', '#336699')).toBe(true);
+    expect(store.setColorTokenOverride('light', '--cinder-accent-solid', '#336699')).toBe(true);
 
     expect(
-      store.setColorTokenOverride('light', '--cinder-accent', 'url(https://example.com)'),
+      store.setColorTokenOverride('light', '--cinder-accent-solid', 'url(https://example.com)'),
     ).toBe(false);
     // @ts-expect-error — exercising runtime validation for untrusted callers
     expect(store.setColorTokenOverride('light', '--cinder-button-bg', 'oklch(60% 0.2 195)')).toBe(
       false,
     );
     expect(store.colorTokenOverrides.light).toEqual({
-      '--cinder-accent': '#336699',
+      '--cinder-accent-solid': '#336699',
     });
   });
 
@@ -383,9 +383,9 @@ describe('color token overrides', () => {
     });
 
     const store = new PreviewStore('light');
-    store.setColorTokenOverride('light', '--cinder-accent', 'oklch(60% 0.2 195)');
-    store.resetColorTokenOverride('light', '--cinder-accent');
-    store.setColorTokenOverride('dark', '--cinder-accent', 'oklch(78% 0.16 195)');
+    store.setColorTokenOverride('light', '--cinder-accent-solid', 'oklch(60% 0.2 195)');
+    store.resetColorTokenOverride('light', '--cinder-accent-solid');
+    store.setColorTokenOverride('dark', '--cinder-accent-solid', 'oklch(78% 0.16 195)');
     store.resetColorTokenOverrides('dark');
 
     expect(storageCalls).toEqual([]);
@@ -395,13 +395,13 @@ describe('color token overrides', () => {
   it('applies only validated color token overrides to a document root', () => {
     const doc = makeFakeDocument();
 
-    doc.documentElement.style.setProperty('--cinder-bg', 'oklch(97% 0.01 245)');
+    doc.documentElement.style.setProperty('--cinder-surface-canvas', 'oklch(97% 0.01 245)');
     applyColorTokenOverridesToDocument(doc, {
-      '--cinder-accent': 'oklch(60% 0.2 195)',
+      '--cinder-accent-solid': 'oklch(60% 0.2 195)',
     });
 
-    expect(doc.documentElement.style.getPropertyValue('--cinder-bg')).toBe('');
-    expect(doc.documentElement.style.getPropertyValue('--cinder-accent')).toBe(
+    expect(doc.documentElement.style.getPropertyValue('--cinder-surface-canvas')).toBe('');
+    expect(doc.documentElement.style.getPropertyValue('--cinder-accent-solid')).toBe(
       'oklch(60% 0.2 195)',
     );
   });

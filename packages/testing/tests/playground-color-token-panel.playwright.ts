@@ -1,8 +1,8 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const TOKEN_NAME = '--cinder-accent';
-const SUCCESS_TOKEN_NAME = '--cinder-success';
-const DANGER_TOKEN_NAME = '--cinder-danger';
+const TOKEN_NAME = '--cinder-accent-solid';
+const SUCCESS_TOKEN_NAME = '--cinder-status-success-solid';
+const DANGER_TOKEN_NAME = '--cinder-status-danger-solid';
 const SURFACE_TOKEN_NAME = '--cinder-surface';
 // Must match `COLOR_TOKEN_NAMES.length` in
 // `packages/playground/src/shell-app/color-token-registry.ts`, which
@@ -16,8 +16,8 @@ const DARK_BULK_OVERRIDE = '#884422';
 const PICKER_SEED_TOKENS = [
   '--cinder-surface',
   '--cinder-surface-raised',
-  '--cinder-accent',
-  '--cinder-color-info-bg',
+  '--cinder-accent-solid',
+  '--cinder-status-info-background',
   '--cinder-chart-series-1',
   '--cinder-ring-color',
 ] as const;

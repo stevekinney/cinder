@@ -55,7 +55,7 @@ const deterministicDropdownTokens = `
   --cinder-border: rgb(44 56 72);
   --cinder-radius-md: 8px;
   --cinder-surface-raised: rgb(242 246 251);
-  --cinder-text: rgb(17 24 39);
+  --cinder-text-default: rgb(17 24 39);
 }
 
 .cinder-dropdown__menu,
@@ -689,7 +689,7 @@ describe('Dropdown', () => {
     expect(css).not.toContain('oklch(100% 0 0 / 0.11)');
     expect(css).not.toContain('oklch(100% 0 0 / 0.07)');
     expect(css).not.toContain('border-radius: var(--cinder-radius-lg);');
-    expect(css).not.toContain('color-mix(in oklch, var(--cinder-text) 8%');
+    expect(css).not.toContain('color-mix(in oklch, var(--cinder-text-default) 8%');
   });
 
   test('fixed-position fallback clears legacy absolute insets', async () => {

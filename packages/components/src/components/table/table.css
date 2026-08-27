@@ -20,7 +20,7 @@
     width: 100%;
     border-collapse: collapse;
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface);
   }
 
@@ -43,8 +43,8 @@
 
   .cinder-table-scroll[data-cinder-overflows-inline] {
     --_cinder-table-scroll-shadow:
-      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
-      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
+      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 28%, transparent),
+      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 28%, transparent);
   }
 
   .cinder-table-scroll .cinder-table {
@@ -62,7 +62,7 @@
     padding-block: var(--cinder-space-3) var(--cinder-space-2);
     padding-inline: var(--cinder-space-3);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /* ----------------------------------------
@@ -104,7 +104,7 @@
 
   .cinder-table__header-cell[aria-sort='ascending'],
   .cinder-table__header-cell[aria-sort='descending'] {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /* ----------------------------------------
@@ -212,7 +212,7 @@
 
   .cinder-table__sort-indicator[data-cinder-direction='ascending'],
   .cinder-table__sort-indicator[data-cinder-direction='descending'] {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-table__sort-indicator[data-cinder-direction='ascending'] .cinder-table__sort-chevron-down,

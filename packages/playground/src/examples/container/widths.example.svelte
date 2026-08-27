@@ -14,7 +14,7 @@
   {#each widths as width (width)}
     <Container maxWidth={width}>
       <div
-        style="padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); color: var(--cinder-text); font: var(--cinder-font-label-md);"
+        style="padding: var(--cinder-space-4); border: 1px dashed var(--cinder-border-muted); border-radius: var(--cinder-radius-md); color: var(--cinder-text-default); font: var(--cinder-font-label-md);"
       >
         maxWidth="{width}"
       </div>

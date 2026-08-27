@@ -8,7 +8,7 @@ describe('shared label/value hierarchy', () => {
   test('defines every axis of the shared hierarchy', () => {
     const css = readFileSync(resolve(import.meta.dir, '_label-value.css'), 'utf8');
 
-    expect(css).toContain('color: var(--cinder-text);');
+    expect(css).toContain('color: var(--cinder-text-default);');
     expect(css).toContain('font-size: var(--cinder-text-base);');
     expect(css).toContain('font-weight: var(--cinder-font-semibold);');
     expect(css).toContain('line-height: var(--cinder-leading-snug);');
