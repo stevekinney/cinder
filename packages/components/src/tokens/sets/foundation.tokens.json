@@ -3,7 +3,10 @@
   "space": {
     "$type": "dimension",
     "0": {
-      "$value": { "value": 0, "unit": "rem" },
+      "$value": {
+        "value": 0,
+        "unit": "rem"
+      },
       "$description": "Zero spacing step, used to explicitly reset a spacing property.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -15,7 +18,10 @@
       }
     },
     "0-5": {
-      "$value": { "value": 0.125, "unit": "rem" },
+      "$value": {
+        "value": 0.125,
+        "unit": "rem"
+      },
       "$description": "Spacing scale half-step between 0 and 1 (2px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -27,7 +33,10 @@
       }
     },
     "one": {
-      "$value": { "value": 0.25, "unit": "rem" },
+      "$value": {
+        "value": 0.25,
+        "unit": "rem"
+      },
       "$description": "Base spacing increment.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -39,7 +48,10 @@
       }
     },
     "1-5": {
-      "$value": { "value": 0.375, "unit": "rem" },
+      "$value": {
+        "value": 0.375,
+        "unit": "rem"
+      },
       "$description": "Spacing scale half-step between 1 and 2 (6px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -51,7 +63,10 @@
       }
     },
     "2": {
-      "$value": { "value": 0.5, "unit": "rem" },
+      "$value": {
+        "value": 0.5,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (8px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -63,7 +78,10 @@
       }
     },
     "2-5": {
-      "$value": { "value": 0.625, "unit": "rem" },
+      "$value": {
+        "value": 0.625,
+        "unit": "rem"
+      },
       "$description": "Spacing scale half-step between 2 and 3 (10px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -75,7 +93,10 @@
       }
     },
     "3": {
-      "$value": { "value": 0.75, "unit": "rem" },
+      "$value": {
+        "value": 0.75,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (12px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -87,7 +108,10 @@
       }
     },
     "3-5": {
-      "$value": { "value": 0.875, "unit": "rem" },
+      "$value": {
+        "value": 0.875,
+        "unit": "rem"
+      },
       "$description": "Spacing scale half-step between 3 and 4 (14px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -99,7 +123,10 @@
       }
     },
     "4": {
-      "$value": { "value": 1, "unit": "rem" },
+      "$value": {
+        "value": 1,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (16px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -111,7 +138,10 @@
       }
     },
     "5": {
-      "$value": { "value": 1.25, "unit": "rem" },
+      "$value": {
+        "value": 1.25,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (20px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -123,7 +153,10 @@
       }
     },
     "6": {
-      "$value": { "value": 1.5, "unit": "rem" },
+      "$value": {
+        "value": 1.5,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (24px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -135,7 +168,10 @@
       }
     },
     "7": {
-      "$value": { "value": 1.75, "unit": "rem" },
+      "$value": {
+        "value": 1.75,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (28px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -147,7 +183,10 @@
       }
     },
     "8": {
-      "$value": { "value": 2, "unit": "rem" },
+      "$value": {
+        "value": 2,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (32px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -159,7 +198,10 @@
       }
     },
     "10": {
-      "$value": { "value": 2.5, "unit": "rem" },
+      "$value": {
+        "value": 2.5,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (40px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -171,7 +213,10 @@
       }
     },
     "12": {
-      "$value": { "value": 3, "unit": "rem" },
+      "$value": {
+        "value": 3,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (48px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -183,7 +228,10 @@
       }
     },
     "16": {
-      "$value": { "value": 4, "unit": "rem" },
+      "$value": {
+        "value": 4,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (64px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -195,7 +243,10 @@
       }
     },
     "20": {
-      "$value": { "value": 5, "unit": "rem" },
+      "$value": {
+        "value": 5,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (80px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -207,7 +258,10 @@
       }
     },
     "24": {
-      "$value": { "value": 6, "unit": "rem" },
+      "$value": {
+        "value": 6,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (96px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -219,7 +273,10 @@
       }
     },
     "32": {
-      "$value": { "value": 8, "unit": "rem" },
+      "$value": {
+        "value": 8,
+        "unit": "rem"
+      },
       "$description": "Spacing scale step (128px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -233,9 +290,12 @@
   },
   "radius": {
     "$type": "dimension",
-    "$description": "6 / 8 / 12px corner radii. A previous pass stepped the whole scale down to 4/6/8 on the theory that rounding compounds when controls nest — it does, but the fix for a bubbly nested corner is the concentric nesting rule, not shrinking every radius: at 4/6/8, large panels (code blocks, cards, dialogs) read as hard-cornered plates, since a radius proportionate on a 28px button is nearly invisible on a 600px panel. An inner element inset by N inside a rounded container is concentric only at `outer - N`; express the inner radius as `calc(var(--cinder-radius-<outer>) - <inset>)` so it tracks the outer token instead of drifting.",
+    "$description": "6 / 8 / 12px corner radii. A previous pass stepped the whole scale down to 4/6/8 on the theory that rounding compounds when controls nest \u2014 it does, but the fix for a bubbly nested corner is the concentric nesting rule, not shrinking every radius: at 4/6/8, large panels (code blocks, cards, dialogs) read as hard-cornered plates, since a radius proportionate on a 28px button is nearly invisible on a 600px panel. An inner element inset by N inside a rounded container is concentric only at `outer - N`; express the inner radius as `calc(var(--cinder-radius-<outer>) - <inset>)` so it tracks the outer token instead of drifting.",
     "small": {
-      "$value": { "value": 0.375, "unit": "rem" },
+      "$value": {
+        "value": 0.375,
+        "unit": "rem"
+      },
       "$description": "Compact control corner radius (6px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -247,7 +307,10 @@
       }
     },
     "medium": {
-      "$value": { "value": 0.5, "unit": "rem" },
+      "$value": {
+        "value": 0.5,
+        "unit": "rem"
+      },
       "$description": "Default control corner radius.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -259,7 +322,10 @@
       }
     },
     "large": {
-      "$value": { "value": 0.75, "unit": "rem" },
+      "$value": {
+        "value": 0.75,
+        "unit": "rem"
+      },
       "$description": "Surface-level corner radius for cards, dialogs, and other large panels (12px).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -271,7 +337,10 @@
       }
     },
     "full": {
-      "$value": { "value": 9999, "unit": "px" },
+      "$value": {
+        "value": 9999,
+        "unit": "px"
+      },
       "$description": "Fully rounded corner radius for pills and circular controls.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -289,18 +358,50 @@
     "small": {
       "$value": [
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.1 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 1, "unit": "px" },
-          "blur": { "value": 2, "unit": "px" },
-          "spread": { "value": 0, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.1
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 1,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 2,
+            "unit": "px"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "px"
+          }
         },
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.06 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 1, "unit": "px" },
-          "blur": { "value": 1, "unit": "px" },
-          "spread": { "value": 0, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.06
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 1,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 1,
+            "unit": "px"
+          },
+          "spread": {
+            "value": 0,
+            "unit": "px"
+          }
         }
       ],
       "$description": "Hairline elevation for barely-raised surfaces. Gained a second hairline layer and higher alphas in this refinement pass (light 0.08 -> 0.1 plus a new 0.06 layer; dark 0.06 -> 0.09 plus a new 0.05 layer) for deeper, crisper elevation. Light and dark themes carry distinct explicit values (see the theme modifier documents) alongside this `light-dark()` recipe.",
@@ -316,18 +417,50 @@
     "medium": {
       "$value": [
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 4, "unit": "px" },
-          "blur": { "value": 6, "unit": "px" },
-          "spread": { "value": -1, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.12
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 4,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 6,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -1,
+            "unit": "px"
+          }
         },
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.1 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 2, "unit": "px" },
-          "blur": { "value": 4, "unit": "px" },
-          "spread": { "value": -2, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.1
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 2,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 4,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -2,
+            "unit": "px"
+          }
         }
       ],
       "$description": "Mid elevation for raised surfaces such as popovers.",
@@ -343,18 +476,50 @@
     "large": {
       "$value": [
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.14 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 10, "unit": "px" },
-          "blur": { "value": 15, "unit": "px" },
-          "spread": { "value": -3, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.14
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 10,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 15,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -3,
+            "unit": "px"
+          }
         },
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 4, "unit": "px" },
-          "blur": { "value": 6, "unit": "px" },
-          "spread": { "value": -4, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.12
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 4,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 6,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -4,
+            "unit": "px"
+          }
         }
       ],
       "$description": "High elevation for dialogs and drawers.",
@@ -370,18 +535,50 @@
     "overlay": {
       "$value": [
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.14 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 10, "unit": "px" },
-          "blur": { "value": 15, "unit": "px" },
-          "spread": { "value": -3, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.14
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 10,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 15,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -3,
+            "unit": "px"
+          }
         },
         {
-          "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.12 },
-          "offsetX": { "value": 0, "unit": "px" },
-          "offsetY": { "value": 4, "unit": "px" },
-          "blur": { "value": 6, "unit": "px" },
-          "spread": { "value": -4, "unit": "px" }
+          "color": {
+            "colorSpace": "oklch",
+            "components": [0, 0, 0],
+            "alpha": 0.12
+          },
+          "offsetX": {
+            "value": 0,
+            "unit": "px"
+          },
+          "offsetY": {
+            "value": 4,
+            "unit": "px"
+          },
+          "blur": {
+            "value": 6,
+            "unit": "px"
+          },
+          "spread": {
+            "value": -4,
+            "unit": "px"
+          }
         }
       ],
       "$description": "Elevation for modal/drawer overlay panels. Dark mode uses a stronger black shadow rather than the light-neutral lift the other tiers use, since overlay panels sit above a dimmed backdrop rather than page content.",
@@ -400,7 +597,10 @@
       "$type": "dimension",
       "$description": "Shared height tier for any interactive control that needs to align with its siblings in a toolbar, button group, or form row. Adoption is opt-in per component; Buttons use their own tighter height ladder (see `button.height.*`).",
       "xs": {
-        "$value": { "value": 1.5, "unit": "rem" },
+        "$value": {
+          "value": 1.5,
+          "unit": "rem"
+        },
         "$description": "Extra-small control height (24px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -412,7 +612,10 @@
         }
       },
       "sm": {
-        "$value": { "value": 2, "unit": "rem" },
+        "$value": {
+          "value": 2,
+          "unit": "rem"
+        },
         "$description": "Small control height; the toolbar default (32px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -424,7 +627,10 @@
         }
       },
       "lg": {
-        "$value": { "value": 2.75, "unit": "rem" },
+        "$value": {
+          "value": 2.75,
+          "unit": "rem"
+        },
         "$description": "Large control height; clears the WCAG AAA touch target (44px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -536,7 +742,10 @@
       "$type": "dimension",
       "$description": "Font-size scale. Named `font.size.*` in the DTCG corpus rather than `text.*` because the CSS property prefix `--cinder-text-*` would otherwise collide with the `text` semantic color role (`--cinder-text`, `--cinder-text-muted`, ...); `cssProperty` still preserves the real `--cinder-text-*` name.",
       "2xs": {
-        "$value": { "value": 0.6875, "unit": "rem" },
+        "$value": {
+          "value": 0.6875,
+          "unit": "rem"
+        },
         "$description": "Smallest font size (11px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -548,7 +757,10 @@
         }
       },
       "xs": {
-        "$value": { "value": 0.75, "unit": "rem" },
+        "$value": {
+          "value": 0.75,
+          "unit": "rem"
+        },
         "$description": "Extra-small font size (12px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -560,7 +772,10 @@
         }
       },
       "sm": {
-        "$value": { "value": 0.8125, "unit": "rem" },
+        "$value": {
+          "value": 0.8125,
+          "unit": "rem"
+        },
         "$description": "Small font size (13px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -572,7 +787,10 @@
         }
       },
       "base": {
-        "$value": { "value": 0.875, "unit": "rem" },
+        "$value": {
+          "value": 0.875,
+          "unit": "rem"
+        },
         "$description": "Base body font size (14px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -584,7 +802,10 @@
         }
       },
       "md": {
-        "$value": { "value": 0.9375, "unit": "rem" },
+        "$value": {
+          "value": 0.9375,
+          "unit": "rem"
+        },
         "$description": "Medium font size; the button ladder step between base and lg (15px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -596,7 +817,10 @@
         }
       },
       "lg": {
-        "$value": { "value": 1, "unit": "rem" },
+        "$value": {
+          "value": 1,
+          "unit": "rem"
+        },
         "$description": "Large font size (16px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -608,7 +832,10 @@
         }
       },
       "xl": {
-        "$value": { "value": 1.125, "unit": "rem" },
+        "$value": {
+          "value": 1.125,
+          "unit": "rem"
+        },
         "$description": "Extra-large font size (18px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -620,7 +847,10 @@
         }
       },
       "2xl": {
-        "$value": { "value": 1.25, "unit": "rem" },
+        "$value": {
+          "value": 1.25,
+          "unit": "rem"
+        },
         "$description": "2xl font size (20px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -632,7 +862,10 @@
         }
       },
       "3xl": {
-        "$value": { "value": 1.5, "unit": "rem" },
+        "$value": {
+          "value": 1.5,
+          "unit": "rem"
+        },
         "$description": "3xl font size (24px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -644,7 +877,10 @@
         }
       },
       "4xl": {
-        "$value": { "value": 1.875, "unit": "rem" },
+        "$value": {
+          "value": 1.875,
+          "unit": "rem"
+        },
         "$description": "4xl font size (30px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -656,7 +892,10 @@
         }
       },
       "5xl": {
-        "$value": { "value": 2.25, "unit": "rem" },
+        "$value": {
+          "value": 2.25,
+          "unit": "rem"
+        },
         "$description": "5xl font size (36px).",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -736,7 +975,10 @@
   "tracking": {
     "normal": {
       "$type": "dimension",
-      "$value": { "value": 0, "unit": "rem" },
+      "$value": {
+        "value": 0,
+        "unit": "rem"
+      },
       "$description": "Default letter spacing (no adjustment).",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -792,7 +1034,10 @@
   "touch": {
     "target-min": {
       "$type": "dimension",
-      "$value": { "value": 44, "unit": "px" },
+      "$value": {
+        "value": 44,
+        "unit": "px"
+      },
       "$description": "Minimum touch target size.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -809,7 +1054,10 @@
       "$type": "dimension",
       "$description": "Named content-width scale for the Container primitive.",
       "$root": {
-        "$value": { "value": 72, "unit": "rem" },
+        "$value": {
+          "value": 72,
+          "unit": "rem"
+        },
         "$description": "Maximum inline size for primary page content. Caps line length and keeps content readable on wide viewports. Used by page layout styles; consumers can override per scope.",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -821,7 +1069,10 @@
         }
       },
       "narrow": {
-        "$value": { "value": 40, "unit": "rem" },
+        "$value": {
+          "value": 40,
+          "unit": "rem"
+        },
         "$description": "Tighter centered column width.",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -833,7 +1084,10 @@
         }
       },
       "wide": {
-        "$value": { "value": 90, "unit": "rem" },
+        "$value": {
+          "value": 90,
+          "unit": "rem"
+        },
         "$description": "Roomier centered column width.",
         "$extensions": {
           "com.lostgradient.cinder": {
@@ -847,7 +1101,7 @@
       "prose": {
         "$type": "number",
         "$value": 65,
-        "$description": "Prose column width, 65ch — caps line length at a readable measure. Expressed as a unitless number with a ch recipe because DTCG dimension units are limited to px and rem.",
+        "$description": "Prose column width, 65ch \u2014 caps line length at a readable measure. Expressed as a unitless number with a ch recipe because DTCG dimension units are limited to px and rem.",
         "$extensions": {
           "com.lostgradient.cinder": {
             "cssProperty": "--cinder-content-width-prose",
@@ -911,7 +1165,7 @@
     },
     "spring": {
       "$value": [0.22, 1, 0.36, 1],
-      "$description": "A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) — a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot.",
+      "$description": "A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) \u2014 a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-ease-spring",
@@ -926,7 +1180,10 @@
     "$type": "duration",
     "$description": "Transition and repeating-animation durations. All nine tokens in this group are re-declared verbatim (to 0ms) by the `motion=reduced` and `motion=forced-reduced-motion` modifier documents.",
     "$root": {
-      "$value": { "value": 200, "unit": "ms" },
+      "$value": {
+        "value": 200,
+        "unit": "ms"
+      },
       "$description": "Base transition duration.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -938,7 +1195,10 @@
       }
     },
     "instant": {
-      "$value": { "value": 0, "unit": "ms" },
+      "$value": {
+        "value": 0,
+        "unit": "ms"
+      },
       "$description": "Instant (no) transition duration.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -950,7 +1210,10 @@
       }
     },
     "fast": {
-      "$value": { "value": 120, "unit": "ms" },
+      "$value": {
+        "value": 120,
+        "unit": "ms"
+      },
       "$description": "Fast interaction duration before a reduced-motion modifier applies.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -974,7 +1237,10 @@
       }
     },
     "moderate": {
-      "$value": { "value": 280, "unit": "ms" },
+      "$value": {
+        "value": 280,
+        "unit": "ms"
+      },
       "$description": "Moderate transition duration.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -986,7 +1252,10 @@
       }
     },
     "slow": {
-      "$value": { "value": 400, "unit": "ms" },
+      "$value": {
+        "value": 400,
+        "unit": "ms"
+      },
       "$description": "Slow transition duration.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -998,7 +1267,10 @@
       }
     },
     "spin": {
-      "$value": { "value": 750, "unit": "ms" },
+      "$value": {
+        "value": 750,
+        "unit": "ms"
+      },
       "$description": "Repeating spin animation duration.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -1009,10 +1281,28 @@
         }
       }
     },
+    "pulse": {
+      "$value": {
+        "value": 1.4,
+        "unit": "s"
+      },
+      "$description": "Repeating pulse animation duration, for the breathing opacity loop shared by status indicators and skeleton placeholders. Numerically equal to `motion.progress.ring.spin` today, but deliberately its own token: a pulse and a spinner are unrelated motions and either may be retuned without the other.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-duration-pulse",
+          "public": true,
+          "category": "motion",
+          "cssRecipe": null
+        }
+      }
+    },
     "progress": {
       "bar": {
         "indeterminate": {
-          "$value": { "value": 1.6, "unit": "s" },
+          "$value": {
+            "value": 1.6,
+            "unit": "s"
+          },
           "$description": "Repeating indeterminate progress-bar animation duration.",
           "$extensions": {
             "com.lostgradient.cinder": {
@@ -1026,7 +1316,10 @@
       },
       "ring": {
         "spin": {
-          "$value": { "value": 1.4, "unit": "s" },
+          "$value": {
+            "value": 1.4,
+            "unit": "s"
+          },
           "$description": "Repeating progress-ring spin animation duration.",
           "$extensions": {
             "com.lostgradient.cinder": {

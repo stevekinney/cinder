@@ -6,13 +6,14 @@
  * hard-codes values that already have Cinder tokens. This script detects three
  * classes of bypass:
  *
- *   1. Transition/animation timing literals — `0.15s`, `150ms`, `0.6s`, `0.1s`,
- *      `0.8s` — in `transition:` or `animation:` property values. These should use
- *      `var(--cinder-duration-*)` tokens. Spin-style `linear infinite` animations
- *      must use `var(--cinder-duration-spin)`.
+ *   1. Transition/animation timing literals in `transition:` or `animation:`
+ *      property values. The literal set is DERIVED from the `duration` tokens the
+ *      corpus declares, in both their `ms` and `s` spellings, so retuning a
+ *      duration re-points this guard automatically. These should use
+ *      `var(--cinder-duration-*)` tokens.
  *
- *   2. Font-weight literals — `font-weight: 500` or `font-weight: 600` — which
- *      should use `var(--cinder-font-medium)` or `var(--cinder-font-semibold)`.
+ *   2. Font-weight literals, derived from the `fontWeight` tokens the corpus
+ *      declares, which should use the matching `var(--cinder-font-*)` token.
  *
  *   3. Raw focus/selection ring widths — `outline: 2px`, `box-shadow: 0 0 0 2px`,
  *      or `box-shadow: 0 0 0 4px` in focus-visible and selection contexts — which
@@ -31,6 +32,7 @@
  */
 
 import { Glob } from 'bun';
+import { readFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -51,14 +53,100 @@ const componentsSource = join(componentsRoot, 'src', 'components');
  *     The scan strips `var(…)` call sites before matching, so fallback values are
  *     not counted as raw literals.
  */
-const TIMING_LITERAL_PATTERN =
-  /^\s*(?:transition|animation)\s*:.*?\b(?:0\.15s|150ms|0\.6s|0\.1s|0\.8s)\b/m;
+/** One field of an already-narrowed object, without asserting a shape over it. */
+function readField(source: object, field: string): unknown {
+  return Object.hasOwn(source, field)
+    ? (Object.getOwnPropertyDescriptor(source, field)?.value as unknown)
+    : undefined;
+}
 
 /**
- * Font-weight literals that should use design tokens.
- * Matches `font-weight: 500` and `font-weight: 600`.
+ * Every token in the resolved light context, narrowed to the two fields the
+ * literal patterns are derived from. Light is used because durations and font
+ * weights do not vary by theme; a token that ever did would need both arms.
  */
-const FONT_WEIGHT_LITERAL_PATTERN = /^\s*font-weight\s*:\s*(?:500|600)\s*;/m;
+function readTypedTokens(): ReadonlyArray<{ type: string; value: unknown }> {
+  const parsed: unknown = JSON.parse(
+    readFileSync(join(componentsRoot, 'src', 'tokens', 'resolved', 'light.json'), 'utf8'),
+  );
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('resolved/light.json is not a JSON object');
+  }
+  const tokens: Array<{ type: string; value: unknown }> = [];
+  for (const entry of Object.values(parsed)) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const type = readField(entry, '$type');
+    if (typeof type === 'string') tokens.push({ type, value: readField(entry, '$value') });
+  }
+  return tokens;
+}
+
+const typedTokens = readTypedTokens();
+
+/**
+ * The CSS literal forms of every duration token, both `ms` and `s` spellings.
+ *
+ * Derived from the corpus rather than hand-listed. The hand-written list this
+ * replaces had gone stale: it flagged `0.15s`, `150ms`, `0.6s`, `0.1s`, and
+ * `0.8s`, none of which correspond to any current token, while the real values
+ * (120ms, 200ms, 280ms, 400ms, 750ms, 1.4s, 1.6s) went unguarded. Deriving them
+ * means retuning a duration re-points the guard automatically instead of
+ * quietly leaving it checking for the previous values.
+ *
+ * `0` is excluded: a bare `0` in a transition is not a token bypass.
+ */
+function durationLiterals(): readonly string[] {
+  const literals = new Set<string>();
+  for (const token of typedTokens) {
+    if (token.type !== 'duration') continue;
+    if (typeof token.value !== 'object' || token.value === null) continue;
+    const amount = readField(token.value, 'value');
+    const unit = readField(token.value, 'unit');
+    if (typeof amount !== 'number' || typeof unit !== 'string') continue;
+    const milliseconds = unit === 's' ? amount * 1000 : amount;
+    if (milliseconds === 0) continue;
+    literals.add(`${formatNumber(milliseconds)}ms`);
+    literals.add(`${formatNumber(milliseconds / 1000)}s`);
+  }
+  return [...literals].sort();
+}
+
+/** Font-weight values that have a token, e.g. 400/500/600/700. */
+function fontWeightLiterals(): readonly string[] {
+  const literals = new Set<string>();
+  for (const token of typedTokens) {
+    if (token.type !== 'fontWeight') continue;
+    if (typeof token.value === 'number') literals.add(String(token.value));
+  }
+  return [...literals].sort();
+}
+
+/** Trims a float to its shortest CSS spelling: 0.2 not 0.200, 120 not 120.0. */
+function formatNumber(value: number): string {
+  return String(Number(value.toFixed(6)));
+}
+
+function escapeForPattern(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+const TIMING_LITERAL_PATTERN = new RegExp(
+  `^\\s*(?:transition|animation)\\s*:.*?\\b(?:${durationLiterals()
+    .map(escapeForPattern)
+    .join('|')})\\b`,
+  'm',
+);
+
+/**
+ * Font-weight literals that should use design tokens, derived from the
+ * `fontWeight` tokens the corpus declares. The previous hand-written pattern
+ * covered only 500 and 600, silently permitting raw `400` and `700` even though
+ * both have tokens.
+ */
+const FONT_WEIGHT_LITERAL_PATTERN = new RegExp(
+  `^\\s*font-weight\\s*:\\s*(?:${fontWeightLiterals().join('|')})\\s*;`,
+  'm',
+);
 
 /**
  * Focus/selection ring width literals — specifically those that should use tokens.
@@ -221,8 +309,7 @@ function renderReport(violations: LiteralViolation[]): string {
     'design-token-literals audit — raw design-token literals detected in component CSS:\n\n';
 
   const classDescriptions: Record<LiteralClass, string> = {
-    timing:
-      'Timing literals (0.15s / 150ms / 0.6s / 0.1s / 0.8s) — use var(--cinder-duration-*) tokens.',
+    timing: `Timing literals (${durationLiterals().join(' / ')}) — use var(--cinder-duration-*) tokens.`,
     'font-weight':
       'Font-weight literals (500 / 600) — use var(--cinder-font-medium) or var(--cinder-font-semibold).',
     'ring-width':

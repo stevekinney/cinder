@@ -111,7 +111,7 @@
   }
 
   .cinder-status-dot[data-cinder-state='connecting'] .cinder-status-dot__indicator {
-    animation: cinder-status-dot-pulse 1.4s ease-in-out infinite;
+    animation: cinder-status-dot-pulse var(--cinder-duration-pulse) ease-in-out infinite;
   }
 
   @keyframes cinder-status-dot-pulse {

@@ -37,7 +37,7 @@
   }
 
   .cinder-connection-indicator[data-cinder-status='live'] .cinder-connection-indicator__dot {
-    animation: cinder-connection-indicator-pulse 1.4s ease-in-out infinite;
+    animation: cinder-connection-indicator-pulse var(--cinder-duration-pulse) ease-in-out infinite;
   }
 
   @media (prefers-reduced-motion: reduce) {

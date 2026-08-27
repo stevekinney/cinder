@@ -215,6 +215,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
       '--cinder-duration-moderate',
       '--cinder-duration-slow',
       '--cinder-duration-spin',
+      '--cinder-duration-pulse',
       '--cinder-duration-progress-bar-indeterminate',
       '--cinder-duration-progress-ring-spin',
       '--cinder-ease-standard',
