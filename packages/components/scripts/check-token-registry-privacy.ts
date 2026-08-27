@@ -67,8 +67,19 @@ export function findPrivacyViolations(
 }
 
 async function main(): Promise<void> {
-  const registry = (await Bun.file(registryPath).json()) as { entries: RegistryEntry[] };
-  const violations = findPrivacyViolations(registry.entries);
+  // Narrowed through `unknown`: a registry that is not an object, or has no
+  // `entries` array, should fail with a named reason rather than as an
+  // undefined-property read inside the rule.
+  const parsed: unknown = await Bun.file(registryPath).json();
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error(`${registryPath} is not a JSON object.`);
+  }
+  const entriesValue = (parsed as { entries?: unknown }).entries;
+  if (!Array.isArray(entriesValue)) {
+    throw new Error(`${registryPath} has no \`entries\` array.`);
+  }
+  const entries = entriesValue as readonly RegistryEntry[];
+  const violations = findPrivacyViolations(entries);
 
   if (violations.length > 0) {
     const detail = violations
@@ -84,9 +95,9 @@ async function main(): Promise<void> {
     return;
   }
 
-  const publicCount = registry.entries.filter((entry) => entry.public).length;
+  const publicCount = entries.filter((entry) => entry.public).length;
   process.stdout.write(
-    `tokens:privacy — OK (${registry.entries.length} tokens, ${publicCount} public, ` +
+    `tokens:privacy — OK (${entries.length} tokens, ${publicCount} public, ` +
       `no private property advertised as public).\n`,
   );
 }

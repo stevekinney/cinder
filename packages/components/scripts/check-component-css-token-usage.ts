@@ -137,11 +137,9 @@ export function extractStyleSurface(source: string, isSvelte: boolean): string {
  * the left-hand side of a `:` (`  --cinder-space-4: 1rem;`). Pure for testability.
  */
 /**
- * One entry of the generated token registry, narrowed to what this check reads.
+ * One registry entry, narrowed to the two fields this check reads.
  */
-type TokenRegistryDocument = {
-  entries: ReadonlyArray<{ cssProperty: string; public: boolean }>;
-};
+type TokenRegistryEntry = { cssProperty: string; public: boolean };
 
 /**
  * The public global tokens, read from the generated registry rather than
@@ -164,9 +162,20 @@ type TokenRegistryDocument = {
  * knows the difference. The CSS scan could not distinguish them at all.
  */
 export function parseGlobalTokens(registrySource: string): Set<string> {
-  const registry = JSON.parse(registrySource) as TokenRegistryDocument;
+  // Narrowed through `unknown` rather than asserted straight out of
+  // `JSON.parse`, whose return is `any`: a malformed registry should fail here
+  // with a named reason, not as a confusing property access downstream.
+  const parsed: unknown = JSON.parse(registrySource);
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error('The token registry is not a JSON object.');
+  }
+  const entries = (parsed as { entries?: unknown }).entries;
+  if (!Array.isArray(entries)) {
+    throw new Error('The token registry has no `entries` array.');
+  }
+
   const tokens = new Set<string>();
-  for (const entry of registry.entries) {
+  for (const entry of entries as readonly TokenRegistryEntry[]) {
     if (entry.public) tokens.add(entry.cssProperty);
   }
   return tokens;
