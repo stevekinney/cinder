@@ -2,7 +2,9 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import {
+  assertResolutionOrderMatchesCssBlockStructure,
   assertUniqueCssProperties,
+  assertUniqueOverrideCssProperties,
   buildGeneratedOutputs,
   buildResolvedContexts,
   buildTokensBaseCss,
@@ -1768,5 +1770,220 @@ describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
     ]);
 
     expect(() => assertUniqueCssProperties(entries)).not.toThrow();
+  });
+});
+
+describe('CIN-469 finding 3: the uniqueness guard runs per override block, not only on baseIndex', () => {
+  function overrideEntry(path: string, value: number): CorpusEntry {
+    return {
+      path,
+      value,
+      type: 'number',
+      description: undefined,
+      // Deliberately undefined -- an override document typically restates only
+      // `$value`, not the inherited `cssProperty` extension. The guard has to
+      // resolve it from `baseIndex`, or every override entry is silently
+      // skipped as property-less.
+      cssProperty: undefined,
+      cssRecipe: undefined,
+    };
+  }
+
+  test('two override entries sharing a base cssProperty with DIFFERENT override values are rejected', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
+      ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
+    ]);
+    // `$extends` gave these two base paths the SAME cssProperty with IDENTICAL
+    // base values -- assertUniqueCssProperties already lets that through (see
+    // "G1: one cssProperty shared with an IDENTICAL value is allowed" above).
+    // A theme override then explicitly diverges them.
+    const darkOverrides = new Map<string, CorpusEntry>([
+      ['swatch.a', overrideEntry('swatch.a', 2)],
+      ['alias.a', overrideEntry('alias.a', 3)],
+    ]);
+
+    expect(() => assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark')).toThrow(
+      /\[theme\.dark\].*--test-swatch is claimed with conflicting values/,
+    );
+  });
+
+  test('only ONE of two cssProperty-sharing paths being overridden is not a conflict', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
+      ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
+    ]);
+    const darkOverrides = new Map<string, CorpusEntry>([
+      ['swatch.a', overrideEntry('swatch.a', 2)],
+    ]);
+
+    expect(() =>
+      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark'),
+    ).not.toThrow();
+  });
+
+  test('the full buildTokensBaseCss pipeline rejects a theme override that diverges two $extends-shared paths', async () => {
+    const colorValue = (lightness: number) => ({
+      colorSpace: 'oklch',
+      components: [lightness, 0.1, 250],
+    });
+    const baseDocument: TokenDocument = {
+      swatch: {
+        $type: 'color',
+        a: {
+          $value: colorValue(0.5),
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-shared-swatch' } },
+        },
+      },
+      // No own "a" key: an EMPTY "a: {}" would itself be a (childless) token
+      // GROUP, not an absent member, so `resolveExtends`'s "copy missing
+      // members" branch would skip it (the group already "has" a, even though
+      // it is empty) and `alias.a` would never inherit swatch.a's identity.
+      alias: { $extends: '{swatch}' },
+    };
+    const themeDarkDocument: TokenDocument = {
+      swatch: { a: { $value: colorValue(0.2) } },
+      alias: { a: { $value: colorValue(0.9) } },
+    };
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'theme-light.json' }], dark: [{ $ref: 'theme-dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-default.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-default.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', {}],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', {}],
+    ]);
+
+    await expect(buildTokensBaseCss(resolver, documentsByPath)).rejects.toThrow(
+      /\[theme\.dark\].*--test-shared-swatch is claimed with conflicting values/,
+    );
+  });
+});
+
+describe('CIN-469 finding 4: a $root JSON Pointer alias normalizes like a group.base one', () => {
+  // Mirrors resolve.test.ts's "resolves a property-level JSON Pointer through a
+  // group's $root token" and "resolves #/$root/$value against the document-level
+  // $root" fixtures (lines 77-78 and 86-87) -- both forms tokens:validate accepts.
+  test("#/group/$root/$value resolves against the group's own path", () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'group',
+        {
+          path: 'group',
+          value: 1,
+          type: 'number',
+          description: undefined,
+          cssProperty: '--test-group-root',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+    expect(resolveAlias('#/group/$root/$value', baseIndex)).toBe('var(--test-group-root)');
+  });
+
+  test('#/$root/$value resolves against the document-level root (empty path)', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        '',
+        {
+          path: '',
+          value: 1,
+          type: 'number',
+          description: undefined,
+          cssProperty: '--test-document-root',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+    expect(resolveAlias('#/$root/$value', baseIndex)).toBe('var(--test-document-root)');
+  });
+
+  test('#/group/$root with no trailing /$value is left to fail the lookup, not silently normalized', () => {
+    // Unlike the /$value form above, a bare `#/group/$root` names the token
+    // OBJECT (resolve.ts resolves it as such), not its `$value` -- normalizing
+    // it here would make the generator accept a shape tokens:validate does not
+    // treat as a whole-token value alias.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'group',
+        {
+          path: 'group',
+          value: 1,
+          type: 'number',
+          description: undefined,
+          cssProperty: '--test-group-root',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+    expect(() => resolveAlias('#/group/$root', baseIndex)).toThrow(
+      /does not resolve to a base token/,
+    );
+  });
+});
+
+describe('CIN-469 finding 5: resolutionOrder is validated against the fixed CSS block structure', () => {
+  function resolverWithOrder(refs: string[]): ResolverDocument {
+    return {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: 'theme.json' }] }, default: 'light' },
+        motion: { contexts: { default: [{ $ref: 'motion.json' }] }, default: 'default' },
+      },
+      resolutionOrder: refs.map((ref) => ({ $ref: ref })),
+    };
+  }
+
+  test('the corpus resolutionOrder (foundation, theme, motion) passes', () => {
+    const resolver = resolverWithOrder([
+      '#/sets/foundation',
+      '#/modifiers/theme',
+      '#/modifiers/motion',
+    ]);
+    expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).not.toThrow();
+  });
+
+  test('motion before theme is rejected -- tokens-base.css always emits theme blocks first', () => {
+    const resolver = resolverWithOrder([
+      '#/sets/foundation',
+      '#/modifiers/motion',
+      '#/modifiers/theme',
+    ]);
+    expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
+      /"motion" before "theme"/,
+    );
+  });
+
+  test('a modifier before a set is rejected -- :root always assembles every "sets" entry unconditionally', () => {
+    const resolver = resolverWithOrder([
+      '#/modifiers/theme',
+      '#/sets/foundation',
+      '#/modifiers/motion',
+    ]);
+    expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
+      /interleaves a "sets" entry after a "modifiers" entry/,
+    );
   });
 });

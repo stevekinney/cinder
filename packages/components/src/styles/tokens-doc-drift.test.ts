@@ -113,13 +113,22 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     if (!match[1] || !match[3]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
     // Undo the generator's Markdown-table pipe escaping before comparing. The
-    // generator writes `\|` so GFM does not read the pipe as a column delimiter,
-    // while the corpus side holds the raw `|` -- decoding here keeps both sides
-    // of this comparison talking about the same value.
+    // generator's `toTableCell` (generate-artifacts.ts) doubles the run of
+    // backslashes immediately preceding each `|` before appending the
+    // escaping backslash -- a run of `k` backslashes becomes `2k + 1` -- so
+    // that it is losslessly invertible for ANY corpus value, not just ones
+    // with no pre-existing backslash before a pipe. This is the exact inverse:
+    // a run of `m` backslashes (always odd -- GFM's left-to-right pairing
+    // always reads the trailing one as escaping the pipe) recovers `(m - 1) /
+    // 2` original backslashes plus the literal pipe.
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
     const body = match[3].replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
-    tokens.set(match[1], normalizeTokenValue(body.replaceAll('\\|', '|')));
+    const decoded = body.replace(
+      /(\\*)\|/g,
+      (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+    );
+    tokens.set(match[1], normalizeTokenValue(decoded));
   }
   return { duplicates: duplicates.toSorted(), tokens };
 }

@@ -827,10 +827,116 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
   throw new Error(`Conflicting cssProperty mappings in the token corpus: ${detail}`);
 }
 
+/**
+ * The same conflict {@link assertUniqueCssProperties} catches for `baseIndex`,
+ * applied to ONE override block (a theme or motion context) in isolation.
+ * `$extends` can legitimately give two base paths the same `cssProperty` with
+ * IDENTICAL base values (assertUniqueCssProperties already lets that through) --
+ * but nothing stopped a theme or motion override from then explicitly
+ * diverging those two paths to DIFFERENT values, because the base-only guard
+ * ran exactly once, against `baseIndex`, and never again against an override
+ * block.
+ *
+ * An override token does not always restate its own `cssProperty` extension --
+ * it is inherited, immutable metadata; an override document typically states
+ * only a new `$value` -- so grouping by `entry.cssProperty` alone would skip
+ * most override entries as property-less. `baseIndex` supplies whichever
+ * `cssProperty` (and `$type`, needed for the same type-directed fingerprint
+ * `assertUniqueCssProperties` already keys on) an override entry left
+ * unstated, so the same two-paths-one-property conflict this guards against
+ * at the base level is caught here too.
+ */
+export function assertUniqueOverrideCssProperties(
+  overrides: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+  blockName: string,
+): void {
+  const resolved = new Map<string, CorpusEntry>();
+  for (const [path, entry] of overrides) {
+    const base = baseIndex.get(path);
+    resolved.set(path, {
+      ...entry,
+      cssProperty: entry.cssProperty ?? base?.cssProperty,
+      type: entry.type ?? base?.type,
+    });
+  }
+  try {
+    assertUniqueCssProperties(resolved);
+  } catch (error) {
+    if (error instanceof Error)
+      throw new Error(`[${blockName}] ${error.message}`, { cause: error });
+    throw error;
+  }
+}
+
+/**
+ * `tokens-base.css`'s block structure is FIXED, not derived from
+ * `resolver.resolutionOrder`: `:root` is always assembled from every `sets`
+ * entry (regardless of where it sits in `resolutionOrder`), and the theme
+ * override blocks (`[data-theme='dark']`/`[data-theme='light']`) are always
+ * emitted before the motion override blocks (the `prefers-reduced-motion`
+ * media block and the `data-reduced-motion='on'` override) -- see
+ * `buildTokensBaseCss`'s `darkDeclarations`/`lightDeclarations` vs.
+ * `reducedMotionDeclarations`/`forcedReducedMotionDeclarations` ordering in
+ * the template below.
+ *
+ * DECISION (CIN-469 finding 5): rather than deriving CSS block order from
+ * `resolutionOrder` at generation time -- a bigger, riskier change for a PR
+ * whose whole point is a no-diff, tests-and-generator-only fix -- this
+ * generator keeps its fixed block structure and instead REJECTS a resolver
+ * document whose `resolutionOrder` the fixed structure cannot faithfully
+ * express: every `sets` entry must precede every `modifiers` entry (so
+ * `:root`'s "every set, unconditionally" assembly matches what
+ * `resolutionOrder` actually says the base layer is), and the `theme`
+ * modifier must precede the `motion` modifier (so theme-before-motion block
+ * emission matches cascade precedence, i.e. a motion override still wins over
+ * a theme override for a token both touch, the same way "last non-`:root`
+ * block wins" already works today). `cinder.resolver.json`'s current
+ * `resolutionOrder` -- foundation, then theme, then motion -- already
+ * satisfies this, so the guard is presently a no-op; it exists so a future
+ * resolver edit that would silently desync `resolutionOrder` from emission
+ * order fails loudly at generate time instead of shipping a CSS cascade that
+ * disagrees with the resolver's own stated precedence. If `resolutionOrder`
+ * ever legitimately needs a different shape, deriving block order for real
+ * -- not just validating it -- is the follow-up.
+ */
+export function assertResolutionOrderMatchesCssBlockStructure(resolver: ResolverDocument): void {
+  const order = parseResolutionOrder(resolver);
+  const lastSetsIndex = order.reduce(
+    (last, entry, index) => (entry.kind === 'sets' ? index : last),
+    -1,
+  );
+  const firstModifierIndex = order.findIndex((entry) => entry.kind === 'modifiers');
+  if (firstModifierIndex !== -1 && lastSetsIndex > firstModifierIndex) {
+    throw new Error(
+      'resolver\'s resolutionOrder interleaves a "sets" entry after a "modifiers" entry, but ' +
+        'tokens-base.css always assembles :root from every "sets" entry unconditionally, ' +
+        'regardless of position -- reorder resolutionOrder so every "sets" entry precedes every ' +
+        '"modifiers" entry, or teach buildTokensBaseCss to derive :root membership from position.',
+    );
+  }
+  const themeIndex = order.findIndex(
+    (entry) => entry.kind === 'modifiers' && entry.name === 'theme',
+  );
+  const motionIndex = order.findIndex(
+    (entry) => entry.kind === 'modifiers' && entry.name === 'motion',
+  );
+  if (themeIndex !== -1 && motionIndex !== -1 && themeIndex > motionIndex) {
+    throw new Error(
+      'resolver\'s resolutionOrder has "motion" before "theme", but tokens-base.css always ' +
+        "emits the theme override blocks ([data-theme='dark']/[data-theme='light']) before the " +
+        'motion override blocks (prefers-reduced-motion / data-reduced-motion) -- reorder ' +
+        'resolutionOrder so "theme" precedes "motion", or teach buildTokensBaseCss to derive ' +
+        'override block order from resolutionOrder.',
+    );
+  }
+}
+
 export async function buildTokensBaseCss(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<string> {
+  assertResolutionOrderMatchesCssBlockStructure(resolver);
   // Every set the resolver orders, not just `foundation`. Naming one set here would
   // silently drop a second set's tokens from `:root` while the resolved snapshots --
   // which walk `resolutionOrder` -- still exposed them, and an override targeting one
@@ -948,6 +1054,19 @@ export async function buildTokensBaseCss(
     '',
     undefined,
     forcedReducedMotionOverrides,
+  );
+
+  // Per-block, not just once for `baseIndex`: `$extends` can legitimately give
+  // two base paths the same `cssProperty` with identical base values, and a
+  // theme or motion override can then explicitly diverge them to different
+  // values -- see `assertUniqueOverrideCssProperties`'s docstring.
+  assertUniqueOverrideCssProperties(lightOverrides, baseIndex, 'theme.light');
+  assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark');
+  assertUniqueOverrideCssProperties(reducedMotionOverrides, baseIndex, 'motion.reduced');
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    'motion.forced-reduced-motion',
   );
 
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
