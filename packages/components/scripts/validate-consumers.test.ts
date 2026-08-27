@@ -17,6 +17,7 @@ import {
   formatSvelteKitHydrationRouteFailure,
   formatSvelteKitHydrationRuntimeErrors,
   isBrowserCrashError,
+  isSupportedViteNodeVersion,
   parseHydrationBrowserProcessIds,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
@@ -33,6 +34,23 @@ import {
   type SvelteKitHydrationRouteDomObservation,
   type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
+
+describe('Vite Node runtime contract', () => {
+  test("rejects Node 22 releases before Vite 8's supported floor", () => {
+    expect(isSupportedViteNodeVersion('v22.11.0')).toBe(false);
+  });
+
+  test('accepts Node 22.12 and newer supported runtimes', () => {
+    expect(isSupportedViteNodeVersion('v22.12.0')).toBe(true);
+    expect(isSupportedViteNodeVersion('v22.12.0+custom.1')).toBe(true);
+    expect(isSupportedViteNodeVersion('v24.0.0')).toBe(true);
+  });
+
+  test('rejects prerelease versions even when they meet the version floor', () => {
+    expect(isSupportedViteNodeVersion('v22.12.0-rc.1')).toBe(false);
+    expect(isSupportedViteNodeVersion('v24.0.0-nightly')).toBe(false);
+  });
+});
 
 describe('consumer fixture cleanup', () => {
   test('removes nested requested entries and tolerates a missing entry', () => {
@@ -121,11 +139,23 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       },
     );
 
-    const server = startSvelteKitChatHydrationDevServer('/fixture', 4_321, { startServer });
+    const server = startSvelteKitChatHydrationDevServer('/fixture', 4_321, {
+      nodeBinaryPath: '/validated/node',
+      startServer,
+    });
 
     expect(server).toBe(fakeServer);
     expect(startServer).toHaveBeenCalledWith(
-      ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', '4321', '--strictPort'],
+      [
+        '/validated/node',
+        '/fixture/node_modules/vite/bin/vite.js',
+        'dev',
+        '--host',
+        '127.0.0.1',
+        '--port',
+        '4321',
+        '--strictPort',
+      ],
       expect.objectContaining({
         cwd: '/fixture',
         detached: true,
@@ -139,6 +169,10 @@ describe('SvelteKit Chat hydration optimizer preflight', () => {
       }),
     );
     expect(startServer.mock.calls[0]?.[0]).not.toContain('--force');
+    expect(startServer.mock.calls[0]?.[0]).not.toContain('bunx');
+    expect(
+      startServer.mock.calls[0]?.[0]?.some((argument) => argument.includes('node_modules/.bin')),
+    ).toBe(false);
   });
 
   test('does not reserve a port or start Vite when optimization fails', async () => {
