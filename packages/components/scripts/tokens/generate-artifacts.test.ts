@@ -22,6 +22,7 @@ import { describe, expect, test } from 'bun:test';
 import {
   type DocSection,
   type PlaygroundColorTokenGroup,
+  buildTokensDocMarkdown,
   readPlaygroundColorTokenGroups,
   renderDocTable,
   validatePlaygroundColorTokenGroups,
@@ -285,5 +286,83 @@ describe('CIN-30 review round 3', () => {
     const row = table.split('\n').find((line) => line.includes('--test-font-piped')) ?? '';
     expect(row).toContain('A\\|B');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
+  });
+});
+
+describe('CIN-30 review round 5', () => {
+  test('a multi-line value is normalized onto one row, like a multi-line description', async () => {
+    // A cssRecipe formatted across lines returns those breaks verbatim from
+    // serializeEntryValue; interpolated raw they terminate the table row.
+    // Descriptions were normalized three rounds before values were -- both now
+    // route through the same toTableCell, so a hazard cannot be fixed on one
+    // cell and missed on the other.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'shadow.multi',
+        {
+          path: 'shadow.multi',
+          value: { value: 1, unit: 'rem' },
+          type: 'dimension',
+          description: 'Line one.\nLine two.',
+          cssProperty: '--test-multiline',
+          cssRecipe: '0 1px 2px rgb(0 0 0 / 0.1),\n  0 2px 4px rgb(0 0 0 / 0.1)',
+          public: true,
+          category: 'shadow',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'multi',
+      heading: 'Multi',
+      cssProperties: ['--test-multiline'],
+    };
+    const table = await renderDocTable(section, baseIndex, (value) => value);
+    const rows = table.split('\n').filter((line) => line.includes('--test-multiline'));
+
+    // Exactly one row carries the token, and neither cell leaked a line break.
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toContain('0 1px 2px rgb(0 0 0 / 0.1), 0 2px 4px rgb(0 0 0 / 0.1)');
+    expect(rows[0]).toContain('Line one. Line two.');
+  });
+
+  test('a section marker repeated in the document is rejected', async () => {
+    // Regenerating both blocks would list every token in the section twice, and
+    // `tokens:generate -- --check` would then stabilise on the doubled output.
+    // Uses control-heights (three tokens) so the FIRST block renders cleanly and
+    // the duplicate is what fails -- a larger section would fail on the fixture
+    // being incomplete instead, which would not test this at all.
+    const heights = ['xs', 'sm', 'lg'];
+    const baseIndex = new Map<string, CorpusEntry>(
+      heights.map((size) => [
+        `control.height.${size}`,
+        {
+          path: `control.height.${size}`,
+          value: { value: 1, unit: 'rem' },
+          type: 'dimension' as const,
+          description: `Control height ${size}.`,
+          cssProperty: `--cinder-control-height-${size}`,
+          cssRecipe: undefined,
+          public: true,
+          category: 'size',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ]),
+    );
+    const marker = '<!-- BEGIN GENERATED TOKEN TABLE: control-heights -->';
+    const doubled = [
+      marker,
+      '<!-- END GENERATED TOKEN TABLE -->',
+      '',
+      marker,
+      '<!-- END GENERATED TOKEN TABLE -->',
+      '',
+    ].join('\n');
+
+    await expect(buildTokensDocMarkdown(doubled, baseIndex, (value) => value)).rejects.toThrow(
+      /more than one generated-table marker for section "control-heights"/,
+    );
   });
 });

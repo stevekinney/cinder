@@ -512,19 +512,24 @@ function validateDocSections(registry: TokenRegistry): void {
 }
 
 /**
- * Normalizes a `$description` for a single Markdown table cell. Sanitization
- * elsewhere in this function only escapes `|`, which is not enough on its
- * own: an embedded newline is interpolated straight into a `| ... | ... |`
- * table row, and everything after it parses as new Markdown outside that
- * row -- silently truncating or structurally breaking the generated table.
- * Collapsing every run of whitespace containing a newline (any of `\n`,
- * `\r\n`, or `\r`) to a single space keeps the description on one line
- * without otherwise touching normal inline whitespace, and `.trim()` drops a
- * leading/trailing collapse left by a description that opens or closes with
- * a line break.
+ * Makes ANY string safe to sit inside one Markdown table cell.
+ *
+ * Deliberately ONE function used for every cell rather than per-column
+ * handling. Descriptions and values were sanitized by two parallel code paths,
+ * and each hazard was fixed on one path while the other kept it: newline
+ * normalization landed on descriptions only, then pipe escaping landed on
+ * descriptions before values, then value pipes were escaped without teaching
+ * the drift parser to decode them. Routing every cell through one function is
+ * what stops the next hazard from being fixed in only half the places.
+ *
+ * A line break terminates the row, and GFM reads `|` as a column delimiter even
+ * inside a backtick code span, so both must go.
  */
-function normalizeDescriptionForTable(description: string): string {
-  return description.replaceAll(/\s*[\r\n]\s*/g, ' ').trim();
+function toTableCell(text: string): string {
+  return text
+    .replaceAll(/\s*[\r\n]\s*/g, ' ')
+    .trim()
+    .replaceAll('|', '\\|');
 }
 
 export async function renderDocTable(
@@ -543,16 +548,13 @@ export async function renderDocTable(
       );
     }
     const value = serializeEntryValue(entry, baseIndex, resolveReferences);
-    const description = normalizeDescriptionForTable(entry.description ?? '').replaceAll(
-      '|',
-      '\\|',
-    );
+    const description = toTableCell(entry.description ?? '');
     // Escape pipes in the value as well as the description. GFM treats `|` as a
     // column delimiter even inside a backtick code span, so a token serializing to
     // a value containing one -- a fontFamily whose family name is `A|B` becomes the
     // valid CSS string 'A|B' -- would commit a structurally malformed row that the
     // drift parser still happily reads back.
-    return `| \`${cssProperty}\` | \`${value.replaceAll('|', '\\|')}\` | ${description} |`;
+    return `| \`${cssProperty}\` | \`${toTableCell(value)}\` | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });
@@ -601,6 +603,15 @@ export async function buildTokensDocMarkdown(
       throw new Error(
         `docs/tokens.md has a generated-table marker for unknown section "${slug}". Add it to ` +
           'DOC_SECTIONS in generate-artifacts.ts, or fix the marker.',
+      );
+    }
+    // A slug appearing twice would regenerate both blocks, listing every token
+    // in that section twice -- and `tokens:generate -- --check` would then
+    // stabilise on the doubled output and accept it forever.
+    if (foundSlugs.has(slug)) {
+      throw new Error(
+        `docs/tokens.md has more than one generated-table marker for section "${slug}". ` +
+          'Each section must appear exactly once.',
       );
     }
     foundSlugs.add(slug);
