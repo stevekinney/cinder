@@ -509,6 +509,67 @@ describe('ciede2000 reference correctness (zero-chroma branch)', () => {
   });
 });
 
+describe('shipped CSS agrees with the resolved values these assertions use', () => {
+  // Moving the contrast math onto resolved output made every assertion below
+  // read the SOURCE OF TRUTH rather than the artifact browsers consume. That is
+  // the right source for the math -- but on its own it would leave the emitted
+  // stylesheet unvalidated: a generator bug that swapped a `light-dark()` arm or
+  // mangled a value would regenerate deterministically, satisfy
+  // `tokens:generate -- --check`, and never fail a contrast assertion.
+  //
+  // This closes that hole from the other side. Every token emitted as a literal
+  // two-arm `light-dark(oklch(...), oklch(...))` must match the two resolved
+  // values, so the contrast results stay anchored to what actually ships
+  // without re-deriving colors from CSS. Aliases and recipe-driven values are
+  // skipped here and covered by the CSS-shape assertions instead.
+  // No `/` inside either arm: an alpha channel is deliberately outside what
+  // `parseResolvedColor` models, so those tokens belong to the CSS-shape
+  // assertions rather than to this numeric comparison.
+  const LITERAL_TWO_ARM = /^light-dark\(\s*oklch\([^()/]*\)\s*,\s*oklch\([^()/]*\)\s*\)$/;
+
+  const comparable = Object.keys(cssPropertyToPath)
+    .filter((property) => css.includes(`${property}:`))
+    .filter((property) => {
+      try {
+        return LITERAL_TWO_ARM.test(readTokenValue(css, property));
+      } catch {
+        return false;
+      }
+    })
+    .sort();
+
+  it('compares a meaningful number of tokens rather than silently matching none', () => {
+    // Guards the filters above: a regex or naming change that stopped matching
+    // would otherwise turn this whole block into a vacuous pass.
+    expect(comparable.length).toBeGreaterThan(20);
+  });
+
+  for (const property of comparable) {
+    it(`${property} emits the resolved light and dark values`, () => {
+      const arms = readOklchToken(property);
+      const numbers = [...readTokenValue(css, property).matchAll(/[\d.]+/g)].map((match) =>
+        Number(match[0]),
+      );
+      expect(numbers).toHaveLength(6);
+
+      const [lightL, lightC, lightH, darkL, darkC, darkH] = numbers as [
+        number,
+        number,
+        number,
+        number,
+        number,
+        number,
+      ];
+      expect(lightL / 100).toBeCloseTo(arms.light.l, 4);
+      expect(lightC).toBeCloseTo(arms.light.c, 4);
+      expect(lightH).toBeCloseTo(arms.light.h, 3);
+      expect(darkL / 100).toBeCloseTo(arms.dark.l, 4);
+      expect(darkC).toBeCloseTo(arms.dark.c, 4);
+      expect(darkH).toBeCloseTo(arms.dark.h, 3);
+    });
+  }
+});
+
 describe('resolved-value reader', () => {
   it('reads both theme arms of a real token from resolved output', () => {
     const accentArms = readOklchToken('--cinder-accent');

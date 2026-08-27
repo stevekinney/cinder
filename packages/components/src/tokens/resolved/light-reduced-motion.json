@@ -1040,14 +1040,13 @@
     "$type": "duration"
   },
   "motion.pulse": {
-    "$value": { "value": 1.4, "unit": "s" },
+    "$value": { "value": 0, "unit": "ms" },
     "$description": "Repeating pulse animation duration, for the breathing opacity loop shared by status indicators and skeleton placeholders. Numerically equal to `motion.progress.ring.spin` today, but deliberately its own token: a pulse and a spinner are unrelated motions and either may be retuned without the other.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-duration-pulse",
         "public": true,
-        "category": "motion",
-        "cssRecipe": null
+        "category": "motion"
       }
     },
     "$type": "duration"

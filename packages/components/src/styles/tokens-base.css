@@ -784,6 +784,7 @@
     --cinder-duration-moderate: 0ms;
     --cinder-duration-slow: 0ms;
     --cinder-duration-spin: 0ms;
+    --cinder-duration-pulse: 0ms;
     --cinder-duration-progress-bar-indeterminate: 0ms;
     --cinder-duration-progress-ring-spin: 0ms;
   }
@@ -797,6 +798,7 @@
   --cinder-duration-moderate: 0ms;
   --cinder-duration-slow: 0ms;
   --cinder-duration-spin: 0ms;
+  --cinder-duration-pulse: 0ms;
   --cinder-duration-progress-bar-indeterminate: 0ms;
   --cinder-duration-progress-ring-spin: 0ms;
 }

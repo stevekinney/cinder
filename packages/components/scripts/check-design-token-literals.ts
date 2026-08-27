@@ -60,23 +60,42 @@ function readField(source: object, field: string): unknown {
     : undefined;
 }
 
+/** A token's `cssProperty` from the Cinder vendor extension, when it has one. */
+function readCinderCssProperty(token: object): string | undefined {
+  const extensions = readField(token, '$extensions');
+  if (typeof extensions !== 'object' || extensions === null) return undefined;
+  const cinder = readField(extensions, 'com.lostgradient.cinder');
+  if (typeof cinder !== 'object' || cinder === null) return undefined;
+  const cssProperty = readField(cinder, 'cssProperty');
+  return typeof cssProperty === 'string' ? cssProperty : undefined;
+}
+
 /**
  * Every token in the resolved light context, narrowed to the two fields the
  * literal patterns are derived from. Light is used because durations and font
  * weights do not vary by theme; a token that ever did would need both arms.
  */
-function readTypedTokens(): ReadonlyArray<{ type: string; value: unknown }> {
+function readTypedTokens(): ReadonlyArray<{
+  type: string;
+  value: unknown;
+  cssProperty: string | undefined;
+}> {
   const parsed: unknown = JSON.parse(
     readFileSync(join(componentsRoot, 'src', 'tokens', 'resolved', 'light.json'), 'utf8'),
   );
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error('resolved/light.json is not a JSON object');
   }
-  const tokens: Array<{ type: string; value: unknown }> = [];
+  const tokens: Array<{ type: string; value: unknown; cssProperty: string | undefined }> = [];
   for (const entry of Object.values(parsed)) {
     if (typeof entry !== 'object' || entry === null) continue;
     const type = readField(entry, '$type');
-    if (typeof type === 'string') tokens.push({ type, value: readField(entry, '$value') });
+    if (typeof type !== 'string') continue;
+    tokens.push({
+      type,
+      value: readField(entry, '$value'),
+      cssProperty: readCinderCssProperty(entry),
+    });
   }
   return tokens;
 }
@@ -111,14 +130,37 @@ function durationLiterals(): readonly string[] {
   return [...literals].sort();
 }
 
-/** Font-weight values that have a token, e.g. 400/500/600/700. */
-function fontWeightLiterals(): readonly string[] {
-  const literals = new Set<string>();
+/**
+ * Font-weight values that have a token, paired with the custom property to use
+ * instead.
+ *
+ * The pairing matters as much as the matcher. When the guard covered only 500
+ * and 600 it could name `--cinder-font-medium` / `--cinder-font-semibold`
+ * unconditionally; now that it covers every `fontWeight` token, telling someone
+ * who wrote `font-weight: 400` to use `--cinder-font-medium` would change
+ * normal text to medium. Diagnostics are derived from the same source as the
+ * matcher so the advice cannot drift from what is enforced.
+ */
+function fontWeightTokens(): ReadonlyMap<string, string> {
+  const byValue = new Map<string, string>();
   for (const token of typedTokens) {
     if (token.type !== 'fontWeight') continue;
-    if (typeof token.value === 'number') literals.add(String(token.value));
+    if (typeof token.value !== 'number') continue;
+    if (token.cssProperty === undefined) continue;
+    byValue.set(String(token.value), token.cssProperty);
   }
-  return [...literals].sort();
+  return new Map([...byValue].sort(([a], [b]) => a.localeCompare(b)));
+}
+
+function fontWeightLiterals(): readonly string[] {
+  return [...fontWeightTokens().keys()];
+}
+
+/** `500 -> var(--cinder-font-medium)`, for the report and the closing message. */
+function describeFontWeightMapping(): string {
+  return [...fontWeightTokens()]
+    .map(([value, property]) => `${value} -> var(${property})`)
+    .join(', ');
 }
 
 /** Trims a float to its shortest CSS spelling: 0.2 not 0.200, 120 not 120.0. */
@@ -310,8 +352,7 @@ function renderReport(violations: LiteralViolation[]): string {
 
   const classDescriptions: Record<LiteralClass, string> = {
     timing: `Timing literals (${durationLiterals().join(' / ')}) — use var(--cinder-duration-*) tokens.`,
-    'font-weight':
-      'Font-weight literals (500 / 600) — use var(--cinder-font-medium) or var(--cinder-font-semibold).',
+    'font-weight': `Font-weight literals — use the matching token: ${describeFontWeightMapping()}.`,
     'ring-width':
       'Ring-width literals (outline: 2px / 0 0 0 2px / 0 0 0 4px) — use var(--cinder-ring-width) with calc() where needed.',
   };
@@ -338,7 +379,7 @@ async function main(): Promise<void> {
     process.stderr.write(
       `\nFound ${violations.length} raw design-token literal(s) in component CSS.\n` +
         `Replace timing literals with var(--cinder-duration-*) tokens,\n` +
-        `font-weight literals with var(--cinder-font-medium) or var(--cinder-font-semibold),\n` +
+        `font-weight literals with the matching token (${describeFontWeightMapping()}),\n` +
         `and ring-width literals with var(--cinder-ring-width) (using calc() for offsets).\n`,
     );
     process.exitCode = 1;

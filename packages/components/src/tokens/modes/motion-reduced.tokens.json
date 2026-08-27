@@ -44,6 +44,12 @@
         "unit": "ms"
       }
     },
+    "pulse": {
+      "$value": {
+        "value": 0,
+        "unit": "ms"
+      }
+    },
     "progress": {
       "bar": {
         "indeterminate": {

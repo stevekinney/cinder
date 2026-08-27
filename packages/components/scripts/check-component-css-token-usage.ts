@@ -131,15 +131,12 @@ export function extractStyleSurface(source: string, isSvelte: boolean): string {
   return result;
 }
 
-/**
- * Parses the set of globally declared `--cinder-*` token names from a stylesheet
- * body (intended to be `tokens-base.css`). A declaration is a custom property on
- * the left-hand side of a `:` (`  --cinder-space-4: 1rem;`). Pure for testability.
- */
-/**
- * One registry entry, narrowed to the two fields this check reads.
- */
-type TokenRegistryEntry = { cssProperty: string; public: boolean };
+/** One field of an already-narrowed object, without asserting a shape over it. */
+function readField(source: object, field: string): unknown {
+  return Object.hasOwn(source, field)
+    ? (Object.getOwnPropertyDescriptor(source, field)?.value as unknown)
+    : undefined;
+}
 
 /**
  * The public global tokens, read from the generated registry rather than
@@ -175,8 +172,21 @@ export function parseGlobalTokens(registrySource: string): Set<string> {
   }
 
   const tokens = new Set<string>();
-  for (const entry of entries as readonly TokenRegistryEntry[]) {
-    if (entry.public) tokens.add(entry.cssProperty);
+  for (const [index, entry] of entries.entries()) {
+    // Validated per entry, not just at the top level: a malformed artifact
+    // should name the offending index here rather than surface as a TypeError
+    // from reading `.public` off a string several frames away.
+    if (typeof entry !== 'object' || entry === null) {
+      throw new Error(`The token registry's entries[${index}] is not an object.`);
+    }
+    const cssProperty = readField(entry, 'cssProperty');
+    const isPublic = readField(entry, 'public');
+    if (typeof cssProperty !== 'string' || typeof isPublic !== 'boolean') {
+      throw new Error(
+        `The token registry's entries[${index}] is missing a string cssProperty or boolean public.`,
+      );
+    }
+    if (isPublic) tokens.add(cssProperty);
   }
   return tokens;
 }

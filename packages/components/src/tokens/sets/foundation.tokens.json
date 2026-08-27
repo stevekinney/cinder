@@ -1178,7 +1178,7 @@
   },
   "motion": {
     "$type": "duration",
-    "$description": "Transition and repeating-animation durations. All nine tokens in this group are re-declared verbatim (to 0ms) by the `motion=reduced` and `motion=forced-reduced-motion` modifier documents.",
+    "$description": "Transition and repeating-animation durations. Every token in this group is re-declared verbatim (to 0ms) by the `motion=reduced` and `motion=forced-reduced-motion` modifier documents.",
     "$root": {
       "$value": {
         "value": 200,
