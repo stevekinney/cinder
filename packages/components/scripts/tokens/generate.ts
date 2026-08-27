@@ -644,11 +644,50 @@ function renderOverrideDeclarations(
   return lines.join('\n');
 }
 
+/**
+ * Two tokens mapping to one `cssProperty` with DIFFERENT values is not something
+ * `tokens:validate` can catch -- the mapping lives in vendor extension data, which
+ * the DTCG schema treats as free-form. Left undetected, both declarations are
+ * emitted, CSS silently keeps whichever lands last, and the resolved snapshots go
+ * on exposing both token paths, so `tokens:check` approves two artifacts that
+ * disagree about the same custom property.
+ *
+ * Sharing a `cssProperty` is only a conflict when the values differ. `$extends`
+ * inheritance legitimately produces two paths for one property -- the extending
+ * group inherits members verbatim, extension metadata included -- and those emit
+ * an identical declaration twice, which is redundant but harmless.
+ */
+export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): void {
+  const byProperty = new Map<string, Map<string, string[]>>();
+  for (const [path, entry] of entries) {
+    if (!entry.cssProperty) continue;
+    const emitted = JSON.stringify({ value: entry.value, cssRecipe: entry.cssRecipe });
+    const paths = byProperty.get(entry.cssProperty) ?? new Map<string, string[]>();
+    paths.set(emitted, [...(paths.get(emitted) ?? []), path]);
+    byProperty.set(entry.cssProperty, paths);
+  }
+  const conflicts = [...byProperty.entries()].filter(([, byValue]) => byValue.size > 1);
+  if (conflicts.length === 0) return;
+  const detail = conflicts
+    .map(
+      ([property, byValue]) =>
+        `${property} is claimed with conflicting values by ${[...byValue.values()].flat().sort().join(', ')}`,
+    )
+    .join('; ');
+  throw new Error(`Conflicting cssProperty mappings in the token corpus: ${detail}`);
+}
+
 export async function buildTokensBaseCss(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<string> {
-  const baseDocuments = refsFor(documentsByPath, resolver.sets['foundation']!.sources);
+  // Every set the resolver orders, not just `foundation`. Naming one set here would
+  // silently drop a second set's tokens from `:root` while the resolved snapshots --
+  // which walk `resolutionOrder` -- still exposed them, and an override targeting one
+  // would fail for want of a `baseIndex` entry.
+  const baseDocuments = parseResolutionOrder(resolver)
+    .filter((entry) => entry.kind === 'sets')
+    .flatMap((entry) => refsFor(documentsByPath, sourcesForEntry(resolver, entry, {})));
   // `mergeAndExpandExtends` (rather than a bare merge) applies `$extends` group inheritance --
   // a locally overridden member that relies on the extended group's `$type`, and a member the
   // extending group never redefines at all -- before the raw tree is walked below. Reused from
@@ -658,6 +697,7 @@ export async function buildTokensBaseCss(
   const mergedBase = mergeAndExpandExtends(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
+  assertUniqueCssProperties(baseIndex);
 
   // Resolves a reference nested inside a composite member (a shadow layer's `inset`, one
   // component of a color, ...) to its literal value, for base entries -- base has no

@@ -1,6 +1,8 @@
 import { describe, expect, test } from 'bun:test';
+import { join } from 'node:path';
 
 import {
+  assertUniqueCssProperties,
   buildGeneratedOutputs,
   buildResolvedContexts,
   buildTokensBaseCss,
@@ -41,7 +43,7 @@ describe('tokens:generate --check', () => {
     expect([...generated.keys()].toSorted()).toEqual([
       tokensBaseCssPath,
       ...['dark-reduced-motion', 'dark', 'light-reduced-motion', 'light']
-        .map((name) => `${resolvedDirectory}/${name}.json`)
+        .map((name) => join(resolvedDirectory, `${name}.json`))
         .toSorted(),
     ]);
 
@@ -73,7 +75,7 @@ describe('tokens:generate --check', () => {
     const generated = await buildGeneratedOutputs();
     const existing = await readCommitted(generated.keys());
 
-    const lightPath = `${resolvedDirectory}/light.json`;
+    const lightPath = join(resolvedDirectory, 'light.json');
     const mutatedExisting = new Map(existing);
     const committedLight = mutatedExisting.get(lightPath);
     expect(committedLight).toBeDefined();
@@ -1188,5 +1190,60 @@ describe('F3: a property-form JSON Pointer whose terminal segment is $value reso
     expect(() => resolveAlias('#/border/thin/width', baseIndex)).toThrow(
       /does not resolve to a base token/,
     );
+  });
+});
+
+describe('CIN-29 review round 5', () => {
+  function entry(
+    path: string,
+    cssProperty: string | undefined,
+    value: unknown = { value: 1, unit: 'rem' },
+  ): [string, CorpusEntry] {
+    return [
+      path,
+      {
+        path,
+        value,
+        type: 'dimension',
+        description: undefined,
+        cssProperty,
+        cssRecipe: undefined,
+      },
+    ];
+  }
+
+  test('G1: one cssProperty claimed with conflicting values is rejected, not silently cascaded', () => {
+    // tokens:validate cannot catch this -- the mapping lives in vendor extension data, which
+    // the DTCG schema treats as free-form. Undetected, CSS keeps whichever declaration lands
+    // last while the resolved snapshots go on exposing both token paths.
+    const conflicting = new Map<string, CorpusEntry>([
+      entry('space.one', '--test-space', { value: 1, unit: 'rem' }),
+      entry('space.uno', '--test-space', { value: 2, unit: 'rem' }),
+    ]);
+    expect(() => assertUniqueCssProperties(conflicting)).toThrow(
+      /--test-space is claimed with conflicting values by space\.one, space\.uno/,
+    );
+  });
+
+  test('G1: one cssProperty shared with an IDENTICAL value is allowed', () => {
+    // $extends inheritance legitimately produces two paths for one property -- the extending
+    // group inherits members verbatim, extension metadata included -- and they emit the same
+    // declaration twice, which is redundant but harmless. Flagging it would break E3.
+    const inherited = new Map<string, CorpusEntry>([
+      entry('foundation.swatch', '--test-swatch', { value: 1, unit: 'rem' }),
+      entry('themed.swatch', '--test-swatch', { value: 1, unit: 'rem' }),
+    ]);
+    expect(() => assertUniqueCssProperties(inherited)).not.toThrow();
+  });
+
+  test('G1: distinct mappings pass, and tokens without a cssProperty are ignored', () => {
+    const distinct = new Map<string, CorpusEntry>([
+      entry('space.one', '--test-space-one'),
+      entry('space.two', '--test-space-two'),
+    ]);
+    expect(() => assertUniqueCssProperties(distinct)).not.toThrow();
+
+    const untracked = new Map<string, CorpusEntry>([entry('a', undefined), entry('b', undefined)]);
+    expect(() => assertUniqueCssProperties(untracked)).not.toThrow();
   });
 });
