@@ -29,6 +29,24 @@ import { expect, test } from '@playwright/test';
 type Page = import('@playwright/test').Page;
 type Locator = import('@playwright/test').Locator;
 
+/**
+ * Navigate to a documentation page and wait for it to finish hydrating.
+ *
+ * `toBeVisible()` is not enough before reading computed style. The page is
+ * server-rendered and then hydrated, and hydration REPLACES nodes: a locator
+ * resolved before it can be re-resolved afterwards onto a detached element,
+ * whose `getComputedStyle` reports every property as the empty string. That
+ * produced two failures that reproduced only in CI — a `NaN` duration and an
+ * empty border colour — while passing locally, where hydration won the race.
+ *
+ * `page-bundle.ts` stamps `data-playground-controls-hydrated` on `#app` when it
+ * is done, which `playground-documentation.playwright.ts` already waits on.
+ */
+async function gotoDocumentationPage(page: Page, path: string): Promise<void> {
+  await page.goto(path, { waitUntil: 'load' });
+  await expect(page.locator('#app')).toHaveAttribute('data-playground-controls-hydrated', '');
+}
+
 /** Read one resolved custom property off `:root`. */
 async function rootToken(page: Page, property: string): Promise<string> {
   return page.evaluate(
@@ -66,7 +84,7 @@ test.describe('generated token CSS drives visible styles', () => {
     page,
   }) => {
     await page.emulateMedia({ reducedMotion: 'no-preference' });
-    await page.goto('/page/button', { waitUntil: 'load' });
+    await gotoDocumentationPage(page, '/page/button');
 
     const button = page.locator('.cinder-button').first();
     await expect(button).toBeVisible();
@@ -77,7 +95,7 @@ test.describe('generated token CSS drives visible styles', () => {
      * would satisfy the reduced-motion assertion trivially.
      */
     expect(timeToSeconds(await rootToken(page, '--cinder-duration-fast'))).toBeCloseTo(0.12, 5);
-    expect(await longestTransitionSeconds(button)).toBeGreaterThan(0);
+    await expect.poll(async () => longestTransitionSeconds(button)).toBeGreaterThan(0);
 
     await page.emulateMedia({ reducedMotion: 'reduce' });
 
@@ -101,7 +119,7 @@ test.describe('generated token CSS drives visible styles', () => {
   });
 
   test('a token override scoped to one component does not leak to another', async ({ page }) => {
-    await page.goto('/page/card', { waitUntil: 'load' });
+    await gotoDocumentationPage(page, '/page/card');
 
     /*
      * Card and Accordion are unrelated components that both read
@@ -114,6 +132,7 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect(card).toBeVisible();
     await expect(accordion).toBeVisible();
 
+    await expect.poll(async () => borderColor(card)).not.toBe('');
     const cardBefore = await borderColor(card);
     const accordionBefore = await borderColor(accordion);
 
@@ -135,7 +154,7 @@ test.describe('generated token CSS drives visible styles', () => {
   });
 
   test('theme reach extends past color to a dimension token', async ({ page }) => {
-    await page.goto('/page/card', { waitUntil: 'load' });
+    await gotoDocumentationPage(page, '/page/card');
 
     const card = page.locator('.cinder-card').first();
     await expect(card).toBeVisible();
