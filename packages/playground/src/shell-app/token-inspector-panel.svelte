@@ -17,14 +17,23 @@
    * `$type` is the one field the registry does not carry, so it is joined in from
    * a resolved context. Types are context-invariant, so the light one suffices.
    *
-   * Values are read once, when the panel opens. Both themes are shown at all
-   * times regardless of which one is active, so switching theme does not change
-   * what belongs on screen; edits made in the separate colour panel are not
-   * reflected until this one is reopened, which is the boundary of a read-only
-   * inspector rather than an oversight.
+   * Both themes are shown at all times regardless of which one is active, so
+   * switching theme does not change what belongs on screen.
+   *
+   * The values are the ones the SHIPPED stylesheet defines, never a session
+   * override from the colour panel — deliberately, since this inspects the
+   * design system rather than the reader's scratch edits, and "generated data
+   * only" is the criterion it exists to satisfy. That falls out of how the probe
+   * works: a `[data-theme]` rule matching the probe itself sets the property
+   * directly on it, which outranks an inline override inherited from
+   * `documentElement`. Worth stating rather than leaving to be rediscovered,
+   * because it means the two panels can legitimately disagree while the colour
+   * panel has unsaved edits.
    */
   import { Button } from '@lostgradient/cinder/button';
+  import { FormField } from '@lostgradient/cinder/form-field';
   import { Input } from '@lostgradient/cinder/input';
+  import X from 'lucide-svelte/icons/x';
   import { TOKEN_REGISTRY, type TokenRegistryEntry } from '@lostgradient/cinder/tokens/registry';
   import lightContext from '@lostgradient/cinder/tokens/resolved/light' with { type: 'json' };
 
@@ -50,6 +59,7 @@
   };
 
   let query = $state('');
+  let panelElement: HTMLElement | null = $state(null);
   let resolvedValues: Record<string, { light: string; dark: string }> = $state({});
 
   /**
@@ -97,6 +107,14 @@
     resolvedValues = readResolvedValues();
   });
 
+  $effect(() => {
+    const element = panelElement;
+    if (element === null) return;
+    element.querySelector<HTMLInputElement>('#token-inspector-filter')?.focus({
+      preventScroll: true,
+    });
+  });
+
   const tokens: InspectedToken[] = $derived(
     TOKEN_REGISTRY.entries.map((entry) => ({
       entry,
@@ -137,7 +155,8 @@
 
 <aside
   id="token-inspector-panel"
-  class="token-inspector-panel"
+  bind:this={panelElement}
+  class="cinder-_floating-surface token-inspector-panel"
   aria-labelledby="token-inspector-heading"
   data-testid="token-inspector-panel"
 >
@@ -147,20 +166,21 @@
       <p>{filtered.length} of {tokens.length} tokens</p>
     </div>
     <Button variant="ghost" size="sm" aria-label="Close token inspector" onclick={onClose}>
-      <span aria-hidden="true">×</span>
+      <X size={17} strokeWidth={1.5} aria-hidden="true" />
     </Button>
   </header>
 
   <div class="panel-controls">
-    <Input
-      id="token-inspector-filter"
-      type="search"
-      bind:value={query}
-      aria-label="Filter tokens"
-      placeholder="Filter by path, property, type…"
-      autocomplete="off"
-      spellcheck={false}
-    />
+    <FormField id="token-inspector-filter" label="Filter tokens" labelVisible={false}>
+      <Input
+        id="token-inspector-filter"
+        type="search"
+        bind:value={query}
+        placeholder="Filter by path, property, type…"
+        autocomplete="off"
+        spellcheck={false}
+      />
+    </FormField>
   </div>
 
   <div class="table-scroll">
@@ -226,10 +246,8 @@
        Dark column is clipped at common laptop widths. */
     width: min(72rem, calc(100vw - var(--cinder-space-8)));
     padding: var(--cinder-space-4);
-    border: 1px solid var(--cinder-border-faint);
-    border-radius: var(--cinder-radius-lg);
-    background: var(--cinder-surface-raised);
-    box-shadow: var(--cinder-shadow-overlay);
+    /* Border, background, radius and shadow come from
+       `cinder-_floating-surface`, the shared floating-panel primitive. */
   }
 
   .panel-header {

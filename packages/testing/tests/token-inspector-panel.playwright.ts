@@ -52,25 +52,29 @@ const REGISTRY_ENTRIES: RegistryEntry[] = (() => {
 })();
 
 /**
- * Open the inspector, tolerating a click that lands before hydration.
+ * Open the inspector with ONE click.
  *
- * The landing shell is server-rendered, so the toggle is present and "visible"
- * before Svelte has attached its handler — a plain click can hit the markup and
- * do nothing, which reads as a mysteriously absent panel rather than a timing
- * problem. Retrying the whole open is safe because the action is idempotent:
- * it clicks only while the toggle still reports collapsed, so a retry after a
- * successful open does nothing rather than toggling the panel back shut.
+ * The landing shell stays un-hydrated until the reader asks for something, so
+ * the toggle is server-rendered markup with no Svelte handler behind it. A
+ * single click still has to work: `shell-entry.ts` intercepts the first one,
+ * hydrates, and replays it into the now-live component.
+ *
+ * That is the whole contract, so the test asserts it directly instead of
+ * retrying the click until one lands. A retry loop would let a broken
+ * hydrate-and-replay path pass on a later click and hide the exact race this
+ * covers — and the repository forbids adding a wait threshold in place of
+ * fixing the synchronization (AGENTS.md, "test timeouts are not a fix").
  */
 async function openInspector(page: Page) {
   await page.goto('/', { waitUntil: 'load' });
   const toggle = page.getByTestId('token-inspector-toggle');
   await expect(toggle).toBeVisible();
 
+  await toggle.click();
+
   const panel = page.getByTestId('token-inspector-panel');
-  await expect(async () => {
-    if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click();
-    await expect(panel).toBeVisible({ timeout: 1000 });
-  }).toPass({ timeout: 15_000 });
+  await expect(panel).toBeVisible();
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true');
 
   return panel;
 }
@@ -102,6 +106,80 @@ test.describe('token inspector panel', () => {
     const row = panel.locator(`tbody tr[data-token-path="${sample.path}"]`);
     await expect(row).toHaveCount(1);
     await expect(row.locator('td').first()).toHaveText(sample.cssProperty);
+
+    /*
+     * The row's two value columns have to agree with what the browser itself
+     * resolves for that property in each theme — otherwise the panel could
+     * render the right token set with wrong values and still pass.
+     */
+    const browserValues = await page.evaluate((property) => {
+      const probe = document.createElement('div');
+      probe.style.cssText = 'position:fixed;top:-9999px;visibility:hidden';
+      document.body.append(probe);
+      try {
+        const read = (theme: string): string => {
+          probe.dataset['theme'] = theme;
+          return getComputedStyle(probe).getPropertyValue(property).trim();
+        };
+        return { light: read('light'), dark: read('dark') };
+      } finally {
+        probe.remove();
+      }
+    }, sample.cssProperty);
+
+    expect(browserValues.light).not.toBe('');
+    await expect(row.getByTestId('light-value')).toHaveText(browserValues.light);
+    await expect(row.getByTestId('dark-value')).toHaveText(browserValues.dark);
+  });
+
+  test('rests inside the viewport with every column and the close control reachable', async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 1440, height: 900 });
+    const panel = await openInspector(page);
+
+    /*
+     * Resting appearance, asserted as layout rather than as a screenshot: the
+     * two regressions this actually caught during development were a Dark
+     * column clipped past the panel's right edge and a panel pinned to full
+     * height with ten rows in it. Both are geometry, so geometry is what gets
+     * pinned — and unlike a baseline image this cannot be quietly re-recorded.
+     */
+    const panelBox = await panel.boundingBox();
+    if (panelBox === null) throw new Error('panel has no box');
+
+    const viewport = page.viewportSize();
+    if (viewport === null) throw new Error('no viewport');
+    expect(panelBox.x).toBeGreaterThanOrEqual(0);
+    expect(panelBox.x + panelBox.width).toBeLessThanOrEqual(viewport.width);
+    expect(panelBox.y + panelBox.height).toBeLessThanOrEqual(viewport.height);
+
+    /* Every column header has to sit inside the panel, Dark included. */
+    const headers = panel.locator('thead th');
+    await expect(headers).toHaveCount(6);
+    const headerBoxes = await headers.evaluateAll((elements) =>
+      elements.map((element) => {
+        const rect = element.getBoundingClientRect();
+        return { left: rect.left, right: rect.right, text: (element.textContent ?? '').trim() };
+      }),
+    );
+    for (const header of headerBoxes) {
+      expect(
+        header.right,
+        `column "${header.text}" is clipped past the panel's right edge`,
+      ).toBeLessThanOrEqual(panelBox.x + panelBox.width + 1);
+    }
+
+    /* The close control must be visible and actually hittable, not overlapped. */
+    const close = panel.getByRole('button', { name: 'Close token inspector' });
+    await expect(close).toBeVisible();
+    const closeBox = await close.boundingBox();
+    if (closeBox === null) throw new Error('close control has no box');
+    const topmost = await page.evaluate(
+      ({ x, y }) => document.elementFromPoint(x, y)?.closest('button')?.getAttribute('aria-label'),
+      { x: closeBox.x + closeBox.width / 2, y: closeBox.y + closeBox.height / 2 },
+    );
+    expect(topmost).toBe('Close token inspector');
   });
 
   test('filters rows without inventing or losing tokens', async ({ page }) => {
@@ -121,6 +199,30 @@ test.describe('token inspector panel', () => {
     );
     expect(paths.length).toBeGreaterThan(0);
     expect(paths.every((path) => path.includes('accent'))).toBe(true);
+  });
+
+  test('opening one token panel closes the other, and focus lands inside', async ({ page }) => {
+    const panel = await openInspector(page);
+
+    /*
+     * Opening moves focus into the panel. The trigger is underneath a fixed
+     * overlay once it opens, so leaving focus there strands a keyboard user
+     * outside the thing they just opened.
+     */
+    await expect(panel.getByLabel('Filter tokens')).toBeFocused();
+
+    /*
+     * Both panels are fixed to the same right-hand area, and both register a
+     * window-level Escape listener. Letting them open together stacks them and
+     * makes one Escape close both, racing their focus restorations.
+     */
+    await page.getByTestId('color-token-panel-toggle').click();
+    await expect(page.getByTestId('color-token-panel')).toBeVisible();
+    await expect(page.getByTestId('token-inspector-panel')).toHaveCount(0);
+
+    await page.getByTestId('token-inspector-toggle').click();
+    await expect(page.getByTestId('token-inspector-panel')).toBeVisible();
+    await expect(page.getByTestId('color-token-panel')).toHaveCount(0);
   });
 
   test('reports each token in both themes, and theme-aware ones differ', async ({ page }) => {

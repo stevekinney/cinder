@@ -115,7 +115,7 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect
       .poll(async () => timeToSeconds(await rootToken(page, '--cinder-duration-fast')))
       .toBe(0);
-    expect(await longestTransitionSeconds(button)).toBeLessThan(0.001);
+    await expect.poll(async () => longestTransitionSeconds(button)).toBeLessThan(0.001);
   });
 
   test('a token override scoped to one component does not leak to another', async ({ page }) => {

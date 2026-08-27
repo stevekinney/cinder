@@ -102,7 +102,9 @@
      * that attribute silently breaks keyboard focus when the panel closes.
      */
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`button[aria-label="${COLOR_PANEL_LABEL}"]`)?.focus();
+      document
+        .querySelector<HTMLElement>(`button[aria-label="${COLOR_PANEL_LABEL}"]`)
+        ?.focus({ preventScroll: true });
     });
   }
 
@@ -119,13 +121,16 @@
       console.error('[cinder playground] failed to load the color token panel:', error);
       return;
     }
+    isInspectorOpen = false;
     isColorPanelOpen = true;
   }
 
   function closeInspector(): void {
     isInspectorOpen = false;
     requestAnimationFrame(() => {
-      document.querySelector<HTMLElement>(`button[aria-label="${INSPECTOR_LABEL}"]`)?.focus();
+      document
+        .querySelector<HTMLElement>(`button[aria-label="${INSPECTOR_LABEL}"]`)
+        ?.focus({ preventScroll: true });
     });
   }
 
@@ -142,6 +147,7 @@
       console.error('[cinder playground] failed to load the token inspector:', error);
       return;
     }
+    isColorPanelOpen = false;
     isInspectorOpen = true;
   }
 

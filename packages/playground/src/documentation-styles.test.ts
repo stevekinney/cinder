@@ -54,6 +54,7 @@ describe('landing stylesheet', () => {
       'color-picker',
       'color-swatch-picker',
       'copy-button',
+      'form-field',
       'input',
       'popover',
       'tooltip',

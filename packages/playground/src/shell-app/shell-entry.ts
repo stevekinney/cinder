@@ -100,8 +100,10 @@ if (themeToggle !== null && readInitialTheme() === 'dark') {
  * that silently does nothing until some OTHER control happens to hydrate the
  * shell first, which is a genuinely confusing failure to debug.
  */
-function bootstrapDeferredToggle(testId: string): void {
-  const toggle = document.querySelector<HTMLButtonElement>(`[data-testid="${testId}"]`);
+function bootstrapDeferredToggle(accessibleName: string): void {
+  const toggle = document.querySelector<HTMLButtonElement>(
+    `button[aria-label="${accessibleName}"]`,
+  );
 
   toggle?.addEventListener(
     'click',
@@ -120,8 +122,15 @@ function bootstrapDeferredToggle(testId: string): void {
   );
 }
 
-bootstrapDeferredToggle('color-token-panel-toggle');
-bootstrapDeferredToggle('token-inspector-toggle');
+/*
+ * Selected by accessible name rather than `data-testid`: this is runtime
+ * behaviour, and keying it off a testing affordance means renaming that
+ * attribute silently makes a toolbar button inert until some other control
+ * happens to hydrate the shell. The theme toggle above and the panels' own
+ * focus restoration already select on the accessible name for the same reason.
+ */
+bootstrapDeferredToggle('Color token panel');
+bootstrapDeferredToggle('Token inspector');
 
 const sidebarNavigation = document.querySelector<HTMLElement>('nav.dx-nav');
 if (sidebarNavigation !== null) persistScrollPosition(sidebarNavigation);
