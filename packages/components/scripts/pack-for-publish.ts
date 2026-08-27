@@ -317,6 +317,14 @@ export const PUBLISHED_SOURCE_FILES_GLOBS: readonly string[] = [
   'src/highlighters/**/*.ts',
   '!src/highlighters/**/*.test.ts',
   '!src/highlighters/**/*.spec.ts',
+  // The DTCG token surface: the unresolved corpus, the resolver document, the
+  // four resolved contexts, the `/tokens` index, and the generated registry
+  // module. Every `./tokens*` export points into this directory. The registry's
+  // `browser`/`svelte`/`import` conditions resolve to the `.ts` source (the
+  // build only emits `dist/tokens/**`), so the source file is listed alongside
+  // the JSON exactly as the highlighters and `base-guard` sources are.
+  'src/tokens/**/*.json',
+  'src/tokens/registry.generated.ts',
   'src/styles/**/*.css',
   // Type stubs for the reserved `./styles*` subpaths. The `types` condition
   // in each export entry points at `./src/styles/<name>.css.d.ts`; without

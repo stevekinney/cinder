@@ -109,6 +109,74 @@
       "import": "./components.json",
       "default": "./components.json"
     },
+    "./tokens": {
+      "import": "./src/tokens/index.json",
+      "default": "./src/tokens/index.json"
+    },
+    "./tokens/resolver": {
+      "import": "./src/tokens/cinder.resolver.json",
+      "default": "./src/tokens/cinder.resolver.json"
+    },
+    "./tokens/modes/motion-default": {
+      "import": "./src/tokens/modes/motion-default.tokens.json",
+      "default": "./src/tokens/modes/motion-default.tokens.json"
+    },
+    "./tokens/modes/motion-forced-reduced": {
+      "import": "./src/tokens/modes/motion-forced-reduced.tokens.json",
+      "default": "./src/tokens/modes/motion-forced-reduced.tokens.json"
+    },
+    "./tokens/modes/motion-reduced": {
+      "import": "./src/tokens/modes/motion-reduced.tokens.json",
+      "default": "./src/tokens/modes/motion-reduced.tokens.json"
+    },
+    "./tokens/sets/colors": {
+      "import": "./src/tokens/sets/colors.tokens.json",
+      "default": "./src/tokens/sets/colors.tokens.json"
+    },
+    "./tokens/sets/components": {
+      "import": "./src/tokens/sets/components.tokens.json",
+      "default": "./src/tokens/sets/components.tokens.json"
+    },
+    "./tokens/sets/foundation": {
+      "import": "./src/tokens/sets/foundation.tokens.json",
+      "default": "./src/tokens/sets/foundation.tokens.json"
+    },
+    "./tokens/sets/semantic": {
+      "import": "./src/tokens/sets/semantic.tokens.json",
+      "default": "./src/tokens/sets/semantic.tokens.json"
+    },
+    "./tokens/themes/dark": {
+      "import": "./src/tokens/themes/dark.tokens.json",
+      "default": "./src/tokens/themes/dark.tokens.json"
+    },
+    "./tokens/themes/light": {
+      "import": "./src/tokens/themes/light.tokens.json",
+      "default": "./src/tokens/themes/light.tokens.json"
+    },
+    "./tokens/resolved/dark-reduced-motion": {
+      "import": "./src/tokens/resolved/dark-reduced-motion.json",
+      "default": "./src/tokens/resolved/dark-reduced-motion.json"
+    },
+    "./tokens/resolved/dark": {
+      "import": "./src/tokens/resolved/dark.json",
+      "default": "./src/tokens/resolved/dark.json"
+    },
+    "./tokens/resolved/light-reduced-motion": {
+      "import": "./src/tokens/resolved/light-reduced-motion.json",
+      "default": "./src/tokens/resolved/light-reduced-motion.json"
+    },
+    "./tokens/resolved/light": {
+      "import": "./src/tokens/resolved/light.json",
+      "default": "./src/tokens/resolved/light.json"
+    },
+    "./tokens/registry": {
+      "types": "./dist/tokens/registry.generated.d.ts",
+      "browser": "./src/tokens/registry.generated.ts",
+      "svelte": "./src/tokens/registry.generated.ts",
+      "node": "./dist/server/tokens/registry.generated.js",
+      "import": "./src/tokens/registry.generated.ts",
+      "default": "./dist/tokens/registry.generated.js"
+    },
     "./access-gate": {
       "types": "./dist/components/access-gate/index.d.ts",
       "browser": "./src/components/access-gate/index.ts",
@@ -5747,6 +5815,8 @@
     "src/styles/**/*.css",
     "src/styles/**/*.css.d.ts",
     "src/styles/base-guard.ts",
+    "src/tokens/**/*.json",
+    "src/tokens/registry.generated.ts",
     "src/components/icons/index.ts",
     "src/utilities/**/*.ts",
     "!src/utilities/**/*.test.ts",

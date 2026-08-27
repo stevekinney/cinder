@@ -195,7 +195,7 @@
   --cinder-z-focused-affordance: 1350;
   /* Drag-preview layer, the topmost tier. */
   --cinder-z-drag-preview: 1400;
-  /* Page canvas background, distinct from `surface.base` (a card body). Part of the light-mode-anchors-at-white ramp: inset 0.960 -> bg 0.984 -> surface 0.994 -> raised 1.000. */
+  /* Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness. */
   --cinder-bg: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
   /* Default semantic surface. Theme modifiers provide its dark value. */
   --cinder-surface: light-dark(oklch(99.4% 0.002 255), oklch(21% 0.04 245));
@@ -227,7 +227,7 @@
   --cinder-surface-inverse: light-dark(var(--cinder-text), var(--cinder-surface-raised));
   /* Upcoming step marker background. Keeps the inset treatment in light mode (surface-inset is visibly recessed vs surface), but lifts to surface in dark mode where surface-inset is nearly invisible against the dark stage. */
   --cinder-surface-upcoming-marker: light-dark(var(--cinder-surface-inset), var(--cinder-surface));
-  /* Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` (pure white), so it is the only thing making that control read as a control; must not be lightened past ~0.85. */
+  /* Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill. */
   --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
   /* Decorative-only hairline. Never use as a control boundary: it is intentionally below the WCAG 1.4.11 3:1 non-text threshold. */
   --cinder-border-faint: light-dark(oklch(92% 0.003 255), oklch(33% 0.03 245));

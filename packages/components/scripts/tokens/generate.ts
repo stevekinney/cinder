@@ -63,6 +63,10 @@ const repoRoot = join(packageRoot, '..', '..');
 export const tokensBaseCssPath = join(packageRoot, 'src', 'styles', 'tokens-base.css');
 export const resolvedDirectory = join(tokenRoot, 'resolved');
 export const registryJsonPath = join(tokenRoot, 'registry.generated.json');
+/** The typed registry module published at `@lostgradient/cinder/tokens/registry`. */
+export const registryModulePath = join(tokenRoot, 'registry.generated.ts');
+/** The token-surface index published at `@lostgradient/cinder/tokens`. */
+export const tokenIndexPath = join(tokenRoot, 'index.json');
 export const tokensDocPath = join(repoRoot, 'docs', 'tokens.md');
 export const colorTokenRegistryGeneratedPath = join(
   packageRoot,
@@ -954,7 +958,7 @@ type ResolvedContextCombo = {
   motion: string;
 };
 
-const RESOLVED_CONTEXT_COMBOS: readonly ResolvedContextCombo[] = [
+export const RESOLVED_CONTEXT_COMBOS: readonly ResolvedContextCombo[] = [
   { name: 'light', theme: 'light', motion: 'default' },
   { name: 'dark', theme: 'dark', motion: 'default' },
   { name: 'light-reduced-motion', theme: 'light', motion: 'reduced' },

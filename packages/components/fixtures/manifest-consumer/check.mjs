@@ -265,6 +265,14 @@ const allowedNonComponentExportKeys = new Set([
   './editor',
   './commentary',
   './diff',
+  // DTCG token artifacts. Not component exports and deliberately absent from
+  // the component manifest -- they describe the design-token surface, not a
+  // component. The `./tokens/**` children are skipped below alongside the
+  // upstream re-export subpaths, and tokens-consumer validates all of them
+  // against the packed tarball.
+  './tokens',
+  './tokens/resolver',
+  './tokens/registry',
 ]);
 
 // This non-manifest runtime entry is still part of the packed resolver contract.
@@ -446,6 +454,10 @@ for (const key of exportKeys) {
   ) {
     continue;
   }
+  // Token subpaths: the unresolved corpus documents and the four resolved
+  // contexts are discovered from the corpus rather than enumerated, so they are
+  // matched by prefix. tokens-consumer resolves and loads every one.
+  if (key.startsWith('./tokens/')) continue;
   orphanExports.push(key);
 }
 if (orphanExports.length > 0) {

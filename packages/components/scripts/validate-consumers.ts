@@ -3272,6 +3272,50 @@ async function runManifestConsumerFixture(): Promise<void> {
 }
 
 /**
+ * tokens-consumer — install the packed tarball and run its Node check over the
+ * seven `@lostgradient/cinder/tokens*` subpaths.
+ *
+ * Installed from the TARBALL, not the workspace, on purpose: an `exports` entry
+ * can point at a path that `files` excludes, which resolves in-repo and 404s
+ * from the registry. `src/tokens/**` was in exactly that state before CIN-31,
+ * so a workspace-resolved fixture would have passed while the published package
+ * was broken. Cheap like manifest-consumer -- pure Node resolution, no build.
+ */
+async function runTokensConsumerFixture(): Promise<void> {
+  const fixtureDirectory = join(repositoryRoot, 'fixtures/tokens-consumer');
+  process.stdout.write('[validate-consumers] step: tokens-consumer (Node resolve)…\n');
+
+  const restoreManifest = injectTarballIntoFixture(fixtureDirectory);
+
+  try {
+    await rm(join(fixtureDirectory, 'node_modules'), { recursive: true, force: true });
+    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
+      cwd: fixtureDirectory,
+      stdout: 'pipe',
+      stderr: 'pipe',
+    });
+    if (installResult.exitCode !== 0) {
+      fail(`tokens-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
+    }
+
+    const checkResult = Bun.spawnSync([nodeBinaryPath, 'check.mjs'], {
+      cwd: fixtureDirectory,
+      env: { ...Bun.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
+    });
+    if (checkResult.exitCode !== 0) {
+      fail(
+        `tokens-consumer check.mjs exited ${checkResult.exitCode}\n` +
+          `stdout: ${checkResult.stdout.toString()}\n` +
+          `stderr: ${checkResult.stderr.toString()}`,
+      );
+    }
+    process.stdout.write(`[validate-consumers] ${checkResult.stdout.toString().trim()}\n`);
+  } finally {
+    restoreManifest();
+  }
+}
+
+/**
  * typescript-consumer — install the packed tarball, GENERATE a probe from the
  * installed `@lostgradient/cinder/manifest` covering every component + its schema/variables
  * artifacts, then run the TypeScript-facing gates:
@@ -3516,6 +3560,7 @@ async function main(): Promise<void> {
   try {
     await runStylesConsumerFixture();
     await runManifestConsumerFixture();
+    await runTokensConsumerFixture();
     await runNodeFixture();
     await runTypescriptConsumerFixture();
     await runTypescriptCompatibilityFixture('latest TypeScript 6', '^6.0.3');
