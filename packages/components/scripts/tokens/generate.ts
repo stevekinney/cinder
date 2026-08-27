@@ -136,6 +136,17 @@ export type CorpusEntry = {
   category?: string | undefined;
   component?: string | undefined;
   deprecated?: boolean | string | undefined;
+  /**
+   * True when `value` came from `$ref` rather than `$value`. `$ref` is a
+   * generic JSON Pointer with no DTCG requirement that its target be a whole
+   * token -- unlike an ordinary bare alias `$value`, which this generator has
+   * always required to name a whole token (a deliberate, pre-existing
+   * restriction; see `resolveAlias`'s own comment). `serializeEntryValue`
+   * uses this flag to allow a `$ref` alone to fall through to typed
+   * serialization when it targets a property rather than a whole token,
+   * without loosening that restriction for ordinary `$value` aliases.
+   */
+  isRefAlias?: boolean | undefined;
 };
 
 function isPlainObject(value: unknown): value is Record<string, unknown> {
@@ -214,6 +225,7 @@ function toEntry(
     category,
     component,
     deprecated,
+    isRefAlias: token.$ref !== undefined,
   };
 }
 
@@ -581,31 +593,41 @@ export function serializeTypedValue(
   }
 }
 
-export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
-  // `tokenPathFromReference` (reused from resolve.ts, the resolver's own
-  // reference parser) handles both curly-brace and `#/` JSON Pointer syntax,
-  // including percent- and tilde-decoding for the latter -- reusing it here
-  // keeps this the single place that turns a reference string into a dotted
-  // token path, matching how the corpus is actually resolved.
+/**
+ * The `baseIndex` key a whole-token JSON Pointer alias names, beyond
+ * `tokenPathFromReference`'s plain dot-join.
+ *
+ * A property-FORM pointer whose last segment is literally `$value` (e.g.
+ * `#/dimension/hairline/$value`) names the referenced token's WHOLE value --
+ * resolve.ts's own `resolveReference` special-cases a trailing `$value`
+ * segment the same way (see resolve.test.ts's "resolves a property-level
+ * JSON Pointer reference" case, which targets a whole dimension token via
+ * `#/dimension/hairline/$value`). `tokenPathFromReference` has no such
+ * special case -- it just dot-joins every segment -- so without stripping it
+ * here, the exact-match `baseIndex` lookup misses the token entirely even
+ * though `tokens:validate` accepts the identical reference. Gated on `#/`
+ * (pointer syntax): a curly alias `{a.b.$value}` is a literal dotted path
+ * through the corpus, not resolve.ts's pointer special case, so stripping it
+ * there would just as wrongly make the generator and the validator disagree
+ * the other way.
+ *
+ * A `$root` segment is a REDIRECT to the group's own root token, which
+ * `collectEntries` indexes at the group's own path (`prefix`), not
+ * `prefix.$root` -- the same redirect resolve.ts's `refTargetIndexPath`
+ * applies for type inference. `#/group/$root` and `#/group/$root/$value`
+ * both name the root token's whole identity and must strip to `group`;
+ * `#/$root`/`#/$root/$value` strip to the document root's own path (`''`).
+ */
+function wholeTokenIndexPath(reference: string): string {
   let path = tokenPathFromReference(reference);
-  // A property-FORM JSON Pointer whose last segment is literally `$value` (e.g.
-  // `#/dimension/hairline/$value`) names the referenced token's WHOLE value -- resolve.ts's own
-  // `resolveReference` special-cases a trailing `$value` segment the same way (see
-  // resolve.test.ts's "resolves a property-level JSON Pointer reference" case, which targets a
-  // whole dimension token via `#/dimension/hairline/$value`). `tokenPathFromReference` has no
-  // such special case -- it just dot-joins every segment -- so without stripping it here, the
-  // exact-match `baseIndex` lookup below misses the token entirely and this throws, even though
-  // `tokens:validate` accepts the identical reference. Gated on `#/` (pointer syntax): a curly
-  // alias `{a.b.$value}` is a literal dotted path through the corpus, not resolve.ts's pointer
-  // special case, so stripping it there would just as wrongly make the generator and the
-  // validator disagree the other way. Any OTHER terminal property segment (a composite member
-  // such as `/width`) names a PIECE of the token's value, not the whole token -- resolveAlias
-  // only knows how to emit `var(--property)` for a whole-token identity, so those are left to
-  // fail the lookup below with today's existing, clear error rather than being silently (and
-  // wrongly) treated as a whole-token alias.
-  if (reference.startsWith('#/') && path.endsWith('.$value')) {
-    path = path.slice(0, -'.$value'.length);
-  }
+  if (!reference.startsWith('#/')) return path;
+  if (path.endsWith('.$value')) path = path.slice(0, -'.$value'.length);
+  if (path === '$root') return '';
+  return path.endsWith('.$root') ? path.slice(0, -'.$root'.length) : path;
+}
+
+export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEntry>): string {
+  const path = wholeTokenIndexPath(reference);
   const target = baseIndex.get(path);
   if (!target?.cssProperty) {
     throw new Error(
@@ -616,6 +638,16 @@ export function resolveAlias(reference: string, baseIndex: Map<string, CorpusEnt
   return `var(${target.cssProperty})`;
 }
 
+/**
+ * Whether `reference` names a whole token that `resolveAlias` can turn into a
+ * `var(--property)` reference -- used by `serializeEntryValue` to decide
+ * whether a `$ref` alias should take that path or fall through to typed
+ * serialization instead of throwing (see `serializeEntryValue`'s doc comment).
+ */
+function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry>): boolean {
+  return baseIndex.get(wholeTokenIndexPath(reference))?.cssProperty !== undefined;
+}
+
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
 export function serializeEntryValue(
   entry: CorpusEntry,
@@ -623,7 +655,22 @@ export function serializeEntryValue(
   resolveReferences: ValueResolver = (raw) => raw,
 ): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
-  if (isAliasReference(entry.value)) return resolveAlias(entry.value, baseIndex);
+  if (isAliasReference(entry.value)) {
+    // An ordinary bare-alias `$value` has always been required to name a
+    // WHOLE token here -- a deliberate restriction (see `wholeTokenIndexPath`'s
+    // doc comment) -- so a miss still throws via `resolveAlias` below. `$ref`
+    // is a generic JSON Pointer with no such requirement: a property-level
+    // `$ref` (e.g. `#/dimension/hairline/$value/value`, aliasing one scalar
+    // member of another token rather than the whole token) resolves fine at
+    // `tokens:validate` time but is not a whole-token identity, so it falls
+    // through to typed serialization instead, which resolves it (and any
+    // further nested references) via `resolveReferences` and formats the
+    // result per `entry.type` -- the same path an embedded property-level
+    // reference inside a composite `$value` already takes.
+    if (!entry.isRefAlias || isWholeTokenAlias(entry.value, baseIndex)) {
+      return resolveAlias(entry.value, baseIndex);
+    }
+  }
   if (entry.type === undefined) {
     throw new Error(`Token at "${entry.path}" has no $type and no cssRecipe; cannot serialize.`);
   }

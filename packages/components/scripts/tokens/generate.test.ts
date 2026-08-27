@@ -17,7 +17,12 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import { createValueResolver, mergeAndExpandExtends, resolveDocuments } from './resolve.ts';
+import {
+  createValueResolver,
+  mergeAndExpandExtends,
+  resolveDocuments,
+  type ValueResolver,
+} from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -1256,6 +1261,125 @@ describe('F3: a property-form JSON Pointer whose terminal segment is $value reso
     expect(() => resolveAlias('#/border/thin/width', baseIndex)).toThrow(
       /does not resolve to a base token/,
     );
+  });
+});
+
+describe('a $ref whole-token alias to a $root token normalizes like resolve.ts does', () => {
+  function rootBaseIndex(): Map<string, CorpusEntry> {
+    return new Map([
+      [
+        'space',
+        {
+          path: 'space',
+          value: { value: 4, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-space',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        '',
+        {
+          path: '',
+          value: { value: 0, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-root',
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+  }
+
+  test('#/group/$root resolves to the group\'s own baseIndex entry, not "group.$root"', () => {
+    // `collectEntries` indexes a group's `$root` token at the group's OWN path
+    // (`into.set(prefix, ...)`), not `prefix.$root` -- `tokenPathFromReference`'s
+    // plain dot-join would otherwise look up the wrong key and throw.
+    expect(resolveAlias('#/space/$root', rootBaseIndex())).toBe('var(--test-space)');
+  });
+
+  test('#/group/$root/$value resolves the same way, stripping both segments', () => {
+    expect(resolveAlias('#/space/$root/$value', rootBaseIndex())).toBe('var(--test-space)');
+  });
+
+  test('a bare #/$root resolves to the document root token', () => {
+    expect(resolveAlias('#/$root', rootBaseIndex())).toBe('var(--test-root)');
+  });
+
+  test('#/$root/$value resolves the same way', () => {
+    expect(resolveAlias('#/$root/$value', rootBaseIndex())).toBe('var(--test-root)');
+  });
+});
+
+describe('a property-level $ref falls through to typed serialization instead of throwing', () => {
+  test('a $ref targeting a scalar member of another token serializes that resolved value, not var(...)', () => {
+    // `$ref` is a generic JSON Pointer with no DTCG requirement that its
+    // target be a whole token, unlike an ordinary bare-alias $value (which
+    // this generator has always required to name a whole token). A property-
+    // level $ref resolves fine at `tokens:validate` time but has no matching
+    // baseIndex entry, so it must fall through to `serializeTypedValue`
+    // (via `resolveReferences`) instead of throwing the way an ordinary
+    // $value alias to a non-whole-token path still does.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'dimension.hairline',
+        {
+          path: 'dimension.hairline',
+          value: { value: 1, unit: 'px' },
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-hairline',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        'space.tight',
+        {
+          path: 'space.tight',
+          value: '#/dimension/hairline/$value/value',
+          type: 'number',
+          description: undefined,
+          cssProperty: '--test-tight',
+          cssRecipe: undefined,
+          isRefAlias: true,
+        },
+      ],
+    ]);
+    const resolveReferences: ValueResolver = (raw) =>
+      raw === '#/dimension/hairline/$value/value' ? 1 : raw;
+    const entry = baseIndex.get('space.tight')!;
+    expect(serializeEntryValue(entry, baseIndex, resolveReferences)).toBe('1');
+  });
+
+  test('an ordinary $value alias to a non-whole-token path still throws (unchanged, not loosened by the $ref fix)', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'border.thin',
+        {
+          path: 'border.thin',
+          value: { color: '#000', width: { value: 1, unit: 'px' }, style: 'solid' },
+          type: 'border',
+          description: undefined,
+          cssProperty: '--test-border-thin',
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        'border.derived',
+        {
+          path: 'border.derived',
+          value: '#/border/thin/width',
+          type: 'dimension',
+          description: undefined,
+          cssProperty: '--test-derived',
+          cssRecipe: undefined,
+          isRefAlias: false,
+        },
+      ],
+    ]);
+    const entry = baseIndex.get('border.derived')!;
+    expect(() => serializeEntryValue(entry, baseIndex)).toThrow(/does not resolve to a base token/);
   });
 });
 

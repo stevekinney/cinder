@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import type { ResolverDocument } from './types.ts';
 import {
+  buildContextSourcesIndex,
   combinations,
   expandContextSources,
   expandSetSources,
@@ -366,5 +367,41 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     };
 
     expect(expandSetSources(encoded, 'extended')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
+  });
+});
+
+describe('buildContextSourcesIndex keys are collision-free', () => {
+  test('a modifier/context split that would collide under any single-string-key delimiter still resolves correctly', () => {
+    // Modifier "a" context "b:c" and modifier "a:b" context "c" concatenate
+    // to the same string under ANY fixed delimiter -- a single-map string
+    // key cannot distinguish them no matter which separator is chosen. Two-
+    // level indexing has no joint-key space to collide in.
+    const sourcesForAB = [{ $ref: 'sets/a-bc.tokens.json' }];
+    const sourcesForABC = [{ $ref: 'sets/ab-c.tokens.json' }];
+    const index = buildContextSourcesIndex([
+      { modifierName: 'a', contextName: 'b:c', sources: sourcesForAB },
+      { modifierName: 'a:b', contextName: 'c', sources: sourcesForABC },
+    ]);
+
+    expect(index.get('a')?.get('b:c')).toEqual(sourcesForAB);
+    expect(index.get('a:b')?.get('c')).toEqual(sourcesForABC);
+    // Neither entry leaked into the other modifier's namespace.
+    expect(index.get('a')?.get('c')).toBeUndefined();
+    expect(index.get('a:b')?.get('b:c')).toBeUndefined();
+  });
+
+  test('multiple contexts under one modifier and multiple modifiers all coexist', () => {
+    const light = [{ $ref: 'sets/light.tokens.json' }];
+    const dark = [{ $ref: 'sets/dark.tokens.json' }];
+    const reduced = [{ $ref: 'sets/reduced.tokens.json' }];
+    const index = buildContextSourcesIndex([
+      { modifierName: 'theme', contextName: 'light', sources: light },
+      { modifierName: 'theme', contextName: 'dark', sources: dark },
+      { modifierName: 'motion', contextName: 'reduced', sources: reduced },
+    ]);
+
+    expect(index.get('theme')?.get('light')).toEqual(light);
+    expect(index.get('theme')?.get('dark')).toEqual(dark);
+    expect(index.get('motion')?.get('reduced')).toEqual(reduced);
   });
 });

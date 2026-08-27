@@ -159,6 +159,33 @@ export function expandContextSources(
   });
 }
 
+/**
+ * Indexes expanded context sources by modifier name, then context name.
+ *
+ * Nesting two maps -- rather than concatenating both names into one string
+ * key -- keeps this collision-free: resolver modifier and context names are
+ * otherwise unrestricted, so e.g. modifier "a" context "b:c" and modifier
+ * "a:b" context "c" could concatenate to the same key under ANY fixed
+ * delimiter and silently overwrite each other, resolving the wrong document
+ * list for one of them. Two-level indexing has no such joint-key space to
+ * collide in.
+ */
+export function buildContextSourcesIndex(
+  expandedContexts: ReadonlyArray<{
+    modifierName: string;
+    contextName: string;
+    sources: ResolverReference[];
+  }>,
+): Map<string, Map<string, ResolverReference[]>> {
+  const index = new Map<string, Map<string, ResolverReference[]>>();
+  for (const { modifierName, contextName, sources } of expandedContexts) {
+    const byContext = index.get(modifierName) ?? new Map();
+    byContext.set(contextName, sources);
+    index.set(modifierName, byContext);
+  }
+  return index;
+}
+
 async function main(): Promise<void> {
   const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
   validateResolverDocument(resolver);
@@ -223,18 +250,13 @@ async function main(): Promise<void> {
   // modifiers or contexts, even though the expansion itself is invariant per
   // set/context and only needs computing once.
   const setSourcesByName = new Map(expandedSets.map(({ setName, sources }) => [setName, sources]));
-  const contextSourcesByKey = new Map(
-    expandedContexts.map(({ modifierName, contextName, sources }) => [
-      `${modifierName}::${contextName}`,
-      sources,
-    ]),
-  );
+  const contextSourcesByModifier = buildContextSourcesIndex(expandedContexts);
   for (const modifierValues of combinations(resolver)) {
     const orderedDocuments = resolutionOrder.flatMap((entry) => {
       const sources =
         entry.kind === 'sets'
           ? setSourcesByName.get(entry.name)!
-          : contextSourcesByKey.get(`${entry.name}::${modifierValues[entry.name]}`)!;
+          : contextSourcesByModifier.get(entry.name)!.get(modifierValues[entry.name]!)!;
       return sources.map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
     });
     const resolved = resolveDocuments(orderedDocuments);
