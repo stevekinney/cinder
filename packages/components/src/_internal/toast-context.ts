@@ -26,7 +26,7 @@ export type ToastPosition =
 
 /** Options for {@link ToastApi.show}. */
 export type ToastOptions = {
-  /** Visual + live-region variant. Defaults to `status.info.solid`. */
+  /** Visual + live-region variant. Defaults to `info`. */
   variant?: ToastVariant;
   /** Auto-dismiss after this many milliseconds. 0 = sticky. Defaults to 5000. */
   duration?: number;

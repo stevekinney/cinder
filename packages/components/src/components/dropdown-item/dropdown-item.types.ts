@@ -11,7 +11,7 @@ export type DropdownItemRole = 'menuitem' | 'menuitemcheckbox' | 'menuitemradio'
 // "prove" which branch it is on. Element-specific NON-event attributes live in
 // the two branches so the `href` ⇄ `type` discriminant stays real.
 type DropdownItemBase = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
-  /** Visual style of the item. Use `status.danger.solid` to signal a destructive action. Default `default`. */
+  /** Visual style of the item. Use `danger` to signal a destructive action. Default `default`. */
   variant?: DropdownItemVariant;
   /** ARIA role for the row. Use `menuitemcheckbox` or `menuitemradio` for selectable menu items. */
   itemRole?: DropdownItemRole;

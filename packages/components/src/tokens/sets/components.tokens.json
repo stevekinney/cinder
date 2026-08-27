@@ -8,7 +8,7 @@
       "$description": "Secondary (default) button fill.",
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssProperty": "--cinder-button-bg",
+          "cssProperty": "--cinder-button-background",
           "public": true,
           "category": "color",
           "component": "button",
@@ -22,7 +22,7 @@
       "$description": "Secondary (default) button label color.",
       "$extensions": {
         "com.lostgradient.cinder": {
-          "cssProperty": "--cinder-button-fg",
+          "cssProperty": "--cinder-button-foreground",
           "public": true,
           "category": "color",
           "component": "button",

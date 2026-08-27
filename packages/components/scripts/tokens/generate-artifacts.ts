@@ -424,8 +424,8 @@ const DOC_SECTIONS: readonly DocSection[] = [
     slug: 'button-base',
     headings: ['## Button', '### Base'],
     cssProperties: [
-      '--cinder-button-bg',
-      '--cinder-button-fg',
+      '--cinder-button-background',
+      '--cinder-button-foreground',
       '--cinder-button-border',
       '--cinder-button-radius',
     ],

@@ -46,7 +46,7 @@ L and C. The base hue per status is:
 
 Notes:
 
-- Alert's `status.info.solid` variant references `--cinder-alert-info`, a locally scoped
+- Alert's `info` variant references `--cinder-alert-info`, a locally scoped
   duplicate of `--cinder-status-info-solid` (`oklch(45% 0.14 245) / oklch(78% 0.15 245)`).
   Hue is identical to the global token, so the resolved background math is
   the same.

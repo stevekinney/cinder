@@ -116,7 +116,7 @@
     }, confirmDuration);
   }
 
-  // Heuristic: an absolute http(s) URL shares as `url`, anything else as `text.default`.
+  // Heuristic: an absolute http(s) URL shares as `url`, anything else as `text`.
   function looksLikeUrl(candidate: string): boolean {
     return /^https?:\/\//i.test(candidate.trim());
   }

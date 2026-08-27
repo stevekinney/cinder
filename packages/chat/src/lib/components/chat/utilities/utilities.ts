@@ -386,7 +386,7 @@ export function deriveMessageParts(
   // part. The approval part carries the action, the tool call id (used to
   // look up the tool name from the paired tool-call), and the resolved
   // approval state from the container's approved/denied id sets. A plain
-  // `status.success.solid` or `error` result falls through to the standard `tool-result`
+  // `success` or `error` result falls through to the standard `tool-result`
   // part, so this branch is a strict superset that adds zero visual change
   // for non-approval results.
   if (message.role === 'tool-result' && message.toolResult) {

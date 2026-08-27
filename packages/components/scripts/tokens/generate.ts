@@ -987,7 +987,7 @@ export function documentsForResolutionOrder(
 /**
  * The full modifier-value map when only SOME modifiers are named explicitly: every OTHER
  * modifier the resolver declares is filled from its own declared `default` context. Shared by
- * `modifierValuesForCombo` (a resolved-context snapshot, which names `theme` and `motion.base`
+ * `modifierValuesForCombo` (a resolved-context snapshot, which names `theme` and `motion`
  * together) and `modifierValuesForContext` (a single override block, which names only the one
  * modifier it varies) so both describe "the rest of the corpus" identically. A modifier with no
  * declared default AND not named by the caller is a genuine authoring gap -- the caller can't say
@@ -1015,7 +1015,7 @@ function modifierValuesWithDefaults(
 
 /**
  * The full modifier-value map for one `RESOLVED_CONTEXT_COMBO`: the combo's own named
- * modifiers (`theme`/`motion.base`), plus a value for every OTHER modifier the resolver declares.
+ * modifiers (`theme`/`motion`), plus a value for every OTHER modifier the resolver declares.
  * `RESOLVED_CONTEXT_COMBOS` is deliberately not generalized to every modifier combination --
  * the set of published resolved contexts is a packaging decision (CIN-31), and the four named
  * snapshots stay an explicit list.

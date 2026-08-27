@@ -21,8 +21,8 @@ function manifest(component: string, variables: readonly string[]): ComponentMan
 describe('crossCheckManifests', () => {
   test('accepts a manifest whose every variable the corpus declares', () => {
     const result = crossCheckManifests(
-      [manifest('button', ['--cinder-button-bg', '--cinder-button-fg'])],
-      registry({ button: ['--cinder-button-bg', '--cinder-button-fg'] }),
+      [manifest('button', ['--cinder-button-background', '--cinder-button-foreground'])],
+      registry({ button: ['--cinder-button-background', '--cinder-button-foreground'] }),
     );
     expect(result.unbacked).toEqual([]);
     expect(result.checked).toEqual(['button']);
@@ -30,8 +30,8 @@ describe('crossCheckManifests', () => {
 
   test('flags a manifest variable with no corpus token', () => {
     const result = crossCheckManifests(
-      [manifest('button', ['--cinder-button-bg', '--cinder-button-invented'])],
-      registry({ button: ['--cinder-button-bg'] }),
+      [manifest('button', ['--cinder-button-background', '--cinder-button-invented'])],
+      registry({ button: ['--cinder-button-background'] }),
     );
     expect(result.unbacked).toEqual([
       { component: 'button', variable: '--cinder-button-invented' },
@@ -44,7 +44,7 @@ describe('crossCheckManifests', () => {
   test('reports an unmodelled component rather than passing it silently', () => {
     const result = crossCheckManifests(
       [manifest('file-upload', ['--cinder-file-upload-progress-fill'])],
-      registry({ button: ['--cinder-button-bg'] }),
+      registry({ button: ['--cinder-button-background'] }),
     );
     expect(result.unbacked).toEqual([]);
     expect(result.unmodelled).toEqual(['file-upload']);

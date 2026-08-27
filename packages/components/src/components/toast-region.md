@@ -1,6 +1,6 @@
 # ToastRegion
 
-A region-scoped queue for transient notifications. `<ToastRegion>` owns the two stacked aria-live regions (polite for `status.info.solid`/`status.success.solid`/`status.warning.solid`, assertive for `status.danger.solid`); `useToast()` returns the dispatcher API to any descendant. See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the ARIA contract.
+A region-scoped queue for transient notifications. `<ToastRegion>` owns the two stacked aria-live regions (polite for `info`/`success`/`warning`, assertive for `danger`); `useToast()` returns the dispatcher API to any descendant. See [`./toast-region.a11y.md`](./toast-region.a11y.md) for the ARIA contract.
 
 ## Placement
 
@@ -60,12 +60,12 @@ Import the hook from the toast-region subpath. Call `useToast()` from anywhere i
 
 ## Variant routing (polite vs assertive)
 
-`variant` is not just a visual prop — it picks which live region the toast announces through. Polite variants (`status.info.solid`, `status.success.solid`, `status.warning.solid`) queue behind the user's current screen-reader focus; the assertive `status.danger.solid` variant interrupts. See the [Two regions, two priorities](./toast-region.a11y.md#two-regions-two-priorities) table in the a11y doc for the exact ARIA mapping.
+`variant` is not just a visual prop — it picks which live region the toast announces through. Polite variants (`info`, `success`, `warning`) queue behind the user's current screen-reader focus; the assertive `danger` variant interrupts. See the [Two regions, two priorities](./toast-region.a11y.md#two-regions-two-priorities) table in the a11y doc for the exact ARIA mapping.
 
 `maxStack` applies _per stack_: a region can hold up to `maxStack` polite toasts **and** `maxStack` assertive toasts simultaneously.
 
 > [!TIP]
-> Match urgency to variant. `status.success.solid` ("Saved") is informational and belongs on the polite stack. `status.warning.solid` ("Session expires soon") is notable but non-interrupting. `status.danger.solid` ("Failed to save") interrupts because the user needs to know _now_.
+> Match urgency to variant. `success` ("Saved") is informational and belongs on the polite stack. `warning` ("Session expires soon") is notable but non-interrupting. `danger` ("Failed to save") interrupts because the user needs to know _now_.
 
 ## `show()` return value
 
@@ -92,7 +92,7 @@ toast.promise(saveSettings(), {
 });
 ```
 
-The loading phase is sticky and polite. Success stays polite; errors move to the assertive `status.danger.solid` channel. If the loading toast is dismissed or replaced before the promise settles, the late settlement is ignored.
+The loading phase is sticky and polite. Success stays polite; errors move to the assertive `danger` channel. If the loading toast is dismissed or replaced before the promise settles, the late settlement is ignored.
 
 ## Decorative icons
 

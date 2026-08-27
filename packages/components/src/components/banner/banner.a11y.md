@@ -15,16 +15,16 @@ The root element is a `<div>` with:
 - `aria-label="{variant label}"` by default — derived from the `variant`
   prop via the table below. Suppressed when `aria-labelledby` is passed.
 
-| `variant`              | Default `aria-label` |
-| ---------------------- | -------------------- |
-| `status.info.solid`    | `Information`        |
-| `status.success.solid` | `Success`            |
-| `status.warning.solid` | `Warning`            |
-| `status.danger.solid`  | `Error`              |
+| `variant` | Default `aria-label` |
+| --------- | -------------------- |
+| `info`    | `Information`        |
+| `success` | `Success`            |
+| `warning` | `Warning`            |
+| `danger`  | `Error`              |
 
-`status.danger.solid` maps to `"Error"` (not `"Danger"`) because screen-reader users
+`danger` maps to `"Error"` (not `"Danger"`) because screen-reader users
 hear a semantically meaningful word. The variant token name remains
-`status.danger.solid` to match `--cinder-status-danger-solid`.
+`danger` to match `--cinder-status-danger-solid`.
 
 ### Accessible-name precedence
 
@@ -74,8 +74,8 @@ it is a status flag, not a live-region attribute, and is valid on
 | Variants    | `info \| success \| warning \| danger`                                 | `info \| success \| warning \| error`                             | `note \| tip \| warning \| danger`          |
 | Use when…   | Site-wide condition (trial expiry, maintenance window, cookie consent) | A user action produced feedback that needs immediate announcement | A note appears within flowing documentation |
 
-The `status.danger.solid` vs `error` variant divergence with `alert.svelte` is
-intentional: the ROADMAP specifies `status.danger.solid` for banner, and the semantic
+The `danger` vs `error` variant divergence with `alert.svelte` is
+intentional: the ROADMAP specifies `danger` for banner, and the semantic
 token is `--cinder-status-danger-solid`. A future unification pass across the trio is
 tracked as a separate ROADMAP item.
 

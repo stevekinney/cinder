@@ -26,7 +26,7 @@ const schema = {
     },
     variant: {
       enum: ['accent', 'success', 'warning'],
-      description: 'Fill color intent. Default `accent.solid`.',
+      description: 'Fill color intent. Default `accent`.',
     },
     theme: {
       type: 'object',

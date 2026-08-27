@@ -15,7 +15,7 @@ type CardCommon = {
   variant?: CardVariant;
   /** Elevation shadow applied to the card surface. */
   elevation?: CardElevation;
-  /** Container risk treatment. `status.danger.solid` renders a danger-zone surface for high-risk settings or destructive actions. */
+  /** Container risk treatment. `danger` renders a danger-zone surface for high-risk settings or destructive actions. */
   tone?: CardSurfaceTone;
   /** Body surface treatment. `muted` renders a grey/inset body region. */
   bodyTone?: CardTone;

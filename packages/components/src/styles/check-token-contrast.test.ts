@@ -607,7 +607,7 @@ describe('shipped CSS agrees with the resolved values these assertions use', () 
       // parse as two literal arms is not.
       if (value.startsWith('light-dark(') && !LITERAL_TWO_ARM.test(value)) {
         // Legitimate shapes this numeric comparison does not cover: an alias, a
-        // recipe, an alpha channel, or a hex arm -- `checker.base` keeps a
+        // recipe, an alpha channel, or a hex arm -- `color.checker.base` keeps a
         // historical `#fff` in its light arm on purpose. Anything else that
         // claims to be `light-dark()` and is not two parseable arms is malformed.
         const legitimate = /var\(|color-mix\(|oklch\(from|\/|#[0-9a-fA-F]{3,8}\b/.test(value);
@@ -652,7 +652,7 @@ describe('resolved-value reader', () => {
     expect(accentArms.dark).toEqual({ l: 0.72, c: 0.14, h: 270 });
   });
 
-  // `accent.text` is authored as a relative-color derivation of `accent.solid`. The
+  // `accent.text` is authored as a relative-color derivation of `accent`. The
   // old reader had to re-implement `calc(l - 0.05)` in TypeScript to know its
   // value; resolution has already applied it.
   it('reads a derived token as a literal value, without re-deriving it', () => {

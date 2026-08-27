@@ -202,7 +202,7 @@ workflows would always report each name. That was the wrong call: GitHub's
 own docs warn that "using the same job name in multiple workflows can cause
 ambiguous status check results and block pull requests from being merged" —
 and that's exactly what happened in practice on the PR that introduced this
-topology: every individual check run showed `status.success.solid`, but the pull
+topology: every individual check run showed `success`, but the pull
 request's merge state stayed `blocked` until the duplicate-named workflow
 was replaced with the single-workflow, `if:`-gated pattern described above.
 

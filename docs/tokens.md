@@ -466,12 +466,12 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 
 <!-- BEGIN GENERATED TOKEN TABLE: button-base -->
 
-| Token                    | Default                                                         | Description                             |
-| ------------------------ | --------------------------------------------------------------- | --------------------------------------- |
-| `--cinder-button-bg`     | `var(--cinder-surface-raised)`                                  | Secondary (default) button fill.        |
-| `--cinder-button-fg`     | `var(--cinder-text-default)`                                    | Secondary (default) button label color. |
-| `--cinder-button-border` | `light-dark(var(--cinder-border), var(--cinder-border-strong))` | Secondary (default) button border.      |
-| `--cinder-button-radius` | `var(--cinder-radius-md)`                                       | Default button corner radius.           |
+| Token                        | Default                                                         | Description                             |
+| ---------------------------- | --------------------------------------------------------------- | --------------------------------------- |
+| `--cinder-button-background` | `var(--cinder-surface-raised)`                                  | Secondary (default) button fill.        |
+| `--cinder-button-foreground` | `var(--cinder-text-default)`                                    | Secondary (default) button label color. |
+| `--cinder-button-border`     | `light-dark(var(--cinder-border), var(--cinder-border-strong))` | Secondary (default) button border.      |
+| `--cinder-button-radius`     | `var(--cinder-radius-md)`                                       | Default button corner radius.           |
 
 <!-- END GENERATED TOKEN TABLE -->
 

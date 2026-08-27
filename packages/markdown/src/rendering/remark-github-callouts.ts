@@ -56,7 +56,7 @@ type AlertKind = {
 /**
  * Default titles, keyed by GitHub alert type.
  *
- * NOTE and IMPORTANT both land on the `status.info.solid` variant — Cinder has no separate
+ * NOTE and IMPORTANT both land on the `info` variant — Cinder has no separate
  * "elevated neutral" — so the title is what keeps them distinguishable.
  */
 const DEFAULT_TITLES: Readonly<Record<string, string>> = {

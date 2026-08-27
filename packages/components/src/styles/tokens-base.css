@@ -433,9 +433,9 @@
   /* Transparency checkerboard alternate tile. */
   --cinder-checker-tile: light-dark(#ccc, oklch(38% 0.02 245));
   /* Secondary (default) button fill. */
-  --cinder-button-bg: var(--cinder-surface-raised);
+  --cinder-button-background: var(--cinder-surface-raised);
   /* Secondary (default) button label color. */
-  --cinder-button-fg: var(--cinder-text-default);
+  --cinder-button-foreground: var(--cinder-text-default);
   /* Secondary (default) button border. */
   --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
   /* Default button corner radius. */
@@ -565,8 +565,8 @@
     0 10px 15px -3px oklch(100% 0 0 / 0.11), 0 4px 6px -4px oklch(100% 0 0 / 0.07);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);
-  --cinder-button-bg: var(--cinder-surface-raised);
-  --cinder-button-fg: var(--cinder-text-default);
+  --cinder-button-background: var(--cinder-surface-raised);
+  --cinder-button-foreground: var(--cinder-text-default);
   --cinder-button-border: var(--cinder-border-strong);
   --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
   --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
@@ -707,8 +707,8 @@
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-shadow-overlay:
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
-  --cinder-button-bg: var(--cinder-surface-raised);
-  --cinder-button-fg: var(--cinder-text-default);
+  --cinder-button-background: var(--cinder-surface-raised);
+  --cinder-button-foreground: var(--cinder-text-default);
   --cinder-button-border: var(--cinder-border);
   --cinder-toggle-track-off-resting: var(--cinder-border-muted);
   --cinder-toggle-track-off-hover-resting: var(--cinder-border);

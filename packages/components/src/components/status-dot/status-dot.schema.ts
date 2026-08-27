@@ -7,7 +7,7 @@ const schema = {
     status: {
       enum: ['online', 'offline', 'warning', 'danger', 'pending', 'neutral', 'success', 'accent'],
       description:
-        'Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `status.success.solid` maps to `--cinder-status-success-solid`; `accent.solid` maps to `--cinder-accent-solid`.',
+        'Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `success` maps to `--cinder-status-success-solid`; `accent` maps to `--cinder-accent-solid`.',
     },
     connectionState: {
       enum: ['connected', 'connecting', 'disconnected', 'error'],

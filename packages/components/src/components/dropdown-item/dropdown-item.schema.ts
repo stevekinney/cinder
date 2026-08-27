@@ -7,7 +7,7 @@ const schema = {
     variant: {
       enum: ['default', 'danger'],
       description:
-        'Visual style of the item. Use `status.danger.solid` to signal a destructive action. Default `default`.',
+        'Visual style of the item. Use `danger` to signal a destructive action. Default `default`.',
     },
     itemRole: {
       enum: ['menuitem', 'menuitemcheckbox', 'menuitemradio'],

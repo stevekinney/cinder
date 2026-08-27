@@ -865,7 +865,7 @@ test.describe('review-modes: snapshotMode, placeholder, and class', () => {
 		// The control: without the attribute nothing is suppressed, and the
 		// caret keeps a real, opaque color.
 		//
-		// A SET rather than a literal, because `auto` and `text.default` are the same
+		// A SET rather than a literal, because `auto` and `text` are the same
 		// answer spelled two ways — the initial value's used value chains from the
 		// parent, and the engines serialize that differently. Naming both keeps the
 		// claim exact ("selectable"); `not.toBe('none')` would have been vaguer,

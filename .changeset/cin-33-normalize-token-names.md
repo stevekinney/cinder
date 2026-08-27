@@ -23,6 +23,8 @@ Three rules the corpus broke in places:
 | `--cinder-accent-active-on-fill` | `--cinder-accent-solid-active-on-fill` |
 | `--cinder-accent-hover`          | `--cinder-accent-solid-hover`          |
 | `--cinder-bg`                    | `--cinder-surface-canvas`              |
+| `--cinder-button-bg`             | `--cinder-button-background`           |
+| `--cinder-button-fg`             | `--cinder-button-foreground`           |
 | `--cinder-color-accent-bg`       | `--cinder-accent-background`           |
 | `--cinder-color-accent-border`   | `--cinder-accent-border`               |
 | `--cinder-color-checker-base`    | `--cinder-checker-base`                |
@@ -40,8 +42,6 @@ Three rules the corpus broke in places:
 | `--cinder-color-neutral-bg`      | `--cinder-status-neutral-background`   |
 | `--cinder-color-neutral-border`  | `--cinder-status-neutral-border`       |
 | `--cinder-color-neutral-fg`      | `--cinder-status-neutral-text`         |
-| `--cinder-color-neutral-muted`   | `--cinder-status-neutral-muted`        |
-| `--cinder-color-neutral-subtle`  | `--cinder-status-neutral-subtle`       |
 | `--cinder-color-success-bg`      | `--cinder-status-success-background`   |
 | `--cinder-color-success-border`  | `--cinder-status-success-border`       |
 | `--cinder-color-success-fg`      | `--cinder-status-success-text`         |

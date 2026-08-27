@@ -20,7 +20,7 @@ requiring future executors to reopen the same product question.
 
 Implementation acceptance:
 
-- `Callout` variants (`status.info.solid`, `status.success.solid`, `status.warning.solid`, `status.danger.solid`) must set `border-inline-start-width` to a larger value than `border-inline-end-width` and derive that stripe color from `--cinder-status-info-solid`, `--cinder-status-success-solid`, `--cinder-status-warning-solid`, or `--cinder-status-danger-solid` for the matching variant.
-- `Alert` variants (`status.info.solid`, `status.success.solid`, `status.warning.solid`, `error`) must stay stripe-free and must satisfy one of these two exact outcomes: each variant's computed `background-color` equals the base `Alert` surface color, or each variant's computed `border-color` equals the base `Alert` border color.
+- `Callout` variants (`info`, `success`, `warning`, `danger`) must set `border-inline-start-width` to a larger value than `border-inline-end-width` and derive that stripe color from `--cinder-status-info-solid`, `--cinder-status-success-solid`, `--cinder-status-warning-solid`, or `--cinder-status-danger-solid` for the matching variant.
+- `Alert` variants (`info`, `success`, `warning`, `error`) must stay stripe-free and must satisfy one of these two exact outcomes: each variant's computed `background-color` equals the base `Alert` surface color, or each variant's computed `border-color` equals the base `Alert` border color.
 - Computed-style tests must prove `Callout` has a larger `border-inline-start-width` than `border-inline-end-width`, and `Alert` does not, across both light and dark color schemes.
 - `Alert` must keep `role="alert"` and must not become `role="status"`; `Callout` must not add live-region roles or `aria-live` attributes.

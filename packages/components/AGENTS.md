@@ -331,8 +331,13 @@ matches the convention `@lostgradient/cinder` uses internally and in `related[]`
   `.cinder-<component>` (`.cinder-button`, `.cinder-modal`). Override styles
   by targeting that class.
 - **CSS custom properties:** all public design tokens use the `--cinder-`
-  prefix (`--cinder-color-text`, `--cinder-space-md`). The token namespaces
-  are `color`, `space`, `radius`, `ring`, `type`, `motion.base`, and `shadow`.
+  prefix (`--cinder-text-default`, `--cinder-space-4`). Token names are
+  authoritative in the generated registry at `src/tokens/registry.generated.json`
+  and documented in [`docs/tokens.md`](../../docs/tokens.md); the namespaces
+  there are the contract, so this list is deliberately not duplicated here —
+  it went stale once already. `check:token-naming` enforces the rules: no
+  `color.*` namespace, no `bg`/`fg` abbreviations, kebab-case segments, and no
+  bare domain without a role.
 - **Private custom properties — DO NOT REDEFINE.** Any variable matching
   `--_cinder-*` (underscore after the dash) is an internal implementation
   detail. Redefining one will break the component at the next patch release.

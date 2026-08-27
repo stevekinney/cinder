@@ -355,9 +355,9 @@ describe('color token overrides', () => {
       store.setColorTokenOverride('light', '--cinder-accent-solid', 'url(https://example.com)'),
     ).toBe(false);
     // @ts-expect-error — exercising runtime validation for untrusted callers
-    expect(store.setColorTokenOverride('light', '--cinder-button-bg', 'oklch(60% 0.2 195)')).toBe(
-      false,
-    );
+    expect(
+      store.setColorTokenOverride('light', '--cinder-button-background', 'oklch(60% 0.2 195)'),
+    ).toBe(false);
     expect(store.colorTokenOverrides.light).toEqual({
       '--cinder-accent-solid': '#336699',
     });

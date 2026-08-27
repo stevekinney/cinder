@@ -294,7 +294,7 @@ describe('callout stripe — directional treatment', () => {
     );
 
     test('recipe selectors are self-doubled for (0,2,0) specificity over the component base', () => {
-      // The component base (`.cinder-callout`, etc.) sets `surface.canvas`/`border` at
+      // The component base (`.cinder-callout`, etc.) sets `background`/`border` at
       // (0,1,0). The recipe must win regardless of import order (sidecar mode loads
       // the base AFTER the recipe), so each recipe selector doubles its class to
       // (0,2,0) — matching the pre-extraction variant-selector specificity. A

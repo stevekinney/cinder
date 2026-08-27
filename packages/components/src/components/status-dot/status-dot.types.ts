@@ -6,11 +6,11 @@ import type { HTMLAttributes } from 'svelte/elements';
  * The string values are stamped onto the root as `data-cinder-status` and
  * drive color exclusively via CSS — there are no hard-coded color classes
  * on the component. The token mapping (e.g. `online` → `--cinder-status-success-solid`,
- * `status.danger.solid` → `--cinder-status-danger-solid`) lives in `status-dot.css` so consumers can
+ * `danger` → `--cinder-status-danger-solid`) lives in `status-dot.css` so consumers can
  * theme without forking the component.
  *
- * - `status.success.solid` maps to `--cinder-status-success-solid` (same hue as `online`).
- * - `accent.solid` maps to `--cinder-accent-solid`.
+ * - `success` maps to `--cinder-status-success-solid` (same hue as `online`).
+ * - `accent` maps to `--cinder-accent-solid`.
  *
  * Exported so host components (e.g. `stacked-list-item.svelte`) can type
  * their own `status` prop against this union rather than restating it.
@@ -60,7 +60,7 @@ export type StatusDotProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & {
 };
 
 export interface StatusDotSchemaProps {
-  /** Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `status.success.solid` maps to `--cinder-status-success-solid`; `accent.solid` maps to `--cinder-accent-solid`. */
+  /** Semantic status. Drives color via `data-cinder-status`; defaults to a neutral dot or derives from `connectionState`. `success` maps to `--cinder-status-success-solid`; `accent` maps to `--cinder-accent-solid`. */
   status?: StatusDotStatus;
   /** Realtime connection preset. Sets status, default label, and live-region semantics. */
   connectionState?: StatusDotConnectionState;

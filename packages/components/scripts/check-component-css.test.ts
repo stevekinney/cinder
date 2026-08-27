@@ -37,14 +37,14 @@ describe('checkComponentCssSource', () => {
   it('passes a well-scoped component sidecar', () => {
     const source = layered(`
       .cinder-button {
-        background: var(--cinder-button-bg);
-        color: var(--cinder-button-fg);
+        background: var(--cinder-button-background);
+        color: var(--cinder-button-foreground);
       }
       .cinder-button:hover {
         background: var(--cinder-button-hover-bg);
       }
       .cinder-button[data-variant='primary'] {
-        --cinder-button-bg: blue;
+        --cinder-button-background: blue;
       }
     `);
     expect(checkComponentCssSource(source, fakePath)).toEqual([]);

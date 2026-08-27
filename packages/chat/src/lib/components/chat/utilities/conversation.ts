@@ -67,7 +67,7 @@ function latestToolResultsByCallId(
  * Finds every tool call whose latest `tool-result` is still parked on
  * `action_required` with an action present—i.e. not yet resolved via
  * `replaceToolResult`. A call whose latest result has since moved to
- * `status.success.solid`/`error` is excluded, even if an earlier `action_required` result
+ * `success`/`error` is excluded, even if an earlier `action_required` result
  * for the same call id exists earlier in the transcript, or the resolving
  * result is itself hidden. By default a hidden latest result is excluded
  * from the returned list, matching `getMessages`; pass `includeHidden: true`

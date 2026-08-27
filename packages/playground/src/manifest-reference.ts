@@ -36,7 +36,7 @@ export type PropReferenceRow = {
  *   when the analyzer could not recover one, e.g. the `?` placeholder).
  * - `array` / `object` → the type text as authored (`BreadcrumbItem[]`), not the
  *   synthesis shape carried alongside it.
- * - everything else → the bare kind (`text.default`, `number`, `boolean`, `snippet`).
+ * - everything else → the bare kind (`text`, `number`, `boolean`, `snippet`).
  *
  * @param control - The control descriptor from a {@link PropManifest}.
  * @returns A label suitable for the "Type" column.

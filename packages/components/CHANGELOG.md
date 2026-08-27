@@ -157,12 +157,12 @@
   off the fill tokens in 0.21.
 
   Unthemed `Statistic` now defaults to the contrast-tuned text tokens
-  (`--cinder-text-default` / `--cinder-text-muted`). The substitution is all-or-nothing on
+  (`--cinder-text` / `--cinder-text-muted`). The substitution is all-or-nothing on
   `theme`'s presence rather than per-field: supplying any theme — including a
   partial one — keeps `resolveChartTheme()`'s `currentColor` inheritance for the
   fields it omits, so `theme={{ foreground: 'white', background: 'black' }}`
   leaves the label inheriting white instead of dropping the application's dark
-  muted token onto a black panel. `surface.canvas` keeps its `transparent` default.
+  muted token onto a black panel. `background` keeps its `transparent` default.
   To make an otherwise-unthemed Statistic follow an ancestor's `color`, ask for
   it explicitly with `theme={{ foreground: 'currentColor', muted: 'currentColor' }}`.
   No API change.
@@ -519,7 +519,7 @@ tabular-families.md` already decides it.)
   accent, and lighten the focus ring.
 
   Light mode now anchors at white and stays compressed: `--cinder-surface-inset`
-  0.960 → `--cinder-surface-canvas` 0.984 → `--cinder-surface` 0.994 → `--cinder-surface-raised`
+  0.960 → `--cinder-bg` 0.984 → `--cinder-surface` 0.994 → `--cinder-surface-raised`
   1.000. Region separation is carried by border and shadow rather than by fill, which
   is how light interfaces conventionally work — the page canvas reads as white, and a
   card lifts off it with a hairline and a shadow instead of by everything around it
@@ -529,7 +529,7 @@ tabular-families.md` already decides it.)
 
   Interaction states change direction in the light arm only. `--cinder-surface-hover`
   and `--cinder-surface-pressed` (and their `-raised-` twins) now mix toward
-  `--cinder-accent-solid` at 6% / 12% instead of toward black. Near white a proportional
+  `--cinder-accent` at 6% / 12% instead of toward black. Near white a proportional
   black mix is structurally unusable: the resting tiers span 0.040 lightness points
   while a 6% black mix moves a surface 0.060, so every state lands on a resting tier
   regardless of the percentage chosen. Mixing toward the accent separates states by
@@ -540,7 +540,7 @@ tabular-families.md` already decides it.)
   The focus ring goes from 3px at a 1px offset to 2px at a 2px offset — the same 4px
   total footprint, but half of it is now separation, so the ring reads as a ring
   around a control rather than an outline on it and stops merging with an adjacent
-  border. `--cinder-ring-offset-color` moves from `--cinder-surface-canvas` to
+  border. `--cinder-ring-offset-color` moves from `--cinder-bg` to
   `--cinder-surface-raised`.
 
   Also in this release:
@@ -551,8 +551,8 @@ tabular-families.md` already decides it.)
     to red's headroom near white. Dropping the lightness raises the binding ceiling
     to 0.0275.
   - The four `--cinder-color-*-bg` triples sit at L 0.945 with re-fitted chroma,
-    which fixes a pre-existing bug where `--cinder-status-warning-background` and
-    `--cinder-status-danger-background` were authored outside the sRGB gamut and had been
+    which fixes a pre-existing bug where `--cinder-color-warning-bg` and
+    `--cinder-color-danger-bg` were authored outside the sRGB gamut and had been
     silently clamping to a desaturated grey.
   - `--cinder-border` 0.79 → 0.83 and `--cinder-border-muted` 0.88 → 0.90, with chroma
     dropping alongside the surfaces so a hairline reads as a neutral line rather than
@@ -574,7 +574,7 @@ tabular-families.md` already decides it.)
 
   The radius scale is unchanged from the previous release at 6 / 8 / 12px.
 
-  Consumers that override `--cinder-surface-canvas`, `--cinder-surface`, `--cinder-surface-raised`
+  Consumers that override `--cinder-bg`, `--cinder-surface`, `--cinder-surface-raised`
   or `--cinder-surface-inset` should re-check their own ramp: the light arm's spacing
   and direction have both changed, and a consumer ramp built to sit against a grey
   canvas will need retuning against a white one.
@@ -601,12 +601,12 @@ tabular-families.md` already decides it.)
   test-environment compatibility fix with no change to real-browser drag behavior, which
   was already correct; no runtime change to KanbanBoard.
 
-- [#1216](https://github.com/stevekinney/cinder/pull/1216) [`38a43a0`](https://github.com/stevekinney/cinder/commit/38a43a0cccf557aafbaee2a39486a050a2979854) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop using the status **fill** tokens (`--cinder-status-success-solid` / `--cinder-status-info-solid` /
-  `--cinder-status-warning-solid` / `--cinder-status-danger-solid`) as text color. Those are tuned dark enough
+- [#1216](https://github.com/stevekinney/cinder/pull/1216) [`38a43a0`](https://github.com/stevekinney/cinder/commit/38a43a0cccf557aafbaee2a39486a050a2979854) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop using the status **fill** tokens (`--cinder-success` / `--cinder-info` /
+  `--cinder-warning` / `--cinder-danger`) as text color. Those are tuned dark enough
   (L≈0.50) to carry a white label; the paired `--cinder-color-*-fg` tokens (L≈0.40)
   are the foregrounds. Measured as ink on `--cinder-surface-inset`, the fills land at
   3.98 (success), 4.16 (info) and 3.66 (warning) — all below the 4.5:1 AA floor —
-  while the `-fg` equivalents land 6.1–6.7. `--cinder-status-warning-solid` was already failing
+  while the `-fg` equivalents land 6.1–6.7. `--cinder-warning` was already failing
   before the light-ramp retune in [#1208](https://github.com/stevekinney/cinder/issues/1208); widening the ramp only made it worse.
 
   Swaps every `color:` declaration that paints text: form-field, checkbox,
@@ -616,7 +616,7 @@ tabular-families.md` already decides it.)
   statistic, diff-statistics, status-dot, inline-loading, event-stream-viewer, and
   the shared `_field-label` required marker.
 
-  Deliberately **not** swapped: `surface.canvas`, `border`, `outline`, focus-ring
+  Deliberately **not** swapped: `background`, `border`, `outline`, focus-ring
   custom properties, and every `color:` whose value is consumed as `currentColor` by
   a painted shape rather than by text — lucide icon strokes (Card's risk icon,
   ApprovalCard's risk icons, PermissionMatrix's cell tokens, SecretValueField's copy
@@ -1460,7 +1460,7 @@ tabular-families.md` already decides it.)
   used different words for the same concept; this standardizes them. No compatibility
   aliases are provided (per the audit's no-shim requirement) — update call sites.
   - **Severity spelling.** `alert` and `status-dot` drop the `error` value in favor of
-    `status.danger.solid`, the canonical failure-severity spelling already used by `banner` and
+    `danger`, the canonical failure-severity spelling already used by `banner` and
     `callout`. Use `variant="danger"` (Alert) / `status="danger"` (StatusDot) instead
     of `"error"`.
   - **Accessible-name props.** `ariaLabel` / `navAriaLabel` are renamed to `label` on
@@ -1510,7 +1510,7 @@ tabular-families.md` already decides it.)
 - [#428](https://github.com/stevekinney/cinder/pull/428) [`5d0a325`](https://github.com/stevekinney/cinder/commit/5d0a32506b97b51b5955917dda7c2898dceb5d74) Thanks [@stevekinney](https://github.com/stevekinney)! - Retune the color palette around an indigo brand, polish the command-palette and timeline, and remove the previously-deprecated experimental-timeline aliases (a pre-1.0 export-map removal shipping in this minor — see the migration note below).
 
   **Palette (visible default change for every consumer):**
-  - Brand accent is now indigo (hue 270) and carries white labels in light mode. `--cinder-accent-solid` moves to `oklch(50% 0.22 270)` (light) / `oklch(72% 0.14 270)` (dark) and `--cinder-accent-contrast` flips to white in light mode — primary buttons, the active command-palette item, and every solid accent fill show white text on indigo (6.45:1, clears WCAG AA). `--cinder-accent-text` (links/icons) and the focus ring re-hue automatically; the ring's light-arm lightness clamp drops 0.58 → 0.55 so the indigo ring keeps ≥3:1 (WCAG 1.4.11) on near-white surfaces.
+  - Brand accent is now indigo (hue 270) and carries white labels in light mode. `--cinder-accent` moves to `oklch(50% 0.22 270)` (light) / `oklch(72% 0.14 270)` (dark) and `--cinder-accent-contrast` flips to white in light mode — primary buttons, the active command-palette item, and every solid accent fill show white text on indigo (6.45:1, clears WCAG AA). `--cinder-accent-text` (links/icons) and the focus ring re-hue automatically; the ring's light-arm lightness clamp drops 0.58 → 0.55 so the indigo ring keeps ≥3:1 (WCAG 1.4.11) on near-white surfaces.
   - Info status nudged hue 245 → 230 so the blue "info" state no longer competes with the indigo brand.
   - The 8 categorical chart series are retuned: brand-safe (no hue in 248–292) and strongly distinguishable in normal vision (min CIEDE2000 ΔE00 ≥ 12). Each arm additionally keeps a minimum pairwise CIE L\* separation of ≥ 4 so lightness stays a usable secondary distinguishing channel when hue contrast degrades for color-vision-deficient viewers. The light and dark arms are tuned independently for in-theme contrast and gamut, so a series is not guaranteed the same hue across themes.
   - Status fills (success/warning/danger) refitted to the sRGB gamut — several were authored over-chroma and silently clamped (warning especially). The danger button's hover and active states are now authored explicitly instead of derived by darkening the fill at constant chroma: red sits near the gamut boundary, so the old constant-chroma derivation clamped the pressed/hover states to a duller red than specified. Each light-arm state is now pinned to its in-gamut chroma maximum, so the darkening is both monotonic and exactly rendered (white labels stay ≥ 6.7:1).
@@ -1609,9 +1609,9 @@ tabular-families.md` already decides it.)
   A composed skip-to-content primitive that owns the non-obvious focus management internally: the tabindex save → focus → restore-on-blur dance, `prefers-reduced-motion` handling, and a native-anchor-jump fallback when the target id is absent. Composes over `VisuallyHidden` (`as="a"`, `focusable`). The prop surface is intentionally minimal (`target`, `children`, `class`).
 
 - [#312](https://github.com/stevekinney/cinder/pull/312) [`dd69bba`](https://github.com/stevekinney/cinder/commit/dd69bba51e4784a0051b9fa5cfc9f9992dbe413c) Thanks [@stevekinney](https://github.com/stevekinney)! - Visual-token refinement that improves light/dark separation and accent legibility, plus six new semantic alias tokens.
-  - **Accent reads more like ink.** `--cinder-accent-solid` is now `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))` — the light arm darkens from the previous bright cyan toward a more ink-like read (its foreground contrast improves from ~2:1 to ~2.7:1, though it still uses the dedicated `--cinder-accent-text` token for foreground use), and the dark-arm chroma calms from 0.15 to 0.13 to stop the cyan vibrating. As a fill it carries the dark-ink `--cinder-accent-contrast` label at ~7.2:1. Because `--cinder-accent-solid-hover` and `--cinder-accent-solid-active` derive from `--cinder-accent-solid` with `oklch(from …)`, both hover and active states re-derive automatically. `--cinder-accent-text` keeps its dark-arm chroma in lockstep at 0.13.
-  - **New `--cinder-accent-solid-active-on-fill` token keeps pressed primary buttons AA-legible.** Darkening the base accent dropped the general `--cinder-accent-solid-active` (a `−0.15` lightness step → `L=0.51`) to ~4.09:1 for the dark-ink label on a pressed primary `Button`/`FloatingActionButton`, below WCAG AA. The new token uses a gentler `−0.11` step (light `L=0.55` ~4.79:1, dark ~7.1:1); those two components now consume it for their pressed fill. `--cinder-accent-solid-active` is unchanged for every other consumer.
-  - **Wider dark surface ladder.** The dark elevation steps now run 15 → 20 → 26 → 11 (`--cinder-surface-raised` 24% → 26%, `--cinder-surface-inset` 12% → 11%); `--cinder-surface-canvas` and `--cinder-surface` are unchanged.
+  - **Accent reads more like ink.** `--cinder-accent` is now `light-dark(oklch(66% 0.16 195), oklch(78% 0.13 195))` — the light arm darkens from the previous bright cyan toward a more ink-like read (its foreground contrast improves from ~2:1 to ~2.7:1, though it still uses the dedicated `--cinder-accent-text` token for foreground use), and the dark-arm chroma calms from 0.15 to 0.13 to stop the cyan vibrating. As a fill it carries the dark-ink `--cinder-accent-contrast` label at ~7.2:1. Because `--cinder-accent-hover` and `--cinder-accent-active` derive from `--cinder-accent` with `oklch(from …)`, both hover and active states re-derive automatically. `--cinder-accent-text` keeps its dark-arm chroma in lockstep at 0.13.
+  - **New `--cinder-accent-active-on-fill` token keeps pressed primary buttons AA-legible.** Darkening the base accent dropped the general `--cinder-accent-active` (a `−0.15` lightness step → `L=0.51`) to ~4.09:1 for the dark-ink label on a pressed primary `Button`/`FloatingActionButton`, below WCAG AA. The new token uses a gentler `−0.11` step (light `L=0.55` ~4.79:1, dark ~7.1:1); those two components now consume it for their pressed fill. `--cinder-accent-active` is unchanged for every other consumer.
+  - **Wider dark surface ladder.** The dark elevation steps now run 15 → 20 → 26 → 11 (`--cinder-surface-raised` 24% → 26%, `--cinder-surface-inset` 12% → 11%); `--cinder-bg` and `--cinder-surface` are unchanged.
   - **Stronger borders in both arms.** `--cinder-border` becomes `light-dark(oklch(79% 0.013 245), oklch(40% 0.05 245))` for a more defined edge against surfaces.
   - **Deeper small elevation.** `--cinder-shadow-sm` gains a second hairline layer and higher alphas in both arms; `--cinder-shadow-md` and `--cinder-shadow-lg` raise their dark-arm alphas (light arms unchanged).
   - **Disabled text holds AA against the widened dark surfaces.** `--cinder-text-disabled` dark arm moves from 62% to 64% so disabled labels keep ≥4.5:1 on the lifted dark `--cinder-surface-raised` (a disabled RadioGroup legend would otherwise drop to ~3.6:1).
@@ -1821,7 +1821,7 @@ tabular-families.md` already decides it.)
   - New `--cinder-text-md` design token (15px) and a clearer button font-size ladder: `lg` now uses `--cinder-text-md` (15px) and `xl` uses `--cinder-text-lg` (16px), so large buttons read as visibly larger than the default. `xs`/`sm`/`md` are unchanged.
   - Ghost buttons keep their muted text color on hover and only change background, so hover no longer brightens the label.
   - Button groups draw a single deterministic 1px seam between members via a pseudo-element instead of overlapping borders with negative margins, so mixed-variant groups no longer hairline-notch at transparent-bordered boundaries.
-  - Dropdown danger items now show a danger-colored focus ring (`--cinder-status-danger-solid`) instead of the neutral ring.
+  - Dropdown danger items now show a danger-colored focus ring (`--cinder-danger`) instead of the neutral ring.
   - Segmented-control selected and pressed segments now respond to hover (the accent fill darkens) so they no longer read as disabled.
 
 - [#225](https://github.com/stevekinney/cinder/pull/225) [`ec216d4`](https://github.com/stevekinney/cinder/commit/ec216d48fd7e23530ebed36e1452c9ac36c61de4) Thanks [@stevekinney](https://github.com/stevekinney)! - Use the staged publish artifact for consumer validation, release dry-runs, and npm publishing; broaden the Svelte peer contract to tested Svelte 5 versions; and add package-weight reporting with release budgets.

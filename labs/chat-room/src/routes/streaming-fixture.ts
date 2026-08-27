@@ -14,7 +14,7 @@
  * four original tests in `page.svelte.e2e.ts` cannot cover progressive
  * rendering even in principle. Standing in one layer further out leaves the
  * entire production path unmocked: the real SvelteKit endpoint, the real
- * Anthropic SDK stream, the real per-`text.default`-event ndjson re-encode, the real
+ * Anthropic SDK stream, the real per-`text`-event ndjson re-encode, the real
  * `toolbox.execute` (so the real approval signature), and the real browser
  * `ReadableStream` read. The app reaches this file only because
  * `new Anthropic({ apiKey })` leaves `baseURL` to `readEnv('ANTHROPIC_BASE_URL')`

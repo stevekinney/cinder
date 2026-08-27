@@ -16,8 +16,8 @@
     font-size: var(--cinder-text-sm);
     line-height: 1;
 
-    background: var(--cinder-button-bg);
-    color: var(--cinder-button-fg);
+    background: var(--cinder-button-background);
+    color: var(--cinder-button-foreground);
     border: 1px solid var(--cinder-button-border);
     border-radius: var(--cinder-button-radius);
 

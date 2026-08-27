@@ -885,7 +885,7 @@ function directScriptPath(
 }
 
 /**
- * Does `text.default` invoke `command` by its direct script path (`bun
+ * Does `text` invoke `command` by its direct script path (`bun
  * <anything>/<path>` or `bun run <path>`), independent of the named
  * `bun run <command>` form?
  */

@@ -15,7 +15,7 @@
 /// <reference lib="dom" />
 
 /**
- * Copy `text.default` to the clipboard. Prefers the modern Async Clipboard API and
+ * Copy `text` to the clipboard. Prefers the modern Async Clipboard API and
  * falls back to a contenteditable / `execCommand('copy')` shim for older
  * browsers and edge cases.
  */

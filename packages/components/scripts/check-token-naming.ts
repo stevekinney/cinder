@@ -7,9 +7,12 @@
  *     Uppercase and underscores are legal CSS but are not the corpus's
  *     convention, and `registry.ts` already rejects them in the CSS property.
  *   - **No CSS-derived abbreviations.** `bg` and `fg` are banned as segments.
- *     `text` is NOT banned: the ticket's parenthetical lists it, but three of
- *     its own examples use it (`text.default`, `text.inverse`,
- *     `status.danger.text`), and worked examples beat a parenthetical.
+ *     The word `text` is NOT banned: the ticket's parenthetical lists it, but
+ *     three of its own examples use it, and worked examples beat a
+ *     parenthetical.
+ *   - **The CSS property is checked too, not just the path.** They are authored
+ *     independently, so a path can satisfy every rule while its property
+ *     reintroduces exactly what the rename removed.
  *   - **No `color.*` top-level namespace.** Every token is a color or is not;
  *     a `color` domain says nothing about intent, which is what a name is for.
  *   - **A token path names a role, not just a domain.** A bare `accent` or
@@ -42,11 +45,32 @@ export const BANNED_DOMAINS = new Set(['color', 'colour']);
 
 export type NamingViolation = { path: string; reason: string };
 
+/** The two independently authored names a registry entry carries. */
+export type NamedToken = { path: string; cssProperty: string };
+
+/**
+ * The CSS property a path should produce, by the corpus's own convention:
+ * dots become hyphens under the `--cinder-` prefix.
+ *
+ * This is NOT enforced as an equality, because several deliberate exceptions
+ * exist -- `motion.fast` emits `--cinder-duration-fast`, and `type.*` emits
+ * `--cinder-text-*`. What IS enforced is that the property carries no banned
+ * segment and no banned namespace, which is the part the rename was about.
+ */
+function propertySegments(cssProperty: string): string[] {
+  return cssProperty.replace(/^--_?cinder-/, '').split('-');
+}
+
 /** Pure so the rules are testable without a registry on disk. */
-export function findNamingViolations(paths: readonly string[]): readonly NamingViolation[] {
+export function findNamingViolations(
+  tokens: readonly (NamedToken | string)[],
+): readonly NamingViolation[] {
   const violations: NamingViolation[] = [];
 
-  for (const path of paths) {
+  for (const token of tokens) {
+    // Accepts a bare path so the path rules stay testable on their own.
+    const path = typeof token === 'string' ? token : token.path;
+    const cssProperty = typeof token === 'string' ? undefined : token.cssProperty;
     // The document-level `$root` token resolves to the empty path; it has no
     // name to check and is not part of the public naming surface.
     if (path === '') continue;
@@ -78,6 +102,27 @@ export function findNamingViolations(paths: readonly string[]): readonly NamingV
         });
       }
     }
+
+    // The CSS property is authored independently of the path, so a compliant
+    // path can still ship `--cinder-color-danger-bg` to consumers. That is the
+    // surface the rename actually changed, so it is checked on its own terms.
+    if (cssProperty !== undefined) {
+      const propertyParts = propertySegments(cssProperty);
+      for (const segment of propertyParts) {
+        if (BANNED_SEGMENTS.has(segment)) {
+          violations.push({
+            path,
+            reason: `has cssProperty "${cssProperty}", which uses the CSS-derived abbreviation "${segment}"`,
+          });
+        }
+      }
+      if (BANNED_DOMAINS.has(propertyParts[0] ?? '')) {
+        violations.push({
+          path,
+          reason: `has cssProperty "${cssProperty}", which reintroduces the "${propertyParts[0]}" namespace`,
+        });
+      }
+    }
   }
 
   return violations;
@@ -90,7 +135,7 @@ function readField(source: object, field: string): unknown {
     : undefined;
 }
 
-function readRegistryPaths(): string[] {
+function readRegistryTokens(): NamedToken[] {
   const parsed: unknown = JSON.parse(readFileSync(registryPath, 'utf8'));
   if (typeof parsed !== 'object' || parsed === null) {
     throw new Error(`${registryPath} is not a JSON object.`);
@@ -99,23 +144,24 @@ function readRegistryPaths(): string[] {
   if (!Array.isArray(entries)) {
     throw new Error(`${registryPath} has no \`entries\` array.`);
   }
-  const paths: string[] = [];
+  const tokens: NamedToken[] = [];
   for (const [index, entry] of entries.entries()) {
     if (typeof entry !== 'object' || entry === null) {
       throw new Error(`${registryPath} entries[${index}] is not an object.`);
     }
     const path = readField(entry, 'path');
-    if (typeof path !== 'string') {
-      throw new Error(`${registryPath} entries[${index}] has no string path.`);
+    const cssProperty = readField(entry, 'cssProperty');
+    if (typeof path !== 'string' || typeof cssProperty !== 'string') {
+      throw new Error(`${registryPath} entries[${index}] has no string path and cssProperty.`);
     }
-    paths.push(path);
+    tokens.push({ path, cssProperty });
   }
-  return paths;
+  return tokens;
 }
 
 function main(): void {
-  const paths = readRegistryPaths();
-  const violations = findNamingViolations(paths);
+  const tokens = readRegistryTokens();
+  const violations = findNamingViolations(tokens);
 
   if (violations.length > 0) {
     const detail = violations
@@ -130,7 +176,9 @@ function main(): void {
     return;
   }
 
-  process.stdout.write(`check:token-naming — OK (${paths.length} token names).\n`);
+  process.stdout.write(
+    `check:token-naming — OK (${tokens.length} token names and CSS properties).\n`,
+  );
 }
 
 if (import.meta.main) main();

@@ -61,7 +61,7 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 - `secondary`: medium-emphasis, outline-flavored (surface fill + border).
 - `soft`: medium-emphasis, tinted fill, no border. Good for secondary actions in colored contexts.
 - `soft-danger`: same as soft but uses danger tint. For destructive secondary actions.
-- `status.danger.solid`: high-emphasis destructive action.
+- `danger`: high-emphasis destructive action.
 - `ghost`: low-emphasis, transparent background.
 - `ghost-danger`: low-emphasis destructive action.
 

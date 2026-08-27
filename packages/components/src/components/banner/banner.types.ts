@@ -3,7 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 /**
  * Visual + semantic variants for {@link Banner}.
  *
- * Note: `banner.svelte` uses `status.danger.solid` (matching the semantic token
+ * Note: `banner.svelte` uses `danger` (matching the semantic token
  * `--cinder-status-danger-solid`) where `alert.svelte` uses `error`. The divergence is
  * intentional and tracked in `banner.a11y.md`.
  */

@@ -9,7 +9,7 @@ MultiSelect uses an anchored picker surface with a listbox (`aria-multiselectabl
 - Trigger is a native button with `aria-haspopup="listbox"`, `aria-expanded`, and `aria-controls`.
 - Options are rendered as `role="option"` and expose `aria-selected` and `aria-disabled`.
 - The listbox exposes `aria-multiselectable="true"` so assistive tech announces multi-selection behavior.
-- `description`, `status.warning.solid`, and `error` are composed into `aria-describedby`.
+- `description`, `warning`, and `error` are composed into `aria-describedby`.
 - `error` is referenced by the trigger through `aria-describedby` and sets `data-cinder-invalid` on the trigger.
 
 ## Keyboard

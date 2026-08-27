@@ -2937,7 +2937,7 @@ type CssArtifact = {
   selectors: string[];
   /** Declarations grouped by selector. */
   declarations: Array<{ selector: string; prop: string; value: string }>;
-  /** Custom-property names declared anywhere in the file (e.g. `--cinder-button-bg`). */
+  /** Custom-property names declared anywhere in the file (e.g. `--cinder-button-background`). */
   customProperties: string[];
 };
 

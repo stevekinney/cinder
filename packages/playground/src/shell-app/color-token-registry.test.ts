@@ -121,14 +121,14 @@ const INTENTIONALLY_UNREGISTERED_COLOR_TOKENS = new Set([
   // general theme role — same class as the toggle-track tokens below.
   '--cinder-surface-upcoming-marker',
   // Component-internal toggle-switch track fill. Mirrors the exclusion of
-  // --cinder-button-bg/-fg below: derived, component-scoped, not a general
+  // --cinder-button-background/-fg below: derived, component-scoped, not a general
   // theme role a user would tweak from the color panel.
   '--cinder-toggle-track-off-resting',
   '--cinder-toggle-track-off-hover-resting',
   // Backs the alpha checkerboard swatch backdrop, not a themeable color.
   '--cinder-checker-base',
   '--cinder-checker-tile',
-  // Component-scoped like --cinder-button-bg/-fg (already asserted excluded
+  // Component-scoped like --cinder-button-background/-fg (already asserted excluded
   // below): it happens to be the one button-* token with a literal
   // light-dark() value instead of a var() alias, which is why it's the only
   // one of the three caught by the color-value-shape scan in the first place.
@@ -136,8 +136,8 @@ const INTENTIONALLY_UNREGISTERED_COLOR_TOKENS = new Set([
   // Component-scoped button surface/foreground. Pure `var()` aliases, so the
   // direct value-shape scan never saw them — only alias resolution surfaces
   // them, and they belong with --cinder-button-border above.
-  '--cinder-button-bg',
-  '--cinder-button-fg',
+  '--cinder-button-background',
+  '--cinder-button-foreground',
 ]);
 
 const TOKENS_BASE_PATH = join(
@@ -249,7 +249,7 @@ describe('color token registry', () => {
     expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-z-modal');
     expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-overlay-padding');
     expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-scrollbar-size');
-    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-button-bg');
+    expect(COLOR_TOKEN_NAMES).not.toContain('--cinder-button-background');
     expect(COLOR_TOKEN_NAMES.some((tokenName) => tokenName.startsWith('--_cinder-'))).toBe(false);
   });
 
