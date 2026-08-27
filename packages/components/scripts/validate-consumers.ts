@@ -171,6 +171,15 @@ const ALLOWED_NODE_DIRECTORIES = [
 
 const DISALLOWED_NODE_DIRECTORY_PREFIXES = ['/tmp/', '/private/tmp/', '/var/tmp/'];
 
+/** Vite 8 requires Node 22.12.0 or newer on the Node 22 line. */
+export function isSupportedViteNodeVersion(version: string): boolean {
+  const match = /^v(\d+)\.(\d+)\.(\d+)(?:[-+].*)?$/.exec(version);
+  if (match === null) return false;
+  const majorVersion = Number(match[1]);
+  const minorVersion = Number(match[2]);
+  return majorVersion > 22 || (majorVersion === 22 && minorVersion >= 12);
+}
+
 function resolveUsableNodeBinaryPath(candidatePath: string): string | null {
   if (!existsSync(candidatePath)) return null;
   const resolvedPath = realpathSync(candidatePath);
@@ -186,8 +195,7 @@ function resolveUsableNodeBinaryPath(candidatePath: string): string | null {
   const probe = Bun.spawnSync([resolvedPath, '--version']);
   if (probe.exitCode !== 0) return null;
   const version = probe.stdout.toString().trim();
-  const majorVersion = /^v(\d+)\./.exec(version)?.[1];
-  if (majorVersion === undefined || Number(majorVersion) < 22) return null;
+  if (!isSupportedViteNodeVersion(version)) return null;
   return resolvedPath;
 }
 
@@ -204,7 +212,7 @@ function resolveRealNodeBinary(): string {
   }
   fail(
     'Node is required on PATH or in a standard system directory (/usr/local/bin, /usr/bin, /opt/homebrew/bin, /opt/local/bin) for the node-consumer fixture.\n' +
-      '  Install Node 22+ and re-run. Phase 1 verifies the "node" export condition under real\n' +
+      '  Install Node 22.12+ and re-run. Phase 1 verifies the "node" export condition under real\n' +
       '  Node, not Bun, so Bun shims and temporary-directory PATH entries are rejected.',
   );
 }
@@ -216,10 +224,8 @@ async function ensureNodeOnPath(): Promise<void> {
     fail(`Failed to run ${nodeBinaryPath} --version`);
   }
   const version = versionResult.stdout.toString().trim();
-  const match = /^v(\d+)\./.exec(version);
-  const majorVersion = match?.[1] ? Number(match[1]) : 0;
-  if (majorVersion < 22) {
-    fail(`Node >= 22 required. Found ${version}.`);
+  if (!isSupportedViteNodeVersion(version)) {
+    fail(`Node >= 22.12 required for Vite 8. Found ${version}.`);
   }
   process.stdout.write(`[validate-consumers] using node ${version} at ${nodeBinaryPath}\n`);
 }
@@ -1383,6 +1389,7 @@ export type SvelteKitChatHydrationDevServerOptions = {
 };
 
 type SvelteKitChatHydrationDevServerDependencies = {
+  nodeBinaryPath?: string;
   startServer?: (
     command: string[],
     options: SvelteKitChatHydrationDevServerOptions,
@@ -1405,7 +1412,16 @@ export function startSvelteKitChatHydrationDevServer(
     ((command: string[], options: SvelteKitChatHydrationDevServerOptions) =>
       Bun.spawn(command, options));
   return startServer(
-    ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
+    [
+      dependencies.nodeBinaryPath ?? nodeBinaryPath,
+      resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'),
+      'dev',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(httpPort),
+      '--strictPort',
+    ],
     {
       cwd: fixtureDirectory,
       detached: true,
@@ -1447,11 +1463,10 @@ export async function prepareSvelteKitChatHydrationDevServer(
   // Reserve a port only after pre-optimization, so another process cannot
   // claim this short-lived probe reservation while Vite is still working.
   const httpPort = await (dependencies.pickPort ?? pickEphemeralPort)();
-  const devServer = startSvelteKitChatHydrationDevServer(
-    fixtureDirectory,
-    httpPort,
-    dependencies.startServer === undefined ? {} : { startServer: dependencies.startServer },
-  );
+  const devServer = startSvelteKitChatHydrationDevServer(fixtureDirectory, httpPort, {
+    ...(dependencies.startServer === undefined ? {} : { startServer: dependencies.startServer }),
+    nodeBinaryPath: dependencies.nodeBinaryPath ?? nodeBinaryPath,
+  });
   return { devServer, httpPort, remainingReadinessBudget };
 }
 
@@ -1566,7 +1581,16 @@ async function assertSvelteKitDevSsrRoute(fixtureDirectory: string, label: strin
   const httpPort = await pickEphemeralPort();
   let devSsrAssertionsPassed = false;
   const devServer = Bun.spawn(
-    ['bunx', 'vite', 'dev', '--host', '127.0.0.1', '--port', String(httpPort), '--strictPort'],
+    [
+      nodeBinaryPath,
+      resolvePath(fixtureDirectory, 'node_modules/vite/bin/vite.js'),
+      'dev',
+      '--host',
+      '127.0.0.1',
+      '--port',
+      String(httpPort),
+      '--strictPort',
+    ],
     {
       cwd: fixtureDirectory,
       detached: true,
