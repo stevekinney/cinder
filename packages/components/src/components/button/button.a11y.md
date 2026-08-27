@@ -53,7 +53,7 @@ The focus ring uses `outline: var(--cinder-ring-width) solid ButtonText` under `
 
 ## Soft variant contrast
 
-`soft` and `soft-danger` use `color-mix(in oklch, var(--cinder-accent-solid) or `var(--cinder-status-danger-solid)`, transparent 88%)` as the background. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-accent-soft-background`/`--cinder-accent-soft-text` tokens with explicit values that meet the threshold. (Names follow the CIN-33 rules that `check:token-naming` enforces: no `color.*` namespace and no `bg`/`fg` abbreviations.)
+`soft` uses `color-mix(in oklch, var(--cinder-accent-solid), transparent 88%)` as the background, and `soft-danger` uses `color-mix(in oklch, var(--cinder-status-danger-solid), transparent 88%)`. Contrast ratios must be verified mechanically before shipping: compute the resolved hex values via browser devtools Computed panel for both light and dark themes, then run through the [WebAIM contrast checker](https://webaim.org/resources/contrastchecker/). Record the numeric ratios in the PR description. If either theme falls below 4.5:1 for normal text, introduce per-theme `--cinder-accent-soft-background`/`--cinder-accent-soft-text` tokens with explicit values that meet the threshold. (Names follow the CIN-33 rules that `check:token-naming` enforces: no `color.*` namespace and no `bg`/`fg` abbreviations.)
 
 ## Variant guidance
 

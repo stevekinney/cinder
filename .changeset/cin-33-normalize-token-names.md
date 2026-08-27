@@ -134,6 +134,12 @@ These are the keys of the published token artifacts — `@lostgradient/cinder/to
 | -------------------------- | ---------------------- |
 | `--cinder-color-accent-fg` | `--cinder-accent-text` |
 
+The same merge removes a DTCG path:
+
+| Removed path              | Use instead   |
+| ------------------------- | ------------- |
+| `color.accent.foreground` | `accent.text` |
+
 `--cinder-color-accent-fg` was a pure alias of `--cinder-accent-text` in the base set and in both theme documents, with no context overriding it independently, so it folds into the token it aliased rather than being renamed.
 
 ### Not changed
