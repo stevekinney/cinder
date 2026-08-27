@@ -525,6 +525,21 @@ function validateDocSections(registry: TokenRegistry): void {
  * A line break terminates the row, and GFM reads `|` as a column delimiter even
  * inside a backtick code span, so both must go.
  */
+function toCodeSpan(content: string): string {
+  // CommonMark: a code span's delimiter must be a backtick run longer than any
+  // run inside it, and the content needs one space of padding when it starts or
+  // ends with a backtick. Hard-coding a single backtick would let a value
+  // containing one close the span early, producing malformed Markdown that the
+  // drift parser then reads back truncated.
+  const longestRun = [...content.matchAll(/`+/g)].reduce(
+    (longest, match) => Math.max(longest, match[0].length),
+    0,
+  );
+  const fence = '`'.repeat(longestRun + 1);
+  const padding = content.startsWith('`') || content.endsWith('`') ? ' ' : '';
+  return `${fence}${padding}${content}${padding}${fence}`;
+}
+
 function toTableCell(text: string): string {
   return text
     .replaceAll(/\s*[\r\n]\s*/g, ' ')
@@ -554,7 +569,7 @@ export async function renderDocTable(
     // a value containing one -- a fontFamily whose family name is `A|B` becomes the
     // valid CSS string 'A|B' -- would commit a structurally malformed row that the
     // drift parser still happily reads back.
-    return `| \`${cssProperty}\` | \`${toTableCell(value)}\` | ${description} |`;
+    return `| ${toCodeSpan(cssProperty)} | ${toCodeSpan(toTableCell(value))} | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });

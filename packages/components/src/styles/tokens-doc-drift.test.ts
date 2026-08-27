@@ -104,15 +104,22 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // the corpus side of this comparison reads every registry entry, and the docs
   // generator emits a row for each, so a narrower pattern here would report a
   // correctly generated internal token as missing from the doc.
-  const rowPattern = /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*`([^`]+)`\s*\|/gm;
+  // The value's code-span delimiter is a backtick RUN whose length depends on the
+  // value (see toCodeSpan in generate-artifacts.ts), so match it with a
+  // backreference rather than assuming one backtick -- otherwise a value
+  // containing a backtick parses truncated and reports a false mismatch.
+  const rowPattern = /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(`+)(.+?)\2\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
-    if (!match[1] || !match[2]) continue;
+    if (!match[1] || !match[3]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
     // Undo the generator's Markdown-table pipe escaping before comparing. The
     // generator writes `\|` so GFM does not read the pipe as a column delimiter,
     // while the corpus side holds the raw `|` -- decoding here keeps both sides
     // of this comparison talking about the same value.
-    tokens.set(match[1], normalizeTokenValue(match[2].replaceAll('\\|', '|')));
+    // match[3] is the span body; strip the single space of padding toCodeSpan adds
+    // when the content starts or ends with a backtick, then undo pipe escaping.
+    const body = match[3].replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+    tokens.set(match[1], normalizeTokenValue(body.replaceAll('\\|', '|')));
   }
   return { duplicates: duplicates.toSorted(), tokens };
 }

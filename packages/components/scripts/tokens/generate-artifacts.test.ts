@@ -366,3 +366,40 @@ describe('CIN-30 review round 5', () => {
     );
   });
 });
+
+describe('CIN-30 review round 6', () => {
+  test('a value containing a backtick gets a longer delimiter run, not a broken span', async () => {
+    // CommonMark closes a code span at the first matching backtick run, so a
+    // hard-coded single backtick would end the span inside the value -- emitting
+    // malformed Markdown that the drift parser then reads back truncated.
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'font.ticked',
+        {
+          path: 'font.ticked',
+          value: ['A`B'],
+          type: 'fontFamily',
+          description: 'A ticked family.',
+          cssProperty: '--test-font-ticked',
+          cssRecipe: undefined,
+          public: true,
+          category: 'typography',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'ticked',
+      heading: 'Ticked',
+      cssProperties: ['--test-font-ticked'],
+    };
+    const table = await renderDocTable(section, baseIndex, (value) => value);
+    const row = table.split('\n').find((line) => line.includes('--test-font-ticked')) ?? '';
+
+    // The value's span is delimited by a run of two, so the single backtick
+    // inside it cannot close it early.
+    expect(row).toContain('``');
+    expect(row).toContain('A`B');
+  });
+});
