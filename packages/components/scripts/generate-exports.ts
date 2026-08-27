@@ -54,7 +54,7 @@
  * Run with `bun run exports:check` to verify there is no drift — exits non-zero on drift.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readdirSync } from 'node:fs';
 import { join } from 'node:path';
 
 import {
@@ -430,6 +430,83 @@ export function computeDeprecatedExperimentalAliases(
   return out;
 }
 
+/**
+ * Every `@lostgradient/cinder/tokens*` subpath, discovered from what
+ * `tokens:generate` has written rather than hand-listed.
+ *
+ * The JSON entries use the two-condition `./manifest` shape -- one target, no
+ * `types` or `svelte` -- because they are data files with no build output. The
+ * registry is TypeScript, so it takes the full conditional shape; it is plain
+ * generated data with no browser-versus-node behaviour, so every condition
+ * resolves to the one module or its build output.
+ *
+ * Discovery rather than RESERVED_KEYS: adding a token document to the corpus
+ * should publish it without also editing a list here, the same way adding a
+ * component does.
+ */
+function tokenExports(packageRoot: string): Record<string, ExportEntry | JsonExportEntry> {
+  const out: Record<string, ExportEntry | JsonExportEntry> = {};
+  const tokensDirectory = join(packageRoot, 'src', 'tokens');
+  if (!existsSync(tokensDirectory)) return out;
+
+  // The index: what the token surface contains and where each part lives.
+  if (existsSync(join(tokensDirectory, 'index.json'))) {
+    out['./tokens'] = jsonSidecarExport('./src/tokens/index.json');
+  }
+
+  // The resolver document itself, per the ticket -- not a separate written doc.
+  if (existsSync(join(tokensDirectory, 'cinder.resolver.json'))) {
+    out['./tokens/resolver'] = jsonSidecarExport('./src/tokens/cinder.resolver.json');
+  }
+
+  // Unresolved DTCG sources, published per file exactly as authored.
+  for (const relativePath of discoverTokenDocumentPaths(tokensDirectory)) {
+    const subpath = relativePath.replace(/\.tokens\.json$/, '');
+    out[`./tokens/${subpath}`] = jsonSidecarExport(`./src/tokens/${relativePath}`);
+  }
+
+  // Resolved contexts, one physical file each.
+  const resolvedDirectory = join(tokensDirectory, 'resolved');
+  if (existsSync(resolvedDirectory)) {
+    for (const entry of readdirSync(resolvedDirectory).sort()) {
+      if (!entry.endsWith('.json')) continue;
+      const name = entry.slice(0, -'.json'.length);
+      out[`./tokens/resolved/${name}`] = jsonSidecarExport(`./src/tokens/resolved/${entry}`);
+    }
+  }
+
+  if (existsSync(join(tokensDirectory, 'registry.generated.ts'))) {
+    out['./tokens/registry'] = orderedExportEntry({
+      types: './dist/tokens/registry.generated.d.ts',
+      browser: './src/tokens/registry.generated.ts',
+      node: './dist/server/tokens/registry.generated.js',
+      svelte: './src/tokens/registry.generated.ts',
+      import: './src/tokens/registry.generated.ts',
+      default: './dist/tokens/registry.generated.js',
+    });
+  }
+
+  return out;
+}
+
+/**
+ * The `*.tokens.json` documents under `src/tokens/`, relative to it, sorted so
+ * the generated exports map is stable. `registry.generated.json` and
+ * `index.json` are excluded by the suffix; `resolved/` holds no `.tokens.json`.
+ */
+function discoverTokenDocumentPaths(tokensDirectory: string): string[] {
+  const found: string[] = [];
+  const walk = (directory: string, prefix: string): void => {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const relativePath = prefix ? `${prefix}/${entry.name}` : entry.name;
+      if (entry.isDirectory()) walk(join(directory, entry.name), relativePath);
+      else if (entry.name.endsWith('.tokens.json')) found.push(relativePath);
+    }
+  };
+  walk(tokensDirectory, '');
+  return found.sort();
+}
+
 export function computeExports(
   components: ComponentDiscovery[],
   packageRoot: string = DEFAULT_PACKAGE_ROOT,
@@ -443,6 +520,9 @@ export function computeExports(
 
   // Package-level manifest entry (always present).
   out['./manifest'] = manifestExport();
+
+  // Token artifacts, discovered from what `tokens:generate` wrote.
+  Object.assign(out, tokenExports(packageRoot));
 
   for (const { name, isExperimental, hasCss } of components) {
     const prefix = isExperimental ? `./experimental/${name}` : `./${name}`;
@@ -626,6 +706,12 @@ export const STATIC_FILES_GLOBS: readonly string[] = [
   'src/styles/**/*.css',
   'src/styles/**/*.css.d.ts',
   'src/styles/base-guard.ts',
+  // The DTCG token surface: the unresolved corpus, the resolver document, the
+  // four resolved contexts, the index, and the generated registry module. Every
+  // `./tokens*` export points into this directory, and an export whose target
+  // `files` excludes resolves in-repo while 404ing from the registry.
+  'src/tokens/**/*.json',
+  'src/tokens/registry.generated.ts',
   'src/components/icons/index.ts',
   'src/utilities/**/*.ts',
   '!src/utilities/**/*.test.ts',

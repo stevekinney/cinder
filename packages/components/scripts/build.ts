@@ -279,6 +279,12 @@ const componentEnhancementsByKey = new Map(
  * `@lostgradient/cinder/highlighters/shiki` ship zero Shiki bytes in their entry chunk.
  */
 const staticSubpathEntrypoints = [
+  // The generated token registry: plain data, but published at
+  // `@lostgradient/cinder/tokens/registry` with `node`/`default` conditions
+  // pointing into dist, so it needs a real emitted entrypoint like any other
+  // static subpath. Without it those conditions resolve to a file that was
+  // never built.
+  `${sourceRoot}/tokens/registry.generated.ts`,
   `${sourceRoot}/components/icons/index.ts`,
   `${sourceRoot}/highlighters/shiki/index.ts`,
   `${sourceRoot}/highlighters/shiki/default.ts`,

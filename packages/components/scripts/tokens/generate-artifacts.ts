@@ -53,8 +53,11 @@ import {
   readExisting,
   REGENERATE_COMMAND,
   registryJsonPath,
+  registryModulePath,
+  RESOLVED_CONTEXT_COMBOS,
   resolvedDirectory,
   serializeEntryValue,
+  tokenIndexPath,
   tokensDocPath,
 } from './generate.ts';
 import {
@@ -66,7 +69,7 @@ import {
   type TokenRegistry,
 } from './registry.ts';
 import { createValueResolver, type ValueResolver } from './resolve.ts';
-import type { ResolverDocument } from './types.ts';
+import type { ResolverDocument, TokenDocument } from './types.ts';
 
 const MARKDOWN_PLUGINS = [markdownPlugin];
 const TYPESCRIPT_PLUGINS = [typescriptPlugin, estreePlugin, babelPlugin];
@@ -985,6 +988,112 @@ export const COLOR_TOKEN_GROUPS = ${groupsLiteral} as const;
   return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
 }
 
+/**
+ * The `@lostgradient/cinder/tokens/registry` module: the same registry data
+ * `registry.generated.json` holds, as a typed TypeScript module.
+ *
+ * Two artifacts rather than one because they serve different consumers. The
+ * JSON is read by this repository's own tooling, which wants a file it can
+ * parse without a build step. The module is what an external consumer imports,
+ * and it carries the types alongside the data so a consumer gets
+ * `TokenRegistryEntry` without re-declaring it.
+ *
+ * It is plain data with no browser-versus-node behaviour, which is why every
+ * export condition can point at this single source.
+ *
+ * The emitted type declares `category`, `component`, and `description` as
+ * OPTIONAL KEYS rather than required keys of type `string | undefined`, which
+ * is how `registry.ts` models them in-repo. That is not a drift: the data
+ * reaches this module through `JSON.stringify`, which omits an undefined value
+ * entirely, so a required key would be missing from the emitted literal and the
+ * module would not typecheck against its own type.
+ */
+async function buildTokenRegistryModule(registry: TokenRegistry): Promise<string> {
+  const source = `/**
+ * GENERATED FILE. Do not edit by hand.
+ *
+ * Source: the DTCG token corpus under packages/components/src/tokens/.
+ * Regenerate: ${REGENERATE_COMMAND}
+ */
+
+/** One token's registry record. */
+export type TokenRegistryEntry = {
+  /** Dotted corpus path, e.g. \`space.4\`. */
+  path: string;
+  /** The custom property this token emits. */
+  cssProperty: string;
+  /** The token's category, when it declares one. */
+  category?: string;
+  /** The owning component, for component-scoped tokens. */
+  component?: string;
+  /** Whether the token is part of the public \`--cinder-*\` surface. */
+  public: boolean;
+  /** Whether a theme document overrides this token. */
+  themeAware: boolean;
+  /** The DTCG \`$deprecated\` value: \`false\`, \`true\`, or a message. */
+  deprecated: boolean | string;
+  /** The token's description, when it has one. */
+  description?: string;
+};
+
+/** The registry's shape: every token, plus the lookups built over them. */
+export type TokenRegistry = {
+  entries: readonly TokenRegistryEntry[];
+  pathToCssProperty: Readonly<Record<string, string>>;
+  cssPropertyToPath: Readonly<Record<string, string>>;
+  cssPropertyToPaths: Readonly<Record<string, readonly string[]>>;
+  byCategory: Readonly<Record<string, readonly string[]>>;
+  byComponent: Readonly<Record<string, readonly string[]>>;
+};
+
+export const TOKEN_REGISTRY = ${serializeTokenRegistry(registry)} as const satisfies TokenRegistry;
+
+export default TOKEN_REGISTRY;
+`;
+  return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
+}
+
+/**
+ * The `@lostgradient/cinder/tokens` index: what the token surface contains and
+ * which subpath each part is published at.
+ *
+ * The ticket names bare `/tokens` as one of seven mandatory subpaths, so it has
+ * to resolve to something importable; it also says the unresolved sources are
+ * COPIED rather than transformed, so it cannot be a merged document. An index
+ * satisfies both -- it describes the surface without restating any token -- and
+ * it is the same shape as the package's existing `./manifest` entry, which
+ * points at `components.json` rather than at any component.
+ *
+ * It also makes the per-file subpaths discoverable: a consumer reads this to
+ * learn which `sets`/`themes`/`modes` documents exist rather than guessing.
+ */
+async function buildTokenIndex(
+  documentsByPath: Map<string, TokenDocument>,
+  registry: TokenRegistry,
+): Promise<string> {
+  const sources = [...documentsByPath.keys()].sort().map((relativePath) => ({
+    file: relativePath,
+    subpath: `@lostgradient/cinder/tokens/${relativePath.replace(/\.tokens\.json$/, '').replace(/\.json$/, '')}`,
+  }));
+  const index = {
+    $comment: `GENERATED FILE. Do not edit by hand. Regenerate: ${REGENERATE_COMMAND}`,
+    version: '2025.10',
+    tokenCount: registry.entries.length,
+    resolver: '@lostgradient/cinder/tokens/resolver',
+    registry: '@lostgradient/cinder/tokens/registry',
+    sources,
+    resolvedContexts: RESOLVED_CONTEXT_COMBOS.map(({ name }) => ({
+      name,
+      subpath: `@lostgradient/cinder/tokens/resolved/${name}`,
+    })),
+  };
+  return format(JSON.stringify(index), {
+    ...PRETTIER_OPTIONS,
+    parser: 'json',
+    plugins: JSON_PLUGINS,
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Entry point.
 // ---------------------------------------------------------------------------
@@ -1004,20 +1113,25 @@ async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
   validateDocSections(registry);
 
   const existingDocMarkdown = await readFile(tokensDocPath, 'utf8');
-  const [docMarkdown, registryJson, colorTokenRegistryModule] = await Promise.all([
-    buildTokensDocMarkdown(existingDocMarkdown, baseIndex, baseResolveReferences),
-    format(serializeTokenRegistry(registry), {
-      ...PRETTIER_OPTIONS,
-      parser: 'json',
-      plugins: JSON_PLUGINS,
-    }),
-    buildColorTokenRegistryModule(resolver, registry),
-  ]);
+  const [docMarkdown, registryJson, colorTokenRegistryModule, registryModule, tokenIndex] =
+    await Promise.all([
+      buildTokensDocMarkdown(existingDocMarkdown, baseIndex, baseResolveReferences),
+      format(serializeTokenRegistry(registry), {
+        ...PRETTIER_OPTIONS,
+        parser: 'json',
+        plugins: JSON_PLUGINS,
+      }),
+      buildColorTokenRegistryModule(resolver, registry),
+      buildTokenRegistryModule(registry),
+      buildTokenIndex(documentsByPath, registry),
+    ]);
 
   const generated = new Map(cssAndResolved);
   generated.set(registryJsonPath, registryJson);
   generated.set(tokensDocPath, docMarkdown);
   generated.set(colorTokenRegistryGeneratedPath, colorTokenRegistryModule);
+  generated.set(registryModulePath, registryModule);
+  generated.set(tokenIndexPath, tokenIndex);
   return generated;
 }
 
