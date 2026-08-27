@@ -354,8 +354,12 @@ describe('color token overrides', () => {
     expect(
       store.setColorTokenOverride('light', '--cinder-accent-solid', 'url(https://example.com)'),
     ).toBe(false);
-    // @ts-expect-error — exercising runtime validation for untrusted callers
     expect(
+      // @ts-expect-error — exercising runtime validation for untrusted callers.
+      // The directive sits on the CALL, not on the enclosing `expect(`: renaming
+      // --cinder-button-bg to --cinder-button-background pushed this past the
+      // print width, Prettier wrapped it, and a directive one line up then
+      // covered a line with no error on it.
       store.setColorTokenOverride('light', '--cinder-button-background', 'oklch(60% 0.2 195)'),
     ).toBe(false);
     expect(store.colorTokenOverrides.light).toEqual({
