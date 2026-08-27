@@ -527,6 +527,19 @@ describe('shipped CSS agrees with the resolved values these assertions use', () 
   // assertions rather than to this numeric comparison.
   const LITERAL_TWO_ARM = /^light-dark\(\s*oklch\([^()/]*\)\s*,\s*oklch\([^()/]*\)\s*\)$/;
 
+  /**
+   * Every property this gate runs a contrast or gamut assertion against. These
+   * must not be skipped for ANY reason: a malformed declaration for one of them
+   * is precisely the failure this block exists to catch, so a filter that
+   * quietly dropped it would restore the hole from the other side.
+   */
+  const CONTRAST_ASSERTED = Object.keys(cssPropertyToPath).filter((property) => {
+    const path = cssPropertyToPath[property];
+    if (path === undefined) return false;
+    const light = readResolvedValue('light', path);
+    return typeof light === 'object' && light !== null && 'colorSpace' in light;
+  });
+
   const comparable = Object.keys(cssPropertyToPath)
     .filter((property) => css.includes(`${property}:`))
     .filter((property) => {
@@ -542,6 +555,36 @@ describe('shipped CSS agrees with the resolved values these assertions use', () 
     // Guards the filters above: a regex or naming change that stopped matching
     // would otherwise turn this whole block into a vacuous pass.
     expect(comparable.length).toBeGreaterThan(20);
+  });
+
+  // The skip-versus-fail distinction, pinned. A color token declared in the
+  // stylesheet must be readable and structurally sound; if generation emitted
+  // `var(...)`, dropped an arm, or left the value unterminated, the filter above
+  // would silently exclude it and the coarse count would still pass.
+  it('every declared color token has a well-formed value, none silently skipped', () => {
+    const malformed: string[] = [];
+    for (const property of CONTRAST_ASSERTED) {
+      if (!css.includes(`${property}:`)) continue;
+      let value: string;
+      try {
+        value = readTokenValue(css, property);
+      } catch (error) {
+        malformed.push(`${property}: unreadable (${String(error)})`);
+        continue;
+      }
+      // An alias or a recipe is a legitimate shape; a light-dark() that does not
+      // parse as two literal arms is not.
+      if (value.startsWith('light-dark(') && !LITERAL_TWO_ARM.test(value)) {
+        // Legitimate shapes this numeric comparison does not cover: an alias, a
+        // recipe, an alpha channel, or a hex arm -- `color.checker.base` keeps a
+        // historical `#fff` in its light arm on purpose. Anything else that
+        // claims to be `light-dark()` and is not two parseable arms is malformed.
+        const legitimate = /var\(|color-mix\(|oklch\(from|\/|#[0-9a-fA-F]{3,8}\b/.test(value);
+        if (legitimate) continue;
+        malformed.push(`${property}: ${value}`);
+      }
+    }
+    expect(malformed).toEqual([]);
   });
 
   for (const property of comparable) {

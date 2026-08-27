@@ -114,7 +114,7 @@ const typedTokens = readTypedTokens();
  *
  * `0` is excluded: a bare `0` in a transition is not a token bypass.
  */
-function durationLiterals(): readonly string[] {
+export function durationLiterals(): readonly string[] {
   const literals = new Set<string>();
   for (const token of typedTokens) {
     if (token.type !== 'duration') continue;
@@ -141,7 +141,7 @@ function durationLiterals(): readonly string[] {
  * normal text to medium. Diagnostics are derived from the same source as the
  * matcher so the advice cannot drift from what is enforced.
  */
-function fontWeightTokens(): ReadonlyMap<string, string> {
+export function fontWeightTokens(): ReadonlyMap<string, string> {
   const byValue = new Map<string, string>();
   for (const token of typedTokens) {
     if (token.type !== 'fontWeight') continue;
@@ -172,11 +172,27 @@ function escapeForPattern(literal: string): string {
   return literal.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
-const TIMING_LITERAL_PATTERN = new RegExp(
-  `^\\s*(?:transition|animation)\\s*:.*?\\b(?:${durationLiterals()
+/**
+ * Spans the WHOLE declaration, from the property to its terminating `;`, with
+ * the `s` flag so `[^;{}]` may cross newlines.
+ *
+ * The previous pattern used `.*?` under `m` alone, which stops at the first
+ * newline — so a formatted multi-value declaration hid its durations entirely:
+ *
+ *     transition:
+ *       transform 200ms ease,
+ *       opacity 200ms ease;
+ *
+ * Two real bypasses (`navigation-bar.css`, `choice-grid-item.css`) sat behind
+ * that blind spot and reported clean. `[^;{}]` rather than `[\s\S]` keeps the
+ * match inside one declaration, so an unterminated value cannot run on into the
+ * next rule and flag a literal that belongs to something else.
+ */
+export const TIMING_LITERAL_PATTERN = new RegExp(
+  `(?:transition|animation)\\s*:[^;{}]*?\\b(?:${durationLiterals()
     .map(escapeForPattern)
     .join('|')})\\b`,
-  'm',
+  's',
 );
 
 /**
@@ -185,7 +201,7 @@ const TIMING_LITERAL_PATTERN = new RegExp(
  * covered only 500 and 600, silently permitting raw `400` and `700` even though
  * both have tokens.
  */
-const FONT_WEIGHT_LITERAL_PATTERN = new RegExp(
+export const FONT_WEIGHT_LITERAL_PATTERN = new RegExp(
   `^\\s*font-weight\\s*:\\s*(?:${fontWeightLiterals().join('|')})\\s*;`,
   'm',
 );
@@ -212,7 +228,7 @@ const FONT_WEIGHT_LITERAL_PATTERN = new RegExp(
  *   - `outline: 2px solid white` — deliberate lightbox white-over-photo contrast
  *     (documented allowlist exception in focus-ring-policy.md).
  */
-const RING_WIDTH_LITERAL_PATTERN =
+export const RING_WIDTH_LITERAL_PATTERN =
   /^\s*outline\s*:\s*2px\s+solid\s+transparent\b|0\s+0\s+0\s+(?:2|4)px\s+var\(--cinder-ring/m;
 
 // ── Allowlist ─────────────────────────────────────────────────────────────────

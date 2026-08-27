@@ -73,6 +73,7 @@ describe('global motion tokens', () => {
     const rootBlock = extractRootBlock(css);
 
     expect(rootBlock).toContain('--cinder-duration-spin: 750ms;');
+    expect(rootBlock).toContain('--cinder-duration-pulse: 1.4s;');
     expect(rootBlock).toContain('--cinder-duration-progress-bar-indeterminate: 1.6s;');
     expect(rootBlock).toContain('--cinder-duration-progress-ring-spin: 1.4s;');
   });
@@ -82,7 +83,34 @@ describe('global motion tokens', () => {
     const reducedMotionRootBlock = extractReducedMotionRootBlock(css);
 
     expect(reducedMotionRootBlock).toContain('--cinder-duration-spin: 0ms;');
+    expect(reducedMotionRootBlock).toContain('--cinder-duration-pulse: 0ms;');
     expect(reducedMotionRootBlock).toContain('--cinder-duration-progress-bar-indeterminate: 0ms;');
     expect(reducedMotionRootBlock).toContain('--cinder-duration-progress-ring-spin: 0ms;');
+  });
+
+  // Named per token rather than asserted as a set, because the failure this
+  // guards against is one token being left out of the reduced-motion documents
+  // -- which is exactly what happened when `--cinder-duration-pulse` was added.
+  // A set-shaped assertion would have passed while a single token stayed live.
+  test('every repeating duration token appears in BOTH reduced-motion blocks', async () => {
+    const css = await readFile(TOKENS_BASE_PATH, 'utf-8');
+    const repeating = [
+      '--cinder-duration-spin',
+      '--cinder-duration-pulse',
+      '--cinder-duration-progress-bar-indeterminate',
+      '--cinder-duration-progress-ring-spin',
+    ];
+
+    const mediaQueryBlock = extractReducedMotionRootBlock(css);
+    for (const property of repeating) {
+      expect(mediaQueryBlock).toContain(`${property}: 0ms;`);
+    }
+
+    // The forced context is a separate selector from the media query, and a
+    // token can be missing from one while present in the other.
+    const forcedBlock = css.slice(css.indexOf("[data-reduced-motion='on']"));
+    for (const property of repeating) {
+      expect(forcedBlock).toContain(`${property}: 0ms;`);
+    }
   });
 });

@@ -22,9 +22,9 @@
     cursor: pointer;
     user-select: none;
     transition:
-      background 120ms ease,
-      border-color 120ms ease,
-      box-shadow 120ms ease;
+      background var(--cinder-duration-fast) ease,
+      border-color var(--cinder-duration-fast) ease,
+      box-shadow var(--cinder-duration-fast) ease;
     outline: none; /* Focus ring provided via box-shadow below. */
 
     /* Touch target: ensure at least 44px for mobile accessibility. */
