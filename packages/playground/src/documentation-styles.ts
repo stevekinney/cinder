@@ -34,6 +34,7 @@ export const LANDING_CINDER_COMPONENTS = [
   'color-picker',
   'color-swatch-picker',
   'copy-button',
+  'form-field',
   'input',
   'popover',
   'tooltip',
