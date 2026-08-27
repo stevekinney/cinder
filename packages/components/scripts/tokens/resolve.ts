@@ -43,7 +43,7 @@ function issue(path: string, reason: string): never {
   throw new TokenValidationError([{ path, reason }]);
 }
 
-function tokenPathFromReference(reference: string): string {
+export function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
   if (reference.startsWith('#/')) {
     let fragment: string;
@@ -213,17 +213,67 @@ function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<strin
   return token;
 }
 
+/**
+ * Merges documents and applies `$extends` group inheritance (missing members copied in,
+ * `$type` propagated) across the merged tree, WITHOUT resolving any alias reference --
+ * factored out of `buildTokenIndex` so a caller that must keep raw, unresolved `$value`s (a
+ * `{a.b.c}` string means "emit `var(--other-property)`", not "inline a literal") can still get
+ * `$extends` applied before walking the tree, the same way `resolveDocuments` and
+ * `createValueResolver` do.
+ *
+ * `lookupDocuments` (defaults to `documents` itself) is where `$extends` TARGETS are looked up --
+ * distinct from `documents`, which is both what gets merged/mutated and what gets returned. A
+ * caller that must return only ITS OWN documents' tree (an override context, whose returned shape
+ * determines which tokens that context is considered to "define") but whose `$extends` may
+ * reference a group that lives only in a broader document set (e.g. a foundation group the
+ * override document never itself contains) passes that broader set as `lookupDocuments`. Own
+ * groups are collected AFTER (and so take precedence over) the lookup groups, so `resolveExtends`
+ * still mutates and returns the caller's own tree -- a target found only in `lookupDocuments`
+ * contributes members by being copied in, never by becoming part of the returned tree itself.
+ */
+export function mergeAndExpandExtends(
+  documents: TokenDocument[],
+  lookupDocuments: TokenDocument[] = documents,
+): TokenDocument {
+  const merged = mergeDocuments(documents);
+  const groups = new Map<string, TokenGroup>();
+  if (lookupDocuments !== documents) collectGroups(mergeDocuments(lookupDocuments), '', groups);
+  collectGroups(merged, '', groups);
+  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  return merged;
+}
+
+/** Builds the resolved token index (group inheritance and `$extends` already applied) that both `resolveDocuments` and `createValueResolver` resolve references against. */
+function buildTokenIndex(documents: TokenDocument[]): ResolvedTokens {
+  const tokens: ResolvedTokens = new Map();
+  const merged = mergeAndExpandExtends(documents);
+  collectTokens(merged, '', tokens);
+  return tokens;
+}
+
 /** Resolves group inheritance, whole-token aliases, and property-level aliases. */
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
-  const tokens: ResolvedTokens = new Map();
-  const groups = new Map<string, TokenGroup>();
-  const documentCopies = [mergeDocuments(documents)];
-  for (const document of documentCopies) collectGroups(document, '', groups);
-  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
-  for (const document of documentCopies) collectTokens(document, '', tokens);
+  const tokens = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
   for (const path of tokens.keys()) resolved[path] = clone(resolveToken(path, tokens, new Set()));
   return resolved;
+}
+
+export type ValueResolver = (value: unknown) => unknown;
+
+/**
+ * Builds a resolver, against the given documents, for arbitrary raw value trees -- not just
+ * whole tokens. `resolveDocuments` only exposes references already resolved at the top level of
+ * each token's `$value`; a reference nested inside a composite member (a shadow layer's
+ * `inset`, one component of a color, ...) needs the same reference machinery applied to an
+ * arbitrary sub-value, including property-path splitting (`{a.b.c}` / `#/a/b/c` may name a
+ * whole token OR a property within one) and cycle detection. Reuses `resolveValue` --
+ * `resolveDocuments` calls the exact same function on each token's `$value` -- rather than a
+ * second resolver.
+ */
+export function createValueResolver(documents: TokenDocument[]): ValueResolver {
+  const tokens = buildTokenIndex(documents);
+  return (value: unknown) => resolveValue(value, tokens, new Set());
 }
 
 /** Merges ordered documents, retaining only the last occurrence of each token path. */

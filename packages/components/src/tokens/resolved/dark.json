@@ -1,0 +1,2141 @@
+{
+  "space.0": {
+    "$value": { "value": 0, "unit": "rem" },
+    "$description": "Zero spacing step, used to explicitly reset a spacing property.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-0",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.2": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Spacing scale step (8px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-2",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.3": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Spacing scale step (12px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-3",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.4": {
+    "$value": { "value": 1, "unit": "rem" },
+    "$description": "Spacing scale step (16px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-4",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.5": {
+    "$value": { "value": 1.25, "unit": "rem" },
+    "$description": "Spacing scale step (20px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-5",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.6": {
+    "$value": { "value": 1.5, "unit": "rem" },
+    "$description": "Spacing scale step (24px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-6",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.7": {
+    "$value": { "value": 1.75, "unit": "rem" },
+    "$description": "Spacing scale step (28px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-7",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.8": {
+    "$value": { "value": 2, "unit": "rem" },
+    "$description": "Spacing scale step (32px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-8",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.10": {
+    "$value": { "value": 2.5, "unit": "rem" },
+    "$description": "Spacing scale step (40px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-10",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.12": {
+    "$value": { "value": 3, "unit": "rem" },
+    "$description": "Spacing scale step (48px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-12",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.16": {
+    "$value": { "value": 4, "unit": "rem" },
+    "$description": "Spacing scale step (64px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-16",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.20": {
+    "$value": { "value": 5, "unit": "rem" },
+    "$description": "Spacing scale step (80px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-20",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.24": {
+    "$value": { "value": 6, "unit": "rem" },
+    "$description": "Spacing scale step (96px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-24",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.32": {
+    "$value": { "value": 8, "unit": "rem" },
+    "$description": "Spacing scale step (128px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-32",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.0-5": {
+    "$value": { "value": 0.125, "unit": "rem" },
+    "$description": "Spacing scale half-step between 0 and 1 (2px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-0-5",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.one": {
+    "$value": { "value": 0.25, "unit": "rem" },
+    "$description": "Base spacing increment.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-1",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.1-5": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Spacing scale half-step between 1 and 2 (6px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-1-5",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.2-5": {
+    "$value": { "value": 0.625, "unit": "rem" },
+    "$description": "Spacing scale half-step between 2 and 3 (10px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-2-5",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "space.3-5": {
+    "$value": { "value": 0.875, "unit": "rem" },
+    "$description": "Spacing scale half-step between 3 and 4 (14px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-space-3-5",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.small": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Compact control corner radius (6px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-sm",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.medium": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Default control corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-md",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.large": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Surface-level corner radius for cards, dialogs, and other large panels (12px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-lg",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.full": {
+    "$value": { "value": 9999, "unit": "px" },
+    "$description": "Fully rounded corner radius for pills and circular controls.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-full",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.control": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Default control corner radius alias.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-control",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "radius.surface": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Default surface corner radius alias.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-radius-surface",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "shadow.small": {
+    "$value": [
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.09 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 1, "unit": "px" },
+        "blur": { "value": 2, "unit": "px" },
+        "spread": { "value": 0, "unit": "px" }
+      },
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.05 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 1, "unit": "px" },
+        "blur": { "value": 1, "unit": "px" },
+        "spread": { "value": 0, "unit": "px" }
+      }
+    ],
+    "$type": "shadow"
+  },
+  "shadow.medium": {
+    "$value": [
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.09 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 4, "unit": "px" },
+        "blur": { "value": 6, "unit": "px" },
+        "spread": { "value": -1, "unit": "px" }
+      },
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.06 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 2, "unit": "px" },
+        "blur": { "value": 4, "unit": "px" },
+        "spread": { "value": -2, "unit": "px" }
+      }
+    ],
+    "$type": "shadow"
+  },
+  "shadow.large": {
+    "$value": [
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.11 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 10, "unit": "px" },
+        "blur": { "value": 15, "unit": "px" },
+        "spread": { "value": -3, "unit": "px" }
+      },
+      {
+        "color": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.07 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 4, "unit": "px" },
+        "blur": { "value": 6, "unit": "px" },
+        "spread": { "value": -4, "unit": "px" }
+      }
+    ],
+    "$type": "shadow"
+  },
+  "shadow.overlay": {
+    "$value": [
+      {
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.45 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 10, "unit": "px" },
+        "blur": { "value": 15, "unit": "px" },
+        "spread": { "value": -3, "unit": "px" }
+      },
+      {
+        "color": { "colorSpace": "oklch", "components": [0, 0, 0], "alpha": 0.32 },
+        "offsetX": { "value": 0, "unit": "px" },
+        "offsetY": { "value": 4, "unit": "px" },
+        "blur": { "value": 6, "unit": "px" },
+        "spread": { "value": -4, "unit": "px" }
+      }
+    ],
+    "$type": "shadow"
+  },
+  "control.height.xs": {
+    "$value": { "value": 1.5, "unit": "rem" },
+    "$description": "Extra-small control height (24px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-control-height-xs",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "control.height.sm": {
+    "$value": { "value": 2, "unit": "rem" },
+    "$description": "Small control height; the toolbar default (32px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-control-height-sm",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "control.height.lg": {
+    "$value": { "value": 2.75, "unit": "rem" },
+    "$description": "Large control height; clears the WCAG AAA touch target (44px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-control-height-lg",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.sans": {
+    "$type": "fontFamily",
+    "$value": [
+      "system-ui",
+      "-apple-system",
+      "BlinkMacSystemFont",
+      "Segoe UI",
+      "Roboto",
+      "Helvetica Neue",
+      "sans-serif"
+    ],
+    "$description": "Default UI font stack.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-sans",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.mono": {
+    "$type": "fontFamily",
+    "$value": [
+      "ui-monospace",
+      "SFMono-Regular",
+      "SF Mono",
+      "Menlo",
+      "Consolas",
+      "Liberation Mono",
+      "monospace"
+    ],
+    "$description": "Monospace font stack for code surfaces.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-mono",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.normal": {
+    "$type": "fontWeight",
+    "$value": 400,
+    "$description": "Normal font weight.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-normal",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.medium": {
+    "$type": "fontWeight",
+    "$value": 500,
+    "$description": "Medium font weight.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-medium",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.semibold": {
+    "$type": "fontWeight",
+    "$value": 600,
+    "$description": "Semibold font weight.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-semibold",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.bold": {
+    "$type": "fontWeight",
+    "$value": 700,
+    "$description": "Bold font weight.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-font-bold",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "font.size.2xs": {
+    "$value": { "value": 0.6875, "unit": "rem" },
+    "$description": "Smallest font size (11px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-2xs",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.xs": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Extra-small font size (12px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-xs",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.sm": {
+    "$value": { "value": 0.8125, "unit": "rem" },
+    "$description": "Small font size (13px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-sm",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.base": {
+    "$value": { "value": 0.875, "unit": "rem" },
+    "$description": "Base body font size (14px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-base",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.md": {
+    "$value": { "value": 0.9375, "unit": "rem" },
+    "$description": "Medium font size; the button ladder step between base and lg (15px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-md",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.lg": {
+    "$value": { "value": 1, "unit": "rem" },
+    "$description": "Large font size (16px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-lg",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.xl": {
+    "$value": { "value": 1.125, "unit": "rem" },
+    "$description": "Extra-large font size (18px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-xl",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.2xl": {
+    "$value": { "value": 1.25, "unit": "rem" },
+    "$description": "2xl font size (20px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-2xl",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.3xl": {
+    "$value": { "value": 1.5, "unit": "rem" },
+    "$description": "3xl font size (24px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-3xl",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.4xl": {
+    "$value": { "value": 1.875, "unit": "rem" },
+    "$description": "4xl font size (30px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-4xl",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "font.size.5xl": {
+    "$value": { "value": 2.25, "unit": "rem" },
+    "$description": "5xl font size (36px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-5xl",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "leading.none": {
+    "$value": 1,
+    "$description": "No extra line height.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-leading-none",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "leading.tight": {
+    "$value": 1.15,
+    "$description": "Tight line height for headings.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-leading-tight",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "leading.snug": {
+    "$value": 1.3,
+    "$description": "Snug line height.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-leading-snug",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "leading.normal": {
+    "$value": 1.5,
+    "$description": "Default body line height.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-leading-normal",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "leading.relaxed": {
+    "$value": 1.625,
+    "$description": "Relaxed line height for long-form reading.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-leading-relaxed",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "tracking.normal": {
+    "$type": "dimension",
+    "$value": { "value": 0, "unit": "rem" },
+    "$description": "Default letter spacing (no adjustment).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-tracking-normal",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "tracking.tight": {
+    "$type": "number",
+    "$value": -0.01,
+    "$description": "Tight letter-spacing, -0.01em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-tracking-tight",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": "-0.01em"
+      }
+    }
+  },
+  "tracking.wide": {
+    "$type": "number",
+    "$value": 0.02,
+    "$description": "Wide letter-spacing, 0.02em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-tracking-wide",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": "0.02em"
+      }
+    }
+  },
+  "type.tab-size": {
+    "$type": "number",
+    "$value": 2,
+    "$description": "Tab width for monospace/code surfaces (`variant=\"code\"` on Input/Textarea, CodeBlock). Tab characters render as this many spaces' worth.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-type-tab-size",
+        "public": true,
+        "category": "typography",
+        "cssRecipe": null
+      }
+    }
+  },
+  "touch.target-min": {
+    "$type": "dimension",
+    "$value": { "value": 44, "unit": "px" },
+    "$description": "Minimum touch target size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-touch-target-min",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    }
+  },
+  "content.width": {
+    "$value": { "value": 72, "unit": "rem" },
+    "$description": "Maximum inline size for primary page content. Caps line length and keeps content readable on wide viewports. Used by page layout styles; consumers can override per scope.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-content-width",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "content.width.narrow": {
+    "$value": { "value": 40, "unit": "rem" },
+    "$description": "Tighter centered column width.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-content-width-narrow",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "content.width.wide": {
+    "$value": { "value": 90, "unit": "rem" },
+    "$description": "Roomier centered column width.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-content-width-wide",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "content.width.prose": {
+    "$type": "number",
+    "$value": 65,
+    "$description": "Prose column width, 65ch — caps line length at a readable measure. Expressed as a unitless number with a ch recipe because DTCG dimension units are limited to px and rem.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-content-width-prose",
+        "public": true,
+        "category": "layout",
+        "cssRecipe": "65ch"
+      }
+    }
+  },
+  "ease.standard": {
+    "$value": [0.2, 0, 0, 1],
+    "$description": "Standard easing curve.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ease-standard",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "cubicBezier"
+  },
+  "ease.decelerate": {
+    "$value": [0, 0, 0, 1],
+    "$description": "Decelerate-in easing curve.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ease-decelerate",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "cubicBezier"
+  },
+  "ease.accelerate": {
+    "$value": [0.3, 0, 1, 1],
+    "$description": "Accelerate-out easing curve.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ease-accelerate",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "cubicBezier"
+  },
+  "ease.in-out": {
+    "$value": [0.4, 0, 0.2, 1],
+    "$description": "Ease-in-out curve.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ease-in-out",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "cubicBezier"
+  },
+  "ease.spring": {
+    "$value": [0.22, 1, 0.36, 1],
+    "$description": "A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) — a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ease-spring",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "cubicBezier"
+  },
+  "motion": {
+    "$value": { "value": 200, "unit": "ms" },
+    "$description": "Base transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.instant": {
+    "$value": { "value": 0, "unit": "ms" },
+    "$description": "Instant (no) transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-instant",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.fast": {
+    "$value": { "value": 120, "unit": "ms" },
+    "$description": "Fast interaction duration before a reduced-motion modifier applies.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-fast",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.normal": {
+    "$value": { "value": 200, "unit": "ms" },
+    "$description": "Alias of the base transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-normal",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.moderate": {
+    "$value": { "value": 280, "unit": "ms" },
+    "$description": "Moderate transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-moderate",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.slow": {
+    "$value": { "value": 400, "unit": "ms" },
+    "$description": "Slow transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-slow",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.spin": {
+    "$value": { "value": 750, "unit": "ms" },
+    "$description": "Repeating spin animation duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-spin",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.progress.bar.indeterminate": {
+    "$value": { "value": 1.6, "unit": "s" },
+    "$description": "Repeating indeterminate progress-bar animation duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-progress-bar-indeterminate",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "motion.progress.ring.spin": {
+    "$value": { "value": 1.4, "unit": "s" },
+    "$description": "Repeating progress-ring spin animation duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-progress-ring-spin",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    },
+    "$type": "duration"
+  },
+  "opacity.disabled": {
+    "$value": 0.55,
+    "$description": "Opacity for disabled elements.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-opacity-disabled",
+        "public": true,
+        "category": "opacity",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "opacity.muted": {
+    "$value": 0.72,
+    "$description": "Opacity for muted elements.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-opacity-muted",
+        "public": true,
+        "category": "opacity",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "opacity.faint": {
+    "$value": 0.4,
+    "$description": "Opacity for faint elements.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-opacity-faint",
+        "public": true,
+        "category": "opacity",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.tooltip": {
+    "$value": 1000,
+    "$description": "Tooltip layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-tooltip",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.dropdown": {
+    "$value": 1100,
+    "$description": "Dropdown layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-dropdown",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.popover": {
+    "$value": 1100,
+    "$description": "Popover layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-popover",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.backdrop": {
+    "$value": 1150,
+    "$description": "Modal/drawer backdrop layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-backdrop",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.modal": {
+    "$value": 1200,
+    "$description": "Modal/drawer panel layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-modal",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.toast": {
+    "$value": 1300,
+    "$description": "Toast layer, above modal so confirmations reach users even when a modal is open.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-toast",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.focused-affordance": {
+    "$value": 1350,
+    "$description": "Focused-affordance layer.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-focused-affordance",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "z.drag-preview": {
+    "$value": 1400,
+    "$description": "Drag-preview layer, the topmost tier.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-z-drag-preview",
+        "public": true,
+        "category": "z-index",
+        "cssRecipe": null
+      }
+    },
+    "$type": "number"
+  },
+  "background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.15, 0.035, 245] }
+  },
+  "surface.base": {
+    "$value": { "colorSpace": "oklch", "components": [0.21, 0.04, 245] },
+    "$type": "color"
+  },
+  "surface.raised": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.045, 245] },
+    "$type": "color"
+  },
+  "surface.raised.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.298, 0.04387, 245] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)"
+      }
+    },
+    "$type": "color"
+  },
+  "surface.raised.pressed": {
+    "$value": { "colorSpace": "oklch", "components": [0.3232, 0.0423, 245] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)"
+      }
+    },
+    "$type": "color"
+  },
+  "surface.inset": {
+    "$value": { "colorSpace": "oklch", "components": [0.11, 0.03, 245] },
+    "$type": "color"
+  },
+  "surface.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.22975, 0.039, 245] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)"
+      }
+    },
+    "$type": "color"
+  },
+  "surface.pressed": {
+    "$value": { "colorSpace": "oklch", "components": [0.2574, 0.0376, 245] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)"
+      }
+    },
+    "$type": "color"
+  },
+  "surface.inverse": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.045, 245] },
+    "$type": "color"
+  },
+  "surface.upcoming-marker": {
+    "$value": { "colorSpace": "oklch", "components": [0.21, 0.04, 245] },
+    "$type": "color"
+  },
+  "border.control": {
+    "$value": { "colorSpace": "oklch", "components": [0.58, 0.05, 245] },
+    "$type": "color"
+  },
+  "border.faint": {
+    "$value": { "colorSpace": "oklch", "components": [0.33, 0.03, 245] },
+    "$type": "color"
+  },
+  "border.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.38, 0.04, 245] },
+    "$type": "color"
+  },
+  "border.strong": {
+    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] },
+    "$type": "color"
+  },
+  "border.inverse": {
+    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] },
+    "$type": "color"
+  },
+  "text": {
+    "$value": { "colorSpace": "oklch", "components": [0.92, 0.02, 245] },
+    "$type": "color"
+  },
+  "text.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0.02, 245] },
+    "$type": "color"
+  },
+  "text.subtle": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.02, 245] },
+    "$type": "color"
+  },
+  "text.disabled": {
+    "$value": { "colorSpace": "oklch", "components": [0.64, 0.02, 245] },
+    "$type": "color"
+  },
+  "text.inverse": {
+    "$value": { "colorSpace": "oklch", "components": [0.92, 0.02, 245] },
+    "$type": "color"
+  },
+  "fill.disabled": {
+    "$value": { "colorSpace": "oklch", "components": [0.3, 0.015, 245] },
+    "$type": "color"
+  },
+  "accent": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 270] },
+    "$type": "color"
+  },
+  "accent.contrast": {
+    "$value": { "colorSpace": "oklch", "components": [0.15, 0.035, 245] },
+    "$type": "color"
+  },
+  "accent.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.64, 0.14, 270] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.08) c h)"
+      }
+    },
+    "$type": "color"
+  },
+  "accent.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.57, 0.14, 270] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.15) c h)"
+      }
+    },
+    "$type": "color"
+  },
+  "accent.active.on-fill": {
+    "$value": { "colorSpace": "oklch", "components": [0.61, 0.14, 270] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.11) c h)"
+      }
+    },
+    "$type": "color"
+  },
+  "accent.text": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 270] },
+    "$type": "color"
+  },
+  "accent.text.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.64, 0.14, 270] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)"
+      }
+    },
+    "$type": "color"
+  },
+  "danger": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.172, 25] },
+    "$type": "color"
+  },
+  "danger.contrast": {
+    "$value": { "colorSpace": "oklch", "components": [0.12, 0.02, 25] },
+    "$type": "color"
+  },
+  "danger.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.64, 0.172, 25] },
+    "$type": "color"
+  },
+  "danger.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.6, 0.172, 25] },
+    "$type": "color"
+  },
+  "info": {
+    "$value": { "colorSpace": "oklch", "components": [0.78, 0.13, 230] },
+    "$type": "color"
+  },
+  "info.contrast": {
+    "$value": { "colorSpace": "oklch", "components": [0.15, 0.03, 230] },
+    "$type": "color"
+  },
+  "info.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.7, 0.13, 230] },
+    "$type": "color"
+  },
+  "info.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.62, 0.12, 230] },
+    "$type": "color"
+  },
+  "success": {
+    "$value": { "colorSpace": "oklch", "components": [0.78, 0.14, 145] },
+    "$type": "color"
+  },
+  "success.contrast": {
+    "$value": { "colorSpace": "oklch", "components": [0.15, 0.03, 145] },
+    "$type": "color"
+  },
+  "success.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.7, 0.14, 145] },
+    "$type": "color"
+  },
+  "success.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.62, 0.14, 145] },
+    "$type": "color"
+  },
+  "warning": {
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0.156, 75] },
+    "$type": "color"
+  },
+  "warning.contrast": {
+    "$value": { "colorSpace": "oklch", "components": [0.2, 0.04, 75] },
+    "$type": "color"
+  },
+  "warning.hover": {
+    "$value": { "colorSpace": "oklch", "components": [0.74, 0.156, 75] },
+    "$type": "color"
+  },
+  "warning.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.66, 0.13, 75] },
+    "$type": "color"
+  },
+  "ring.width": {
+    "$type": "dimension",
+    "$value": { "value": 2, "unit": "px" },
+    "$description": "Focus ring stroke width. A floor, not a preference: WCAG 2.4.13 wants an indicator at least as large as a 2px-thick perimeter of the control.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ring-width",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    }
+  },
+  "ring.offset": {
+    "$type": "dimension",
+    "$value": { "value": 2, "unit": "px" },
+    "$description": "Focus ring offset from the control edge.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-ring-offset",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    }
+  },
+  "ring.offset-color": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.045, 245] }
+  },
+  "ring.color": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.7, 0.14, 270] },
+    "$extensions": {
+      "com.lostgradient.cinder": { "cssRecipe": "oklch(from var(--cinder-accent) 0.7 0.14 h)" }
+    }
+  },
+  "ring.on-accent": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] }
+  },
+  "scrollbar.size": {
+    "$type": "dimension",
+    "$value": { "value": 0.625, "unit": "rem" },
+    "$description": "Scrollbar thickness.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-scrollbar-size",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    }
+  },
+  "scrollbar.track": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.04 }
+  },
+  "scrollbar.thumb": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.45 }
+  },
+  "scrollbar.thumb-hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0], "alpha": 0.65 }
+  },
+  "overlay.backdrop": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.08, 0.02, 245], "alpha": 0.65 }
+  },
+  "overlay.blur": {
+    "$type": "dimension",
+    "$value": { "value": 4, "unit": "px" },
+    "$description": "Overlay backdrop blur radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-overlay-blur",
+        "public": true,
+        "category": "size",
+        "cssRecipe": null
+      }
+    }
+  },
+  "overlay.padding": {
+    "$type": "dimension",
+    "$value": { "value": 1.5, "unit": "rem" },
+    "$description": "Overlay panel padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-overlay-padding",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    }
+  },
+  "overlay.radius": {
+    "$type": "dimension",
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Overlay panel corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-overlay-radius",
+        "public": true,
+        "category": "radius",
+        "cssRecipe": null
+      }
+    }
+  },
+  "chart.series.1": {
+    "$value": { "colorSpace": "oklch", "components": [0.58, 0.089, 205] },
+    "$type": "color"
+  },
+  "chart.series.2": {
+    "$value": { "colorSpace": "oklch", "components": [0.67, 0.275, 330] },
+    "$type": "color"
+  },
+  "chart.series.3": {
+    "$value": { "colorSpace": "oklch", "components": [0.69, 0.182, 44] },
+    "$type": "color"
+  },
+  "chart.series.4": {
+    "$value": { "colorSpace": "oklch", "components": [0.7, 0.144, 160] },
+    "$type": "color"
+  },
+  "chart.series.5": {
+    "$value": { "colorSpace": "oklch", "components": [0.78, 0.12, 8] },
+    "$type": "color"
+  },
+  "chart.series.6": {
+    "$value": { "colorSpace": "oklch", "components": [0.81, 0.152, 80] },
+    "$type": "color"
+  },
+  "chart.series.7": {
+    "$value": { "colorSpace": "oklch", "components": [0.85, 0.078, 235] },
+    "$type": "color"
+  },
+  "chart.series.8": {
+    "$value": { "colorSpace": "oklch", "components": [0.89, 0.19, 120] },
+    "$type": "color"
+  },
+  "gap.stack": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Default vertical stack gap.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-gap-stack",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "gap.inline": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Default inline gap.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-gap-inline",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "pad.control": {
+    "$value": { "value": 0.625, "unit": "rem" },
+    "$description": "Default control padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-pad-control",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "pad.card": {
+    "$value": { "value": 1, "unit": "rem" },
+    "$description": "Default card padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-pad-card",
+        "public": true,
+        "category": "spacing",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "color.accent.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.2712, 0.052, 248] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)"
+      }
+    },
+    "$type": "color"
+  },
+  "color.accent.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 270] },
+    "$type": "color"
+  },
+  "color.accent.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 270], "alpha": 0.4 },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-accent), transparent 60%)"
+      }
+    },
+    "$type": "color"
+  },
+  "color.checker.base": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.02, 245] },
+    "$type": "color"
+  },
+  "color.checker.tile": {
+    "$value": { "colorSpace": "oklch", "components": [0.38, 0.02, 245] },
+    "$type": "color"
+  },
+  "color.danger.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.09, 25] },
+    "$type": "color"
+  },
+  "color.danger.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.9, 0.05, 25] },
+    "$type": "color"
+  },
+  "color.danger.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.11, 25] },
+    "$type": "color"
+  },
+  "color.danger.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.5364, 0.05, 334.6] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.danger.subtle": {
+    "$value": { "colorSpace": "oklch", "components": [0.792, 0.05, 334.6] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.info.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.057, 230] },
+    "$type": "color"
+  },
+  "color.info.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.88, 0.071, 230] },
+    "$type": "color"
+  },
+  "color.info.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.45, 0.08, 230] },
+    "$type": "color"
+  },
+  "color.info.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.5748, 0.05, 235.4] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.info.subtle": {
+    "$value": { "colorSpace": "oklch", "components": [0.8304, 0.05, 235.4] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.neutral.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.04, 245] },
+    "$type": "color"
+  },
+  "color.neutral.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.92, 0.02, 245] },
+    "$type": "color"
+  },
+  "color.neutral.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.58, 0.05, 245] },
+    "$type": "color"
+  },
+  "color.success.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.07, 145] },
+    "$type": "color"
+  },
+  "color.success.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.88, 0.11, 145] },
+    "$type": "color"
+  },
+  "color.success.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.45, 0.09, 145] },
+    "$type": "color"
+  },
+  "color.success.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.5748, 0.05, 181] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.success.subtle": {
+    "$value": { "colorSpace": "oklch", "components": [0.8304, 0.05, 181] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.warning.background": {
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.06, 75] },
+    "$type": "color"
+  },
+  "color.warning.foreground": {
+    "$value": { "colorSpace": "oklch", "components": [0.9, 0.08, 75] },
+    "$type": "color"
+  },
+  "color.warning.border": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.1, 75] },
+    "$type": "color"
+  },
+  "color.warning.muted": {
+    "$value": { "colorSpace": "oklch", "components": [0.6004, 0.05, 136.2] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "color.warning.subtle": {
+    "$value": { "colorSpace": "oklch", "components": [0.856, 0.05, 136.2] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h )"
+      }
+    },
+    "$type": "color"
+  },
+  "button.background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.28, 0.045, 245] }
+  },
+  "button.foreground": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.92, 0.02, 245] }
+  },
+  "button.border": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] }
+  },
+  "button.radius": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Default button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.radius.xs": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Extra-small button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius-xs",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.radius.sm": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Small button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius-sm",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.radius.md": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Medium button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius-md",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.radius.lg": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Large button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius-lg",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.radius.xl": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Extra-large button corner radius.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-radius-xl",
+        "public": true,
+        "category": "radius",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.height.xs": {
+    "$value": { "value": 1.5, "unit": "rem" },
+    "$description": "Extra-small button height (24px), aliasing the shared control-height tier.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-height-xs",
+        "public": true,
+        "category": "size",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.height.sm": {
+    "$value": { "value": 1.75, "unit": "rem" },
+    "$description": "Small button height (28px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-height-sm",
+        "public": true,
+        "category": "size",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.height.md": {
+    "$value": { "value": 2, "unit": "rem" },
+    "$description": "Medium button height (32px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-height-md",
+        "public": true,
+        "category": "size",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.height.lg": {
+    "$value": { "value": 2.25, "unit": "rem" },
+    "$description": "Large button height (36px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-height-lg",
+        "public": true,
+        "category": "size",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.height.xl": {
+    "$value": { "value": 2.5, "unit": "rem" },
+    "$description": "Extra-large button height (40px).",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-height-xl",
+        "public": true,
+        "category": "size",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.x.xs": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Extra-small button horizontal padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-x-xs",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.x.sm": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Small button horizontal padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-x-sm",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.x.md": {
+    "$value": { "value": 0.625, "unit": "rem" },
+    "$description": "Medium button horizontal padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-x-md",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.x.lg": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Large button horizontal padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-x-lg",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.x.xl": {
+    "$value": { "value": 0.875, "unit": "rem" },
+    "$description": "Extra-large button horizontal padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-x-xl",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.y.xs": {
+    "$value": { "value": 0.125, "unit": "rem" },
+    "$description": "Extra-small button vertical padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-y-xs",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.y.sm": {
+    "$value": { "value": 0.25, "unit": "rem" },
+    "$description": "Small button vertical padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-y-sm",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.y.md": {
+    "$value": { "value": 0.375, "unit": "rem" },
+    "$description": "Medium button vertical padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-y-md",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.y.lg": {
+    "$value": { "value": 0.5, "unit": "rem" },
+    "$description": "Large button vertical padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-y-lg",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.padding.y.xl": {
+    "$value": { "value": 0.625, "unit": "rem" },
+    "$description": "Extra-large button vertical padding.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-padding-y-xl",
+        "public": true,
+        "category": "spacing",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.font.size.xs": {
+    "$value": { "value": 0.75, "unit": "rem" },
+    "$description": "Extra-small button label font size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-font-size-xs",
+        "public": true,
+        "category": "typography",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.font.size.sm": {
+    "$value": { "value": 0.8125, "unit": "rem" },
+    "$description": "Small button label font size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-font-size-sm",
+        "public": true,
+        "category": "typography",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.font.size.md": {
+    "$value": { "value": 0.8125, "unit": "rem" },
+    "$description": "Medium button label font size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-font-size-md",
+        "public": true,
+        "category": "typography",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.font.size.lg": {
+    "$value": { "value": 0.9375, "unit": "rem" },
+    "$description": "Large button label font size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-font-size-lg",
+        "public": true,
+        "category": "typography",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "button.font.size.xl": {
+    "$value": { "value": 1, "unit": "rem" },
+    "$description": "Extra-large button label font size.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-button-font-size-xl",
+        "public": true,
+        "category": "typography",
+        "component": "button",
+        "cssRecipe": null
+      }
+    },
+    "$type": "dimension"
+  },
+  "toggle.track.off-resting": {
+    "$value": { "colorSpace": "oklch", "components": [0.45, 0.02, 245] },
+    "$type": "color"
+  },
+  "toggle.track.off-hover-resting": {
+    "$value": { "colorSpace": "oklch", "components": [0.52, 0.02, 245] },
+    "$type": "color"
+  }
+}
