@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Prose reading column",
       "description": "The prose width caps line length at a readable measure and centers the column.",
-      "code": "<script lang=\"ts\">\n  import { Container } from '@lostgradient/cinder/container';\n</script>\n\n<Container maxWidth=\"prose\">\n  <h1 style=\"font: var(--cinder-font-heading-lg); color: var(--cinder-text-default);\">Reading column</h1>\n  <p style=\"font: var(--cinder-font-body-md); color: var(--cinder-text-muted);\">\n    Container keeps long-form content at a comfortable measure and adds an inline gutter so text\n    never touches the viewport edge.\n  </p>\n</Container>\n"
+      "code": "<script lang=\"ts\">\n  import { Container } from '@lostgradient/cinder/container';\n</script>\n\n<Container maxWidth=\"prose\">\n  <h1 style=\"font: var(--cinder-font-heading-lg); color: var(--cinder-text-default);\">\n    Reading column\n  </h1>\n  <p style=\"font: var(--cinder-font-body-md); color: var(--cinder-text-muted);\">\n    Container keeps long-form content at a comfortable measure and adds an inline gutter so text\n    never touches the viewport edge.\n  </p>\n</Container>\n"
     },
     {
       "id": "call-to-action",
