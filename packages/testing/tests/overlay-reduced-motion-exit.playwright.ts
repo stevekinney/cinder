@@ -95,9 +95,16 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
   // for why (the "Examples" section mounts an identical second tooltip with
   // the same text, and CI run 32799420793 showed region+text scoping still
   // resolving to that wrong, permanently-closed instance).
-  const describedBy = await trigger.getAttribute('aria-describedby');
-  if (!describedBy) throw new Error('Tooltip trigger has no aria-describedby.');
-  const tip = page.locator(`#${describedBy}`);
+  const tooltipId = await trigger.evaluate((element) => {
+    const describedByIds = element.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+    return (
+      describedByIds.find(
+        (id) => document.getElementById(id)?.getAttribute('role') === 'tooltip',
+      ) ?? null
+    );
+  });
+  if (!tooltipId) throw new Error('Tooltip trigger does not describe a tooltip.');
+  const tip = page.locator(`[id="${tooltipId}"][role="tooltip"]`).first();
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   await page.mouse.move(0, 0);

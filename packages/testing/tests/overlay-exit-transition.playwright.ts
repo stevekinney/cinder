@@ -91,9 +91,16 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   // text-based scoping isn't reliably disambiguating (CI run 32799420793
   // still resolved to the WRONG, permanently-closed tooltip this way). An
   // id derived straight from the hovered trigger can't be ambiguous.
-  const describedBy = await trigger.getAttribute('aria-describedby');
-  if (!describedBy) throw new Error('Tooltip trigger has no aria-describedby.');
-  const tip = page.locator(`#${describedBy}`);
+  const tooltipId = await trigger.evaluate((element) => {
+    const describedByIds = element.getAttribute('aria-describedby')?.split(/\s+/) ?? [];
+    return (
+      describedByIds.find(
+        (id) => document.getElementById(id)?.getAttribute('role') === 'tooltip',
+      ) ?? null
+    );
+  });
+  if (!tooltipId) throw new Error('Tooltip trigger does not describe a tooltip.');
+  const tip = page.locator(`[id="${tooltipId}"][role="tooltip"]`).first();
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
   // Move away to trigger the hide/close path.
