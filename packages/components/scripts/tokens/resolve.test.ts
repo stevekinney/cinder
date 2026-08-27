@@ -198,3 +198,156 @@ describe('DTCG resolver', () => {
     });
   });
 });
+
+describe('CIN-31: an override inherits identity metadata but not generation metadata', () => {
+  const CINDER = 'com.lostgradient.cinder';
+
+  function baseDocument(): TokenDocument {
+    return {
+      surface: {
+        $type: 'color',
+        raised: {
+          $value: { colorSpace: 'oklch', components: [0.98, 0, 0] },
+          $description: 'The raised surface.',
+          $extensions: {
+            'org.example.other': { note: 'unknown vendor data' },
+            [CINDER]: {
+              cssProperty: '--cinder-surface-raised',
+              public: true,
+              category: 'color',
+              contrastPairs: ['color.text.default'],
+              cssRecipe: 'light-dark(white, black)',
+            },
+          },
+        },
+      },
+    };
+  }
+
+  function cinderOf(document: TokenDocument, path: readonly string[]): Record<string, unknown> {
+    let node: unknown = document;
+    for (const key of path) node = (node as Record<string, unknown>)[key];
+    const extensions = (node as { $extensions?: Record<string, unknown> }).$extensions ?? {};
+    return (extensions[CINDER] ?? {}) as Record<string, unknown>;
+  }
+
+  // Replacing a token wholesale dropped $description and the entire
+  // $extensions block for every override, leaving 96 of 216 tokens in
+  // resolved/dark.json with no cssProperty and no description -- a consumer
+  // could not map most tokens back to a custom property.
+  test('an override with no $extensions keeps identity and description', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: { $value: { colorSpace: 'oklch', components: [0.2, 0, 0] } },
+        },
+      },
+    ]);
+
+    const token = (merged['surface'] as Record<string, unknown>)['raised'] as Record<
+      string,
+      unknown
+    >;
+    expect(token['$description']).toBe('The raised surface.');
+    expect(cinderOf(merged, ['surface', 'raised'])['cssProperty']).toBe('--cinder-surface-raised');
+    expect(cinderOf(merged, ['surface', 'raised'])['public']).toBe(true);
+    expect(cinderOf(merged, ['surface', 'raised'])['category']).toBe('color');
+  });
+
+  // The case that breaks a naive deep merge. shadow.small's base carries a
+  // two-arm light-dark() recipe while its light override is a plain literal, so
+  // inheriting the recipe would contradict the $value sitting beside it. An
+  // absent cssRecipe means "no recipe" -- whether the override omitted the key
+  // or omitted $extensions entirely.
+  test('an override does NOT inherit the base cssRecipe', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: { $value: { colorSpace: 'oklch', components: [0.2, 0, 0] } },
+        },
+      },
+    ]);
+
+    expect(cinderOf(merged, ['surface', 'raised'])['cssRecipe']).toBeUndefined();
+  });
+
+  // The case that breaks a shallow merge of the $extensions OBJECT: an override
+  // carrying its own namespace entry would wipe every key it does not restate.
+  test('an override carrying its own recipe keeps it and still inherits identity', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: {
+            $value: { colorSpace: 'oklch', components: [0.2, 0, 0] },
+            $extensions: { [CINDER]: { cssRecipe: 'color-mix(in oklch, white, black)' } },
+          },
+        },
+      },
+    ]);
+
+    const cinder = cinderOf(merged, ['surface', 'raised']);
+    expect(cinder['cssRecipe']).toBe('color-mix(in oklch, white, black)');
+    expect(cinder['cssProperty']).toBe('--cinder-surface-raised');
+    expect(cinder['public']).toBe(true);
+    expect(cinder['contrastPairs']).toEqual(['color.text.default']);
+  });
+
+  test('an override may override an inherited identity key rather than only add to it', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: {
+            $value: { colorSpace: 'oklch', components: [0.2, 0, 0] },
+            $description: 'Overridden description.',
+            $extensions: { [CINDER]: { category: 'surface' } },
+          },
+        },
+      },
+    ]);
+
+    const token = (merged['surface'] as Record<string, unknown>)['raised'] as Record<
+      string,
+      unknown
+    >;
+    expect(token['$description']).toBe('Overridden description.');
+    expect(cinderOf(merged, ['surface', 'raised'])['category']).toBe('surface');
+  });
+
+  // The format requires unknown extension data to survive resolution, and an
+  // override has no way to restate a namespace it knows nothing about.
+  test('an unknown vendor namespace survives the merge', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: { $value: { colorSpace: 'oklch', components: [0.2, 0, 0] } },
+        },
+      },
+    ]);
+
+    const token = (merged['surface'] as Record<string, unknown>)['raised'] as {
+      $extensions?: Record<string, unknown>;
+    };
+    expect(token.$extensions?.['org.example.other']).toEqual({ note: 'unknown vendor data' });
+  });
+
+  test('the override value still wins', () => {
+    const merged = mergeDocuments([
+      baseDocument(),
+      {
+        surface: {
+          raised: { $value: { colorSpace: 'oklch', components: [0.2, 0, 0] } },
+        },
+      },
+    ]);
+
+    expect(resolveDocument(merged)['surface.raised']?.$value).toEqual({
+      colorSpace: 'oklch',
+      components: [0.2, 0, 0],
+    });
+  });
+});

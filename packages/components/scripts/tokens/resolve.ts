@@ -1,4 +1,4 @@
-import type { DesignToken, TokenDocument, TokenGroup } from './types.ts';
+import type { DesignToken, TokenDocument, TokenExtensions, TokenGroup } from './types.ts';
 import { TokenValidationError } from './types.ts';
 
 type JsonObject = Record<string, unknown>;
@@ -287,8 +287,89 @@ function mergeGroup(target: TokenGroup, source: TokenGroup): void {
   for (const [key, value] of Object.entries(source)) {
     const existing = target[key];
     if (isTokenGroup(existing) && isTokenGroup(value)) mergeGroup(existing, value);
+    else if (isToken(existing) && isToken(value)) target[key] = mergeToken(existing, value);
     else target[key] = clone(value);
   }
+}
+
+/**
+ * The vendor-extension keys that describe what a token IS, as opposed to how
+ * this particular context writes it. These are inherited by an override that
+ * does not restate them; everything else in the namespace is taken from the
+ * overriding document.
+ *
+ * `cssRecipe` is deliberately absent: it is generation metadata, and inheriting
+ * it is actively wrong. `shadow.small`'s base carries a two-arm `light-dark()`
+ * recipe while its light override is a plain literal, so an inherited recipe
+ * would contradict the `$value` sitting beside it. An omitted `cssRecipe` on an
+ * override therefore means "no recipe", not "keep the base's".
+ */
+const INHERITED_EXTENSION_KEYS = [
+  'cssProperty',
+  'public',
+  'category',
+  'component',
+  'contrastPairs',
+] as const;
+
+const CINDER_EXTENSION_NAMESPACE = 'com.lostgradient.cinder';
+
+/**
+ * Merges a token over the one it overrides, keeping identity and documentation
+ * from the base while taking value and generation metadata from the override.
+ *
+ * Replacing wholesale -- what this did before -- dropped `$description` and the
+ * whole `$extensions` block for every override, so 96 of the 216 tokens in
+ * `resolved/dark.json` came out with no `cssProperty` and no description at
+ * all. A consumer importing a resolved context could not map most tokens back
+ * to a CSS custom property, which is the main thing a resolved artifact is for.
+ *
+ * A shallow merge of the `$extensions` OBJECT is not enough either: an override
+ * carrying its own namespace entry (a light-only `color-mix()` recipe on
+ * `surface.raised.hover`, say) would still wipe the `cssProperty`, `public`,
+ * and `category` it does not restate. The split has to be per key.
+ */
+function mergeToken(base: DesignToken, override: DesignToken): DesignToken {
+  const merged = clone(override);
+  if (merged.$type === undefined && base.$type !== undefined) merged.$type = base.$type;
+  if (merged.$description === undefined && base.$description !== undefined) {
+    merged.$description = base.$description;
+  }
+  if (merged.$deprecated === undefined && base.$deprecated !== undefined) {
+    merged.$deprecated = base.$deprecated;
+  }
+
+  const baseExtensions = base.$extensions;
+  if (!baseExtensions) return merged;
+
+  // Every namespace the base declares survives, not just Cinder's: the format
+  // requires unknown extension data to survive resolution, and an override has
+  // no way to restate a namespace it knows nothing about.
+  const extensions: TokenExtensions = { ...clone(baseExtensions), ...clone(merged.$extensions) };
+
+  const baseCinder = baseExtensions[CINDER_EXTENSION_NAMESPACE];
+  if (isObject(baseCinder)) {
+    // Rebuilt from the override's OWN namespace entry -- an empty one when it
+    // has no `$extensions` at all -- rather than from the spread above. The
+    // spread inherits every key, including `cssRecipe`, which is exactly the
+    // case that matters: `shadow.small`'s light override is a bare `$value`
+    // with no extensions, so spreading gave the light context the base's
+    // two-arm `light-dark()` recipe, contradicting the literal `$value` beside
+    // it. Starting from the override and pulling back only the identity keys
+    // makes "absent" mean "no recipe" whether the override omitted the key or
+    // the whole block.
+    const overrideCinder = merged.$extensions?.[CINDER_EXTENSION_NAMESPACE];
+    const cinder: Record<string, unknown> = isObject(overrideCinder) ? clone(overrideCinder) : {};
+    for (const key of INHERITED_EXTENSION_KEYS) {
+      if (cinder[key] === undefined && baseCinder[key] !== undefined) {
+        cinder[key] = clone(baseCinder[key]);
+      }
+    }
+    extensions[CINDER_EXTENSION_NAMESPACE] = cinder;
+  }
+
+  merged.$extensions = extensions;
+  return merged;
 }
 
 export function resolveDocument(document: TokenDocument): Record<string, DesignToken> {
