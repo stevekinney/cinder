@@ -325,6 +325,19 @@ function resolveReference(
     // self-referencing metadata pointer.
     const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving);
     const propertySegments = segments.slice(end);
+    // Known gap, tracked in CIN-485 (mirror of CIN-480, for a named group
+    // instead of the document root): when `propertySegments` is empty AND
+    // `candidatePath` is in `rootTokenPaths`, this is a whole-token `$ref`
+    // that named the GROUP with no explicit `$root` segment (`#/group`, not
+    // `#/group/$root`) -- under JSON Pointer semantics that names the group
+    // object, not its root token, and should be rejected. Instead
+    // `resolvedToken` (already the group's redirected root token, since
+    // that's what's indexed at `candidatePath`) is silently returned as if
+    // `$root` had been spelled explicitly. Fixing it means checking the
+    // ORIGINAL reference string, not just what happens to be indexed at the
+    // matched path -- deferred rather than reworked this late in review;
+    // nothing in the real corpus references a group without spelling
+    // `$root`.
     // `$root`, when present AND `candidatePath` actually names a GROUP that
     // carries one (`rootTokenPaths.has(candidatePath)`) -- not merely an
     // ordinary token that happens to share that path -- is a REDIRECT to the
@@ -562,6 +575,20 @@ function buildTokenIndex(documents: TokenDocument[]): {
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
   const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
   const resolved: Record<string, DesignToken> = Object.create(null);
+  // Known gap, tracked in CIN-484 (related to CIN-477, same
+  // self-referencing-metadata resolution area): `resolveToken` has no
+  // "already fully resolved" tracking. If an earlier token's own resolution
+  // causes a LATER token to resolve first (e.g. trigger -> copy, where
+  // `copy: { $ref: '#/alias/$ref' }` correctly resolves to alias's raw
+  // metadata string and deletes copy.$ref), then when this loop reaches
+  // that later token at its own top-level position, resolveToken sees a
+  // token with $value already set and no $ref left -- indistinguishable
+  // from an ordinary alias $value -- and resolves that metadata STRING a
+  // second time as if it were still raw, silently changing the value again.
+  // Fixing it means tracking completed tokens (mirroring resolveExtends's
+  // own `complete` set) and short-circuiting resolveToken for anything
+  // already resolved -- deferred rather than reworked this late in review;
+  // nothing in the real corpus has a $ref chain producing this ordering.
   for (const path of tokens.keys())
     resolved[path] = clone(resolveToken(path, tokens, rawRefs, rootTokenPaths, new Set()));
   return resolved;

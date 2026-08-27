@@ -1691,7 +1691,7 @@ describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value
           $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
         },
         copy: {
-          $ref: '{base}',
+          $ref: '#/base',
           $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
         },
       },
@@ -1701,7 +1701,7 @@ describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value
     );
 
     expect(into.has('copy')).toBe(true);
-    expect(into.get('copy')?.value).toBe('{base}');
+    expect(into.get('copy')?.value).toBe('#/base');
   });
 
   test('a $ref token in a base index resolves to the referenced cssProperty via var()', () => {
@@ -1714,7 +1714,7 @@ describe('CIN-463 review: collectEntries recognizes $ref tokens, not only $value
           $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-base' } },
         },
         copy: {
-          $ref: '{base}',
+          $ref: '#/base',
           $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-copy' } },
         },
       },
