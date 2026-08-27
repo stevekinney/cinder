@@ -41,7 +41,7 @@ describe('checkComponentCssSource', () => {
         color: var(--cinder-button-foreground);
       }
       .cinder-button:hover {
-        background: var(--cinder-button-hover-bg);
+        background: var(--cinder-button-hover-background);
       }
       .cinder-button[data-variant='primary'] {
         --cinder-button-background: blue;

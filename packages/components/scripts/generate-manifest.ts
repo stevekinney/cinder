@@ -17,7 +17,7 @@
  * `hasConstraints: false` for components that have source-only data.
  */
 
-import { existsSync } from 'node:fs';
+import { existsSync, readFileSync as nodeReadFileSync } from 'node:fs';
 import { join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
@@ -114,6 +114,43 @@ export type Manifest = {
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(PACKAGE_ROOT, 'src', 'components');
+
+/** One field of an already-narrowed object, without asserting a shape over it. */
+function readOwnField(source: object, field: string): unknown {
+  return Object.hasOwn(source, field)
+    ? (Object.getOwnPropertyDescriptor(source, field)?.value as unknown)
+    : undefined;
+}
+
+/**
+ * The top-level token namespaces the corpus actually declares, read from the
+ * generated registry.
+ *
+ * Hand-listing them put a stale array into every published `components.json`:
+ * it named `color`, which CIN-33 deleted, and omitted namespaces the corpus had
+ * gained since. Deriving it means the manifest cannot disagree with the tokens
+ * it describes.
+ */
+function readTokenNamespaces(): string[] {
+  const registryPath = join(PACKAGE_ROOT, 'src', 'tokens', 'registry.generated.json');
+  const parsed: unknown = JSON.parse(nodeReadFileSync(registryPath, 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null) {
+    throw new Error(`${registryPath} is not a JSON object.`);
+  }
+  const entries = readOwnField(parsed, 'entries');
+  if (!Array.isArray(entries)) {
+    throw new Error(`${registryPath} has no \`entries\` array.`);
+  }
+  const namespaces = new Set<string>();
+  for (const entry of entries) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const path = readOwnField(entry, 'path');
+    if (typeof path !== 'string' || path === '') continue;
+    const [namespace] = path.split('.');
+    if (namespace !== undefined) namespaces.add(namespace);
+  }
+  return [...namespaces].sort();
+}
 const MANIFEST_PATH = join(PACKAGE_ROOT, 'components.json');
 const SCHEMA_PATH = join(PACKAGE_ROOT, 'src', 'schemas', 'manifest.schema.json');
 
@@ -350,7 +387,11 @@ export async function buildManifest(): Promise<Manifest> {
       frameworkVersionRange,
       classPrefix: 'cinder-',
       cssVarPrefix: '--cinder-',
-      tokenNamespaces: ['color', 'space', 'radius', 'ring', 'type', 'motion', 'shadow'],
+      // Derived from the generated registry rather than hand-listed: this array
+      // ships in components.json, and the hand-written version advertised
+      // `color` -- a namespace CIN-33 deleted -- alongside names that had
+      // drifted from the corpus.
+      tokenNamespaces: readTokenNamespaces(),
       stylesEntry: '@lostgradient/cinder/styles',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },

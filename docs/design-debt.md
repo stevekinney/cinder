@@ -16,7 +16,7 @@ requiring future executors to reopen the same product question.
 
 **Accessibility boundary:** `Alert` remains the live-region notification (`role="alert"`); `Callout` remains the static prose aside (`<aside>`, no live region).
 
-**Implementation direction:** Give `Callout` a dominant `border-inline-start` stripe that uses the existing semantic status token pattern already used in `callout.css`: `var(--cinder-status-info-solid)`, `var(--cinder-status-success-solid)`, `var(--cinder-status-warning-solid)`, and `var(--cinder-status-danger-solid)`, with the same `oklch(from var(--cinder-{status}) ... h)` color algebra used by the current variant rules. Reduce `Alert`'s persistent card chrome by choosing one exact container change: replace the variant tinted full-card `background-color` with `var(--cinder-surface)`, or replace the variant-colored one-pixel `border-color` with `var(--cinder-border)`.
+**Implementation direction:** Give `Callout` a dominant `border-inline-start` stripe that uses the existing semantic status token pattern already used in `callout.css`: `var(--cinder-status-info-solid)`, `var(--cinder-status-success-solid)`, `var(--cinder-status-warning-solid)`, and `var(--cinder-status-danger-solid)`, with the same `oklch(from var(--cinder-status-{name}-solid) ... h)` color algebra used by the current variant rules. Reduce `Alert`'s persistent card chrome by choosing one exact container change: replace the variant tinted full-card `background-color` with `var(--cinder-surface)`, or replace the variant-colored one-pixel `border-color` with `var(--cinder-border)`.
 
 Implementation acceptance:
 

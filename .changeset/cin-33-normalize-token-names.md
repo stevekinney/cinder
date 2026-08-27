@@ -71,6 +71,63 @@ Three rules the corpus broke in places:
 | `--cinder-warning-contrast`      | `--cinder-status-warning-contrast`     |
 | `--cinder-warning-hover`         | `--cinder-status-warning-solid-hover`  |
 
+### Renamed token paths
+
+These are the keys of the published token artifacts — `@lostgradient/cinder/tokens/resolved/*`, the unresolved corpus documents, and `TOKEN_REGISTRY` — so code that reads a token by its DTCG path needs updating too, not just CSS that references a custom property.
+
+| Old path                   | New path                      |
+| -------------------------- | ----------------------------- |
+| `accent`                   | `accent.solid`                |
+| `accent.active`            | `accent.solid.active`         |
+| `accent.active.on-fill`    | `accent.solid.active.on-fill` |
+| `accent.hover`             | `accent.solid.hover`          |
+| `background`               | `surface.canvas`              |
+| `color.accent.background`  | `accent.background`           |
+| `color.accent.border`      | `accent.border`               |
+| `color.checker.base`       | `checker.base`                |
+| `color.checker.tile`       | `checker.tile`                |
+| `color.danger.background`  | `status.danger.background`    |
+| `color.danger.border`      | `status.danger.border`        |
+| `color.danger.foreground`  | `status.danger.text`          |
+| `color.danger.muted`       | `status.danger.muted`         |
+| `color.danger.subtle`      | `status.danger.subtle`        |
+| `color.info.background`    | `status.info.background`      |
+| `color.info.border`        | `status.info.border`          |
+| `color.info.foreground`    | `status.info.text`            |
+| `color.info.muted`         | `status.info.muted`           |
+| `color.info.subtle`        | `status.info.subtle`          |
+| `color.neutral.background` | `status.neutral.background`   |
+| `color.neutral.border`     | `status.neutral.border`       |
+| `color.neutral.foreground` | `status.neutral.text`         |
+| `color.success.background` | `status.success.background`   |
+| `color.success.border`     | `status.success.border`       |
+| `color.success.foreground` | `status.success.text`         |
+| `color.success.muted`      | `status.success.muted`        |
+| `color.success.subtle`     | `status.success.subtle`       |
+| `color.warning.background` | `status.warning.background`   |
+| `color.warning.border`     | `status.warning.border`       |
+| `color.warning.foreground` | `status.warning.text`         |
+| `color.warning.muted`      | `status.warning.muted`        |
+| `color.warning.subtle`     | `status.warning.subtle`       |
+| `danger`                   | `status.danger.solid`         |
+| `danger.active`            | `status.danger.solid.active`  |
+| `danger.contrast`          | `status.danger.contrast`      |
+| `danger.hover`             | `status.danger.solid.hover`   |
+| `info`                     | `status.info.solid`           |
+| `info.active`              | `status.info.solid.active`    |
+| `info.contrast`            | `status.info.contrast`        |
+| `info.hover`               | `status.info.solid.hover`     |
+| `motion`                   | `motion.base`                 |
+| `success`                  | `status.success.solid`        |
+| `success.active`           | `status.success.solid.active` |
+| `success.contrast`         | `status.success.contrast`     |
+| `success.hover`            | `status.success.solid.hover`  |
+| `text`                     | `text.default`                |
+| `warning`                  | `status.warning.solid`        |
+| `warning.active`           | `status.warning.solid.active` |
+| `warning.contrast`         | `status.warning.contrast`     |
+| `warning.hover`            | `status.warning.solid.hover`  |
+
 ### Merged
 
 | Removed                    | Use instead            |

@@ -122,7 +122,7 @@ or attached annotation is `--cinder-text-sm`, normal weight, muted text with
 normal leading. Cinder components consume the internal `cinder-_label-text` and
 `cinder-_value-text` recipes so all four axes move together. Primary body
 content is not an annotation: keep it at the normal body size and
-`--cinder-text` rather than muting it.
+`--cinder-text-default` rather than muting it.
 
 Use `--cinder-text-muted` for readable secondary text that remains part of the
 content hierarchy. Reserve `--cinder-text-subtle` for tertiary metadata and
@@ -148,7 +148,7 @@ label of a control.
 
 ## Motion
 
-Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinder-duration` — both resolve to the same value. Transition durations stay separate from repeating animation durations so components like `Spinner` and indeterminate `Progress` can move at readable, intentionally slower cadences without making hover and value transitions feel sluggish. The `prefers-reduced-motion: reduce` media query collapses both transition and repeating animation duration tokens to `0ms` automatically; you do not need to handle that case yourself.
+Durations and easing curves. `--cinder-duration-normal` is an alias for `--cinder-duration-base` — both resolve to the same value. Transition durations stay separate from repeating animation durations so components like `Spinner` and indeterminate `Progress` can move at readable, intentionally slower cadences without making hover and value transitions feel sluggish. The `prefers-reduced-motion: reduce` media query collapses both transition and repeating animation duration tokens to `0ms` automatically; you do not need to handle that case yourself.
 
 <!-- BEGIN GENERATED TOKEN TABLE: motion -->
 
@@ -248,7 +248,7 @@ Foreground colors keyed to readability against the surface tokens. `--cinder-tex
 
 ## Accent
 
-The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent` with `oklch(from ...)`, so overriding `--cinder-accent` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent`.
+The brand color and its derivatives. `hover` and `active` are computed from `--cinder-accent-solid` with `oklch(from ...)`, so overriding `--cinder-accent-solid` re-derives both. `--cinder-accent-contrast` is the foreground color for text and icons placed on top of `--cinder-accent-solid`.
 
 <!-- BEGIN GENERATED TOKEN TABLE: accent -->
 
@@ -264,9 +264,9 @@ The brand color and its derivatives. `hover` and `active` are computed from `--c
 
 <!-- END GENERATED TOKEN TABLE -->
 
-`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent` is a deep indigo fill (`oklch(50% 0.22 270)` in light mode) that carries the white `--cinder-accent-contrast` label at 6.45:1; its bright periwinkle dark-mode arm carries the dark-ink label at 7.77:1. Foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) use the dedicated `--cinder-accent-text` token, which clears 4.5:1 on every light surface. `--cinder-accent-text-hover` darkens that foreground by 0.08 lightness (light arm ≈7.9:1 on white) so links get darker on hover; links must not use the fill-derived `--cinder-accent-hover`, which does not preserve the foreground contrast contract.
+`--cinder-accent-text` is the brand color used _as_ text/icon on a light surface. `--cinder-accent-solid` is a deep indigo fill (`oklch(50% 0.22 270)` in light mode) that carries the white `--cinder-accent-contrast` label at 6.45:1; its bright periwinkle dark-mode arm carries the dark-ink label at 7.77:1. Foreground usages (links, accent chip/badge labels, active tab labels, selected rows, toast actions, and the current-step marker) use the dedicated `--cinder-accent-text` token, which clears 4.5:1 on every light surface. `--cinder-accent-text-hover` darkens that foreground by 0.08 lightness (light arm ≈7.9:1 on white) so links get darker on hover; links must not use the fill-derived `--cinder-accent-solid-hover`, which does not preserve the foreground contrast contract.
 
-`--cinder-accent-active-on-fill` is the pressed fill for solid accent surfaces that carry `--cinder-accent-contrast` labels (primary `Button`, `FloatingAction`). It darkens the light indigo arm by 0.11 to `L=0.39`, increasing white-label contrast to 10.5:1, while retaining a separate token so label-bearing and non-label consumers can diverge when needed. Accent surfaces that do not bear an on-fill label keep using `--cinder-accent-active`.
+`--cinder-accent-solid-active-on-fill` is the pressed fill for solid accent surfaces that carry `--cinder-accent-contrast` labels (primary `Button`, `FloatingAction`). It darkens the light indigo arm by 0.11 to `L=0.39`, increasing white-label contrast to 10.5:1, while retaining a separate token so label-bearing and non-label consumers can diverge when needed. Accent surfaces that do not bear an on-fill label keep using `--cinder-accent-solid-active`.
 
 ## Semantic aliases
 
