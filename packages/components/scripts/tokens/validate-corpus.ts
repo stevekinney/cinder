@@ -180,6 +180,16 @@ export function expandContextSources(
           reason: `a modifier context may not reference another modifier: ${source.$ref}`,
         },
       ]);
+    // Known gap, tracked in CIN-482 (and CIN-479, same ordering-disagreement
+    // family): this always re-expands the referenced set's documents at
+    // THIS context's position in resolutionOrder, with no check for whether
+    // an intervening modifier's override -- applied between the set's own
+    // ordered position and this one -- gets silently reset by that
+    // re-expansion. buildTokensBaseCss composes CSS independently of this
+    // literal resolutionOrder sequencing, so the two artifacts can disagree
+    // about which value wins. Deferred rather than reworked this late in
+    // review; nothing in the real corpus references a set internally from
+    // more than one modifier context at different resolutionOrder positions.
     return expandSetSources(resolver, target.name, new Set(), contextPath);
   });
 }

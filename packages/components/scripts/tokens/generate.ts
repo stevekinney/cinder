@@ -796,6 +796,17 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
     // first-claimant docs index documented one form while the CSS and the drift
     // test's last-write map used the other, so regeneration produced
     // documentation the required drift test rejected.
+    // Known gap, tracked in CIN-483: `entry.value` is the RAW corpus value,
+    // which for a property-level `$ref` (e.g. `#/dimension/a/$value/value`)
+    // is the unresolved pointer STRING, not the literal it resolves to. Two
+    // distinct property-level `$ref` tokens sharing this `cssProperty` and
+    // resolving to the identical literal hash to two different pointer
+    // strings and get wrongly rejected as conflicting, even though matching
+    // emitted values is exactly what this guard is supposed to permit.
+    // Fixing it means resolving property-level refs before this fingerprint
+    // runs -- deferred rather than reworked this late in review; nothing in
+    // the real corpus has two property-level `$ref` tokens sharing a
+    // `cssProperty`.
     const emitted = JSON.stringify({
       type: entry.type,
       value: entry.value,
