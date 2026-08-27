@@ -299,6 +299,17 @@ function resolveReference(
   for (let end = segments.length; end > 0; end -= 1) {
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
+    // Known gap, tracked in CIN-481: this loop only ever matches a candidate
+    // present in `tokens` -- the token index, which indexes a GROUP only
+    // when it carries a `$root` token (at the group's own path). A `$ref`
+    // into metadata on an ordinary ROOTLESS group (`#/group/$description`
+    // where `group` has no `$root`) never has a matching candidate here at
+    // all, so it falls through to "reference target does not exist" before
+    // the metadata-base branch below even runs. Fixing it means also
+    // searching the merged GROUP tree (`collectGroups`'s output, not
+    // threaded into this function today) as a fallback -- deferred rather
+    // than reworked this late in review; nothing in the real corpus
+    // references a rootless group's metadata.
     if (!token) continue;
     // Known gap, tracked in CIN-477: `resolveToken` is called eagerly here,
     // before this function knows whether the remainder targets metadata
