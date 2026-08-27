@@ -89,6 +89,14 @@ const TYPESCRIPT_PLUGINS = [typescriptPlugin, estreePlugin, babelPlugin];
  * (below) fails `tokens:generate` loudly if a corpus token is left out, listed
  * twice, or a section here has no matching marker in docs/tokens.md.
  */
+/**
+ * `heading` is the LITERAL text of the Markdown heading the marker sits under,
+ * not a prose label -- `buildTokensDocMarkdown` compares the two and refuses to
+ * rewrite a block that has moved. The six button sections are nested as
+ * `### Base` / `### Size: xs` beneath `## Button`, so they carry their leaf
+ * text; `slug` already qualifies them (`button-size-xs`), so nothing is
+ * ambiguous.
+ */
 export type DocSection = { slug: string; heading: string; cssProperties: readonly string[] };
 
 const DOC_SECTIONS: readonly DocSection[] = [
@@ -398,7 +406,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-base',
-    heading: 'Button base',
+    heading: 'Base',
     cssProperties: [
       '--cinder-button-bg',
       '--cinder-button-fg',
@@ -408,7 +416,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xs',
-    heading: 'Button size: xs',
+    heading: 'Size: xs',
     cssProperties: [
       '--cinder-button-padding-x-xs',
       '--cinder-button-padding-y-xs',
@@ -419,7 +427,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-sm',
-    heading: 'Button size: sm',
+    heading: 'Size: sm',
     cssProperties: [
       '--cinder-button-padding-x-sm',
       '--cinder-button-padding-y-sm',
@@ -430,7 +438,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-md',
-    heading: 'Button size: md',
+    heading: 'Size: md',
     cssProperties: [
       '--cinder-button-padding-x-md',
       '--cinder-button-padding-y-md',
@@ -441,7 +449,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-lg',
-    heading: 'Button size: lg',
+    heading: 'Size: lg',
     cssProperties: [
       '--cinder-button-padding-x-lg',
       '--cinder-button-padding-y-lg',
@@ -452,7 +460,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xl',
-    heading: 'Button size: xl',
+    heading: 'Size: xl',
     cssProperties: [
       '--cinder-button-padding-x-xl',
       '--cinder-button-padding-y-xl',
@@ -626,6 +634,17 @@ export async function renderDocTable(
 }
 
 /**
+ * The text of the nearest ATX heading above `offset`, or `undefined` when the
+ * marker sits before any heading. Used to check a marker is still under the
+ * heading `DOC_SECTIONS` says it belongs to.
+ */
+function precedingHeading(markdown: string, offset: number): string | undefined {
+  const before = markdown.slice(0, offset);
+  const headings = [...before.matchAll(/^#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/gm)];
+  return headings.at(-1)?.[1]?.trim();
+}
+
+/**
  * Rewrites every `<!-- BEGIN/END GENERATED TOKEN TABLE -->` block in
  * `existingMarkdown` in place. Content outside those markers -- headings,
  * prose, callouts -- is preserved but NOT byte-identical: the spliced document
@@ -673,6 +692,23 @@ export async function buildTokensDocMarkdown(
           'DOC_SECTIONS in generate-artifacts.ts, or fix the marker.',
       );
     }
+    // `DocSection.heading` was declared and set for every section but never
+    // read, so it documented a guarantee nothing enforced. Moving a marker
+    // under a different heading, or renaming that heading, left the generator
+    // happily rewriting the spacing table under "Typography": the slug still
+    // matched, `tokens:generate -- --check` stabilised on the misplaced output,
+    // and the drift test compares tokens globally rather than per section, so
+    // nothing anywhere noticed.
+    const heading = precedingHeading(existingMarkdown, start);
+    if (heading !== section.heading) {
+      throw new Error(
+        `docs/tokens.md has the "${slug}" generated-table marker under heading ` +
+          `${heading === undefined ? '(no heading)' : `"${heading}"`}, but DOC_SECTIONS ` +
+          `declares it belongs under "${section.heading}". Move the marker back, or ` +
+          'update the section heading in generate-artifacts.ts.',
+      );
+    }
+
     // A slug appearing twice would regenerate both blocks, listing every token
     // in that section twice -- and `tokens:generate -- --check` would then
     // stabilise on the doubled output and accept it forever.
@@ -683,7 +719,6 @@ export async function buildTokensDocMarkdown(
       );
     }
     foundSlugs.add(slug);
-
     const table = await renderDocTable(section, baseIndex, resolveReferences);
     rewritten += existingMarkdown.slice(cursor, start);
     rewritten += `<!-- BEGIN GENERATED TOKEN TABLE: ${slug} -->\n${table}<!-- END GENERATED TOKEN TABLE -->`;

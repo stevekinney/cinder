@@ -6,6 +6,7 @@ import {
   buildGeneratedOutputs,
   buildResolvedContexts,
   buildTokensBaseCss,
+  collectEntries,
   type CorpusEntry,
   documentsForResolutionOrder,
   findDriftedPaths,
@@ -1245,5 +1246,85 @@ describe('CIN-29 review round 5', () => {
 
     const untracked = new Map<string, CorpusEntry>([entry('a', undefined), entry('b', undefined)]);
     expect(() => assertUniqueCssProperties(untracked)).not.toThrow();
+  });
+});
+
+describe('CIN-30 review round 11: group $deprecated inherits like $type', () => {
+  function entriesFor(group: Parameters<typeof collectEntries>[0]) {
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(group, '', undefined, into);
+    return into;
+  }
+
+  // DTCG makes `$deprecated` inheritable the way `$type` is, and the flattened
+  // corpus keeps no group records -- so without carrying it down, a deprecated
+  // group's children were all reported `deprecated: undefined` and registry
+  // consumers would surface them as current.
+  test('a child with no $deprecated inherits its group state', () => {
+    const entries = entriesFor({
+      legacy: {
+        $type: 'dimension',
+        $deprecated: 'Use space.* instead.',
+        gutter: { $value: { value: 1, unit: 'rem' } },
+        inner: {
+          nested: { $value: { value: 2, unit: 'rem' } },
+        },
+      },
+    });
+
+    expect(entries.get('legacy.gutter')?.deprecated).toBe('Use space.* instead.');
+    // Inheritance reaches through an intermediate group, not just direct children.
+    expect(entries.get('legacy.inner.nested')?.deprecated).toBe('Use space.* instead.');
+  });
+
+  test("a child's own $deprecated wins over the group's", () => {
+    const entries = entriesFor({
+      legacy: {
+        $type: 'dimension',
+        $deprecated: 'Group reason.',
+        gutter: { $value: { value: 1, unit: 'rem' }, $deprecated: 'Token reason.' },
+      },
+    });
+
+    expect(entries.get('legacy.gutter')?.deprecated).toBe('Token reason.');
+  });
+
+  // `false` on a nested group is a real value, not an absence: it un-deprecates
+  // that subtree. Merging with `||` instead of `??` would silently ignore it.
+  test('a nested group can un-deprecate itself with $deprecated: false', () => {
+    const entries = entriesFor({
+      legacy: {
+        $type: 'dimension',
+        $deprecated: true,
+        kept: {
+          $deprecated: false,
+          gutter: { $value: { value: 1, unit: 'rem' } },
+        },
+        dropped: { $value: { value: 2, unit: 'rem' } },
+      },
+    });
+
+    expect(entries.get('legacy.kept.gutter')?.deprecated).toBe(false);
+    expect(entries.get('legacy.dropped')?.deprecated).toBe(true);
+  });
+
+  test('a $root token inherits its own group state', () => {
+    const entries = entriesFor({
+      legacy: {
+        $type: 'dimension',
+        $deprecated: 'Gone soon.',
+        $root: { $value: { value: 1, unit: 'rem' } },
+      },
+    });
+
+    expect(entries.get('legacy')?.deprecated).toBe('Gone soon.');
+  });
+
+  test('an undeprecated group still yields undefined, not false', () => {
+    const entries = entriesFor({
+      space: { $type: 'dimension', gutter: { $value: { value: 1, unit: 'rem' } } },
+    });
+
+    expect(entries.get('space.gutter')?.deprecated).toBeUndefined();
   });
 });

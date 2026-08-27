@@ -152,6 +152,7 @@ function toEntry(
   path: string,
   token: DesignToken,
   inheritedType: TokenType | undefined,
+  inheritedDeprecated: boolean | string | undefined,
 ): CorpusEntry {
   const extensions = cinderExtensions(token);
   const cssProperty =
@@ -163,10 +164,18 @@ function toEntry(
   const component =
     typeof extensions?.['component'] === 'string' ? extensions['component'] : undefined;
   const isPublic = typeof extensions?.['public'] === 'boolean' ? extensions['public'] : undefined;
-  const deprecated =
+  // DTCG makes `$deprecated` inheritable the same way `$type` is, and the
+  // flattened corpus keeps no group records -- so without carrying the
+  // ancestor state down, a `$deprecated` group whose children do not repeat the
+  // field loses it entirely and every descendant is reported `deprecated:
+  // false`, letting registry consumers surface a deprecated group's tokens as
+  // current. A token's own `$deprecated` still wins: a group can deprecate its
+  // children, and a child can carry its own (more specific) reason string.
+  const ownDeprecated =
     typeof token.$deprecated === 'boolean' || typeof token.$deprecated === 'string'
       ? token.$deprecated
       : undefined;
+  const deprecated = ownDeprecated ?? inheritedDeprecated;
   return {
     path,
     value: token.$value,
@@ -186,14 +195,23 @@ export function collectEntries(
   prefix: string,
   inheritedType: TokenType | undefined,
   into: Map<string, CorpusEntry>,
+  inheritedDeprecated?: boolean | string,
 ): void {
   const groupType = group.$type ?? inheritedType;
-  if (isToken(group.$root)) into.set(prefix, toEntry(prefix, group.$root, groupType));
+  // `false` on a group is a real value, not an absence: it un-deprecates a
+  // subtree beneath a deprecated ancestor, so `??` rather than `||` here.
+  const groupDeprecated =
+    typeof group.$deprecated === 'boolean' || typeof group.$deprecated === 'string'
+      ? group.$deprecated
+      : inheritedDeprecated;
+  if (isToken(group.$root)) {
+    into.set(prefix, toEntry(prefix, group.$root, groupType, groupDeprecated));
+  }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isPlainObject(value)) continue;
     const path = prefix ? `${prefix}.${name}` : name;
-    if (isToken(value)) into.set(path, toEntry(path, value, groupType));
-    else if (isTokenGroup(value)) collectEntries(value, path, groupType, into);
+    if (isToken(value)) into.set(path, toEntry(path, value, groupType, groupDeprecated));
+    else if (isTokenGroup(value)) collectEntries(value, path, groupType, into, groupDeprecated);
   }
 }
 

@@ -28,8 +28,8 @@ import {
   renderDocTable,
   validatePlaygroundColorTokenGroups,
 } from './generate-artifacts.ts';
-import type { CorpusEntry } from './generate.ts';
-import { buildTokenRegistryFromIndexes } from './registry.ts';
+import { type CorpusEntry, loadCorpus } from './generate.ts';
+import { buildBaseIndex, buildTokenRegistryFromIndexes } from './registry.ts';
 import type { ResolverDocument } from './types.ts';
 
 function resolverWithExtensions(extensions: Record<string, unknown>): ResolverDocument {
@@ -361,9 +361,15 @@ describe('CIN-30 review round 5', () => {
       ]),
     );
     const marker = '<!-- BEGIN GENERATED TOKEN TABLE: control-heights -->';
+    // Both copies sit under the heading DOC_SECTIONS declares, so this reaches
+    // the duplicate check rather than tripping the heading check first.
     const doubled = [
+      '## Control heights',
+      '',
       marker,
       '<!-- END GENERATED TOKEN TABLE -->',
+      '',
+      '## Control heights',
       '',
       marker,
       '<!-- END GENERATED TOKEN TABLE -->',
@@ -470,5 +476,56 @@ describe('CIN-30 review round 9', () => {
 
     expect([...lf.matchAll(DOC_MARKER_PATTERN)].map((match) => match[1])).toEqual(['spacing']);
     expect([...crlf.matchAll(DOC_MARKER_PATTERN)].map((match) => match[1])).toEqual(['spacing']);
+  });
+});
+
+describe('CIN-30 review round 11: markers must stay under their declared heading', () => {
+  const REAL_SLUG = 'spacing';
+  const REAL_HEADING = '## Spacing';
+
+  async function build(headingLine: string) {
+    const markdown = [
+      '# Design tokens',
+      '',
+      headingLine,
+      '',
+      `<!-- BEGIN GENERATED TOKEN TABLE: ${REAL_SLUG} -->`,
+      'stale',
+      '<!-- END GENERATED TOKEN TABLE -->',
+      '',
+    ].join('\n');
+    const { resolver, documentsByPath } = await loadCorpus();
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return buildTokensDocMarkdown(markdown, baseIndex, (value) => value);
+  }
+
+  // `DocSection.heading` was set for every section and read by nothing, so it
+  // documented a guarantee nothing enforced: moving a marker under another
+  // heading left the generator rewriting the spacing table under "Typography",
+  // `tokens:generate -- --check` stabilising on it, and the drift test -- which
+  // compares tokens globally rather than per section -- still passing.
+  test('a marker moved under a different heading is rejected', async () => {
+    await expect(build('## Typography')).rejects.toThrow(
+      /marker under heading "Typography", but DOC_SECTIONS declares it belongs under "Spacing"/,
+    );
+  });
+
+  test('a marker before any heading is rejected, naming the absence', async () => {
+    const { resolver, documentsByPath } = await loadCorpus();
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    const markdown = `<!-- BEGIN GENERATED TOKEN TABLE: ${REAL_SLUG} -->\nstale\n<!-- END GENERATED TOKEN TABLE -->\n`;
+    await expect(buildTokensDocMarkdown(markdown, baseIndex, (value) => value)).rejects.toThrow(
+      /marker under heading \(no heading\)/,
+    );
+  });
+
+  test('a renamed heading is rejected rather than silently accepted', async () => {
+    await expect(build('## Spacing scale')).rejects.toThrow(/DOC_SECTIONS declares/);
+  });
+
+  test('the declared heading still passes', async () => {
+    // Fails on the OTHER sections being absent, not on the heading -- which is
+    // what proves the heading check itself let this one through.
+    await expect(build(REAL_HEADING)).rejects.toThrow(/is missing a generated-table marker/);
   });
 });
