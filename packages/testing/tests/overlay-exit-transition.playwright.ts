@@ -55,10 +55,8 @@ test('Popover renders data-cinder-closing during its exit transition, then unmou
 }) => {
   await page.goto('/page/popover', { waitUntil: 'load' });
   const overview = page.getByRole('region', { name: 'Overview preview' });
-  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
-    'data-overview-preview-rendered',
-    '',
-  );
+  const overviewMount = page.locator('#overview-mount-basic');
+  await expect(overviewMount).toHaveAttribute('data-example-preview-ready', '');
 
   const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
@@ -84,6 +82,7 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
 
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
+  await expect(trigger).toHaveAttribute('aria-describedby', /\S/);
 
   // Resolved via the trigger's OWN `aria-describedby` (tooltip.svelte wires
   // it to the panel's `id`), not text/region scoping: the "Examples" section

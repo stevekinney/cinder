@@ -49,10 +49,8 @@ import { expect, test } from '@playwright/test';
 test('Popover unmounts immediately under reduced motion', async ({ page }) => {
   await page.goto('/page/popover', { waitUntil: 'load' });
   const overview = page.getByRole('region', { name: 'Overview preview' });
-  await expect(page.locator('#overview-mount-basic')).toHaveAttribute(
-    'data-overview-preview-rendered',
-    '',
-  );
+  const overviewMount = page.locator('#overview-mount-basic');
+  await expect(overviewMount).toHaveAttribute('data-example-preview-ready', '');
 
   const trigger = overview.getByRole('button', { name: 'Account settings' }).first();
   await trigger.click();
@@ -90,6 +88,7 @@ test('Tooltip hides immediately under reduced motion', async ({ page }) => {
 
   const trigger = overview.getByRole('button', { name: 'Hover me' }).first();
   await trigger.hover();
+  await expect(trigger).toHaveAttribute('aria-describedby', /\S/);
 
   // Resolved via the trigger's OWN `aria-describedby`, not text/region
   // scoping — see `overlay-exit-transition.playwright.ts`'s companion test
