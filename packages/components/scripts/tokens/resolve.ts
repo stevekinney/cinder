@@ -9,7 +9,13 @@ function isObject(value: unknown): value is JsonObject {
 }
 
 function isToken(value: unknown): value is DesignToken {
-  return isObject(value) && '$value' in value;
+  // `$ref` is a DTCG 2025.10 whole-token alias -- mutually exclusive with
+  // `$value`, so a node declaring either is token-shaped. Recognising only
+  // `$value` here was the CIN-463 "live trap": `collectTokens` below falls
+  // through to `isTokenGroup` for anything `isToken` rejects, so a `$ref`
+  // token was walked as an empty group and silently vanished from the
+  // resolved output instead of resolving or raising a named error.
+  return isObject(value) && ('$value' in value || '$ref' in value);
 }
 
 function isTokenGroup(value: unknown): value is TokenGroup {
@@ -131,6 +137,17 @@ function resolveExtends(
     const extendedPath = tokenPathFromReference(group.$extends);
     const extended = resolveExtends(extendedPath, groups, visiting, complete);
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
+    // `$deprecated: false` is a real, meaningful value (it un-deprecates a
+    // subtree under a deprecated ancestor) rather than an absence, so this
+    // must check `=== undefined` and assign directly -- the same `??`-not-`||`
+    // rule `generate.ts`'s `collectEntries` already applies for ordinary
+    // group nesting (see CIN-471). Nested extended groups already inherit
+    // `$deprecated` through `inheritMissingGroupMembers`'s unfiltered member
+    // copy below; this closes the top-level gap, where the extending group's
+    // OWN `$deprecated` was previously left untouched even when the group it
+    // extends was itself deprecated.
+    if (group.$deprecated === undefined && extended.$deprecated !== undefined)
+      group.$deprecated = extended.$deprecated;
     for (const [name, value] of Object.entries(extended))
       if (!name.startsWith('$') || name === '$root') {
         const existing = group[name];
@@ -203,12 +220,64 @@ function resolveValue(value: unknown, tokens: ResolvedTokens, resolving: Set<str
   return resolved;
 }
 
+/**
+ * Resolves a `$ref` token -- a whole-token DTCG 2025.10 alias, distinct from
+ * a `{a.b.c}`/`#/a/b/c` reference embedded IN a `$value`. Reuses
+ * `resolveReference` (the same machinery an ordinary alias `$value` goes
+ * through) rather than a separate path walk, so chained aliases and
+ * property-level pointers (`#/base/$value/blur`) work identically for both
+ * forms, and so `resolving` cycle detection is shared: a `$ref` chain that
+ * loops back on itself trips the same "circular token alias" guard
+ * `resolveToken` already applies before this runs.
+ *
+ * `$type` precedence for a `$ref` token: its own declared `$type` (validated
+ * only for known-type membership in `validate.ts`, never required) wins;
+ * failing that, the type already inherited from its enclosing group -- set
+ * by `withResolvedType` before `resolveToken` is ever called -- wins;
+ * failing THAT, the whole-token alias target's resolved `$type` is copied in
+ * here. A property-level `$ref` has no whole-token target to borrow a type
+ * from, so `$type` is left however it was (possibly still undefined), and
+ * `validateResolvedToken` is what reports a genuinely untyped resolved
+ * token, the same way it already does for an untyped ordinary token.
+ *
+ * The `$ref` key is deleted once resolved: a fully resolved `DesignToken` is
+ * expected to carry `$value` alone (mirroring the `$value`/`$ref` mutual
+ * exclusivity `validate.ts` enforces on the raw document), and downstream
+ * consumers of `resolveDocuments`'s output should never have to check for a
+ * leftover alias pointer next to the value it named.
+ */
+function resolveRefToken(
+  path: string,
+  token: DesignToken,
+  tokens: ResolvedTokens,
+  resolving: Set<string>,
+): void {
+  const ref = token.$ref;
+  if (typeof ref !== 'string') return issue(path, '$ref must be a string');
+  try {
+    token.$value = resolveReference(ref, tokens, resolving);
+  } catch (error) {
+    if (error instanceof TokenValidationError)
+      return issue(
+        path,
+        `unresolvable $ref "${ref}": ${error.issues.map((tokenIssue) => tokenIssue.reason).join('; ')}`,
+      );
+    throw error;
+  }
+  if (token.$type === undefined) {
+    const targetToken = tokens.get(tokenPathFromReference(ref));
+    if (targetToken?.$type !== undefined) token.$type = targetToken.$type;
+  }
+  delete token.$ref;
+}
+
 function resolveToken(path: string, tokens: ResolvedTokens, resolving: Set<string>): DesignToken {
   const token = tokens.get(path);
   if (!token) return issue(path, 'token does not exist');
   if (resolving.has(path)) return issue(path, 'circular token alias');
   resolving.add(path);
-  token.$value = resolveValue(token.$value, tokens, resolving);
+  if (token.$ref !== undefined) resolveRefToken(path, token, tokens, resolving);
+  else token.$value = resolveValue(token.$value, tokens, resolving);
   resolving.delete(path);
   return token;
 }

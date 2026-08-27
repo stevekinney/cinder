@@ -187,6 +187,90 @@ describe('DTCG resolver', () => {
     expect(JSON.stringify(resolved['color']?.$extensions)).toBe(JSON.stringify(extensions));
   });
 
+  test('a $ref token alias passes the full validate-then-resolve gate (CIN-463)', () => {
+    // Unlike the other $ref tests in this file, this goes through
+    // assertValidTokenDocument first -- the official DTCG 2025.10 format
+    // JSON Schema's own $value/$ref discriminator (see the token.json
+    // definition's allOf) runs ahead of validate.ts's semantic checks, and
+    // this is the acceptance case named in the ticket: no $type anywhere in
+    // the document for `copy` to inherit.
+    const document: TokenDocument = {
+      base: { $type: 'number', $value: 1 },
+      copy: { $ref: '#/base' },
+    };
+    assertValidTokenDocument(document);
+    const resolved = resolveDocument(document);
+    expect(resolved['copy']).toMatchObject({ $type: 'number', $value: 1 });
+  });
+
+  test('resolves a whole-token $ref alias to the referenced token value (CIN-463)', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      copy: { $ref: '#/base' },
+    });
+    expect(resolved['copy']).toMatchObject({ $type: 'number', $value: 1 });
+    // A resolved token never carries a leftover $ref alongside its $value.
+    expect(resolved['copy']).not.toHaveProperty('$ref');
+  });
+
+  test("a $ref token keeps its own declared $type over the target's", () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      copy: { $type: 'number', $ref: '#/base' },
+    });
+    expect(resolved['copy']?.$type).toBe('number');
+  });
+
+  test('resolves a chained $ref alias', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      second: { $ref: '#/base' },
+      third: { $ref: '#/second' },
+    });
+    expect(resolved['third']).toMatchObject({ $type: 'number', $value: 1 });
+  });
+
+  test('resolves a property-level $ref pointing into a composite token', () => {
+    const resolved = resolveDocument({
+      dimension: { $type: 'dimension', hairline: { $value: { value: 1, unit: 'px' } } },
+      copy: { $type: 'dimension', $ref: '#/dimension/hairline/$value' },
+    });
+    expect(resolved['copy']?.$value).toEqual({ value: 1, unit: 'px' });
+  });
+
+  test('rejects a direct self-referencing $ref alias', () => {
+    expect(() => resolveDocument({ loop: { $type: 'number', $ref: '#/loop' } })).toThrow(
+      TokenValidationError,
+    );
+  });
+
+  test('rejects a circular $ref chain before generation', () => {
+    expect(() =>
+      resolveDocument({
+        first: { $type: 'number', $ref: '#/second' },
+        second: { $type: 'number', $ref: '#/third' },
+        third: { $type: 'number', $ref: '#/first' },
+      }),
+    ).toThrow(TokenValidationError);
+  });
+
+  test('raises a named error for an unresolvable $ref rather than dropping the token', () => {
+    expect(() => resolveDocument({ copy: { $type: 'number', $ref: '#/does-not-exist' } })).toThrow(
+      /copy.*unresolvable \$ref/s,
+    );
+  });
+
+  test('does not silently drop a $ref token from the resolved output', () => {
+    // Before CIN-463, `collectTokens`'s `isToken` recognised only `$value`,
+    // so a `$ref`-only node was walked as an (empty) group and never appeared
+    // in `resolveDocuments`'s output at all -- no error, just a vanished key.
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 1 },
+      copy: { $ref: '#/base' },
+    });
+    expect(Object.keys(resolved)).toContain('copy');
+  });
+
   test('inherits __proto__ tokens through group extensions', () => {
     const document = JSON.parse(
       '{"base":{"$type":"number","__proto__":{"$value":1}},"derived":{"$extends":"{base}"}}',

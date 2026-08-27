@@ -17,7 +17,7 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import { createValueResolver, resolveDocuments } from './resolve.ts';
+import { createValueResolver, mergeAndExpandExtends, resolveDocuments } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -1328,6 +1328,82 @@ describe('CIN-30 review round 11: group $deprecated inherits like $type', () => 
     expect(entries.get('space.gutter')?.deprecated).toBeUndefined();
   });
 });
+
+describe('CIN-471: $deprecated carries through $extends expansion', () => {
+  function entriesFor(documents: Parameters<typeof mergeAndExpandExtends>[0]) {
+    const into = new Map<string, CorpusEntry>();
+    collectEntries(mergeAndExpandExtends(documents), '', undefined, into);
+    return into;
+  }
+
+  // `mergeAndExpandExtends` (via `resolveExtends`) already copies an extended
+  // group's members and `$type` into the group that extends it; before this
+  // fix it dropped `$deprecated`, so a group extending a deprecated group
+  // came out looking current -- registry consumers had no way to know.
+  test('a group extending a $deprecated group yields deprecated descendants', () => {
+    const entries = entriesFor([
+      {
+        legacy: { $type: 'dimension', $deprecated: 'Use space.* instead.', gutter: { $value: 1 } },
+        derived: { $extends: '{legacy}' },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
+  });
+
+  test("a descendant's own $deprecated wins over the extended group's", () => {
+    const entries = entriesFor([
+      {
+        legacy: {
+          $type: 'dimension',
+          $deprecated: 'Group reason.',
+          gutter: { $value: 1 },
+        },
+        derived: {
+          $extends: '{legacy}',
+          gutter: { $value: 2, $deprecated: 'Token reason.' },
+        },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe('Token reason.');
+  });
+
+  // `$deprecated: false` is a real value, not an absence -- it un-deprecates a
+  // subtree even beneath a deprecated `$extends` target, the same "??" rule
+  // `collectEntries` already applies to ordinary group nesting.
+  test('a descendant under a $deprecated: false group inside a deprecated extend target is not deprecated', () => {
+    const entries = entriesFor([
+      {
+        legacy: {
+          $type: 'dimension',
+          $deprecated: true,
+          kept: { $deprecated: false, gutter: { $value: 1 } },
+        },
+        derived: { $extends: '{legacy}' },
+      },
+    ]);
+
+    expect(entries.get('derived.kept.gutter')?.deprecated).toBe(false);
+  });
+
+  // Guards `group.$deprecated === undefined` rather than unconditionally
+  // taking the extended group's value: an extending group that declares its
+  // OWN $deprecated (including the real value `false`) must keep it, not
+  // have it overwritten by what it extends.
+  test('an extending group keeps its own $deprecated: false over a deprecated extend target', () => {
+    const entries = entriesFor([
+      {
+        legacy: { $type: 'dimension', $deprecated: true, gutter: { $value: 1 } },
+        derived: { $extends: '{legacy}', $deprecated: false, other: { $value: 2 } },
+      },
+    ]);
+
+    expect(entries.get('derived.gutter')?.deprecated).toBe(false);
+    expect(entries.get('derived.other')?.deprecated).toBe(false);
+  });
+});
+
 describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
   function entry(path: string, type: 'fontFamily' | 'fontWeight'): CorpusEntry {
     return {

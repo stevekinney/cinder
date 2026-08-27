@@ -188,17 +188,59 @@ describe('DTCG semantic validation', () => {
     ).toThrow('accent.$root: unknown reserved property $valu');
   });
 
-  test('rejects a $ref token alias by name rather than as unknown metadata', () => {
-    // The official format schema accepts `$ref` in place of `$value`, but
-    // Cinder classifies tokens by `$value` alone, so the two layers disagree.
-    // Support is tracked in CIN-463; until then the rejection must say so
-    // rather than reporting a spec property as an unknown one.
+  test('accepts a $ref token alias in place of $value (CIN-463)', () => {
+    // No $type declared or inherited anywhere in this document -- a $ref
+    // token borrows its type from the reference target at resolution time
+    // (see resolve.ts's resolveRefToken), so validate.ts must not require
+    // one here.
     expect(() =>
       validateTokenDocument({
         base: { $type: 'number', $value: 1 },
         copy: { $ref: '#/base' },
       }),
-    ).toThrow(/\$ref token aliases are not supported yet \(CIN-463\)/);
+    ).not.toThrow();
+  });
+
+  test('accepts a $ref token that declares its own $type', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $ref: '#/base' },
+      }),
+    ).not.toThrow();
+  });
+
+  test('rejects a $ref token declaring an unknown $type', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'nonsense', $ref: '#/base' },
+      }),
+    ).toThrow('unknown $type');
+  });
+
+  test('rejects a token declaring both $value and $ref', () => {
+    expect(() =>
+      validateTokenDocument({
+        base: { $type: 'number', $value: 1 },
+        copy: { $type: 'number', $value: 2, $ref: '#/base' },
+      }),
+    ).toThrow('copy: a token cannot declare both $value and $ref');
+  });
+
+  test('rejects a $ref that is not a JSON Pointer', () => {
+    // The vendored format schema types the token-level $ref as
+    // jsonPointerReference only -- curly-brace syntax is not a legal $ref,
+    // even though it IS legal inside a $value.
+    expect(() => validateTokenDocument({ copy: { $ref: '{base}' } })).toThrow(
+      '$ref must be a JSON Pointer reference',
+    );
+  });
+
+  test('rejects a $ref token with a nested child group', () => {
+    expect(() =>
+      validateTokenDocument({ copy: { $ref: '#/base', nested: { $value: 1 } } }),
+    ).toThrow('cannot contain child groups');
   });
 
   test('accepts root tokens and rejects unknown reserved metadata', () => {
@@ -546,6 +588,61 @@ describe('DTCG semantic validation', () => {
         ],
       }),
     ).toThrow('resolutionOrder entries must be unique');
+  });
+
+  test('CIN-464: a set reached only via an internal reference need not appear in resolutionOrder', () => {
+    // `extended`'s sources reference `#/sets/base`; `base` contributes its
+    // documents through that reference (see validate-corpus.ts's
+    // expandSetSources) rather than as its own resolutionOrder entry, so
+    // requiring it there too would be redundant -- and, listed at its own
+    // position, would re-inject its documents ahead of whatever `extended`
+    // is meant to layer over them.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: {
+            sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/extra.tokens.json' }],
+          },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/extended' }],
+      }),
+    ).not.toThrow();
+
+    // The same exemption applies when a modifier context, not a set, is what
+    // reaches `base` through the internal reference.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+          },
+        },
+        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+
+    // A set that no one references internally is still required, even when
+    // other sets in the same document are internally referenced.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          extended: { sources: [{ $ref: '#/sets/base' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/extended' }],
+      }),
+    ).toThrow('must list every set and modifier exactly once');
   });
 
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {
