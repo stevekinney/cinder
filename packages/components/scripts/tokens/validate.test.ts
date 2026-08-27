@@ -781,18 +781,18 @@ describe('DTCG semantic validation', () => {
         ],
       }),
     ).toThrow(
-      /set "base" is referenced internally by more than one ordered set \(a, c\) and would be expanded more than once/,
+      /set "base" is reachable from more than one ordered set \(a, c\) and would be expanded more than once/,
     );
   });
 
-  test('accepts a child set referenced by only one DIRECTLY ordered parent, even if another (transitively reachable) set also references it', () => {
-    // "base" is referenced by both "a" (directly ordered) and "b" (only
-    // reachable through "wrapper", never itself ordered) -- only "a"'s
-    // expansion actually happens at a fixed position in the resolved
-    // document tree, so there is no real double-expansion here. The check
-    // must not flag a set merely for having more than one referencing
-    // parent in the document; only more than one ORDERED parent is a
-    // genuine conflict.
+  test('rejects a child set reachable from two ordered positions through a CHAIN of internal references', () => {
+    // "base" is referenced directly by "a" (ordered), and also transitively
+    // by "wrapper" (ordered) -> "b" -> "base". "base"'s only DIRECT parents
+    // are "a" and "b", and only "a" is itself ordered -- a direct-parents-only
+    // check sees no conflict, but "wrapper"'s own recursive expansion still
+    // pulls "base" in a second time. Both ordered positions genuinely
+    // contribute "base" to the resolved tree, so this must be rejected the
+    // same as the direct two-ordered-parents case.
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
@@ -804,6 +804,29 @@ describe('DTCG semantic validation', () => {
         },
         modifiers: {},
         resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/wrapper' }],
+      }),
+    ).toThrow(
+      /set "base" is reachable from more than one ordered set \(a, wrapper\) and would be expanded more than once/,
+    );
+  });
+
+  test('accepts a set referenced by a non-ordered set that is itself unreachable from any other ordered position', () => {
+    // "base" is referenced only by "a" (ordered) -- a second reference from
+    // an entirely disconnected part of the graph is not constructible here,
+    // since every set must ultimately trace back to some ordered ancestor
+    // (the "must list every set and modifier exactly once" check already
+    // enforces that) -- so this just confirms the ordinary single-ordered-
+    // ancestor case, with an unrelated standalone set alongside it, is fine.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          a: { sources: [{ $ref: '#/sets/base' }, { $ref: 'sets/a.tokens.json' }] },
+          standalone: { sources: [{ $ref: 'sets/standalone.tokens.json' }] },
+        },
+        modifiers: {},
+        resolutionOrder: [{ $ref: '#/sets/a' }, { $ref: '#/sets/standalone' }],
       }),
     ).not.toThrow();
   });

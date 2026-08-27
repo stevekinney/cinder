@@ -655,6 +655,15 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // CSS-vs-resolved-JSON disagreement the single-parent-plus-explicit-listing
   // case already guards against.
   const parentsReferencingSet = new Map<string, Set<string>>();
+  // Direct set-to-set reference edges (parent -> the child set names its own
+  // sources reference), used below to compute each ORDERED set's full
+  // transitive descendant closure -- the direct-parents-only version of that
+  // check missed a child reachable through a CHAIN of internal references
+  // (e.g. resolutionOrder "A, theme, Wrapper" where A -> Base and
+  // Wrapper -> B -> Base: Base's only DIRECT parents are A and B, and only A
+  // is itself ordered, so a direct-parent check sees no conflict even though
+  // Base is genuinely expanded at both ordered positions).
+  const setDirectChildren = new Map<string, Set<string>>();
   const setReferencedByAnotherSet = new Set<string>();
   const setReferencedByModifierContext = new Map<string, string>();
   function noteSetReferencedByAnotherSet(parentName: string, sources: unknown): void {
@@ -667,6 +676,9 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       const parents = parentsReferencingSet.get(target.name) ?? new Set();
       parents.add(parentName);
       parentsReferencingSet.set(target.name, parents);
+      const children = setDirectChildren.get(parentName) ?? new Set();
+      children.add(target.name);
+      setDirectChildren.set(parentName, children);
     }
   }
   function noteSetReferencedByModifierContext(sources: unknown, contextPath: string): void {
@@ -779,25 +791,45 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   }
 
   // The single-parent-plus-explicit-listing case above doesn't cover a child
-  // set referenced internally by TWO DIFFERENT ordered parent sets (neither
-  // of which is itself the explicit listing) -- e.g. "A, theme, C" where both
-  // A and C reference the same child B. Each parent's expansion re-applies
-  // B's values at its own position, so B still ends up applied twice with a
-  // modifier potentially between the two expansions, the same
-  // CSS-vs-resolved-JSON disagreement as the case above. Reject a child
-  // referenced by more than one DIRECTLY ORDERED parent (a parent reachable
-  // only transitively, itself never listed in resolutionOrder, cannot
-  // actually cause a second expansion, so it doesn't count here).
-  for (const [childName, parents] of parentsReferencingSet) {
-    const orderedParents = [...parents].filter((parentName) =>
-      resolutionOrderTargets.has(`sets/${parentName}`),
-    );
-    if (orderedParents.length > 1) {
+  // set reachable from TWO DIFFERENT ordered positions through a chain of
+  // internal references -- e.g. resolutionOrder "A, theme, Wrapper" where
+  // A -> Base directly, and Wrapper -> B -> Base (Base's only DIRECT parents
+  // are A and B; only A is itself ordered, so a direct-parents-only check
+  // sees no conflict even though Base is genuinely expanded again through
+  // Wrapper's own recursive expansion). Compute each ordered set's full
+  // TRANSITIVE descendant closure and reject any set reachable from more
+  // than one ordered position -- this subsumes the direct-parent case above,
+  // since a direct parent is a one-hop descendant.
+  function transitiveDescendants(setName: string): Set<string> {
+    const seen = new Set<string>();
+    const stack = [setName];
+    while (stack.length > 0) {
+      const current = stack.pop()!;
+      for (const child of setDirectChildren.get(current) ?? []) {
+        if (seen.has(child)) continue; // also guards against a reference cycle
+        seen.add(child);
+        stack.push(child);
+      }
+    }
+    return seen;
+  }
+  const reachingOrderedSets = new Map<string, Set<string>>();
+  for (const target of resolutionOrderTargets) {
+    if (!target.startsWith('sets/')) continue;
+    const orderedSetName = target.slice('sets/'.length);
+    for (const descendant of transitiveDescendants(orderedSetName)) {
+      const reachers = reachingOrderedSets.get(descendant) ?? new Set();
+      reachers.add(orderedSetName);
+      reachingOrderedSets.set(descendant, reachers);
+    }
+  }
+  for (const [setName, orderedAncestors] of reachingOrderedSets) {
+    if (orderedAncestors.size > 1) {
       addIssue(
         issues,
         '$.resolutionOrder',
-        `set "${childName}" is referenced internally by more than one ordered set ` +
-          `(${orderedParents.sort().join(', ')}) and would be expanded more than once`,
+        `set "${setName}" is reachable from more than one ordered set ` +
+          `(${[...orderedAncestors].sort().join(', ')}) and would be expanded more than once`,
       );
     }
   }
