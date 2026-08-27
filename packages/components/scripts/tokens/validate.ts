@@ -829,20 +829,43 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     }
   }
 
+  // Reachability for the closed-cycle check below is broader than
+  // `reachingOrderedSets` above: a set reachable ONLY through a chain
+  // rooted at a modifier context (e.g. theme.light -> lightOverrides ->
+  // sharedOverrides, where neither lightOverrides nor sharedOverrides is
+  // itself ordered) is legitimately consumed by generation, per the
+  // context-only-override exemption -- `reachingOrderedSets` is seeded only
+  // from directly ordered sets and would wrongly flag `sharedOverrides` as
+  // an unreachable closed cycle. Every modifier-context-referenced set is
+  // therefore also a valid entry point here, not just ordered sets. This
+  // does NOT feed the multi-ordered-position check above, which is
+  // specifically about two DISTINCT ordered resolutionOrder positions
+  // double-expanding the same set within one resolved combination --
+  // mutually exclusive modifier contexts don't have that problem.
+  const reachableFromAnyEntryPoint = new Set(reachingOrderedSets.keys());
+  for (const target of resolutionOrderTargets) {
+    if (target.startsWith('sets/')) reachableFromAnyEntryPoint.add(target.slice('sets/'.length));
+  }
+  for (const rootSetName of setReferencedByModifierContext) {
+    reachableFromAnyEntryPoint.add(rootSetName);
+    for (const descendant of transitiveDescendants(rootSetName))
+      reachableFromAnyEntryPoint.add(descendant);
+  }
+
   // The `expectedTargets`/`unlistedTargets` check above exempts any set
   // referenced by another set from needing its own resolutionOrder entry --
   // but that exemption is unsound for a CLOSED CYCLE of sets that reference
   // only each other (e.g. "a" -> "b" -> "a"): each member is "referenced by
   // another set", so both are exempted, and neither is ever required to be
-  // ordered. The cycle is then unreachable from every actual ordered
-  // position, and `buildTokensBaseCss`/`buildBaseDocuments` silently omit
-  // its documents entirely. `reachingOrderedSets` (computed above) already
-  // captures every set genuinely reachable from an ordered position --
-  // anything internally referenced but absent from it is unreachable,
-  // cycle or not.
+  // ordered. The cycle is then unreachable from every actual entry point,
+  // and `buildTokensBaseCss`/`buildBaseDocuments` silently omit its
+  // documents entirely. `reachableFromAnyEntryPoint` (computed above)
+  // already captures every set genuinely reachable from an ordered
+  // position OR a modifier context -- anything internally referenced but
+  // absent from it is unreachable, cycle or not.
   for (const setName of setReferencedByAnotherSet) {
     const directlyOrdered = resolutionOrderTargets.has(`sets/${setName}`);
-    if (!directlyOrdered && !reachingOrderedSets.has(setName)) {
+    if (!directlyOrdered && !reachableFromAnyEntryPoint.has(setName)) {
       addIssue(
         issues,
         '$.resolutionOrder',

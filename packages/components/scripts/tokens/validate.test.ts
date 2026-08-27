@@ -831,6 +831,39 @@ describe('DTCG semantic validation', () => {
     ).toThrow(/set "a" is referenced internally but not reachable from any ordered set/);
   });
 
+  test('accepts a set reachable only through a chain rooted at a modifier context', () => {
+    // theme.light -> lightOverrides -> sharedOverrides: neither
+    // "lightOverrides" nor "sharedOverrides" is itself ordered or referenced
+    // by another SET -- their only entry point is the modifier context.
+    // That's a legitimate, generator-supported chain (the context-only
+    // override exemption applies transitively), not a closed cycle -- the
+    // reachability check for the closed-cycle rejection must treat a
+    // modifier-context reference as a valid entry point too, not just a
+    // directly ordered set.
+    expect(() =>
+      validateResolverDocument({
+        version: '2025.10',
+        sets: {
+          base: { sources: [{ $ref: 'sets/base.tokens.json' }] },
+          lightOverrides: {
+            sources: [{ $ref: '#/sets/sharedOverrides' }, { $ref: 'themes/light.tokens.json' }],
+          },
+          sharedOverrides: { sources: [{ $ref: 'shared/overrides.tokens.json' }] },
+        },
+        modifiers: {
+          theme: {
+            contexts: {
+              light: [{ $ref: '#/sets/lightOverrides' }],
+              dark: [{ $ref: 'themes/dark.tokens.json' }],
+            },
+            default: 'light',
+          },
+        },
+        resolutionOrder: [{ $ref: '#/sets/base' }, { $ref: '#/modifiers/theme' }],
+      }),
+    ).not.toThrow();
+  });
+
   test('rejects the pre-2025.10-conformant array-based resolver shape Cinder used to author', () => {
     // Regression guard: cinder.resolver.json used to declare
     // sets/modifiers as arrays of {name, ...} objects and resolutionOrder as

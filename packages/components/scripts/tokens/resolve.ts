@@ -357,6 +357,19 @@ function resolveReference(
       propertySegments[0] === '$root' &&
       rootTokenPaths.has(candidatePath);
     const remainder = targetsRootToken ? propertySegments.slice(1) : propertySegments;
+    // Known gap, tracked in CIN-487: when `targetsRootToken` consumed an
+    // explicit `$root` segment and the remainder is NOT itself `$value`
+    // (or another `$`-prefixed property), `usesTokenObjectBase` below is
+    // false, so the base falls through to `resolvedToken.$value` -- letting
+    // a malformed pointer like `#/group/$root/value` (missing the `$value`
+    // segment) silently resolve `value` as if it had been spelled
+    // `#/group/$root/$value/value`. Per JSON Pointer semantics that names a
+    // property on the root TOKEN OBJECT, which doesn't have one called
+    // `value`, and should be rejected. Fixing it means keeping the token
+    // object as the base whenever `$root` was consumed, unless the
+    // remainder is itself `$value`-prefixed -- deferred rather than
+    // reworked this late in review; nothing in the real corpus references a
+    // composite-valued group root this way.
     // A remainder starting with ANY of the token's own reserved `$`-prefixed
     // properties -- not just `$value` -- names something on the `DesignToken`
     // object itself: `#/base/$description`, `#/base/$deprecated`,
