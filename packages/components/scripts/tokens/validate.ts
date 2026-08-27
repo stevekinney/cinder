@@ -635,18 +635,15 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // resolver-internal `#/sets/<name>` reference rather than a token-document
   // path (see `validate-corpus.ts`'s `expandSetSources`/`expandContextSources`,
   // which resolve these into the referenced set's own documents). A set
-  // pulled in only through another SET -- never named directly in
-  // `resolutionOrder` -- still contributes its documents, at the position of
-  // whatever references it, so it must NOT also be required in
-  // `resolutionOrder` itself below. A set referenced only through a MODIFIER
-  // CONTEXT is different: `buildTokensBaseCss`/`buildBaseDocuments` build the
-  // base index exclusively from `resolutionOrder`'s set entries, and a CSS
-  // custom-property override has nothing to override without a base
-  // declaration -- so a set reachable ONLY via a modifier context, with no
-  // path into the base, is a validated-but-ungenerable shape, not a
-  // legitimate exemption. Only `setReferencedByAnotherSet` counts toward the
-  // resolutionOrder exemption; modifier-context references are tracked
-  // separately and checked below instead.
+  // pulled in only through another SET, or only through a MODIFIER CONTEXT
+  // -- never named directly in `resolutionOrder` -- still contributes its
+  // documents, at the position of whatever references it, so it must NOT
+  // also be required in `resolutionOrder` itself below. This function only
+  // has the resolver's STRUCTURE to work with, never the actual token
+  // documents, so it cannot check whether a modifier-context-only set's
+  // individual token paths already have a base declaration from some other
+  // set -- see the "context-only override set" note further below for why
+  // that check does not belong here.
   // Keyed by CHILD set name -> the set of PARENT set names that reference it
   // internally. More than one parent referencing the same child means that
   // child gets expanded more than once into the resolved document tree --
@@ -665,7 +662,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
   // Base is genuinely expanded at both ordered positions).
   const setDirectChildren = new Map<string, Set<string>>();
   const setReferencedByAnotherSet = new Set<string>();
-  const setReferencedByModifierContext = new Map<string, string>();
+  const setReferencedByModifierContext = new Set<string>();
   function noteSetReferencedByAnotherSet(parentName: string, sources: unknown): void {
     if (!Array.isArray(sources)) return;
     for (const source of sources) {
@@ -681,16 +678,12 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       setDirectChildren.set(parentName, children);
     }
   }
-  function noteSetReferencedByModifierContext(sources: unknown, contextPath: string): void {
+  function noteSetReferencedByModifierContext(sources: unknown): void {
     if (!Array.isArray(sources)) return;
     for (const source of sources) {
       if (!isResolverReference(source)) continue;
       const target = resolutionOrderTarget(source['$ref']);
-      // Keep the FIRST-seen reference site: `.set()` would overwrite it when
-      // multiple contexts reference the same unreachable set, silently
-      // discarding evidence of every context but the last-processed one.
-      if (target?.kind === 'sets' && !setReferencedByModifierContext.has(target.name))
-        setReferencedByModifierContext.set(target.name, contextPath);
+      if (target?.kind === 'sets') setReferencedByModifierContext.add(target.name);
     }
   }
 
@@ -708,8 +701,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
           `$.modifiers.${name}.contexts.${contextName}`,
           'context must be a non-empty array of $ref sources',
         );
-      else
-        noteSetReferencedByModifierContext(sources, `$.modifiers.${name}.contexts.${contextName}`);
+      else noteSetReferencedByModifierContext(sources);
     }
     if (
       modifier['default'] !== undefined &&
@@ -730,7 +722,10 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
       addIssue(issues, `$.sets.${name}`, 'set must have a non-empty array of $ref sources');
     else noteSetReferencedByAnotherSet(name, set['sources']);
   }
-  const internallyReferencedSetNames = setReferencedByAnotherSet;
+  const internallyReferencedSetNames = new Set([
+    ...setReferencedByAnotherSet,
+    ...setReferencedByModifierContext,
+  ]);
 
   const resolutionOrderTargets = new Set<string>();
   const explicitSetOrderPath = new Map<string, string>();
@@ -858,39 +853,24 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
     }
   }
 
-  // A set referenced only by a modifier context, with no path into the base
-  // (neither listed in resolutionOrder itself nor reachable through another
-  // set that is), has no base declaration for its tokens -- generation has
-  // nothing to override. Reject it here, at validation time, rather than
-  // letting it surface later as a confusing "no matching base token" error
-  // during CSS generation.
-  //
-  // Known gap, tracked in CIN-479: this only checks that the set is
-  // reachable SOMEWHERE in resolutionOrder -- not that its ordered position
-  // precedes this modifier's own position. With resolutionOrder
-  // [theme, base] and theme's context internally referencing #/sets/base,
-  // documentsForResolutionOrder resolves base -> light-override -> base
-  // again (the later explicit entry), so the resolved JSON reverts to base
-  // while buildTokensBaseCss still lets the light override win via selector
-  // specificity -- the two artifacts disagree. Fixing it means tracking each
-  // ordered position's INDEX, not just membership, and requiring the
-  // referenced set's (or its ordered ancestor's) position to strictly
-  // precede this modifier's. Deferred rather than reworked this late in
-  // review; nothing in the real corpus orders a modifier before the set it
-  // references.
-  for (const [setName, contextPath] of setReferencedByModifierContext) {
-    const reachableFromBase =
-      resolutionOrderTargets.has(`sets/${setName}`) || setReferencedByAnotherSet.has(setName);
-    if (!reachableFromBase) {
-      addIssue(
-        issues,
-        contextPath,
-        `references set "${setName}", which has no path into the base ` +
-          '(not in resolutionOrder and not referenced by another set) -- ' +
-          'a modifier context can only override a base token, not introduce one',
-      );
-    }
-  }
+  // NOTE: an earlier version of this file rejected a modifier context's
+  // internal set reference whenever the referenced SET (not its individual
+  // token paths) had no independent path into resolutionOrder's base. That
+  // check operated at the wrong granularity: this function only has the
+  // resolver's STRUCTURE to work with, never the actual token documents, so
+  // it can only reason about set names, not the token paths a set actually
+  // contributes. A context-only override set (e.g. "lightOverrides",
+  // referenced solely by theme's "light" context) is a legitimate,
+  // already-generator-supported pattern -- see generate.test.ts's "a theme
+  // context referencing a set via #/sets/<name> does not throw" -- whenever
+  // its OVERRIDE tokens share paths with a base declaration contributed by
+  // some OTHER set. The set-level check could not see that and rejected
+  // exactly this shape, a false positive against an already-shipped,
+  // already-tested pattern. Removed rather than narrowed: token-path-level
+  // reachability can only be checked where token documents are actually
+  // loaded (validate-corpus.ts or generation), and generation already
+  // rejects a genuinely-unreachable override with a clear "no matching base
+  // token" error at the correct granularity.
 
   if (issues.length > 0) throw new TokenValidationError(issues);
 }

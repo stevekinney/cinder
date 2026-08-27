@@ -627,16 +627,23 @@ describe('DTCG semantic validation', () => {
     ).toThrow('must list every set and modifier exactly once');
   });
 
-  test('rejects a set referenced only by a modifier context, with no path into the base', () => {
-    // A set reached through another SET is exempt from resolutionOrder
-    // (verified above) because it still contributes to the BASE via the
-    // referencing set's own expansion. A set reached ONLY through a modifier
-    // context is different: `buildTokensBaseCss`/`buildBaseDocuments` build
-    // the base index exclusively from `resolutionOrder`'s set entries, so a
-    // set with no base path has nothing for the override to override --
-    // generation would fail with "no matching base token" for a shape
-    // validation otherwise accepted as fine. This must be rejected here,
-    // clearly, rather than surfacing later as a confusing generation error.
+  test('accepts a set referenced only by a modifier context, with no independent resolutionOrder entry', () => {
+    // A modifier context internally referencing a set that is NEVER
+    // otherwise ordered -- and never referenced by another SET either -- is
+    // a legitimate, already-generator-supported shape: an earlier version
+    // of this check rejected it, reasoning the referenced set had "no path
+    // into the base." That reasoning was unsound. This function only sees
+    // the resolver's STRUCTURE (set/modifier names), never the actual token
+    // documents, so it cannot know whether the override set's individual
+    // token PATHS already have a base declaration contributed by some OTHER
+    // set -- exactly the pattern generate.test.ts's "a theme context
+    // referencing a set via #/sets/<name> does not throw" already exercises
+    // and generates correctly (a "lightOverrides" set supplying only the
+    // light-theme value for a color token whose base declaration comes from
+    // an unrelated "foundation" set). Token-path-level reachability can only
+    // be checked where documents are actually loaded (validate-corpus.ts or
+    // generation), and generation already raises a clear "no matching base
+    // token" error for a genuinely-unreachable override at that point.
     expect(() =>
       validateResolverDocument({
         version: '2025.10',
@@ -651,30 +658,7 @@ describe('DTCG semantic validation', () => {
         },
         resolutionOrder: [{ $ref: '#/modifiers/theme' }],
       }),
-    ).toThrow(/references set "base", which has no path into the base/);
-  });
-
-  test('names the FIRST context that references an unreachable set, not the last-processed one', () => {
-    // `noteSetReferencedByModifierContext` used a plain `Map.set`, which
-    // overwrites the recorded reference site when multiple contexts
-    // reference the same unreachable set -- losing evidence of every context
-    // but whichever was processed last (object key order here: "light" then
-    // "dark").
-    expect(() =>
-      validateResolverDocument({
-        version: '2025.10',
-        sets: { base: { sources: [{ $ref: 'sets/base.tokens.json' }] } },
-        modifiers: {
-          theme: {
-            contexts: {
-              light: [{ $ref: '#/sets/base' }, { $ref: 'themes/light.tokens.json' }],
-              dark: [{ $ref: '#/sets/base' }, { $ref: 'themes/dark.tokens.json' }],
-            },
-          },
-        },
-        resolutionOrder: [{ $ref: '#/modifiers/theme' }],
-      }),
-    ).toThrow(/\$\.modifiers\.theme\.contexts\.light/);
+    ).not.toThrow();
   });
 
   test('accepts a set referenced by a modifier context when it also has a path into the base', () => {
