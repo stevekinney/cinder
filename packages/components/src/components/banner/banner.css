@@ -20,7 +20,7 @@
     padding-inline: var(--cinder-space-4);
     border-block: 1px solid var(--cinder-border);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
   }
@@ -116,29 +116,29 @@
  * ---------------------------------------- */
 
   .cinder-banner[data-cinder-variant='info'] {
-    --_cinder-banner-ring: var(--cinder-info);
-    --_cinder-status-base: var(--cinder-info);
+    --_cinder-banner-ring: var(--cinder-status-info-solid);
+    --_cinder-status-base: var(--cinder-status-info-solid);
     --_cinder-status-fg-chroma-light: 0.12;
     --_cinder-status-fg-chroma-dark: 0.12;
   }
 
   .cinder-banner[data-cinder-variant='success'] {
-    --_cinder-banner-ring: var(--cinder-success);
-    --_cinder-status-base: var(--cinder-success);
+    --_cinder-banner-ring: var(--cinder-status-success-solid);
+    --_cinder-status-base: var(--cinder-status-success-solid);
     --_cinder-status-fg-chroma-light: 0.14;
     --_cinder-status-fg-chroma-dark: 0.12;
   }
 
   .cinder-banner[data-cinder-variant='warning'] {
-    --_cinder-banner-ring: var(--cinder-warning);
-    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-banner-ring: var(--cinder-status-warning-solid);
+    --_cinder-status-base: var(--cinder-status-warning-solid);
     --_cinder-status-fg-chroma-light: 0.16;
     --_cinder-status-fg-chroma-dark: 0.14;
   }
 
   .cinder-banner[data-cinder-variant='danger'] {
-    --_cinder-banner-ring: var(--cinder-danger);
-    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-banner-ring: var(--cinder-status-danger-solid);
+    --_cinder-status-base: var(--cinder-status-danger-solid);
     --_cinder-status-fg-chroma-light: 0.18;
     --_cinder-status-fg-chroma-dark: 0.16;
   }

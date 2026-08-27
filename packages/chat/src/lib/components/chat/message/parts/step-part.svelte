@@ -54,13 +54,16 @@
 <style>
   .chat-step {
     --cinder-chat-step-indicator-color: var(--cinder-text-muted);
-    --cinder-chat-step-indicator-color-running: var(--cinder-color-info-fg, var(--cinder-text));
+    --cinder-chat-step-indicator-color-running: var(
+      --cinder-status-info-text,
+      var(--cinder-text-default)
+    );
     --cinder-chat-step-indicator-color-done: var(
-      --cinder-color-success-fg,
+      --cinder-status-success-text,
       var(--cinder-text-muted)
     );
     --cinder-chat-step-indicator-color-error: var(
-      --cinder-color-danger-fg,
+      --cinder-status-danger-text,
       var(--cinder-text-muted)
     );
 
@@ -101,7 +104,7 @@
   .chat-step-title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     line-height: 1.5;
   }
 
@@ -110,7 +113,7 @@
   }
 
   [data-cinder-step-status='error'] .chat-step-title {
-    color: var(--cinder-color-danger-fg, var(--cinder-text));
+    color: var(--cinder-status-danger-text, var(--cinder-text-default));
   }
 
   .chat-step-content {

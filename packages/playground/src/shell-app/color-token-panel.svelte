@@ -626,7 +626,7 @@
     flex-direction: column;
     width: min(100vw, 36rem);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     border-inline-start: 1px solid var(--cinder-border);
     box-shadow: var(--cinder-shadow-lg);
   }
@@ -782,7 +782,7 @@
   .token-label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .token-copy code {
@@ -815,7 +815,7 @@
 
   @media (hover: hover) {
     .token-row :global(.cinder-button.token-reset-button:hover:not(:disabled)) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
@@ -831,7 +831,7 @@
   .token-value-chip {
     overflow: hidden;
     max-inline-size: 10rem;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -894,7 +894,7 @@
   }
 
   .picker-popover-header span {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
   }

@@ -231,7 +231,11 @@
 		     reliably announced, which is the pattern Chat's own
 		     `chat-status-announcer.svelte` documents and follows. Padding is applied
 		     only when populated so an empty region takes no layout. -->
-		<p role="alert" data-testid="fail-error" style="margin: 0; color: var(--cinder-danger);">
+		<p
+			role="alert"
+			data-testid="fail-error"
+			style="margin: 0; color: var(--cinder-status-danger-solid);"
+		>
 			{errorFail ?? ''}
 		</p>
 		<div style="height: 24rem;">

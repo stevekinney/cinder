@@ -19,7 +19,7 @@
   .cinder-chat-conversation-header__title {
     margin: 0;
     overflow: hidden;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-tight);

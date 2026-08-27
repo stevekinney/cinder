@@ -368,16 +368,16 @@ describe('Chip', () => {
   test('neutral pressed toggle stays on the shared selected-surface recipe', () => {
     const body = cssRuleBody(".cinder-chip[aria-pressed='true'][data-cinder-variant='neutral']");
     expect(body).toContain('background: var(--cinder-surface-pressed)');
-    expect(body).toContain('color: var(--cinder-text)');
+    expect(body).toContain('color: var(--cinder-text-default)');
     expect(body).toContain('border-color: var(--cinder-border-strong)');
-    expect(body).not.toContain('background: var(--cinder-text)');
+    expect(body).not.toContain('background: var(--cinder-text-default)');
     expect(body).not.toContain('color: var(--cinder-surface-inset)');
   });
 
   test('remove button hover uses a circular hover surface without overriding variant color', () => {
     const body = cssRuleBody('.cinder-chip__remove:hover:not(:disabled)');
     expect(body).toContain('background-color: var(--cinder-surface-hover)');
-    expect(body).not.toContain('color: var(--cinder-text)');
+    expect(body).not.toContain('color: var(--cinder-text-default)');
     expect(chipCss).toContain('border-radius: var(--cinder-radius-full)');
   });
 
@@ -532,10 +532,10 @@ describe('Chip pressed-state foreground tokens', () => {
   const css = readFileSync(new URL('./chip.css', import.meta.url), 'utf8');
 
   test.each([
-    ['success', '--cinder-success-contrast', '--cinder-color-success-bg'],
-    ['warning', '--cinder-warning-contrast', '--cinder-color-warning-bg'],
-    ['danger', '--cinder-danger-contrast', '--cinder-color-danger-bg'],
-    ['info', '--cinder-info-contrast', '--cinder-color-info-bg'],
+    ['success', '--cinder-status-success-contrast', '--cinder-status-success-background'],
+    ['warning', '--cinder-status-warning-contrast', '--cinder-status-warning-background'],
+    ['danger', '--cinder-status-danger-contrast', '--cinder-status-danger-background'],
+    ['info', '--cinder-status-info-contrast', '--cinder-status-info-background'],
   ] as const)(
     'pressed %s chip uses the contrast token, not the soft tint',
     (variant, contrastToken, softTint) => {

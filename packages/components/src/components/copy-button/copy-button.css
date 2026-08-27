@@ -29,7 +29,7 @@
  * "stick" after tap on touch devices that emulate :hover. */
   @media (hover: hover) {
     .cinder-copy-button:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
       border-color: var(--cinder-border-strong);
     }
@@ -51,7 +51,7 @@
   }
 
   .cinder-copy-button[data-cinder-copied] {
-    color: var(--cinder-color-success-fg);
-    border-color: var(--cinder-success);
+    color: var(--cinder-status-success-text);
+    border-color: var(--cinder-status-success-solid);
   }
 }

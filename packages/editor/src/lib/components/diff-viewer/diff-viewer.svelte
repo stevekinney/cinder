@@ -533,9 +533,9 @@
     gap: var(--cinder-space-2);
     padding: var(--cinder-space-2) var(--cinder-space-3);
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-color-warning-fg);
-    background: var(--cinder-color-warning-bg);
-    border-bottom: 1px solid var(--cinder-color-warning-border);
+    color: var(--cinder-status-warning-text);
+    background: var(--cinder-status-warning-background);
+    border-bottom: 1px solid var(--cinder-status-warning-border);
   }
 
   .compute-time {

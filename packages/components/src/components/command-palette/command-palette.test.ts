@@ -773,7 +773,7 @@ describe('CommandPalette — visual contract', () => {
     // CommandItem rules now live in command-item.css (imported by command-palette.css).
     expect(commandItemCss).toMatch(/\.cinder-command-item\s*\{[\s\S]*?margin:\s*0;/);
     expect(commandItemCss).toMatch(
-      /\.cinder-command-item\[data-cinder-active\]\s*\{[\s\S]*?background:\s*var\(--cinder-accent\);[\s\S]*?color:\s*var\(--cinder-accent-contrast\);/,
+      /\.cinder-command-item\[data-cinder-active\]\s*\{[\s\S]*?background:\s*var\(--cinder-accent-solid\);[\s\S]*?color:\s*var\(--cinder-accent-contrast\);/,
     );
     // Confirm command-palette.css now @imports command-item.css (import chain).
     expect(paletteCss).toMatch(/@import\s+['"]\.\.\/command-item\/command-item\.css['"]/);

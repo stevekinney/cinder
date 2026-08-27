@@ -69,7 +69,10 @@
                   {post.category} · {post.publishedAt}
                 </p>
                 <h3 style="margin: var(--cinder-space-2) 0; font-size: var(--cinder-text-lg);">
-                  <a href={post.href} style="color: var(--cinder-text); text-decoration: none;">
+                  <a
+                    href={post.href}
+                    style="color: var(--cinder-text-default); text-decoration: none;"
+                  >
                     {post.title}
                   </a>
                 </h3>

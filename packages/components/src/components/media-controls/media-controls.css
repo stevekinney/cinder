@@ -15,7 +15,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background-color: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
@@ -118,7 +118,7 @@
   .cinder-media-controls__progress-fill {
     height: 100%;
     border-radius: var(--cinder-radius-full, 9999px);
-    background-color: var(--cinder-accent);
+    background-color: var(--cinder-accent-solid);
     transition: width var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 }

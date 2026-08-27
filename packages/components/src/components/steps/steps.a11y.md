@@ -45,7 +45,7 @@ The wrapping `<nav>` defaults to `aria-label="Progress"`. Callers on pages with 
 
 ## Marker contrast and forced-colors
 
-Completed step markers use `background: var(--cinder-accent)` with `color: var(--cinder-accent-contrast)`. The `--cinder-accent-contrast` token is defined in `tokens-base.css` as a `light-dark()` value that maintains 4.5:1 contrast ratio in both light and dark themes.
+Completed step markers use `background: var(--cinder-accent-solid)` with `color: var(--cinder-accent-contrast)`. The `--cinder-accent-contrast` token is defined in `tokens-base.css` as a `light-dark()` value that maintains 4.5:1 contrast ratio in both light and dark themes.
 
 The current-step marker uses a `box-shadow` ring. In Windows High Contrast Mode (`forced-colors: active`), `box-shadow` is suppressed by the browser. The CSS includes a `@media (forced-colors: active)` block that restores the ring as a `ButtonText`-colored `outline`.
 

@@ -47,7 +47,7 @@ L and C. The base hue per status is:
 Notes:
 
 - Alert's `info` variant references `--cinder-alert-info`, a locally scoped
-  duplicate of `--cinder-info` (`oklch(45% 0.14 245) / oklch(78% 0.15 245)`).
+  duplicate of `--cinder-status-info-solid` (`oklch(45% 0.14 245) / oklch(78% 0.15 245)`).
   Hue is identical to the global token, so the resolved background math is
   the same.
 
@@ -187,7 +187,7 @@ Alert/Banner/Callout math. Two observations:
 1. **Dark surface lightness disagrees.** The current components synthesize a
    `20% L` soft surface in dark mode; the triples land at `28% L`. The
    triples are intentionally lighter to keep enough separation from the page
-   background (`--cinder-bg` ≈ 12–15% L in dark theme), but they are not
+   background (`--cinder-surface-canvas` ≈ 12–15% L in dark theme), but they are not
    drop-in equivalent for the existing visual.
 2. **Light-theme border contrast is borderline.** Even ignoring ΔL, the
    triple border at ~`82% L` against a `96% L` background lands near 2:1 —
@@ -251,7 +251,7 @@ Alert composes the surface only (P7 neutral border); Banner adds the soft
 border; Callout adds the border and the saturated stripe. Each component sets
 the recipe's inputs per variant on its own root element:
 
-- `--_cinder-status-base` — the status base color (`var(--cinder-info)` etc.;
+- `--_cinder-status-base` — the status base color (`var(--cinder-status-info-solid)` etc.;
   Alert keeps `var(--cinder-alert-info)` for its info variant).
 - `--_cinder-status-fg-chroma-light` / `--_cinder-status-fg-chroma-dark` — the
   foreground chroma, which **escalates per status severity** (info `0.12` →

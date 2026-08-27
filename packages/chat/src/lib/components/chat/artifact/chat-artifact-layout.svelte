@@ -56,7 +56,7 @@
     grid-template-columns: 1fr;
     height: 100%;
     width: 100%;
-    transition: grid-template-columns var(--cinder-duration) var(--cinder-ease-standard);
+    transition: grid-template-columns var(--cinder-duration-base) var(--cinder-ease-standard);
   }
 
   .chat-artifact-layout[data-panel-open='true'] {

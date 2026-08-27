@@ -65,35 +65,36 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
-      '--cinder-bg': 'oklch(15% 0.035 245)',
+      '--cinder-surface-canvas': 'oklch(15% 0.035 245)',
       '--cinder-surface': 'oklch(21% 0.04 245)',
       '--cinder-surface-raised': 'oklch(28% 0.045 245)',
       '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)',
-      '--cinder-text': 'oklch(92% 0.02 245)',
+      '--cinder-text-default': 'oklch(92% 0.02 245)',
       '--cinder-text-muted': 'oklch(82% 0.02 245)',
       '--cinder-border': 'oklch(58% 0.05 245)',
       '--cinder-border-strong': 'oklch(66% 0.06 245)',
-      '--cinder-accent': 'oklch(72% 0.14 270)',
+      '--cinder-accent-solid': 'oklch(72% 0.14 270)',
       '--cinder-accent-contrast': 'oklch(15% 0.035 245)',
-      '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
-      '--cinder-accent-active': 'oklch(from var(--cinder-accent) calc(l - 0.15) c h)',
-      '--cinder-accent-active-on-fill': 'oklch(from var(--cinder-accent) calc(l - 0.11) c h)',
+      '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
+      '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
+      '--cinder-accent-solid-active-on-fill':
+        'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-danger': 'oklch(72% 0.172 25)',
-      '--cinder-danger-contrast': 'oklch(12% 0.02 25)',
-      '--cinder-danger-hover': 'oklch(64% 0.172 25)',
-      '--cinder-danger-active': 'oklch(60% 0.172 25)',
-      '--cinder-color-danger-bg': 'oklch(28% 0.09 25)',
-      '--cinder-color-danger-fg': 'oklch(90% 0.05 25)',
-      '--cinder-color-danger-border': 'oklch(50% 0.11 25)',
-      '--cinder-color-checker-base': 'oklch(28% 0.02 245)',
-      '--cinder-color-checker-tile': 'oklch(38% 0.02 245)',
+      '--cinder-status-danger-solid': 'oklch(72% 0.172 25)',
+      '--cinder-status-danger-contrast': 'oklch(12% 0.02 25)',
+      '--cinder-status-danger-solid-hover': 'oklch(64% 0.172 25)',
+      '--cinder-status-danger-solid-active': 'oklch(60% 0.172 25)',
+      '--cinder-status-danger-background': 'oklch(28% 0.09 25)',
+      '--cinder-status-danger-text': 'oklch(90% 0.05 25)',
+      '--cinder-status-danger-border': 'oklch(50% 0.11 25)',
+      '--cinder-checker-base': 'oklch(28% 0.02 245)',
+      '--cinder-checker-tile': 'oklch(38% 0.02 245)',
       '--cinder-scrollbar-track': 'oklch(100% 0 0 / 0.04)',
       '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.7 0.14 h)',
+      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.7 0.14 h)',
       // Pin the offset color too: it is the band painted BETWEEN the control and
-      // the ring, and it moved from --cinder-bg to --cinder-surface-raised so it
+      // the ring, and it moved from --cinder-surface-canvas to --cinder-surface-raised so it
       // stops painting a dark moat on the widened light ramp. A scoped theme that
       // kept the old value would silently reintroduce that moat.
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
@@ -116,34 +117,35 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-bg': 'oklch(98.4% 0.003 255)',
+      '--cinder-surface-canvas': 'oklch(98.4% 0.003 255)',
       '--cinder-surface': 'oklch(99.4% 0.002 255)',
       '--cinder-surface-raised': 'oklch(100% 0 255)',
       '--cinder-surface-hover':
-        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)',
-      '--cinder-text': 'oklch(20% 0.018 245)',
+        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%)',
+      '--cinder-text-default': 'oklch(20% 0.018 245)',
       '--cinder-text-muted': 'oklch(32% 0.014 245)',
       '--cinder-border': 'oklch(63% 0.006 255)',
       '--cinder-border-strong': 'oklch(60% 0.008 255)',
-      '--cinder-accent': 'oklch(50% 0.22 270)',
+      '--cinder-accent-solid': 'oklch(50% 0.22 270)',
       '--cinder-accent-contrast': 'oklch(100% 0 0)',
-      '--cinder-accent-hover': 'oklch(from var(--cinder-accent) calc(l - 0.08) c h)',
-      '--cinder-accent-active': 'oklch(from var(--cinder-accent) calc(l - 0.15) c h)',
-      '--cinder-accent-active-on-fill': 'oklch(from var(--cinder-accent) calc(l - 0.11) c h)',
+      '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
+      '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
+      '--cinder-accent-solid-active-on-fill':
+        'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-danger': 'oklch(50% 0.202 25)',
-      '--cinder-danger-contrast': 'oklch(100% 0 0)',
-      '--cinder-danger-hover': 'oklch(42% 0.171 25)',
-      '--cinder-danger-active': 'oklch(35% 0.142 25)',
-      '--cinder-color-danger-bg': 'oklch(94.5% 0.026 25)',
-      '--cinder-color-danger-fg': 'oklch(42% 0.16 25)',
-      '--cinder-color-danger-border': 'oklch(80% 0.06 25)',
-      '--cinder-color-checker-base': '#fff',
-      '--cinder-color-checker-tile': '#ccc',
+      '--cinder-status-danger-solid': 'oklch(50% 0.202 25)',
+      '--cinder-status-danger-contrast': 'oklch(100% 0 0)',
+      '--cinder-status-danger-solid-hover': 'oklch(42% 0.171 25)',
+      '--cinder-status-danger-solid-active': 'oklch(35% 0.142 25)',
+      '--cinder-status-danger-background': 'oklch(94.5% 0.026 25)',
+      '--cinder-status-danger-text': 'oklch(42% 0.16 25)',
+      '--cinder-status-danger-border': 'oklch(80% 0.06 25)',
+      '--cinder-checker-base': '#fff',
+      '--cinder-checker-tile': '#ccc',
       '--cinder-scrollbar-track': 'oklch(0% 0 0 / 0.04)',
       '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
       '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent) 0.55 0.16 h)',
+      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.55 0.16 h)',
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
       '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
       '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
@@ -164,14 +166,14 @@ describe('scoped theme tokens', () => {
     expect(sidebarCss).toContain('border-inline-end: 1px solid var(--cinder-border);');
     expect(sidebarCss).toContain('border-block-start: 1px solid var(--cinder-border-muted);');
     expect(navigationItemCss).toContain('color: var(--cinder-text-muted);');
-    expect(navigationItemCss).toContain('color: var(--cinder-text);');
+    expect(navigationItemCss).toContain('color: var(--cinder-text-default);');
     expect(navigationItemCss).toContain('background-color: var(--cinder-surface-hover);');
     expect(navigationItemCss).toContain('background-color: var(--cinder-surface-inset);');
     expect(navigationItemCss).toContain(
       'var(--_cinder-navigation-item-ring, var(--cinder-ring-color))',
     );
-    expect(navigationItemCss).toContain('border-bottom-color: var(--cinder-accent);');
-    expect(navigationItemCss).toContain('border-inline-start-color: var(--cinder-accent);');
+    expect(navigationItemCss).toContain('border-bottom-color: var(--cinder-accent-solid);');
+    expect(navigationItemCss).toContain('border-inline-start-color: var(--cinder-accent-solid);');
     expect(sideNavigationGroupCss).toContain(
       'var(--_cinder-side-navigation-group-trigger-ring, var(--cinder-ring-color))',
     );
@@ -182,15 +184,15 @@ describe('scoped theme tokens', () => {
     expect(drawerCss).toContain('border-inline-end: 1px solid var(--cinder-border);');
     expect(drawerCss).toContain('border-block-end: 1px solid var(--cinder-border-muted);');
     expect(drawerCss).toContain('border-block-start: 1px solid var(--cinder-border-muted);');
-    expect(drawerCss).toContain('color: var(--cinder-text);');
+    expect(drawerCss).toContain('color: var(--cinder-text-default);');
     expect(drawerCss).toContain('color: var(--cinder-text-muted);');
-    expect(buttonCss).toContain('background: var(--cinder-accent);');
+    expect(buttonCss).toContain('background: var(--cinder-accent-solid);');
     expect(buttonCss).toContain('color: var(--cinder-accent-contrast);');
-    expect(buttonCss).toContain('background: var(--cinder-danger);');
-    expect(buttonCss).toContain('color: var(--cinder-danger-contrast);');
-    expect(buttonCss).toContain('background: var(--cinder-color-danger-bg);');
-    expect(buttonCss).toContain('color: var(--cinder-color-danger-fg);');
-    expect(buttonCss).toContain('border-color: var(--cinder-color-danger-border);');
+    expect(buttonCss).toContain('background: var(--cinder-status-danger-solid);');
+    expect(buttonCss).toContain('color: var(--cinder-status-danger-contrast);');
+    expect(buttonCss).toContain('background: var(--cinder-status-danger-background);');
+    expect(buttonCss).toContain('color: var(--cinder-status-danger-text);');
+    expect(buttonCss).toContain('border-color: var(--cinder-status-danger-border);');
   });
 
   test('foundation recomputes scoped focus and scoped Shiki dark overrides', async () => {
@@ -356,7 +358,7 @@ describe('scoped theme tokens', () => {
     // The surface ramp is the family this guard exists for — assert it is genuinely
     // in scope rather than trusting the scan.
     for (const token of [
-      '--cinder-bg',
+      '--cinder-surface-canvas',
       '--cinder-surface',
       '--cinder-surface-inset',
       '--cinder-surface-raised',

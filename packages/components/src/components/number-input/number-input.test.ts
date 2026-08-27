@@ -66,7 +66,7 @@ describe('NumberInput basics', () => {
       /\.cinder-input-group:has\(> \.cinder-number-input__input\)\s*> \.cinder-input-group__trailing\s*\{[^}]*gap:\s*0;[^}]*padding-inline:\s*0;/,
     );
     expect(css).toMatch(
-      /\.cinder-number-input\[data-invalid\]\s+\.cinder-number-input__stepper\s*\{[^}]*border-inline-start-color:\s*var\(--cinder-danger\);/,
+      /\.cinder-number-input\[data-invalid\]\s+\.cinder-number-input__stepper\s*\{[^}]*border-inline-start-color:\s*var\(--cinder-status-danger-solid\);/,
     );
     expect(css).not.toMatch(
       /\.cinder-input-group:has\(> \.cinder-number-input__input\[aria-invalid='true'\]\)\s*\{/,

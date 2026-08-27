@@ -99,7 +99,7 @@ wrapped control retains its native keyboard behavior.
 
 ## Color contrast
 
-The required marker (`*`) uses `var(--cinder-danger)` which meets WCAG AA
+The required marker (`*`) uses `var(--cinder-status-danger-solid)` which meets WCAG AA
 contrast (4.5:1) against the label text color. The error text uses the same
 token, matching the focus ring and error border of opted-in controls.
 

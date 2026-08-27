@@ -226,6 +226,14 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'than silently passing them, so the coverage gap (CIN-472) stays visible instead of ' +
       'looking like coverage.',
   },
+  'check:token-naming': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — same layer set as its siblings. Enforces the CIN-33 naming ' +
+      'rules against the generated registry: kebab-case segments, no bg/fg abbreviations, no ' +
+      'color.* namespace, and no bare domain without a role. Renaming a token is a breaking ' +
+      'change, so this gate is what stops one drifting back in unnoticed.',
+  },
   'tokens:privacy': {
     layers: ['unit-tests', 'main-green'],
     reason:

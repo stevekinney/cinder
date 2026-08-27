@@ -42,7 +42,7 @@
     margin: 0;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     overflow-wrap: anywhere;
   }
 
@@ -58,7 +58,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
@@ -92,7 +92,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-semibold);
     text-transform: uppercase;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin-block-end: var(--cinder-space-2);
   }
 
@@ -120,7 +120,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-family: inherit;
     cursor: pointer;
@@ -172,7 +172,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-family: inherit;
   }
@@ -204,7 +204,7 @@
     inline-size: 1.125rem;
     block-size: 1.125rem;
     margin: 0;
-    accent-color: var(--cinder-accent);
+    accent-color: var(--cinder-accent-solid);
     cursor: pointer;
   }
 
@@ -241,7 +241,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-family: inherit;
     cursor: pointer;
@@ -260,7 +260,7 @@
 
   .cinder-invocation-rule-builder__validation {
     margin: 0 0 var(--cinder-space-2);
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
     font-size: var(--cinder-text-xs);
   }
 
@@ -313,7 +313,7 @@
   @media (hover: hover) {
     .cinder-invocation-rule-builder__icon-btn:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       border-color: var(--cinder-border);
     }
   }
@@ -363,7 +363,7 @@
   @media (hover: hover) {
     .cinder-invocation-rule-builder__add-btn:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       border-color: var(--cinder-border);
     }
   }
@@ -384,7 +384,7 @@
 
   .cinder-invocation-rule-builder__summary-row {
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-invocation-rule-builder__empty {

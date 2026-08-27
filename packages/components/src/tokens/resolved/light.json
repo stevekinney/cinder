@@ -955,19 +955,6 @@
     },
     "$type": "cubicBezier"
   },
-  "motion": {
-    "$value": { "value": 200, "unit": "ms" },
-    "$description": "Base transition duration.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-duration",
-        "public": true,
-        "category": "motion",
-        "cssRecipe": null
-      }
-    },
-    "$type": "duration"
-  },
   "motion.instant": {
     "$value": { "value": 0, "unit": "ms" },
     "$description": "Instant (no) transition duration.",
@@ -1084,6 +1071,19 @@
       }
     },
     "$type": "duration"
+  },
+  "motion.base": {
+    "$type": "duration",
+    "$value": { "value": 200, "unit": "ms" },
+    "$description": "Base transition duration.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-duration-base",
+        "public": true,
+        "category": "motion",
+        "cssRecipe": null
+      }
+    }
   },
   "opacity.disabled": {
     "$value": 0.55,
@@ -1228,18 +1228,6 @@
     },
     "$type": "number"
   },
-  "background": {
-    "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.984, 0.003, 255] },
-    "$description": "Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-bg",
-        "public": true,
-        "category": "color"
-      }
-    }
-  },
   "surface.base": {
     "$value": { "colorSpace": "oklch", "components": [0.994, 0.002, 255] },
     "$description": "Default semantic surface. Theme modifiers provide its dark value.",
@@ -1248,7 +1236,7 @@
         "cssProperty": "--cinder-surface",
         "public": true,
         "category": "color",
-        "contrastPairs": ["text"]
+        "contrastPairs": ["text.default"]
       }
     },
     "$type": "color"
@@ -1261,7 +1249,7 @@
         "cssProperty": "--cinder-surface-raised",
         "public": true,
         "category": "color",
-        "contrastPairs": ["text"]
+        "contrastPairs": ["text.default"]
       }
     },
     "$type": "color"
@@ -1270,7 +1258,7 @@
     "$value": { "colorSpace": "oklch", "components": [0.97, 0.0132, 255.9] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 6%)",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%)",
         "cssProperty": "--cinder-surface-raised-hover",
         "public": true,
         "category": "color"
@@ -1283,7 +1271,7 @@
     "$value": { "colorSpace": "oklch", "components": [0.94, 0.0264, 256.8] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent) 12%)",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%)",
         "cssProperty": "--cinder-surface-raised-pressed",
         "public": true,
         "category": "color"
@@ -1308,7 +1296,7 @@
     "$value": { "colorSpace": "oklch", "components": [0.96436, 0.01508, 255.9] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%)",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%)",
         "cssProperty": "--cinder-surface-hover",
         "public": true,
         "category": "color"
@@ -1321,7 +1309,7 @@
     "$value": { "colorSpace": "oklch", "components": [0.93472, 0.02816, 256.8] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 12%)",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%)",
         "cssProperty": "--cinder-surface-pressed",
         "public": true,
         "category": "color"
@@ -1353,6 +1341,18 @@
       }
     },
     "$type": "color"
+  },
+  "surface.canvas": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.984, 0.003, 255] },
+    "$description": "Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-surface-canvas",
+        "public": true,
+        "category": "color"
+      }
+    }
   },
   "border.control": {
     "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
@@ -1415,18 +1415,6 @@
     },
     "$type": "color"
   },
-  "text": {
-    "$value": { "colorSpace": "oklch", "components": [0.2, 0.018, 245] },
-    "$description": "Default body text color.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-text",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
   "text.muted": {
     "$value": { "colorSpace": "oklch", "components": [0.32, 0.014, 245] },
     "$description": "Muted (secondary) text color.",
@@ -1475,24 +1463,24 @@
     },
     "$type": "color"
   },
+  "text.default": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.2, 0.018, 245] },
+    "$description": "Default body text color.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-text-default",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
   "fill.disabled": {
     "$value": { "colorSpace": "oklch", "components": [0.86, 0.006, 255] },
     "$description": "Neutral fill for disabled solid controls (disabled-checked checkbox/radio) so they stop misusing `text.disabled` (a text-lightness token) as an assertive fill. The glyph on top must use `text.disabled`, not `accent.contrast`: accent-contrast is dark ink in both arms and would be near-invisible on the dark-arm fill.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-fill-disabled",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "accent": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.22, 270] },
-    "$description": "Brand accent fill color.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-accent",
         "public": true,
         "category": "color"
       }
@@ -1509,45 +1497,6 @@
         "category": "color"
       }
     },
-    "$type": "color"
-  },
-  "accent.hover": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.22, 270] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.08) c h)",
-        "cssProperty": "--cinder-accent-hover",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Hover step for solid accent fills, derived as a darker step of `accent` (l - 0.08, c and h held constant).",
-    "$type": "color"
-  },
-  "accent.active": {
-    "$value": { "colorSpace": "oklch", "components": [0.35, 0.22, 270] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.15) c h)",
-        "cssProperty": "--cinder-accent-active",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Active/pressed step for solid accent fills, derived as a darker step of `accent` (l - 0.15, c and h held constant).",
-    "$type": "color"
-  },
-  "accent.active.on-fill": {
-    "$value": { "colorSpace": "oklch", "components": [0.39, 0.22, 270] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch(from var(--cinder-accent) calc(l - 0.11) c h)",
-        "cssProperty": "--cinder-accent-active-on-fill",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.active` so label-bearing and non-label consumers can diverge if ever needed.",
     "$type": "color"
   },
   "accent.text": {
@@ -1572,200 +1521,85 @@
         "category": "color"
       }
     },
-    "$description": "Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white).",
+    "$description": "Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.solid.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white).",
     "$type": "color"
   },
-  "danger": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.202, 25] },
-    "$description": "Danger status fill color.",
+  "accent.solid": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.22, 270] },
+    "$description": "Brand accent fill color.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-danger",
+        "cssProperty": "--cinder-accent-solid",
         "public": true,
         "category": "color"
       }
     },
     "$type": "color"
   },
-  "danger.contrast": {
-    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
-    "$description": "Label color for solid danger fills. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it, so the dark arm uses a near-black ink instead.",
+  "accent.solid.active": {
+    "$value": { "colorSpace": "oklch", "components": [0.35, 0.22, 270] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-danger-contrast",
+        "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)",
+        "cssProperty": "--cinder-accent-solid-active",
         "public": true,
         "category": "color"
       }
     },
+    "$description": "Active/pressed step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.15, c and h held constant).",
     "$type": "color"
   },
-  "danger.hover": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.171, 25] },
-    "$description": "Hover step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness.",
+  "accent.solid.active.on-fill": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.39, 0.22, 270] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-danger-hover",
+        "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)",
+        "cssProperty": "--cinder-accent-solid-active-on-fill",
         "public": true,
         "category": "color"
       }
     },
-    "$type": "color"
+    "$description": "Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.solid.active` so label-bearing and non-label consumers can diverge if ever needed."
   },
-  "danger.active": {
-    "$value": { "colorSpace": "oklch", "components": [0.35, 0.142, 25] },
-    "$description": "Active/pressed step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness.",
+  "accent.solid.hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.22, 270] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-danger-active",
+        "cssRecipe": "oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)",
+        "cssProperty": "--cinder-accent-solid-hover",
         "public": true,
         "category": "color"
       }
     },
-    "$type": "color"
+    "$description": "Hover step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.08, c and h held constant)."
   },
-  "info": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.098, 230] },
-    "$description": "Info status fill color.",
+  "accent.background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.93472, 0.02816, 256.8] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-info",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), var(--cinder-surface) 88%)",
+        "cssProperty": "--cinder-accent-background",
         "public": true,
         "category": "color"
       }
     },
-    "$type": "color"
+    "$description": "Soft accent-tinted background, mixed 88% toward the current surface."
   },
-  "info.contrast": {
-    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
-    "$description": "Label color for solid info fills.",
+  "accent.border": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.22, 270], "alpha": 0.4 },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-info-contrast",
+        "cssRecipe": "color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)",
+        "cssProperty": "--cinder-accent-border",
         "public": true,
         "category": "color"
       }
     },
-    "$type": "color"
-  },
-  "info.hover": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.079, 230] },
-    "$description": "Hover step for solid info fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-info-hover",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "info.active": {
-    "$value": { "colorSpace": "oklch", "components": [0.35, 0.065, 230] },
-    "$description": "Active/pressed step for solid info fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-info-active",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "success": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.157, 145] },
-    "$description": "Success status fill color.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-success",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "success.contrast": {
-    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
-    "$description": "Label color for solid success fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-success-contrast",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "success.hover": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.12, 145] },
-    "$description": "Hover step for solid success fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-success-hover",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "success.active": {
-    "$value": { "colorSpace": "oklch", "components": [0.35, 0.1, 145] },
-    "$description": "Active/pressed step for solid success fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-success-active",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "warning": {
-    "$value": { "colorSpace": "oklch", "components": [0.54, 0.113, 75] },
-    "$description": "Warning status fill color.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-warning",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "warning.contrast": {
-    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
-    "$description": "Label color for solid warning fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-warning-contrast",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "warning.hover": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.08, 75] },
-    "$description": "Hover step for solid warning fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-warning-hover",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "warning.active": {
-    "$value": { "colorSpace": "oklch", "components": [0.38, 0.07, 75] },
-    "$description": "Active/pressed step for solid warning fills.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-warning-active",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
+    "$description": "Soft accent-tinted border, the accent color mixed 60% toward transparent."
   },
   "ring.width": {
     "$type": "dimension",
@@ -1810,13 +1644,13 @@
     "$value": { "colorSpace": "oklch", "components": [0.55, 0.16, 270] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "oklch(from var(--cinder-accent) 0.55 0.16 h)",
+        "cssRecipe": "oklch(from var(--cinder-accent-solid) 0.55 0.16 h)",
         "cssProperty": "--cinder-ring-color",
         "public": true,
         "category": "color"
       }
     },
-    "$description": "Focus ring color, relative to `accent` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue."
+    "$description": "Focus ring color, relative to `accent.solid` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue."
   },
   "ring.on-accent": {
     "$type": "color",
@@ -2078,351 +1912,505 @@
     },
     "$type": "dimension"
   },
-  "color.accent.background": {
-    "$value": { "colorSpace": "oklch", "components": [0.93472, 0.02816, 256.8] },
+  "status.success.contrast": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
+    "$description": "Label color for solid success fills.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)",
-        "cssProperty": "--cinder-color-accent-bg",
+        "cssProperty": "--cinder-status-success-contrast",
         "public": true,
         "category": "color"
       }
-    },
-    "$description": "Soft accent-tinted background, mixed 88% toward the current surface.",
-    "$type": "color"
+    }
   },
-  "color.accent.foreground": {
-    "$value": { "colorSpace": "oklch", "components": [0.45, 0.22, 270] },
-    "$description": "Foreground color on the soft accent surface.",
+  "status.success.solid": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.157, 145] },
+    "$description": "Success status fill color.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-accent-fg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.accent.border": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.22, 270], "alpha": 0.4 },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "color-mix(in oklch, var(--cinder-accent), transparent 60%)",
-        "cssProperty": "--cinder-color-accent-border",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Soft accent-tinted border, the accent color mixed 60% toward transparent.",
-    "$type": "color"
-  },
-  "color.checker.base": {
-    "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" },
-    "$description": "Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-checker-base",
+        "cssProperty": "--cinder-status-success-solid",
         "public": true,
         "category": "color"
       }
     },
     "$type": "color"
   },
-  "color.checker.tile": {
-    "$value": { "colorSpace": "srgb", "components": [0.8, 0.8, 0.8], "hex": "#cccccc" },
-    "$description": "Transparency checkerboard alternate tile.",
+  "status.success.solid.active": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.35, 0.1, 145] },
+    "$description": "Active/pressed step for solid success fills.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-checker-tile",
+        "cssProperty": "--cinder-status-success-solid-active",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.danger.background": {
-    "$value": { "colorSpace": "oklch", "components": [0.945, 0.026, 25] },
-    "$description": "Soft danger-tinted surface background.",
+  "status.success.solid.hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.12, 145] },
+    "$description": "Hover step for solid success fills.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-danger-bg",
+        "cssProperty": "--cinder-status-success-solid-hover",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.danger.foreground": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 25] },
-    "$description": "Foreground color on the soft danger surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-danger-fg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.danger.border": {
-    "$value": { "colorSpace": "oklch", "components": [0.8, 0.06, 25] },
-    "$description": "Border color on the soft danger surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-danger-border",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.danger.muted": {
-    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 338.2] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-surface) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-danger-muted",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.danger.subtle": {
-    "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 334.6] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-danger), var(--cinder-text) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-danger-subtle",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.info.background": {
-    "$value": { "colorSpace": "oklch", "components": [0.945, 0.03, 230] },
-    "$description": "Soft info-tinted surface background.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-info-bg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.info.foreground": {
-    "$value": { "colorSpace": "oklch", "components": [0.4, 0.079, 230] },
-    "$description": "Foreground color on the soft info surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-info-fg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.info.border": {
-    "$value": { "colorSpace": "oklch", "components": [0.8, 0.05, 230] },
-    "$description": "Border color on the soft info surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-info-border",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.info.muted": {
-    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 239] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-info-muted",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.info.subtle": {
-    "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 235.4] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-text) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-info-subtle",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.neutral.background": {
-    "$value": { "colorSpace": "oklch", "components": [0.945, 0.004, 255] },
-    "$description": "Soft neutral-tinted surface background. Neutral retains the status-triple shape so components never need ad hoc surface mixing for the default variant.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-neutral-bg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.neutral.foreground": {
-    "$value": { "colorSpace": "oklch", "components": [0.2, 0.018, 245] },
-    "$description": "Foreground color on the soft neutral surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-neutral-fg",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.neutral.border": {
-    "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
-    "$description": "Border color on the soft neutral surface.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-neutral-border",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$type": "color"
-  },
-  "color.success.background": {
+  "status.success.background": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.945, 0.045, 145] },
     "$description": "Soft success-tinted surface background.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-success-bg",
+        "cssProperty": "--cinder-status-success-background",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.success.foreground": {
+  "status.success.text": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.4, 0.127, 145] },
     "$description": "Foreground color on the soft success surface.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-success-fg",
+        "cssProperty": "--cinder-status-success-text",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.success.border": {
+  "status.success.border": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.8, 0.05, 145] },
     "$description": "Border color on the soft success surface.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-success-border",
+        "cssProperty": "--cinder-status-success-border",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.success.muted": {
-    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 184.6] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-surface) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-success-muted",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.success.subtle": {
+  "status.success.subtle": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 181] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-success), var(--cinder-text) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-success-subtle",
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-success-subtle",
         "public": true,
         "category": "color"
       }
     },
-    "$description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+    "$description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.success.muted": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 184.6] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-success-muted",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.warning.contrast": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
+    "$description": "Label color for solid warning fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-warning-contrast",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.warning.solid": {
+    "$value": { "colorSpace": "oklch", "components": [0.54, 0.113, 75] },
+    "$description": "Warning status fill color.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-warning-solid",
+        "public": true,
+        "category": "color"
+      }
+    },
     "$type": "color"
   },
-  "color.warning.background": {
+  "status.warning.solid.active": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.38, 0.07, 75] },
+    "$description": "Active/pressed step for solid warning fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-warning-solid-active",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.warning.solid.hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.08, 75] },
+    "$description": "Hover step for solid warning fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-warning-solid-hover",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.warning.background": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.945, 0.042, 75] },
     "$description": "Soft warning-tinted surface background.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-warning-bg",
+        "cssProperty": "--cinder-status-warning-background",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.warning.foreground": {
+  "status.warning.text": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.4, 0.085, 75] },
     "$description": "Foreground color on the soft warning surface.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-warning-fg",
+        "cssProperty": "--cinder-status-warning-text",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.warning.border": {
+  "status.warning.border": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.8, 0.06, 75] },
     "$description": "Border color on the soft warning surface.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-color-warning-border",
+        "cssProperty": "--cinder-status-warning-border",
         "public": true,
         "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
-  "color.warning.muted": {
-    "$value": { "colorSpace": "oklch", "components": [0.70344, 0.05, 139.8] },
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-surface) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-warning-muted",
-        "public": true,
-        "category": "color"
-      }
-    },
-    "$description": "Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors.",
-    "$type": "color"
-  },
-  "color.warning.subtle": {
+  "status.warning.subtle": {
+    "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.4176, 0.05, 136.2] },
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-warning), var(--cinder-text) 36%) l min(c, 0.05) h )",
-        "cssProperty": "--cinder-color-warning-subtle",
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-warning-subtle",
         "public": true,
         "category": "color"
       }
     },
-    "$description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors.",
+    "$description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.warning.muted": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.70344, 0.05, 139.8] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-warning-muted",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.danger.contrast": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
+    "$description": "Label color for solid danger fills. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it, so the dark arm uses a near-black ink instead.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-contrast",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.solid": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.202, 25] },
+    "$description": "Danger status fill color.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-solid",
+        "public": true,
+        "category": "color"
+      }
+    },
     "$type": "color"
+  },
+  "status.danger.solid.active": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.35, 0.142, 25] },
+    "$description": "Active/pressed step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-solid-active",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.solid.hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.171, 25] },
+    "$description": "Hover step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-solid-hover",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.945, 0.026, 25] },
+    "$description": "Soft danger-tinted surface background.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-background",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.text": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 25] },
+    "$description": "Foreground color on the soft danger surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-text",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.border": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.8, 0.06, 25] },
+    "$description": "Border color on the soft danger surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-danger-border",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.danger.subtle": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 334.6] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-danger-subtle",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.danger.muted": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 338.2] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-danger-muted",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.info.contrast": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [1, 0, 0] },
+    "$description": "Label color for solid info fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-contrast",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.solid": {
+    "$value": { "colorSpace": "oklch", "components": [0.5, 0.098, 230] },
+    "$description": "Info status fill color.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-solid",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$type": "color"
+  },
+  "status.info.solid.active": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.35, 0.065, 230] },
+    "$description": "Active/pressed step for solid info fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-solid-active",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.solid.hover": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.42, 0.079, 230] },
+    "$description": "Hover step for solid info fills.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-solid-hover",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.945, 0.03, 230] },
+    "$description": "Soft info-tinted surface background.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-background",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.text": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.4, 0.079, 230] },
+    "$description": "Foreground color on the soft info surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-text",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.border": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.8, 0.05, 230] },
+    "$description": "Border color on the soft info surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-info-border",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.info.subtle": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.392, 0.05, 235.4] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-info-subtle",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.info.muted": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.67784, 0.05, 239] },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "oklch( from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l min(c, 0.05) h )",
+        "cssProperty": "--cinder-status-info-muted",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$description": "Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
+  },
+  "status.neutral.background": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.945, 0.004, 255] },
+    "$description": "Soft neutral-tinted surface background. Neutral retains the status-triple shape so components never need ad hoc surface mixing for the default variant.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-neutral-background",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.neutral.text": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.2, 0.018, 245] },
+    "$description": "Foreground color on the soft neutral surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-neutral-text",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "status.neutral.border": {
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.63, 0.006, 255] },
+    "$description": "Border color on the soft neutral surface.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-status-neutral-border",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "checker.base": {
+    "$type": "color",
+    "$value": { "colorSpace": "srgb", "components": [1, 1, 1], "hex": "#ffffff" },
+    "$description": "Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-checker-base",
+        "public": true,
+        "category": "color"
+      }
+    }
+  },
+  "checker.tile": {
+    "$type": "color",
+    "$value": { "colorSpace": "srgb", "components": [0.8, 0.8, 0.8], "hex": "#cccccc" },
+    "$description": "Transparency checkerboard alternate tile.",
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-checker-tile",
+        "public": true,
+        "category": "color"
+      }
+    }
   },
   "button.background": {
     "$type": "color",
@@ -2430,7 +2418,7 @@
     "$description": "Secondary (default) button fill.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-button-bg",
+        "cssProperty": "--cinder-button-background",
         "public": true,
         "category": "color",
         "component": "button"
@@ -2443,7 +2431,7 @@
     "$description": "Secondary (default) button label color.",
     "$extensions": {
       "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-button-fg",
+        "cssProperty": "--cinder-button-foreground",
         "public": true,
         "category": "color",
         "component": "button"

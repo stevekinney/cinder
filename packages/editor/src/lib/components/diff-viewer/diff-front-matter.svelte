@@ -79,7 +79,7 @@
   }
 
   .front-matter-section[data-has-changes='true'] {
-    border-inline-start: 3px solid var(--cinder-warning);
+    border-inline-start: 3px solid var(--cinder-status-warning-solid);
   }
 
   .front-matter-content {

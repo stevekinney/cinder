@@ -127,8 +127,8 @@
   .chat-tool-approval {
     --cinder-chat-tool-approval-bg: var(--cinder-surface-raised);
     --cinder-chat-tool-approval-border: var(--cinder-border);
-    --cinder-chat-tool-approval-approve-color: var(--cinder-color-success-fg);
-    --cinder-chat-tool-approval-deny-color: var(--cinder-color-danger-fg);
+    --cinder-chat-tool-approval-approve-color: var(--cinder-status-success-text);
+    --cinder-chat-tool-approval-deny-color: var(--cinder-status-danger-text);
 
     display: flex;
     flex-direction: column;
@@ -141,11 +141,11 @@
   }
 
   .chat-tool-approval[data-cinder-status='approved'] {
-    border-color: var(--cinder-color-success-border, var(--cinder-chat-tool-approval-border));
+    border-color: var(--cinder-status-success-border, var(--cinder-chat-tool-approval-border));
   }
 
   .chat-tool-approval[data-cinder-status='denied'] {
-    border-color: var(--cinder-color-danger-border, var(--cinder-chat-tool-approval-border));
+    border-color: var(--cinder-status-danger-border, var(--cinder-chat-tool-approval-border));
   }
 
   .chat-tool-approval-header {
@@ -169,13 +169,13 @@
   }
 
   [data-cinder-status='pending'] .chat-tool-approval-icon {
-    color: var(--cinder-color-warning-fg, var(--cinder-text-muted));
+    color: var(--cinder-status-warning-text, var(--cinder-text-muted));
   }
 
   .chat-tool-approval-title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .chat-tool-approval-name {
@@ -203,7 +203,7 @@
     user-select: none;
 
     &:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
@@ -262,9 +262,9 @@
   }
 
   .chat-tool-approval-btn-approve {
-    background: var(--cinder-success);
-    color: var(--cinder-success-contrast, var(--cinder-text));
-    border-color: var(--cinder-success);
+    background: var(--cinder-status-success-solid);
+    color: var(--cinder-status-success-contrast, var(--cinder-text-default));
+    border-color: var(--cinder-status-success-solid);
 
     @media (hover: hover) {
       &:not(:disabled):hover {
@@ -287,11 +287,11 @@
   .chat-tool-approval-btn-deny {
     background: transparent;
     color: var(--cinder-chat-tool-approval-deny-color);
-    border-color: var(--cinder-color-danger-border, var(--cinder-chat-tool-approval-border));
+    border-color: var(--cinder-status-danger-border, var(--cinder-chat-tool-approval-border));
 
     @media (hover: hover) {
       &:not(:disabled):hover {
-        background: var(--cinder-color-danger-bg, var(--cinder-surface-raised));
+        background: var(--cinder-status-danger-background, var(--cinder-surface-raised));
       }
     }
   }

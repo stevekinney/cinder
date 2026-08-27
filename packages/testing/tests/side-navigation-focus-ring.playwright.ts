@@ -225,7 +225,7 @@ test.describe('SideNavigation — grouped focus ring is inset and unclipped', ()
     await expect(active).toBeFocused();
 
     const ringColor = await resolveTokenColor(page, '--cinder-ring-color');
-    const accentColor = await resolveTokenColor(page, '--cinder-accent');
+    const accentColor = await resolveTokenColor(page, '--cinder-accent-solid');
 
     const measurement = await active.evaluate((element) => {
       const styles = getComputedStyle(element as HTMLElement);

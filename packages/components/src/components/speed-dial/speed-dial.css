@@ -105,7 +105,7 @@
     padding: var(--cinder-space-1) var(--cinder-space-2);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     box-shadow: var(--cinder-shadow-sm);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-tight);

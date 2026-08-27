@@ -98,7 +98,7 @@
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     line-height: var(--leading-relaxed);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     white-space: pre;
     tab-size: 2;
   }

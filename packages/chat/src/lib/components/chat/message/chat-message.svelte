@@ -475,9 +475,9 @@
 
   /* Search match highlight — subtle accent-tinted ring */
   .chat-message-wrapper[data-search-match] .chat-message {
-    outline: 2px solid color-mix(in oklch, var(--cinder-accent), transparent 40%);
+    outline: 2px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 40%);
     outline-offset: 2px;
-    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
   }
 
   /* Role-based alignment (on wrapper) and visual styling (on bubble) */
@@ -491,7 +491,7 @@
     /* Distinctive user bubble - subtle blue tint */
     background: var(
       --user-message-background,
-      color-mix(in oklch, var(--cinder-accent), transparent 88%)
+      color-mix(in oklch, var(--cinder-accent-solid), transparent 88%)
     );
     border-radius: var(--cinder-radius-lg) var(--cinder-radius-lg) var(--cinder-radius-sm)
       var(--cinder-radius-lg);
@@ -515,8 +515,8 @@
   }
 
   .chat-message-wrapper[data-role='system'] .chat-message {
-    background: var(--cinder-color-info-bg);
-    color: var(--cinder-color-info-fg);
+    background: var(--cinder-status-info-background);
+    color: var(--cinder-status-info-text);
     text-align: center;
   }
 
@@ -525,8 +525,8 @@
   }
 
   .chat-message-wrapper[data-role='developer'] .chat-message {
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
   }
 
   .chat-message-wrapper[data-role='tool-call'],
@@ -706,8 +706,8 @@
 
   /* Failed message styling */
   .chat-message-wrapper[data-failed] .chat-message {
-    border: 1px solid var(--cinder-color-danger-border);
-    background: var(--cinder-color-danger-bg);
+    border: 1px solid var(--cinder-status-danger-border);
+    background: var(--cinder-status-danger-background);
   }
 
   .chat-message-failed-actions {
@@ -719,7 +719,7 @@
 
   .chat-message-failed-label {
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
     font-weight: var(--cinder-font-medium);
   }
 
@@ -731,9 +731,9 @@
     min-height: var(--cinder-touch-target-min);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
     background: transparent;
-    border: 1px solid var(--cinder-color-danger-border);
+    border: 1px solid var(--cinder-status-danger-border);
     border-radius: var(--cinder-radius-sm);
     cursor: pointer;
     transition:
@@ -743,8 +743,8 @@
 
   @media (hover: hover) {
     .chat-message-retry:hover {
-      background: var(--cinder-color-danger-bg);
-      border-color: var(--cinder-danger);
+      background: var(--cinder-status-danger-background);
+      border-color: var(--cinder-status-danger-solid);
     }
   }
 
@@ -923,7 +923,7 @@
 
   @media (hover: hover) {
     :global(.chat-message-action-button:hover) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }
@@ -950,7 +950,7 @@
    * Keep `.chat-message-copy-success` as a selector alias so existing
    * external callers that target it continue to work. */
   :global(.chat-message-copy[data-cinder-copied]) {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
 
   /* CopyButton renders cinder-icon-sm (16px) icons by default. Override to cinder-icon-xs
@@ -962,8 +962,8 @@
 
   @media (hover: hover) {
     :global(.chat-message-copy[data-cinder-copied]:hover) {
-      color: var(--cinder-color-success-fg);
-      background: var(--cinder-color-success-bg);
+      color: var(--cinder-status-success-text);
+      background: var(--cinder-status-success-background);
     }
   }
 
@@ -980,9 +980,9 @@
     font-family: inherit;
     font-size: var(--cinder-text-base);
     line-height: 1.6;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
-    border: 1px solid var(--cinder-accent);
+    border: 1px solid var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-md);
     resize: vertical;
     outline: none;
@@ -1006,7 +1006,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-contrast);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border: none;
     border-radius: var(--cinder-radius-sm);
     cursor: pointer;
@@ -1015,7 +1015,7 @@
 
   @media (hover: hover) {
     .chat-message-edit-save:hover {
-      background: color-mix(in oklch, var(--cinder-accent), black 15%);
+      background: color-mix(in oklch, var(--cinder-accent-solid), black 15%);
     }
   }
 
@@ -1041,7 +1041,7 @@
 
   @media (hover: hover) {
     .chat-message-edit-cancel:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }

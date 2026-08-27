@@ -109,7 +109,7 @@
     border-end-start-radius: var(--cinder-radius-md);
     border-end-end-radius: var(--cinder-radius-md);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /* ----------------------------------------

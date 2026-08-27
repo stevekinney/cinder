@@ -910,7 +910,7 @@ describe('CSS rule assertions — sort indicator and focus ring', () => {
       ".cinder-table__sort-indicator[data-cinder-direction='ascending']",
       ".cinder-table__sort-indicator[data-cinder-direction='descending']",
     );
-    expect(rule?.style.color).toBe('var(--cinder-text)');
+    expect(rule?.style.color).toBe('var(--cinder-text-default)');
   });
 
   test('inactive sort chevron remains visible', () => {

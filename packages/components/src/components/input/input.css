@@ -28,7 +28,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-input-field__label[data-disabled] {
@@ -48,7 +48,7 @@
     font-size: var(--cinder-text-sm);
     font-family: inherit;
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -162,13 +162,13 @@
  * components — one semantic color, used consistently.
  */
   .cinder-input[aria-invalid='true'] {
-    --_cinder-input-ring: var(--cinder-danger);
-    border-color: var(--cinder-danger);
+    --_cinder-input-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   @media (hover: hover) {
     .cinder-input[aria-invalid='true']:hover:not(:disabled) {
-      border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
     }
   }
 
@@ -186,7 +186,7 @@
   .cinder-input-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     margin: 0;
   }
 
@@ -262,12 +262,12 @@
 
   /* Invalid state. */
   .cinder-input-group--invalid {
-    --_cinder-input-ring: var(--cinder-danger);
-    border-color: var(--cinder-danger);
+    --_cinder-input-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
   }
   @media (hover: hover) {
     .cinder-input-group--invalid:hover:not(.cinder-input-group--disabled) {
-      border-color: oklch(from var(--cinder-danger) calc(l - 0.06) c h);
+      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
     }
   }
 

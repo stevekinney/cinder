@@ -103,13 +103,13 @@
   }
 
   .cinder-color-picker__alpha {
-    background-color: var(--cinder-color-checker-base);
+    background-color: var(--cinder-checker-base);
     background-image:
       linear-gradient(to right, transparent, var(--cinder-color-picker-base, currentColor)),
-      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
@@ -164,16 +164,16 @@
   }
 
   .cinder-color-picker__preview[data-cinder-alpha] {
-    background-color: var(--cinder-color-checker-base);
+    background-color: var(--cinder-checker-base);
     background-image:
       linear-gradient(
         var(--cinder-color-picker-preview, transparent),
         var(--cinder-color-picker-preview, transparent)
       ),
-      linear-gradient(45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(-45deg, var(--cinder-color-checker-tile) 25%, transparent 25%),
-      linear-gradient(45deg, transparent 75%, var(--cinder-color-checker-tile) 75%),
-      linear-gradient(-45deg, transparent 75%, var(--cinder-color-checker-tile) 75%);
+      linear-gradient(45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(-45deg, var(--cinder-checker-tile) 25%, transparent 25%),
+      linear-gradient(45deg, transparent 75%, var(--cinder-checker-tile) 75%),
+      linear-gradient(-45deg, transparent 75%, var(--cinder-checker-tile) 75%);
     background-size:
       auto,
       8px 8px,
@@ -219,7 +219,7 @@
 
   .cinder-color-picker .cinder-color-picker__format:hover:not(:disabled),
   .cinder-color-picker .cinder-color-picker__format:focus-visible {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     text-decoration: underline;
   }
 

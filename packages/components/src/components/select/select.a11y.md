@@ -96,7 +96,7 @@ WCAG 2.1 AA contrast ratios: at least 4.5:1 for normal text and 3:1 for large te
 components. The border-to-background contrast of the select control must meet the 3:1 non-text
 contrast requirement (WCAG 1.4.11).
 
-When in an invalid state, the `border-color` switches to `--cinder-danger`. The error `<p>` text
+When in an invalid state, the `border-color` switches to `--cinder-status-danger-solid`. The error `<p>` text
 remains visible via the `CanvasText` system color in forced-colors mode; the danger border is
 replaced by the system border color anyway, so no additional forced-colors block is needed for the
 invalid border.

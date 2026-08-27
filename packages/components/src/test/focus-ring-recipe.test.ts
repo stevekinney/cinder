@@ -455,7 +455,7 @@ describe('vertical navigation-item geometry lives on the item', () => {
     );
     expect(rule).toBeDefined();
     expect(declValue(rule!, 'background-color')).toBe('var(--cinder-surface-inset)');
-    expect(declValue(rule!, 'border-inline-start-color')).toBe('var(--cinder-accent)');
+    expect(declValue(rule!, 'border-inline-start-color')).toBe('var(--cinder-accent-solid)');
     expect(rule!.toString()).not.toContain('color-mix(');
   });
 
@@ -797,7 +797,7 @@ describe('focus-ring lint rule gates at error severity', () => {
 
   test('a colored outline-only focus-visible rule is reported as an error', async () => {
     const result = await lintWithProjectConfig(
-      '.x:focus-visible { outline: 2px solid var(--cinder-accent); }\n',
+      '.x:focus-visible { outline: 2px solid var(--cinder-accent-solid); }\n',
     );
     const hits = warningsFor(result);
     expect(hits.length).toBeGreaterThan(0);

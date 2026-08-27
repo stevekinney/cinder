@@ -2159,7 +2159,7 @@
 <style>
   /* Page surface: pure white in light mode, the system surface in dark. Set
      LOCALLY on the page root via `light-dark()` (which follows `color-scheme`,
-     the same switch cinder tokens use) so the global --cinder-bg token — and
+     the same switch cinder tokens use) so the global --cinder-surface-canvas token — and
      every other playground iframe — stays untouched. */
   .dx {
     --dx-gutter: clamp(1.25rem, 4vw, 3.5rem);
@@ -2176,7 +2176,7 @@
     --dx-topbar-h: 0rem;
     min-height: 100vh;
     border: 1px solid var(--cinder-border);
-    background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+    background: light-dark(oklch(100% 0 0), var(--cinder-surface-canvas));
   }
 
   /*
@@ -2208,7 +2208,7 @@
   .dx-nav__brand {
     display: block;
     padding: var(--cinder-space-2) var(--cinder-space-5) var(--cinder-space-4);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-2xs);
     font-weight: var(--cinder-font-semibold);
@@ -2227,8 +2227,8 @@
     padding: var(--cinder-space-2) var(--cinder-space-3);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-bg);
-    color: var(--cinder-text);
+    background: var(--cinder-surface-canvas);
+    color: var(--cinder-text-default);
     font-family: inherit;
     font-size: var(--cinder-text-sm);
   }
@@ -2294,14 +2294,14 @@
   @media (hover: hover) {
     .dx-nav__link:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
   .dx-nav__link[aria-current='page'] {
-    border-inline-start-color: var(--cinder-accent);
+    border-inline-start-color: var(--cinder-accent-solid);
     background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
   }
 
@@ -2373,7 +2373,7 @@
   @media (hover: hover) {
     .dx-iconbtn:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       border-color: var(--cinder-border-muted);
     }
   }
@@ -2431,7 +2431,7 @@
     line-height: 1.02;
     letter-spacing: -0.03em;
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
     text-wrap: balance;
   }
@@ -2481,7 +2481,7 @@
     text-transform: uppercase;
   }
   .dx-spec__val {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
     display: inline-flex;
     align-items: center;
@@ -2535,11 +2535,11 @@
   @media (hover: hover) {
     .dx-import__copy:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
   .dx-import__copy[data-copied] {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
   .dx-import__copy:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
@@ -2605,13 +2605,13 @@
     cursor: pointer;
   }
   .dx-views__tab[aria-selected='true'] {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
-    border-block-end-color: var(--cinder-accent);
+    border-block-end-color: var(--cinder-accent-solid);
   }
   @media (hover: hover) {
     .dx-views__tab:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
   .dx-views__tab:focus-visible {
@@ -2677,7 +2677,7 @@
     display: inline-block;
     padding: var(--cinder-space-2) var(--cinder-space-4);
     border-radius: var(--cinder-radius-md);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
@@ -2734,13 +2734,13 @@
     .dx-viewport__size:hover,
     .dx-viewport__expand:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
   .dx-viewport__size[aria-pressed='true'] {
     border-color: var(--cinder-border);
-    background: var(--cinder-bg);
-    color: var(--cinder-text);
+    background: var(--cinder-surface-canvas);
+    color: var(--cinder-text-default);
   }
   .dx-viewport__expand {
     margin-inline-start: auto;
@@ -2814,7 +2814,7 @@
   .dx-seed__name {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
   .dx-seed__value {
     font-family: var(--cinder-font-mono);
@@ -2844,7 +2844,7 @@
   .dx-play__note code {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /*
@@ -2858,7 +2858,7 @@
     display: flex;
     height: 100vh;
     padding: var(--cinder-space-5);
-    background: var(--cinder-bg);
+    background: var(--cinder-surface-canvas);
   }
   .dx.is-focus-mode .dx-playground__panel,
   .dx.is-focus-mode .dx-views,
@@ -2883,7 +2883,7 @@
     padding-block: var(--cinder-space-2) 0;
     border-block-end: 1px solid var(--cinder-border-muted);
     /* Match the surface this sits ON, not the page behind it. The section index
-     * lives inside the white documentation card, so filling it with `--cinder-bg`
+     * lives inside the white documentation card, so filling it with `--cinder-surface-canvas`
      * painted a grey band across the card — which, stacked directly under the
      * Documentation/Playground tab row and its rule, read as a second nav bar.
      * Sticky positioning still needs an opaque-enough fill to occlude content
@@ -2933,7 +2933,7 @@
   }
   @media (hover: hover) {
     .dx-toc__link:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
   .dx-toc__num {
@@ -2944,9 +2944,9 @@
     flex-shrink: 0;
   }
   .dx-toc__link[data-active] {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
-    border-block-end-color: var(--cinder-accent);
+    border-block-end-color: var(--cinder-accent-solid);
   }
   .dx-toc__link[data-active] .dx-toc__num {
     color: var(--cinder-accent-text);
@@ -2988,15 +2988,15 @@
     letter-spacing: 0.1em;
     color: var(--cinder-accent-text);
     padding: 2px var(--cinder-space-2);
-    border: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 70%);
+    border: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 70%);
     border-radius: var(--cinder-radius-sm);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 92%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
   }
   .dx-section__title {
     font-size: var(--cinder-text-2xl);
     font-weight: var(--cinder-font-semibold);
     letter-spacing: -0.01em;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
   }
   .dx-section__rule {
@@ -3015,7 +3015,7 @@
   .readme-content :global(h1),
   .readme-content :global(h2),
   .readme-content :global(h3) {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-tight);
     margin: var(--cinder-space-6) 0 var(--cinder-space-3);
@@ -3054,7 +3054,7 @@
   .readme-content :global(h4),
   .readme-content :global(h5),
   .readme-content :global(h6) {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-tight);
     margin: var(--cinder-space-5) 0 var(--cinder-space-2);
@@ -3178,12 +3178,12 @@
      surface is pure white (carried over from the docs page) so translucent
      component backgrounds — e.g. a selected tree row's 15%-accent fill —
      composite over the same white the visual baselines were captured against,
-     rather than the body's grey `--cinder-bg`, which would shift the contrast. */
+     rather than the body's grey `--cinder-surface-canvas`, which would shift the contrast. */
   .snapshot-examples {
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-6);
-    background: light-dark(oklch(100% 0 0), var(--cinder-bg));
+    background: light-dark(oklch(100% 0 0), var(--cinder-surface-canvas));
   }
 
   .snapshot-empty-heading {
@@ -3193,7 +3193,7 @@
     font-weight: var(--cinder-font-weight-semibold);
     /* Explicit token (not `inherit`) so contrast is computed against the white
        snapshot surface, keeping axe's color-contrast check green. */
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .example-preview {
@@ -3252,7 +3252,7 @@
     gap: var(--cinder-space-2-5, 0.625rem);
     margin-block-end: var(--cinder-space-4);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
   .dx-guide__icon {
     display: inline-flex;
@@ -3263,12 +3263,12 @@
     border-radius: var(--cinder-radius-md);
   }
   .dx-guide__icon--use {
-    color: var(--cinder-color-success-fg);
-    background: var(--cinder-color-success-bg);
+    color: var(--cinder-status-success-text);
+    background: var(--cinder-status-success-background);
   }
   .dx-guide__icon--avoid {
-    color: var(--cinder-color-danger-fg);
-    background: var(--cinder-color-danger-bg);
+    color: var(--cinder-status-danger-text);
+    background: var(--cinder-status-danger-background);
   }
   .dx-guide__list {
     list-style: none;
@@ -3287,11 +3287,11 @@
     color: var(--cinder-text-muted);
   }
   .dx-guide__list--use :global(svg) {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
     margin-top: 1px;
   }
   .dx-guide__list--avoid :global(svg) {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
     margin-top: 1px;
   }
   .dx-guide__alt {
@@ -3369,7 +3369,7 @@
   .dx-ctl__name {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     /* Break only when a token genuinely overflows the column, never per-character. */
     overflow-wrap: break-word;
   }
@@ -3396,7 +3396,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     padding: var(--cinder-space-1-5) var(--cinder-space-2);
@@ -3424,7 +3424,7 @@
   .dx-example__title {
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
   }
   .dx-example__desc {
@@ -3558,14 +3558,14 @@
     margin-inline-start: var(--cinder-space-1);
   }
   .dx-prop-flag--req {
-    color: var(--cinder-color-danger-fg);
-    background: var(--cinder-color-danger-bg);
-    border: 1px solid var(--cinder-color-danger-border);
+    color: var(--cinder-status-danger-text);
+    background: var(--cinder-status-danger-background);
+    border: 1px solid var(--cinder-status-danger-border);
   }
   .dx-prop-flag--bind {
     color: var(--cinder-accent-text);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    border: 1px solid color-mix(in oklch, var(--cinder-accent), transparent 72%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+    border: 1px solid color-mix(in oklch, var(--cinder-accent-solid), transparent 72%);
     margin-inline-start: 0;
   }
   /* The cap's escape hatch. Nothing is discarded — a reader checking whether a
@@ -3807,7 +3807,7 @@
   }
   .dx-rel__name {
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
@@ -3834,7 +3834,7 @@
   .dx-raw__panel h3 {
     font-size: var(--cinder-text-base);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0 0 var(--cinder-space-2);
   }
   /* ===== Responsive ===== */

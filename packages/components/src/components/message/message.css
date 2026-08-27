@@ -17,8 +17,8 @@
   }
 
   .cinder-message[data-cinder-role='user'] {
-    background: var(--cinder-color-info-bg);
-    border-color: var(--cinder-color-info-border);
+    background: var(--cinder-status-info-background);
+    border-color: var(--cinder-status-info-border);
     align-self: flex-end;
   }
 
@@ -52,6 +52,6 @@
   .cinder-message__body {
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 }

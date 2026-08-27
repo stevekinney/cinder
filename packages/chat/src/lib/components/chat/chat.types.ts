@@ -143,7 +143,7 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * Visual treatment for message bubbles.
    * - `'bubble'` (default): colored backgrounds differentiate user from assistant.
    * - `'flat'`: no bubble backgrounds; role is communicated via alignment and role label.
-   *   Text-on-surface contrast meets WCAG AA via `--cinder-text` on `--cinder-surface-inset`.
+   *   Text-on-surface contrast meets WCAG AA via `--cinder-text-default` on `--cinder-surface-inset`.
    */
   variant?: 'bubble' | 'flat';
   /** Distance in pixels from the bottom of the scroll viewport within which the chat is considered "at bottom" and will auto-scroll on new messages. Default `150`. */

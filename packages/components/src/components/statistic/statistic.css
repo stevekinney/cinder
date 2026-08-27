@@ -65,11 +65,11 @@
   }
 
   .cinder-statistic__change[data-cinder-direction='up'] {
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-statistic__change[data-cinder-direction='down'] {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-statistic__change[data-cinder-direction='neutral'] {

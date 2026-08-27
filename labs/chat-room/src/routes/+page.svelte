@@ -315,7 +315,7 @@
 	<p
 		role="alert"
 		data-testid="demo-error"
-		style="margin: 0; color: var(--cinder-danger);"
+		style="margin: 0; color: var(--cinder-status-danger-solid);"
 		style:padding={error ? '0.5rem 1rem' : '0'}
 	>
 		{error ?? ''}

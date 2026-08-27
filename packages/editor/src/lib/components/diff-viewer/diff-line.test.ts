@@ -8,8 +8,8 @@ describe('DiffLine CSS contract', () => {
 
     expect(modifiedGutterBlocks.length).toBe(3);
     for (const block of modifiedGutterBlocks) {
-      expect(block).toContain('color: var(--cinder-color-info-fg)');
-      expect(block).not.toContain('color: var(--cinder-color-info-bg)');
+      expect(block).toContain('color: var(--cinder-status-info-text)');
+      expect(block).not.toContain('color: var(--cinder-status-info-background)');
     }
   });
 });

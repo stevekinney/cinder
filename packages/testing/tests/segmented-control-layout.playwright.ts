@@ -277,7 +277,7 @@ test.describe('SegmentedControl — sizing and density', () => {
  * contract instead of having arrow keys stolen by the surrounding toolbar.
  *
  * Color comparisons round-trip both sides through the browser (resolve
- * --cinder-accent from the live element, read the indicator's computed
+ * --cinder-accent-solid from the live element, read the indicator's computed
  * background) so we compare normalized rgb() strings, never authored token
  * text against computed values. Transparency and visibility use alpha and size
  * predicates rather than exact string matching.
@@ -406,7 +406,7 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
       .evaluate((element) => {
         const after = getComputedStyle(element as HTMLElement, '::after');
         const accent = getComputedStyle(element as HTMLElement)
-          .getPropertyValue('--cinder-accent')
+          .getPropertyValue('--cinder-accent-solid')
           .trim();
         // Resolve the authored accent token to a computed rgb() by painting it
         // onto a probe element, so both sides of the color comparison are
@@ -437,7 +437,7 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
     expect(indicator.blockSize).toBeGreaterThanOrEqual(2 - PIXEL_TOLERANCE);
     expect(indicator.inlineSize).toBeGreaterThan(0);
     // Both sides are browser-computed color strings (oklch for cinder tokens);
-    // painting --cinder-accent onto a probe and reading the indicator's
+    // painting --cinder-accent-solid onto a probe and reading the indicator's
     // computed background yields identical normalized strings.
     expect(indicator.background).toBe(indicator.resolvedAccent);
     expect(await colorAlpha(page, indicator.background)).toBeGreaterThan(0);
@@ -451,7 +451,7 @@ test.describe('SegmentedControl — tablist variant visual contract', () => {
       .evaluate((element) => {
         const after = getComputedStyle(element as HTMLElement, '::after');
         const accent = getComputedStyle(element as HTMLElement)
-          .getPropertyValue('--cinder-accent')
+          .getPropertyValue('--cinder-accent-solid')
           .trim();
         const probe = document.createElement('span');
         probe.style.color = accent;

@@ -2,12 +2,6 @@
   "$schema": "https://www.designtokens.org/schemas/2025.10/format.json",
   "motion": {
     "$type": "duration",
-    "$root": {
-      "$value": {
-        "value": 0,
-        "unit": "ms"
-      }
-    },
     "fast": {
       "$value": {
         "value": 0,
@@ -66,6 +60,13 @@
             "unit": "ms"
           }
         }
+      }
+    },
+    "base": {
+      "$type": "duration",
+      "$value": {
+        "value": 0,
+        "unit": "ms"
       }
     }
   }

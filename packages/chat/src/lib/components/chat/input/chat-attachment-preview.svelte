@@ -139,7 +139,7 @@
   .chat-attachment-preview-name {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -168,7 +168,7 @@
 
   /* Error state */
   .chat-attachment-preview[data-error] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .chat-attachment-preview[data-error] .chat-attachment-preview-image {
@@ -176,7 +176,7 @@
   }
 
   .chat-attachment-preview[data-error] .chat-attachment-preview-icon {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .chat-attachment-preview-error-badge {
@@ -192,7 +192,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-bold);
     color: white;
-    background: var(--cinder-danger);
+    background: var(--cinder-status-danger-solid);
     border-radius: var(--cinder-radius-full);
   }
 
@@ -215,7 +215,7 @@
   .chat-attachment-preview-loading-bar {
     width: 40%;
     height: 100%;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     animation: loading-slide 1.2s ease-in-out infinite;
   }
 

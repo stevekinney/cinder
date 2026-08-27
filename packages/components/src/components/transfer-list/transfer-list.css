@@ -16,7 +16,7 @@
 
   .cinder-transfer-list__label {
     margin: 0;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
   }
@@ -41,8 +41,8 @@
 
   .cinder-transfer-list__list[data-cinder-overflows-block] {
     --_cinder-transfer-list-scroll-shadow:
-      inset 0 1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 20%, transparent),
-      inset 0 -1rem 1rem -1rem color-mix(in srgb, var(--cinder-text) 20%, transparent);
+      inset 0 1rem 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 20%, transparent),
+      inset 0 -1rem 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 20%, transparent);
   }
 
   .cinder-transfer-list__list:focus-visible {
@@ -64,7 +64,7 @@
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-3);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
     user-select: none;
   }

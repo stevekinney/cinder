@@ -20,7 +20,7 @@
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     transition:
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
@@ -48,8 +48,8 @@
   }
 
   .cinder-tag-input[data-invalid] .cinder-tag-input__control {
-    --_cinder-tag-input-ring: var(--cinder-danger);
-    border-color: var(--cinder-danger);
+    --_cinder-tag-input-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-tag-input[data-disabled] .cinder-tag-input__control {
@@ -80,7 +80,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     background: color-mix(in oklch, var(--cinder-surface-inset), var(--cinder-surface) 60%);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: default;
   }
 
@@ -139,8 +139,8 @@
 
   @media (hover: hover) {
     .cinder-tag-input__remove:hover:not(:disabled) {
-      color: var(--cinder-text);
-      background: color-mix(in oklch, var(--cinder-text), transparent 92%);
+      color: var(--cinder-text-default);
+      background: color-mix(in oklch, var(--cinder-text-default), transparent 92%);
     }
   }
 
@@ -181,7 +181,7 @@
 
   .cinder-tag-input__error {
     margin: 0;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-snug);
   }

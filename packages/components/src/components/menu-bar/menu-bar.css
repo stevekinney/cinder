@@ -22,7 +22,7 @@
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-sm);
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
     font: inherit;
     line-height: var(--cinder-leading-tight);

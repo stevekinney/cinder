@@ -41,7 +41,7 @@
 
   .cinder-progress--bar .cinder-progress__fill {
     height: 100%;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border-radius: inherit;
     transition: width var(--cinder-duration-moderate) var(--cinder-ease-in-out);
   }
@@ -127,7 +127,7 @@
   }
 
   .cinder-progress--ring .cinder-progress__fill {
-    stroke: var(--cinder-accent);
+    stroke: var(--cinder-accent-solid);
     stroke-linecap: round;
     /* circumference = 2 * pi * 16 ≈ 100.53 */
     stroke-dasharray: 100.53;

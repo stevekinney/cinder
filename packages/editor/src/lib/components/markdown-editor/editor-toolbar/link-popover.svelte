@@ -294,7 +294,7 @@
     margin: 0;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .link-popover-close {
@@ -316,7 +316,7 @@
 
   @media (hover: hover) {
     .link-popover-close:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
   }

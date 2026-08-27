@@ -27,7 +27,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-textarea-label[data-disabled] {
@@ -50,7 +50,7 @@
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
 
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -128,14 +128,15 @@
  * ---------------------------------------- */
 
   .cinder-textarea[aria-invalid='true'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-textarea[aria-invalid='true']:focus-visible {
     border-color: transparent;
     box-shadow:
       0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-danger);
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--cinder-status-danger-solid);
   }
 
   @media (forced-colors: active) {
@@ -174,7 +175,7 @@
   }
 
   .cinder-textarea-error {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-textarea-count {

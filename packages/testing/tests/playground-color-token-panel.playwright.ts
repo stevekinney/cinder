@@ -1,14 +1,18 @@
 import { expect, test, type Locator, type Page } from '@playwright/test';
 
-const TOKEN_NAME = '--cinder-accent';
-const SUCCESS_TOKEN_NAME = '--cinder-success';
-const DANGER_TOKEN_NAME = '--cinder-danger';
+const TOKEN_NAME = '--cinder-accent-solid';
+const SUCCESS_TOKEN_NAME = '--cinder-status-success-solid';
+const DANGER_TOKEN_NAME = '--cinder-status-danger-solid';
 const SURFACE_TOKEN_NAME = '--cinder-surface';
 // Must match `COLOR_TOKEN_NAMES.length` in
 // `packages/playground/src/shell-app/color-token-registry.ts`, which
 // `color-token-registry.test.ts` pins independently. Registering a token in the
 // panel changes both.
-const EXPECTED_COLOR_TOKEN_COUNT = 84;
+//
+// 84 -> 83 in CIN-33: `--cinder-color-accent-fg` was a pure alias of
+// `--cinder-accent-text` and folded into it, so the panel no longer lists the
+// same property in two groups. One token left the panel; none lost editability.
+const EXPECTED_COLOR_TOKEN_COUNT = 83;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
 const LIGHT_BULK_OVERRIDE = '#118833';
 const DARK_BULK_OVERRIDE = '#884422';
@@ -16,8 +20,8 @@ const DARK_BULK_OVERRIDE = '#884422';
 const PICKER_SEED_TOKENS = [
   '--cinder-surface',
   '--cinder-surface-raised',
-  '--cinder-accent',
-  '--cinder-color-info-bg',
+  '--cinder-accent-solid',
+  '--cinder-status-info-background',
   '--cinder-chart-series-1',
   '--cinder-ring-color',
 ] as const;

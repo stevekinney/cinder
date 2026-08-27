@@ -90,7 +90,7 @@
     border: none;
     border-radius: var(--cinder-radius-sm);
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     cursor: pointer;
@@ -102,7 +102,7 @@
   @media (hover: hover) {
     :global(.toolbar-dropdown-trigger:hover:not(:disabled)) {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

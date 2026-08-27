@@ -182,7 +182,7 @@
     min-width: 0;
     padding: var(--cinder-space-1) var(--cinder-space-2);
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: transparent;
     border: none;
     outline: none;
@@ -231,7 +231,7 @@
     .chat-search-nav-button:hover,
     .chat-search-close:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

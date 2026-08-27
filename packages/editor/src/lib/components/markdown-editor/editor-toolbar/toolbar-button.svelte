@@ -73,7 +73,7 @@
   @media (hover: hover) {
     .toolbar-button:hover:not(:disabled) {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

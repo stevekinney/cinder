@@ -21,6 +21,7 @@ import {
   type ComponentMetadata,
 } from '../../components/scripts/generate-component-metadata.ts';
 import { discoverDirectoryComponents } from '../../components/scripts/generate-exports.ts';
+import { readTokenNamespaces } from '../../components/scripts/token-namespaces.ts';
 import { categories, statusLevels } from '../../components/src/manifest.meta.ts';
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -47,6 +48,7 @@ type ManifestComponent = Omit<ComponentMetadata, 'isExperimental'> & {
 };
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
+
 const PACKAGES_ROOT = join(PACKAGE_ROOT, '..');
 const COMPONENTS_ROOT = join(PACKAGE_ROOT, 'src', 'lib', 'components');
 const PLAYGROUND_EXAMPLES_ROOT = join(PACKAGES_ROOT, 'playground', 'src', 'examples');
@@ -386,7 +388,11 @@ async function buildManifest(): Promise<Record<string, unknown>> {
       frameworkVersionRange: packageJson['peerDependencies']['svelte'],
       classPrefix: 'cinder-',
       cssVarPrefix: '--cinder-',
-      tokenNamespaces: ['color', 'space', 'radius', 'ring', 'type', 'motion', 'shadow'],
+      // Derived from the generated registry rather than hand-listed: this array
+      // ships in components.json, and the hand-written version advertised
+      // `color` -- a namespace CIN-33 deleted -- alongside names that had
+      // drifted from the corpus.
+      tokenNamespaces: readTokenNamespaces(),
       stylesEntry: '@lostgradient/cinder/styles',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },

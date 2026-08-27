@@ -970,7 +970,7 @@ describe('TagInput CSS contract', () => {
     expect(css).toContain('.cinder-tag-input__control:focus-within');
     expect(css).toContain('outline: var(--cinder-ring-width) solid transparent;');
     expect(css).toContain('box-shadow:');
-    expect(css).toContain('--_cinder-tag-input-ring: var(--cinder-danger);');
+    expect(css).toContain('--_cinder-tag-input-ring: var(--cinder-status-danger-solid);');
     expect(css).toContain('@media (forced-colors: active)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid Highlight;');
   });

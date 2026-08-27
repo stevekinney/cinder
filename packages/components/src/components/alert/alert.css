@@ -5,7 +5,7 @@
  * ======================================== */
 
   /*
- * Alert's info hue. The global `--cinder-info` token now exists in
+ * Alert's info hue. The global `--cinder-status-info-solid` token now exists in
  * tokens-base.css, but Alert keeps a component-local base whose dark arm sits
  * at a slightly higher chroma (0.15 vs the global 0.13) — the tint Alert was
  * designed around. Scoped to `.cinder-alert` so it does not bleed elsewhere.
@@ -25,7 +25,7 @@
     border-radius: var(--cinder-radius-lg);
     border: 1px solid var(--cinder-border);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
 
@@ -132,22 +132,22 @@
   }
 
   .cinder-alert[data-cinder-variant='success'] {
-    --_cinder-alert-ring: var(--cinder-success);
-    --_cinder-status-base: var(--cinder-success);
+    --_cinder-alert-ring: var(--cinder-status-success-solid);
+    --_cinder-status-base: var(--cinder-status-success-solid);
     --_cinder-status-fg-chroma-light: 0.14;
     --_cinder-status-fg-chroma-dark: 0.12;
   }
 
   .cinder-alert[data-cinder-variant='warning'] {
-    --_cinder-alert-ring: var(--cinder-warning);
-    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-alert-ring: var(--cinder-status-warning-solid);
+    --_cinder-status-base: var(--cinder-status-warning-solid);
     --_cinder-status-fg-chroma-light: 0.16;
     --_cinder-status-fg-chroma-dark: 0.14;
   }
 
   .cinder-alert[data-cinder-variant='danger'] {
-    --_cinder-alert-ring: var(--cinder-danger);
-    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-alert-ring: var(--cinder-status-danger-solid);
+    --_cinder-status-base: var(--cinder-status-danger-solid);
     --_cinder-status-fg-chroma-light: 0.18;
     --_cinder-status-fg-chroma-dark: 0.16;
   }

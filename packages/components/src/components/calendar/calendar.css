@@ -19,7 +19,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     inline-size: 2rem;
     block-size: 2rem;
     cursor: pointer;
@@ -34,7 +34,7 @@
     margin: 0;
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-calendar__weekdays,
@@ -64,7 +64,7 @@
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-sm);
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     inline-size: 100%;
     block-size: 2rem;
@@ -76,8 +76,8 @@
   }
 
   .cinder-calendar__day[data-selected] {
-    background: color-mix(in oklch, var(--cinder-accent), transparent 84%);
-    border-color: var(--cinder-accent);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 84%);
+    border-color: var(--cinder-accent-solid);
     color: var(--cinder-accent-text);
   }
 

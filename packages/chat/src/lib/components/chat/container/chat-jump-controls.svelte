@@ -91,7 +91,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     box-shadow: var(--cinder-shadow-md);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
     transition:
       background var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -99,7 +99,7 @@
       opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
       transform var(--cinder-duration-fast) var(--cinder-ease-standard);
     z-index: var(--cinder-z-dropdown);
-    animation: jump-button-enter var(--cinder-duration) var(--cinder-ease-decelerate);
+    animation: jump-button-enter var(--cinder-duration-base) var(--cinder-ease-decelerate);
   }
 
   @keyframes jump-button-enter {
@@ -138,7 +138,7 @@
     padding: 0 var(--cinder-space-1);
     font-size: var(--cinder-text-3xs);
     font-weight: var(--cinder-font-semibold);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     border-radius: var(--cinder-radius-full);
   }
@@ -161,7 +161,7 @@
     gap: var(--cinder-space-1);
     min-height: var(--cinder-touch-target-min);
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
@@ -170,7 +170,7 @@
     box-shadow: var(--cinder-shadow-lg);
     cursor: pointer;
     z-index: var(--cinder-z-dropdown);
-    animation: slide-up var(--cinder-duration) var(--cinder-ease-decelerate);
+    animation: slide-up var(--cinder-duration-base) var(--cinder-ease-decelerate);
   }
 
   .chat-new-indicator:hover {

@@ -16,7 +16,7 @@
     border: 1px solid var(--cinder-border);
     white-space: nowrap;
     background: var(--cinder-surface-inset);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     transition:
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard),
@@ -65,39 +65,39 @@
  * ---------------------------------------- */
 
   .cinder-chip[data-cinder-variant='neutral'] {
-    background: var(--cinder-color-neutral-bg);
-    color: var(--cinder-color-neutral-fg);
-    border-color: var(--cinder-color-neutral-border);
+    background: var(--cinder-status-neutral-background);
+    color: var(--cinder-status-neutral-text);
+    border-color: var(--cinder-status-neutral-border);
   }
 
   .cinder-chip[data-cinder-variant='success'] {
-    background: var(--cinder-color-success-bg);
-    color: var(--cinder-color-success-fg);
-    border-color: var(--cinder-color-success-border);
+    background: var(--cinder-status-success-background);
+    color: var(--cinder-status-success-text);
+    border-color: var(--cinder-status-success-border);
   }
 
   .cinder-chip[data-cinder-variant='warning'] {
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
-    border-color: var(--cinder-color-warning-border);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
+    border-color: var(--cinder-status-warning-border);
   }
 
   .cinder-chip[data-cinder-variant='danger'] {
-    background: var(--cinder-color-danger-bg);
-    color: var(--cinder-color-danger-fg);
-    border-color: var(--cinder-color-danger-border);
+    background: var(--cinder-status-danger-background);
+    color: var(--cinder-status-danger-text);
+    border-color: var(--cinder-status-danger-border);
   }
 
   .cinder-chip[data-cinder-variant='info'] {
-    background: var(--cinder-color-info-bg);
-    color: var(--cinder-color-info-fg);
-    border-color: var(--cinder-color-info-border);
+    background: var(--cinder-status-info-background);
+    color: var(--cinder-status-info-text);
+    border-color: var(--cinder-status-info-border);
   }
 
   .cinder-chip[data-cinder-variant='accent'] {
-    background: var(--cinder-color-accent-bg);
-    color: var(--cinder-color-accent-fg);
-    border-color: var(--cinder-color-accent-border);
+    background: var(--cinder-accent-background);
+    color: var(--cinder-accent-text);
+    border-color: var(--cinder-accent-border);
   }
 
   /* ----------------------------------------
@@ -134,7 +134,7 @@
 
   .cinder-chip[aria-pressed='true'][data-cinder-variant='neutral'] {
     background: var(--cinder-surface-pressed);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     border-color: var(--cinder-border-strong);
   }
 
@@ -142,33 +142,33 @@
  * surface, not a full inversion. Status pressed recipes remain intentionally
  * separate until their readable-foreground cleanup lands. */
   .cinder-chip[aria-pressed='true'][data-cinder-variant='success'] {
-    background: var(--cinder-success);
-    color: var(--cinder-success-contrast);
-    border-color: var(--cinder-success);
+    background: var(--cinder-status-success-solid);
+    color: var(--cinder-status-success-contrast);
+    border-color: var(--cinder-status-success-solid);
   }
 
   .cinder-chip[aria-pressed='true'][data-cinder-variant='warning'] {
-    background: var(--cinder-warning);
-    color: var(--cinder-warning-contrast);
-    border-color: var(--cinder-warning);
+    background: var(--cinder-status-warning-solid);
+    color: var(--cinder-status-warning-contrast);
+    border-color: var(--cinder-status-warning-solid);
   }
 
   .cinder-chip[aria-pressed='true'][data-cinder-variant='danger'] {
-    background: var(--cinder-danger);
-    color: var(--cinder-danger-contrast);
-    border-color: var(--cinder-danger);
+    background: var(--cinder-status-danger-solid);
+    color: var(--cinder-status-danger-contrast);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-chip[aria-pressed='true'][data-cinder-variant='info'] {
-    background: var(--cinder-info);
-    color: var(--cinder-info-contrast);
-    border-color: var(--cinder-info);
+    background: var(--cinder-status-info-solid);
+    color: var(--cinder-status-info-contrast);
+    border-color: var(--cinder-status-info-solid);
   }
 
   .cinder-chip[aria-pressed='true'][data-cinder-variant='accent'] {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
   }
 
   /* ----------------------------------------

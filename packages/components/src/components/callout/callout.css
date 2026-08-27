@@ -32,7 +32,7 @@
     border-start-start-radius: 0;
     border-end-start-radius: 0;
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
   }
@@ -99,28 +99,28 @@
  * ---------------------------------------- */
 
   .cinder-callout[data-cinder-variant='info'] {
-    --_cinder-status-base: var(--cinder-info);
+    --_cinder-status-base: var(--cinder-status-info-solid);
     --_cinder-status-fg-chroma-light: 0.12;
     --_cinder-status-fg-chroma-dark: 0.12;
     --_cinder-status-stripe-chroma: 0.13;
   }
 
   .cinder-callout[data-cinder-variant='success'] {
-    --_cinder-status-base: var(--cinder-success);
+    --_cinder-status-base: var(--cinder-status-success-solid);
     --_cinder-status-fg-chroma-light: 0.14;
     --_cinder-status-fg-chroma-dark: 0.12;
     --_cinder-status-stripe-chroma: 0.14;
   }
 
   .cinder-callout[data-cinder-variant='warning'] {
-    --_cinder-status-base: var(--cinder-warning);
+    --_cinder-status-base: var(--cinder-status-warning-solid);
     --_cinder-status-fg-chroma-light: 0.16;
     --_cinder-status-fg-chroma-dark: 0.14;
     --_cinder-status-stripe-chroma: 0.16;
   }
 
   .cinder-callout[data-cinder-variant='danger'] {
-    --_cinder-status-base: var(--cinder-danger);
+    --_cinder-status-base: var(--cinder-status-danger-solid);
     --_cinder-status-fg-chroma-light: 0.18;
     --_cinder-status-fg-chroma-dark: 0.16;
     --_cinder-status-stripe-chroma: 0.18;

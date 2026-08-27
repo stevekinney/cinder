@@ -100,7 +100,7 @@
   .artifact-panel-title {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
@@ -128,7 +128,7 @@
   @media (hover: hover) {
     .artifact-panel-close:hover {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 

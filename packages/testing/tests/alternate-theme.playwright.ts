@@ -33,12 +33,12 @@ import { expect, test, type Page } from '@playwright/test';
  */
 const ALTERNATE_THEME = `
   :root {
-    --cinder-accent: oklch(62% 0.22 25);
+    --cinder-accent-solid: oklch(62% 0.22 25);
     --cinder-accent-contrast: oklch(98% 0 0);
     --cinder-surface: oklch(95% 0.03 280);
     --cinder-border: oklch(60% 0.15 300);
     --cinder-radius-lg: 1.25rem;
-    --cinder-danger: oklch(55% 0.20 145);
+    --cinder-status-danger-solid: oklch(55% 0.20 145);
     --cinder-ring-color: oklch(70% 0.25 145);
     --cinder-ring-width: 8px;
     --cinder-space-4: 2.5rem;
@@ -55,7 +55,7 @@ async function computed(page: Page, selector: string, property: string): Promise
 }
 
 test.describe('alternate-theme — documented token overrides reach components', () => {
-  test('overriding --cinder-accent reaches a primary Button background', async ({ page }) => {
+  test('overriding --cinder-accent-solid reaches a primary Button background', async ({ page }) => {
     await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
 
     const primarySelector = ".cinder-button[data-cinder-variant='primary']";
@@ -66,7 +66,7 @@ test.describe('alternate-theme — documented token overrides reach components',
     const themed = await computed(page, primarySelector, 'background-color');
 
     // The accent override must change the primary background. Equal values mean
-    // the button hard-codes its accent instead of consuming `--cinder-accent`.
+    // the button hard-codes its accent instead of consuming `--cinder-accent-solid`.
     expect(themed).not.toBe(stock);
   });
 
@@ -120,15 +120,15 @@ test.describe('alternate-theme — documented token overrides reach components',
     expect(themed).not.toBe(stock);
   });
 
-  // (c) --cinder-danger reaches an Alert "danger" variant's background.
+  // (c) --cinder-status-danger-solid reaches an Alert "danger" variant's background.
   //
-  // Alert[variant=danger] sets `--_cinder-status-base: var(--cinder-danger)` which
+  // Alert[variant=danger] sets `--_cinder-status-base: var(--cinder-status-danger-solid)` which
   // feeds the _status-surface recipe's `oklch(from var(--_cinder-status-base) ...)`.
-  // Overriding --cinder-danger to a different hue changes the synthesized background.
+  // Overriding --cinder-status-danger-solid to a different hue changes the synthesized background.
   //
   // Note: Alert composes `.cinder-_status-surface` only (not the border class per P7),
   // so background-color is the most reliable property to assert on.
-  test('overriding --cinder-danger reaches an Alert danger-variant background', async ({
+  test('overriding --cinder-status-danger-solid reaches an Alert danger-variant background', async ({
     page,
   }) => {
     await page.goto('/page/alert?snapshot=1', { waitUntil: 'load' });

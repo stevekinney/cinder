@@ -83,7 +83,7 @@ export type RawColorFlag = {
  * Detects raw color values. Each entry is a class plus a global regex. Order is
  * significant only for reporting; a line can match multiple classes and each is
  * counted. `light-dark()` is matched independently because a Cinder status soft
- * surface formula (`light-dark(oklch(from var(--cinder-danger) ...)))`) is the
+ * surface formula (`light-dark(oklch(from var(--cinder-status-danger-solid) ...)))`) is the
  * single most common migration target and deserves its own class in the report.
  *
  * Notes:

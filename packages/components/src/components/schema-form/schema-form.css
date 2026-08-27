@@ -6,7 +6,7 @@
   .cinder-schema-form {
     display: grid;
     gap: var(--cinder-space-4);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-schema-form__fields,
@@ -28,7 +28,7 @@
     align-items: center;
     gap: var(--cinder-space-1);
     padding-inline: var(--cinder-space-1);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
   }
@@ -48,7 +48,7 @@
 
   .cinder-schema-form__error {
     margin: 0;
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
   }
 
@@ -88,13 +88,13 @@
   .cinder-schema-form__secondary-button {
     padding: var(--cinder-space-2) var(--cinder-space-3);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-schema-form__submit {
     padding: var(--cinder-space-2) var(--cinder-space-4);
-    border-color: var(--cinder-accent);
-    background: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
   }
 

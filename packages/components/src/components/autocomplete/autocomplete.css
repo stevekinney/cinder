@@ -15,7 +15,7 @@
    option has exactly one child, so the primitive's flex replaces the old
    local grid; two-line stacking lives in `__option-text` below). */
   .cinder-autocomplete__option {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   /*
@@ -46,19 +46,19 @@
   .cinder-autocomplete__match {
     /*
      * Emphasize the matched substring with the theme-aware warning surface
-     * pair. The previous value hard-coded `oklch(from var(--cinder-warning)
+     * pair. The previous value hard-coded `oklch(from var(--cinder-status-warning-solid)
      * 96.5% …)` — a near-white background in BOTH themes — and kept `color:
      * inherit`, so in dark mode the (light) inherited text sat on a near-white
      * background and the matched glyph disappeared into a solid white box.
-     * `--cinder-color-warning-bg` / `--cinder-color-warning-fg` are a designed
+     * `--cinder-status-warning-background` / `--cinder-status-warning-text` are a designed
      * `light-dark()` pair (dark-on-light in light mode, light-on-dark in dark
      * mode), so the highlight stays legible against either theme and against
      * the active row's raised surface.
      */
     padding: 0 0.0625rem;
     border-radius: var(--cinder-radius-sm);
-    background: var(--cinder-color-warning-bg);
-    color: var(--cinder-color-warning-fg);
+    background: var(--cinder-status-warning-background);
+    color: var(--cinder-status-warning-text);
     font-weight: var(--cinder-font-semibold);
   }
 

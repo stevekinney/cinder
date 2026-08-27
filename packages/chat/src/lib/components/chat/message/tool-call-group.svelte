@@ -139,15 +139,15 @@
   }
 
   .tool-call-group[data-status='error'] {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .tool-call-group[data-status='success'] {
-    border-color: var(--cinder-success);
+    border-color: var(--cinder-status-success-solid);
   }
 
   .tool-call-group[data-status='action-required'] {
-    border-color: var(--cinder-warning);
+    border-color: var(--cinder-status-warning-solid);
   }
 
   /* Uses min-height for WCAG 2.2 AA touch target compliance */
@@ -171,7 +171,7 @@
    * looked harsh against the colored card border. */
   @media (hover: hover) {
     .tool-call-header:hover {
-      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text) 4%);
+      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text-default) 4%);
     }
   }
 
@@ -199,22 +199,22 @@
   }
 
   .tool-call-group[data-status='error'] .tool-call-icon {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .tool-call-group[data-status='success'] .tool-call-icon {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
 
   .tool-call-group[data-status='action-required'] .tool-call-icon {
-    color: var(--cinder-warning);
+    color: var(--cinder-status-warning-solid);
   }
 
   .tool-call-name {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     flex: 1;
     min-width: 0;
     overflow: hidden;
@@ -229,15 +229,15 @@
   }
 
   .tool-call-group[data-status='error'] .tool-call-status {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .tool-call-group[data-status='success'] .tool-call-status {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
 
   .tool-call-group[data-status='action-required'] .tool-call-status {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .tool-call-chevron {
@@ -279,21 +279,21 @@
 
   .tool-call-error {
     padding: var(--cinder-space-3);
-    background: var(--cinder-color-danger-bg);
+    background: var(--cinder-status-danger-background);
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
   }
 
   .tool-call-section[data-error] :global(.cinder-code-block) {
-    border-color: var(--cinder-color-danger-border);
+    border-color: var(--cinder-status-danger-border);
   }
 
   .tool-call-action {
     padding: var(--cinder-space-3);
-    background: var(--cinder-color-warning-bg);
+    background: var(--cinder-status-warning-background);
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
     font-size: var(--cinder-text-sm);
   }
 </style>

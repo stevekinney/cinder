@@ -12,7 +12,7 @@ This page documents that contract, gives you a minimal Svelte recipe for a user-
 Every semantic color token in [`tokens-base.css`](../packages/components/src/styles/tokens-base.css) is defined like this:
 
 ```css
---cinder-bg: light-dark(oklch(96.5% 0.012 245), oklch(15% 0.035 245));
+--cinder-surface-canvas: light-dark(oklch(96.5% 0.012 245), oklch(15% 0.035 245));
 ```
 
 `light-dark(light-value, dark-value)` returns the first argument when the resolved `color-scheme` is `light`, and the second when it's `dark`. Cinder's `:root` block declares:
@@ -38,19 +38,19 @@ To override the OS preference, cinder supports two related paths. They both infl
     color-scheme: dark;
     --cinder-surface: oklch(21% 0.04 245);
     --cinder-surface-raised: oklch(28% 0.045 245);
-    --cinder-text: oklch(92% 0.02 245);
+    --cinder-text-default: oklch(92% 0.02 245);
     --cinder-border: oklch(58% 0.05 245);
-    --cinder-accent: oklch(72% 0.14 270);
-    --cinder-ring-color: oklch(from var(--cinder-accent) 0.7 0.14 h);
+    --cinder-accent-solid: oklch(72% 0.14 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.7 0.14 h);
   }
   [data-theme='light'] {
     color-scheme: light;
     --cinder-surface: oklch(99.4% 0.002 255);
     --cinder-surface-raised: oklch(100% 0 255);
-    --cinder-text: oklch(20% 0.018 245);
+    --cinder-text-default: oklch(20% 0.018 245);
     --cinder-border: oklch(63% 0.006 255);
-    --cinder-accent: oklch(50% 0.22 270);
-    --cinder-ring-color: oklch(from var(--cinder-accent) 0.55 0.16 h);
+    --cinder-accent-solid: oklch(50% 0.22 270);
+    --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.55 0.16 h);
   }
   ```
 
@@ -253,7 +253,7 @@ Dark mode is the headline use of the token system, but the same mechanism themes
 
 ```css
 :root {
-  --cinder-accent: oklch(62% 0.22 25); /* a warmer brand accent */
+  --cinder-accent-solid: oklch(62% 0.22 25); /* a warmer brand accent */
   --cinder-radius-lg: 1.25rem; /* rounder cards and surfaces */
   --cinder-surface: oklch(95% 0.03 280);
 }
@@ -267,12 +267,12 @@ How do you know an override actually reaches a component, rather than hitting a 
 
 Every `--cinder-*` custom property a component references falls into one of four categories. Only the first is consumer-facing theme API:
 
-| Category                            | Shape                                   | Who owns it              | Override it?                                                       |
-| ----------------------------------- | --------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
-| **Global design token**             | `--cinder-accent`, `--cinder-radius-lg` | `tokens-base.css`        | **Yes** — this is the theme API.                                   |
-| **Component override variable**     | `--cinder-color-picker-hue`             | the component            | Advanced; per-component, documented in that component's variables. |
-| **Private implementation variable** | `--_cinder-button-ring`                 | the component, internal  | No — not an API.                                                   |
-| **Runtime-state variable**          | `--cinder-toast-height` (set from JS)   | the component at runtime | No — written by the component.                                     |
+| Category                            | Shape                                         | Who owns it              | Override it?                                                       |
+| ----------------------------------- | --------------------------------------------- | ------------------------ | ------------------------------------------------------------------ |
+| **Global design token**             | `--cinder-accent-solid`, `--cinder-radius-lg` | `tokens-base.css`        | **Yes** — this is the theme API.                                   |
+| **Component override variable**     | `--cinder-color-picker-hue`                   | the component            | Advanced; per-component, documented in that component's variables. |
+| **Private implementation variable** | `--_cinder-button-ring`                       | the component, internal  | No — not an API.                                                   |
+| **Runtime-state variable**          | `--cinder-toast-height` (set from JS)         | the component at runtime | No — written by the component.                                     |
 
 ### The guards
 

@@ -74,7 +74,7 @@ function bothArms(tokenName: string): { light: Oklch; dark: Oklch } {
  * different mix TARGETS and different percentages:
  *
  *   --cinder-surface-hover: light-dark(
- *     color-mix(in oklch, var(--cinder-surface), var(--cinder-accent) 6%),
+ *     color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%),
  *     color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)
  *   );
  *
@@ -216,7 +216,7 @@ const STATE_TOKENS = [
 
 const TIER_TOKENS = {
   inset: '--cinder-surface-inset',
-  bg: '--cinder-bg',
+  bg: '--cinder-surface-canvas',
   surface: '--cinder-surface',
   raised: '--cinder-surface-raised',
 } as const;
@@ -230,7 +230,7 @@ describe('light mode anchors at white', () => {
   };
 
   test('the page canvas reads as white', () => {
-    // The regression this file exists to prevent. `--cinder-bg` is the single
+    // The regression this file exists to prevent. `--cinder-surface-canvas` is the single
     // largest painted area in any light-mode screen; at 0.921 it read as a pale
     // slate plate. Anything below ~0.97 stops reading as "white page".
     expect(tiers.bg.L).toBeGreaterThanOrEqual(0.97);
@@ -276,7 +276,7 @@ describe('the dark arm is untouched by light-mode work', () => {
   // future light-mode retune cannot drift it as a side effect.
   const expected = {
     '--cinder-surface-inset': 0.11,
-    '--cinder-bg': 0.15,
+    '--cinder-surface-canvas': 0.15,
     '--cinder-surface': 0.21,
     '--cinder-surface-raised': 0.28,
   } as const;
@@ -296,7 +296,7 @@ describe('light interaction states wash toward the accent', () => {
   // small lightness step legible — and is where light mode gets its vibrancy.
   for (const token of STATE_TOKENS) {
     test(`${token} mixes toward the accent in light mode`, () => {
-      expect(mixSpec(token, 'light').target).toBe('var(--cinder-accent)');
+      expect(mixSpec(token, 'light').target).toBe('var(--cinder-accent-solid)');
     });
 
     test(`${token} mixes toward white in dark mode`, () => {

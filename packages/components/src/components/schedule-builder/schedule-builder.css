@@ -125,7 +125,7 @@
   .cinder-schedule-builder__summary-text {
     margin: 0;
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-schedule-builder__preview-list {
@@ -139,14 +139,14 @@
 
   .cinder-schedule-builder__preview-item {
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-variant-numeric: tabular-nums;
   }
 
   .cinder-schedule-builder__timezone-value {
     margin: 0;
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
   }
 

@@ -62,9 +62,9 @@
 
   .chat-message-tool-error {
     padding: var(--cinder-space-3);
-    background: var(--cinder-color-danger-bg);
+    background: var(--cinder-status-danger-background);
     border-radius: var(--cinder-radius-md);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
   }
 

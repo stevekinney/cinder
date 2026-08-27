@@ -51,7 +51,7 @@
     <mark
       bind:this={anchorElement}
       data-testid="external-trigger-anchor"
-      style="border-radius: var(--cinder-radius-sm); background: color-mix(in oklch, var(--cinder-accent), transparent 84%); color: var(--cinder-text); padding: 0 0.125rem;"
+      style="border-radius: var(--cinder-radius-sm); background: color-mix(in oklch, var(--cinder-accent-solid), transparent 84%); color: var(--cinder-text-default); padding: 0 0.125rem;"
     >
       this visible phrase
     </mark>

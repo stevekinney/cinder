@@ -81,8 +81,8 @@
 
   .cinder-run-step-timeline__item[data-cinder-selected] .cinder-run-step-timeline__event {
     border-radius: var(--cinder-radius-md);
-    background: color-mix(in oklch, var(--cinder-accent), transparent 90%);
-    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-accent), transparent 55%);
+    background: color-mix(in oklch, var(--cinder-accent-solid), transparent 90%);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--cinder-accent-solid), transparent 55%);
   }
 
   /* ----------------------------------------
@@ -138,7 +138,7 @@
   .cinder-run-step-timeline__label {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     flex-shrink: 0;
   }
 
@@ -147,7 +147,7 @@
   .cinder-run-step-timeline__item[data-cinder-status='retrying'] .cinder-run-step-timeline__label,
   .cinder-run-step-timeline__item[data-cinder-status='waiting_approval']
     .cinder-run-step-timeline__label {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-semibold);
   }
 
@@ -330,7 +330,7 @@
   .cinder-run-step-timeline__lane-label {
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     min-width: 0;
     overflow-wrap: anywhere;
   }
@@ -341,7 +341,7 @@
 
   /* Winner: emphasized border + full-strength text. */
   .cinder-run-step-timeline__lane[data-cinder-outcome='won'] {
-    border-color: var(--cinder-success);
+    border-color: var(--cinder-status-success-solid);
     border-inline-start-width: 3px;
   }
 
@@ -364,7 +364,7 @@
 
   /* Still racing: accent edge to signal in-flight. */
   .cinder-run-step-timeline__lane[data-cinder-outcome='racing'] {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
     border-inline-start-width: 3px;
   }
 

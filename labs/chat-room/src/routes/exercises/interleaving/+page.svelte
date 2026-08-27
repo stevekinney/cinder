@@ -195,7 +195,11 @@
 	     DOM before the content arrives: mounting one that already has text is not
 	     reliably announced, which is the pattern Chat's own
 	     `chat-status-announcer.svelte` documents and follows. -->
-	<p role="alert" data-testid="interleaving-error" style="margin: 0; color: var(--cinder-danger);">
+	<p
+		role="alert"
+		data-testid="interleaving-error"
+		style="margin: 0; color: var(--cinder-status-danger-solid);"
+	>
 		{error ?? ''}
 	</p>
 	<div style="flex: 1; min-height: 0; display: flex; gap: 0.75rem;">

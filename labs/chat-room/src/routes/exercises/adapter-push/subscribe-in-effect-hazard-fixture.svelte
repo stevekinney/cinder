@@ -77,7 +77,7 @@
 		>
 			<div
 				data-testid="hazard-fixture-chat"
-				style="height: 220px; margin-top: 0.5rem; border: 1px dashed var(--cinder-danger);"
+				style="height: 220px; margin-top: 0.5rem; border: 1px dashed var(--cinder-status-danger-solid);"
 			>
 				<Chat id="adapter-push-hazard-chat" {conversation} {adapter} />
 			</div>

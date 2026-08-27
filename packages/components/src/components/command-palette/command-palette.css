@@ -14,7 +14,7 @@
     padding: 0;
     border: none;
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     /* The dialog's default overflow: auto produces a scroll container whose
      box ignores the inner panel's border-radius, so child backgrounds bleed
      past the rounded corners. Clip at the dialog level too. */
@@ -54,8 +54,8 @@
     overflow: hidden;
     max-height: 60vh;
     box-shadow:
-      0 4px 6px -1px color-mix(in oklch, var(--cinder-text) 8%, transparent),
-      0 10px 15px -3px color-mix(in oklch, var(--cinder-text) 12%, transparent);
+      0 4px 6px -1px color-mix(in oklch, var(--cinder-text-default) 8%, transparent),
+      0 10px 15px -3px color-mix(in oklch, var(--cinder-text-default) 12%, transparent);
   }
 
   /* ----------------------------------------
@@ -106,7 +106,7 @@
     flex: 1;
     border: none;
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-base);
     line-height: var(--cinder-leading-normal);
     padding-block: var(--cinder-space-4);

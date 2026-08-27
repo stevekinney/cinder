@@ -3,12 +3,12 @@
   .cinder-permission-matrix {
     display: grid;
     gap: var(--cinder-space-3);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-permission-matrix__caption {
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-permission-matrix__description {
@@ -44,8 +44,8 @@
 
   .cinder-permission-matrix__scroll[data-cinder-overflows-inline] {
     --_cinder-permission-matrix-scroll-shadow:
-      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent),
-      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 28%, transparent);
+      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 28%, transparent),
+      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 28%, transparent);
   }
 
   .cinder-permission-matrix__table {
@@ -122,7 +122,7 @@
     border: 0;
     border-radius: 0;
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
   }
 
@@ -168,12 +168,12 @@
 
   .cinder-permission-matrix__cell[data-cinder-state='granted']
     .cinder-permission-matrix__cell-token {
-    color: var(--cinder-success);
+    color: var(--cinder-status-success-solid);
   }
 
   .cinder-permission-matrix__cell[data-cinder-state='denied']
     .cinder-permission-matrix__cell-token {
-    color: var(--cinder-danger);
+    color: var(--cinder-status-danger-solid);
   }
 
   .cinder-permission-matrix__cell[data-cinder-state='not-applicable']

@@ -4,7 +4,7 @@ import type { HTMLAttributes } from 'svelte/elements';
  * Visual + semantic variants for {@link Banner}.
  *
  * Note: `banner.svelte` uses `danger` (matching the semantic token
- * `--cinder-danger`) where `alert.svelte` uses `error`. The divergence is
+ * `--cinder-status-danger-solid`) where `alert.svelte` uses `error`. The divergence is
  * intentional and tracked in `banner.a11y.md`.
  */
 export type BannerVariant = 'info' | 'success' | 'warning' | 'danger';

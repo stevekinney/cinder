@@ -8,7 +8,7 @@
   .cinder-json-viewer {
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-inset);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -119,18 +119,18 @@
   }
 
   .cinder-json-viewer__value[data-cinder-type='string'] {
-    /* The -fg token, not the fill. --cinder-success is a FILL tuned to carry a white
+    /* The -fg token, not the fill. --cinder-status-success-solid is a FILL tuned to carry a white
        label; as ink on --cinder-surface-inset it measured 3.98:1, below AA. The
-       number row below already used --cinder-color-warning-fg correctly. */
-    color: var(--cinder-color-success-fg);
+       number row below already used --cinder-status-warning-text correctly. */
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-json-viewer__value[data-cinder-type='number'] {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-json-viewer__value[data-cinder-type='boolean'] {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   .cinder-json-viewer__value[data-cinder-type='null'] {

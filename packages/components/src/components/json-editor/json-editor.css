@@ -37,7 +37,7 @@
      order (component sidecars carry layer membership, not ordering). */
   .cinder-json-editor__label,
   .cinder-json-editor__label.cinder-form-field__label {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
   }
@@ -59,7 +59,7 @@
     border-radius: var(--cinder-radius-md);
     padding: var(--cinder-space-2);
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
     font-size: var(--cinder-text-sm);
   }
@@ -100,7 +100,7 @@
     position: relative;
     background: transparent;
     color: transparent;
-    caret-color: var(--cinder-text);
+    caret-color: var(--cinder-text-default);
   }
 
   .cinder-json-editor .cinder-json-token-key {
@@ -108,16 +108,16 @@
   }
 
   .cinder-json-editor .cinder-json-token-string {
-    color: var(--cinder-color-success-fg);
+    color: var(--cinder-status-success-text);
   }
 
   .cinder-json-editor .cinder-json-token-number {
-    color: var(--cinder-color-warning-fg);
+    color: var(--cinder-status-warning-text);
   }
 
   .cinder-json-editor .cinder-json-token-boolean,
   .cinder-json-editor .cinder-json-token-null {
-    color: var(--cinder-color-info-fg);
+    color: var(--cinder-status-info-text);
   }
 
   .cinder-json-editor .cinder-json-token-punctuation {
@@ -125,7 +125,7 @@
   }
 
   .cinder-json-editor .cinder-json-lint {
-    text-decoration: underline wavy var(--cinder-danger);
+    text-decoration: underline wavy var(--cinder-status-danger-solid);
     text-decoration-thickness: 1px;
     text-underline-offset: 2px;
   }
@@ -139,7 +139,7 @@
   }
 
   .cinder-json-editor__feedback--error {
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 
   @media (forced-colors: active) {

@@ -104,8 +104,8 @@ carrier of information.
 ## Variant vocabulary
 
 `CalloutVariant` is `'info' | 'success' | 'warning' | 'danger'`, sharing
-the semantic tokens (`--cinder-info`, `--cinder-success`,
-`--cinder-warning`, `--cinder-danger`) and visual algebra with
+the semantic tokens (`--cinder-status-info-solid`, `--cinder-status-success-solid`,
+`--cinder-status-warning-solid`, `--cinder-status-danger-solid`) and visual algebra with
 `banner.svelte`. `alert.svelte` uses `'error'` instead of `'danger'`;
 the divergence is tracked in `banner.a11y.md`. Callout aligns with
 banner because both are landmark-class components that draw from the

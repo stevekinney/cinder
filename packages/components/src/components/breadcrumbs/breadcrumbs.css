@@ -59,7 +59,7 @@
   }
 
   .cinder-breadcrumbs__link:hover {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     text-decoration: underline;
   }
 
@@ -76,7 +76,7 @@
   }
 
   .cinder-breadcrumbs__current {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-weight: var(--cinder-font-medium);
     /* The current crumb is the priority: its low-shrink item (see `:last-child`)
      makes ancestors yield first. But it must never hard-clip against the

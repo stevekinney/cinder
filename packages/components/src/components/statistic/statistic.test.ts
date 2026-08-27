@@ -36,7 +36,7 @@ describe('Statistic', () => {
     // and not an opacity multiplier (this is text, held to 4.5:1).
     const { container } = render(Statistic, { label: 'Revenue', value: '$1,000' });
     const style = container.querySelector('.cinder-statistic')?.getAttribute('style') ?? '';
-    expect(style).toContain('--_cinder-chart-foreground: var(--cinder-text)');
+    expect(style).toContain('--_cinder-chart-foreground: var(--cinder-text-default)');
     expect(style).toContain('--_cinder-chart-muted: var(--cinder-text-muted)');
     expect(style).toContain('--_cinder-chart-background: transparent');
   });
@@ -77,7 +77,9 @@ describe('Statistic', () => {
     });
     const root = container.querySelector<HTMLElement>('.cinder-statistic');
     expect(root?.getAttribute('style')).toContain('border: 1px solid red');
-    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe('var(--cinder-text)');
+    expect(root?.style.getPropertyValue('--_cinder-chart-foreground')).toBe(
+      'var(--cinder-text-default)',
+    );
   });
 
   test('applies custom theme colors without removing change direction cues', () => {

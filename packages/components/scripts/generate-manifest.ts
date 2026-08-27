@@ -33,6 +33,7 @@ import type {
 import { extractAllComponentMetadata } from './generate-component-metadata.ts';
 import { discoverComponentEnhancements } from './lib/component-enhancements.ts';
 import { parseJsonFile, readJsonFile } from './lib/read-json-file.ts';
+import { readTokenNamespaces } from './token-namespaces.ts';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -114,6 +115,7 @@ export type Manifest = {
 
 const PACKAGE_ROOT = join(import.meta.dir, '..');
 const COMPONENTS_ROOT = join(PACKAGE_ROOT, 'src', 'components');
+
 const MANIFEST_PATH = join(PACKAGE_ROOT, 'components.json');
 const SCHEMA_PATH = join(PACKAGE_ROOT, 'src', 'schemas', 'manifest.schema.json');
 
@@ -350,7 +352,11 @@ export async function buildManifest(): Promise<Manifest> {
       frameworkVersionRange,
       classPrefix: 'cinder-',
       cssVarPrefix: '--cinder-',
-      tokenNamespaces: ['color', 'space', 'radius', 'ring', 'type', 'motion', 'shadow'],
+      // Derived from the generated registry rather than hand-listed: this array
+      // ships in components.json, and the hand-written version advertised
+      // `color` -- a namespace CIN-33 deleted -- alongside names that had
+      // drifted from the corpus.
+      tokenNamespaces: readTokenNamespaces(),
       stylesEntry: '@lostgradient/cinder/styles',
       schemaDialect: 'https://json-schema.org/draft/2020-12/schema',
     },

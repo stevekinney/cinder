@@ -35,7 +35,7 @@
     ...rest
   }: CollapsibleProps = $props();
 
-  // Slide duration mirrors --cinder-duration (200ms); collapse to 0 when the
+  // Slide duration mirrors --cinder-duration-base (200ms); collapse to 0 when the
   // user prefers reduced motion.
   const SLIDE_MS = 200;
   const motion = useReducedMotion();

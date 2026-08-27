@@ -18,7 +18,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-rating-field__label[data-disabled] {
@@ -31,7 +31,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
-    --_cinder-rating-color: var(--cinder-warning, oklch(80% 0.18 80));
+    --_cinder-rating-color: var(--cinder-status-warning-solid, oklch(80% 0.18 80));
     --_cinder-rating-empty: var(--cinder-border-strong);
     --_cinder-rating-size: 1.5rem;
   }
@@ -114,6 +114,6 @@
   .cinder-rating-field__error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 }

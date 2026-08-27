@@ -90,7 +90,7 @@ Position transitions on the thumb and the filled range are disabled when
 
 ## Color Contrast
 
-The filled range uses `--cinder-accent` and the thumb border uses the
+The filled range uses `--cinder-accent-solid` and the thumb border uses the
 same token. The thumb fill is `--cinder-surface-raised`. Both are part
 of the cinder semantic palette and meet WCAG 1.4.11 (non-text contrast).
 

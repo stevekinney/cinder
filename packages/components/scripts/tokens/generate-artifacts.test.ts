@@ -690,8 +690,8 @@ describe('CIN-30 review round 13: playground groups exclude private tokens', () 
   test('a public color token is still accepted', () => {
     expect(() =>
       validatePlaygroundColorTokenGroups(
-        groupsFor('--cinder-accent'),
-        registryFor('--cinder-accent', true),
+        groupsFor('--cinder-accent-solid'),
+        registryFor('--cinder-accent-solid', true),
       ),
     ).not.toThrow();
   });

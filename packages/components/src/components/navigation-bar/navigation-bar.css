@@ -127,7 +127,7 @@
 
   .cinder-navigation-bar[data-cinder-placement='bottom']
     .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
-    border-top-color: var(--cinder-accent);
+    border-top-color: var(--cinder-accent-solid);
     background-color: var(--cinder-surface-inset);
   }
 
@@ -256,7 +256,7 @@
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-visible]
     .cinder-navigation-item[data-variant='mobile'][data-active='true'] {
-    border-inline-start-color: var(--cinder-accent);
+    border-inline-start-color: var(--cinder-accent-solid);
     background-color: var(--cinder-surface-inset);
   }
 

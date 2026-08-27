@@ -70,7 +70,7 @@
 
   @media (hover: hover) {
     .cinder-footer__link:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       text-decoration: underline;
     }
   }

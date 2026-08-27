@@ -40,8 +40,8 @@ The hidden `<input type="hidden">` only carries a value when the typed phone num
 
 ## Color Contrast
 
-- Control text uses `--cinder-text` against `--cinder-surface-raised`, satisfying WCAG AA 4.5:1 in both light and dark modes.
-- Error borders use `--cinder-danger` as a redundant visual cue alongside `aria-invalid="true"`. The error text below the controls always carries the message.
+- Control text uses `--cinder-text-default` against `--cinder-surface-raised`, satisfying WCAG AA 4.5:1 in both light and dark modes.
+- Error borders use `--cinder-status-danger-solid` as a redundant visual cue alongside `aria-invalid="true"`. The error text below the controls always carries the message.
 - The custom select chevron is drawn with `currentColor`, so it inherits the same contrast and recolors automatically when the surface is disabled.
 
 In Windows High Contrast Mode (`forced-colors: active`) the focus ring falls back to the system `Highlight` color so focus remains visible.

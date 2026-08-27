@@ -43,7 +43,7 @@
   .cinder-section-heading__title {
     font-size: var(--cinder-text-lg);
     font-weight: var(--cinder-font-semibold);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0;
     line-height: var(--cinder-leading-tight);
   }

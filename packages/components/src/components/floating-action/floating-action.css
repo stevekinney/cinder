@@ -121,7 +121,7 @@
   /* primary — accent fill with contrast foreground */
   .cinder-floating-action[data-cinder-variant='primary'] {
     --_cinder-floating-action-ring: var(--cinder-ring-on-accent);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
   }
 
@@ -134,7 +134,7 @@
   /* secondary — surface-raised background with standard text */
   .cinder-floating-action[data-cinder-variant='secondary'] {
     background: var(--cinder-surface-raised);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-floating-action[data-cinder-variant='secondary']:disabled,
@@ -146,7 +146,7 @@
   /* surface — neutral surface color, suited for floating above content */
   .cinder-floating-action[data-cinder-variant='surface'] {
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-floating-action[data-cinder-variant='surface']:disabled,
@@ -171,7 +171,7 @@
     .cinder-floating-action[data-cinder-variant='primary']:hover:not(:disabled):not(
         [aria-disabled='true']
       ) {
-      background: var(--cinder-accent-hover);
+      background: var(--cinder-accent-solid-hover);
     }
 
     .cinder-floating-action[data-cinder-variant='secondary']:hover:not(:disabled):not(
@@ -189,11 +189,11 @@
 
   /* :active placed after hover media so press feedback fires on tap as well.
      Uses the gentler on-fill pressed token so the --cinder-accent-contrast label stays
-     AA-legible on the pressed fill (see --cinder-accent-active-on-fill in tokens-base.css). */
+     AA-legible on the pressed fill (see --cinder-accent-solid-active-on-fill in tokens-base.css). */
   .cinder-floating-action[data-cinder-variant='primary']:active:not(:disabled):not(
       [aria-disabled='true']
     ) {
-    background: var(--cinder-accent-active-on-fill);
+    background: var(--cinder-accent-solid-active-on-fill);
   }
 
   .cinder-floating-action[data-cinder-variant='secondary']:active:not(:disabled):not(

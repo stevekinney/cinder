@@ -67,7 +67,7 @@
 
   @media (hover: hover) {
     .cinder-search-field__clear:hover:not(:disabled) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-inset);
     }
   }

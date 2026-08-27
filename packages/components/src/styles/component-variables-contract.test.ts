@@ -8,7 +8,7 @@
  *   1. Every listed variable follows the `--cinder-<component>-*` public
  *      naming convention (no `--_cinder-*` private/internal variables).
  *
- *   2. No variable is a bare global token (`--cinder-accent`, `--cinder-space-4`,
+ *   2. No variable is a bare global token (`--cinder-accent-solid`, `--cinder-space-4`,
  *      etc.) that belongs in `:root`, not in a component's override surface.
  *
  * These invariants hold across all 135+ component directories today. Any
@@ -127,7 +127,7 @@ describe('component *.variables.json contract', () => {
   // is the cascade scope for column/card layout tokens. That is allowlisted explicitly
   // below — a deliberate, reviewed exception, not a loose rule that hides others.
   //
-  // Variables of the form `--cinder-accent` (no component segment at all) are global
+  // Variables of the form `--cinder-accent-solid` (no component segment at all) are global
   // tokens from tokens-base.css. If they appear in a component's variables.json it
   // means the component declares a global alias or a typo in the CSS.
   //

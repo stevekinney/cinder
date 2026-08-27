@@ -42,7 +42,7 @@
 
   @media (hover: hover) {
     .cinder-side-navigation-group__trigger:hover:not(:disabled) {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background-color: var(--cinder-surface-hover);
     }
   }
@@ -94,7 +94,7 @@
 
   .cinder-side-navigation-group[data-cinder-contains-active]
     .cinder-side-navigation-group__trigger {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-side-navigation-group[data-cinder-contains-active] .cinder-side-navigation-group__label {

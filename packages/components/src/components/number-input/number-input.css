@@ -18,7 +18,7 @@
   }
 
   .cinder-number-input[data-invalid] .cinder-number-input__stepper {
-    border-inline-start-color: var(--cinder-danger);
+    border-inline-start-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-number-input__stepper {
@@ -43,7 +43,7 @@
   @media (hover: hover) {
     .cinder-number-input__stepper:hover:not(:disabled) {
       background: var(--cinder-surface-hover);
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
     }
   }
 
@@ -57,7 +57,7 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
     background: var(--cinder-surface-hover);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   @media (forced-colors: active) {

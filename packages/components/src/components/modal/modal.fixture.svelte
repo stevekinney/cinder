@@ -116,7 +116,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: 0.375rem;
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     padding: 0.5rem 0.75rem;
   }
@@ -125,13 +125,13 @@
     border: 1px solid var(--cinder-border);
     border-radius: 0.375rem;
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     padding: 0.5rem 0.75rem;
   }
 
   .modal-fixture__action--primary {
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
   }
 

@@ -13,7 +13,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     overscroll-behavior-inline: contain;
     -webkit-overflow-scrolling: touch;
@@ -21,8 +21,8 @@
 
   .cinder-data-grid[data-cinder-column-overflow] {
     --_cinder-data-grid-overflow-shadow:
-      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 14%, transparent),
-      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text) 14%, transparent);
+      inset 1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 14%, transparent),
+      inset -1rem 0 1rem -1rem color-mix(in srgb, var(--cinder-text-default) 14%, transparent);
   }
 
   .cinder-data-grid:focus-visible {
@@ -181,7 +181,7 @@
   }
 
   .cinder-data-grid__cell[data-cinder-selected] {
-    background: color-mix(in srgb, var(--cinder-accent) 14%, var(--cinder-surface));
+    background: color-mix(in srgb, var(--cinder-accent-solid) 14%, var(--cinder-surface));
   }
 
   .cinder-data-grid__cell[data-cinder-selected][data-cinder-active] {
@@ -193,13 +193,13 @@
   .cinder-data-grid__cell[data-cinder-anchor] {
     box-shadow:
       var(--_cinder-data-grid-pin-shadow),
-      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent);
+      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent-solid);
   }
 
   .cinder-data-grid__cell[data-cinder-anchor][data-cinder-active] {
     box-shadow:
       var(--_cinder-data-grid-pin-shadow),
-      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent),
+      inset 0 0 0 max(2px, var(--cinder-ring-width)) var(--cinder-accent-solid),
       inset 0 0 0 calc(max(2px, var(--cinder-ring-width)) + 2px) var(--cinder-ring-color);
   }
 
@@ -219,7 +219,7 @@
   .cinder-data-grid__cell[data-cinder-pin='left'] {
     --_cinder-data-grid-pin-shadow:
       inset -1px 0 0 var(--cinder-border),
-      2px 0 6px color-mix(in srgb, var(--cinder-text) 8%, transparent);
+      2px 0 6px color-mix(in srgb, var(--cinder-text-default) 8%, transparent);
 
     inset-inline-start: var(--_cinder-data-grid-pin-left-offset, 0px);
   }
@@ -228,7 +228,7 @@
   .cinder-data-grid__cell[data-cinder-pin='right'] {
     --_cinder-data-grid-pin-shadow:
       inset 1px 0 0 var(--cinder-border),
-      -2px 0 6px color-mix(in srgb, var(--cinder-text) 8%, transparent);
+      -2px 0 6px color-mix(in srgb, var(--cinder-text-default) 8%, transparent);
 
     inset-inline-end: var(--_cinder-data-grid-pin-right-offset, 0px);
   }

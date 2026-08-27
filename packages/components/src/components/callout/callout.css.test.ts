@@ -188,10 +188,10 @@ function lightDarkArms(value: string): [string, string] {
 }
 
 const VARIANTS: Array<{ variant: string; token: string }> = [
-  { variant: 'info', token: '--cinder-info' },
-  { variant: 'success', token: '--cinder-success' },
-  { variant: 'warning', token: '--cinder-warning' },
-  { variant: 'danger', token: '--cinder-danger' },
+  { variant: 'info', token: '--cinder-status-info-solid' },
+  { variant: 'success', token: '--cinder-status-success-solid' },
+  { variant: 'warning', token: '--cinder-status-warning-solid' },
+  { variant: 'danger', token: '--cinder-status-danger-solid' },
 ];
 
 /**

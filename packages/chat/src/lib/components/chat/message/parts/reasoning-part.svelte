@@ -155,7 +155,7 @@
 
     @media (hover: hover) {
       &:not(:disabled):hover {
-        color: var(--cinder-text);
+        color: var(--cinder-text-default);
         background: color-mix(in oklch, var(--cinder-chat-reasoning-bg), transparent 20%);
       }
     }
@@ -220,7 +220,7 @@
   .chat-reasoning-body {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows var(--cinder-duration) var(--cinder-ease-standard);
+    transition: grid-template-rows var(--cinder-duration-base) var(--cinder-ease-standard);
   }
 
   [data-cinder-expanded] .chat-reasoning-body {

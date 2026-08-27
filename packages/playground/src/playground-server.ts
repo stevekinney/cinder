@@ -473,8 +473,8 @@ async function renderComponentPage(
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
       body {
-        background-color: var(--cinder-bg);
-        color: var(--cinder-text);
+        background-color: var(--cinder-surface-canvas);
+        color: var(--cinder-text-default);
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);
@@ -558,8 +558,8 @@ function renderFixturePageHtml(
       *, *::before, *::after { box-sizing: border-box; }
       html, body { margin: 0; padding: 0; min-height: 100%; }
       body {
-        background-color: var(--cinder-bg);
-        color: var(--cinder-text);
+        background-color: var(--cinder-surface-canvas);
+        color: var(--cinder-text-default);
         font-family: var(--cinder-font-sans);
         font-size: var(--cinder-text-base);
         line-height: var(--cinder-leading-normal);

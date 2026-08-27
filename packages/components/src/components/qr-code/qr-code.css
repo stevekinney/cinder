@@ -27,9 +27,9 @@
   }
 
   .cinder-qr-code__placeholder[data-cinder-state='error'] {
-    color: var(--cinder-color-danger-fg);
-    border: 1px solid var(--cinder-danger);
-    background: var(--cinder-color-danger-bg, var(--cinder-surface-inset));
+    color: var(--cinder-status-danger-text);
+    border: 1px solid var(--cinder-status-danger-solid);
+    background: var(--cinder-status-danger-background, var(--cinder-surface-inset));
   }
 
   .cinder-qr-code__error-mark {

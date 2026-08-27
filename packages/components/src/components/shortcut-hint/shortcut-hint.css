@@ -7,7 +7,7 @@
   }
 
   .cinder-shortcut-hint__label {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-shortcut-hint__keys {

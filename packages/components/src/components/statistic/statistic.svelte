@@ -104,7 +104,7 @@
         resolveChartTheme(theme)
       : {
           ...resolveChartTheme(undefined),
-          foreground: 'var(--cinder-text)',
+          foreground: 'var(--cinder-text-default)',
           muted: 'var(--cinder-text-muted)',
         },
   );

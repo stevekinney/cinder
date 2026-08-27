@@ -8,7 +8,7 @@
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
     background: transparent;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     font: inherit;
     text-decoration: none;
   }

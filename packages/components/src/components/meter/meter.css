@@ -39,17 +39,17 @@
   }
 
   .cinder-meter__segment--state-low {
-    background: var(--cinder-warning);
+    background: var(--cinder-status-warning-solid);
     opacity: 0.32;
   }
 
   .cinder-meter__segment--state-optimum {
-    background: var(--cinder-success);
+    background: var(--cinder-status-success-solid);
     opacity: 0.28;
   }
 
   .cinder-meter__segment--state-high {
-    background: var(--cinder-danger);
+    background: var(--cinder-status-danger-solid);
     opacity: 0.34;
   }
 
@@ -58,7 +58,7 @@
     inset-block: 0;
     inset-inline-start: 0;
     inline-size: 100%;
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border-radius: inherit;
     transform-origin: center left;
     transform: scaleX(var(--_cinder-meter-progress, 0));
@@ -78,14 +78,14 @@
   }
 
   .cinder-meter[data-cinder-state='low'] .cinder-meter__fill {
-    background: var(--cinder-warning);
+    background: var(--cinder-status-warning-solid);
   }
 
   .cinder-meter[data-cinder-state='optimum'] .cinder-meter__fill {
-    background: var(--cinder-success);
+    background: var(--cinder-status-success-solid);
   }
 
   .cinder-meter[data-cinder-state='high'] .cinder-meter__fill {
-    background: var(--cinder-danger);
+    background: var(--cinder-status-danger-solid);
   }
 }

@@ -81,11 +81,11 @@
   }
 
   .cinder-sparkbar[data-cinder-variant='success'] .cinder-sparkbar__fill {
-    background: var(--cinder-success);
+    background: var(--cinder-status-success-solid);
   }
 
   .cinder-sparkbar[data-cinder-variant='warning'] .cinder-sparkbar__fill {
-    background: var(--cinder-warning);
+    background: var(--cinder-status-warning-solid);
   }
 
   @media (prefers-reduced-motion: reduce) {

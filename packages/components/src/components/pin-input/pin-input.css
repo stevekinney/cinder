@@ -18,7 +18,7 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     line-height: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-pin-input-field__label[data-disabled] {
@@ -43,7 +43,7 @@
     font-weight: var(--cinder-font-medium);
     line-height: 1;
     text-align: center;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -75,7 +75,7 @@
   }
 
   .cinder-pin-input[aria-invalid='true'] .cinder-pin-input__segment {
-    border-color: var(--cinder-danger);
+    border-color: var(--cinder-status-danger-solid);
   }
 
   .cinder-pin-input__segment:disabled {
@@ -99,6 +99,6 @@
   .cinder-pin-input-field__error {
     margin: 0;
     font-size: var(--cinder-text-xs);
-    color: var(--cinder-color-danger-fg);
+    color: var(--cinder-status-danger-text);
   }
 }

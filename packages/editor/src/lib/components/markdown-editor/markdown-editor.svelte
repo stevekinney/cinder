@@ -963,7 +963,7 @@
     width: 100%;
     /* Use flex: 1 instead of height: 100% for consistent sizing with WYSIWYG mode */
     flex: 1;
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     min-height: var(--editor-source-min-height);
   }
 
@@ -1006,7 +1006,7 @@
      Rich text editors already show a blinking cursor for focus,
      so a prominent ring around the entire container is redundant. */
   .markdown-editor-wrapper:focus-within {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
   }
 
   /* When the ProseMirror surface itself receives keyboard focus (tabindex=0),
@@ -1035,7 +1035,7 @@
 
   /* Template placeholder invalid token decoration (DEP-583) */
   .markdown-editor :global(.template-placeholder-invalid) {
-    text-decoration: wavy underline var(--cinder-warning, #e5a200);
+    text-decoration: wavy underline var(--cinder-status-warning-solid, #e5a200);
     text-decoration-skip-ink: none;
     text-underline-offset: 2px;
   }
@@ -1110,7 +1110,7 @@
   .markdown-editor :global(.template-completion-item-path) {
     font-family: var(--cinder-font-mono);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text, #1a1a1a);
+    color: var(--cinder-text-default, #1a1a1a);
   }
 
   .markdown-editor :global(.template-completion-item-description) {

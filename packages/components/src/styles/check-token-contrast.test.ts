@@ -408,7 +408,7 @@ function readTokenValue(source: string, tokenName: string): string {
 
 /**
  * Resolve a relative-color derivation of the shape
- * `oklch(from var(--cinder-accent) calc(l - X) c h)` against a parsed base color.
+ * `oklch(from var(--cinder-accent-solid) calc(l - X) c h)` against a parsed base color.
  * Retained because several assertions derive a value that has no token of its
  * own -- a hover state computed in a component rule rather than declared in the
  * corpus. Tokens that DO exist are read directly.
@@ -421,45 +421,45 @@ function deriveFromAccent(base: OklchColor, lDelta: number): OklchColor {
 // The gate
 // ---------------------------------------------------------------------------
 
-const accent = readOklchToken('--cinder-accent');
+const accent = readOklchToken('--cinder-accent-solid');
 const accentContrast = readOklchToken('--cinder-accent-contrast');
 const accentText = readOklchToken('--cinder-accent-text');
-const info = readOklchToken('--cinder-info');
-const infoContrast = readOklchToken('--cinder-info-contrast');
-const neutralBg = readOklchToken('--cinder-color-neutral-bg');
-const infoBg = readOklchToken('--cinder-color-info-bg');
-const infoFg = readOklchToken('--cinder-color-info-fg');
-const successBg = readOklchToken('--cinder-color-success-bg');
-const successFg = readOklchToken('--cinder-color-success-fg');
-const warningBg = readOklchToken('--cinder-color-warning-bg');
-const warningFg = readOklchToken('--cinder-color-warning-fg');
-const dangerBg = readOklchToken('--cinder-color-danger-bg');
-const dangerFg = readOklchToken('--cinder-color-danger-fg');
-const success = readOklchToken('--cinder-success');
-const warning = readOklchToken('--cinder-warning');
-const danger = readOklchToken('--cinder-danger');
-const successContrast = readOklchToken('--cinder-success-contrast');
-const warningContrast = readOklchToken('--cinder-warning-contrast');
-const dangerContrast = readOklchToken('--cinder-danger-contrast');
-const infoBorder = readOklchToken('--cinder-color-info-border');
-const successBorder = readOklchToken('--cinder-color-success-border');
-const warningBorder = readOklchToken('--cinder-color-warning-border');
-const dangerBorder = readOklchToken('--cinder-color-danger-border');
+const info = readOklchToken('--cinder-status-info-solid');
+const infoContrast = readOklchToken('--cinder-status-info-contrast');
+const neutralBg = readOklchToken('--cinder-status-neutral-background');
+const infoBg = readOklchToken('--cinder-status-info-background');
+const infoFg = readOklchToken('--cinder-status-info-text');
+const successBg = readOklchToken('--cinder-status-success-background');
+const successFg = readOklchToken('--cinder-status-success-text');
+const warningBg = readOklchToken('--cinder-status-warning-background');
+const warningFg = readOklchToken('--cinder-status-warning-text');
+const dangerBg = readOklchToken('--cinder-status-danger-background');
+const dangerFg = readOklchToken('--cinder-status-danger-text');
+const success = readOklchToken('--cinder-status-success-solid');
+const warning = readOklchToken('--cinder-status-warning-solid');
+const danger = readOklchToken('--cinder-status-danger-solid');
+const successContrast = readOklchToken('--cinder-status-success-contrast');
+const warningContrast = readOklchToken('--cinder-status-warning-contrast');
+const dangerContrast = readOklchToken('--cinder-status-danger-contrast');
+const infoBorder = readOklchToken('--cinder-status-info-border');
+const successBorder = readOklchToken('--cinder-status-success-border');
+const warningBorder = readOklchToken('--cinder-status-warning-border');
+const dangerBorder = readOklchToken('--cinder-status-danger-border');
 // Authored (not relative-derived) so the gamut gate can parse them directly — red (h 25)
 // clamps at low lightness, so these are pinned to their in-gamut chroma maxima.
-const dangerHover = readOklchToken('--cinder-danger-hover');
-const dangerActive = readOklchToken('--cinder-danger-active');
-const infoHover = readOklchToken('--cinder-info-hover');
-const infoActive = readOklchToken('--cinder-info-active');
-const successHover = readOklchToken('--cinder-success-hover');
-const successActive = readOklchToken('--cinder-success-active');
-const warningHover = readOklchToken('--cinder-warning-hover');
-const warningActive = readOklchToken('--cinder-warning-active');
-const bg = readOklchToken('--cinder-bg');
+const dangerHover = readOklchToken('--cinder-status-danger-solid-hover');
+const dangerActive = readOklchToken('--cinder-status-danger-solid-active');
+const infoHover = readOklchToken('--cinder-status-info-solid-hover');
+const infoActive = readOklchToken('--cinder-status-info-solid-active');
+const successHover = readOklchToken('--cinder-status-success-solid-hover');
+const successActive = readOklchToken('--cinder-status-success-solid-active');
+const warningHover = readOklchToken('--cinder-status-warning-solid-hover');
+const warningActive = readOklchToken('--cinder-status-warning-solid-active');
+const bg = readOklchToken('--cinder-surface-canvas');
 const surface = readOklchToken('--cinder-surface');
 const surfaceInset = readOklchToken('--cinder-surface-inset');
 const surfaceRaised = readOklchToken('--cinder-surface-raised');
-const text = readOklchToken('--cinder-text');
+const text = readOklchToken('--cinder-text-default');
 const borderFaint = readOklchToken('--cinder-border-faint');
 const borderMuted = readOklchToken('--cinder-border-muted');
 const border = readOklchToken('--cinder-border');
@@ -469,7 +469,7 @@ const opacityMuted = readNumberToken('--cinder-opacity-muted');
 const opacityFaint = readNumberToken('--cinder-opacity-faint');
 
 // The active command-palette item paints --cinder-accent-contrast text on a solid
-// --cinder-accent fill (command-item.css), so that pair is gated here too.
+// --cinder-accent-solid fill (command-item.css), so that pair is gated here too.
 
 const chartSeries = Array.from({ length: 8 }, (_, i) =>
   readOklchToken(`--cinder-chart-series-${i + 1}`),
@@ -646,7 +646,7 @@ describe('shipped CSS agrees with the resolved values these assertions use', () 
 
 describe('resolved-value reader', () => {
   it('reads both theme arms of a real token from resolved output', () => {
-    const accentArms = readOklchToken('--cinder-accent');
+    const accentArms = readOklchToken('--cinder-accent-solid');
     // Sourced from the published resolved contexts, not re-derived from CSS.
     expect(accentArms.light).toEqual({ l: 0.5, c: 0.22, h: 270 });
     expect(accentArms.dark).toEqual({ l: 0.72, c: 0.14, h: 270 });
@@ -783,8 +783,8 @@ describe('status color contrast', () => {
       ['warning', warningBg, warningFg, warningBorder],
       ['danger', dangerBg, dangerFg, dangerBorder],
     ];
-    expect(readTokenValue(css, '--cinder-color-neutral-fg')).toBe('var(--cinder-text)');
-    expect(readTokenValue(css, '--cinder-color-neutral-border')).toBe('var(--cinder-border)');
+    expect(readTokenValue(css, '--cinder-status-neutral-text')).toBe('var(--cinder-text-default)');
+    expect(readTokenValue(css, '--cinder-status-neutral-border')).toBe('var(--cinder-border)');
     for (const [name, background, foreground, border] of statuses) {
       for (const arm of ['light', 'dark'] as const) {
         expect(
@@ -800,12 +800,16 @@ describe('status color contrast', () => {
   });
 
   it('accent status triple clears its foreground and border floors in both theme arms', () => {
-    expect(readTokenValue(css, '--cinder-color-accent-bg')).toBe(
-      'color-mix(in oklch, var(--cinder-accent), var(--cinder-surface) 88%)',
+    // Whitespace-normalized: these declarations are Prettier-formatted, and the
+    // longer names after CIN-33 pushed them past the print width, so pinning one
+    // exact spelling would assert the formatter rather than the value.
+    const declaration = (property: string) => readTokenValue(css, property).replace(/\s+/g, ' ');
+
+    expect(declaration('--cinder-accent-background')).toBe(
+      'color-mix( in oklch, var(--cinder-accent-solid), var(--cinder-surface) 88% )',
     );
-    expect(readTokenValue(css, '--cinder-color-accent-fg')).toBe('var(--cinder-accent-text)');
-    expect(readTokenValue(css, '--cinder-color-accent-border')).toBe(
-      'color-mix(in oklch, var(--cinder-accent), transparent 60%)',
+    expect(declaration('--cinder-accent-border')).toBe(
+      'color-mix(in oklch, var(--cinder-accent-solid), transparent 60%)',
     );
     for (const arm of ['light', 'dark'] as const) {
       const background = mixOklch(accent[arm], surface[arm], 88);
@@ -1039,7 +1043,7 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
   it('applies the status-tier chroma clamp in every theme declaration', () => {
     const declarations = [
       ...css.matchAll(
-        /--cinder-color-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from color-mix\(in oklch, var\(--cinder-(?:info|success|warning|danger)\), var\(--cinder-(?:surface|text)\) 36%\) l min\(c, 0\.05\) h\s*\);/g,
+        /--cinder-status-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from\s+color-mix\(\s*in oklch,\s*var\(--cinder-status-(?:info|success|warning|danger)-solid\),\s*var\(--cinder-(?:surface|text-default)\)\s+36%\s*\)\s*l\s*min\(c,\s*0\.05\)\s*h\s*\);/g,
       ),
     ];
 

@@ -201,14 +201,14 @@
     font-size: var(--cinder-text-xs);
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-contrast);
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-full);
   }
 
   .comment-author-name {
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .comment-meta {
@@ -231,7 +231,7 @@
   .comment-body {
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-relaxed);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     white-space: pre-wrap;
     word-break: break-word;
   }
@@ -249,7 +249,7 @@
     font-family: inherit;
     font-size: var(--cinder-text-sm);
     line-height: var(--cinder-leading-normal);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
@@ -257,7 +257,7 @@
   }
 
   .comment-edit-textarea:focus {
-    border-color: var(--cinder-accent);
+    border-color: var(--cinder-accent-solid);
     outline: var(--cinder-ring-width) solid transparent;
     outline-offset: var(--cinder-ring-offset);
     box-shadow: var(--_cinder-focus-ring-shadow);
@@ -308,14 +308,14 @@
 
   @media (hover: hover) {
     .comment-action:hover {
-      color: var(--cinder-text);
+      color: var(--cinder-text-default);
       background: var(--cinder-surface-hover);
     }
 
     .comment-action-danger:hover {
-      color: var(--cinder-color-danger-fg);
-      background: var(--cinder-color-danger-bg);
-      border-color: var(--cinder-color-danger-border);
+      color: var(--cinder-status-danger-text);
+      background: var(--cinder-status-danger-background);
+      border-color: var(--cinder-status-danger-border);
     }
   }
 

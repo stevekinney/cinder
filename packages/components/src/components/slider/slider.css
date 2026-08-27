@@ -42,7 +42,7 @@
     inset-block: 0;
     inset-inline-start: var(--_cinder-slider-low);
     inset-inline-end: calc(100% - var(--_cinder-slider-high));
-    background: var(--cinder-accent);
+    background: var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-full);
     transition:
       inset-inline-start var(--cinder-duration-fast, 120ms) var(--cinder-ease-standard, ease),
@@ -79,7 +79,7 @@
     width: var(--_cinder-slider-thumb-size);
     height: var(--_cinder-slider-thumb-size);
     background: var(--cinder-surface-raised, white);
-    border: 2px solid var(--cinder-accent);
+    border: 2px solid var(--cinder-accent-solid);
     border-radius: var(--cinder-radius-full);
     transform: translate(-50%, -50%);
     cursor: grab;

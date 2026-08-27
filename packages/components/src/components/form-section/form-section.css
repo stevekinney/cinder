@@ -23,7 +23,7 @@
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-snug);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     margin: 0 0 var(--cinder-space-1-5);
     padding: 0;
   }

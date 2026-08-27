@@ -407,7 +407,7 @@ describe('Card CSS contract', () => {
   test('title uses the primary text token', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
     const titleBlock = css.match(/\.cinder-card__title\s*\{[^}]*\}/)?.[0] ?? '';
-    expect(titleBlock).toContain('color: var(--cinder-text)');
+    expect(titleBlock).toContain('color: var(--cinder-text-default)');
     expect(titleBlock).not.toContain('color: var(--cinder-text-muted)');
   });
 
@@ -432,13 +432,13 @@ describe('Card CSS contract', () => {
 
     expect(dangerBlock).toContain('background');
     expect(dangerBlock).toContain('border-color');
-    expect(dangerBlock).toContain('var(--cinder-color-danger-bg)');
-    expect(dangerBlock).toContain('var(--cinder-color-danger-border)');
+    expect(dangerBlock).toContain('var(--cinder-status-danger-background)');
+    expect(dangerBlock).toContain('var(--cinder-status-danger-border)');
     expect(css).toContain(".cinder-card[data-cinder-tone='danger'] > .cinder-card__header");
     expect(css).toContain(
       ".cinder-card[data-cinder-tone='danger'] > .cinder-card__header .cinder-card__title",
     );
     expect(css).toContain(".cinder-card[data-cinder-tone='danger'] > .cinder-card__footer");
-    expect(iconBlock).toContain('var(--cinder-danger)');
+    expect(iconBlock).toContain('var(--cinder-status-danger-solid)');
   });
 });

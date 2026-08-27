@@ -37,13 +37,13 @@
 </FormField>
 
 {#if acceptedNames.length > 0}
-  <p style="margin-top: 0.5rem; color: var(--cinder-color-success-fg);">
+  <p style="margin-top: 0.5rem; color: var(--cinder-status-success-text);">
     Accepted: {acceptedNames.join(', ')}
   </p>
 {/if}
 
 {#if rejectedMessages.length > 0}
-  <p style="margin-top: 0.5rem; color: var(--cinder-color-danger-fg);">
+  <p style="margin-top: 0.5rem; color: var(--cinder-status-danger-text);">
     {rejectedMessages.join('; ')}
   </p>
 {/if}
