@@ -251,6 +251,19 @@ export function buildTokenRegistryFromIndexes(
     if (entry.component !== undefined && entry.component.trim() === '') {
       throw new Error(`Base corpus token at "${entry.path}" has a blank component extension.`);
     }
+    // `cssRecipe` is free-form, so the schema accepts `""`. An empty recipe
+    // still WINS over the typed `$value` during serialization, so the token
+    // emits a custom property with no value and a documentation row whose
+    // Default cell is an empty code span -- which `extractDocTokens` cannot
+    // match (its value group is `(.+?)`), so the required drift test reports
+    // the token missing. Same shape as the cssProperty grammar guard: reject
+    // what the generators accept but the drift parser cannot read back.
+    if (entry.cssRecipe !== undefined && entry.cssRecipe.trim() === '') {
+      throw new Error(
+        `Base corpus token at "${entry.path}" has a blank cssRecipe extension. ` +
+          'Omit the field to fall back to the typed $value, rather than setting it empty.',
+      );
+    }
     // Both branches check positively for the prefix the flag requires. Deriving
     // either from the absence of the other admits a third namespace: a
     // `--vendor-foo` token marked public does not start with `--_cinder-`, so a

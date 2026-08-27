@@ -90,19 +90,27 @@ const TYPESCRIPT_PLUGINS = [typescriptPlugin, estreePlugin, babelPlugin];
  * twice, or a section here has no matching marker in docs/tokens.md.
  */
 /**
- * `heading` is the LITERAL text of the Markdown heading the marker sits under,
- * not a prose label -- `buildTokensDocMarkdown` compares the two and refuses to
- * rewrite a block that has moved. The six button sections are nested as
- * `### Base` / `### Size: xs` beneath `## Button`, so they carry their leaf
- * text; `slug` already qualifies them (`button-size-xs`), so nothing is
- * ambiguous.
+ * `headings` is the LITERAL trail of Markdown headings the marker sits under,
+ * outermost first, not a prose label. `buildTokensDocMarkdown` requires it to
+ * be a SUFFIX of the marker's actual heading trail, so a section may declare
+ * just its own heading (`['Spacing']`) without repeating the document title,
+ * while a nested one pins its parent too (`['Button', 'Base']`).
+ *
+ * A leaf alone is not enough: the six button sections are nested as
+ * `### Base` / `### Size: xs` beneath `## Button`, and matching only the leaf
+ * would let `### Base` and its marker move under a different `##` parent
+ * unnoticed.
  */
-export type DocSection = { slug: string; heading: string; cssProperties: readonly string[] };
+export type DocSection = {
+  slug: string;
+  headings: readonly string[];
+  cssProperties: readonly string[];
+};
 
 const DOC_SECTIONS: readonly DocSection[] = [
   {
     slug: 'spacing',
-    heading: 'Spacing',
+    headings: ['Spacing'],
     cssProperties: [
       '--cinder-space-0',
       '--cinder-space-0-5',
@@ -127,7 +135,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'radii-and-shadows',
-    heading: 'Radii and shadows',
+    headings: ['Radii and shadows'],
     cssProperties: [
       '--cinder-radius-sm',
       '--cinder-radius-md',
@@ -141,7 +149,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'control-heights',
-    heading: 'Control heights',
+    headings: ['Control heights'],
     cssProperties: [
       '--cinder-control-height-xs',
       '--cinder-control-height-sm',
@@ -150,7 +158,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'typography',
-    heading: 'Typography',
+    headings: ['Typography'],
     cssProperties: [
       '--cinder-font-sans',
       '--cinder-font-mono',
@@ -183,7 +191,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'layout',
-    heading: 'Layout',
+    headings: ['Layout'],
     cssProperties: [
       '--cinder-content-width',
       '--cinder-content-width-prose',
@@ -193,7 +201,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'motion',
-    heading: 'Motion',
+    headings: ['Motion'],
     cssProperties: [
       '--cinder-duration-instant',
       '--cinder-duration-fast',
@@ -213,7 +221,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'surfaces',
-    heading: 'Surfaces',
+    headings: ['Surfaces'],
     cssProperties: [
       '--cinder-bg',
       '--cinder-surface',
@@ -231,7 +239,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'text-colors',
-    heading: 'Text colors',
+    headings: ['Text colors'],
     cssProperties: [
       '--cinder-text',
       '--cinder-text-muted',
@@ -242,7 +250,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'borders',
-    heading: 'Borders',
+    headings: ['Borders'],
     cssProperties: [
       '--cinder-border',
       '--cinder-border-faint',
@@ -254,7 +262,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'opacity',
-    heading: 'Opacity',
+    headings: ['Opacity'],
     cssProperties: [
       '--cinder-opacity-disabled',
       '--cinder-opacity-muted',
@@ -263,7 +271,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'accent',
-    heading: 'Accent',
+    headings: ['Accent'],
     cssProperties: [
       '--cinder-accent',
       '--cinder-accent-contrast',
@@ -276,7 +284,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'semantic-aliases',
-    heading: 'Semantic aliases',
+    headings: ['Semantic aliases'],
     cssProperties: [
       '--cinder-pad-control',
       '--cinder-pad-card',
@@ -288,7 +296,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'status-solid',
-    heading: 'Status — solid',
+    headings: ['Status — solid'],
     cssProperties: [
       '--cinder-info',
       '--cinder-success',
@@ -310,7 +318,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'status-semantic-triples',
-    heading: 'Status — semantic triples',
+    headings: ['Status — semantic triples'],
     cssProperties: [
       '--cinder-color-info-bg',
       '--cinder-color-info-fg',
@@ -342,12 +350,12 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'transparency-checkerboard',
-    heading: 'Transparency checkerboard',
+    headings: ['Transparency checkerboard'],
     cssProperties: ['--cinder-color-checker-base', '--cinder-color-checker-tile'],
   },
   {
     slug: 'chart-series',
-    heading: 'Chart series',
+    headings: ['Chart series'],
     cssProperties: [
       '--cinder-chart-series-1',
       '--cinder-chart-series-2',
@@ -361,7 +369,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'focus-ring',
-    heading: 'Focus ring',
+    headings: ['Focus ring'],
     cssProperties: [
       '--cinder-ring-width',
       '--cinder-ring-offset',
@@ -372,7 +380,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'z-index-layers',
-    heading: 'Z-index layers',
+    headings: ['Z-index layers'],
     cssProperties: [
       '--cinder-z-tooltip',
       '--cinder-z-dropdown',
@@ -386,7 +394,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'overlay-surfaces',
-    heading: 'Overlay surfaces',
+    headings: ['Overlay surfaces'],
     cssProperties: [
       '--cinder-overlay-backdrop',
       '--cinder-overlay-blur',
@@ -396,7 +404,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'scrollbars',
-    heading: 'Scrollbars',
+    headings: ['Scrollbars'],
     cssProperties: [
       '--cinder-scrollbar-size',
       '--cinder-scrollbar-track',
@@ -406,7 +414,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-base',
-    heading: 'Base',
+    headings: ['Button', 'Base'],
     cssProperties: [
       '--cinder-button-bg',
       '--cinder-button-fg',
@@ -416,7 +424,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xs',
-    heading: 'Size: xs',
+    headings: ['Button', 'Size: xs'],
     cssProperties: [
       '--cinder-button-padding-x-xs',
       '--cinder-button-padding-y-xs',
@@ -427,7 +435,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-sm',
-    heading: 'Size: sm',
+    headings: ['Button', 'Size: sm'],
     cssProperties: [
       '--cinder-button-padding-x-sm',
       '--cinder-button-padding-y-sm',
@@ -438,7 +446,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-md',
-    heading: 'Size: md',
+    headings: ['Button', 'Size: md'],
     cssProperties: [
       '--cinder-button-padding-x-md',
       '--cinder-button-padding-y-md',
@@ -449,7 +457,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-lg',
-    heading: 'Size: lg',
+    headings: ['Button', 'Size: lg'],
     cssProperties: [
       '--cinder-button-padding-x-lg',
       '--cinder-button-padding-y-lg',
@@ -460,7 +468,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
   },
   {
     slug: 'button-size-xl',
-    heading: 'Size: xl',
+    headings: ['Button', 'Size: xl'],
     cssProperties: [
       '--cinder-button-padding-x-xl',
       '--cinder-button-padding-y-xl',
@@ -634,14 +642,37 @@ export async function renderDocTable(
 }
 
 /**
- * The text of the nearest ATX heading above `offset`, or `undefined` when the
- * marker sits before any heading. Used to check a marker is still under the
- * heading `DOC_SECTIONS` says it belongs to.
+ * The trail of ATX headings enclosing `offset`, outermost first: the nearest
+ * heading, then the nearest heading above it of a shallower level, and so on.
+ * Empty when the marker sits before any heading.
+ *
+ * Walking backwards and keeping only strictly-shallower levels is what makes
+ * this the ENCLOSING trail rather than a list of everything above -- a sibling
+ * `### Size: sm` earlier in the document does not enclose `### Size: md`.
  */
-function precedingHeading(markdown: string, offset: number): string | undefined {
+function enclosingHeadings(markdown: string, offset: number): string[] {
   const before = markdown.slice(0, offset);
-  const headings = [...before.matchAll(/^#{1,6}[ \t]+(.+?)[ \t]*#*[ \t]*$/gm)];
-  return headings.at(-1)?.[1]?.trim();
+  const headings = [...before.matchAll(/^(#{1,6})[ \t]+(.+?)[ \t]*#*[ \t]*$/gm)];
+  const trail: string[] = [];
+  let level = Number.POSITIVE_INFINITY;
+  for (let index = headings.length - 1; index >= 0; index -= 1) {
+    const match = headings[index];
+    const hashes = match?.[1];
+    const text = match?.[2];
+    if (hashes === undefined || text === undefined) continue;
+    if (hashes.length < level) {
+      trail.unshift(text.trim());
+      level = hashes.length;
+    }
+  }
+  return trail;
+}
+
+/** Whether `expected` is a suffix of `actual`, comparing element by element. */
+function isHeadingSuffix(actual: readonly string[], expected: readonly string[]): boolean {
+  if (expected.length === 0 || expected.length > actual.length) return false;
+  const offset = actual.length - expected.length;
+  return expected.every((heading, index) => actual[offset + index] === heading);
 }
 
 /**
@@ -692,20 +723,25 @@ export async function buildTokensDocMarkdown(
           'DOC_SECTIONS in generate-artifacts.ts, or fix the marker.',
       );
     }
-    // `DocSection.heading` was declared and set for every section but never
-    // read, so it documented a guarantee nothing enforced. Moving a marker
-    // under a different heading, or renaming that heading, left the generator
-    // happily rewriting the spacing table under "Typography": the slug still
-    // matched, `tokens:generate -- --check` stabilised on the misplaced output,
-    // and the drift test compares tokens globally rather than per section, so
-    // nothing anywhere noticed.
-    const heading = precedingHeading(existingMarkdown, start);
-    if (heading !== section.heading) {
+    // `DocSection.headings` was declared for every section and read by nothing,
+    // so it documented a guarantee nothing enforced. Moving a marker under a
+    // different heading, or renaming that heading, left the generator happily
+    // rewriting the spacing table under "Typography": the slug still matched,
+    // `tokens:generate -- --check` stabilised on the misplaced output, and the
+    // drift test compares tokens globally rather than per section, so nothing
+    // anywhere noticed.
+    //
+    // Matched as a SUFFIX of the enclosing trail rather than against the leaf
+    // alone: the button sections are `### Base` beneath `## Button`, and a leaf
+    // comparison would let that pair move under another `##` parent intact.
+    const trail = enclosingHeadings(existingMarkdown, start);
+    if (!isHeadingSuffix(trail, section.headings)) {
       throw new Error(
-        `docs/tokens.md has the "${slug}" generated-table marker under heading ` +
-          `${heading === undefined ? '(no heading)' : `"${heading}"`}, but DOC_SECTIONS ` +
-          `declares it belongs under "${section.heading}". Move the marker back, or ` +
-          'update the section heading in generate-artifacts.ts.',
+        `docs/tokens.md has the "${slug}" generated-table marker under headings ` +
+          `${trail.length === 0 ? '(none)' : trail.map((h) => `"${h}"`).join(' > ')}, but ` +
+          `DOC_SECTIONS declares it belongs under ` +
+          `${section.headings.map((h) => `"${h}"`).join(' > ')}. Move the marker back, or ` +
+          'update the section headings in generate-artifacts.ts.',
       );
     }
 

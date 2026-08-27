@@ -29,7 +29,7 @@ import {
   validatePlaygroundColorTokenGroups,
 } from './generate-artifacts.ts';
 import { type CorpusEntry, loadCorpus } from './generate.ts';
-import { buildBaseIndex, buildTokenRegistryFromIndexes } from './registry.ts';
+import { buildBaseIndex, buildTokenRegistryFromIndexes, themeAwarePaths } from './registry.ts';
 import type { ResolverDocument } from './types.ts';
 
 function resolverWithExtensions(extensions: Record<string, unknown>): ResolverDocument {
@@ -119,7 +119,7 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
   test('a description containing a newline stays on one table row', async () => {
     const section: DocSection = {
       slug: 'test-section',
-      heading: 'Test section',
+      headings: ['Test section'],
       cssProperties: ['--cinder-test-token'],
     };
     const entry: CorpusEntry = {
@@ -151,7 +151,7 @@ describe('B2: renderDocTable normalizes a newline in $description', () => {
     // old-Mac-style line break.
     const section: DocSection = {
       slug: 'test-section-cr',
-      heading: 'Test section',
+      headings: ['Test section'],
       cssProperties: ['--cinder-test-token-cr'],
     };
     const entry: CorpusEntry = {
@@ -285,7 +285,7 @@ describe('CIN-30 review round 3', () => {
     ]);
     const section: DocSection = {
       slug: 'piped',
-      heading: 'Piped',
+      headings: ['Piped'],
       cssProperties: ['--cinder-test-font-piped'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
@@ -324,7 +324,7 @@ describe('CIN-30 review round 5', () => {
     ]);
     const section: DocSection = {
       slug: 'multi',
-      heading: 'Multi',
+      headings: ['Multi'],
       cssProperties: ['--cinder-test-multiline'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
@@ -406,7 +406,7 @@ describe('CIN-30 review round 6', () => {
     ]);
     const section: DocSection = {
       slug: 'ticked',
-      heading: 'Ticked',
+      headings: ['Ticked'],
       cssProperties: ['--cinder-test-font-ticked'],
     };
     const table = await renderDocTable(section, baseIndex, (value) => value);
@@ -438,7 +438,7 @@ describe('CIN-30 review round 9', () => {
 
   const section: DocSection = {
     slug: 'marker',
-    heading: 'Marker',
+    headings: ['Marker'],
     cssProperties: ['--cinder-test-marker'],
   };
 
@@ -506,7 +506,7 @@ describe('CIN-30 review round 11: markers must stay under their declared heading
   // compares tokens globally rather than per section -- still passing.
   test('a marker moved under a different heading is rejected', async () => {
     await expect(build('## Typography')).rejects.toThrow(
-      /marker under heading "Typography", but DOC_SECTIONS declares it belongs under "Spacing"/,
+      /marker under headings "Design tokens" > "Typography", but DOC_SECTIONS declares it belongs under "Spacing"/,
     );
   });
 
@@ -515,7 +515,7 @@ describe('CIN-30 review round 11: markers must stay under their declared heading
     const baseIndex = buildBaseIndex(resolver, documentsByPath);
     const markdown = `<!-- BEGIN GENERATED TOKEN TABLE: ${REAL_SLUG} -->\nstale\n<!-- END GENERATED TOKEN TABLE -->\n`;
     await expect(buildTokensDocMarkdown(markdown, baseIndex, (value) => value)).rejects.toThrow(
-      /marker under heading \(no heading\)/,
+      /marker under headings \(none\)/,
     );
   });
 
@@ -527,5 +527,114 @@ describe('CIN-30 review round 11: markers must stay under their declared heading
     // Fails on the OTHER sections being absent, not on the heading -- which is
     // what proves the heading check itself let this one through.
     await expect(build(REAL_HEADING)).rejects.toThrow(/is missing a generated-table marker/);
+  });
+});
+
+describe('CIN-30 review round 12: nested markers pin their parent heading', () => {
+  async function build(lines: readonly string[]) {
+    const { resolver, documentsByPath } = await loadCorpus();
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return buildTokensDocMarkdown([...lines, ''].join('\n'), baseIndex, (value) => value);
+  }
+
+  function buttonBase(parentHeading: string) {
+    return [
+      '# Design tokens',
+      '',
+      parentHeading,
+      '',
+      '### Base',
+      '',
+      '<!-- BEGIN GENERATED TOKEN TABLE: button-base -->',
+      'stale',
+      '<!-- END GENERATED TOKEN TABLE -->',
+    ];
+  }
+
+  // Matching only the LEAF heading let `### Base` and its marker move under a
+  // different `##` parent intact -- the Button table would land in another
+  // section and `tokens:generate -- --check` would stabilise on it.
+  test('a nested marker moved under a different parent is rejected', async () => {
+    await expect(build(buttonBase('## Typography'))).rejects.toThrow(
+      /"Typography" > "Base", but DOC_SECTIONS declares it belongs under "Button" > "Base"/,
+    );
+  });
+
+  test('the declared parent still passes the heading check', async () => {
+    // Fails on the OTHER sections being absent, not on the headings -- which is
+    // what proves the trail check itself let this one through.
+    await expect(build(buttonBase('## Button'))).rejects.toThrow(
+      /is missing a generated-table marker/,
+    );
+  });
+
+  // A sibling heading earlier in the document is not an ancestor: the trail
+  // must keep only strictly-shallower levels walking backwards.
+  test('a preceding sibling heading is not treated as an ancestor', async () => {
+    await expect(
+      build([
+        '# Design tokens',
+        '',
+        '## Button',
+        '',
+        '### Size: sm',
+        '',
+        '### Base',
+        '',
+        '<!-- BEGIN GENERATED TOKEN TABLE: button-base -->',
+        'stale',
+        '<!-- END GENERATED TOKEN TABLE -->',
+      ]),
+    ).rejects.toThrow(/is missing a generated-table marker/);
+  });
+});
+
+describe('CIN-30 review round 12: a blank cssRecipe is rejected', () => {
+  function build(cssRecipe: string) {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/foundation' }],
+    };
+    const documentsByPath = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            $type: 'dimension',
+            swatch: {
+              $value: { value: 1, unit: 'rem' },
+              $extensions: {
+                'com.lostgradient.cinder': {
+                  cssProperty: '--cinder-test-recipe',
+                  public: true,
+                  cssRecipe,
+                },
+              },
+            },
+          },
+        },
+      ],
+    ]);
+    const baseIndex = buildBaseIndex(resolver, documentsByPath);
+    return () =>
+      buildTokenRegistryFromIndexes(baseIndex, themeAwarePaths(resolver, documentsByPath));
+  }
+
+  // `cssRecipe` is free-form, so the schema accepts `""` -- and an empty recipe
+  // still WINS over the typed $value, emitting a custom property with no value
+  // and a documentation row whose Default cell is an empty code span, which
+  // `extractDocTokens` cannot match.
+  test('an empty cssRecipe is rejected rather than emitted as an empty value', () => {
+    expect(build('')).toThrow(/has a blank cssRecipe extension/);
+  });
+
+  test('a whitespace-only cssRecipe is rejected too', () => {
+    expect(build('   ')).toThrow(/has a blank cssRecipe extension/);
+  });
+
+  test('a real cssRecipe still passes', () => {
+    expect(build('1rem')).not.toThrow();
   });
 });
