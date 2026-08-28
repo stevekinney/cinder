@@ -13,8 +13,10 @@
      * brand-to-groups gap (see below), which would make two different
      * relationships (related vs. unrelated) look identical. space-8 keeps
      * the hierarchy strictly increasing: list 0.5rem < groups 1rem <
-     * main 1.5rem < this gap 2rem, reinforced by .cinder-footer__legal's
-     * own border-top + padding-top boundary.
+     * main 1.5rem < this gap 2rem, reinforced by the border-top + padding-top
+     * on `.cinder-footer__main + .cinder-footer__legal` -- scoped to that
+     * boundary rather than to the legal row itself, since a legal-only footer
+     * has no main region to be separated from.
      */
     gap: var(--cinder-space-8);
     padding: var(--cinder-space-6) var(--cinder-space-4);
