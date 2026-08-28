@@ -93,12 +93,36 @@ describe('Footer', () => {
     // packages/testing/tests/footer-layout.playwright.ts.
     const css = await Bun.file(new URL('./footer.css', import.meta.url)).text();
 
-    const tokenPx: Record<string, number> = {
-      '--cinder-space-2': 8,
-      '--cinder-space-4': 16,
-      '--cinder-space-6': 24,
-      '--cinder-space-8': 32,
-    };
+    // Derived from tokens-base.css rather than transcribed. A hard-coded map duplicates
+    // the scale, so a retune of the spacing tokens would have to be mirrored here by
+    // hand -- and until it was, this test would compare the footer's real gaps against
+    // stale numbers and report a hierarchy break that does not exist.
+    const tokensCss = await Bun.file(
+      new URL('../../styles/tokens-base.css', import.meta.url),
+    ).text();
+
+    const tokenPx: Record<string, number> = {};
+    for (const match of tokensCss.matchAll(/(--cinder-space-\d+):\s*([\d.]+)rem/g)) {
+      const [, name, rem] = match;
+      // Capture groups are `string | undefined` under noUncheckedIndexedAccess even
+      // though this pattern cannot match without them.
+      if (name === undefined || rem === undefined) continue;
+      // 1rem = 16px at the root font size these tokens are authored against; only the
+      // ORDERING of these values is asserted below, so the multiplier just has to be
+      // consistent.
+      tokenPx[name] = Number.parseFloat(rem) * 16;
+    }
+
+    // Fail loudly if the scale stops being readable, rather than silently comparing
+    // undefined values.
+    for (const required of [
+      '--cinder-space-2',
+      '--cinder-space-4',
+      '--cinder-space-6',
+      '--cinder-space-8',
+    ]) {
+      expect(tokenPx[required]).toBeGreaterThan(0);
+    }
 
     function gapTokenFor(selector: string): string {
       // Escape every regex metacharacter, matching the repo's cssRuleBody() helpers
