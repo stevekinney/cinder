@@ -58,6 +58,33 @@ describe('QrCode', () => {
     expect(svgMarkup).toContain('currentColor');
   });
 
+  test('encodes a large valid payload within a generous time budget (CIN-137)', () => {
+    // Worst case: error-correction level 'H' at the largest byte-mode payload that
+    // still fits QR version 40 (1273 bytes; verified empirically against the
+    // installed qrcode@1.5.4 — one byte more throws). Version 40 forces the most
+    // expensive mask-pattern scoring pass (size=177 modules/side).
+    //
+    // Measured wall-clock cost of QRCode.create() + the component's SVG path-build
+    // for this exact payload, in this runtime (Bun, this machine), 200 iterations
+    // after warmup: mean ~6ms, p95 ~7.5ms, max ~9.6ms. The 500ms budget below is
+    // ~50x the observed max, chosen to absorb CI-machine load/noise while still
+    // failing hard on a real regression class (an accidental complexity-class blowup
+    // in mask scoring, a removed memoization causing repeated re-encodes per render,
+    // or a synchronous multi-hundred-ms stall) rather than on ordinary timing jitter.
+    const oversizedButValidPayload = 'a'.repeat(1273);
+
+    const start = performance.now();
+    const { container } = render(QrCode, {
+      props: { value: oversizedButValidPayload, errorCorrectionLevel: 'H' },
+    });
+    const elapsed = performance.now() - start;
+
+    const element = container.querySelector('.cinder-qr-code');
+    expect(element?.getAttribute('data-cinder-state')).toBe('ready');
+    expect(container.querySelector('.cinder-qr-code svg')).not.toBeNull();
+    expect(elapsed).toBeLessThan(500);
+  });
+
   test('renders an error state when the payload is too large for any QR version', () => {
     const oversizedValue = 'a'.repeat(3000);
     const { container } = render(QrCode, { props: { value: oversizedValue } });

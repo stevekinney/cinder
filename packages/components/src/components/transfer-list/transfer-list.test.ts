@@ -49,6 +49,15 @@ describe('TransferList', () => {
     );
   });
 
+  test('reuses the ratified label/value ramp for the header', () => {
+    render(TransferList, {
+      props: { items, value: ['read'], leftLabel: 'Permissions', rightLabel: 'selected' },
+    });
+
+    expect(screen.getByText('Permissions').className).toContain('cinder-_label-text');
+    expect(screen.getByText('1 item selected').className).toContain('cinder-_value-text');
+  });
+
   test('preserves consumer-provided selection-label casing', () => {
     render(TransferList, {
       props: { items, value: ['read'], rightLabel: 'Granted Permissions' },
