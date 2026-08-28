@@ -1803,9 +1803,9 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
       ['alias.a', overrideEntry('alias.a', 3)],
     ]);
 
-    expect(() => assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark')).toThrow(
-      /\[theme\.dark\].*--test-swatch is claimed with conflicting values/,
-    );
+    expect(() =>
+      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, baseIndex, 'theme.dark'),
+    ).toThrow(/\[theme\.dark\].*--test-swatch is claimed with conflicting values/);
   });
 
   test('overriding only ONE of two cssProperty-sharing paths is still a conflict if the other keeps a different base value', () => {
@@ -1825,7 +1825,9 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
       ['swatch.a', overrideEntry('swatch.a', 2)],
     ]);
 
-    expect(() => assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark')).toThrow(
+    expect(() =>
+      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, baseIndex, 'theme.dark'),
+    ).toThrow(
       /\[theme\.dark\].*--test-swatch is claimed with conflicting values by alias\.a, swatch\.a/,
     );
   });
@@ -1844,8 +1846,40 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
     ]);
 
     expect(() =>
-      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark'),
+      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, baseIndex, 'theme.dark'),
     ).not.toThrow();
+  });
+
+  test('a claimant already changed by an EARLIER modifier in the composed scope is compared against its scope value, not raw base', () => {
+    // "swatch.a" and "alias.a" share a cssProperty at base value 1. The
+    // THEME already changed BOTH to 2 (part of this block's composed
+    // scope). MOTION's own override map here restates only "swatch.a",
+    // changing it back to 1 -- "alias.a" is untouched by motion, so its
+    // effective value in this scope is 2 (from theme), NOT its raw base
+    // value of 1. Comparing against raw baseIndex would wrongly see 1 vs 1
+    // (no conflict); the real combination disagrees (1 vs 2).
+    const baseIndex = new Map<string, CorpusEntry>([
+      ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
+      ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
+    ]);
+    const themeComposedScope = new Map<string, CorpusEntry>([
+      ['swatch.a', overrideEntry('swatch.a', 2)],
+      ['alias.a', overrideEntry('alias.a', 2)],
+    ]);
+    const motionOverrides = new Map<string, CorpusEntry>([
+      ['swatch.a', overrideEntry('swatch.a', 1)],
+    ]);
+
+    expect(() =>
+      assertUniqueOverrideCssProperties(
+        motionOverrides,
+        baseIndex,
+        themeComposedScope,
+        'motion.reduced',
+      ),
+    ).toThrow(
+      /\[motion\.reduced\].*--test-swatch is claimed with conflicting values by alias\.a, swatch\.a/,
+    );
   });
 
   test('the full buildTokensBaseCss pipeline rejects a theme override that diverges two $extends-shared paths', async () => {

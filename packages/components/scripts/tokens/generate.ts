@@ -849,18 +849,27 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
 export function assertUniqueOverrideCssProperties(
   overrides: Map<string, CorpusEntry>,
   baseIndex: Map<string, CorpusEntry>,
+  scopeIndex: Map<string, CorpusEntry>,
   blockName: string,
 ): void {
   // Comparing only the paths PRESENT in `overrides` misses a base claimant
   // that shares a `cssProperty` with an overridden path but is not itself
-  // overridden in this context (e.g. `$extends` gives "alias.a" and
-  // "swatch.a" the same property; a context overrides only "alias.a"). That
-  // claimant's effective value in this context is still its BASE value,
-  // unchanged -- but it never entered the comparison, so a divergence
-  // between the two was invisible here even though the emitted CSS changes
-  // the one shared custom property for both. Build the comparison from
-  // every base claimant of a `cssProperty` touched by this context, not
-  // just the ones this context happens to restate.
+  // overridden in THIS block -- e.g. `$extends` gives "alias.a" and
+  // "swatch.a" the same property, and this block overrides only "alias.a".
+  // That claimant's effective value in this context is NOT necessarily its
+  // raw base value: `documentsForResolutionOrder` composes each block's
+  // scope from base PLUS whichever other modifier's document this block's
+  // context implicitly includes (e.g. the `motion.reduced` block's scope
+  // includes the default THEME document too) -- so a sibling untouched by
+  // THIS block may already have been changed by a DIFFERENT modifier's
+  // override earlier in that composed scope. Falling back to raw
+  // `baseIndex` ignores that intermediate composition and can miss a real
+  // divergence (light changes both paths 1 -> 2, motion changes only one
+  // back to 1 -- comparing against base "1" for the untouched path sees no
+  // conflict, even though the light+motion combination actually holds 1 and
+  // 2). `scopeIndex` -- the FULLY composed, already-resolved-by-precedence
+  // corpus for this exact block's scope -- is what an unoverridden sibling's
+  // effective value must come from instead.
   const basePathsByCssProperty = new Map<string, string[]>();
   for (const [path, entry] of baseIndex) {
     if (!entry.cssProperty) continue;
@@ -878,7 +887,12 @@ export function assertUniqueOverrideCssProperties(
   const resolved = new Map<string, CorpusEntry>();
   for (const path of relevantPaths) {
     const base = baseIndex.get(path);
-    const entry = overrides.get(path) ?? base;
+    // This block's own override wins; otherwise the path's value already
+    // resolved into this block's fully composed scope (which may itself
+    // reflect a DIFFERENT modifier's override applied earlier in that
+    // scope's resolution order); only fall back to the raw base entry if
+    // the path is somehow absent from the composed scope entirely.
+    const entry = overrides.get(path) ?? scopeIndex.get(path) ?? base;
     if (!entry) continue;
     resolved.set(path, {
       ...entry,
@@ -1085,13 +1099,42 @@ export async function buildTokensBaseCss(
   // Per-block, not just once for `baseIndex`: `$extends` can legitimately give
   // two base paths the same `cssProperty` with identical base values, and a
   // theme or motion override can then explicitly diverge them to different
-  // values -- see `assertUniqueOverrideCssProperties`'s docstring.
-  assertUniqueOverrideCssProperties(lightOverrides, baseIndex, 'theme.light');
-  assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark');
-  assertUniqueOverrideCssProperties(reducedMotionOverrides, baseIndex, 'motion.reduced');
+  // values -- see `assertUniqueOverrideCssProperties`'s docstring. Each
+  // block's `scopeIndex` is the SAME fully composed scope already used for
+  // `$extends` lookup and nested-reference resolution above (base plus
+  // whichever other modifier's document this block's context implicitly
+  // includes), so an unoverridden sibling's comparison value reflects any
+  // OTHER modifier's override already baked into that scope, not just base.
+  const lightScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(lightScopeDocuments), '', undefined, lightScopeIndex);
+  const darkScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
+  const reducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(reducedMotionScopeDocuments),
+    '',
+    undefined,
+    reducedMotionScopeIndex,
+  );
+  const forcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(forcedReducedMotionScopeDocuments),
+    '',
+    undefined,
+    forcedReducedMotionScopeIndex,
+  );
+  assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
+  assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
+  assertUniqueOverrideCssProperties(
+    reducedMotionOverrides,
+    baseIndex,
+    reducedMotionScopeIndex,
+    'motion.reduced',
+  );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
+    forcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion',
   );
 
