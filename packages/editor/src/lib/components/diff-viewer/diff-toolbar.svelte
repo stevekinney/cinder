@@ -278,12 +278,17 @@
      selector global, so the rule reaches Kbd's own scoped element without also
      claiming every `.nav-kbd` that happens to exist elsewhere on the page. */
   .diff-toolbar :global(.nav-kbd) {
-    display: none;
+    display: inline-flex;
   }
 
-  @container cinder-diff-toolbar (min-width: 30rem) {
+  /* Visible is the BASELINE; the query only simplifies a cramped toolbar. Written this
+     way round deliberately: hiding by default and revealing inside a `min-width` query
+     leaves the keycaps permanently hidden anywhere container queries do not resolve,
+     turning a progressive enhancement into a silent loss. This matches the direction
+     `markdown-editor.svelte`'s separator rule already uses. */
+  @container cinder-diff-toolbar (width < 30rem) {
     .diff-toolbar :global(.nav-kbd) {
-      display: inline-flex;
+      display: none;
     }
   }
 </style>
