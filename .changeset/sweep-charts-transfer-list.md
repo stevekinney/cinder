@@ -14,4 +14,8 @@ rather than claiming only "distinct series colors".
 TransferList's header label and count adopt the ratified `_label-value.css` classes instead of
 running a second, divergent type ramp of their own.
 
-QrCode gains a regression test asserting a worst-case payload renders within a time budget.
+QrCode gains a regression test proving the largest payload QR version 40 can hold, at the
+strictest error-correction level, encodes and renders rather than falling into the error path.
+It deliberately asserts no wall-clock budget: a timing threshold is unreliable on a contended
+CI worker and is the kind of assertion that gets relaxed rather than fixed. The measurement
+that closed the underlying issue lives on it instead.
