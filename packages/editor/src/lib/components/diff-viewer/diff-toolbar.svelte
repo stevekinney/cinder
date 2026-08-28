@@ -273,12 +273,16 @@
    * `<kbd>` element, not this file's style scope (same pattern as
    * `.stat-badge` above).
    */
-  :global(.nav-kbd) {
+  /* Scoped through `.diff-toolbar` rather than left as a bare `:global(.nav-kbd)`.
+     Svelte scopes the `.diff-toolbar` half to this component and leaves the inner
+     selector global, so the rule reaches Kbd's own scoped element without also
+     claiming every `.nav-kbd` that happens to exist elsewhere on the page. */
+  .diff-toolbar :global(.nav-kbd) {
     display: none;
   }
 
   @container cinder-diff-toolbar (min-width: 30rem) {
-    :global(.nav-kbd) {
+    .diff-toolbar :global(.nav-kbd) {
       display: inline-flex;
     }
   }

@@ -118,16 +118,24 @@
     'block-operations',
   ];
 
-  // DOM refs used only for one-time-per-group width measurement inside the
-  // `{@attach}` below -- not read reactively from the template, so plain
-  // `let` bindings (not `$state`) are correct here, matching how
-  // `toolbar.svelte` holds its own `rootElement`.
-  let leadingElement: HTMLDivElement | null = null;
-  let triggerGhostElement: HTMLDivElement | null = null;
-  let textFormattingChunkElement: HTMLDivElement | null = null;
-  let linksChunkElement: HTMLDivElement | null = null;
-  let listsChunkElement: HTMLDivElement | null = null;
-  let blockOperationsChunkElement: HTMLDivElement | null = null;
+  function isFlexGroupId(value: string | undefined): value is FlexGroupId {
+    return value !== undefined && (flexGroupOrder as readonly string[]).includes(value);
+  }
+
+  // DOM refs used only for measurement inside the `{@attach}` below -- not
+  // read from the template, only from imperative code. `$state` is still
+  // required here (not just for `toolbar.svelte`-style plain `let`
+  // bindings): several of these sit behind conditional (`{#if}`/snippet)
+  // rendering, and Svelte's compiler flags a plain, non-`$state`
+  // `bind:this` target on conditional markup as unsafe to update.
+  let leadingElement = $state<HTMLDivElement | null>(null);
+  let triggerGhostElement = $state<HTMLDivElement | null>(null);
+  let trailingElement = $state<HTMLDivElement | null>(null);
+  let actionsMeasureElement = $state<HTMLDivElement | null>(null);
+  let textFormattingChunkElement = $state<HTMLDivElement | null>(null);
+  let linksChunkElement = $state<HTMLDivElement | null>(null);
+  let listsChunkElement = $state<HTMLDivElement | null>(null);
+  let blockOperationsChunkElement = $state<HTMLDivElement | null>(null);
 
   function chunkElementFor(groupId: FlexGroupId): HTMLDivElement | null {
     switch (groupId) {
@@ -142,14 +150,27 @@
     }
   }
 
-  // Real measurements, filled in by `toolbarOverflowSetup` below. `0` means
-  // "not yet measured" for all of these, which is also what
-  // `computeToolbarOverflow` treats as "keep everything inline" -- the
-  // toolbar's `flex-wrap: nowrap; overflow-x: auto` CSS is the fallback
-  // for that window, not the primary layout mechanism.
-  let containerWidth = $state(0);
+  // Real measurements, filled in by `toolbarOverflowSetup` below.
+  //
+  // `containerWidth` is `null` until the first `ResizeObserver` entry
+  // lands -- see `computeToolbarOverflow`'s doc comment for why `null` (not
+  // `0`) is the "unmeasured" sentinel: a real toolbar can legitimately
+  // measure to 0 or less room once the leading cluster and reserved
+  // trailing space are subtracted, and that must be handled as "no room,"
+  // not misread as "not measured yet."
+  //
+  // `leadingWidth` is kept live (re-measured whenever the leading cluster's
+  // own box changes) because it contains `ToolbarDropdown`, whose label
+  // ("Paragraph" vs. "Heading 1") changes width with the active block type
+  // -- a stale one-time measurement would silently drift out of sync with
+  // reality. `triggerGhostWidth` and per-group `flexGroupWidths` are
+  // measured once: the trigger is a fixed-size icon-only button and each
+  // group's buttons/labels never change size.
+  let containerWidth = $state<number | null>(null);
   let leadingWidth = $state(0);
-  let triggerReservedWidth = $state(0);
+  let gapPx = $state(0);
+  let triggerGhostWidth = $state(0);
+  let actionsReservedWidth = $state(0);
   let flexGroupWidths = $state<Record<FlexGroupId, number>>({
     'text-formatting': 0,
     links: 0,
@@ -157,13 +178,49 @@
     'block-operations': 0,
   });
 
-  const overflowGroupIds = $derived(
+  // If `actions` becomes absent (rare, but it's a consumer-supplied
+  // optional snippet), release the space that had been reserved for it.
+  $effect(() => {
+    if (!actions) actionsReservedWidth = 0;
+  });
+
+  const rawOverflowGroupIds = $derived(
     computeToolbarOverflow({
-      availableWidth: containerWidth > 0 ? containerWidth - leadingWidth : 0,
-      overflowTriggerWidth: triggerReservedWidth,
+      availableWidth:
+        containerWidth === null ? null : containerWidth - leadingWidth - actionsReservedWidth,
+      gap: gapPx,
+      triggerWidth: triggerGhostWidth,
       groups: flexGroupOrder.map((groupId) => ({ id: groupId, width: flexGroupWidths[groupId] })),
     }).overflowGroupIds,
   );
+
+  // Focus preservation (finding 5): whichever side (inline row vs. popover)
+  // a group is on at the moment it receives focus is frozen until focus
+  // leaves it, regardless of what the fit calculation recomputes to in the
+  // meantime. Relocating a group -- either direction -- unmounts its
+  // buttons from one render site and mounts new ones at the other, which
+  // drops focus to <body>; that's true whether a resize would move a
+  // focused inline group into the popover, or would move a focused
+  // *popover* group back inline. See markdown-editor.a11y.md for the
+  // rationale and the alternative considered.
+  let focusedGroupId = $state<FlexGroupId | null>(null);
+  let focusedGroupWasOverflowing = $state(false);
+
+  const overflowGroupIds = $derived.by(() => {
+    if (focusedGroupId === null) return rawOverflowGroupIds;
+    const isOverflowingPerRawCalculation = rawOverflowGroupIds.includes(focusedGroupId);
+    if (isOverflowingPerRawCalculation === focusedGroupWasOverflowing) {
+      // Raw calculation already agrees with the frozen side; nothing to override.
+      return rawOverflowGroupIds;
+    }
+    return focusedGroupWasOverflowing
+      ? // Frozen on the popover side, but raw now says it fits inline -- keep
+        // it in the overflow set anyway until focus moves on.
+        [...rawOverflowGroupIds, focusedGroupId]
+      : // Frozen on the inline side, but raw now says it should overflow --
+        // keep it out of the overflow set anyway until focus moves on.
+        rawOverflowGroupIds.filter((groupId) => groupId !== focusedGroupId);
+  });
 
   // If a resize grows the toolbar back to the point nothing overflows while
   // the popover happens to be open, close it rather than leaving an empty
@@ -176,20 +233,35 @@
     return overflowGroupIds.includes(groupId);
   }
 
+  function flexGroupIdFromTarget(target: EventTarget | null): FlexGroupId | null {
+    if (!(target instanceof HTMLElement)) return null;
+    const chunk = target.closest<HTMLElement>('[data-toolbar-flex-group-id]');
+    // Bracket access: `DOMStringMap` is an index signature, and this package's
+    // tsconfig enables noPropertyAccessFromIndexSignature.
+    const value = chunk?.dataset['toolbarFlexGroupId'];
+    return isFlexGroupId(value) ? value : null;
+  }
+
   /**
    * `{@attach}` runs client-side only (never during SSR), which is what
    * keeps `ResizeObserver` construction SSR-safe here -- no module-scope or
    * render-time reference to it exists.
    *
-   * Thrash guard: the observer watches only the `<Toolbar>` root itself,
-   * never the group elements that move between the inline row and the
-   * popover. The toolbar has `overflow-x: auto`, so relocating a
+   * Thrash guard: the single `ResizeObserver` here watches only elements
+   * whose own size changes for reasons unrelated to the overflow decision
+   * it feeds -- the `<Toolbar>` root, the leading cluster, and the actions
+   * measurer -- never the group elements that move between the inline row
+   * and the popover. The toolbar has `overflow-x: auto`, so relocating a
    * group changes what *overflows* inside the root, not the root's own
    * content-box size -- and the root's size is set by its flex parent
    * (`flex: 1 1 0` when nested in `markdown-editor.svelte`, or intrinsic
-   * width standalone), not by its children. So moving a group into or out
-   * of the popover never produces a new `ResizeObserverEntry` for the node
-   * being observed, and the callback never re-triggers itself.
+   * width standalone), not by its children. Likewise, the leading
+   * cluster's box only changes when its own content (the block-type label)
+   * changes, and the actions measurer's box only changes when consumer
+   * content changes -- neither is affected by which flexible groups are
+   * currently inline. So none of these observations can be triggered by
+   * this component's own writes, and the callback never re-triggers
+   * itself.
    */
   function toolbarOverflowSetup(node: HTMLElement) {
     function readGapPx(): number {
@@ -197,10 +269,18 @@
       return Number.isFinite(gap) ? gap : 0;
     }
 
-    function measureStaticWidths(): void {
-      const gap = readGapPx();
-      leadingWidth = (leadingElement?.getBoundingClientRect().width ?? 0) + gap;
-      triggerReservedWidth = (triggerGhostElement?.getBoundingClientRect().width ?? 0) + gap;
+    function measureTrailingReservation(): void {
+      if (!actions || !trailingElement) {
+        actionsReservedWidth = 0;
+        return;
+      }
+      const trailingMinWidth = Number.parseFloat(getComputedStyle(trailingElement).minWidth || '0');
+      const actionsWidth = actionsMeasureElement?.getBoundingClientRect().width ?? 0;
+      // One gap between the last inline item (last visible group, or the
+      // trigger) and `.toolbar-trailing`; `.toolbar-trailing` itself grows
+      // to at least `actionsWidth`, so no second gap is charged between the
+      // wrapper and its own content.
+      actionsReservedWidth = gapPx + Math.max(trailingMinWidth, actionsWidth);
     }
 
     function measureFlexGroupWidths(): void {
@@ -216,8 +296,39 @@
       if (next) flexGroupWidths = next;
     }
 
-    measureStaticWidths();
+    function handleFocusIn(event: FocusEvent): void {
+      const groupId = flexGroupIdFromTarget(event.target);
+      if (!groupId) return;
+      // Always (re-)snapshot on every focusin within a group, not just the
+      // first one: this is also what re-arms the pin when focus moves
+      // between two controls in the same group (e.g. Bold -> Italic),
+      // keeping `focusedGroupWasOverflowing` accurate rather than stale.
+      focusedGroupId = groupId;
+      focusedGroupWasOverflowing = rawOverflowGroupIds.includes(groupId);
+    }
+
+    function handleFocusOut(event: FocusEvent): void {
+      // `relatedTarget` is the element about to receive focus (`null` if
+      // focus is leaving the document/window entirely). Only release the
+      // pin once focus has actually left this group -- moving focus
+      // between two controls inside the same group must not release it.
+      // Don't try to pre-set the *new* group's id/snapshot here: the
+      // upcoming `focusin` on the new target (which always fires right
+      // after `focusout` for a same-document focus move) is the sole place
+      // that does that, so there's exactly one snapshot write per
+      // group-to-group move instead of two racing writes.
+      const nextGroupId = flexGroupIdFromTarget(event.relatedTarget);
+      if (nextGroupId !== focusedGroupId) focusedGroupId = null;
+    }
+
+    gapPx = readGapPx();
+    leadingWidth = leadingElement?.getBoundingClientRect().width ?? 0;
+    triggerGhostWidth = triggerGhostElement?.getBoundingClientRect().width ?? 0;
+    measureTrailingReservation();
     measureFlexGroupWidths();
+
+    node.addEventListener('focusin', handleFocusIn);
+    node.addEventListener('focusout', handleFocusOut);
 
     const ResizeObserverConstructor =
       node.ownerDocument === document
@@ -228,9 +339,15 @@
 
     if (typeof ResizeObserverConstructor === 'function') {
       observer = new ResizeObserverConstructor((entries) => {
-        const entry = entries[entries.length - 1];
-        if (!entry) return;
-        containerWidth = entry.contentRect.width;
+        for (const entry of entries) {
+          if (entry.target === node) {
+            containerWidth = entry.contentRect.width;
+          } else if (entry.target === leadingElement) {
+            leadingWidth = entry.contentRect.width;
+          } else if (entry.target === actionsMeasureElement) {
+            measureTrailingReservation();
+          }
+        }
         // Widths are static (fixed-size icon buttons; label text never
         // changes), so this only fills in groups that weren't inline yet
         // to measure -- it never re-measures a group that already has a
@@ -238,9 +355,13 @@
         measureFlexGroupWidths();
       });
       observer.observe(node);
+      if (leadingElement) observer.observe(leadingElement);
+      if (actionsMeasureElement) observer.observe(actionsMeasureElement);
     }
 
     return () => {
+      node.removeEventListener('focusin', handleFocusIn);
+      node.removeEventListener('focusout', handleFocusOut);
       observer?.disconnect();
       observer = null;
     };
@@ -347,7 +468,11 @@
   values passed at the callsite through EditorToolbarProps.
 -->
 {#snippet textFormattingChunk()}
-  <div class="toolbar-chunk" bind:this={textFormattingChunkElement}>
+  <div
+    class="toolbar-chunk"
+    data-toolbar-flex-group-id="text-formatting"
+    bind:this={textFormattingChunkElement}
+  >
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Text formatting">
       <ToolbarButton
@@ -395,7 +520,7 @@
 {/snippet}
 
 {#snippet linksChunk()}
-  <div class="toolbar-chunk" bind:this={linksChunkElement}>
+  <div class="toolbar-chunk" data-toolbar-flex-group-id="links" bind:this={linksChunkElement}>
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Links">
       <ToolbarButton
@@ -413,7 +538,7 @@
 {/snippet}
 
 {#snippet listsChunk()}
-  <div class="toolbar-chunk" bind:this={listsChunkElement}>
+  <div class="toolbar-chunk" data-toolbar-flex-group-id="lists" bind:this={listsChunkElement}>
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Lists">
       <ToolbarButton
@@ -441,7 +566,11 @@
 {/snippet}
 
 {#snippet blockOperationsChunk()}
-  <div class="toolbar-chunk" bind:this={blockOperationsChunkElement}>
+  <div
+    class="toolbar-chunk"
+    data-toolbar-flex-group-id="block-operations"
+    bind:this={blockOperationsChunkElement}
+  >
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Block operations">
       <ToolbarButton
@@ -575,9 +704,20 @@
   </div>
 
   {#if actions}
-    <!-- Spacer pushes actions to the right -->
-    <div class="toolbar-spacer"></div>
-    {@render actions()}
+    <!--
+      `.toolbar-trailing` grows to fill the remaining row and pushes its
+      content to the end (replacing the old bare spacer). The inner
+      `.toolbar-actions-measure` wrapper is intrinsically sized (not
+      `flex: 1`), so it can be measured for the width `actions` actually
+      needs -- measuring `.toolbar-trailing` itself would just report
+      "however much room happened to be left," which is useless for
+      reserving space.
+    -->
+    <div class="toolbar-trailing" bind:this={trailingElement}>
+      <div class="toolbar-actions-measure" bind:this={actionsMeasureElement}>
+        {@render actions()}
+      </div>
+    </div>
   {/if}
 </Toolbar>
 
@@ -640,9 +780,18 @@
     min-width: 14rem;
   }
 
-  .toolbar-spacer {
+  .toolbar-trailing {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
     flex: 1;
     min-width: var(--cinder-space-2);
+  }
+
+  .toolbar-actions-measure {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
   }
 
   .toolbar-trigger-ghost {

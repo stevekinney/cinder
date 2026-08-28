@@ -230,18 +230,22 @@
   </div>
 
   <!--
-    NOT wrapped in `<Toolbar>`, despite being a plausible candidate (none of
-    these is a tablist or a toolbar, so nesting would be ARIA-valid): mounting
-    `<Toolbar>` with a leading `{#if}` block as its first child silently
-    drops every sibling that follows the block from the rendered DOM — no
-    thrown error, reproduced in isolation, independent of the `{#if}`
-    condition's truthiness. Revert All is exactly that leading `{#if}`, so
-    wrapping this cluster silently ate the comments-toggle button and the
-    trailing export trigger. This is a defect in
-    `packages/components/src/components/toolbar/toolbar.svelte` (outside this
-    task's `review-editor/` scope) — reported, not fixed here. Leaving this
-    cluster as plain buttons in ordinary Tab order until that's fixed
-    upstream.
+    NOT wrapped in `<Toolbar>`, though it would be ARIA-valid to do so — none of
+    these controls is a tablist or a nested toolbar.
+
+    An earlier pass attributed this to a `<Toolbar>` defect, claiming a leading
+    `{#if}` child silently drops every following sibling. That claim was tested
+    directly and does NOT reproduce: a `<Toolbar>` with a leading `{#if}` renders
+    all its siblings with the condition either true or false, and `Toolbar` only
+    does `{@render children()}` plus a MutationObserver for focus tracking — it
+    never moves or removes nodes. No upstream bug was filed, because there is no
+    evidence of one.
+
+    So this cluster stays in ordinary Tab order by choice, not by workaround.
+    Roving tabindex would buy little here: these are three unrelated actions
+    (revert, comments toggle, export), not a homogeneous control group a user
+    arrows through. If someone does want `Toolbar` semantics here later, start
+    from a fresh reproduction rather than this note.
   -->
   <div class="controls-trailing">
     {#if activeView === 'diff' && hasContentChanges && !readonly}
