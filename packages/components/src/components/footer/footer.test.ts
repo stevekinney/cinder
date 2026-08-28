@@ -178,7 +178,19 @@ describe('Footer', () => {
     expect(boundaryBlock).toContain('padding-top: var(--cinder-space-2)');
 
     // And the bare legal rule must NOT carry them, or the sibling scoping is moot.
-    const legalBlock = css.match(/\n\s*\.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
+    //
+    // Matched by EXACT selector rather than by substring. `.cinder-footer__legal` is a
+    // suffix of `.cinder-footer__main + .cinder-footer__legal`, so a plain substring
+    // match finds the boundary rule instead and this assertion inverts — it would then
+    // demand the boundary rule NOT carry the separator it exists to apply. A previous
+    // version anchored on a leading newline to dodge that, which worked but tied the
+    // match to whitespace; comparing the trimmed selector says what is actually meant.
+    // Comments are stripped first so a selector capture cannot absorb the prose above it.
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const legalBlock =
+      [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+        (rule) => rule[1]?.trim() === '.cinder-footer__legal',
+      )?.[2] ?? '';
     expect(legalBlock).not.toBe('');
     expect(legalBlock).not.toContain('border-top:');
     expect(legalBlock).not.toContain('padding-top:');
