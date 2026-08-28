@@ -1,6 +1,7 @@
 import type { HTMLAttributes } from 'svelte/elements';
 
 export type SpinnerSize = 'sm' | 'md' | 'lg';
+export type SpinnerVariant = 'default' | 'arc';
 
 // `role="status"` and `aria-label` are the component's a11y contract — Spinner is a
 // live region whose accessible name is `label`. They're scrubbed at runtime (the
@@ -13,6 +14,8 @@ export type SpinnerProps = Omit<
   'role' | 'aria-label' | 'class'
 > & {
   size?: SpinnerSize;
+  /** Visual treatment. `arc` grows and shrinks the indeterminate stroke. @default "default" */
+  variant?: SpinnerVariant;
   label?: string;
   class?: string;
 };
@@ -20,6 +23,8 @@ export type SpinnerProps = Omit<
 export interface SpinnerSchemaProps {
   /** Spinner size. @default "md" */
   size?: SpinnerSize;
+  /** Visual treatment. @default "default" */
+  variant?: SpinnerVariant;
   /** Accessible loading label. @default "Loading" */
   label?: string;
   /** Extra classes appended to the root element. */

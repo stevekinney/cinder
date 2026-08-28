@@ -24,6 +24,11 @@ const schema = {
       type: 'string',
       description: 'Helper text rendered below the control; wired into `aria-describedby`.',
     },
+    warning: {
+      type: 'string',
+      description:
+        'Advisory for a legal but potentially risky value; does not mark the control invalid.',
+    },
     error: {
       type: 'string',
       description: 'Validation error; sets `aria-invalid="true"` on opted-in controls via context.',
@@ -50,6 +55,11 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'Control(s) rendered inside the field.',
+      },
+      {
+        name: 'managed',
+        reason: 'unknown-shape',
+        description: 'Policy ownership metadata displayed without disabling the control.',
       },
     ],
   },

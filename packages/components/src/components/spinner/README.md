@@ -16,11 +16,12 @@ A loading indicator with size variants and an accessible status label.
 
 <!-- generated:props:start -->
 
-| Prop    | Type                       | Required | Default     | Description                                 |
-| ------- | -------------------------- | -------- | ----------- | ------------------------------------------- |
-| `class` | `string`                   | no       | —           | Extra classes appended to the root element. |
-| `label` | `string`                   | no       | `"Loading"` | Accessible loading label.                   |
-| `size`  | `"sm"` \| `"md"` \| `"lg"` | no       | `"md"`      | Spinner size.                               |
+| Prop      | Type                       | Required | Default     | Description                                 |
+| --------- | -------------------------- | -------- | ----------- | ------------------------------------------- |
+| `class`   | `string`                   | no       | —           | Extra classes appended to the root element. |
+| `label`   | `string`                   | no       | `"Loading"` | Accessible loading label.                   |
+| `size`    | `"sm"` \| `"md"` \| `"lg"` | no       | `"md"`      | Spinner size.                               |
+| `variant` | `"default"` \| `"arc"`     | no       | `"default"` | Visual treatment.                           |
 
 <!-- generated:props:end -->
 

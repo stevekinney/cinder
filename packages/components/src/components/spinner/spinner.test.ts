@@ -39,6 +39,18 @@ describe('Spinner', () => {
     }
   });
 
+  test('arc variant renders a growing and shrinking SVG stroke', async () => {
+    const { container } = render(Spinner, { props: { variant: 'arc' } });
+    const spinner = container.querySelector('.cinder-spinner');
+    const css = await Bun.file(spinnerCssPath).text();
+
+    expect(spinner?.getAttribute('data-cinder-variant')).toBe('arc');
+    expect(spinner?.querySelector('.cinder-spinner__arc-indicator')).not.toBeNull();
+    expect(css).toContain('@keyframes cinder-spinner-arc');
+    expect(css).toContain('stroke-dashoffset: 50');
+    expect(css).toContain('stroke-dashoffset: 14');
+  });
+
   test('applies class prop alongside cinder-spinner', () => {
     const { container } = render(Spinner, { props: { class: 'my-extra-class' } });
     const classAttr = container.querySelector('.cinder-spinner')?.getAttribute('class') ?? '';

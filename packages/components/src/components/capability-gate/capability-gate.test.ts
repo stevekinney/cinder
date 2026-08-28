@@ -51,6 +51,7 @@ describe('CapabilityGate', () => {
       'supported',
       'unsupported',
       'permission-needed',
+      'permission-limited',
       'permission-denied',
       'loading',
       'unavailable',
@@ -61,6 +62,20 @@ describe('CapabilityGate', () => {
       expect(root?.getAttribute('data-cinder-state')).toBe(state);
       cleanup();
     }
+  });
+
+  test('permission-limited is announced as a warning rather than an error', () => {
+    const { container } = render(CapabilityGate, {
+      feature: 'Notifications',
+      state: 'permission-limited',
+    });
+    const root = container.querySelector('.cinder-capability-gate');
+
+    expect(root?.getAttribute('data-cinder-state')).toBe('permission-limited');
+    expect(root?.getAttribute('data-cinder-variant')).toBe('warning');
+    expect(container.querySelector('.cinder-capability-gate__state-text')?.textContent).toBe(
+      'Limited permission',
+    );
   });
 
   test('sets aria-busy=true on the live status region when loading', () => {

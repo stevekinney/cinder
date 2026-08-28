@@ -40,6 +40,7 @@
      * as a hard-cornered plate at panel width. */
     border-radius: var(--cinder-radius-lg);
     overflow: hidden;
+    user-select: none;
   }
 
   .cinder-code-block__header {
@@ -85,6 +86,7 @@
     block-size: var(--cinder-code-block-height);
     overflow: auto;
     background: var(--cinder-code-block-background);
+    user-select: text;
   }
 
   .cinder-code-block__pre,

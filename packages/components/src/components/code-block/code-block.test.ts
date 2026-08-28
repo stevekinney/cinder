@@ -64,6 +64,12 @@ function customHighlighter(code: string, _lang: string): string {
 }
 
 describe('CodeBlock — static structure', () => {
+  test('keeps copy chrome unselectable while code detail remains selectable', async () => {
+    const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
+
+    expect(css).toMatch(/\.cinder-code-block\s*\{[^}]*user-select:\s*none/s);
+    expect(css).toMatch(/\.cinder-code-block__viewport\s*\{[^}]*user-select:\s*text/s);
+  });
   test('renders code in a <pre><code> pair (no language → no highlight)', () => {
     const { container } = render(CodeBlock, { code: 'const x = 1;' });
     const pre = container.querySelector('pre');

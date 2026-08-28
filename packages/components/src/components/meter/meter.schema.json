@@ -47,5 +47,14 @@
       "description": "Additional class names merged with `.cinder-meter`."
     }
   },
-  "additionalProperties": false
+  "additionalProperties": false,
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "verdict",
+        "reason": "unknown-shape",
+        "description": "Semantic verdict for measurements without a numeric reading."
+      }
+    ]
+  }
 }

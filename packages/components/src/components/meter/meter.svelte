@@ -13,7 +13,13 @@
    * @related progress, statistic, slider
    * @a11yPattern WAI-ARIA Meter
    */
-  export type { MeterProps, MeterSize, MeterState } from './meter.types.ts';
+  export type {
+    MeterProps,
+    MeterSize,
+    MeterState,
+    MeterVerdict,
+    MeterVerdictLevel,
+  } from './meter.types.ts';
 </script>
 
 <script lang="ts">
@@ -26,6 +32,7 @@
   type OptimumDirection = 'low' | 'mid' | 'high';
 
   let {
+    verdict,
     value = 0,
     min = DEFAULT_MIN,
     max = DEFAULT_MAX,
@@ -40,6 +47,10 @@
     ...rest
   }: MeterProps = $props();
 
+  const hasVerdict = $derived(verdict !== undefined);
+  const isUnknownVerdict = $derived(verdict?.level === 'unknown');
+  const verdictLabel = $derived(verdict?.label.trim() || undefined);
+
   const hasValidRange = $derived(Number.isFinite(min) && Number.isFinite(max) && max > min);
   const effectiveMin = $derived(hasValidRange ? min : DEFAULT_MIN);
   const effectiveMax = $derived(hasValidRange ? max : DEFAULT_MAX);
@@ -49,9 +60,10 @@
   const rawValue = $derived(hasFiniteValue ? value : effectiveMin);
   const clampedValue = $derived(Math.max(effectiveMin, Math.min(effectiveMax, rawValue)));
   const hasThresholds = $derived(
-    (low !== undefined && Number.isFinite(low)) ||
-      (high !== undefined && Number.isFinite(high)) ||
-      (optimum !== undefined && Number.isFinite(optimum)),
+    !hasVerdict &&
+      ((low !== undefined && Number.isFinite(low)) ||
+        (high !== undefined && Number.isFinite(high)) ||
+        (optimum !== undefined && Number.isFinite(optimum))),
   );
 
   const lowBoundary = $derived(
@@ -97,8 +109,14 @@
       ? ariaLabelledby
       : undefined;
   });
+  const accessibleLabel = $derived(
+    isUnknownVerdict && verdictLabel
+      ? [normalizedAriaLabel, verdictLabel].filter(Boolean).join(': ')
+      : normalizedAriaLabel,
+  );
 
   const meterState = $derived.by<MeterState | undefined>(() => {
+    if (hasVerdict) return verdict?.level === 'unknown' ? undefined : verdict?.level;
     if (!hasThresholds) return undefined;
     if (effectiveOptimum <= segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
@@ -114,6 +132,7 @@
     if (clampedValue <= segmentHigh) return 'optimum';
     return 'high';
   });
+  const valueText = $derived(hasVerdict ? verdictLabel : ariaValueText);
   const lowSegmentTone = $derived<MeterState>(
     optimumDirection === 'low' ? 'optimum' : optimumDirection === 'high' ? 'high' : 'low',
   );
@@ -168,19 +187,22 @@
 <div
   {...rest}
   class={classNames('cinder-meter', className)}
-  role="meter"
-  aria-label={normalizedAriaLabel}
-  aria-labelledby={normalizedAriaLabelledby}
-  aria-valuemin={effectiveMin}
-  aria-valuemax={effectiveMax}
-  aria-valuenow={clampedValue}
-  aria-valuetext={ariaValueText}
+  role={isUnknownVerdict ? 'status' : 'meter'}
+  aria-label={accessibleLabel}
+  aria-labelledby={isUnknownVerdict ? undefined : normalizedAriaLabelledby}
+  aria-valuemin={isUnknownVerdict ? undefined : effectiveMin}
+  aria-valuemax={isUnknownVerdict ? undefined : effectiveMax}
+  aria-valuenow={isUnknownVerdict ? undefined : clampedValue}
+  aria-valuetext={isUnknownVerdict ? undefined : valueText}
   data-cinder-size={size}
   data-cinder-state={meterState || undefined}
-  data-value={clampedValue}
-  data-min={effectiveMin}
-  data-max={effectiveMax}
+  data-value={isUnknownVerdict ? undefined : clampedValue}
+  data-min={isUnknownVerdict ? undefined : effectiveMin}
+  data-max={isUnknownVerdict ? undefined : effectiveMax}
 >
+  {#if hasVerdict && verdictLabel}
+    <span class="cinder-meter__label">{verdictLabel}</span>
+  {/if}
   <div class="cinder-meter__track">
     {#if hasThresholds}
       <div class="cinder-meter__segments" aria-hidden="true">
@@ -210,6 +232,11 @@
         ></div>
       </div>
     {/if}
-    <div class="cinder-meter__fill" style:--_cinder-meter-progress={progressScale}></div>
+    {#if !isUnknownVerdict}
+      <div
+        class="cinder-meter__fill"
+        style:--_cinder-meter-progress={hasVerdict ? 1 : progressScale}
+      ></div>
+    {/if}
   </div>
 </div>

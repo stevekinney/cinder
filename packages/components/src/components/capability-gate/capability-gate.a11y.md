@@ -30,6 +30,12 @@ When CapabilityGate accepts snippets or arbitrary children, the caller owns the 
 
 ## Verification
 
+### Review outcome
+
+Reviewed 2026-08-28. Nearest neighbours are Alert, Banner, Callout, and Modal. Limited permission belongs in CapabilityGate because it is an availability state that shares the component's action and dismissal model. It uses the existing warning surface rather than danger styling, distinguishing constrained access from denial. Keyboard and focus behavior are unchanged; consumer actions retain the existing focus contract. The polite status region announces “Limited permission.” There is no new motion, and token-based styling remains compatible with forced colors.
+
+`permission-limited` is a granted-but-constrained state. It uses the warning presentation and the same polite status announcement as other non-error states; it must not be announced or styled as a denial.
+
 - Render CapabilityGate in the playground or a focused test fixture.
 - Navigate the component with keyboard only.
 - Inspect the accessible name, role, and state in browser accessibility tools.

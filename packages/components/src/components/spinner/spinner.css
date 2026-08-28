@@ -16,6 +16,38 @@
     flex-shrink: 0;
   }
 
+  .cinder-spinner[data-cinder-variant='arc'] {
+    border: 0;
+    animation: none;
+  }
+
+  .cinder-spinner__arc {
+    display: block;
+    inline-size: 100%;
+    block-size: 100%;
+    transform-origin: center;
+    animation: cinder-spinner-spin var(--cinder-duration-spin) linear infinite;
+  }
+
+  .cinder-spinner__arc-track,
+  .cinder-spinner__arc-indicator {
+    fill: none;
+    stroke-width: 2.5;
+  }
+
+  .cinder-spinner__arc-track {
+    stroke: var(--cinder-spinner-track, color-mix(in srgb, currentColor 25%, transparent));
+  }
+
+  .cinder-spinner__arc-indicator {
+    stroke: var(--cinder-spinner-indicator, currentColor);
+    stroke-linecap: round;
+    stroke-dasharray: 56.55;
+    transform: rotate(-90deg);
+    transform-origin: center;
+    animation: cinder-spinner-arc var(--cinder-duration-spin) ease-in-out infinite alternate;
+  }
+
   /* Screen-reader-only label — visually hidden but announced by assistive tech */
   .cinder-spinner__sr-only {
     position: absolute;
@@ -35,6 +67,15 @@
     }
   }
 
+  @keyframes cinder-spinner-arc {
+    from {
+      stroke-dashoffset: 50;
+    }
+    to {
+      stroke-dashoffset: 14;
+    }
+  }
+
   /* Respect the user's reduced-motion preference */
   @media (prefers-reduced-motion: reduce) {
     :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
@@ -46,6 +87,13 @@
       );
       opacity: 0.5;
     }
+
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-spinner__arc,
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-spinner__arc-indicator {
+      animation: none;
+    }
   }
 
   :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-spinner {
@@ -55,6 +103,11 @@
       color-mix(in srgb, currentColor 25%, transparent)
     );
     opacity: 0.5;
+  }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    :is(.cinder-spinner__arc, .cinder-spinner__arc-indicator) {
+    animation: none;
   }
 
   /* ----------------------------------------

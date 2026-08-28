@@ -10,4 +10,5 @@
 <div style="display: flex; flex-direction: column; gap: 0.5rem;">
   <Meter value={32} ariaLabel="Battery level" />
   <Meter value={68} ariaLabel="Memory usage" />
+  <Meter verdict={{ level: 'unknown', label: 'Awaiting estimate' }} ariaLabel="Cost estimate" />
 </div>

@@ -11,7 +11,7 @@
    * @avoidWhen Grouping multiple related controls under one heading — use form-section instead.
    * @related form-section, label, input
    */
-  export type { FormFieldProps } from './form-field.types.ts';
+  export type { FormFieldManaged, FormFieldProps } from './form-field.types.ts';
 </script>
 
 <script lang="ts">
@@ -24,7 +24,9 @@
     label,
     labelVisible = true,
     description,
+    warning,
     error,
+    managed,
     required = false,
     disabled = false,
     class: className,
@@ -37,7 +39,9 @@
   {label}
   {labelVisible}
   {description}
+  {warning}
   {error}
+  {managed}
   {required}
   {disabled}
   class={classNames(className)}

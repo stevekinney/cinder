@@ -14,6 +14,13 @@
   let name = $state('');
 </script>
 
-<FormField id={fieldId} label="Full name">
+<FormField
+  id={fieldId}
+  label="Full name"
+  warning={name.length > 0 && name.length < 3
+    ? 'Short names may be difficult to identify.'
+    : undefined}
+  managed={{ by: 'Workspace policy', reason: 'Displayed on shared reports' }}
+>
   <Input id={fieldId} bind:value={name} placeholder="Jane Smith" />
 </FormField>

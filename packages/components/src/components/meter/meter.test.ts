@@ -9,6 +9,40 @@ const { render } = await import('@testing-library/svelte');
 const { default: Meter } = await import('./meter.svelte');
 
 describe('Meter', () => {
+  test('renders an unknown verdict as a named status without fabricating numeric value attributes', () => {
+    const { container } = render(Meter, {
+      verdict: { level: 'unknown', label: 'Awaiting data' },
+      ariaLabel: 'Service health',
+    });
+    const el = container.querySelector('[role="status"]');
+
+    expect(el).not.toBeNull();
+    expect(el?.querySelector('.cinder-meter__track')).not.toBeNull();
+    expect(el?.querySelector('.cinder-meter__fill')).toBeNull();
+    expect(el?.getAttribute('aria-valuemin')).toBeNull();
+    expect(el?.getAttribute('aria-valuemax')).toBeNull();
+    expect(el?.getAttribute('aria-valuenow')).toBeNull();
+    expect(el?.getAttribute('data-value')).toBeNull();
+    expect(el?.getAttribute('data-min')).toBeNull();
+    expect(el?.getAttribute('data-max')).toBeNull();
+    expect(el?.querySelector('.cinder-meter__label')?.textContent).toBe('Awaiting data');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
+    expect(el?.getAttribute('aria-label')).toBe('Service health: Awaiting data');
+  });
+
+  test('uses the verdict label as both the visible label and aria-valuetext', () => {
+    const { container } = render(Meter, {
+      verdict: { level: 'low', label: 'Degraded' },
+      ariaLabel: 'Service health',
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.querySelector('.cinder-meter__label')?.textContent).toBe('Degraded');
+    expect(el?.getAttribute('aria-valuetext')).toBe('Degraded');
+    expect(el?.getAttribute('data-cinder-state')).toBe('low');
+    expect(el?.getAttribute('aria-valuenow')).toBe('0');
+  });
+
   test('renders role=meter with default bounds and value', () => {
     const { container } = render(Meter, { ariaLabel: 'Battery level' });
     const el = container.querySelector('[role="meter"]');

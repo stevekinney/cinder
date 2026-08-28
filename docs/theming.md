@@ -259,6 +259,12 @@ Dark mode is the headline use of the token system, but the same mechanism themes
 }
 ```
 
+### No migration-alias namespace
+
+Cinder deliberately does not ship a second namespace of legacy, product-specific, or migration-only token aliases. The documented `--cinder-*` design tokens are the contract. A permanent alias layer obscures which values are live, lets stale mappings survive indefinitely, and turns another product's historical vocabulary into Cinder API.
+
+When an application migrates from another token system, keep the temporary mapping in that application, update call sites to the Cinder tokens, and delete the mapping when the migration finishes. Do not add those aliases to Cinder's token registry or published styles.
+
 The set of tokens you can safely override is exactly the table in [`tokens.md`](./tokens.md) — the global `--cinder-*` design tokens declared in `tokens-base.css`. You do **not** override a component's own implementation variables; those are not a stable API.
 
 How do you know an override actually reaches a component, rather than hitting a hard-coded value the override can't touch? Two layers enforce it:

@@ -15,10 +15,14 @@ export type FormFieldContext = {
   readonly controlId: string;
   /** Id of the `<label>` element. Used by `aria-labelledby` for grouped controls. */
   readonly labelId: string | undefined;
-  /** Composed `aria-describedby` value (description + error), or undefined. */
+  /** Composed `aria-describedby` value (description + warning + error), or undefined. */
   readonly describedBy: string | undefined;
   /** Id of the description `<p>`, or undefined. */
   readonly descriptionId: string | undefined;
+  /** Id of the advisory warning `<p>`, or undefined. */
+  readonly warningId: string | undefined;
+  /** Id of the managed-policy metadata `<p>`, or undefined. */
+  readonly managedId: string | undefined;
   /** Id of the error `<p>`, or undefined. */
   readonly errorId: string | undefined;
   /** `'true'` when the field is in an error state, else undefined. */

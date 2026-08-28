@@ -26,6 +26,12 @@
     get descriptionId() {
       return context.descriptionId;
     },
+    get warningId() {
+      return context.warningId;
+    },
+    get managedId() {
+      return context.managedId;
+    },
     get errorId() {
       return context.errorId;
     },

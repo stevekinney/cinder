@@ -68,6 +68,8 @@ export function ariaInvalid(hasError: boolean): 'true' | undefined {
 export type FieldControlContextLike = {
   readonly controlId: string;
   readonly descriptionId: string | undefined;
+  readonly warningId?: string | undefined;
+  readonly managedId?: string | undefined;
   readonly errorId: string | undefined;
   readonly describedBy: string | undefined;
   readonly invalid: 'true' | undefined;
@@ -133,6 +135,8 @@ export function resolveFieldControl(input: ResolveFieldControlInput): ResolvedFi
     errorId: resolvedErrorId,
     describedBy: composeDescribedBy(
       descriptionId,
+      input.context?.warningId,
+      input.context?.managedId,
       ...(input.additionalDescribedBy ?? []),
       resolvedErrorId,
       input.context?.describedBy,

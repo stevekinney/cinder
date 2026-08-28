@@ -54,6 +54,15 @@ const schema = {
     },
   },
   additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'verdict',
+        reason: 'unknown-shape',
+        description: 'Semantic verdict for measurements without a numeric reading.',
+      },
+    ],
+  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;
