@@ -22,11 +22,15 @@ Keyboard behavior follows the rendered native elements and any ARIA pattern docu
 
 Keep focus indicators visible. If you wrap or restyle DiffViewer, verify the focused element remains visually apparent in default and forced-colors modes.
 
+`[` and `]` jump to the previous/next change when focus is anywhere inside this `DiffViewer` instance (not global — see the `handleKeydown` comment in `diff-viewer.svelte`). The toolbar's Previous/Next buttons carry that shortcut in their accessible name — `aria-label="Previous change ([)"` / `aria-label="Next change (])"` — rather than describing it through a separate element. The adjacent `Kbd` keycaps are purely visual (`aria-hidden="true"`); they annotate the button they sit next to and do not need their own description.
+
 ## Names, roles, and state
 
 Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.
 
 When DiffViewer accepts snippets or arbitrary children, the caller owns the semantics inside those children. Prefer native elements first, and add ARIA only when it matches the rendered behavior.
+
+The toolbar's copy button has the accessible name "Copy unified diff" (`aria-label` on the `Button`). Its result is announced through a `role="status"` live region: "Unified diff copied." on success, "Unable to copy unified diff." on failure. The copy is always a full-document unified diff, independent of the current `viewMode` — see `diff-viewer.svelte`'s `copyUnifiedDiff` and the README's "Copying the diff" section.
 
 ## Verification
 

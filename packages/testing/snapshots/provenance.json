@@ -1,10 +1,11 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "card",
-    "share-card"
+    "diff-viewer",
+    "markdown-editor",
+    "review-editor"
   ],
-  "renderedSourceSha": "1d5fc04f2f83d48365b1fb09f7f81b28be391587",
+  "renderedSourceSha": "fbe633d1ecca0b397481eba515826f5bc8fe08a8",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
