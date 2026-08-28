@@ -26,6 +26,20 @@ function textSnippet(text: string) {
  * the formatter reflowed the file -- and a regex that matches nothing makes every
  * `toContain` on it fail loudly but for the wrong reason.
  */
+/**
+ * Canonicalise selector whitespace so assertions survive the formatter.
+ *
+ * Prettier wraps a long selector across lines -- `:not(\n  [data-cinder-columns='auto']\n)`
+ * -- and it does so at COMMIT time, after a local test run has already passed. Matching
+ * the unwrapped single-line form therefore fails only in CI, which is exactly what
+ * happened. Collapsing whitespace runs and closing up the space inside parentheses makes
+ * every selector assertion below indifferent to how the file is wrapped, while leaving
+ * declarations (`border-inline-end: 1px solid ...`) readable.
+ */
+function normalizeCss(css: string): string {
+  return css.replace(/\s+/g, ' ').replace(/\(\s+/g, '(').replace(/\s+\)/g, ')');
+}
+
 function blockAfter(css: string, header: string, mustContain?: string): string | undefined {
   let searchFrom = 0;
   for (;;) {
@@ -106,7 +120,7 @@ describe('StatisticGroup', () => {
     expect(singleColumnDividers).not.toContain('border-inline-end:');
 
     const fixedMultiColumn = blockAfter(
-      css,
+      normalizeCss(css),
       "[data-cinder-variant='default']:not([data-cinder-columns='1']):not([data-cinder-columns='auto'])",
     );
     expect(fixedMultiColumn).toBeDefined();
@@ -147,17 +161,23 @@ describe('StatisticGroup', () => {
     // So `auto` gets no dividers, and keeps the variant's border, inset surface, and
     // gap. This test exists to stop the bands being reintroduced: every previous attempt
     // looked correct at the widths someone checked.
-    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, '');
-    const autoRules = declarations
-      .split('\n')
-      .filter((line) => line.includes("[data-cinder-columns='auto']"));
+    const declarations = normalizeCss(css.replace(/\/\*[\s\S]*?\*\//g, ''));
 
-    // The only `auto` selectors left are the grid-template declaration and the explicit
-    // exclusions from the divider rules.
+    // Split on rule boundaries rather than newlines: the formatter decides where lines
+    // break, so a line-based scan would pass or fail on wrapping rather than on content.
+    const autoRules = declarations
+      .split('}')
+      .filter((rule) => rule.includes("[data-cinder-columns='auto']"));
+
     for (const rule of autoRules) {
       expect(rule).not.toContain(':nth-child(');
     }
-    expect(declarations).not.toContain("[data-cinder-columns='auto']\n      > .cinder-statistic");
+
+    // And no rule may select an `auto` group's cells directly -- that is the shape every
+    // reintroduced band would take.
+    expect(declarations).not.toContain(
+      "[data-cinder-columns='auto'] > .cinder-statistic:not(:last-child)",
+    );
   });
 
   test('divider boundaries are contiguous, leaving no uncovered fractional widths', async () => {
@@ -188,10 +208,13 @@ describe('StatisticGroup', () => {
     //
     // Order is the entire fix, and nothing else here would catch a regression: both
     // orderings parse, and every selector-content assertion above passes either way.
-    const genericMultiColumn = css.indexOf(
+    const normalized = normalizeCss(css);
+    const genericMultiColumn = normalized.indexOf(
       "[data-cinder-variant='default']:not([data-cinder-columns='1']):not([data-cinder-columns='auto'])",
     );
-    const fixedCountCollapse = css.indexOf('@container cinder-statistic-group (width <= 18rem)');
+    const fixedCountCollapse = normalized.indexOf(
+      '@container cinder-statistic-group (width <= 18rem)',
+    );
 
     expect(genericMultiColumn).toBeGreaterThan(-1);
     expect(fixedCountCollapse).toBeGreaterThan(-1);
