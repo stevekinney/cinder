@@ -876,6 +876,21 @@ describe('DateRangeField', () => {
       expect(group?.getAttribute('aria-label')).toBe('Date range presets');
     });
 
+    test('CIN-128: composed DatePicker triggers render an icon with no visible "Open" text, keeping the accessible name', () => {
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        startLabel: 'Start date',
+        endLabel: 'End date',
+      });
+      const triggers = container.querySelectorAll('.cinder-date-picker__trigger');
+      expect(triggers.length).toBe(2);
+      for (const trigger of triggers) {
+        expect(trigger.textContent?.trim()).toBe('');
+        expect(trigger.querySelector('svg')).not.toBeNull();
+        expect(trigger.getAttribute('aria-label')).toMatch(/^Open .+ calendar$/);
+      }
+    });
+
     test('root has role="group" and aria-labelledby pointing to the legend when label is provided', () => {
       const { container } = render(DateRangeField, { id: 'drf', label: 'Time window' });
       const root = container.querySelector('.cinder-date-range-field');

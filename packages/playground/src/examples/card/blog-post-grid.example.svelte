@@ -8,6 +8,7 @@
   import { Avatar } from '@lostgradient/cinder/avatar';
   import { Card } from '@lostgradient/cinder/card';
   import { Container } from '@lostgradient/cinder/container';
+  import { Link } from '@lostgradient/cinder/link';
 
   const posts = [
     {
@@ -69,16 +70,18 @@
                   {post.category} · {post.publishedAt}
                 </p>
                 <h3 style="margin: var(--cinder-space-2) 0; font-size: var(--cinder-text-lg);">
-                  <a
-                    href={post.href}
-                    style="color: var(--cinder-text-default); text-decoration: none;"
-                  >
-                    {post.title}
-                  </a>
+                  <!-- CIN-115: composes Link rather than a bespoke anchor. The old
+                       markup set text-decoration: none and --cinder-text-default, which
+                       made the one interactive element in the card indistinguishable
+                       from the text around it. -->
+                  <Link href={post.href}>{post.title}</Link>
                 </h3>
-                <p
-                  style="margin: 0; color: var(--cinder-text-muted); font-size: var(--cinder-text-sm);"
-                >
+                <!-- CIN-115: the excerpt is primary content — it is what a reader uses
+                     to decide whether to open the post — so it keeps full text strength.
+                     _label-value.css is explicit that body content is not an annotation.
+                     The category/date line and the author role above and below stay
+                     muted because those genuinely are annotations. -->
+                <p style="margin: 0; font-size: var(--cinder-text-sm);">
                   {post.excerpt}
                 </p>
                 <div

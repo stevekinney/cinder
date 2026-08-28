@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "mega-menu",
-    "navigation-bar"
+    "card",
+    "share-card"
   ],
-  "renderedSourceSha": "dada65cb0c4ae35240ce2a0539d50cd53a478e91",
+  "renderedSourceSha": "1d5fc04f2f83d48365b1fb09f7f81b28be391587",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

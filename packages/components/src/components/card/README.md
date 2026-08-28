@@ -20,6 +20,14 @@ Surface container for grouping related content and actions into a distinct visua
 
 Use `tone="danger"` when a settings section or action group has destructive, irreversible, or broad-scope consequences. The tone paints the Card container, border, and generated title icon so applications do not need to hand-roll danger-zone borders or backgrounds. Put the concrete state or action in the body and use `ConfirmDialog` for irreversible or workspace-wide changes.
 
+## Elevation
+
+The `elevation` prop applies across every `variant` and `tone` combination, including `variant="well"` and `tone="danger"`. Those two surfaces ship flat (`box-shadow: none`) at the default `elevation="sm"`, matching their existing look — set `elevation="md"` or `elevation="lg"` explicitly on a well or danger card to raise it above that flat baseline. The flat baseline applies to non-interactive cards only: a well or danger card that is also interactive keeps its hover and focus elevation, so its resting state is not pinned flat.
+
+## Interaction States
+
+A card becomes interactive when it receives `href` (the whole card renders as an anchor) or `onclick` (the whole card renders as a `<div>` with a stretched hit-target `<button>` covering it). Either way, hover raises the card's elevation and darkens its border under a hover-capable pointer, and keyboard focus paints a visible ring on the outer card itself — never only on the inner control — so the whole-card-is-a-link pattern gets a correct focus indicator without a consumer needing to do anything extra.
+
 ## Props
 
 <!-- generated:props:start -->
