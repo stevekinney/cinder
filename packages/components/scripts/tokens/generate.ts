@@ -802,11 +802,14 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
     // distinct property-level `$ref` tokens sharing this `cssProperty` and
     // resolving to the identical literal hash to two different pointer
     // strings and get wrongly rejected as conflicting, even though matching
-    // emitted values is exactly what this guard is supposed to permit.
-    // Fixing it means resolving property-level refs before this fingerprint
-    // runs -- deferred rather than reworked this late in review; nothing in
-    // the real corpus has two property-level `$ref` tokens sharing a
-    // `cssProperty`.
+    // emitted values is exactly what this guard is supposed to permit. The
+    // same applies to a whole-token `$ref` alias -- `toEntry` records its raw
+    // reference STRING as `.value` (it has no `$value` of its own), so two
+    // whole-token aliases to different targets that themselves share this
+    // `cssProperty` hit the identical false-rejection. Fixing either means
+    // resolving the ref before this fingerprint runs -- deferred rather than
+    // reworked this late in review; nothing in the real corpus has two `$ref`
+    // tokens of either form sharing a `cssProperty`.
     const emitted = JSON.stringify({
       type: entry.type,
       value: entry.value,
