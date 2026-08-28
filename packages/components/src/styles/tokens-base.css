@@ -798,6 +798,7 @@
   --cinder-status-info-solid-hover: oklch(70% 0.13 230);
   --cinder-checker-base: oklch(28% 0.02 245);
   --cinder-checker-tile: oklch(38% 0.02 245);
+  --cinder-alert-info: oklch(78% 0.15 245);
 }
 
 [data-theme='light'] {
@@ -940,6 +941,7 @@
   --cinder-status-info-solid-hover: oklch(42% 0.079 230);
   --cinder-checker-base: #fff;
   --cinder-checker-tile: #ccc;
+  --cinder-alert-info: oklch(45% 0.14 245);
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -2272,7 +2272,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       category: 'color',
       component: 'alert',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
       description:
         'Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only.',

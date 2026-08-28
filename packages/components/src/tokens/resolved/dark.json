@@ -3109,15 +3109,14 @@
   },
   "alert.info": {
     "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.45, 0.14, 245] },
+    "$value": { "colorSpace": "oklch", "components": [0.78, 0.15, 245] },
     "$description": "Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-alert-info",
         "public": true,
         "category": "color",
-        "component": "alert",
-        "cssRecipe": "light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))"
+        "component": "alert"
       }
     }
   },

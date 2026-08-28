@@ -956,5 +956,14 @@
         "components": [0.38, 0.02, 245]
       }
     }
+  },
+  "alert": {
+    "info": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.78, 0.15, 245]
+      }
+    }
   }
 }
