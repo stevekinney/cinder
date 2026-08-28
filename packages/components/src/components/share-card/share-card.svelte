@@ -16,13 +16,16 @@
 </script>
 
 <script lang="ts">
+  import type { Attachment } from 'svelte/attachments';
+
   import Check from 'lucide-svelte/icons/check';
   import Copy from 'lucide-svelte/icons/copy';
   import Share2 from 'lucide-svelte/icons/share-2';
 
-  import Input from '../input/input.svelte';
+  import Input from '@lostgradient/cinder/input';
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
+  import { devWarn } from '../../utilities/dev-warn.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
   import type { ShareCardAction, ShareCardProps } from './share-card.types.ts';
 
@@ -44,6 +47,42 @@
   // value field is unlabelled by a visible <label> — its name comes from
   // `aria-label`), so generate a stable one per instance.
   const valueFieldId = $props.id();
+
+  // The value field is a read-only DISPLAY of `value`, not editable form
+  // state — it has no `name`, so it was already excluded from submission,
+  // but a native form RESET still reverts any descendant control's value to
+  // whatever was rendered at mount, regardless of `name`. That would
+  // silently blank or stale the field the next time some unrelated form
+  // elsewhere on the page (e.g. a "Reset filters" button) resets.
+  //
+  // Fix: use `Input`'s `inputAttachment` escape hatch to reach the real
+  // `<input>` DOM node, find its nearest ancestor `<form>` (if any), and
+  // re-assert the CURRENT `value` prop back onto it on every native 'reset'.
+  // This mirrors `color-picker.svelte`'s established `hiddenInput` +
+  // `form.addEventListener('reset', ...)` pattern for the same class of
+  // problem (a JS-controlled value that must survive an ambient form reset).
+  // `value` inside the listener reads the live prop at reset-time (Svelte 5
+  // destructured props are reactive bindings, not snapshotted captures), so
+  // this stays correct even if `value` changed since the field last mounted.
+  const valueFieldAttachment: Attachment<HTMLInputElement> = (element) => {
+    const form = element.closest('form');
+    if (!form) return;
+    function restoreValueAfterReset() {
+      element.value = value;
+    }
+    form.addEventListener('reset', restoreValueAfterReset);
+    return () => form.removeEventListener('reset', restoreValueAfterReset);
+  };
+
+  // Whether any consumer-supplied action carries a `labelSnippet`. The
+  // compact icon-only layout rides inside `Input`'s `trailing` addon, whose
+  // slot (`.cinder-input-group__trailing`) is sized for a small icon-only
+  // control (`max-inline-size: 40%`, tight padding). A `labelSnippet`
+  // renders rich, potentially wide visible content — cramming that into the
+  // same constrained slot would clip or overflow it, so when it's present
+  // the actions render OUTSIDE the field instead, as a normal full-width
+  // sibling row (the pre-existing layout this redesign started from).
+  const hasLabelSnippetAction = $derived(!!actions?.some((action) => !!action.labelSnippet));
 
   // Track which action is in the "copied" state by its key.
   let copiedKey = $state<string | null>(null);
@@ -169,6 +208,34 @@
   // the value actually looks like a URL, otherwise "Text to share".
   const valueRegionLabel = $derived(looksLikeUrl(value) ? 'Link to share' : 'Text to share');
 
+  // The value field is a single-line `<input>` (via `Input`). A single-line
+  // text control SANITIZES line breaks out of what it renders — and, absent
+  // this handler, out of what a native browser selection-copy would capture
+  // too, since that copy reads the sanitized DOM value, not our JS string.
+  // Intercept the field's own `copy` event and always write the exact,
+  // unmodified `value` to the clipboard, so selecting the field and pressing
+  // Ctrl/Cmd-C is never lossy for a multi-line `value` — it matches what the
+  // copy/share action buttons already send (they read `value`/`copyValue`
+  // from JS state, never from the DOM, so they were never affected).
+  function handleFieldCopy(event: ClipboardEvent) {
+    event.preventDefault();
+    event.clipboardData?.setData('text/plain', value);
+  }
+
+  // Dev-only signal that `value` contains a line break. The field's DISPLAY
+  // still collapses it (native single-line `<input>` rendering) — that's a
+  // visual limitation of the compact single-line layout, not data loss (see
+  // `handleFieldCopy` above and `ShareCardProps.value`'s doc comment) — but a
+  // consumer should still hear about it rather than the truncated display
+  // being silent and easy to miss in review.
+  $effect(() => {
+    if (/[\r\n]/.test(value)) {
+      devWarn(
+        '[cinder/ShareCard] `value` contains a line break, but the value field renders as a single-line control — line breaks are not visible there (hover the field to preview the full text via its `title` tooltip). Copying, via the action buttons or by selecting the field and pressing Ctrl/Cmd-C, still sends the exact, unmodified `value`.',
+      );
+    }
+  });
+
   $effect(() => {
     // clearTimer() clears BOTH resetTimer and announceTimer.
     return () => clearTimer();
@@ -217,25 +284,59 @@
        tried to recreate. `readonly` plus the `onfocus` select-all makes the
        value keyboard-reachable (Tab focuses it) and easy to copy (Tab, then
        Ctrl/Cmd-C selects everything), which the previous non-focusable
-       `<div>` could not do. The copy/share actions ride along as the
-       field's `trailing` addon (marked `trailingInteractive` so the buttons
-       stay in the accessibility tree) rather than a separate sibling row. -->
-  <Input
-    id={valueFieldId}
-    {value}
-    readonly
-    variant="code"
-    class="cinder-share-card__value"
-    title={value}
-    aria-label={valueRegionLabel}
-    onfocus={(event) => event.currentTarget.select()}
-    trailing={actionsTrailing}
-    trailingInteractive
-  />
+       `<div>` could not do. `inputAttachment` guards against an ambient
+       form's reset silently reverting this read-only display field (see
+       `valueFieldAttachment`'s comment above). `oncopy` guards a multi-line
+       `value` against the browser's own single-line sanitization (see
+       `handleFieldCopy` above).
+
+       Two render paths for the actions: when every action uses only the
+       icon-only default (no `labelSnippet`), they ride along as the field's
+       `trailing` addon (`trailingInteractive` keeps them in the a11y tree)
+       for the compact, merged `.dx-import`-style look. When a `labelSnippet`
+       is present, `Input`'s trailing slot is too narrow for rich content
+       (`max-inline-size: 40%`), so the actions render OUTSIDE the field as
+       a normal full-width row instead of being clipped inside it. -->
+  {#if hasLabelSnippetAction}
+    <Input
+      id={valueFieldId}
+      {value}
+      readonly
+      variant="code"
+      class="cinder-share-card__value"
+      title={value}
+      aria-label={valueRegionLabel}
+      inputAttachment={valueFieldAttachment}
+      oncopy={handleFieldCopy}
+      onfocus={(event) => event.currentTarget.select()}
+    />
+    {@render actionsRow()}
+  {:else}
+    <Input
+      id={valueFieldId}
+      {value}
+      readonly
+      variant="code"
+      class="cinder-share-card__value"
+      title={value}
+      aria-label={valueRegionLabel}
+      inputAttachment={valueFieldAttachment}
+      oncopy={handleFieldCopy}
+      onfocus={(event) => event.currentTarget.select()}
+      trailing={actionsRow}
+      trailingInteractive
+    />
+  {/if}
 </div>
 
-{#snippet actionsTrailing()}
-  <div class="cinder-share-card__actions" role="group" aria-label="Share actions">
+{#snippet actionsRow()}
+  <!-- A `<span>`, not a `<div>`: when the icon-only path renders this inside
+       `Input`'s `trailing` addon, that addon is `.cinder-input-group__trailing`
+       — a `<span>`, which is phrasing content and cannot legally contain a
+       `<div>` (flow content). Using a `<span>` here keeps the markup valid in
+       BOTH render paths; `display: flex` in the CSS gives it block-level flex
+       layout regardless of the tag. -->
+  <span class="cinder-share-card__actions" role="group" aria-label="Share actions">
     {#each resolvedActions as action (action.key)}
       {#if action.key === 'native-share' || action.nativeShareEnabled}
         {@render shareButton(action)}
@@ -251,13 +352,21 @@
     {#if !actions && canNativeShare}
       {@render shareButton({ key: 'native-share', label: shareLabel, nativeShareEnabled: true })}
     {/if}
-  </div>
+  </span>
 {/snippet}
 
-<!-- Native-share button. Reflects the `share-fallback` copied state so that when
-     `handleNativeShare` falls back to a clipboard copy (native share unavailable
-     or failed) the visual matches the live-region announcement instead of staying
-     on the Share label. -->
+<!-- Native-share button. Reflects the `share-fallback` copied state visually
+     (icon + `data-cinder-copied`) so it matches the live-region announcement
+     when `handleNativeShare` falls back to a clipboard copy. The accessible
+     name (`aria-label`) stays STABLE at `action.label` throughout — it does
+     NOT swap to `copiedLabel`. Swapping a focused control's accessible name
+     for a transient state risks a second, redundant announcement on top of
+     the live region's (some screen readers re-announce a name change on the
+     currently-focused element), and it also makes `getByRole(..., { name })`
+     unstable mid-interaction. This matches `copy-button.svelte`'s and
+     `secret-value-field.svelte`'s canonical model: the live region owns
+     transient-success announcements exclusively; the accessible name never
+     does. -->
 {#snippet shareButton(action: ShareCardAction)}
   {@const shareCopied = copiedKey === 'share-fallback'}
   <button
@@ -273,7 +382,7 @@
       action.onclick?.();
       void handleNativeShare();
     }}
-    aria-label={shareCopied ? copiedLabel : action.label}
+    aria-label={action.label}
   >
     <!-- Icon-only by default: `aria-label` above carries the accessible name,
          so no visible text is required. `action.labelSnippet`, when present,
@@ -299,7 +408,9 @@
 <!-- Copy button. `onclick` is a side-effect callback (e.g. analytics), NOT an
      override — it runs AND the copy still fires when `copyValue` is present. An
      empty string is a legitimate copyValue, so test for `undefined`, not
-     truthiness. -->
+     truthiness. `aria-label` is `action.label`, STABLE across the copied
+     state — see the comment on `shareButton` above for why it never swaps to
+     `copiedLabel`. -->
 {#snippet copyButton(action: ShareCardAction)}
   <button
     type="button"
@@ -313,7 +424,7 @@
         void handleCopy(action.key, action.copyValue);
       }
     }}
-    aria-label={copiedKey === action.key ? copiedLabel : action.label}
+    aria-label={action.label}
   >
     <!-- Icon-only by default: `aria-label` above carries the accessible name,
          so no visible text is required. `action.labelSnippet`, when present,

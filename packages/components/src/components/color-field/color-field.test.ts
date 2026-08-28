@@ -151,20 +151,26 @@ describe('ColorField — color picker trigger', () => {
     expect(trigger.getAttribute('aria-label')).toBe('Choose a color, current color #00ff00');
   });
 
-  test('opens the picker from the keyboard (Enter) without a pointer click', async () => {
+  test('the swatch is a focusable native button, so Enter and Space open the picker', async () => {
     const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
     const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
+
+    // What actually makes Enter/Space work is that this is a real <button> the browser
+    // activates natively — not a handler we wrote. happy-dom does not synthesize a click
+    // from a key event, so firing keyDown here and then calling .click() would prove
+    // nothing about the key: the click alone would open the picker either way. Pin the
+    // property that gives us the keyboard for free instead, and leave the actual key
+    // behaviour to the browser (and to the Playwright suite, which drives real keys).
+    expect(trigger.tagName).toBe('BUTTON');
+    expect(trigger.getAttribute('type')).toBe('button');
+    expect(trigger.hasAttribute('disabled')).toBe(false);
+    expect(trigger.getAttribute('aria-hidden')).toBeNull();
+
     trigger.focus();
     expect(document.activeElement).toBe(trigger);
 
-    // Native <button> activates on Enter/Space via a synthetic click — assert
-    // the real interaction contract rather than calling .click()/.focus()
-    // programmatically (see color-field.a11y.md's keyboard matrix).
-    await fireEvent.keyDown(trigger, { key: 'Enter' });
-    await fireEvent.keyUp(trigger, { key: 'Enter' });
-    trigger.click();
+    await fireEvent.click(trigger);
     await tick();
-
     expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
   });
 

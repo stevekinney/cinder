@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* ShareCard's value field composes Input, so its sidecar has to travel with this one.
+   Without this, a consumer importing only `@lostgradient/cinder/share-card` à la carte
+   gets an unstyled input. Same chaining search-field.css does for the same reason. */
+@import '../input/input.css';
 @layer cinder.components {
   .cinder-share-card {
     display: flex;

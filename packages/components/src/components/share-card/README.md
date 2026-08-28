@@ -45,7 +45,7 @@ Compact share card with copy-link, copy-text, and native navigator.share actions
 | `description`     | `string`   | no       | —             | Additional descriptive text.                                                                                                                                   |
 | `shareLabel`      | `string`   | no       | `"Share"`     | Label for the native-share button.                                                                                                                             |
 | `title`           | `string`   | no       | —             | Human-readable title for the share card.                                                                                                                       |
-| `value`           | `string`   | yes      | —             | The URL or text to share/copy.                                                                                                                                 |
+| `value`           | `string`   | yes      | —             | The URL or text to share/copy. Expected to be single-line; see `ShareCardProps.value` for the full multi-line-input contract.                                  |
 | `actions`         | `(opaque)` | no       | —             | Explicit actions to show. When omitted, default copy + native-share actions render. Not expressible in JSON Schema; see the component types for the signature. |
 | `preview`         | `(opaque)` | no       | —             | Preview content slot rendered above the actions. Not expressible in JSON Schema; see the component types for the signature.                                    |
 

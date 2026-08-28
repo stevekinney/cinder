@@ -478,12 +478,25 @@ describe('Card CSS contract', () => {
   test('an explicit non-default elevation still wins on well and danger surfaces', async () => {
     const css = await Bun.file(new URL('./card.css', import.meta.url)).text();
 
-    // The default (sm) elevation stays flat on well/danger, matching the existing look.
+    // The default (sm) elevation stays flat on a STATIC well/danger card, matching the
+    // existing look. The :not([data-cinder-interactive]) is load-bearing, not cosmetic:
+    // these rules sit after the :hover / :focus-visible rules and carry the same
+    // specificity, so without it they win the cascade and flatten an interactive card's
+    // hover and focus feedback — reintroducing the discarded-elevation defect one
+    // variant over.
     expect(css).toMatch(
-      /\.cinder-card\[data-cinder-variant='well'\]\[data-cinder-elevation='sm'\]\s*\{[^}]*box-shadow:\s*none/s,
+      /\.cinder-card\[data-cinder-variant='well'\]\[data-cinder-elevation='sm'\]:not\(\s*\[data-cinder-interactive\]\s*\)\s*\{[^}]*box-shadow:\s*none/s,
     );
     expect(css).toMatch(
-      /\.cinder-card\[data-cinder-tone='danger'\]\[data-cinder-elevation='sm'\]\s*\{[^}]*box-shadow:\s*none/s,
+      /\.cinder-card\[data-cinder-tone='danger'\]\[data-cinder-elevation='sm'\]:not\(\s*\[data-cinder-interactive\]\s*\)\s*\{[^}]*box-shadow:\s*none/s,
+    );
+
+    // And neither flat rule may apply without that exclusion.
+    expect(css).not.toMatch(
+      /\.cinder-card\[data-cinder-variant='well'\]\[data-cinder-elevation='sm'\]\s*\{/,
+    );
+    expect(css).not.toMatch(
+      /\.cinder-card\[data-cinder-tone='danger'\]\[data-cinder-elevation='sm'\]\s*\{/,
     );
 
     // Neither the well nor the danger base rule unconditionally forces box-shadow: none

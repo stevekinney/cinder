@@ -88,7 +88,22 @@
     background: transparent;
   }
 
-  .cinder-card[data-cinder-variant='well'][data-cinder-elevation='sm'] {
+  /*
+   * The flat well/danger baseline is scoped away from interactive cards.
+   *
+   * These rules sit after the :hover / :focus-visible rules above and carry the same
+   * specificity, so without the :not() they win the cascade and flatten an interactive
+   * card's hover and focus feedback back to none — the elevation range would be
+   * accepted and then silently discarded, which is the defect CIN-114 exists to fix,
+   * reintroduced one variant over.
+   *
+   * An interactive well or danger card therefore keeps the base resting shadow so its
+   * hover lift has something to lift from. Static wells and danger panels — the common
+   * case — are unchanged.
+   */
+  .cinder-card[data-cinder-variant='well'][data-cinder-elevation='sm']:not(
+      [data-cinder-interactive]
+    ) {
     box-shadow: none;
   }
 
@@ -97,7 +112,9 @@
     border-color: var(--cinder-status-danger-border);
   }
 
-  .cinder-card[data-cinder-tone='danger'][data-cinder-elevation='sm'] {
+  .cinder-card[data-cinder-tone='danger'][data-cinder-elevation='sm']:not(
+      [data-cinder-interactive]
+    ) {
     box-shadow: none;
   }
 

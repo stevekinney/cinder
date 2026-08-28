@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, jest, test } from 'bun:test';
+import { afterEach, describe, expect, jest, spyOn, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -360,6 +360,171 @@ describe('ShareCard', () => {
 });
 
 // ---------------------------------------------------------------------------
+// Input-composition regressions (invalid nesting, multiline values, form
+// reset, and the labelSnippet layout escape hatch)
+// ---------------------------------------------------------------------------
+
+describe('ShareCard Input composition', () => {
+  test('the icon-only actions render inside a <span>, not a <div>, so the trailing addon nesting stays valid', () => {
+    // `Input`'s `trailing` addon wraps whatever it's given in
+    // `<span class="cinder-input-group__trailing">`. A `<span>` is phrasing
+    // content and cannot legally contain a `<div>` (flow content) — browsers
+    // parse a `<div>` there back out to a sibling, breaking the layout. Guard
+    // the element type directly.
+    const { container } = render(ShareCard, { value: 'https://example.com' });
+    const trailing = container.querySelector('.cinder-input-group__trailing');
+    expect(trailing).not.toBeNull();
+    const actions = trailing?.querySelector('.cinder-share-card__actions');
+    expect(actions?.tagName).toBe('SPAN');
+    expect(trailing?.querySelector('div')).toBeNull();
+  });
+
+  test('a multiline value is copied verbatim by the copy-link button, even though the field displays it single-line', async () => {
+    const multiline = 'Line one\nLine two\nLine three';
+    let clipboardValue = '';
+    const originalClipboard = (navigator as { clipboard?: unknown }).clipboard;
+    setNavigatorClipboard({
+      writeText: async (text: string) => {
+        clipboardValue = text;
+      },
+    });
+    // Silence the (expected, already covered by its own test) dev warning
+    // for a multiline `value` so this test's output stays focused.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { getByRole } = render(ShareCard, {
+        value: multiline,
+        copyLinkLabel: 'Copy link',
+      });
+      await fireEvent.click(getByRole('button', { name: 'Copy link' }));
+      await new Promise((resolve) => setTimeout(resolve, 10));
+      // The copy action reads `value`/`copyValue` from component state, never
+      // from the (single-line, newline-sanitizing) DOM input — so it is
+      // never lossy, regardless of what the field visually displays.
+      expect(clipboardValue).toBe(multiline);
+    } finally {
+      restoreNavigatorClipboard(originalClipboard);
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('selecting the field and copying (native `copy` event) also sends the exact, unmodified multiline value', () => {
+    const multiline = 'Line one\nLine two\nLine three';
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    const { container } = render(ShareCard, { value: multiline });
+    const valueField = container.querySelector<HTMLInputElement>('.cinder-share-card__value')!;
+
+    // happy-dom's `ClipboardEvent` does not populate a real `clipboardData`
+    // for a synthetic dispatch (browsers only do that for a trusted, native
+    // copy). Stub one so the assertion targets share-card's own handler
+    // (`handleFieldCopy`) rather than the browser's clipboard plumbing.
+    const setData = jest.fn();
+    const preventDefault = jest.fn();
+    const copyEvent = new Event('copy', { bubbles: true, cancelable: true });
+    Object.defineProperty(copyEvent, 'clipboardData', {
+      configurable: true,
+      value: { setData },
+    });
+    Object.defineProperty(copyEvent, 'preventDefault', {
+      configurable: true,
+      value: preventDefault,
+    });
+
+    valueField.dispatchEvent(copyEvent);
+
+    expect(preventDefault).toHaveBeenCalledTimes(1);
+    expect(setData).toHaveBeenCalledWith('text/plain', multiline);
+    warnSpy.mockRestore();
+  });
+
+  test('a multiline value logs a dev-only warning', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(ShareCard, { value: 'Line one\nLine two' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+      const message = (warnSpy.mock.calls[0] as string[])[0];
+      expect(message).toContain('[cinder/ShareCard]');
+      expect(message).toContain('line break');
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test('a single-line value does not log the multiline warning', () => {
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      render(ShareCard, { value: 'https://example.com' });
+      expect(warnSpy).not.toHaveBeenCalled();
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
+  test("the value field survives an ambient form's native reset", async () => {
+    // Mount DIRECTLY inside a real `<form>` (not reparented afterward) — the
+    // `valueFieldAttachment` looks up `element.closest('form')` at mount
+    // time, so the field must already be inside its final form ancestor for
+    // this to reproduce the real-world case share-card.svelte's comment
+    // describes (a "Reset filters" button elsewhere on the page).
+    const form = document.createElement('form');
+    document.body.appendChild(form);
+    const { rerender } = render(ShareCard, {
+      target: form,
+      props: { value: 'https://example.com/first' },
+    });
+
+    // Change the prop AFTER mount, mirroring a real reuse of the same
+    // ShareCard instance for a different link — the DOM's mount-time
+    // `defaultValue` (what a native reset would otherwise revert to) now
+    // differs from the current, true `value`.
+    await rerender({ value: 'https://example.com/second' });
+    const valueField = form.querySelector<HTMLInputElement>('.cinder-share-card__value')!;
+    expect(valueField.value).toBe('https://example.com/second');
+
+    form.reset();
+
+    // The field is a read-only DISPLAY, not editable form state — the
+    // ambient form's reset must not revert it to whatever was rendered at
+    // mount (`valueFieldAttachment`'s `reset` listener re-asserts the
+    // current `value` prop).
+    expect(valueField.value).toBe('https://example.com/second');
+
+    form.remove();
+  });
+
+  test('actions with a labelSnippet render OUTSIDE the value field, not inside its constrained trailing slot', () => {
+    const { container } = render(ShareCard, {
+      value: 'https://example.com',
+      actions: [
+        {
+          key: 'copy-link',
+          label: 'Copy link',
+          copyValue: 'https://example.com',
+          labelSnippet: markupSnippet('<strong>Custom copy label</strong>'),
+        },
+      ],
+    });
+    const actions = container.querySelector('.cinder-share-card__actions');
+    expect(actions).not.toBeNull();
+    // No `.cinder-input-group` addon wrapper at all in this path — the field
+    // renders with no `trailing`, so `Input` renders a bare `<input>` with no
+    // group wrapper, and the actions render as a direct sibling of the field
+    // (inside `.cinder-share-card` itself) instead of being squeezed into a
+    // slot that caps at `max-inline-size: 40%`.
+    expect(container.querySelector('.cinder-input-group')).toBeNull();
+    expect(actions?.parentElement).toBe(container.querySelector<HTMLElement>('.cinder-share-card'));
+  });
+
+  test('icon-only actions (no labelSnippet) still render inside the value field trailing addon', () => {
+    const { container } = render(ShareCard, { value: 'https://example.com' });
+    const inputGroup = container.querySelector('.cinder-input-group');
+    const actions = container.querySelector('.cinder-share-card__actions');
+    expect(actions).not.toBeNull();
+    expect(inputGroup?.contains(actions)).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
 // Native share + clipboard behavior (the high-risk paths)
 // ---------------------------------------------------------------------------
 
@@ -464,8 +629,13 @@ describe('ShareCard native share', () => {
     // write; let those microtasks/timers settle before asserting the UI state.
     await new Promise((resolve) => setTimeout(resolve, 10));
     // The fallback copy succeeded — the share button must surface the copied
-    // affordance, not silently stay on the "Share" label.
+    // affordance visually (icon + `data-cinder-copied`), but its accessible
+    // name stays STABLE at `action.label` ("Share"). It must NOT swap to
+    // `copiedLabel`: the live region (asserted elsewhere) is the single
+    // source of truth for the transient announcement, so the name changing
+    // too would risk a redundant re-announcement and would also make
+    // `getByRole(..., { name: 'Share' })` unable to find the button mid-copy.
     expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
-    expect(shareButton?.getAttribute('aria-label')).toBe('Copied!');
+    expect(shareButton?.getAttribute('aria-label')).toBe('Share');
   });
 });
