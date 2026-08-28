@@ -116,10 +116,18 @@ describe('Footer', () => {
     const mainToken = gapTokenFor('.cinder-footer__main');
     const footerToken = gapTokenFor('.cinder-footer');
 
-    const listPx = tokenPx[listToken];
-    const groupsPx = tokenPx[groupsToken];
-    const mainPx = tokenPx[mainToken];
-    const footerPx = tokenPx[footerToken];
+    function pxFor(token: string, selector: string): number {
+      const px = tokenPx[token];
+      if (px === undefined) {
+        throw new Error(`Unmapped spacing token ${token} on ${selector}`);
+      }
+      return px;
+    }
+
+    const listPx = pxFor(listToken, '.cinder-footer__list');
+    const groupsPx = pxFor(groupsToken, '.cinder-footer__groups');
+    const mainPx = pxFor(mainToken, '.cinder-footer__main');
+    const footerPx = pxFor(footerToken, '.cinder-footer');
 
     expect(listPx).toBeLessThan(groupsPx);
     expect(groupsPx).toBeLessThan(mainPx);
