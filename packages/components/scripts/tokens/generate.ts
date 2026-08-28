@@ -978,6 +978,30 @@ export function assertResolutionOrderMatchesCssBlockStructure(resolver: Resolver
         'override block order from resolutionOrder.',
     );
   }
+  // `buildTokensBaseCss`'s override-block template is hardcoded to exactly two
+  // modifiers, "theme" and "motion" -- it never reads `resolver.modifiers` generically,
+  // so a third modifier's context documents would never reach ANY emitted CSS block,
+  // while `buildResolvedContexts`/`modifierValuesForCombo` fill every declared
+  // modifier (including a third one, at its own default) when composing each resolved
+  // snapshot's document scope. A third modifier whose default context overrides
+  // anything the base sets don't would then make a published resolved-context
+  // snapshot disagree with what the actual CSS renders, for every combination, not just
+  // a cross-modifier edge case -- the same class of artifact/CSS disagreement this
+  // whole guard exists to prevent, just triggered structurally instead of by a specific
+  // value collision. Reject a third modifier here rather than silently generating CSS
+  // that can't express it.
+  const unsupportedModifiers = Object.keys(resolver.modifiers).filter(
+    (name) => name !== 'theme' && name !== 'motion',
+  );
+  if (unsupportedModifiers.length > 0) {
+    throw new Error(
+      `resolver declares modifier(s) ${unsupportedModifiers.map((name) => `"${name}"`).join(', ')}, ` +
+        'but tokens-base.css\'s override-block template only knows how to emit "theme" and ' +
+        '"motion" -- add support for the new modifier to buildTokensBaseCss (and to ' +
+        "buildResolvedContexts's published combos) before adding it to the resolver, or the " +
+        'generated CSS and published resolved-context snapshots will silently disagree.',
+    );
+  }
 }
 
 export async function buildTokensBaseCss(
@@ -1133,17 +1157,76 @@ export async function buildTokensBaseCss(
   );
   assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
   assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
+  // The motion blocks above default the THEME axis (via `modifierValuesForContext`)
+  // to its own declared default -- light -- so `reducedMotionScopeIndex`/
+  // `forcedReducedMotionScopeIndex` only compose light+motion. But unlike theme
+  // (which always cascades BEFORE motion, so a theme block's own internal
+  // consistency never depends on which motion state is active), the motion
+  // blocks are emitted as a fixed `@media`/attribute selector that applies
+  // regardless of which `[data-theme]` is active -- dark+reduced and
+  // dark+forced-reduced-motion are just as reachable at runtime as their
+  // light counterparts. Checking only against the light-composed scope can
+  // miss a real conflict that only shows up under dark: an unoverridden
+  // sibling's effective value differs between themes, so a motion override
+  // that happens to agree with LIGHT's value can still silently diverge from
+  // DARK's -- the published dark-theme resolved-context snapshot would then
+  // disagree with what the cascade actually renders. Re-run the same guard
+  // against a dark-composed scope for each motion block to catch that.
+  const darkReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'dark-reduced-motion',
+      theme: 'dark',
+      motion: 'reduced',
+    }),
+  );
+  const darkReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(darkReducedMotionScopeDocuments),
+    '',
+    undefined,
+    darkReducedMotionScopeIndex,
+  );
+  const darkForcedReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'dark-forced-reduced-motion',
+      theme: 'dark',
+      motion: 'forced-reduced-motion',
+    }),
+  );
+  const darkForcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(darkForcedReducedMotionScopeDocuments),
+    '',
+    undefined,
+    darkForcedReducedMotionScopeIndex,
+  );
   assertUniqueOverrideCssProperties(
     reducedMotionOverrides,
     baseIndex,
     reducedMotionScopeIndex,
-    'motion.reduced',
+    'motion.reduced (light theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    reducedMotionOverrides,
+    baseIndex,
+    darkReducedMotionScopeIndex,
+    'motion.reduced (dark theme)',
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
     forcedReducedMotionScopeIndex,
-    'motion.forced-reduced-motion',
+    'motion.forced-reduced-motion (light theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    darkForcedReducedMotionScopeIndex,
+    'motion.forced-reduced-motion (dark theme)',
   );
 
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --

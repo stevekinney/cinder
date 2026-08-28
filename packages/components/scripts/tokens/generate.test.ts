@@ -1962,6 +1962,71 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
       /\[theme\.dark\].*--test-shared-swatch is claimed with conflicting values/,
     );
   });
+
+  test('a motion override that only agrees with LIGHT is still rejected -- dark+reduced is an equally reachable combination', async () => {
+    // The motion blocks apply regardless of which [data-theme] is active, so
+    // checking a motion override only against the light-defaulted scope can
+    // miss a conflict that only shows up combined with dark. Here "alias.a"
+    // is never touched by the reduced-motion override, so its effective
+    // value tracks whichever theme is active (0.5 light, 0.2 dark) -- and
+    // "swatch.a"'s motion override (0.5) agrees with LIGHT but silently
+    // diverges from DARK.
+    const colorValue = (lightness: number) => ({
+      colorSpace: 'oklch',
+      components: [lightness, 0.1, 250],
+    });
+    const baseDocument: TokenDocument = {
+      swatch: {
+        $type: 'color',
+        a: {
+          $value: colorValue(0.5),
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-shared-swatch' } },
+        },
+      },
+      alias: { $extends: '{swatch}' },
+    };
+    const themeDarkDocument: TokenDocument = {
+      swatch: { $type: 'color', a: { $value: colorValue(0.2) } },
+      alias: { $type: 'color', a: { $value: colorValue(0.2) } },
+    };
+    const motionReducedDocument: TokenDocument = {
+      swatch: { $type: 'color', a: { $value: colorValue(0.5) } },
+    };
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'theme-light.json' }], dark: [{ $ref: 'theme-dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-default.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', {}],
+      ['theme-dark.json', themeDarkDocument],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', motionReducedDocument],
+    ]);
+
+    await expect(buildTokensBaseCss(resolver, documentsByPath)).rejects.toThrow(
+      /\[motion\.reduced \(dark theme\)\].*--test-shared-swatch is claimed with conflicting values/,
+    );
+  });
 });
 
 describe('CIN-469 finding 4: a $root JSON Pointer alias normalizes like a group.base one', () => {
@@ -2069,6 +2134,33 @@ describe('CIN-469 finding 5: resolutionOrder is validated against the fixed CSS 
     ]);
     expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
       /interleaves a "sets" entry after a "modifiers" entry/,
+    );
+  });
+
+  test('a third modifier is rejected -- the override-block template only knows how to emit theme and motion', () => {
+    // `buildTokensBaseCss` hardcodes `theme`/`motion` for CSS emission, but
+    // `modifierValuesForCombo`'s default-fill would still bake a third
+    // modifier's default-context documents into every resolved-context
+    // snapshot -- so a schema-valid resolver adding one would make the
+    // published snapshots disagree with the generated CSS for every
+    // combination, not just a specific value collision.
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: 'theme.json' }] }, default: 'light' },
+        motion: { contexts: { default: [{ $ref: 'motion.json' }] }, default: 'default' },
+        density: { contexts: { comfortable: [{ $ref: 'density.json' }] }, default: 'comfortable' },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/density' },
+      ],
+    };
+    expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
+      /declares modifier\(s\) "density".*only knows how to emit "theme" and "motion"/,
     );
   });
 });
