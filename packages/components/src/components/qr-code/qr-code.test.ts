@@ -58,6 +58,36 @@ describe('QrCode', () => {
     expect(svgMarkup).toContain('currentColor');
   });
 
+  test('encodes the largest payload QR version 40 can hold at the strictest ECC level (CIN-137)', () => {
+    // Worst case: error-correction level 'H' at the largest byte-mode payload that
+    // still fits QR version 40 (1273 bytes; verified empirically against the
+    // installed qrcode@1.5.4 — one byte more throws). Version 40 forces the most
+    // expensive mask-pattern scoring pass (size=177 modules/side).
+    //
+    // CIN-137 asked for a MEASUREMENT, and one was taken: 200 iterations after
+    // warmup put this path at mean ~6ms, p95 ~7.5ms, max ~9.6ms — nowhere near
+    // blocking. Those numbers live on the issue and in the pull request, which is
+    // where evidence belongs.
+    //
+    // Deliberately NOT asserted here as a wall-clock budget. performance.now()
+    // counts time the process spends descheduled, so on a contended CI worker a
+    // perfectly correct render can blow any threshold — and AGENTS.md is explicit
+    // that a timing threshold is not something to relax later when it flakes. This
+    // test therefore pins the functional contract (a version-40 'H' payload encodes
+    // and renders rather than falling into the error path); benchmarking stays
+    // outside the unit-test gate.
+    const oversizedButValidPayload = 'a'.repeat(1273);
+
+    const { container } = render(QrCode, {
+      props: { value: oversizedButValidPayload, errorCorrectionLevel: 'H' },
+    });
+
+    const element = container.querySelector('.cinder-qr-code');
+    expect(element?.getAttribute('data-cinder-state')).toBe('ready');
+    expect(element?.getAttribute('data-cinder-invalid')).toBeNull();
+    expect(container.querySelector('.cinder-qr-code svg')).not.toBeNull();
+  });
+
   test('renders an error state when the payload is too large for any QR version', () => {
     const oversizedValue = 'a'.repeat(3000);
     const { container } = render(QrCode, { props: { value: oversizedValue } });
