@@ -21,6 +21,11 @@ const autoUpdateSpy = mock((_anchor: unknown, _panel: HTMLElement, update: () =>
 const flipSpy = mock(() => ({ name: 'flip', fn: () => ({}) }));
 const shiftSpy = mock((options: unknown) => ({ name: 'shift', options, fn: () => ({}) }));
 const offsetSpy = mock((options: unknown) => ({ name: 'offset', options, fn: () => ({}) }));
+// CIN-332: CommandMenu locks its placement on open, which gives up flip's rescue when
+// the panel no longer fits. `size` is what replaces it — it caps the panel to the space
+// actually available so the list scrolls instead of running off the viewport — so this
+// mock has to provide it or the shared helper calls an undefined middleware factory.
+const sizeSpy = mock((options: unknown) => ({ name: 'size', options, fn: () => ({}) }));
 
 mock.module('@floating-ui/dom', () => ({
   arrow: () => ({ name: 'arrow', fn: () => ({}) }),
@@ -29,6 +34,7 @@ mock.module('@floating-ui/dom', () => ({
   flip: flipSpy,
   shift: shiftSpy,
   offset: offsetSpy,
+  size: sizeSpy,
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');

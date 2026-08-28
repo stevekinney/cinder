@@ -32,6 +32,7 @@
     setSortableContext,
   } from '../../utilities/sortable-controller.svelte.ts';
   import { useAnnouncer } from '../../utilities/use-announcer.svelte.ts';
+  import Button from '@lostgradient/cinder/button';
   import SortableItem from '../_sortable-item.svelte';
   import {
     buildCardLocationMap,
@@ -422,8 +423,10 @@
       >
         <header class="cinder-kanban-board__column-header">
           {#if reorderColumns}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
               class="cinder-kanban-board__column-handle"
               aria-label={`Reorder ${column.title} column`}
               aria-pressed={columnReorder.liftedKey === column.id}
@@ -437,7 +440,7 @@
               <svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true">
                 <path d="M2 4h12v1.5H2zM2 7.25h12v1.5H2zM2 10.5h12v1.5H2z" />
               </svg>
-            </button>
+            </Button>
           {/if}
           <div class="cinder-kanban-board__column-title">
             {#if columnHeader}
@@ -456,15 +459,17 @@
             </div>
           {/if}
           {#if collapsible}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
+              iconOnly
               class="cinder-kanban-board__collapse"
               aria-label={`${column.collapsed ? 'Expand' : 'Collapse'} ${column.title} (${column.cards.length} ${column.cards.length === 1 ? 'card' : 'cards'})`}
               aria-expanded={!column.collapsed}
               onclick={() => columnReorder.toggleColumn(column)}
             >
               <ChevronDown class="cinder-kanban-board__collapse-chevron" aria-hidden="true" />
-            </button>
+            </Button>
           {/if}
         </header>
 
