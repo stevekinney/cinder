@@ -447,7 +447,7 @@ describe('ShareCard Input composition', () => {
     warnSpy.mockRestore();
   });
 
-  test('the two Input arms stay in sync on everything but the trailing addon', async () => {
+  test('the value field presents identically in both action layouts', () => {
     // `labelSnippet` presence decides whether the actions ride inside `Input`'s trailing
     // addon or render as a sibling row, and those are two separate `Input` invocations.
     // A review rightly flagged that switching arms tears the value field down, dropping
@@ -457,23 +457,52 @@ describe('ShareCard Input composition', () => {
     // to optional, which `InputProps`' leading/trailing union rejects under
     // `exactOptionalPropertyTypes`. And it would not have helped anyway -- `Input` wraps
     // its `<input>` in `.cinder-input-group` only when `trailing` is set, so the element
-    // is recreated inside `Input` regardless of what this file does.
+    // is recreated inside `Input` regardless of what this file does. Preserving it means
+    // changing a primitive every component depends on, tracked separately.
     //
-    // What IS worth guarding is that the two arms cannot drift: everything except the
-    // trailing addon must be identical, or the field would silently change behaviour
-    // with the layout.
-    const source = await Bun.file(new URL('./share-card.svelte', import.meta.url)).text();
-    const inputCallSites = source.match(/<Input\b[\s\S]*?\/>/g) ?? [];
-    expect(inputCallSites).toHaveLength(2);
+    // What is worth guarding is that the two arms cannot DRIFT: the field must present
+    // the same contract either way. Asserted on the rendered result rather than by
+    // regex-parsing the source, so a reformat or refactor cannot fail it without an
+    // actual behavioural change.
+    const richLabel = createRawSnippet(() => ({ render: () => '<span>Copy it</span>' }));
+    const value = 'https://example.com/a/b/c';
 
-    const withoutTrailing = inputCallSites.map((site) =>
-      site
-        .replace(/^\s*trailing=\{actionsRow\}\s*$/m, '')
-        .replace(/^\s*trailingInteractive\s*$/m, '')
-        .replace(/\s+/g, ' ')
-        .trim(),
-    );
-    expect(withoutTrailing[0]).toBe(withoutTrailing[1]);
+    const compact = render(ShareCard, {
+      value,
+      actions: [{ key: 'copy', label: 'Copy', copyValue: value }],
+    });
+    const compactField = compact.container.querySelector<HTMLInputElement>(
+      '.cinder-share-card__value',
+    )!;
+    const compactContract = {
+      tagName: compactField.tagName,
+      value: compactField.value,
+      readOnly: compactField.readOnly,
+      title: compactField.getAttribute('title'),
+      ariaLabel: compactField.getAttribute('aria-label'),
+      className: compactField.className,
+    };
+    compact.unmount();
+
+    const rich = render(ShareCard, {
+      value,
+      actions: [{ key: 'copy', label: 'Copy', labelSnippet: richLabel, copyValue: value }],
+    });
+    const richField = rich.container.querySelector<HTMLInputElement>('.cinder-share-card__value')!;
+    const richContract = {
+      tagName: richField.tagName,
+      value: richField.value,
+      readOnly: richField.readOnly,
+      title: richField.getAttribute('title'),
+      ariaLabel: richField.getAttribute('aria-label'),
+      className: richField.className,
+    };
+    rich.unmount();
+
+    expect(richContract).toEqual(compactContract);
+    // Sanity-check the contract is not vacuously empty on both sides.
+    expect(compactContract.value).toBe(value);
+    expect(compactContract.readOnly).toBe(true);
   });
 
   test('both action layouts render exactly one value field, in the right place', () => {
