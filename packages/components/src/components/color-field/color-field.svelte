@@ -561,6 +561,15 @@
 
   const swatchEmpty = $derived(committedHex === '');
   const swatchColor = $derived(committedHex === '' ? 'transparent' : committedHex);
+  // Accessible name conveys both purpose and current value — "Choose a
+  // color" alone tells assistive-technology users nothing about what's
+  // already selected. Falls back to a value-less phrasing while nothing is
+  // committed yet, matching the swatch's own empty-state treatment.
+  const swatchButtonLabel = $derived(
+    swatchEmpty
+      ? 'Choose a color, no color selected'
+      : `Choose a color, current color ${committedHex}`,
+  );
 
   function handlePickerCommit(next: string, reason: 'pointer' | 'swatch' | 'keyboard'): void {
     const parsed = parseInput(next);
@@ -585,7 +594,7 @@
       <Button
         type="button"
         class="cinder-color-field__swatch-button"
-        aria-label="Choose a color"
+        aria-label={swatchButtonLabel}
         disabled={disabled || readonly}
         onclick={() => (pickerOpen = !pickerOpen)}
       >
