@@ -168,6 +168,19 @@
   // group's buttons/labels never change size.
   let containerWidth = $state<number | null>(null);
   let leadingWidth = $state(0);
+  /**
+   * Identifies this toolbar instance's own controls.
+   *
+   * The focus listeners are bound to the DOCUMENT (the overflow panel is portaled out
+   * of the toolbar's subtree, so node-level listeners never see it). That makes every
+   * `[data-toolbar-flex-group-id]` on the page a candidate, and with two MarkdownEditors
+   * mounted, focusing a group in one pinned the same group id in the other — and a
+   * later resize of that second toolbar then honoured a pin no one had set there.
+   * Stamping the id on each chunk and on the overflow trigger scopes the match back to
+   * this instance without giving up the document-level listener.
+   */
+  const toolbarInstanceId = $props.id();
+
   let gapPx = $state(0);
 
   // Owned by `toolbarOverflowSetup`, but reachable from the actions-lifecycle $effect
@@ -276,7 +289,8 @@
     const chunk = target.closest<HTMLElement>('[data-toolbar-flex-group-id]');
     // Bracket access: `DOMStringMap` is an index signature, and this package's
     // tsconfig enables noPropertyAccessFromIndexSignature.
-    const value = chunk?.dataset['toolbarFlexGroupId'];
+    if (chunk?.dataset['toolbarInstanceId'] !== toolbarInstanceId) return null;
+    const value = chunk.dataset['toolbarFlexGroupId'];
     return isFlexGroupId(value) ? value : null;
   }
 
@@ -335,10 +349,12 @@
     }
 
     function isOverflowTrigger(target: EventTarget | null): boolean {
-      return (
-        target instanceof HTMLElement &&
-        target.closest('button[aria-label="More formatting"]') !== null
-      );
+      if (!(target instanceof HTMLElement)) return false;
+      const trigger = target.closest<HTMLElement>('button[aria-label="More formatting"]');
+      // Scoped to this instance for the same reason as `flexGroupIdFromTarget`: with the
+      // listeners on the document, another editor's trigger would otherwise pin this
+      // toolbar's overflow set.
+      return trigger?.dataset['toolbarInstanceId'] === toolbarInstanceId;
     }
 
     function handleFocusIn(event: FocusEvent): void {
@@ -551,6 +567,7 @@
   <div
     class="toolbar-chunk"
     data-toolbar-flex-group-id="text-formatting"
+    data-toolbar-instance-id={toolbarInstanceId}
     bind:this={textFormattingChunkElement}
   >
     <ToolbarSeparator />
@@ -600,7 +617,12 @@
 {/snippet}
 
 {#snippet linksChunk()}
-  <div class="toolbar-chunk" data-toolbar-flex-group-id="links" bind:this={linksChunkElement}>
+  <div
+    class="toolbar-chunk"
+    data-toolbar-flex-group-id="links"
+    data-toolbar-instance-id={toolbarInstanceId}
+    bind:this={linksChunkElement}
+  >
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Links">
       <ToolbarButton
@@ -618,7 +640,12 @@
 {/snippet}
 
 {#snippet listsChunk()}
-  <div class="toolbar-chunk" data-toolbar-flex-group-id="lists" bind:this={listsChunkElement}>
+  <div
+    class="toolbar-chunk"
+    data-toolbar-flex-group-id="lists"
+    data-toolbar-instance-id={toolbarInstanceId}
+    bind:this={listsChunkElement}
+  >
     <ToolbarSeparator />
     <div class="toolbar-group" role="group" aria-label="Lists">
       <ToolbarButton
@@ -649,6 +676,7 @@
   <div
     class="toolbar-chunk"
     data-toolbar-flex-group-id="block-operations"
+    data-toolbar-instance-id={toolbarInstanceId}
     bind:this={blockOperationsChunkElement}
   >
     <ToolbarSeparator />
@@ -742,6 +770,7 @@
           variant="ghost"
           size="sm"
           aria-label="More formatting"
+          data-toolbar-instance-id={toolbarInstanceId}
           iconOnly
           {disabled}
           onclick={() => (formattingPopoverOpen = !formattingPopoverOpen)}

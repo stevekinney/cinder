@@ -354,7 +354,18 @@ test.describe('markdown link popover', () => {
     // This waits on the settling condition itself rather than on a fixed duration --
     // two 10-second waits stood here before and were masking exactly this race, which
     // is why the branch below could pick wrong while both waits still passed.
-    await expect(inlineLinkButton.or(moreFormattingButton).first()).toBeVisible();
+    //
+    // Asserted with an explicit poll rather than `a.or(b).first()`: a merged locator
+    // resolves in DOM order, so `.first()` can settle on a match that exists but is
+    // hidden -- the inline Link button rendered while overflowing, say -- and report
+    // "visible" for the wrong one. Checking both flags and OR-ing them cannot.
+    await expect(async () => {
+      const [inlineVisible, overflowVisible] = await Promise.all([
+        inlineLinkButton.isVisible(),
+        moreFormattingButton.isVisible(),
+      ]);
+      expect(inlineVisible || overflowVisible).toBe(true);
+    }).toPass();
 
     let linkButton = inlineLinkButton;
 
