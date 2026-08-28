@@ -332,16 +332,54 @@ test.describe('markdown link popover', () => {
     await page.goto('/page/markdown-editor?snapshot=1', { waitUntil: 'load' });
     await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
-    const moreFormattingButton = page
-      .locator(
-        '.markdown-editor-wrapper[data-ready="true"] button[aria-label="More formatting"]:not(:disabled)',
-      )
+    // CIN-130 made the toolbar's overflow width-driven rather than a fixed split, so
+    // the Link button sits inline whenever the toolbar has room for it and only moves
+    // into the "More formatting" popover once it does not. This test cares about where
+    // the LINK popover anchors, not about which side of that split its trigger is on,
+    // so reach the trigger wherever it currently lives. Asserting the overflow button
+    // exists would pin a viewport-dependent layout detail this test does not own.
+    // `.first()`: this page mounts more than one MarkdownEditor, so asserting on the
+    // bare locator is a strict-mode violation. The previous wait dodged that by only
+    // ever calling `.first()` on descendants; scoping the root itself is both narrower
+    // and deterministic about which editor the rest of the test measures.
+    const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]').first();
+    await expect(editor).toBeVisible();
+
+    const inlineLinkButton = editor.locator('[data-testid="toolbar-link"]').first();
+    const moreFormattingButton = editor
+      .locator('button[aria-label="More formatting"]:not(:disabled)')
       .first();
-    await expect(moreFormattingButton).toBeVisible({ timeout: 10_000 });
-    await moreFormattingButton.click();
-    const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
-    await expect(formattingPopover).toBeVisible();
-    const linkButton = formattingPopover.locator('[data-testid="toolbar-link"]').first();
+
+    // The toolbar's overflow pass is ResizeObserver-driven, so the Link trigger can be
+    // in NEITHER place for a frame or two after the wrapper reports ready. Wait for it
+    // to land on one side of the split before sampling which side that was: a bare
+    // isVisible() here races the pass and takes the overflow branch by accident.
+    //
+    // This waits on the settling condition itself rather than on a fixed duration --
+    // two 10-second waits stood here before and were masking exactly this race, which
+    // is why the branch below could pick wrong while both waits still passed.
+    //
+    // Asserted with an explicit poll rather than `a.or(b).first()`: a merged locator
+    // resolves in DOM order, so `.first()` can settle on a match that exists but is
+    // hidden -- the inline Link button rendered while overflowing, say -- and report
+    // "visible" for the wrong one. Checking both flags and OR-ing them cannot.
+    await expect(async () => {
+      const [inlineVisible, overflowVisible] = await Promise.all([
+        inlineLinkButton.isVisible(),
+        moreFormattingButton.isVisible(),
+      ]);
+      expect(inlineVisible || overflowVisible).toBe(true);
+    }).toPass();
+
+    let linkButton = inlineLinkButton;
+
+    if (!(await inlineLinkButton.isVisible())) {
+      await moreFormattingButton.click();
+      const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
+      await expect(formattingPopover).toBeVisible();
+      linkButton = formattingPopover.locator('[data-testid="toolbar-link"]').first();
+    }
+
     await expect(linkButton).toBeVisible();
     const triggerBox = await linkButton.boundingBox();
     expect(triggerBox).not.toBeNull();

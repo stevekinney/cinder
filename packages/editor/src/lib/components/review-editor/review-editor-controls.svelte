@@ -65,6 +65,7 @@
   import Segment from '@lostgradient/cinder/segment';
   import SegmentedControl from '@lostgradient/cinder/segmented-control';
   import DiffStatistics from '@lostgradient/cinder/diff-statistics';
+  import Toolbar from '@lostgradient/cinder/toolbar';
   import {
     FileText,
     GitBranch,
@@ -200,22 +201,52 @@
 
     {#if activeView === 'diff'}
       <div class="controls-separator" aria-hidden="true"></div>
-      <SegmentedControl
-        id="{id}-diff-view-mode"
-        selectionMode="single"
-        size="sm"
-        density="toolbar"
-        label="Diff view mode"
-        labelVisible={false}
-        bind:value={diffViewMode}
-      >
-        <Segment value="unified">Unified</Segment>
-        <Segment value="final">Final</Segment>
-        <Segment value="original">Original</Segment>
-      </SegmentedControl>
+      <!--
+        `SegmentedControl` here has no `variant="tablist"`, so it defaults to
+        `variant="radiogroup"` (see segmented-control.svelte) — a `radiogroup`,
+        unlike a `tablist`, is not forbidden inside `toolbar`. Its own segments
+        already carry a roving tabindex (only the active one is tabbable), so
+        `<Toolbar>` sees a single focusable item here and defers arrow-key
+        handling to the radiogroup's own handler — matching how
+        `@lostgradient/cinder/toolbar`'s own "Toolbar with groups" example
+        wraps a SegmentedControl.
+      -->
+      <Toolbar aria-label="Diff view controls">
+        <SegmentedControl
+          id="{id}-diff-view-mode"
+          selectionMode="single"
+          size="sm"
+          density="toolbar"
+          label="Diff view mode"
+          labelVisible={false}
+          bind:value={diffViewMode}
+        >
+          <Segment value="unified">Unified</Segment>
+          <Segment value="final">Final</Segment>
+          <Segment value="original">Original</Segment>
+        </SegmentedControl>
+      </Toolbar>
     {/if}
   </div>
 
+  <!--
+    NOT wrapped in `<Toolbar>`, though it would be ARIA-valid to do so — none of
+    these controls is a tablist or a nested toolbar.
+
+    An earlier pass attributed this to a `<Toolbar>` defect, claiming a leading
+    `{#if}` child silently drops every following sibling. That claim was tested
+    directly and does NOT reproduce: a `<Toolbar>` with a leading `{#if}` renders
+    all its siblings with the condition either true or false, and `Toolbar` only
+    does `{@render children()}` plus a MutationObserver for focus tracking — it
+    never moves or removes nodes. No upstream bug was filed, because there is no
+    evidence of one.
+
+    So this cluster stays in ordinary Tab order by choice, not by workaround.
+    Roving tabindex would buy little here: these are three unrelated actions
+    (revert, comments toggle, export), not a homogeneous control group a user
+    arrows through. If someone does want `Toolbar` semantics here later, start
+    from a fresh reproduction rather than this note.
+  -->
   <div class="controls-trailing">
     {#if activeView === 'diff' && hasContentChanges && !readonly}
       <Button
