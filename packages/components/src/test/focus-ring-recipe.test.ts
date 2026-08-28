@@ -159,10 +159,16 @@ const recipes: Array<{
   selector: string;
   forcedColorsSelector?: string;
 }> = [
-  // NOTE: the command-palette search input intentionally does NOT use this shared
-  // transparent-outline + box-shadow recipe. An edgeless input floats that ring as
-  // a stray box, so its keyboard focus is indicated by the search row's
-  // :focus-within bottom-border recolor instead (verified in command-palette.test.ts).
+  // NOTE: this used to record the opposite. The command-palette search input was
+  // deliberately kept off the shared recipe because an edgeless input floated the ring
+  // as a stray box, so focus was shown by recolouring the search row's bottom border.
+  //
+  // CIN-333 reversed that: a bespoke colour-changing rule used nowhere else in the
+  // library is worse than a ring that needs its surroundings fixed. The stray-box
+  // complaint is addressed rather than ignored — the input now carries a radius, and
+  // --cinder-ring-offset-color resolves to --cinder-surface-raised, which is also the
+  // palette's own background, so the offset band is invisible instead of drawing a halo.
+  // The recipe pin now lives in command-palette.test.ts.
   {
     name: 'slider thumb',
     css: sliderCss,
