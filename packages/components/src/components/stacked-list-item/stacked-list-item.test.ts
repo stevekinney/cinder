@@ -37,13 +37,22 @@ describe('StackedListItem', () => {
 
     // The base body-stack gap and the condensed override must resolve to different token values —
     // otherwise the condensed variant is a no-op that only changes padding.
-    expect(stylesheet).toContain('--cinder-stacked-list-item-body-gap: var(--cinder-space-1);');
-    expect(stylesheet).toContain(
-      "[data-cinder-density='condensed'] {\n    padding: var(--cinder-space-2) var(--cinder-space-3);\n    --cinder-stacked-list-item-body-gap: var(--cinder-space-0-5);",
-    );
-    expect(stylesheet).toContain(
-      'gap: var(--cinder-stacked-list-item-body-gap, var(--cinder-space-1));',
-    );
+    const baseBodyGap = stylesheet.match(
+      /\.cinder-stacked-list-item__body \{[^}]*gap:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+    const condensedBodyGap = stylesheet.match(
+      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__body \{[^}]*gap:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+
+    expect(baseBodyGap).toBe('var(--cinder-space-1)');
+    expect(condensedBodyGap).toBe('var(--cinder-space-0-5)');
+    expect(condensedBodyGap).not.toBe(baseBodyGap);
+
+    // The gap is declared directly rather than routed through a component custom
+    // property: a non-empty variables manifest obliges the DTCG corpus to model the
+    // token (check:component-variable-registry enforces it), and widening the public
+    // theming surface is a separate decision from fixing a no-op variant.
+    expect(stylesheet).not.toContain('--cinder-stacked-list-item-body-gap');
 
     // The condensed description/meta line-height must differ from the base --cinder-leading-snug
     // value the element already inherits — matching it would be a silent no-op.

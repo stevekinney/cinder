@@ -46,7 +46,8 @@ Single row within a stacked list, typically pairing a label with metadata or an 
 
 <!-- generated:variables:start -->
 
-- `--cinder-stacked-list-item-body-gap`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

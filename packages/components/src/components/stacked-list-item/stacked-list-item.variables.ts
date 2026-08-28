@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-stacked-list-item-body-gap'];
+const variables: readonly string[] = [];
 
 export default variables;
