@@ -78,4 +78,62 @@ describe('Footer', () => {
       }
     }
   });
+
+  test('CIN-124: resting spacing forms a strictly increasing related-to-unrelated hierarchy', async () => {
+    // Regression for CIN-124: proximity should communicate relationship.
+    // Same-group links (most related) < sibling nav groups < brand-to-groups
+    // (still related, inside .cinder-footer__main) < main-to-legal (the
+    // least related pairing, and the only one reinforced by a rule/padding
+    // boundary too). Each step must resolve to a distinct px value so no two
+    // relationships of different closeness collapse onto the same gap --
+    // that collision (both using --cinder-space-6) is exactly what made
+    // CIN-124 still real. Asserted against the shipped CSS source (not
+    // computed styles) because this test does not load a real CSS engine;
+    // the resting layout math itself is covered by
+    // packages/testing/tests/footer-layout.playwright.ts.
+    const css = await Bun.file(new URL('./footer.css', import.meta.url)).text();
+
+    const tokenPx: Record<string, number> = {
+      '--cinder-space-2': 8,
+      '--cinder-space-4': 16,
+      '--cinder-space-6': 24,
+      '--cinder-space-8': 32,
+    };
+
+    function gapTokenFor(selector: string): string {
+      const block = css.match(
+        new RegExp(`${selector.replace(/[.#]/g, '\\$&')}\\s*\\{([^}]*)\\}`),
+      )?.[1];
+      const token = block?.match(/gap:\s*var\((--cinder-space-\d+)\)/)?.[1];
+      if (!token) {
+        throw new Error(`Expected a --cinder-space-* gap token on ${selector}`);
+      }
+      return token;
+    }
+
+    const listToken = gapTokenFor('.cinder-footer__list');
+    const groupsToken = gapTokenFor('.cinder-footer__groups');
+    const mainToken = gapTokenFor('.cinder-footer__main');
+    const footerToken = gapTokenFor('.cinder-footer');
+
+    const listPx = tokenPx[listToken];
+    const groupsPx = tokenPx[groupsToken];
+    const mainPx = tokenPx[mainToken];
+    const footerPx = tokenPx[footerToken];
+
+    expect(listPx).toBeLessThan(groupsPx);
+    expect(groupsPx).toBeLessThan(mainPx);
+    expect(mainPx).toBeLessThan(footerPx);
+
+    // The main-to-legal gap must not reuse the same token as any
+    // related-sibling gap inside .cinder-footer__main.
+    expect(footerToken).not.toBe(mainToken);
+    expect(footerToken).not.toBe(groupsToken);
+    expect(footerToken).not.toBe(listToken);
+
+    // The unrelated legal row keeps its own rule + padding boundary too.
+    const legalBlock = css.match(/\.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(legalBlock).toContain('border-top: 1px solid var(--cinder-border-muted)');
+    expect(legalBlock).toContain('padding-top: var(--cinder-space-2)');
+  });
 });

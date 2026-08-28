@@ -112,7 +112,11 @@ test.describe('Footer responsive layout', () => {
       expect(productBox).not.toBeNull();
       expect(companyBox).not.toBeNull();
       expect(spacing).toEqual({
-        outer: '24px',
+        // CIN-124: the outer (main-to-legal) gap is deliberately larger than the
+        // inner (brand-to-groups) gap. Both were 24px, which spent one spacing
+        // value on two different relationships and made the legal row read as a
+        // peer of the link groups rather than as a separate block.
+        outer: '32px',
         main: '24px',
         groups: '16px',
         list: '8px',

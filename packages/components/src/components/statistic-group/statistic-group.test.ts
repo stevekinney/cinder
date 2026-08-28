@@ -51,6 +51,21 @@ describe('StatisticGroup', () => {
     expect(defaultBlock).toContain('padding: var(--cinder-statistic-group-card-padding,');
   });
 
+  test('default variant has a resting border and per-cell dividers', async () => {
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+    const defaultBlock =
+      css.match(/\.cinder-statistic-group\[data-cinder-variant='default'\]\s*\{[^}]*\}/)?.[0] ?? '';
+
+    expect(defaultBlock).toContain('border: 1px solid var(--cinder-border)');
+
+    const dividerBlock =
+      css.match(
+        /\.cinder-statistic-group\[data-cinder-variant='default'\]\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
+      )?.[0] ?? '';
+
+    expect(dividerBlock).toContain('border-inline-end: 1px solid var(--cinder-border-muted)');
+  });
+
   test('renders .cinder-statistic-group wrapping its children', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('stat content'),

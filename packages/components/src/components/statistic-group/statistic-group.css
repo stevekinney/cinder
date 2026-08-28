@@ -52,11 +52,28 @@
     }
   }
 
-  /* variant: default — a quiet shared surface with spacing doing the grouping. */
+  /* variant: default — a quiet shared surface with a resting border and
+     per-cell dividers, matching the treatment cards/shared-borders use. */
   .cinder-statistic-group[data-cinder-variant='default'] {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-inset);
+  }
+
+  .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:not(:last-child) {
+    border-inline-end: 1px solid var(--cinder-border-muted);
+  }
+
+  @container cinder-statistic-group (max-width: 30rem) {
+    .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic {
+      border-inline-end: none;
+      border-block-end: 1px solid var(--cinder-border-muted);
+    }
+
+    .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:last-child {
+      border-block-end: none;
+    }
   }
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */

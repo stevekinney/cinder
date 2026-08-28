@@ -9,6 +9,13 @@ const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { createRawSnippet } = await import('svelte');
 const { default: CapabilityGate } = await import('./capability-gate.svelte');
 
+const capabilityGateCss = await Bun.file(new URL('./capability-gate.css', import.meta.url)).text();
+
+function cssRuleBody(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return capabilityGateCss.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? '';
+}
+
 function snippet(text: string) {
   return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
 }
@@ -137,6 +144,16 @@ describe('CapabilityGate', () => {
     const content = container.querySelector('.cinder-capability-gate__content');
     expect(content).not.toBeNull();
     expect(content?.textContent).toContain('Custom content');
+  });
+
+  test('content resting style differentiates it from the label and value text on weight and color, not color alone', () => {
+    const contentBody = cssRuleBody('.cinder-capability-gate__content');
+    expect(contentBody).toContain('font-weight: var(--cinder-font-medium)');
+    expect(contentBody).toContain('color: var(--cinder-text-default)');
+    // Guards against re-collapsing content into the muted value tier (CIN-107's
+    // ratified _label-value.css keeps primary body content a distinct third tier).
+    expect(contentBody).not.toContain('font-weight: var(--cinder-font-normal)');
+    expect(contentBody).not.toContain('color: var(--cinder-text-muted)');
   });
 
   test('omits the content wrapper entirely when no children are passed', () => {
