@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "chat"
+    "capability-gate",
+    "footer",
+    "statistic-group"
   ],
-  "renderedSourceSha": "aeeefa67ecfe904e36b7fc8e2797f3f7a2c95bc8",
+  "renderedSourceSha": "24adac7a0e3cf1ef2277534ece0bdc28164fa628",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
