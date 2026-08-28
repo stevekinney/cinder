@@ -332,16 +332,31 @@ test.describe('markdown link popover', () => {
     await page.goto('/page/markdown-editor?snapshot=1', { waitUntil: 'load' });
     await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
-    const moreFormattingButton = page
-      .locator(
-        '.markdown-editor-wrapper[data-ready="true"] button[aria-label="More formatting"]:not(:disabled)',
-      )
-      .first();
-    await expect(moreFormattingButton).toBeVisible({ timeout: 10_000 });
-    await moreFormattingButton.click();
-    const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
-    await expect(formattingPopover).toBeVisible();
-    const linkButton = formattingPopover.locator('[data-testid="toolbar-link"]').first();
+    // CIN-130 made the toolbar's overflow width-driven rather than a fixed split, so
+    // the Link button sits inline whenever the toolbar has room for it and only moves
+    // into the "More formatting" popover once it does not. This test cares about where
+    // the LINK popover anchors, not about which side of that split its trigger is on,
+    // so reach the trigger wherever it currently lives. Asserting the overflow button
+    // exists would pin a viewport-dependent layout detail this test does not own.
+    const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]');
+    await expect(editor.locator('[data-testid="toolbar-undo"]').first()).toBeVisible({
+      timeout: 10_000,
+    });
+
+    const inlineLinkButton = editor.locator('[data-testid="toolbar-link"]').first();
+    let linkButton = inlineLinkButton;
+
+    if (!(await inlineLinkButton.isVisible())) {
+      const moreFormattingButton = editor
+        .locator('button[aria-label="More formatting"]:not(:disabled)')
+        .first();
+      await expect(moreFormattingButton).toBeVisible({ timeout: 10_000 });
+      await moreFormattingButton.click();
+      const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
+      await expect(formattingPopover).toBeVisible();
+      linkButton = formattingPopover.locator('[data-testid="toolbar-link"]').first();
+    }
+
     await expect(linkButton).toBeVisible();
     const triggerBox = await linkButton.boundingBox();
     expect(triggerBox).not.toBeNull();
