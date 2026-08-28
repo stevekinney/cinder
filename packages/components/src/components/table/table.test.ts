@@ -277,8 +277,15 @@ describe('Table sort behavior', () => {
     const chevrons = indicator?.querySelectorAll('svg polyline');
     expect(indicator?.querySelector('svg')).not.toBeNull();
     expect(chevrons?.length).toBe(2);
-    expect(chevrons?.[0]?.getAttribute('points')).toBe('4 6 8 2 12 6');
-    expect(chevrons?.[1]?.getAttribute('points')).toBe('4 10 8 14 12 10');
+    // CIN-127: flat ends 6 viewBox units apart (y=5 and y=11), not 4. Round caps
+    // at stroke-width 2 eat 1 unit off each side of the gap, so a 4-unit spread
+    // left the two marks visually touching at the 12px render size.
+    expect(chevrons?.[0]?.getAttribute('points')).toBe('4 5 8 1 12 5');
+    expect(chevrons?.[1]?.getAttribute('points')).toBe('4 11 8 15 12 11');
+    const upEnd = 5;
+    const downEnd = 11;
+    const capOverhangPerSide = 1;
+    expect(downEnd - upEnd - capOverhangPerSide * 2).toBeGreaterThanOrEqual(4);
   });
 
   test('sortable header cells default to aria-sort="none"', () => {

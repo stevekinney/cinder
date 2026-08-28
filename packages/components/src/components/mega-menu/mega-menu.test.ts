@@ -24,6 +24,29 @@ test('aligns menu text edges and avoids a second active ring', () => {
   );
 });
 
+test('shares one row rhythm between links and submenu triggers', () => {
+  // Both row idioms in a panel (a section's links list and the submenu
+  // opener list) must share the same block padding so a link row and a
+  // submenu-trigger row read as the same row height within one panel.
+  expect(megaMenuCss).toMatch(
+    /\.cinder-mega-menu__link\s*\{[^}]*padding-block:\s*var\(--cinder-space-2\);/,
+  );
+  expect(megaMenuCss).toMatch(
+    /\.cinder-mega-menu__submenu-trigger\s*\{[^}]*padding-block:\s*var\(--cinder-space-2\);/,
+  );
+});
+
+test('active submenu trigger shows fill only, never fill and ring together', () => {
+  const activeRuleMatch = megaMenuCss.match(
+    /\.cinder-mega-menu__submenu-trigger\[data-active='true'\]\s*\{([^}]*)\}/,
+  );
+  expect(activeRuleMatch).not.toBeNull();
+  const activeRuleBody = activeRuleMatch?.[1] ?? '';
+  expect(activeRuleBody).toMatch(/background:\s*var\(--cinder-surface-hover\);/);
+  expect(activeRuleBody).not.toMatch(/box-shadow/);
+  expect(activeRuleBody).not.toMatch(/outline/);
+});
+
 const items = [
   {
     id: 'products',

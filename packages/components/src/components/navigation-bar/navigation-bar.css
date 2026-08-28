@@ -117,6 +117,15 @@
     align-items: center;
     gap: var(--cinder-space-1);
     min-block-size: 4rem;
+    /* `flex: 1 1 0` has no floor on the inline axis: the label's
+       `overflow: hidden` zeroes its min-content contribution, so with enough
+       tabs in a narrow bar the item shrinks well under an accessible tap
+       target even though `min-block-size` already keeps the block axis
+       generous. Pin the inline axis to the same 44px floor used for the
+       drawer handle (drawer.css) and sortable-list drag handle
+       (sortable-list.css) so touch-target-min stays the dominant term on
+       both axes, not just the one that happened to already clear it. */
+    min-inline-size: var(--cinder-touch-target-min);
     padding-block: var(--cinder-space-1);
     padding-inline: var(--cinder-space-2);
     border-bottom: none;
@@ -249,9 +258,33 @@
     inline-size: 100%;
     justify-content: flex-start;
     padding-block: var(--cinder-space-3);
+    /* Every real touch surface in this panel — the tap target itself, not just
+       the visual chrome around it — needs to clear the same 44px floor used
+       for the drawer handle (drawer.css) and sortable-list drag handle
+       (sortable-list.css). navigation-item.css's base `.cinder-navigation-item`
+       rule (outside this file) only sets `min-height: 2rem`, and nothing in
+       this rule overrode it, so a row here rendered ~38px tall from padding
+       and text alone. Pin it explicitly rather than relying on inheriting a
+       floor the shared base rule was never given. */
+    min-block-size: var(--cinder-touch-target-min);
     border-bottom: none;
     border-inline-start: 2px solid transparent;
-    border-radius: var(--cinder-radius-sm);
+    /* Concentric with this panel, not a smaller step off the radius scale.
+       The panel (`.cinder-navigation-bar__items[data-cinder-mobile-panel]`)
+       gets `cinder-_floating-surface`'s `border-radius: var(--cinder-radius-md)`
+       (_floating-surface.css), but that class's own `padding: var(--cinder-space-1)`
+       is overridden by this file's higher-specificity
+       `.cinder-navigation-bar__items[data-cinder-mobile-panel] { padding:
+       var(--cinder-space-2); }` (line 186 above). So the panel's real inset is
+       `--cinder-space-2`, and the row's radius has to be derived from that same
+       pair of tokens — the panel's own radius minus its own inset — not an
+       unrelated scale step like `--cinder-radius-sm`. (See
+       segmented-control.css's `.cinder-segmented-control-option` for the same
+       pattern.) `--cinder-radius-md` (0.5rem) minus `--cinder-space-2` (0.5rem)
+       resolves to 0 here — the row sits flush against the panel's own inner
+       edge, which is the correct concentric result at this particular inset,
+       not a bug. */
+    border-radius: calc(var(--cinder-radius-md) - var(--cinder-space-2));
   }
 
   .cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-visible]

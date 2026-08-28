@@ -44,14 +44,44 @@
   .cinder-time-field__timezone {
     flex: 0 1 14rem;
     min-height: 2.25rem;
-    padding-block: var(--cinder-space-2);
+    /* padding-block matches .cinder-input's space-1-5 (input.css) so the
+       timezone select and its sibling time Input share the same vertical
+       rhythm and read as a matched pair, not two independently-tuned
+       controls that happen to share a row. */
+    padding-block: var(--cinder-space-1-5);
     padding-inline-start: var(--cinder-space-3);
+    /* space-8 (2rem) reserves room for the native caret. This is a native
+       <select> (no `appearance: none`), so the browser itself lays out the
+       arrow glyph in its own reserved region and clips/repositions the
+       selected-option text around it — author padding here is extra
+       breathing room, not what keeps text off the arrow. The longest label
+       shipped anywhere in this component's examples/fixtures is
+       'America/Denver' (14 chars); at --cinder-text-sm that's well inside
+       the 12rem min-inline-size floor even after this end padding and the
+       space-3 start padding are subtracted, so nothing crowds the caret. */
     padding-inline-end: var(--cinder-space-8);
     min-inline-size: 12rem;
+    /* Native <select> elements don't inherit form-control typography by
+       default, so without this the timezone select renders in
+       browser-default type next to an Input rendering --cinder-text-sm —
+       two boxes of matched height, border, and radius, but mismatched
+       type, still don't read as a pair. */
+    font-family: inherit;
+    font-size: var(--cinder-text-sm);
+    line-height: var(--cinder-leading-normal);
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
+    /* Long IANA identifiers (e.g. 'America/Argentina/ComodRivadavia', 33
+       chars) exceed what the fixed 12-14rem box can show. This doesn't
+       reflow the box (that would shift Playwright baselines) — it clips
+       predictably instead of the browser's undefined default clipping, and
+       the matching `title` on the <select> (time-field.svelte) discloses
+       the full value on hover/focus. */
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
   }
 
   .cinder-time-field__timezone:focus-visible {

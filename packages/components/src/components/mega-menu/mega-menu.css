@@ -138,7 +138,7 @@
     text-decoration: none;
     color: inherit;
     border-radius: var(--cinder-radius-sm);
-    padding-block: var(--cinder-space-1);
+    padding-block: var(--cinder-space-2);
     padding-inline: 0;
   }
 

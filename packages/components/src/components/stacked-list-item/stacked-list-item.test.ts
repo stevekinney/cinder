@@ -32,6 +32,33 @@ describe('StackedListItem', () => {
     );
   });
 
+  test('condensed density produces a measurably denser stylesheet than the default', () => {
+    const stylesheet = readFileSync(new URL('./stacked-list-item.css', import.meta.url), 'utf8');
+
+    // The base body-stack gap and the condensed override must resolve to different token values —
+    // otherwise the condensed variant is a no-op that only changes padding.
+    expect(stylesheet).toContain('--cinder-stacked-list-item-body-gap: var(--cinder-space-1);');
+    expect(stylesheet).toContain(
+      "[data-cinder-density='condensed'] {\n    padding: var(--cinder-space-2) var(--cinder-space-3);\n    --cinder-stacked-list-item-body-gap: var(--cinder-space-0-5);",
+    );
+    expect(stylesheet).toContain(
+      'gap: var(--cinder-stacked-list-item-body-gap, var(--cinder-space-1));',
+    );
+
+    // The condensed description/meta line-height must differ from the base --cinder-leading-snug
+    // value the element already inherits — matching it would be a silent no-op.
+    const baseDescriptionLineHeight = stylesheet.match(
+      /__description\s*\{[^}]*line-height:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+    const condensedLineHeightMatch = stylesheet.match(
+      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__description,\s*\n\s*\.cinder-stacked-list-item\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__meta \{\s*\n\s*line-height:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+
+    expect(baseDescriptionLineHeight).toBe('var(--cinder-leading-snug)');
+    expect(condensedLineHeightMatch).toBe('var(--cinder-leading-tight)');
+    expect(condensedLineHeightMatch).not.toBe(baseDescriptionLineHeight);
+  });
+
   test('renders all snippets under their respective class names', () => {
     const { container } = render(StackedListItem, {
       props: {
