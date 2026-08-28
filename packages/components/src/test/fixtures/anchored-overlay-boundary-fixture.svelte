@@ -5,9 +5,10 @@
     open?: boolean;
     size?: boolean;
     arrowVisible?: boolean;
+    lockPlacement?: boolean;
   }
 
-  let { open = true, size = true, arrowVisible = false }: Props = $props();
+  let { open = true, size = true, arrowVisible = false, lockPlacement = false }: Props = $props();
 
   let anchor = $state<HTMLButtonElement | null>(null);
   let panel = $state<HTMLDivElement | null>(null);
@@ -23,6 +24,7 @@
     sizeMaxBlockSize: () => '24rem',
     arrow: () => arrow,
     arrowVisible: () => arrowVisible,
+    lockPlacement: () => lockPlacement,
   });
 </script>
 

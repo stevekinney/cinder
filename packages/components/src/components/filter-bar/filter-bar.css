@@ -6,21 +6,34 @@
    * ======================================== */
 
   .cinder-filter-bar {
+    container-type: inline-size;
+    container-name: cinder-filter-bar;
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
   }
 
-  /* Controls row: search + facet selects in a flex row */
+  /* Controls row: search + facet selects.
+   * Below the container-query breakpoint, controls stack in a single
+   * column. At or above it, controls lay out on a shared grid so facets
+   * on a wrapped row line up under the facets above them instead of each
+   * packing to its own content width the way `flex-wrap` does. The search
+   * track is capped at `20rem` instead of using `1fr` so it no longer
+   * absorbs all remaining row space. */
   .cinder-filter-bar__controls {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
     gap: var(--cinder-space-2);
   }
 
+  @container cinder-filter-bar (min-width: 40rem) {
+    .cinder-filter-bar__controls {
+      grid-template-columns: minmax(14rem, 20rem) repeat(auto-fit, minmax(9rem, max-content));
+    }
+  }
+
   .cinder-filter-bar__search {
-    flex: 1 1 14rem;
     min-inline-size: min(14rem, 100%);
   }
 
@@ -30,7 +43,6 @@
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
-    flex-shrink: 0;
   }
 
   .cinder-filter-bar__facet-label {

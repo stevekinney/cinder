@@ -488,4 +488,49 @@ describe('FilterBar CSS snapshot', () => {
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
     expect(css).toContain('.cinder-filter-bar__select:focus-visible');
   });
+
+  // CIN-335: the controls row used raw `flex-wrap: wrap`, so facets on a
+  // wrapped row packed to their own content width instead of lining up
+  // under the facets above them, and `.cinder-filter-bar__search`'s
+  // `flex: 1 1 14rem` let flex-grow absorb every pixel of leftover row
+  // space. happy-dom does not model `@container` at all (see grid.css's
+  // own doc comment on this), so — like grid.test.ts's container-query
+  // tests — these assert on the raw CSS source rather than computed
+  // layout.
+  test('controls row is driven by a container query, not raw flex-wrap', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    expect(css).toContain('container-type: inline-size;');
+    expect(css).toContain('container-name: cinder-filter-bar;');
+    expect(css).toContain('@container cinder-filter-bar (min-width: 40rem)');
+
+    const controlsRule = css.slice(
+      css.indexOf('.cinder-filter-bar__controls {'),
+      css.indexOf('}', css.indexOf('.cinder-filter-bar__controls {')),
+    );
+    expect(controlsRule).toContain('display: grid;');
+    expect(controlsRule).not.toContain('flex-wrap');
+
+    const containerRule = css.slice(css.indexOf('@container cinder-filter-bar (min-width: 40rem)'));
+    expect(containerRule).toContain('grid-template-columns:');
+    expect(containerRule).toContain('repeat(auto-fit, minmax(9rem, max-content))');
+  });
+
+  test('search field track has a bounded max width instead of flex-grow', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    // The search field's own rule no longer declares a growing `flex`
+    // shorthand — its width now comes from the grid track.
+    const searchRule = css.slice(
+      css.indexOf('.cinder-filter-bar__search {'),
+      css.indexOf('}', css.indexOf('.cinder-filter-bar__search {')),
+    );
+    expect(searchRule).not.toContain('flex:');
+    expect(searchRule).not.toContain('flex-grow');
+
+    // The wide-container grid track caps the search column instead of
+    // handing it an unbounded `1fr`.
+    expect(css).toContain('minmax(14rem, 20rem) repeat(auto-fit, minmax(9rem, max-content))');
+    expect(css).not.toMatch(/grid-template-columns:\s*minmax\([^)]*,\s*1fr\)/);
+  });
 });

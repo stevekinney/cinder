@@ -20,6 +20,24 @@ export type AnchoredOverlayOptions = {
   strategy?: () => 'fixed' | 'absolute';
   /** Constrain collision calculations to the nearest owning overlay. */
   boundary?: () => Element | null | undefined;
+  /**
+   * Resolve the placement once per open session, then hold it.
+   *
+   * `autoUpdate` re-runs positioning whenever the panel resizes, and `flip` makes a
+   * fresh fit decision each time. For a surface whose height tracks its content — a
+   * filtered result list, say — that means typing can flip the panel across its anchor
+   * and back as results narrow and widen. Locking keeps the first resolved placement,
+   * so the anchored edge stays put while the list grows and shrinks.
+   *
+   * Collision handling still applies on open: the first resolve flips normally if the
+   * preferred side does not fit. The trade is that a locked panel will not re-flip if
+   * the page scrolls while it is open, so pair this with `size` to let a panel that
+   * runs out of room shrink and scroll rather than overflow the viewport.
+   *
+   * Intended for caret-anchored filtering surfaces. Off by default: every other
+   * anchored overlay keeps floating-ui's continuous flip behaviour.
+   */
+  lockPlacement?: () => boolean;
 };
 
 const DEFAULT_PLACEMENT: Placement = 'bottom-start';
@@ -185,8 +203,11 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const widthMode = options.widthMode?.() ?? 'content';
     const strategyOverride = options.strategy?.();
     const boundary = options.boundary?.() ?? undefined;
+    const lockPlacement = options.lockPlacement?.() ?? false;
     let cancelled = false;
     let generation = 0;
+    // Scoped to this effect run, so it resets whenever the overlay reopens.
+    let lockedPlacement: Placement | undefined;
     let stopAutoUpdate: (() => void) | undefined;
     let boundaryResizeObserver: ResizeObserver | undefined;
 
@@ -210,10 +231,13 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           availableHeightStyle = '';
           panel.style.removeProperty('max-block-size');
         }
-        const middleware: Middleware[] = [
-          offsetMiddleware(offset),
-          flip(boundary ? { boundary } : undefined),
-        ];
+        // Once a placement is locked it has to be passed as the preferred placement
+        // AND `flip` has to be dropped, since flip would just re-decide and override it.
+        const activePlacement = lockedPlacement ?? placement;
+        const middleware: Middleware[] = [offsetMiddleware(offset)];
+        if (lockedPlacement === undefined) {
+          middleware.push(flip(boundary ? { boundary } : undefined));
+        }
         if (sizeEnabled) {
           middleware.push(
             sizeMiddleware({
@@ -245,7 +269,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
         const strategy = strategyOverride ?? (panel.closest('dialog') ? 'absolute' : 'fixed');
         try {
           result = await computePosition(anchor, panel, {
-            placement,
+            placement: activePlacement,
             middleware,
             strategy,
           });
@@ -254,7 +278,7 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           positionReady = false;
           positionStyle = '';
           arrowStyle = '';
-          resolvedPlacement = placement;
+          resolvedPlacement = activePlacement;
           return;
         }
         if (cancelled || currentGeneration !== generation) return;
@@ -270,6 +294,9 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
           .filter(Boolean)
           .join(' ');
         resolvedPlacement = result.placement;
+        if (lockPlacement && lockedPlacement === undefined) {
+          lockedPlacement = result.placement;
+        }
         arrowStyle = arrowVisible ? getArrowStyle(result.middlewareData.arrow) : '';
         positionReady = true;
       };

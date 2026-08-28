@@ -98,21 +98,6 @@
     align-items: center;
   }
 
-  .cinder-kanban-board__column-handle,
-  .cinder-kanban-board__collapse {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 2rem;
-    block-size: 2rem;
-    padding: 0;
-    border: 1px solid var(--cinder-border-muted);
-    border-radius: var(--cinder-radius-sm);
-    background: var(--cinder-surface);
-    color: var(--cinder-text-muted);
-    cursor: pointer;
-  }
-
   .cinder-kanban-board__column-handle svg {
     fill: currentcolor;
   }
@@ -123,34 +108,6 @@
 
   .cinder-kanban-board__column[data-cinder-expanded] .cinder-kanban-board__collapse-chevron {
     transform: rotate(180deg);
-  }
-
-  .cinder-kanban-board__column-handle:focus-visible,
-  .cinder-kanban-board__collapse:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow:
-      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
-      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width)) var(--cinder-ring-color);
-  }
-
-  @media (forced-colors: active) {
-    .cinder-kanban-board__column-handle:focus-visible,
-    .cinder-kanban-board__collapse:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      /* 3px separates the outline from ButtonBorder (which renders in forced-colors
-         on all bordered controls and shares the ButtonText color family in HCM);
-         at 2px the ring and border can visually merge. */
-      outline-offset: 3px;
-      box-shadow: none;
-    }
-  }
-
-  @media (hover: hover) {
-    .cinder-kanban-board__column-handle:hover,
-    .cinder-kanban-board__collapse:hover {
-      background: var(--cinder-surface-hover);
-      color: var(--cinder-text-default);
-    }
   }
 
   .cinder-kanban-board__cards {

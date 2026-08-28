@@ -280,3 +280,85 @@ describe('anchored overlay width styles', () => {
     expect(style).not.toContain('right:');
   });
 });
+
+describe('anchored overlay placement locking', () => {
+  // `autoUpdate` re-runs positioning whenever the panel resizes. For a surface whose
+  // height tracks its content — CommandMenu's filtered list — that means every
+  // keystroke gives `flip` a fresh chance to move the panel across its anchor.
+  // These tests drive that second recompute directly by replaying the callback
+  // `autoUpdate` was handed, which is the same path a real resize takes.
+  function replayPositioningUpdate(): Promise<void> {
+    const update = autoUpdateSpy.mock.calls[0]?.[2] as (() => void | Promise<void>) | undefined;
+    if (update === undefined) {
+      throw new Error('autoUpdate was never called, so there is no update callback to replay');
+    }
+    return Promise.resolve(update());
+  }
+
+  function middlewareNames(callIndex: number): string[] {
+    const options = computePositionSpy.mock.calls[callIndex]?.[2] as
+      | { middleware?: Array<{ name?: string }> }
+      | undefined;
+    return (options?.middleware ?? []).map((entry) => entry.name ?? '');
+  }
+
+  function requestedPlacement(callIndex: number): string | undefined {
+    const options = computePositionSpy.mock.calls[callIndex]?.[2] as
+      | { placement?: string }
+      | undefined;
+    return options?.placement;
+  }
+
+  test('holds the first resolved placement across later repositions when locked', async () => {
+    render(AnchoredOverlayBoundaryFixture, { lockPlacement: true });
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    // The opening resolve still negotiates collisions normally.
+    expect(middlewareNames(0)).toContain('flip');
+
+    await replayPositioningUpdate();
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    // Afterwards the resolved placement is requested outright and `flip` is dropped.
+    // Both halves matter: flip would override an explicitly requested placement, so
+    // passing the placement without removing flip would not actually hold anything.
+    expect(requestedPlacement(1)).toBe('bottom-start');
+    expect(middlewareNames(1)).not.toContain('flip');
+  });
+
+  test('keeps re-deciding placement on every reposition when not locked', async () => {
+    render(AnchoredOverlayBoundaryFixture);
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    await replayPositioningUpdate();
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    // Default behaviour is unchanged for every other anchored overlay in the library.
+    expect(middlewareNames(0)).toContain('flip');
+    expect(middlewareNames(1)).toContain('flip');
+  });
+
+  test('still constrains the panel to the space available on the locked side', async () => {
+    // Locking gives up the flip rescue, so `size` has to carry the degradation: a panel
+    // that no longer fits shrinks and scrolls rather than running off the viewport.
+    render(AnchoredOverlayBoundaryFixture, { lockPlacement: true, size: true });
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+
+    await replayPositioningUpdate();
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    expect(middlewareNames(1)).toContain('size');
+  });
+});
