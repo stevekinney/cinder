@@ -144,10 +144,20 @@ describe('Footer', () => {
     expect(footerToken).not.toBe(groupsToken);
     expect(footerToken).not.toBe(listToken);
 
-    // The unrelated legal row keeps its own rule + padding boundary too.
-    const legalBlock = css.match(/\.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
-    expect(legalBlock).toContain('border-top: 1px solid var(--cinder-border-muted)');
-    expect(legalBlock).toContain('padding-top: var(--cinder-space-2)');
+    // The main-to-legal boundary keeps its own rule + padding — but scoped to that
+    // boundary, not to the legal row itself. A legal-only footer omits
+    // `.cinder-footer__main` entirely, and an unconditional border there would draw a
+    // divider above the only content in the footer.
+    const boundaryBlock =
+      css.match(/\.cinder-footer__main \+ \.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(boundaryBlock).toContain('border-top: 1px solid var(--cinder-border-muted)');
+    expect(boundaryBlock).toContain('padding-top: var(--cinder-space-2)');
+
+    // And the bare legal rule must NOT carry them, or the sibling scoping is moot.
+    const legalBlock = css.match(/\n\s*\.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(legalBlock).not.toBe('');
+    expect(legalBlock).not.toContain('border-top:');
+    expect(legalBlock).not.toContain('padding-top:');
   });
 
   test('a legal-only footer omits the main wrapper entirely', () => {
@@ -164,6 +174,13 @@ describe('Footer', () => {
     expect(container.querySelector('.cinder-footer__main')).toBeNull();
     expect(container.querySelector('.cinder-footer__legal')).not.toBeNull();
     expect(container.querySelector('.cinder-footer__legal')?.textContent).toContain('Privacy');
+
+    // And the legal row must not be preceded by a `.cinder-footer__main` sibling, which
+    // is what the separator rule keys on. Without a main region there is nothing above
+    // the legal row to separate it FROM, so drawing a divider there would double up with
+    // the footer's own top border.
+    const legal = container.querySelector('.cinder-footer__legal');
+    expect(legal?.previousElementSibling).toBeNull();
   });
 
   test('the main wrapper renders as soon as any of its three sources is present', () => {

@@ -133,10 +133,25 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    padding-top: var(--cinder-space-2);
-    border-top: 1px solid var(--cinder-border-muted);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
+  }
+
+  /*
+   * The rule ABOVE the legal row marks the main-to-legal boundary, so it belongs to
+   * that boundary rather than to the legal row itself.
+   *
+   * `.cinder-footer__main` is now omitted entirely when a consumer supplies only
+   * `copyright`/`legalLinks` — a valid combination. Left on `.cinder-footer__legal`
+   * unconditionally, this border drew a divider above the ONLY content in that footer,
+   * doubling up with the root's own top border for no reason: a separator separating
+   * nothing.
+   *
+   * The adjacent-sibling selector ties it to the boundary it actually describes.
+   */
+  .cinder-footer__main + .cinder-footer__legal {
+    padding-top: var(--cinder-space-2);
+    border-top: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-footer__legal-links {

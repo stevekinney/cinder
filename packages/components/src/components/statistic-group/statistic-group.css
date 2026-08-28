@@ -67,13 +67,18 @@
    * A divider belongs BETWEEN two adjacent cells, so a divider rule is only correct
    * where the effective column count is knowable.
    *
-   * For the fixed counts it is, and it is simply the declared count at every width.
-   * The collapse rules above (30rem, 18rem) look like they change it, but they do NOT
-   * apply: their subject is `.cinder-statistic-group`, which is itself the named query
-   * container, and an element is never its own container -- a container query resolves
-   * against the nearest ANCESTOR container. Those rules are inert as written. That is a
-   * pre-existing defect in the layout, tracked separately; fixing it needs a wrapper
-   * element, which is a markup change this PR is not making.
+   * For the fixed counts it is the declared count, at every width, for a STANDALONE
+   * group. The collapse rules above (30rem, 18rem) look like they change that, but for
+   * a standalone group they never fire: their subject is `.cinder-statistic-group`,
+   * which is itself the named query container, and an element is never its own
+   * container -- a container query resolves against the nearest ANCESTOR container.
+   *
+   * They are not universally inert, though: a group NESTED inside another
+   * StatisticGroup does have an ancestor container, so there the collapse fires and
+   * resolves against the OUTER group's width. See the note on the row-end rules below
+   * for what that means for dividers. Either way this is a pre-existing layout defect,
+   * tracked separately; fixing it needs a wrapper element so the group can query
+   * something other than itself, which is a markup change this PR is not making.
    *
    * What matters here is that the dividers must describe the grid that actually
    * renders. An earlier revision of this block mirrored the collapse thresholds, so at
