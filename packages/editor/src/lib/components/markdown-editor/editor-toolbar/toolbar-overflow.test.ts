@@ -65,7 +65,7 @@ describe('computeToolbarOverflow', () => {
   it('charges one flex gap per inline group so raw widths alone cannot pass as "fits"', () => {
     // Raw widths sum to 90 (30+30+30), which would fit in 95 with no gap
     // accounting at all -- exactly the bug under test. With a 10px gap
-    // charged per group (30 inline gaps: 3 * 10 = 30), the real inline
+    // charged per group (3 inline gaps: 3 * 10 = 30), the real inline
     // footprint is 120, which does not fit in 95.
     const threeGroups: ToolbarOverflowGroup[] = [
       { id: 'a', width: 30 },
