@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "chat"
+    "matrix-chart",
+    "transfer-list"
   ],
-  "renderedSourceSha": "aeeefa67ecfe904e36b7fc8e2797f3f7a2c95bc8",
+  "renderedSourceSha": "5a28b37e540a48a4c3939adf13847d37051a8894",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

@@ -32,6 +32,7 @@
 
   .cinder-matrix-chart__cell[data-cinder-active] {
     filter: brightness(1.15);
+    stroke-width: 3;
   }
 
   .cinder-matrix-chart__cell-group {

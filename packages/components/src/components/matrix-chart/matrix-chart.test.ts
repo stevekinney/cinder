@@ -437,6 +437,30 @@ describe('MatrixChart', () => {
     expect(cssText).toContain('.cinder-matrix-chart__cell[data-cinder-active]');
   });
 
+  test('the active-cell rule carries a non-color channel, not brightness alone (CIN-144)', async () => {
+    const cssText = await Bun.file(new URL('./matrix-chart.css', import.meta.url)).text();
+    const activeRuleMatch = cssText.match(
+      /\.cinder-matrix-chart__cell\[data-cinder-active\]\s*\{([^}]*)\}/,
+    );
+    expect(activeRuleMatch).not.toBeNull();
+    const activeRuleBody = activeRuleMatch?.[1] ?? '';
+    // Brightness alone is a color/luminance-only channel and fails WCAG's
+    // non-color-reliance guidance for conveying state. The active rule must
+    // also change stroke-width so the cell is distinguishable without color.
+    expect(activeRuleBody).toContain('stroke-width: 3');
+
+    // The active stroke-width must be strictly thicker than the cell's base
+    // stroke-width, or the "channel" is a no-op.
+    const baseRuleMatch = cssText.match(/\.cinder-matrix-chart__cell\s*\{([^}]*)\}/);
+    expect(baseRuleMatch).not.toBeNull();
+    const baseStrokeWidthMatch = baseRuleMatch?.[1]?.match(/stroke-width:\s*([\d.]+)/);
+    expect(baseStrokeWidthMatch).not.toBeNull();
+    const baseStrokeWidth = Number(baseStrokeWidthMatch?.[1]);
+    const activeStrokeWidthMatch = activeRuleBody.match(/stroke-width:\s*([\d.]+)/);
+    const activeStrokeWidth = Number(activeStrokeWidthMatch?.[1]);
+    expect(activeStrokeWidth).toBeGreaterThan(baseStrokeWidth);
+  });
+
   test('formats every cell label with one hoisted Intl.NumberFormat instance (#1186 row 6)', () => {
     const numberFormatSpy = spyOn(Intl, 'NumberFormat');
 
