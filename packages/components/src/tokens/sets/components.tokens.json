@@ -1106,7 +1106,7 @@
     }
   },
   "marquee": {
-    "$description": "Marquee layout/timing tokens. `--cinder-marquee-play-state` is deliberately NOT modeled here -- it is the component's own hover/focus/manual-pause/ready state channel (a CSS custom property used as lightweight state wiring, not a theming knob), and its four declarations in marquee.css are marked `@runtime-state`.",
+    "$description": "Marquee layout/timing tokens. The play-state channel is not modeled here: it is the component's own hover/focus/manual-pause/ready state wiring, not a theming knob, and was renamed from the public `--cinder-marquee-play-state` to the private `--_cinder-marquee-play-state` (see marquee.css) so its naming honestly reflects that it is internal implementation state, not part of the public token contract.",
     "duration": {
       "$type": "duration",
       "$value": {
