@@ -645,6 +645,19 @@ function toTableCell(text: string): string {
     .replace(/(\\*)\|/g, (_match, backslashes: string) => `${backslashes}${backslashes}\\|`);
 }
 
+// Known gap, tracked in CIN-488: this pipe-escaping is correct for the plain-text
+// `description` column, but `renderDocTable` below also runs the `cssProperty`
+// and `value` columns through it before wrapping them in a code span
+// (`toCodeSpan`). A pipe inside a code span never needs escaping (GFM table
+// parsers respect code-span boundaries when splitting on `|`), and escapes
+// aren't interpreted inside one -- so the inserted backslashes render as
+// LITERAL characters, corrupting a value like `foo\|bar` into a visible
+// `foo\\\|bar`. Deferred rather than reworked this late in review: fixing it
+// means splitting this function's newline-normalization (shared) from its
+// pipe-escaping (description-only) and updating `tokens-doc-drift.test.ts`'s
+// decoder to match; nothing in the real corpus contains a `\` or `|` in any
+// value today.
+
 export async function renderDocTable(
   section: DocSection,
   baseIndex: Map<string, CorpusEntry>,
