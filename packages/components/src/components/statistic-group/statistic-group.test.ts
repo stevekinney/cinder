@@ -150,10 +150,16 @@ describe('StatisticGroup', () => {
     // while the grid still showed its full column count. With the thresholds gone,
     // `nth-child(Nn)` needs no width bands, and any reintroduced `@container` in this
     // section would be reintroducing the mismatch.
-    const dividerSection = css.slice(
-      css.indexOf('default-variant dividers'),
-      css.indexOf('variant: cards'),
-    );
+    // Assert the sentinels resolve before slicing between them. Unchecked, a renamed
+    // marker gives indexOf -1, and the resulting slice is an unrelated fragment that
+    // trivially contains no '@container' -- the guard would pass for the wrong reason,
+    // which is the exact failure mode it exists to prevent.
+    const sectionStart = css.indexOf('default-variant dividers');
+    const sectionEnd = css.indexOf('variant: cards');
+    expect(sectionStart).toBeGreaterThan(-1);
+    expect(sectionEnd).toBeGreaterThan(sectionStart);
+
+    const dividerSection = css.slice(sectionStart, sectionEnd);
     expect(dividerSection).not.toContain('@container');
   });
 

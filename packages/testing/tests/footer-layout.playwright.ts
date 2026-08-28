@@ -16,6 +16,8 @@ test.describe('Footer responsive layout', () => {
         <style>
           :root {
             --cinder-space-2: 0.5rem;
+          --cinder-space-3: 0.75rem;
+            --cinder-space-3: 0.75rem;
             --cinder-space-4: 1rem;
             --cinder-space-6: 1.5rem;
             /* This fixture inlines its own token values rather than loading

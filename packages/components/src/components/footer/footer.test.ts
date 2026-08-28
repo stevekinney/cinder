@@ -106,7 +106,10 @@ describe('Footer', () => {
       // here grows a `:where(...)`, an attribute matcher, or a `+`/`~` combinator.
       const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
       const block = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1];
-      const token = block?.match(/gap:\s*var\((--cinder-space-\d+)\)/)?.[1];
+      // Tolerate the fallback form too -- `var(--cinder-space-4, 1rem)` names the same
+      // token and expresses the same hierarchy, so matching only the bare form would
+      // fail this test on a change that is not a regression.
+      const token = block?.match(/gap:\s*var\(\s*(--cinder-space-\d+)\s*[,)]/)?.[1];
       if (!token) {
         throw new Error(`Expected a --cinder-space-* gap token on ${selector}`);
       }
