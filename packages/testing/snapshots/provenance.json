@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "chat"
+    "diff-viewer",
+    "markdown-editor",
+    "review-editor"
   ],
-  "renderedSourceSha": "aeeefa67ecfe904e36b7fc8e2797f3f7a2c95bc8",
+  "renderedSourceSha": "bd5553cea39236a4071987310caa5996fc0b0671",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
