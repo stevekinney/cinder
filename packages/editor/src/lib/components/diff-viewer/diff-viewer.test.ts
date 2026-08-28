@@ -37,6 +37,8 @@ const { computeLineDiff, computeWordChanges, getDiffStats, groupIntoHunks } =
 const { default: DiffLine } = await import('./diff-line.svelte');
 const { default: DiffToolbar } = await import('./diff-toolbar.svelte');
 const { default: DiffFrontMatter } = await import('./diff-front-matter.svelte');
+const { generateUnifiedDiff, formatComputedUnifiedDiff } =
+  await import('../../export/unified-diff.ts');
 
 type DiffToolbarState = {
   tier: 'realtime' | 'debounced' | 'manual';
@@ -111,6 +113,48 @@ describe('DiffViewer: identical input (basic mount)', () => {
   });
 });
 
+describe('DiffToolbar: [ / ] shortcut hints (CIN-334)', () => {
+  test('the Previous/Next buttons carry the shortcut in their own accessible name', () => {
+    const { container } = render(DiffToolbar, {
+      stats: { added: 1, removed: 0, modified: 0 },
+      changeCount: 2,
+      currentChangeIndex: 0,
+      hasChanges: true,
+    });
+
+    const buttons = Array.from(container.querySelectorAll('button'));
+    const previous = buttons.find((button) =>
+      button.getAttribute('aria-label')?.startsWith('Previous change'),
+    );
+    const next = buttons.find((button) =>
+      button.getAttribute('aria-label')?.startsWith('Next change'),
+    );
+
+    expect(previous?.getAttribute('aria-label')).toBe('Previous change ([)');
+    expect(next?.getAttribute('aria-label')).toBe('Next change (])');
+  });
+
+  test('the [ / ] keycaps are visual-only, annotating the buttons rather than a separate description', () => {
+    const { container } = render(DiffToolbar, {
+      stats: { added: 1, removed: 0, modified: 0 },
+      changeCount: 2,
+      currentChangeIndex: 0,
+      hasChanges: true,
+    });
+
+    // No leftover standalone "shortcuts" group with its own description.
+    expect(container.querySelector('.shortcuts')).toBeNull();
+
+    const kbds = Array.from(container.querySelectorAll('kbd'));
+    expect(kbds).toHaveLength(2);
+    expect(kbds.map((kbd) => kbd.textContent)).toEqual(['[', ']']);
+    // Purely decorative: the accessible name lives on the button, not here.
+    for (const kbd of kbds) {
+      expect(kbd.getAttribute('aria-hidden')).toBe('true');
+    }
+  });
+});
+
 describe('DiffViewer: unified diff clipboard handling', () => {
   test('handles clipboard rejection and clears the prior reset timer', async () => {
     const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
@@ -120,6 +164,59 @@ describe('DiffViewer: unified diff clipboard handling', () => {
     );
     expect(source).toContain('window.clearTimeout(copyStatusResetTimer)');
     expect(source).toContain('onDestroy(() => {');
+  });
+
+  test('copy is always a full-document unified diff, independent of viewMode (CIN-134)', async () => {
+    const source = await Bun.file(new URL('./diff-viewer.svelte', import.meta.url)).text();
+
+    // The decision is recorded as a comment, not just left implicit.
+    expect(source).toMatch(/Decision \(CIN-134\)[\s\S]*always a full-document unified/);
+
+    // The function body itself never branches on viewMode: extract it and
+    // assert it only reads displayedOriginal/displayedCurrent.
+    const match = source.match(
+      /async function copyUnifiedDiff\(\): Promise<void> \{[\s\S]*?\n  \}\n/,
+    );
+    expect(match).not.toBeNull();
+    const body = match?.[0] ?? '';
+    expect(body).not.toContain('viewMode');
+    expect(body).toContain('displayedOriginal');
+    expect(body).toContain('displayedCurrent');
+  });
+
+  test('the realtime/debounced-tier generator (generateUnifiedDiff) emits real unified-diff syntax', () => {
+    const diff = generateUnifiedDiff(
+      {
+        schemaVersion: 1,
+        content: 'first\nSECOND CHANGED\nthird',
+        original: 'first\nsecond\nthird',
+        threads: [],
+        updatedAt: '',
+      },
+      { normalizeInputs: false },
+    ).diff;
+
+    expect(diff).toContain('--- a/document.md');
+    expect(diff).toContain('+++ b/document.md');
+    expect(diff).toMatch(/@@ -\d+,\d+ \+\d+,\d+ @@/);
+    expect(diff).toContain('-second');
+    expect(diff).toContain('+SECOND CHANGED');
+  });
+
+  test('the manual-tier generator (formatComputedUnifiedDiff) emits real unified-diff syntax from reused hunks', () => {
+    const diffs = computeLineDiff('first\nsecond\nthird', 'first\nSECOND CHANGED\nthird');
+    const hunks = groupIntoHunks(diffs);
+
+    const diff = formatComputedUnifiedDiff(hunks, {
+      original: 'first\nsecond\nthird',
+      current: 'first\nSECOND CHANGED\nthird',
+    });
+
+    expect(diff).toContain('--- a/document.md');
+    expect(diff).toContain('+++ b/document.md');
+    expect(diff).toMatch(/@@ -\d+,\d+ \+\d+,\d+ @@/);
+    expect(diff).toContain('-second');
+    expect(diff).toContain('+SECOND CHANGED');
   });
 });
 

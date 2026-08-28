@@ -167,19 +167,22 @@
     {#if hasChanges}
       {#if changeCount > 0}
         <div class="navigation">
-          <Button variant="ghost" size="xs" onclick={onjumpprevious} aria-label="Previous change">
+          <Button
+            variant="ghost"
+            size="xs"
+            onclick={onjumpprevious}
+            aria-label="Previous change ([)"
+          >
             <ChevronLeft class="cinder-icon-sm" />
           </Button>
+          <Kbd label="[" size="sm" aria-hidden="true" class="nav-kbd" />
           <span class="change-counter">
             {currentChangeIndex >= 0 ? currentChangeIndex + 1 : '-'} / {changeCount}
           </span>
-          <Button variant="ghost" size="xs" onclick={onjumpnext} aria-label="Next change">
+          <Kbd label="]" size="sm" aria-hidden="true" class="nav-kbd" />
+          <Button variant="ghost" size="xs" onclick={onjumpnext} aria-label="Next change (])">
             <ChevronRight class="cinder-icon-sm" />
           </Button>
-        </div>
-        <div class="shortcuts">
-          <Kbd label="[" />
-          <Kbd label="]" />
         </div>
       {:else}
         <!-- Only front matter changes, no body navigation available -->
@@ -193,6 +196,14 @@
 
 <style>
   .diff-toolbar {
+    /*
+     * The keycap visibility rule below reacts to how much room THIS toolbar
+     * has, not to how wide the viewport is — a narrow DiffViewer in a wide
+     * window needs the same treatment as a narrow window. RESPONSIVE-POLICY.md
+     * requires @container for that, and platform:audit enforces it.
+     */
+    container-type: inline-size;
+    container-name: cinder-diff-toolbar;
     display: flex;
     flex-wrap: wrap;
     align-items: center;
@@ -247,20 +258,28 @@
     text-align: center;
   }
 
-  .shortcuts {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-1);
-  }
-
   .front-matter-only-hint {
     font-size: var(--cinder-text-xs);
     color: var(--cinder-text-muted);
   }
 
-  @media (max-width: 480px) {
-    .shortcuts {
-      display: none;
+  /*
+   * The "[" / "]" keycaps annotate the Previous/Next buttons (each button's
+   * own aria-label already carries the accessible description, e.g.
+   * "Previous change ([)"), so the keycaps themselves are aria-hidden and
+   * purely visual. They drop out when the toolbar itself is cramped, without
+   * touching the buttons, which stay visible at every width. `:global()` is
+   * required because `Kbd`'s `class` prop lands on cinder's own scoped
+   * `<kbd>` element, not this file's style scope (same pattern as
+   * `.stat-badge` above).
+   */
+  :global(.nav-kbd) {
+    display: none;
+  }
+
+  @container cinder-diff-toolbar (min-width: 30rem) {
+    :global(.nav-kbd) {
+      display: inline-flex;
     }
   }
 </style>

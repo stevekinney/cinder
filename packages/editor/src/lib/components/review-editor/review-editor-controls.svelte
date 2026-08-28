@@ -65,6 +65,7 @@
   import Segment from '@lostgradient/cinder/segment';
   import SegmentedControl from '@lostgradient/cinder/segmented-control';
   import DiffStatistics from '@lostgradient/cinder/diff-statistics';
+  import Toolbar from '@lostgradient/cinder/toolbar';
   import {
     FileText,
     GitBranch,
@@ -200,22 +201,48 @@
 
     {#if activeView === 'diff'}
       <div class="controls-separator" aria-hidden="true"></div>
-      <SegmentedControl
-        id="{id}-diff-view-mode"
-        selectionMode="single"
-        size="sm"
-        density="toolbar"
-        label="Diff view mode"
-        labelVisible={false}
-        bind:value={diffViewMode}
-      >
-        <Segment value="unified">Unified</Segment>
-        <Segment value="final">Final</Segment>
-        <Segment value="original">Original</Segment>
-      </SegmentedControl>
+      <!--
+        `SegmentedControl` here has no `variant="tablist"`, so it defaults to
+        `variant="radiogroup"` (see segmented-control.svelte) — a `radiogroup`,
+        unlike a `tablist`, is not forbidden inside `toolbar`. Its own segments
+        already carry a roving tabindex (only the active one is tabbable), so
+        `<Toolbar>` sees a single focusable item here and defers arrow-key
+        handling to the radiogroup's own handler — matching how
+        `@lostgradient/cinder/toolbar`'s own "Toolbar with groups" example
+        wraps a SegmentedControl.
+      -->
+      <Toolbar aria-label="Diff view controls">
+        <SegmentedControl
+          id="{id}-diff-view-mode"
+          selectionMode="single"
+          size="sm"
+          density="toolbar"
+          label="Diff view mode"
+          labelVisible={false}
+          bind:value={diffViewMode}
+        >
+          <Segment value="unified">Unified</Segment>
+          <Segment value="final">Final</Segment>
+          <Segment value="original">Original</Segment>
+        </SegmentedControl>
+      </Toolbar>
     {/if}
   </div>
 
+  <!--
+    NOT wrapped in `<Toolbar>`, despite being a plausible candidate (none of
+    these is a tablist or a toolbar, so nesting would be ARIA-valid): mounting
+    `<Toolbar>` with a leading `{#if}` block as its first child silently
+    drops every sibling that follows the block from the rendered DOM — no
+    thrown error, reproduced in isolation, independent of the `{#if}`
+    condition's truthiness. Revert All is exactly that leading `{#if}`, so
+    wrapping this cluster silently ate the comments-toggle button and the
+    trailing export trigger. This is a defect in
+    `packages/components/src/components/toolbar/toolbar.svelte` (outside this
+    task's `review-editor/` scope) — reported, not fixed here. Leaving this
+    cluster as plain buttons in ordinary Tab order until that's fixed
+    upstream.
+  -->
   <div class="controls-trailing">
     {#if activeView === 'diff' && hasContentChanges && !readonly}
       <Button

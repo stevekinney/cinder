@@ -327,6 +327,13 @@
 
   let copyStatus = $state<'idle' | 'copied' | 'failed'>('idle');
   let copyStatusResetTimer: number | undefined;
+  // Decision (CIN-134): copy is deliberately always a full-document unified
+  // diff of `displayedOriginal` vs `displayedCurrent`, independent of the
+  // toolbar's current `viewMode`. Switching to "Final" or "Original" only
+  // changes which lines the viewer renders — it does not scope what gets
+  // copied. Do not add a `viewMode` branch here without re-litigating this
+  // decision with the team; the source issue's own lean was "unified is
+  // probably right."
   async function copyUnifiedDiff(): Promise<void> {
     if (diffState.tier === 'manual' && (diffState.isStale || diffState.isComputing)) {
       copyStatus = 'failed';
