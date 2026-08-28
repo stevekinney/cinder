@@ -1919,11 +1919,15 @@ describe('CIN-469 finding 4: a $root JSON Pointer alias normalizes like a group.
     expect(resolveAlias('#/$root/$value', baseIndex)).toBe('var(--test-document-root)');
   });
 
-  test('#/group/$root with no trailing /$value is left to fail the lookup, not silently normalized', () => {
-    // Unlike the /$value form above, a bare `#/group/$root` names the token
-    // OBJECT (resolve.ts resolves it as such), not its `$value` -- normalizing
-    // it here would make the generator accept a shape tokens:validate does not
-    // treat as a whole-token value alias.
+  test('a bare #/group/$root (no trailing /$value) resolves the same way as the /$value form', () => {
+    // resolve.ts's own resolveReference extracts $value for a bare
+    // `#/group/$root` too -- "a bare `#/group/$root` alias names the root
+    // token's whole identity and must extract $value, exactly like the
+    // ordinary whole-token case" (see resolve.ts's comment on this exact
+    // redirect, and resolve.test.ts's "resolves a $ref alias that targets a
+    // group root token", which asserts `$ref: '#/group/$root'` resolves
+    // successfully). `wholeTokenIndexPath` matches that: both forms
+    // normalize to the same indexed path.
     const baseIndex = new Map<string, CorpusEntry>([
       [
         'group',
@@ -1937,9 +1941,7 @@ describe('CIN-469 finding 4: a $root JSON Pointer alias normalizes like a group.
         },
       ],
     ]);
-    expect(() => resolveAlias('#/group/$root', baseIndex)).toThrow(
-      /does not resolve to a base token/,
-    );
+    expect(resolveAlias('#/group/$root', baseIndex)).toBe('var(--test-group-root)');
   });
 });
 
