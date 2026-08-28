@@ -105,6 +105,9 @@
      */
     overflow-x: auto;
     overscroll-behavior-inline: contain;
+    /* Matches data-grid/data-table/table: keeps iOS momentum scrolling on the now
+       horizontally scrollable tab row. */
+    -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
 
     /*
