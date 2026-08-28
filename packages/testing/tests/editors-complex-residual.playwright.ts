@@ -338,7 +338,11 @@ test.describe('markdown link popover', () => {
     // the LINK popover anchors, not about which side of that split its trigger is on,
     // so reach the trigger wherever it currently lives. Asserting the overflow button
     // exists would pin a viewport-dependent layout detail this test does not own.
-    const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]');
+    // `.first()`: this page mounts more than one MarkdownEditor, so asserting on the
+    // bare locator is a strict-mode violation. The previous wait dodged that by only
+    // ever calling `.first()` on descendants; scoping the root itself is both narrower
+    // and deterministic about which editor the rest of the test measures.
+    const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]').first();
     await expect(editor).toBeVisible();
 
     const inlineLinkButton = editor.locator('[data-testid="toolbar-link"]').first();
