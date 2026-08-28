@@ -494,6 +494,161 @@
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   /* Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable. */
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+  /* Gap between the trigger's disclosure icon and label. */
+  --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
+  /* Trigger block padding. */
+  --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
+  /* Trigger inline padding. */
+  --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
+  /* Trigger label font size. */
+  --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
+  /* Trigger label font weight. */
+  --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
+  /* Panel content padding, block-start edge. */
+  --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
+  /* Panel content padding, block-end edge. */
+  --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
+  /* Panel content inline padding. */
+  --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
+  /* Panel content font size. */
+  --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
+  /* Panel content line height. */
+  --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
+  /* Row block padding (default density). */
+  --cinder-action-row-padding-block: var(--cinder-space-3);
+  /* Row inline padding (default density). */
+  --cinder-action-row-padding-inline: var(--cinder-space-4);
+  /* Grid column gap between leading/body/trailing regions. */
+  --cinder-action-row-layout-column-gap: var(--cinder-space-3);
+  /* Grid row gap between leading/body/trailing regions. */
+  --cinder-action-row-layout-row-gap: var(--cinder-space-2);
+  /* Gap between title, description, and meta lines. */
+  --cinder-action-row-body-gap: var(--cinder-space-1);
+  /* Title font size. */
+  --cinder-action-row-title-font-size: var(--cinder-text-sm);
+  /* Description font size. */
+  --cinder-action-row-description-font-size: var(--cinder-text-sm);
+  /* Meta line font size. */
+  --cinder-action-row-meta-font-size: var(--cinder-text-xs);
+  /* Gap between items in the trailing region. */
+  --cinder-action-row-trailing-gap: var(--cinder-space-2);
+  /* Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only. */
+  --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
+  /* Horizontal overlap between stacked avatars. */
+  --cinder-avatar-group-overlap: var(--cinder-space-3);
+  /* Horizontal bleed a card's mobile layout extends past its container on each side. */
+  --cinder-card-mobile-bleed: var(--cinder-space-4);
+  /* Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. */
+  --cinder-carousel-slide-size: 100%;
+  /* Gap between slides. */
+  --cinder-carousel-gap: var(--cinder-space-3);
+  /* Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. */
+  --cinder-carousel-aspect-ratio: 16 / 9;
+  /* Pagination dot hit-target size. */
+  --cinder-carousel-dot-size: 2.75rem;
+  /* Code surface background. Light arm MUST stay pure `surface-raised` (not `surface-inset`) -- Shiki's github-light token colors measure their AA contrast against that surface with almost no margin; darkening it fails the axe sweep. See code-block.css for the full rationale. Dark arm uses `surface-inset` for the deeper github-dark ground. */
+  --cinder-code-block-background: light-dark(
+    var(--cinder-surface-raised),
+    var(--cinder-surface-inset)
+  );
+  /* Code text font size. */
+  --cinder-code-block-font-size: var(--cinder-text-sm);
+  /* Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. */
+  --cinder-code-block-height: auto;
+  /* Code text line height. */
+  --cinder-code-block-line-height: var(--cinder-leading-relaxed);
+  /* Code viewport padding. */
+  --cinder-code-block-padding: var(--cinder-space-4);
+  /* Default scroll-viewport height. */
+  --cinder-data-table-height: 24rem;
+  /* Rail marker box size (width and height). */
+  --cinder-feed-event-rail-size: var(--cinder-space-6);
+  /* Dropzone background. */
+  --cinder-file-upload-background: var(--cinder-surface);
+  /* Dropzone border color. */
+  --cinder-file-upload-border-color: var(--cinder-border);
+  /* Progress bar track background. */
+  --cinder-file-upload-progress-background: var(--cinder-surface-inset);
+  /* Progress bar fill. */
+  --cinder-file-upload-progress-fill: var(--cinder-accent-solid);
+  /* Column inline-size. */
+  --cinder-kanban-column-width: 18rem;
+  /* Gap between columns. */
+  --cinder-kanban-column-gap: var(--cinder-space-4);
+  /* Column background. */
+  --cinder-kanban-column-background: var(--cinder-surface-raised);
+  /* Card background. */
+  --cinder-kanban-card-background: var(--cinder-surface);
+  /* Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves. */
+  --cinder-kanban-board-scroll-edge: color-mix(
+    in oklch,
+    var(--cinder-text-default),
+    transparent 88%
+  );
+  /* Default scroll duration for one full loop. */
+  --cinder-marquee-duration: 24s;
+  /* Gap between marquee items. */
+  --cinder-marquee-gap: var(--cinder-space-6);
+  /* `::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability. */
+  --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
+  /* Row block padding (default density). */
+  --cinder-selectable-row-padding-block: var(--cinder-space-3);
+  /* Row inline padding (default density). */
+  --cinder-selectable-row-padding-inline: var(--cinder-space-4);
+  /* Gap between the row's leading/primary/trailing regions. */
+  --cinder-selectable-row-column-gap: var(--cinder-space-2);
+  /* Gap between primary content lines. */
+  --cinder-selectable-row-content-gap: var(--cinder-space-1);
+  /* Gap between the leading control and label. */
+  --cinder-selectable-row-leading-gap: var(--cinder-space-3);
+  /* Gap between trailing action items. */
+  --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
+  /* Gap between top-level navigation items. */
+  --cinder-side-navigation-list-gap: var(--cinder-space-1);
+  /* Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. */
+  --cinder-spinner-indicator: currentColor;
+  /* Spinner diameter (md default; 24px). */
+  --cinder-spinner-size: 1.5rem;
+  /* Gap between label/value/change rows. */
+  --cinder-statistic-row-gap: var(--cinder-space-1);
+  /* Gap between statistic columns when laid out inline. */
+  --cinder-statistic-column-gap: var(--cinder-space-3);
+  /* Label font size. */
+  --cinder-statistic-label-font-size: var(--cinder-text-sm);
+  /* Value font size. */
+  --cinder-statistic-value-font-size: var(--cinder-text-4xl);
+  /* Value font weight. */
+  --cinder-statistic-value-font-weight: var(--cinder-font-semibold);
+  /* Value line height (unitless). */
+  --cinder-statistic-value-line-height: 1.1;
+  /* Gap between the change indicator icon and its label. */
+  --cinder-statistic-change-gap: var(--cinder-space-1);
+  /* Change indicator font size. */
+  --cinder-statistic-change-font-size: var(--cinder-text-sm);
+  /* Gap between statistic cards. */
+  --cinder-statistic-group-gap: var(--cinder-space-4);
+  /* Padding inside each statistic card. */
+  --cinder-statistic-group-card-padding: var(--cinder-space-4);
+  /* Padding inside each cell in the shared-border layout mode. */
+  --cinder-statistic-group-shared-cell-padding: var(--cinder-space-4);
+  /* Dot fill color (default, no status set). */
+  --cinder-status-dot-color: var(--cinder-text-muted);
+  /* Dot diameter (md default; 10px). */
+  --cinder-status-dot-size: 0.625rem;
+  /* Inactive link color. */
+  --cinder-table-of-contents-link-color: var(--cinder-text-muted);
+  /* Active link color. */
+  --cinder-table-of-contents-link-active-color: var(--cinder-text-default);
+  /* Indent added per heading-depth level. */
+  --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
+  /* Drop-target indicator line/ring color. */
+  --cinder-tree-drop-line-color: var(--cinder-accent-solid);
+  /* Drop-target indicator line thickness. */
+  --cinder-tree-drop-line-thickness: 2px;
+  /* Opacity of an item's row while being dragged. */
+  --cinder-tree-item-dragging-opacity: 0.55;
+  /* Default scroll-viewport height. */
+  --cinder-virtual-list-height: 20rem;
 }
 
 :root[data-theme='dark'] {

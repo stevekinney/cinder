@@ -454,5 +454,1149 @@
         }
       }
     }
+  },
+  "accordion-item": {
+    "$description": "AccordionItem trigger and panel tokens.",
+    "trigger": {
+      "gap": {
+        "$type": "dimension",
+        "$value": "{space.4}",
+        "$description": "Gap between the trigger's disclosure icon and label.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-trigger-gap",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "padding-block": {
+        "$type": "dimension",
+        "$value": "{space.4}",
+        "$description": "Trigger block padding.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-trigger-padding-block",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "padding-inline": {
+        "$type": "dimension",
+        "$value": "{space.5}",
+        "$description": "Trigger inline padding.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-trigger-padding-inline",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "font-size": {
+        "$type": "dimension",
+        "$value": "{font.size.base}",
+        "$description": "Trigger label font size.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-trigger-font-size",
+            "public": true,
+            "category": "typography",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "font-weight": {
+        "$type": "fontWeight",
+        "$value": "{font.semibold}",
+        "$description": "Trigger label font weight.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-trigger-font-weight",
+            "public": true,
+            "category": "typography",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "panel": {
+      "inner-padding-block-start": {
+        "$type": "dimension",
+        "$value": "{space.4}",
+        "$description": "Panel content padding, block-start edge.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-panel-inner-padding-block-start",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "inner-padding-block-end": {
+        "$type": "dimension",
+        "$value": "{space.5}",
+        "$description": "Panel content padding, block-end edge.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-panel-inner-padding-block-end",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "inner-padding-inline": {
+        "$type": "dimension",
+        "$value": "{space.5}",
+        "$description": "Panel content inline padding.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-panel-inner-padding-inline",
+            "public": true,
+            "category": "spacing",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "font-size": {
+        "$type": "dimension",
+        "$value": "{font.size.base}",
+        "$description": "Panel content font size.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-panel-font-size",
+            "public": true,
+            "category": "typography",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      },
+      "line-height": {
+        "$type": "number",
+        "$value": "{leading.normal}",
+        "$description": "Panel content line height.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-accordion-item-panel-line-height",
+            "public": true,
+            "category": "typography",
+            "component": "accordion-item",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "action-row": {
+    "$description": "ActionRow default (non-condensed) density tokens. `[data-cinder-density='condensed']` overrides padding-block/padding-inline locally in action-row.css; that variant is a component-owned density state, not a separate corpus token.",
+    "padding-block": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Row block padding (default density).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-padding-block",
+          "public": true,
+          "category": "spacing",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "padding-inline": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Row inline padding (default density).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-padding-inline",
+          "public": true,
+          "category": "spacing",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "layout": {
+      "column-gap": {
+        "$type": "dimension",
+        "$value": "{space.3}",
+        "$description": "Grid column gap between leading/body/trailing regions.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-action-row-layout-column-gap",
+            "public": true,
+            "category": "spacing",
+            "component": "action-row",
+            "cssRecipe": null
+          }
+        }
+      },
+      "row-gap": {
+        "$type": "dimension",
+        "$value": "{space.2}",
+        "$description": "Grid row gap between leading/body/trailing regions.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-action-row-layout-row-gap",
+            "public": true,
+            "category": "spacing",
+            "component": "action-row",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "body-gap": {
+      "$type": "dimension",
+      "$value": "{space.one}",
+      "$description": "Gap between title, description, and meta lines.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-body-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "title-font-size": {
+      "$type": "dimension",
+      "$value": "{font.size.sm}",
+      "$description": "Title font size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-title-font-size",
+          "public": true,
+          "category": "typography",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "description-font-size": {
+      "$type": "dimension",
+      "$value": "{font.size.sm}",
+      "$description": "Description font size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-description-font-size",
+          "public": true,
+          "category": "typography",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "meta-font-size": {
+      "$type": "dimension",
+      "$value": "{font.size.xs}",
+      "$description": "Meta line font size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-meta-font-size",
+          "public": true,
+          "category": "typography",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "trailing-gap": {
+      "$type": "dimension",
+      "$value": "{space.2}",
+      "$description": "Gap between items in the trailing region.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-action-row-trailing-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "action-row",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "alert": {
+    "info": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.45, 0.14, 245]
+      },
+      "$description": "Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-alert-info",
+          "public": true,
+          "category": "color",
+          "component": "alert",
+          "cssRecipe": "light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))"
+        }
+      }
+    }
+  },
+  "avatar-group": {
+    "overlap": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Horizontal overlap between stacked avatars.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-avatar-group-overlap",
+          "public": true,
+          "category": "spacing",
+          "component": "avatar-group",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "card": {
+    "mobile-bleed": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Horizontal bleed a card's mobile layout extends past its container on each side.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-card-mobile-bleed",
+          "public": true,
+          "category": "spacing",
+          "component": "card",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "carousel": {
+    "$description": "Carousel layout tokens. `slide-size` and `aspect-ratio` have no DTCG-representable dimension shape (a bare percentage and a ratio, not a `{value, unit}` pair) -- `$value` is a nominal numeric placeholder; `cssRecipe` is authoritative for emission. Flagged in the CIN-472 PR body.",
+    "slide-size": {
+      "$type": "number",
+      "$value": 100,
+      "$description": "Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-slide-size",
+          "public": true,
+          "category": "layout",
+          "component": "carousel",
+          "cssRecipe": "100%"
+        }
+      }
+    },
+    "gap": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Gap between slides.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "carousel",
+          "cssRecipe": null
+        }
+      }
+    },
+    "aspect-ratio": {
+      "$type": "number",
+      "$value": 1.7778,
+      "$description": "Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-aspect-ratio",
+          "public": true,
+          "category": "layout",
+          "component": "carousel",
+          "cssRecipe": "16 / 9"
+        }
+      }
+    },
+    "dot-size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 2.75,
+        "unit": "rem"
+      },
+      "$description": "Pagination dot hit-target size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-carousel-dot-size",
+          "public": true,
+          "category": "size",
+          "component": "carousel",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "code-block": {
+    "background": {
+      "$type": "color",
+      "$value": "{surface.raised}",
+      "$description": "Code surface background. Light arm MUST stay pure `surface-raised` (not `surface-inset`) -- Shiki's github-light token colors measure their AA contrast against that surface with almost no margin; darkening it fails the axe sweep. See code-block.css for the full rationale. Dark arm uses `surface-inset` for the deeper github-dark ground.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-background",
+          "public": true,
+          "category": "color",
+          "component": "code-block",
+          "cssRecipe": "light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset))"
+        }
+      }
+    },
+    "font-size": {
+      "$type": "dimension",
+      "$value": "{font.size.sm}",
+      "$description": "Code text font size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-font-size",
+          "public": true,
+          "category": "typography",
+          "component": "code-block",
+          "cssRecipe": null
+        }
+      }
+    },
+    "height": {
+      "$type": "dimension",
+      "$value": {
+        "value": 0,
+        "unit": "rem"
+      },
+      "$description": "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-height",
+          "public": true,
+          "category": "size",
+          "component": "code-block",
+          "cssRecipe": "auto"
+        }
+      }
+    },
+    "line-height": {
+      "$type": "number",
+      "$value": "{leading.relaxed}",
+      "$description": "Code text line height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-line-height",
+          "public": true,
+          "category": "typography",
+          "component": "code-block",
+          "cssRecipe": null
+        }
+      }
+    },
+    "padding": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Code viewport padding.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-code-block-padding",
+          "public": true,
+          "category": "spacing",
+          "component": "code-block",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "data-table": {
+    "height": {
+      "$type": "dimension",
+      "$value": {
+        "value": 24,
+        "unit": "rem"
+      },
+      "$description": "Default scroll-viewport height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-data-table-height",
+          "public": true,
+          "category": "size",
+          "component": "data-table",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "feed-event": {
+    "rail-size": {
+      "$type": "dimension",
+      "$value": "{space.6}",
+      "$description": "Rail marker box size (width and height).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-feed-event-rail-size",
+          "public": true,
+          "category": "size",
+          "component": "feed-event",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "file-upload": {
+    "background": {
+      "$type": "color",
+      "$value": "{surface.base}",
+      "$description": "Dropzone background.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-file-upload-background",
+          "public": true,
+          "category": "color",
+          "component": "file-upload",
+          "cssRecipe": null
+        }
+      }
+    },
+    "border-color": {
+      "$type": "color",
+      "$value": "{border.control}",
+      "$description": "Dropzone border color.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-file-upload-border-color",
+          "public": true,
+          "category": "color",
+          "component": "file-upload",
+          "cssRecipe": null
+        }
+      }
+    },
+    "progress": {
+      "background": {
+        "$type": "color",
+        "$value": "{surface.inset}",
+        "$description": "Progress bar track background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-file-upload-progress-background",
+            "public": true,
+            "category": "color",
+            "component": "file-upload",
+            "cssRecipe": null
+          }
+        }
+      },
+      "fill": {
+        "$type": "color",
+        "$value": "{accent.solid}",
+        "$description": "Progress bar fill.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-file-upload-progress-fill",
+            "public": true,
+            "category": "color",
+            "component": "file-upload",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "kanban-board": {
+    "$description": "KanbanBoard column and card tokens.",
+    "column": {
+      "width": {
+        "$type": "dimension",
+        "$value": {
+          "value": 18,
+          "unit": "rem"
+        },
+        "$description": "Column inline-size.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-kanban-column-width",
+            "public": true,
+            "category": "size",
+            "component": "kanban-board",
+            "cssRecipe": null
+          }
+        }
+      },
+      "gap": {
+        "$type": "dimension",
+        "$value": "{space.4}",
+        "$description": "Gap between columns.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-kanban-column-gap",
+            "public": true,
+            "category": "spacing",
+            "component": "kanban-board",
+            "cssRecipe": null
+          }
+        }
+      },
+      "background": {
+        "$type": "color",
+        "$value": "{surface.raised}",
+        "$description": "Column background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-kanban-column-background",
+            "public": true,
+            "category": "color",
+            "component": "kanban-board",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "card": {
+      "background": {
+        "$type": "color",
+        "$value": "{surface.base}",
+        "$description": "Card background.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-kanban-card-background",
+            "public": true,
+            "category": "color",
+            "component": "kanban-board",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "board": {
+      "scroll-edge": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.2, 0.018, 245],
+          "alpha": 0.12
+        },
+        "$description": "Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-kanban-board-scroll-edge",
+            "public": true,
+            "category": "color",
+            "component": "kanban-board",
+            "cssRecipe": "color-mix(in oklch, var(--cinder-text-default), transparent 88%)"
+          }
+        }
+      }
+    }
+  },
+  "marquee": {
+    "$description": "Marquee layout/timing tokens. `--cinder-marquee-play-state` is deliberately NOT modeled here -- it is the component's own hover/focus/manual-pause/ready state channel (a CSS custom property used as lightweight state wiring, not a theming knob), and its four declarations in marquee.css are marked `@runtime-state`.",
+    "duration": {
+      "$type": "duration",
+      "$value": {
+        "value": 24,
+        "unit": "s"
+      },
+      "$description": "Default scroll duration for one full loop.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-marquee-duration",
+          "public": true,
+          "category": "motion",
+          "component": "marquee",
+          "cssRecipe": null
+        }
+      }
+    },
+    "gap": {
+      "$type": "dimension",
+      "$value": "{space.6}",
+      "$description": "Gap between marquee items.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-marquee-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "marquee",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "modal": {
+    "backdrop": {
+      "$type": "color",
+      "$value": "{overlay.backdrop}",
+      "$description": "`::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-modal-backdrop",
+          "public": true,
+          "category": "color",
+          "component": "modal",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "selectable-row": {
+    "$description": "SelectableRow default (non-condensed) density tokens. `.cinder-selectable-row--condensed` overrides padding-block/padding-inline locally in selectable-row.css; that variant is a component-owned density state, not a separate corpus token.",
+    "padding-block": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Row block padding (default density).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-padding-block",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "padding-inline": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Row inline padding (default density).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-padding-inline",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "column-gap": {
+      "$type": "dimension",
+      "$value": "{space.2}",
+      "$description": "Gap between the row's leading/primary/trailing regions.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-column-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "content-gap": {
+      "$type": "dimension",
+      "$value": "{space.one}",
+      "$description": "Gap between primary content lines.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-content-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "leading-gap": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Gap between the leading control and label.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-leading-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    },
+    "trailing-actions-gap": {
+      "$type": "dimension",
+      "$value": "{space.2}",
+      "$description": "Gap between trailing action items.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-selectable-row-trailing-actions-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "selectable-row",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "side-navigation": {
+    "list-gap": {
+      "$type": "dimension",
+      "$value": "{space.one}",
+      "$description": "Gap between top-level navigation items.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-side-navigation-list-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "side-navigation",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "spinner": {
+    "$description": "Spinner default (unsized, `md`) tokens. `[data-cinder-size='sm'|'md'|'lg']` locally override `size` per variant in spinner.css, the same way Button's own height ladder is component-owned rather than aliased to the shared `control.height.*` tier.",
+    "indicator": {
+      "$type": "color",
+      "$value": "{text.default}",
+      "$description": "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-spinner-indicator",
+          "public": true,
+          "category": "color",
+          "component": "spinner",
+          "cssRecipe": "currentColor"
+        }
+      }
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 1.5,
+        "unit": "rem"
+      },
+      "$description": "Spinner diameter (md default; 24px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-spinner-size",
+          "public": true,
+          "category": "size",
+          "component": "spinner",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "statistic": {
+    "row-gap": {
+      "$type": "dimension",
+      "$value": "{space.one}",
+      "$description": "Gap between label/value/change rows.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-row-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "statistic",
+          "cssRecipe": null
+        }
+      }
+    },
+    "column-gap": {
+      "$type": "dimension",
+      "$value": "{space.3}",
+      "$description": "Gap between statistic columns when laid out inline.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-column-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "statistic",
+          "cssRecipe": null
+        }
+      }
+    },
+    "label-font-size": {
+      "$type": "dimension",
+      "$value": "{font.size.sm}",
+      "$description": "Label font size.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-label-font-size",
+          "public": true,
+          "category": "typography",
+          "component": "statistic",
+          "cssRecipe": null
+        }
+      }
+    },
+    "value": {
+      "font-size": {
+        "$type": "dimension",
+        "$value": "{font.size.4xl}",
+        "$description": "Value font size.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-statistic-value-font-size",
+            "public": true,
+            "category": "typography",
+            "component": "statistic",
+            "cssRecipe": null
+          }
+        }
+      },
+      "font-weight": {
+        "$type": "fontWeight",
+        "$value": "{font.semibold}",
+        "$description": "Value font weight.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-statistic-value-font-weight",
+            "public": true,
+            "category": "typography",
+            "component": "statistic",
+            "cssRecipe": null
+          }
+        }
+      },
+      "line-height": {
+        "$type": "number",
+        "$value": 1.1,
+        "$description": "Value line height (unitless).",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-statistic-value-line-height",
+            "public": true,
+            "category": "typography",
+            "component": "statistic",
+            "cssRecipe": null
+          }
+        }
+      }
+    },
+    "change": {
+      "gap": {
+        "$type": "dimension",
+        "$value": "{space.one}",
+        "$description": "Gap between the change indicator icon and its label.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-statistic-change-gap",
+            "public": true,
+            "category": "spacing",
+            "component": "statistic",
+            "cssRecipe": null
+          }
+        }
+      },
+      "font-size": {
+        "$type": "dimension",
+        "$value": "{font.size.sm}",
+        "$description": "Change indicator font size.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-statistic-change-font-size",
+            "public": true,
+            "category": "typography",
+            "component": "statistic",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "statistic-group": {
+    "$description": "StatisticGroup default (card layout) tokens. The shared-border layout mode overrides `gap` to `1px` locally in statistic-group.css to create hairline dividers between cells; that variant is a component-owned layout mode, not a separate corpus token.",
+    "gap": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Gap between statistic cards.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-group-gap",
+          "public": true,
+          "category": "spacing",
+          "component": "statistic-group",
+          "cssRecipe": null
+        }
+      }
+    },
+    "card-padding": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Padding inside each statistic card.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-group-card-padding",
+          "public": true,
+          "category": "spacing",
+          "component": "statistic-group",
+          "cssRecipe": null
+        }
+      }
+    },
+    "shared-cell-padding": {
+      "$type": "dimension",
+      "$value": "{space.4}",
+      "$description": "Padding inside each cell in the shared-border layout mode.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-statistic-group-shared-cell-padding",
+          "public": true,
+          "category": "spacing",
+          "component": "statistic-group",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "status-dot": {
+    "$description": "StatusDot default (unstatused, `md`) tokens. `[data-cinder-status='*']` and `[data-cinder-size='sm'|'md']` locally override `color`/`size` per variant in status-dot.css -- component-owned state, not separate corpus tokens.",
+    "color": {
+      "$type": "color",
+      "$value": "{text.muted}",
+      "$description": "Dot fill color (default, no status set).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-status-dot-color",
+          "public": true,
+          "category": "color",
+          "component": "status-dot",
+          "cssRecipe": null
+        }
+      }
+    },
+    "size": {
+      "$type": "dimension",
+      "$value": {
+        "value": 0.625,
+        "unit": "rem"
+      },
+      "$description": "Dot diameter (md default; 10px).",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-status-dot-size",
+          "public": true,
+          "category": "size",
+          "component": "status-dot",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "table-of-contents": {
+    "link": {
+      "color": {
+        "$type": "color",
+        "$value": "{text.muted}",
+        "$description": "Inactive link color.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-table-of-contents-link-color",
+            "public": true,
+            "category": "color",
+            "component": "table-of-contents",
+            "cssRecipe": null
+          }
+        }
+      },
+      "active-color": {
+        "$type": "color",
+        "$value": "{text.default}",
+        "$description": "Active link color.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-table-of-contents-link-active-color",
+            "public": true,
+            "category": "color",
+            "component": "table-of-contents",
+            "cssRecipe": null
+          }
+        }
+      },
+      "indent-step": {
+        "$type": "dimension",
+        "$value": "{space.3}",
+        "$description": "Indent added per heading-depth level.",
+        "$extensions": {
+          "com.lostgradient.cinder": {
+            "cssProperty": "--cinder-table-of-contents-link-indent-step",
+            "public": true,
+            "category": "spacing",
+            "component": "table-of-contents",
+            "cssRecipe": null
+          }
+        }
+      }
+    }
+  },
+  "tree": {
+    "$description": "Tree drag-and-drop indicator tokens. `drop-line-color` switches to the `Highlight` system color under `forced-colors: active` -- a standard accessibility fallback kept local to tree.css, not a separate corpus token.",
+    "drop-line-color": {
+      "$type": "color",
+      "$value": "{accent.solid}",
+      "$description": "Drop-target indicator line/ring color.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tree-drop-line-color",
+          "public": true,
+          "category": "color",
+          "component": "tree",
+          "cssRecipe": null
+        }
+      }
+    },
+    "drop-line-thickness": {
+      "$type": "dimension",
+      "$value": {
+        "value": 2,
+        "unit": "px"
+      },
+      "$description": "Drop-target indicator line thickness.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tree-drop-line-thickness",
+          "public": true,
+          "category": "size",
+          "component": "tree",
+          "cssRecipe": null
+        }
+      }
+    },
+    "item-dragging-opacity": {
+      "$type": "number",
+      "$value": 0.55,
+      "$description": "Opacity of an item's row while being dragged.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-tree-item-dragging-opacity",
+          "public": true,
+          "category": "opacity",
+          "component": "tree",
+          "cssRecipe": null
+        }
+      }
+    }
+  },
+  "virtual-list": {
+    "height": {
+      "$type": "dimension",
+      "$value": {
+        "value": 20,
+        "unit": "rem"
+      },
+      "$description": "Default scroll-viewport height.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-virtual-list-height",
+          "public": true,
+          "category": "size",
+          "component": "virtual-list",
+          "cssRecipe": null
+        }
+      }
+    }
   }
 }

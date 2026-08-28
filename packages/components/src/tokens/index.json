@@ -1,7 +1,7 @@
 {
   "$comment": "GENERATED FILE. Do not edit by hand. Regenerate: bun run --filter=@lostgradient/cinder tokens:generate",
   "version": "2025.10",
-  "tokenCount": 216,
+  "tokenCount": 290,
   "resolver": "@lostgradient/cinder/tokens/resolver",
   "registry": "@lostgradient/cinder/tokens/registry",
   "sources": [

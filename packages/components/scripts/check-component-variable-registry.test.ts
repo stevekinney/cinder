@@ -38,9 +38,9 @@ describe('crossCheckManifests', () => {
     ]);
   });
 
-  // The scoping decision, pinned: a component the corpus does not model is
-  // REPORTED, not silently passed. Passing it would read as coverage while
-  // guarding nothing, which is worse than having no check.
+  // The pure function always REPORTS an unmodelled component rather than
+  // silently passing it; `main()` decides whether that report is fatal
+  // (strict by default since CIN-472, `--report-only` to downgrade it).
   test('reports an unmodelled component rather than passing it silently', () => {
     const result = crossCheckManifests(
       [manifest('file-upload', ['--cinder-file-upload-progress-fill'])],

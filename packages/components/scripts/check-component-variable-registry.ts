@@ -2,22 +2,22 @@
  * Cross-checks each component's public variable manifest against the generated
  * token registry.
  *
- * The rule: for a component the DTCG corpus models, every variable its manifest
- * advertises must resolve to a corpus token owned by that component. A manifest
- * entry with no corpus token is a public theming API with no description, no
- * category, and no deprecation status — invisible to `docs/tokens.md` and to
- * every other guard that reads the registry.
+ * The rule: every variable a component's manifest advertises must resolve to a
+ * corpus token owned by that component, or be marked `@runtime-state` (see
+ * `generate-component-variables.ts`) so it never reaches the manifest in the
+ * first place. A manifest entry with no corpus token is a public theming API
+ * with no description, no category, and no deprecation status — invisible to
+ * `docs/tokens.md` and to every other guard that reads the registry.
  *
- * **Scope, stated plainly.** The corpus models component tokens for two
- * components today (`button`, `toggle`); 181 components ship a manifest. So this
- * check enforces the rule where the corpus can answer and REPORTS the rest
- * rather than pretending to cover them. That gap is CIN-472; when it closes,
- * `--strict-coverage` below becomes the default and this check covers
- * everything.
- *
- * Written this way on purpose. A cross-check that silently passed for 179
- * unmodelled components would read as coverage while guarding nothing — worse
- * than no check, because it would discourage anyone from adding the real one.
+ * **Coverage is strict by default.** CIN-472 closed the gap this check used to
+ * report rather than enforce: every component that ships a non-empty
+ * `*.variables.json` manifest now has a matching corpus entry (24 components as
+ * of that change — `button`, `toggle`, and 22 more), so an `unmodelled`
+ * component (a non-empty manifest the corpus doesn't model at all) is now a
+ * failure, exactly like an `unbacked` variable (a manifest entry the corpus's
+ * matching component doesn't own) always was. Pass `--report-only` to fall back
+ * to the pre-CIN-472 behavior (report `unmodelled` without failing on it) while
+ * iterating locally.
  *
  * Run with `bun run check:component-variable-registry`.
  */
@@ -122,7 +122,7 @@ async function readManifests(): Promise<ComponentManifest[]> {
 }
 
 async function main(): Promise<void> {
-  const strictCoverage = process.argv.includes('--strict-coverage');
+  const reportOnly = process.argv.includes('--report-only');
   const result = crossCheckManifests(await readManifests(), readRegistryView());
 
   if (result.unbacked.length > 0) {
@@ -138,18 +138,29 @@ async function main(): Promise<void> {
     return;
   }
 
-  if (strictCoverage && result.unmodelled.length > 0) {
-    process.stderr.write(
-      `check:component-variable-registry — ${result.unmodelled.length} component(s) ship a ` +
-        `variable manifest the corpus does not model:\n  ${result.unmodelled.join(', ')}\n`,
-    );
-    process.exitCode = 1;
-    return;
+  if (result.unmodelled.length > 0) {
+    const detail = `  ${result.unmodelled.join(', ')}`;
+    if (reportOnly) {
+      process.stdout.write(
+        `check:component-variable-registry — --report-only: ${result.unmodelled.length} ` +
+          `component(s) ship a variable manifest the corpus does not model:\n${detail}\n`,
+      );
+    } else {
+      process.stderr.write(
+        `check:component-variable-registry — ${result.unmodelled.length} component(s) ship a ` +
+          `variable manifest the corpus does not model:\n${detail}\n\nAdd tokens to the DTCG ` +
+          `corpus with a \`component\` extension naming the component, or mark every ` +
+          `declaration \`@runtime-state\` if none of it is a theming API. Pass --report-only ` +
+          `to downgrade this to a warning while iterating locally.\n`,
+      );
+      process.exitCode = 1;
+      return;
+    }
   }
 
   process.stdout.write(
     `check:component-variable-registry — OK (${result.checked.length} component(s) fully ` +
-      `checked against the corpus; ${result.unmodelled.length} not yet modelled — see CIN-472).\n`,
+      `checked against the corpus).\n`,
   );
 }
 
