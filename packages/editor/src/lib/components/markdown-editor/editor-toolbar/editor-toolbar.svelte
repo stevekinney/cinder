@@ -75,7 +75,7 @@
   import ToolbarButton from './toolbar-button.svelte';
   import ToolbarSeparator from './toolbar-separator.svelte';
   import ToolbarDropdown, { type BlockType, type BlockTypeOption } from './toolbar-dropdown.svelte';
-  import { computeToolbarOverflow } from './toolbar-overflow.ts';
+  import { computeToolbarOverflow, resolveFocusPinnedOverflow } from './toolbar-overflow.ts';
 
   let {
     id,
@@ -169,6 +169,14 @@
   let containerWidth = $state<number | null>(null);
   let leadingWidth = $state(0);
   let gapPx = $state(0);
+
+  // Owned by `toolbarOverflowSetup`, but reachable from the actions-lifecycle $effect
+  // above, which has to (re)observe an element that mounts after setup has run.
+  // Deliberately not `$state`: the effect reads them only as a side channel at the
+  // moment the measurer element changes, and making them reactive would re-run that
+  // effect on every setup/teardown for no benefit.
+  let toolbarResizeObserver: ResizeObserver | null = null;
+  let remeasureTrailingReservation: (() => void) | null = null;
   let triggerGhostWidth = $state(0);
   let actionsReservedWidth = $state(0);
   let flexGroupWidths = $state<Record<FlexGroupId, number>>({
@@ -178,10 +186,34 @@
     'block-operations': 0,
   });
 
-  // If `actions` becomes absent (rare, but it's a consumer-supplied
-  // optional snippet), release the space that had been reserved for it.
+  /**
+   * Keep the trailing-actions reservation in step with the actions element's LIFECYCLE,
+   * in both directions.
+   *
+   * `.toolbar-trailing` -- and the `.toolbar-actions-measure` box inside it -- render
+   * behind `{#if actions}`. `toolbarOverflowSetup` observes that measurer once, at
+   * setup, so a consumer that supplies `actions` only AFTER mount got an element the
+   * ResizeObserver had never been told to watch: the reservation stayed 0, the fit
+   * calculation over-budgeted by exactly the actions' width, and groups that should
+   * have moved into the overflow panel stayed inline and pushed the actions off the
+   * end. The falsy direction was already handled here; this is the missing arrival.
+   *
+   * Keyed on `actionsMeasureElement` rather than on `actions` so a REPLACED element
+   * (the `{#if}` re-entering) is re-observed too, not just the first one.
+   */
   $effect(() => {
-    if (!actions) actionsReservedWidth = 0;
+    const measureElement = actionsMeasureElement;
+    if (!actions || !measureElement) {
+      actionsReservedWidth = 0;
+      return;
+    }
+    // Take a measurement immediately: ResizeObserver does fire an initial entry for a
+    // newly observed element, but not before this tick's fit calculation runs.
+    remeasureTrailingReservation?.();
+    const observer = toolbarResizeObserver;
+    if (!observer) return;
+    observer.observe(measureElement);
+    return () => observer.unobserve(measureElement);
   });
 
   const rawOverflowGroupIds = $derived(
@@ -206,21 +238,27 @@
   let focusedGroupId = $state<FlexGroupId | null>(null);
   let focusedGroupWasOverflowing = $state(false);
 
-  const overflowGroupIds = $derived.by(() => {
-    if (focusedGroupId === null) return rawOverflowGroupIds;
-    const isOverflowingPerRawCalculation = rawOverflowGroupIds.includes(focusedGroupId);
-    if (isOverflowingPerRawCalculation === focusedGroupWasOverflowing) {
-      // Raw calculation already agrees with the frozen side; nothing to override.
-      return rawOverflowGroupIds;
-    }
-    return focusedGroupWasOverflowing
-      ? // Frozen on the popover side, but raw now says it fits inline -- keep
-        // it in the overflow set anyway until focus moves on.
-        [...rawOverflowGroupIds, focusedGroupId]
-      : // Frozen on the inline side, but raw now says it should overflow --
-        // keep it out of the overflow set anyway until focus moves on.
-        rawOverflowGroupIds.filter((groupId) => groupId !== focusedGroupId);
-  });
+  /**
+   * The overflow set held in place while the "More formatting" trigger itself has
+   * focus, or `null` when it does not.
+   *
+   * The trigger renders behind `{#if overflowGroupIds.length > 0}`, so a resize that
+   * grows the toolbar until everything fits unmounts the very control the user is
+   * focused on and drops focus to `<body>`. Pinning the set is the same idea as
+   * pinning a group -- while focus is inside something whose placement this component
+   * controls, a resize must not move it out from under the user -- applied to the one
+   * control that is not in any group.
+   */
+  let overflowSetPinnedByTrigger = $state<string[] | null>(null);
+
+  const overflowGroupIds = $derived(
+    resolveFocusPinnedOverflow({
+      rawOverflowGroupIds,
+      overflowSetPinnedByTrigger,
+      focusedGroupId,
+      focusedGroupWasOverflowing,
+    }),
+  );
 
   // If a resize grows the toolbar back to the point nothing overflows while
   // the popover happens to be open, close it rather than leaving an empty
@@ -296,29 +334,58 @@
       if (next) flexGroupWidths = next;
     }
 
+    function isOverflowTrigger(target: EventTarget | null): boolean {
+      return (
+        target instanceof HTMLElement &&
+        target.closest('button[aria-label="More formatting"]') !== null
+      );
+    }
+
     function handleFocusIn(event: FocusEvent): void {
+      if (isOverflowTrigger(event.target)) {
+        // Hold the set the trigger is currently presenting. Without this, growing the
+        // toolbar until nothing overflows unmounts the focused trigger mid-interaction.
+        overflowSetPinnedByTrigger = [...overflowGroupIds];
+        focusedGroupId = null;
+        return;
+      }
+
+      overflowSetPinnedByTrigger = null;
+
       const groupId = flexGroupIdFromTarget(event.target);
       if (!groupId) return;
-      // Always (re-)snapshot on every focusin within a group, not just the
-      // first one: this is also what re-arms the pin when focus moves
-      // between two controls in the same group (e.g. Bold -> Italic),
-      // keeping `focusedGroupWasOverflowing` accurate rather than stale.
+
+      // Snapshot ONLY when entering a group that isn't already the pinned one.
+      //
+      // An earlier version re-snapshotted on every focusin, including a move between
+      // two controls in the SAME group (Bold -> Italic). That adopts the current raw
+      // side -- which is exactly the value the pin exists to ignore -- so a resize
+      // followed by a Tab within the group released the pin and let the group jump
+      // anyway, defeating the freeze at the moment it mattered most.
+      if (focusedGroupId === groupId) return;
       focusedGroupId = groupId;
       focusedGroupWasOverflowing = rawOverflowGroupIds.includes(groupId);
     }
 
     function handleFocusOut(event: FocusEvent): void {
       // `relatedTarget` is the element about to receive focus (`null` if
-      // focus is leaving the document/window entirely). Only release the
-      // pin once focus has actually left this group -- moving focus
+      // focus is leaving the document/window entirely). Only release a pin
+      // once focus has actually left what it was holding -- moving focus
       // between two controls inside the same group must not release it.
       // Don't try to pre-set the *new* group's id/snapshot here: the
       // upcoming `focusin` on the new target (which always fires right
       // after `focusout` for a same-document focus move) is the sole place
       // that does that, so there's exactly one snapshot write per
       // group-to-group move instead of two racing writes.
+      if (isOverflowTrigger(event.relatedTarget)) return;
+
       const nextGroupId = flexGroupIdFromTarget(event.relatedTarget);
       if (nextGroupId !== focusedGroupId) focusedGroupId = null;
+      // Focus is leaving the trigger for something that is not a pinned group -- e.g.
+      // into the panel it just opened, or out of the toolbar entirely. Either way the
+      // trigger no longer needs the set held; if focus landed on a group inside the
+      // panel, the focusin above re-pins that group on the overflow side.
+      if (nextGroupId === null) overflowSetPinnedByTrigger = null;
     }
 
     gapPx = readGapPx();
@@ -327,8 +394,16 @@
     measureTrailingReservation();
     measureFlexGroupWidths();
 
-    node.addEventListener('focusin', handleFocusIn);
-    node.addEventListener('focusout', handleFocusOut);
+    // Bound to the DOCUMENT rather than to `node`. Cinder's `Popover` portals the
+    // overflow panel out of the toolbar's subtree, so focus events inside the panel
+    // never bubble to the toolbar element -- which meant a group focused IN the panel
+    // was never pinned, and a resize could pull it back inline underneath the user.
+    // `flexGroupIdFromTarget` resolves by `closest('[data-toolbar-flex-group-id]')`,
+    // which identifies a chunk just as well in the portaled tree as in the inline one,
+    // and every other target resolves to `null` and is ignored.
+    const listenerRoot = node.ownerDocument;
+    listenerRoot.addEventListener('focusin', handleFocusIn);
+    listenerRoot.addEventListener('focusout', handleFocusOut);
 
     const ResizeObserverConstructor =
       node.ownerDocument === document
@@ -359,11 +434,16 @@
       if (actionsMeasureElement) observer.observe(actionsMeasureElement);
     }
 
+    toolbarResizeObserver = observer;
+    remeasureTrailingReservation = measureTrailingReservation;
+
     return () => {
-      node.removeEventListener('focusin', handleFocusIn);
-      node.removeEventListener('focusout', handleFocusOut);
+      listenerRoot.removeEventListener('focusin', handleFocusIn);
+      listenerRoot.removeEventListener('focusout', handleFocusOut);
       observer?.disconnect();
       observer = null;
+      toolbarResizeObserver = null;
+      remeasureTrailingReservation = null;
     };
   }
 

@@ -105,3 +105,53 @@ export function computeToolbarOverflow({
 
   return { visibleGroupIds, overflowGroupIds };
 }
+
+export interface ResolveFocusPinnedOverflowInput {
+  /** The overflow set the width calculation wants, before any focus pinning. */
+  rawOverflowGroupIds: string[];
+  /**
+   * The set held in place while the "More formatting" trigger itself has focus, or
+   * `null` when it does not. Takes precedence over the group pin: the trigger renders
+   * only while the set is non-empty, so letting the set empty under it would unmount
+   * the focused control.
+   */
+  overflowSetPinnedByTrigger: string[] | null;
+  /** The group focus is currently inside, or `null`. */
+  focusedGroupId: string | null;
+  /** Which side of the split that group was on when focus entered it. */
+  focusedGroupWasOverflowing: boolean;
+}
+
+/**
+ * Apply focus pinning to a raw overflow set.
+ *
+ * Pure and separated from the component for the same reason as
+ * {@link computeToolbarOverflow}: the behaviour is driven by measurements happy-dom
+ * cannot produce, so the decision has to be testable without a layout engine.
+ *
+ * The rule in one sentence: while focus is inside a control whose placement this
+ * component controls, a resize must not move that control out from under the user.
+ */
+export function resolveFocusPinnedOverflow({
+  rawOverflowGroupIds,
+  overflowSetPinnedByTrigger,
+  focusedGroupId,
+  focusedGroupWasOverflowing,
+}: ResolveFocusPinnedOverflowInput): string[] {
+  if (overflowSetPinnedByTrigger !== null) return overflowSetPinnedByTrigger;
+  if (focusedGroupId === null) return rawOverflowGroupIds;
+
+  const isOverflowingPerRawCalculation = rawOverflowGroupIds.includes(focusedGroupId);
+  if (isOverflowingPerRawCalculation === focusedGroupWasOverflowing) {
+    // Raw calculation already agrees with the frozen side; nothing to override.
+    return rawOverflowGroupIds;
+  }
+
+  return focusedGroupWasOverflowing
+    ? // Frozen on the popover side, but raw now says it fits inline -- keep it in the
+      // overflow set anyway until focus moves on.
+      [...rawOverflowGroupIds, focusedGroupId]
+    : // Frozen on the inline side, but raw now says it should overflow -- keep it out
+      // of the overflow set anyway until focus moves on.
+      rawOverflowGroupIds.filter((groupId) => groupId !== focusedGroupId);
+}

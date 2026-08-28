@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'bun:test';
 
-import { computeToolbarOverflow, type ToolbarOverflowGroup } from './toolbar-overflow.ts';
+import {
+  computeToolbarOverflow,
+  resolveFocusPinnedOverflow,
+  type ToolbarOverflowGroup,
+} from './toolbar-overflow.ts';
 
 const groups: ToolbarOverflowGroup[] = [
   { id: 'text-formatting', width: 100 },
@@ -141,5 +145,92 @@ describe('computeToolbarOverflow', () => {
     });
 
     expect(result).toEqual({ visibleGroupIds: ['only'], overflowGroupIds: [] });
+  });
+});
+
+describe('resolveFocusPinnedOverflow', () => {
+  const unpinned = {
+    overflowSetPinnedByTrigger: null,
+    focusedGroupId: null,
+    focusedGroupWasOverflowing: false,
+  };
+
+  it('passes the raw set through when nothing holds focus', () => {
+    expect(
+      resolveFocusPinnedOverflow({
+        ...unpinned,
+        rawOverflowGroupIds: ['lists', 'block-operations'],
+      }),
+    ).toEqual(['lists', 'block-operations']);
+  });
+
+  it('keeps a focused group inline after a resize says it should overflow', () => {
+    // Focus entered `lists` while it was inline. Narrowing the toolbar must not yank it
+    // into the popover under the user's cursor.
+    expect(
+      resolveFocusPinnedOverflow({
+        ...unpinned,
+        rawOverflowGroupIds: ['lists', 'block-operations'],
+        focusedGroupId: 'lists',
+        focusedGroupWasOverflowing: false,
+      }),
+    ).toEqual(['block-operations']);
+  });
+
+  it('keeps a focused group in the popover after a resize says it fits inline', () => {
+    // The reverse transition. Focus is inside the PORTALED overflow panel, which is why
+    // the component listens for focus on the document rather than on the toolbar node:
+    // a panel focus that never reaches the toolbar would leave this pin unset and let
+    // the group snap back inline mid-interaction.
+    expect(
+      resolveFocusPinnedOverflow({
+        ...unpinned,
+        rawOverflowGroupIds: ['block-operations'],
+        focusedGroupId: 'lists',
+        focusedGroupWasOverflowing: true,
+      }),
+    ).toEqual(['block-operations', 'lists']);
+  });
+
+  it('does not override when the raw calculation already agrees with the pinned side', () => {
+    expect(
+      resolveFocusPinnedOverflow({
+        ...unpinned,
+        rawOverflowGroupIds: ['lists'],
+        focusedGroupId: 'lists',
+        focusedGroupWasOverflowing: true,
+      }),
+    ).toEqual(['lists']);
+  });
+
+  it('holds the whole set while the overflow trigger has focus', () => {
+    // The trigger renders only while the set is non-empty. Without this pin, growing
+    // the toolbar until everything fits unmounts the control the user is focused on and
+    // drops focus to <body>.
+    expect(
+      resolveFocusPinnedOverflow({
+        rawOverflowGroupIds: [],
+        overflowSetPinnedByTrigger: ['lists', 'block-operations'],
+        focusedGroupId: null,
+        focusedGroupWasOverflowing: false,
+      }),
+    ).toEqual(['lists', 'block-operations']);
+  });
+
+  it('lets the trigger pin win over a group pin', () => {
+    // Both can be set only transiently, between a focusout and the focusin that clears
+    // the group. The trigger's own survival is the stronger constraint.
+    expect(
+      resolveFocusPinnedOverflow({
+        rawOverflowGroupIds: [],
+        overflowSetPinnedByTrigger: ['lists'],
+        focusedGroupId: 'block-operations',
+        focusedGroupWasOverflowing: true,
+      }),
+    ).toEqual(['lists']);
+  });
+
+  it('releases every pin once focus leaves, letting the raw set through again', () => {
+    expect(resolveFocusPinnedOverflow({ ...unpinned, rawOverflowGroupIds: [] })).toEqual([]);
   });
 });

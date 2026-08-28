@@ -339,18 +339,26 @@ test.describe('markdown link popover', () => {
     // so reach the trigger wherever it currently lives. Asserting the overflow button
     // exists would pin a viewport-dependent layout detail this test does not own.
     const editor = page.locator('.markdown-editor-wrapper[data-ready="true"]');
-    await expect(editor.locator('[data-testid="toolbar-undo"]').first()).toBeVisible({
-      timeout: 10_000,
-    });
+    await expect(editor).toBeVisible();
 
     const inlineLinkButton = editor.locator('[data-testid="toolbar-link"]').first();
+    const moreFormattingButton = editor
+      .locator('button[aria-label="More formatting"]:not(:disabled)')
+      .first();
+
+    // The toolbar's overflow pass is ResizeObserver-driven, so the Link trigger can be
+    // in NEITHER place for a frame or two after the wrapper reports ready. Wait for it
+    // to land on one side of the split before sampling which side that was: a bare
+    // isVisible() here races the pass and takes the overflow branch by accident.
+    //
+    // This waits on the settling condition itself rather than on a fixed duration --
+    // two 10-second waits stood here before and were masking exactly this race, which
+    // is why the branch below could pick wrong while both waits still passed.
+    await expect(inlineLinkButton.or(moreFormattingButton).first()).toBeVisible();
+
     let linkButton = inlineLinkButton;
 
     if (!(await inlineLinkButton.isVisible())) {
-      const moreFormattingButton = editor
-        .locator('button[aria-label="More formatting"]:not(:disabled)')
-        .first();
-      await expect(moreFormattingButton).toBeVisible({ timeout: 10_000 });
       await moreFormattingButton.click();
       const formattingPopover = page.getByRole('dialog', { name: 'More formatting' });
       await expect(formattingPopover).toBeVisible();
