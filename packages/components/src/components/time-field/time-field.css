@@ -74,11 +74,19 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     /* Long IANA identifiers (e.g. 'America/Argentina/ComodRivadavia', 33
-       chars) exceed what the fixed 12-14rem box can show. This doesn't
-       reflow the box (that would shift Playwright baselines) — it clips
-       predictably instead of the browser's undefined default clipping, and
-       the matching `title` on the <select> (time-field.svelte) discloses
-       the full value on hover/focus. */
+       chars) exceed what the fixed 12-14rem box can show. This clips
+       predictably rather than leaving the browser's undefined default
+       clipping, without reflowing the box.
+
+       Assistive technology is unaffected: a <select> exposes its selected
+       option's full text as the control's value, so the truncation is
+       visual only. The `title` on the <select> (time-field.svelte) is a
+       POINTER affordance — browsers surface a title tooltip on hover, not
+       on keyboard focus — so it helps a mouse user and does nothing for a
+       sighted keyboard-only user, who sees only the ellipsis. Opening the
+       select still reveals the full option text, which is the reliable
+       disclosure path for everyone. Don't describe `title` as a
+       focus-time affordance; it isn't one. */
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;

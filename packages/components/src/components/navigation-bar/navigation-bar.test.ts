@@ -2250,6 +2250,17 @@ describe('NavigationBar responsive CSS', () => {
 
     expect(bottomItemsRule).toContain('overflow-x: auto');
     expect(bottomItemsRule).not.toContain('overflow-x: hidden');
+
+    // Scrolling one axis forces the other to compute as `auto` too — CSS does not let
+    // one axis scroll while the other stays visible — so this container now clips
+    // vertically. navigation-item's focus ring is a box-shadow painted OUTSIDE the
+    // tab, so without block padding to sit in, enabling the scroll would have traded
+    // an unreachable tab for an invisible focus ring. The negative margin cancels the
+    // padding so the bar's height is unchanged.
+    expect(bottomItemsRule).toContain('padding-block: var(--_cinder-navigation-bar-tab-ring-room)');
+    expect(bottomItemsRule).toContain(
+      'margin-block: calc(-1 * var(--_cinder-navigation-bar-tab-ring-room))',
+    );
   });
 
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
