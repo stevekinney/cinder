@@ -978,6 +978,21 @@ export function assertResolutionOrderMatchesCssBlockStructure(resolver: Resolver
         'override block order from resolutionOrder.',
     );
   }
+  // Known gap, tracked in CIN-493 (a pre-existing cinder architecture question,
+  // not something CIN-469/470 introduced): this check -- and every guard built
+  // on top of it -- assumes emitting motion's block after theme's in SOURCE
+  // ORDER is sufficient for motion to win on a shared property. That only
+  // holds when both declarations target the SAME element. Cinder's theme
+  // blocks use a bare `[data-theme='dark']`/`[data-theme='light']` selector
+  // (not `:root`-scoped) specifically so a theme can be scoped to a subtree
+  // (see docs/theming.md); the motion blocks are always `:root`-anchored with
+  // no scoped variant. For a token overridden by BOTH theme and motion,
+  // inside a theme-scoped subtree, ordinary CSS inheritance (not specificity,
+  // not source order) makes the descendant's own declared theme value win
+  // over the merely-inherited :root motion value -- the opposite of what the
+  // resolved snapshots model. Deferred: confirmed no token path is overridden
+  // by both a theme document and a motion document in the real corpus today
+  // (verified by direct path-set intersection).
   // `buildTokensBaseCss`'s override-block template is hardcoded to exactly two
   // modifiers, "theme" and "motion" -- it never reads `resolver.modifiers` generically,
   // so a third modifier's context documents would never reach ANY emitted CSS block,
@@ -1269,6 +1284,18 @@ export async function buildTokensBaseCss(
     darkForcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion (dark theme)',
   );
+
+  // Known gap, tracked in CIN-492: the four calls above check only the
+  // light-composed and dark-composed scopes. Cinder also supports a third,
+  // fully-supported theme state -- "system" mode, where NO [data-theme]
+  // attribute is set and :root's color-scheme: light dark follows the OS
+  // preference (see docs/theming.md's pre-paint script). In that mode
+  // neither theme block's selector matches anything, so an element sees
+  // only :root's BASE declarations plus whatever motion adds -- a scope
+  // distinct from either light-composed or dark-composed. Deferred: nothing
+  // in the real corpus's motion documents can trigger a conflict against
+  // this unthemed scope today (see CIN-489's confirmation that motion
+  // documents don't reference anything theme-varying).
 
   // Known gap, tracked in CIN-489: the four calls above only catch a conflict
   // when TWO paths share one cssProperty and disagree across theme scopes.
