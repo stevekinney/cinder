@@ -6,7 +6,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte/pure');
+const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
@@ -177,16 +177,22 @@ describe('ColorField — color picker trigger', () => {
   test('Escape dismisses the open picker and returns focus to the swatch button', async () => {
     const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
     const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
+    // `await tick()` rather than `waitFor`: the picker mounts and unmounts on a Svelte
+    // state flip, so a flush is an exact signal. A `waitFor` would inherit Testing
+    // Library's implicit one-second deadline at each of these two points, adding up to
+    // two seconds to a stalled run while hiding the synchronization it was papering
+    // over. The mount assertion in the test directly above already uses this form.
     await fireEvent.click(trigger);
-    await waitFor(() => {
-      expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
-    });
+    await tick();
+    expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
 
     window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
-
-    await waitFor(() => {
-      expect(document.body.querySelector('.cinder-color-picker')).toBeNull();
-    });
+    // Two flushes, measured rather than guessed: the first applies the state write the
+    // Escape handler makes, the second tears down the portaled panel. Focus is already
+    // back on the trigger after the first.
+    await tick();
+    await tick();
+    expect(document.body.querySelector('.cinder-color-picker')).toBeNull();
     expect(document.activeElement).toBe(trigger);
   });
 });

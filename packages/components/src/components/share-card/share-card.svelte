@@ -339,9 +339,10 @@
   <!-- Value display: composes the canonical `Input` primitive instead of a
        raw `<input>`, per the component-authoring rule that form controls are
        built from `Input`, not hand-rolled. `variant="code"` gives it the
-       shared monospace/ellipsis metric set already used for URIs elsewhere
-       in this library — the same code-well look the old hand-rolled CSS
-       tried to recreate. `readonly` plus the `onfocus` select-all makes the
+       shared MONOSPACE metrics already used for URIs elsewhere in this
+       library — the same code-well look the old hand-rolled CSS tried to
+       recreate. Truncation is NOT part of that variant; `.cinder-share-card__value`
+       supplies the overflow/ellipsis rules itself (see share-card.css). `readonly` plus the `onfocus` select-all makes the
        value keyboard-reachable (Tab focuses it) and easy to copy (Tab, then
        Ctrl/Cmd-C selects everything), which the previous non-focusable
        `<div>` could not do. `inputAttachment` guards against an ambient
