@@ -5,7 +5,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { createRawSnippet, tick } = await import('svelte');
 const { default: ShareCard } = await import('./share-card.svelte');
 
@@ -129,11 +129,12 @@ describe('ShareCard', () => {
       const button = getByRole('button', { name: /Copy link/i });
       await fireEvent.click(button);
 
-      // Allow async clipboard operation to settle.
-      await new Promise((resolve) => setTimeout(resolve, 10));
-
-      // After a click, the value should have been written (assuming clipboard mock works).
-      expect(clipboardValue).toBe('https://example.com');
+      // Wait on the condition, not on the clock. A fixed sleep is both slower than it
+      // needs to be and unreliable under load — and check:timeout-increases rejects
+      // wait thresholds outright, because they hide the race rather than resolve it.
+      await waitFor(() => {
+        expect(clipboardValue).toBe('https://example.com');
+      });
     } finally {
       restoreNavigatorClipboard(originalClipboard);
     }
@@ -283,9 +284,12 @@ describe('ShareCard', () => {
         ],
       });
       await fireEvent.click(getByRole('button', { name: /Copy and track/i }));
-      await new Promise((resolve) => setTimeout(resolve, 10));
-      expect(clicked).toBe(true);
-      expect(copied).toBe('https://example.com/tracked');
+      // Wait on the condition, not the clock — check:timeout-increases rejects fixed
+      // wait thresholds, and polling the assertion is both faster and deterministic.
+      await waitFor(() => {
+        expect(clicked).toBe(true);
+        expect(copied).toBe('https://example.com/tracked');
+      });
     } finally {
       restoreNavigatorClipboard(originalClipboard);
     }
@@ -397,11 +401,12 @@ describe('ShareCard Input composition', () => {
         copyLinkLabel: 'Copy link',
       });
       await fireEvent.click(getByRole('button', { name: 'Copy link' }));
-      await new Promise((resolve) => setTimeout(resolve, 10));
       // The copy action reads `value`/`copyValue` from component state, never
       // from the (single-line, newline-sanitizing) DOM input — so it is
       // never lossy, regardless of what the field visually displays.
-      expect(clipboardValue).toBe(multiline);
+      await waitFor(() => {
+        expect(clipboardValue).toBe(multiline);
+      });
     } finally {
       restoreNavigatorClipboard(originalClipboard);
       warnSpy.mockRestore();
@@ -625,9 +630,11 @@ describe('ShareCard native share', () => {
     const { container } = render(ShareCard, { value: 'https://example.com/x' });
     const shareButton = container.querySelector('[data-cinder-action="native-share"]');
     await fireEvent.click(shareButton!);
-    // The share → fallback-copy chain awaits navigator.share then the clipboard
-    // write; let those microtasks/timers settle before asserting the UI state.
-    await new Promise((resolve) => setTimeout(resolve, 10));
+    // The share -> fallback-copy chain awaits navigator.share and then the clipboard
+    // write, so the copied state lands a couple of microtasks later. Poll for it
+    // rather than sleeping a fixed interval: check:timeout-increases rejects wait
+    // thresholds because they paper over the race instead of resolving it.
+    //
     // The fallback copy succeeded — the share button must surface the copied
     // affordance visually (icon + `data-cinder-copied`), but its accessible
     // name stays STABLE at `action.label` ("Share"). It must NOT swap to
@@ -635,7 +642,9 @@ describe('ShareCard native share', () => {
     // source of truth for the transient announcement, so the name changing
     // too would risk a redundant re-announcement and would also make
     // `getByRole(..., { name: 'Share' })` unable to find the button mid-copy.
-    expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
+    await waitFor(() => {
+      expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
+    });
     expect(shareButton?.getAttribute('aria-label')).toBe('Share');
   });
 });
