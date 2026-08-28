@@ -22,8 +22,6 @@ Keyboard behavior follows the rendered native elements and any ARIA pattern docu
 
 The **More formatting** button opens a priority-plus Popover containing the less-frequent formatting commands. Opening it moves focus to the first enabled formatting action. `Tab` and `Shift+Tab` follow the panel's native button order; each button's existing shortcut remains available while the editor is focused. `Escape` closes the panel and restores focus to More formatting. Activating Insert Link first closes the formatting panel, then opens the link dialog from the same visual anchor so only one floating focus scope is active. The panel is named **More formatting**, its command groups retain their accessible labels, and toggle buttons expose their pressed state without an additional live announcement.
 
-Which commands sit inline versus in the overflow panel is width-driven, but it is deliberately **frozen while focus is inside a group or on the More formatting trigger**. A resize that would otherwise move the focused group across that boundary — or empty the overflow set entirely, unmounting the trigger — is held until focus moves on. Without this, a window resize or a container reflow silently relocates the control under the user's cursor, or drops keyboard focus to `<body>`. Two consequences worth knowing when reviewing: the trigger can remain present at a width where everything would otherwise fit, and a command can remain in the panel for the same reason. Both resolve as soon as focus leaves.
-
 Keep focus indicators visible. If you wrap or restyle MarkdownEditor, verify the focused element remains visually apparent in default and forced-colors modes.
 
 ## Names, roles, and state
