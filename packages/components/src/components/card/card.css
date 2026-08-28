@@ -86,12 +86,18 @@
 
   .cinder-card[data-cinder-variant='well'] {
     background: transparent;
+  }
+
+  .cinder-card[data-cinder-variant='well'][data-cinder-elevation='sm'] {
     box-shadow: none;
   }
 
   .cinder-card[data-cinder-tone='danger'] {
     background: var(--cinder-status-danger-background);
     border-color: var(--cinder-status-danger-border);
+  }
+
+  .cinder-card[data-cinder-tone='danger'][data-cinder-elevation='sm'] {
     box-shadow: none;
   }
 

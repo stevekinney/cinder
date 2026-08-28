@@ -16,6 +16,11 @@
 </script>
 
 <script lang="ts">
+  import Check from 'lucide-svelte/icons/check';
+  import Copy from 'lucide-svelte/icons/copy';
+  import Share2 from 'lucide-svelte/icons/share-2';
+
+  import Input from '../input/input.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { copyToClipboard } from '../../utilities/clipboard.ts';
   import VisuallyHiddenLiveRegion from '../_visually-hidden-live-region.svelte';
@@ -34,6 +39,11 @@
     class: customClassName,
     ...rest
   }: ShareCardProps = $props();
+
+  // `Input` requires an `id`. ShareCard has no consumer-facing id prop (the
+  // value field is unlabelled by a visible <label> — its name comes from
+  // `aria-label`), so generate a stable one per instance.
+  const valueFieldId = $props.id();
 
   // Track which action is in the "copied" state by its key.
   let copiedKey = $state<string | null>(null);
@@ -199,11 +209,32 @@
     </div>
   {/if}
 
-  <!-- Value display: truncated read-only URL/text field -->
-  <div class="cinder-share-card__value" aria-label={valueRegionLabel}>
-    <span class="cinder-share-card__value-text" title={value}>{value}</span>
-  </div>
+  <!-- Value display: composes the canonical `Input` primitive instead of a
+       raw `<input>`, per the component-authoring rule that form controls are
+       built from `Input`, not hand-rolled. `variant="code"` gives it the
+       shared monospace/ellipsis metric set already used for URIs elsewhere
+       in this library — the same code-well look the old hand-rolled CSS
+       tried to recreate. `readonly` plus the `onfocus` select-all makes the
+       value keyboard-reachable (Tab focuses it) and easy to copy (Tab, then
+       Ctrl/Cmd-C selects everything), which the previous non-focusable
+       `<div>` could not do. The copy/share actions ride along as the
+       field's `trailing` addon (marked `trailingInteractive` so the buttons
+       stay in the accessibility tree) rather than a separate sibling row. -->
+  <Input
+    id={valueFieldId}
+    {value}
+    readonly
+    variant="code"
+    class="cinder-share-card__value"
+    title={value}
+    aria-label={valueRegionLabel}
+    onfocus={(event) => event.currentTarget.select()}
+    trailing={actionsTrailing}
+    trailingInteractive
+  />
+</div>
 
+{#snippet actionsTrailing()}
   <div class="cinder-share-card__actions" role="group" aria-label="Share actions">
     {#each resolvedActions as action (action.key)}
       {#if action.key === 'native-share' || action.nativeShareEnabled}
@@ -221,7 +252,7 @@
       {@render shareButton({ key: 'native-share', label: shareLabel, nativeShareEnabled: true })}
     {/if}
   </div>
-</div>
+{/snippet}
 
 <!-- Native-share button. Reflects the `share-fallback` copied state so that when
      `handleNativeShare` falls back to a clipboard copy (native share unavailable
@@ -234,6 +265,7 @@
     class="cinder-share-card__action"
     data-cinder-action={action.key}
     data-cinder-copied={shareCopied ? '' : undefined}
+    data-cinder-has-label={action.labelSnippet ? '' : undefined}
     onclick={() => {
       // Honour a consumer onclick (analytics/side-effects) on the native share
       // action too, then run the share. `void` marks the floating promise as
@@ -243,44 +275,23 @@
     }}
     aria-label={shareCopied ? copiedLabel : action.label}
   >
-    {#if shareCopied}
-      <!-- Copied state icon (after a fallback copy) -->
-      <span class="cinder-share-card__action-icon" aria-hidden="true">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="cinder-share-card__icon"
-        >
-          <polyline points="20,6 9,17 4,12" />
-        </svg>
-      </span>
-      {copiedLabel}
-    {:else}
-      <!-- Share icon -->
-      <span class="cinder-share-card__action-icon" aria-hidden="true">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="cinder-share-card__icon"
-        >
-          <circle cx="18" cy="5" r="3" />
-          <circle cx="6" cy="12" r="3" />
-          <circle cx="18" cy="19" r="3" />
-          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49" />
-          <line x1="15.41" y1="6.51" x2="8.59" y2="10.49" />
-        </svg>
-      </span>
-      {#if action.labelSnippet}{@render action.labelSnippet()}{:else}{action.label}{/if}
+    <!-- Icon-only by default: `aria-label` above carries the accessible name,
+         so no visible text is required. `action.labelSnippet`, when present,
+         is the CIN-358-ratified escape hatch for rich VISIBLE content — it
+         still renders next to the icon, per that contract. -->
+    <span class="cinder-share-card__action-icon" aria-hidden="true">
+      {#if shareCopied}
+        <Check class="cinder-share-card__icon" />
+      {:else}
+        <Share2 class="cinder-share-card__icon" />
+      {/if}
+    </span>
+    {#if action.labelSnippet}
+      {#if shareCopied}
+        {copiedLabel}
+      {:else}
+        {@render action.labelSnippet()}
+      {/if}
     {/if}
   </button>
 {/snippet}
@@ -295,6 +306,7 @@
     class="cinder-share-card__action"
     data-cinder-action={action.key}
     data-cinder-copied={copiedKey === action.key ? '' : undefined}
+    data-cinder-has-label={action.labelSnippet ? '' : undefined}
     onclick={() => {
       action.onclick?.();
       if (action.copyValue !== undefined) {
@@ -303,41 +315,23 @@
     }}
     aria-label={copiedKey === action.key ? copiedLabel : action.label}
   >
-    {#if copiedKey === action.key}
-      <!-- Copied state icon -->
-      <span class="cinder-share-card__action-icon" aria-hidden="true">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="cinder-share-card__icon"
-        >
-          <polyline points="20,6 9,17 4,12" />
-        </svg>
-      </span>
-      {copiedLabel}
-    {:else}
-      <!-- Copy icon -->
-      <span class="cinder-share-card__action-icon" aria-hidden="true">
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          class="cinder-share-card__icon"
-        >
-          <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />
-          <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" />
-        </svg>
-      </span>
-      {#if action.labelSnippet}{@render action.labelSnippet()}{:else}{action.label}{/if}
+    <!-- Icon-only by default: `aria-label` above carries the accessible name,
+         so no visible text is required. `action.labelSnippet`, when present,
+         is the CIN-358-ratified escape hatch for rich VISIBLE content — it
+         still renders next to the icon, per that contract. -->
+    <span class="cinder-share-card__action-icon" aria-hidden="true">
+      {#if copiedKey === action.key}
+        <Check class="cinder-share-card__icon" />
+      {:else}
+        <Copy class="cinder-share-card__icon" />
+      {/if}
+    </span>
+    {#if action.labelSnippet}
+      {#if copiedKey === action.key}
+        {copiedLabel}
+      {:else}
+        {@render action.labelSnippet()}
+      {/if}
     {/if}
   </button>
 {/snippet}

@@ -22,6 +22,16 @@ Activation should work with the native Enter and Space behavior of the rendered 
 
 Keep focus indicators visible. If you wrap or restyle ShareCard, verify the focused element remains visually apparent in default and forced-colors modes.
 
+### The value field
+
+The shared value renders by composing the canonical `Input` primitive (`variant="code"`, `readonly`), not a raw `<input>` and not a non-interactive `<div>`. Reusing `Input` means the field gets the same read-only, focusable, monospace-well semantics as every other code/URI-like field in this library, instead of a bespoke re-implementation. This makes it reachable with `Tab` like any other field, and its `readonly` state means assistive technology announces it as a read-only text field rather than an editable one. Focusing the field selects its full contents, so a keyboard user can copy the value with `Tab` followed by `Ctrl`/`Cmd`-`C` without ever touching a pointer. The field's accessible name comes from `aria-label` ("Link to share" or "Text to share", chosen automatically based on whether the value looks like a URL); its accessible value is the input's own `value`, so no separate visible label element is needed.
+
+A genuine `<input>` (via `Input`) was chosen over a `role="textbox"` wrapper because it gets correct read-only semantics, built-in text selection, and focus/select behavior from the platform for free, instead of re-implementing that contract by hand.
+
+### Action buttons
+
+The copy and native-share actions render as icon-only buttons by default (matching the `.dx-import__copy` pattern used elsewhere in this codebase for the same "copy a value" affordance), and ride along as the value field's `Input` `trailing` addon (`trailingInteractive`, so the buttons stay in the accessibility tree instead of being hidden under the field's own accessible name). Each button's accessible name comes from `aria-label`, driven by `ShareCardAction.label` — the required string accessible name — and that name does not change when a copy/share succeeds; only the live-region announcement and a `data-cinder-copied` styling hook change. When a consumer supplies `ShareCardAction.labelSnippet`, its rich content still renders visibly next to the icon, per the ratified contract that `label` is always the accessible name and `labelSnippet` is optional rich visible content, never a replacement for it.
+
 ## Names, roles, and state
 
 Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.

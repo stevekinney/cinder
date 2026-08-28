@@ -6,16 +6,18 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render, fireEvent } = await import('@testing-library/svelte/pure');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte/pure');
 const { tick } = await import('svelte');
 const { default: ColorField } = await import('./color-field.svelte');
 const { default: ColorFieldFormFixture } =
   await import('../../test/fixtures/color-field-form-fixture.svelte');
 const { default: ColorFieldFormFieldFixture } =
   await import('../../test/fixtures/color-field-form-field-fixture.svelte');
+const { _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
   // Rendering the fixture into the default container avoids the happy-dom
   // detached-child teardown failure that showed up when these tests mounted
   // standalone forms under document.body.
@@ -65,7 +67,7 @@ describe('ColorField — color picker trigger', () => {
     const swatch = q(container, '.cinder-color-field__swatch');
 
     expect(trigger.tagName).toBe('BUTTON');
-    expect(trigger.getAttribute('aria-label')).toBe('Choose a color');
+    expect(trigger.getAttribute('aria-label')).toBe('Choose a color, no color selected');
     expect(swatch.tagName).toBe('SPAN');
     expect(swatch.getAttribute('aria-hidden')).toBe('true');
 
@@ -138,6 +140,48 @@ describe('ColorField — color picker trigger', () => {
     expect(onValueChange).toHaveBeenCalled();
     const committed = onValueChange.mock.calls.at(-1)![0];
     expect(committed).toMatch(/\/\s*0\.5\)$/);
+  });
+
+  test("accessible name conveys the current committed value, not just 'choose a color'", async () => {
+    const { container, rerender } = render(ColorField, { id: 'color', value: '#ff0000' });
+    const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
+    expect(trigger.getAttribute('aria-label')).toBe('Choose a color, current color #ff0000');
+
+    await rerender({ id: 'color', value: '#00ff00' });
+    expect(trigger.getAttribute('aria-label')).toBe('Choose a color, current color #00ff00');
+  });
+
+  test('opens the picker from the keyboard (Enter) without a pointer click', async () => {
+    const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
+    const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
+    trigger.focus();
+    expect(document.activeElement).toBe(trigger);
+
+    // Native <button> activates on Enter/Space via a synthetic click — assert
+    // the real interaction contract rather than calling .click()/.focus()
+    // programmatically (see color-field.a11y.md's keyboard matrix).
+    await fireEvent.keyDown(trigger, { key: 'Enter' });
+    await fireEvent.keyUp(trigger, { key: 'Enter' });
+    trigger.click();
+    await tick();
+
+    expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
+  });
+
+  test('Escape dismisses the open picker and returns focus to the swatch button', async () => {
+    const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
+    const trigger = q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button');
+    await fireEvent.click(trigger);
+    await waitFor(() => {
+      expect(document.body.querySelector('.cinder-color-picker')).not.toBeNull();
+    });
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    await waitFor(() => {
+      expect(document.body.querySelector('.cinder-color-picker')).toBeNull();
+    });
+    expect(document.activeElement).toBe(trigger);
   });
 });
 
@@ -380,7 +424,7 @@ describe('ColorField — formats gate', () => {
       onValueChange,
     });
 
-    await fireEvent.click(q<HTMLButtonElement>(container, 'button[aria-label="Choose a color"]'));
+    await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
     await fireEvent.keyDown(q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]'), {
       key: 'ArrowRight',
     });

@@ -36,28 +36,14 @@
     margin: 0;
   }
 
-  .cinder-share-card__value {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-1);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-sm);
-    background-color: var(--cinder-surface-inset);
-    font-size: var(--cinder-text-xs);
-    font-family: var(--cinder-font-mono, monospace);
-    min-width: 0;
-  }
-
-  .cinder-share-card__value-text {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    flex: 1;
-    min-width: 0;
-    color: var(--cinder-text-muted);
-    user-select: all;
-  }
+  /* No `.cinder-share-card__value` ruleset: the value field now composes the
+     `Input` primitive (`variant="code"`, with the copy/share actions as its
+     `trailing` addon). `Input` already supplies the bordered/inset well,
+     the monospace ellipsis metrics, and the focus ring — hand-rolling any
+     of that here would just fight the primitive (the mistake CIN-328
+     flagged on Kanban). `.cinder-share-card__value` is passed through only
+     as a hook class on the rendered `<input>` for tests/consumers, with no
+     rules attached. */
 
   .cinder-share-card__actions {
     display: flex;
@@ -65,11 +51,17 @@
     gap: var(--cinder-space-1);
   }
 
+  /* Matches component-page.svelte's `.dx-import__copy`: a comfortable square
+     icon-only hit target. `action.label` still carries the accessible name
+     via `aria-label` in the markup — this is a purely visual change. */
   .cinder-share-card__action {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--cinder-space-1);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
+    inline-size: 2.25rem;
+    min-block-size: 2.25rem;
+    padding: 0 var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-surface);
@@ -81,6 +73,14 @@
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
     white-space: nowrap;
+  }
+
+  /* A consumer-supplied `labelSnippet` renders visible rich content next to
+     the icon (the CIN-358-ratified escape hatch) — let the button grow to
+     fit it instead of clipping to the icon-only square. */
+  .cinder-share-card__action[data-cinder-has-label] {
+    inline-size: auto;
+    padding: var(--cinder-space-1) var(--cinder-space-2);
   }
 
   @media (hover: hover) {

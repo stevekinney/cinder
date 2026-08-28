@@ -6,8 +6,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
-const { tick } = await import('svelte');
+const { createRawSnippet, tick } = await import('svelte');
 const { default: ShareCard } = await import('./share-card.svelte');
+
+function markupSnippet(markup: string) {
+  return createRawSnippet(() => ({
+    render: () => markup,
+  }));
+}
 
 type ClipboardLike = { writeText: (text: string) => Promise<void> };
 
@@ -37,10 +43,29 @@ afterEach(() => {
 });
 
 describe('ShareCard', () => {
-  test('renders the value in the link display area', () => {
+  test('renders the value in a focusable, read-only field', () => {
     const { container } = render(ShareCard, { value: 'https://example.com/share/abc' });
-    const valueText = container.querySelector('.cinder-share-card__value-text');
-    expect(valueText?.textContent).toBe('https://example.com/share/abc');
+    const valueField = container.querySelector<HTMLInputElement>('.cinder-share-card__value');
+    expect(valueField).not.toBeNull();
+    expect(valueField?.tagName).toBe('INPUT');
+    expect(valueField?.value).toBe('https://example.com/share/abc');
+    expect(valueField?.readOnly).toBe(true);
+    // Keyboard reachability: no explicit `tabindex` removes it from the Tab
+    // order, and it is not disabled — a bare `<input>` is natively focusable.
+    // (happy-dom's `tabIndex` IDL property defaults to -1 for elements with no
+    // explicit attribute, unlike real browsers, so assert on the attribute and
+    // `disabled` state directly rather than the IDL property.)
+    expect(valueField?.getAttribute('tabindex')).toBeNull();
+    expect(valueField?.disabled).toBe(false);
+  });
+
+  test('selects the full value when the field receives focus', () => {
+    const { container } = render(ShareCard, { value: 'https://example.com/share/abc' });
+    const valueField = container.querySelector<HTMLInputElement>('.cinder-share-card__value')!;
+    valueField.focus();
+    expect(document.activeElement).toBe(valueField);
+    expect(valueField.selectionStart).toBe(0);
+    expect(valueField.selectionEnd).toBe(valueField.value.length);
   });
 
   test('renders title when provided', () => {
@@ -301,6 +326,37 @@ describe('ShareCard', () => {
       'Text to share',
     );
   });
+
+  test('the copy-link button is icon-only: aria-label carries the name, no visible label text', () => {
+    const { container, getByRole } = render(ShareCard, {
+      value: 'https://example.com',
+      copyLinkLabel: 'Copy link',
+    });
+    const button = getByRole('button', { name: 'Copy link' });
+    expect(button.getAttribute('aria-label')).toBe('Copy link');
+    // No visible "Copy link" text node in the button — only the decorative,
+    // aria-hidden icon.
+    expect(button.textContent?.trim()).toBe('');
+    expect(
+      container.querySelector('.cinder-share-card__action-icon[aria-hidden="true"]'),
+    ).not.toBeNull();
+  });
+
+  test('a labelSnippet action still renders its rich visible content', () => {
+    const { getByRole } = render(ShareCard, {
+      value: 'https://example.com',
+      actions: [
+        {
+          key: 'copy-link',
+          label: 'Copy link',
+          copyValue: 'https://example.com',
+          labelSnippet: markupSnippet('<strong>Custom copy label</strong>'),
+        },
+      ],
+    });
+    const button = getByRole('button', { name: 'Copy link' });
+    expect(button.textContent?.trim()).toBe('Custom copy label');
+  });
 });
 
 // ---------------------------------------------------------------------------
@@ -346,8 +402,8 @@ describe('ShareCard native share', () => {
     (navigator as { share?: unknown }).share = async (data: ShareData) => {
       received = data;
     };
-    const { getByText } = render(ShareCard, { value: 'https://example.com/x' });
-    await fireEvent.click(getByText('Share'));
+    const { getByRole } = render(ShareCard, { value: 'https://example.com/x' });
+    await fireEvent.click(getByRole('button', { name: 'Share' }));
     expect(received?.url).toBe('https://example.com/x');
   });
 
@@ -356,8 +412,8 @@ describe('ShareCard native share', () => {
     (navigator as { share?: unknown }).share = async (data: ShareData) => {
       received = data;
     };
-    const { getByText } = render(ShareCard, { value: 'Just some text to share' });
-    await fireEvent.click(getByText('Share'));
+    const { getByRole } = render(ShareCard, { value: 'Just some text to share' });
+    await fireEvent.click(getByRole('button', { name: 'Share' }));
     expect(received?.text).toBe('Just some text to share');
     expect(received?.url).toBeUndefined();
   });
@@ -372,8 +428,8 @@ describe('ShareCard native share', () => {
         copied = text;
       },
     });
-    const { getByText } = render(ShareCard, { value: 'https://example.com/x' });
-    await fireEvent.click(getByText('Share'));
+    const { getByRole } = render(ShareCard, { value: 'https://example.com/x' });
+    await fireEvent.click(getByRole('button', { name: 'Share' }));
     // Abort is a user cancel — it must NOT trigger the copy fallback.
     expect(copied).toBe('');
   });
@@ -388,8 +444,8 @@ describe('ShareCard native share', () => {
         copied = text;
       },
     });
-    const { getByText } = render(ShareCard, { value: 'https://example.com/x' });
-    await fireEvent.click(getByText('Share'));
+    const { getByRole } = render(ShareCard, { value: 'https://example.com/x' });
+    await fireEvent.click(getByRole('button', { name: 'Share' }));
     // The copy fallback ran, preserving the value.
     expect(copied).toBe('https://example.com/x');
   });
