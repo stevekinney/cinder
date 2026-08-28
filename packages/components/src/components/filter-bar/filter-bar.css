@@ -6,21 +6,47 @@
    * ======================================== */
 
   .cinder-filter-bar {
+    container-type: inline-size;
+    container-name: cinder-filter-bar;
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-2);
   }
 
-  /* Controls row: search + facet selects in a flex row */
+  /* Controls row: search + facet selects.
+   * Below the container-query breakpoint, controls stack in a single
+   * column. At or above it, controls lay out on a shared grid so facets
+   * on a wrapped row line up under the facets above them instead of each
+   * packing to its own content width the way `flex-wrap` does. The search
+   * track is capped at `20rem` instead of using `1fr` so it no longer
+   * absorbs all remaining row space. */
   .cinder-filter-bar__controls {
-    display: flex;
-    flex-wrap: wrap;
+    display: grid;
+    grid-template-columns: 1fr;
     align-items: center;
     gap: var(--cinder-space-2);
   }
 
+  @container cinder-filter-bar (min-width: 40rem) {
+    .cinder-filter-bar__controls {
+      /* Uniform facet tracks only. The search does NOT get a track of its own:
+         when it did, grid auto-placement wrapped the next overflowing facet into
+         column 1 — the wide 14-20rem search track — so that one facet rendered far
+         wider than its siblings. That is the ragged alignment this issue exists to
+         remove, just relocated to the wrap boundary. */
+      grid-template-columns: repeat(auto-fit, minmax(9rem, max-content));
+    }
+
+    /* The search spans the full row above the facets, so every facet sits in an
+       identically sized track no matter how the rows wrap. It still does not absorb
+       the row: max-inline-size caps it well short of the full span. */
+    .cinder-filter-bar__search {
+      grid-column: 1 / -1;
+      max-inline-size: 20rem;
+    }
+  }
+
   .cinder-filter-bar__search {
-    flex: 1 1 14rem;
     min-inline-size: min(14rem, 100%);
   }
 
@@ -30,7 +56,16 @@
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
-    flex-shrink: 0;
+  }
+
+  /* The chevron is absolutely positioned against this wrapper, so the wrapper and the
+     select have to end at the same edge. In the stacked single-column layout the grid
+     item stretches to the full row while a native select stays content-sized, which
+     left the chevron floating in the gap to the select's right. Stretching the select
+     to fill its wrapper keeps the two edges together at every width. */
+  .cinder-filter-bar__facet .cinder-filter-bar__select {
+    flex: 1 1 auto;
+    min-inline-size: 0;
   }
 
   .cinder-filter-bar__facet-label {

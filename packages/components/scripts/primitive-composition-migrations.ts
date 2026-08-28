@@ -80,6 +80,17 @@ export const allowedGridCounts = new Map<string, number>(
   ].map((filePath) => [filePath, 1] as const),
 );
 allowedGridCounts.set('action-row/action-row.css', 4);
+/*
+ * CIN-335: the facet row aligns on a grid across wrap boundaries, switched by a container
+ * query. Grid cannot express that — its only width behaviour is `narrowCollapseEnabled`, a
+ * fixed 48rem single-column collapse, while this breaks at 40rem to match form-section's
+ * scale. Tracked for the same reason form-section is.
+ *
+ * Two pairs, not one: the base rule declares `display: grid` and its own
+ * `grid-template-columns` (one pair with itself), and the `@container` override supplies a
+ * second `grid-template-columns` that pairs with that same display rule.
+ */
+allowedGridCounts.set('filter-bar/filter-bar.css', 2);
 allowedGridCounts.set('calendar/calendar.css', 2);
 allowedGridCounts.set('data-grid/data-grid.css', 2);
 allowedGridCounts.set('description-list/description-list.css', 4);
