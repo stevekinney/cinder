@@ -1002,6 +1002,19 @@ export function assertResolutionOrderMatchesCssBlockStructure(resolver: Resolver
         'generated CSS and published resolved-context snapshots will silently disagree.',
     );
   }
+  // Known gap, tracked in CIN-491: this function validates modifier NAMES and
+  // ORDERING, but never inspects whether motion.default's own context
+  // document is actually empty. buildTokensBaseCss assembles :root
+  // exclusively from `sets` and only emits motion declarations for `reduced`
+  // and `forced-reduced-motion` -- motion.default's document is never read
+  // for CSS emission at all -- while buildResolvedContexts DOES include it
+  // when composing the default-motion resolved-context snapshots. A
+  // non-empty motion.default override would therefore reach the published
+  // JSON but never the generated CSS, the same class of silent disagreement
+  // the third-modifier rejection above exists to prevent, just for an
+  // existing modifier's default CONTENT rather than its existence. Deferred:
+  // modes/motion-default.tokens.json is deliberately empty today (its own
+  // $description explains why), and nothing else in the corpus overrides it.
 }
 
 export async function buildTokensBaseCss(
@@ -1143,6 +1156,15 @@ export async function buildTokensBaseCss(
   collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
   assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
   assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
+  // Known gap, tracked in CIN-490 (the symmetric case of CIN-489): these two
+  // calls validate each theme override's scope filled with the DEFAULT
+  // motion context. If a light/dark override contained a reference to a
+  // token that motion.reduced/motion.forced-reduced-motion changes, the
+  // theme declaration would serialize once from the default-motion value
+  // while the reduced-motion resolved snapshots re-resolve it under reduced
+  // motion -- silently disagreeing, for a path with a unique cssProperty
+  // where the uniqueness guard is a no-op. Deferred: confirmed no theme
+  // document contains a $ref at all today.
   // The motion blocks are emitted as a fixed `@media`/attribute selector that
   // applies regardless of which `[data-theme]` is active -- unlike theme
   // (which always cascades BEFORE motion, so a theme block's own internal
