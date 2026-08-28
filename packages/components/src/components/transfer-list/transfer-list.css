@@ -16,14 +16,6 @@
 
   .cinder-transfer-list__label {
     margin: 0;
-    color: var(--cinder-text-default);
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-  }
-
-  .cinder-transfer-list__count {
-    color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-xs);
   }
 
   .cinder-transfer-list__list {
