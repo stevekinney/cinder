@@ -2229,12 +2229,69 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('bottom tabs also floor the inline axis at the touch-target minimum, not just block', () => {
+    // `flex: 1 1 0` has no inline floor on its own — with enough tabs in a
+    // narrow bar the item can shrink under 44px wide even though the block
+    // axis is already generously covered by the 4rem above.
+    expect(navigationBarCss).toMatch(
+      /data-cinder-placement='bottom'[\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?min-block-size:\s*4rem;[\s\S]*?min-inline-size:\s*var\(--cinder-touch-target-min\);/,
+    );
+  });
+
+  test('the bottom tab row scrolls rather than clipping when the touch floor overflows it', () => {
+    // The inline floor above is non-negotiable, so enough tabs in a narrow bar WILL
+    // exceed the container. Without an overflow strategy the excess is clipped and
+    // unreachable, because a bottom bar is normally sticky or fixed inside a clipping
+    // host — the floor would then trade one accessibility failure for another.
+    const bottomItemsRule =
+      navigationBarCss.match(
+        /\.cinder-navigation-bar\[data-cinder-placement='bottom'\] \.cinder-navigation-bar__items \{[^}]*\}/,
+      )?.[0] ?? '';
+
+    expect(bottomItemsRule).toContain('overflow-x: auto');
+    expect(bottomItemsRule).not.toContain('overflow-x: hidden');
+
+    // Scrolling one axis forces the other to compute as `auto` too — CSS does not let
+    // one axis scroll while the other stays visible — so this container now clips
+    // vertically. navigation-item's focus ring is a box-shadow painted OUTSIDE the
+    // tab, so without block padding to sit in, enabling the scroll would have traded
+    // an unreachable tab for an invisible focus ring. The negative margin cancels the
+    // padding so the bar's height is unchanged.
+    expect(bottomItemsRule).toContain('padding-block: var(--_cinder-navigation-bar-tab-ring-room)');
+    expect(bottomItemsRule).toContain(
+      'margin-block: calc(-1 * var(--_cinder-navigation-bar-tab-ring-room))',
+    );
+  });
+
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,
     );
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\]\[data-active='true'\][\s\S]*?border-inline-start-color:\s*var\(--cinder-accent-solid\);[\s\S]*?background-color:\s*var\(--cinder-surface-inset\);/,
+    );
+  });
+
+  test('top-collapsible mobile panel rows meet the touch-target minimum', () => {
+    // navigation-item.css's shared base rule only floors this row at
+    // `min-height: 2rem` (32px); nothing in the mobile-panel rule overrode
+    // that until now, so the row rendered under the 44px floor.
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?min-block-size:\s*var\(--cinder-touch-target-min\);/,
+    );
+  });
+
+  test('top-collapsible mobile panel rows are concentric with the panel, not a smaller radius step', () => {
+    // The panel is `--cinder-radius-md` inset by its own `--cinder-space-2`
+    // padding (this file's `.cinder-navigation-bar__items[data-cinder-mobile-panel]`
+    // rule overrides `cinder-_floating-surface`'s default padding). The row's
+    // radius must be derived from that same pair of tokens, not an unrelated
+    // step off the scale like `--cinder-radius-sm`.
+    expect(navigationBarCss).toMatch(
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-radius:\s*calc\(var\(--cinder-radius-md\) - var\(--cinder-space-2\)\);/,
+    );
+    expect(navigationBarCss).not.toMatch(
+      /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-radius:\s*var\(--cinder-radius-sm\);/,
     );
   });
 });

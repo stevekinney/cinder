@@ -32,6 +32,44 @@ describe('StackedListItem', () => {
     );
   });
 
+  test('condensed density produces a measurably denser stylesheet than the default', () => {
+    const stylesheet = readFileSync(new URL('./stacked-list-item.css', import.meta.url), 'utf8');
+
+    // The base body-stack gap and the condensed override must resolve to different token values —
+    // otherwise the condensed variant is a no-op that only changes padding.
+    const baseBodyGap = stylesheet.match(
+      /\.cinder-stacked-list-item__body \{[^}]*gap:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+    const condensedBodyGap = stylesheet.match(
+      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__body \{[^}]*gap:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+
+    expect(baseBodyGap).toBe('var(--cinder-space-1)');
+    expect(condensedBodyGap).toBe('var(--cinder-space-0-5)');
+    expect(condensedBodyGap).not.toBe(baseBodyGap);
+
+    // The gap is declared directly rather than routed through a component custom
+    // property: a non-empty variables manifest obliges the DTCG corpus to model the
+    // token (check:component-variable-registry enforces it), and widening the public
+    // theming surface is a separate decision from fixing a no-op variant.
+    expect(stylesheet).not.toContain('--cinder-stacked-list-item-body-gap');
+
+    // The condensed description/meta line-height must differ from the base --cinder-leading-snug
+    // value the element already inherits — matching it would be a silent no-op.
+    const baseDescriptionLineHeight = stylesheet.match(
+      /__description\s*\{[^}]*line-height:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+    // Whitespace-tolerant rather than pinning newlines and indentation: a reformat
+    // must not fail a test about line-height values.
+    const condensedLineHeightMatch = stylesheet.match(
+      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__description,[\s\S]*?__meta \{[\s\S]*?line-height:\s*(var\(--cinder-[\w-]+\))/,
+    )?.[1];
+
+    expect(baseDescriptionLineHeight).toBe('var(--cinder-leading-snug)');
+    expect(condensedLineHeightMatch).toBe('var(--cinder-leading-tight)');
+    expect(condensedLineHeightMatch).not.toBe(baseDescriptionLineHeight);
+  });
+
   test('renders all snippets under their respective class names', () => {
     const { container } = render(StackedListItem, {
       props: {

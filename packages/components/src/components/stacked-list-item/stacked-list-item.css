@@ -60,6 +60,21 @@
     gap: var(--cinder-space-1);
   }
 
+  /*
+   * The density variant's real work. Most of this family's airiness comes from
+   * this gap sitting on top of the description/meta leading, not from the
+   * leading alone, so condensing has to tighten both.
+   *
+   * Deliberately a direct declaration rather than a component custom property:
+   * selectable-row and action-row route their equivalent gap through one, but a
+   * non-empty *.variables.json manifest obliges the DTCG corpus to model the
+   * token, and that is a public theming API decision rather than a side effect
+   * of fixing a no-op variant. Nothing outside this component reads the value.
+   */
+  .cinder-stacked-list-item[data-cinder-density='condensed'] .cinder-stacked-list-item__body {
+    gap: var(--cinder-space-0-5);
+  }
+
   .cinder-stacked-list-item__trailing {
     grid-area: trailing;
     display: flex;
@@ -111,7 +126,7 @@
 
   .cinder-stacked-list-item[data-cinder-density='condensed'] .cinder-stacked-list-item__description,
   .cinder-stacked-list-item[data-cinder-density='condensed'] .cinder-stacked-list-item__meta {
-    line-height: var(--cinder-leading-snug);
+    line-height: var(--cinder-leading-tight);
   }
 
   /* Narrow container query — trailing drops below body */
