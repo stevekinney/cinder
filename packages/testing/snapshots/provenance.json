@@ -1,9 +1,13 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "chat"
+    "mega-menu",
+    "navigation-bar",
+    "stacked-list-item",
+    "table",
+    "time-field"
   ],
-  "renderedSourceSha": "aeeefa67ecfe904e36b7fc8e2797f3f7a2c95bc8",
+  "renderedSourceSha": "b1329903ef39324d77d00e6f9391a4f29148fcc8",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
