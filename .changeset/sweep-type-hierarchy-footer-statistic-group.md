@@ -12,7 +12,11 @@ the now-empty main region no longer contributes that outer gap.
 
 StatisticGroup's `default` variant gains a resting border and per-cell dividers, so it reads
 as a deliberate treatment rather than an unstyled fallback next to the `cards` and
-`shared-borders` variants. Divider direction follows the effective column count rather than a
-standalone breakpoint: single-column layouts get horizontal dividers, multi-column layouts
-vertical ones, and each row's last cell no longer draws a divider off the grid's trailing
-edge. Its sizing tokens are unchanged.
+`shared-borders` variants.
+
+Dividers apply to fixed `columns` counts only. `columns='1'` gets horizontal dividers,
+`columns={2|3|4}` get vertical ones with each row's last cell suppressed, and
+`columns='auto'` — the default — gets none: `repeat(auto-fit, …)` has no upper bound on its
+track count, so CSS cannot identify which cells end a row. An auto group therefore keeps the
+variant's border, inset surface, and gap without cell dividers. Its sizing tokens are
+unchanged.

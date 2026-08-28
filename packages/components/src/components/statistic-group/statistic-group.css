@@ -105,7 +105,17 @@
   }
 
   /* Row ends: the last cell of each row has no neighbour to its right. No container
-     query needed -- a fixed count renders that many columns at every width. */
+     query needed -- for a standalone group, a fixed count renders that many tracks at
+     every width, because the collapse rules above never fire (see the note above).
+
+     One case does diverge: a group nested INSIDE another StatisticGroup. The inner
+     group still cannot query itself, but it now has an ancestor container, so the
+     collapse rules DO resolve -- against the outer group's width. An inner
+     `columns={3}` inside a 20rem outer group therefore renders two tracks while these
+     rules still suppress every third divider. That is the same inert-collapse defect
+     seen from the other side, and it cannot be fixed here: while the collapse fires for
+     some groups and not others, no divider rule is correct for both. It resolves when
+     the layout gets a wrapper element to query, tracked with that fix. */
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
     > .cinder-statistic:nth-child(2n),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
