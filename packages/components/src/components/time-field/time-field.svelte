@@ -254,6 +254,7 @@
       <span id={timezoneLabelId} class="cinder-sr-only">timezone</span>
       <select
         class="cinder-time-field__timezone"
+        title={timezone}
         aria-label={timezoneAriaLabel}
         aria-labelledby={timezoneAriaLabelledBy}
         aria-describedby={describedBy}
