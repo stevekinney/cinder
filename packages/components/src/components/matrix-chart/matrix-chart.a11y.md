@@ -24,7 +24,7 @@ Keep focus indicators visible. If you wrap or restyle MatrixChart, verify the fo
 
 ## Names, roles, and state
 
-Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning.
+Use the public props and documented examples to provide accessible names, descriptions, current state, disabled state, selection state, or value text. Do not rely on color, icon shape, placeholder text, or layout position as the only way to communicate meaning. The hovered/active cell is conveyed by both a brightness increase and a doubled stroke-width (1.5px -> 3px), so pointer state does not rely on color alone.
 
 When MatrixChart accepts snippets or arbitrary children, the caller owns the semantics inside those children. Prefer native elements first, and add ARIA only when it matches the rendered behavior.
 

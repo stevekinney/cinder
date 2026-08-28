@@ -160,8 +160,10 @@
 
 <div {...rest} class={classNames('cinder-transfer-list', customClassName)}>
   <div class="cinder-transfer-list__header">
-    <h3 id={`${baseId}-label`} class="cinder-transfer-list__label">{leftLabel}</h3>
-    <span class="cinder-transfer-list__count">
+    <h3 id={`${baseId}-label`} class="cinder-_label-text cinder-transfer-list__label">
+      {leftLabel}
+    </h3>
+    <span class="cinder-_value-text cinder-transfer-list__count">
       {selectedCount}
       {selectedCount === 1 ? 'item' : 'items'}
       {displayedRightLabel}
