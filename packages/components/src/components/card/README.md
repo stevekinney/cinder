@@ -22,7 +22,7 @@ Use `tone="danger"` when a settings section or action group has destructive, irr
 
 ## Elevation
 
-The `elevation` prop applies across every `variant` and `tone` combination, including `variant="well"` and `tone="danger"`. Those two surfaces ship flat (`box-shadow: none`) only at the default `elevation="sm"`, matching their existing look — set `elevation="md"` or `elevation="lg"` explicitly on a well or danger card to raise it above that flat baseline.
+The `elevation` prop applies across every `variant` and `tone` combination, including `variant="well"` and `tone="danger"`. Those two surfaces ship flat (`box-shadow: none`) at the default `elevation="sm"`, matching their existing look — set `elevation="md"` or `elevation="lg"` explicitly on a well or danger card to raise it above that flat baseline. The flat baseline applies to non-interactive cards only: a well or danger card that is also interactive keeps its hover and focus elevation, so its resting state is not pinned flat.
 
 ## Interaction States
 

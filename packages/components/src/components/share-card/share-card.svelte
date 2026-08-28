@@ -76,7 +76,11 @@
 
   const valueFieldAttachment: Attachment<HTMLInputElement> = (element) => {
     valueFieldElement = element;
-    const form = element.closest('form');
+    // `element.form`, not `closest('form')`: an <input> can be associated with a form it
+    // is not nested inside, via the `form="<id>"` attribute. `closest()` misses exactly
+    // that case, and the reset it misses is the one a consumer had to opt into
+    // deliberately.
+    const form = element.form;
     if (!form) {
       // Still release the reference on teardown: a field with no ambient form has no
       // reset listener to remove, but it is just as capable of being unmounted.
@@ -271,12 +275,23 @@
   // `handleFieldCopy` above and `ShareCardProps.value`'s doc comment) — but a
   // consumer should still hear about it rather than the truncated display
   // being silent and easy to miss in review.
+  // Edge-triggered on the VALUE, not merely reactive to it. `utilities/dev-warn.ts`
+  // cautions against effects kept alive only to log: this one re-runs on every change
+  // to `value`, and without the guard below it re-warned for a value it had already
+  // warned about (and re-warned on any unrelated re-render that reassigned the same
+  // string). Tracking the last-warned string collapses that to one warning per distinct
+  // multi-line value, which is the signal a consumer actually needs.
+  let lastWarnedMultilineValue: string | null = null;
   $effect(() => {
-    if (/[\r\n]/.test(value)) {
-      devWarn(
-        '[cinder/ShareCard] `value` contains a line break, but the value field renders as a single-line control — line breaks are not visible there (hover the field to preview the full text via its `title` tooltip). Copying, via the action buttons or by selecting the field and pressing Ctrl/Cmd-C, still sends the exact, unmodified `value`.',
-      );
+    if (!/[\r\n]/.test(value)) {
+      lastWarnedMultilineValue = null;
+      return;
     }
+    if (lastWarnedMultilineValue === value) return;
+    lastWarnedMultilineValue = value;
+    devWarn(
+      '[cinder/ShareCard] `value` contains a line break, but the value field renders as a single-line control — line breaks are not visible there (hover the field to preview the full text via its `title` tooltip). Copying, via the action buttons or by selecting the field and pressing Ctrl/Cmd-C, still sends the exact, unmodified `value`.',
+    );
   });
 
   $effect(() => {

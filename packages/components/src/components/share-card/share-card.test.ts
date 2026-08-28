@@ -494,6 +494,33 @@ describe('ShareCard Input composition', () => {
     expect(preventDefault).not.toHaveBeenCalled();
   });
 
+  test('the multiline warning fires once per distinct value, not per re-render', async () => {
+    // `utilities/dev-warn.ts` cautions against effects kept alive purely to log. This
+    // one has to stay reactive (the prop can change after mount), so it is instead
+    // edge-triggered: re-rendering with the SAME multi-line value must stay silent, and
+    // only a genuinely new multi-line value warns again.
+    const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
+    try {
+      const { rerender } = render(ShareCard, { value: 'Line one\nLine two' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      await rerender({ value: 'Line one\nLine two' });
+      expect(warnSpy).toHaveBeenCalledTimes(1);
+
+      await rerender({ value: 'Different\nvalue' });
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+
+      // A single-line value clears the latch, so returning to the first multi-line
+      // value is a new edge and warns again rather than being swallowed.
+      await rerender({ value: 'https://example.com/single-line' });
+      expect(warnSpy).toHaveBeenCalledTimes(2);
+      await rerender({ value: 'Line one\nLine two' });
+      expect(warnSpy).toHaveBeenCalledTimes(3);
+    } finally {
+      warnSpy.mockRestore();
+    }
+  });
+
   test('a multiline value logs a dev-only warning', () => {
     const warnSpy = spyOn(console, 'warn').mockImplementation(() => {});
     try {
