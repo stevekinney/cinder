@@ -802,11 +802,14 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
     // distinct property-level `$ref` tokens sharing this `cssProperty` and
     // resolving to the identical literal hash to two different pointer
     // strings and get wrongly rejected as conflicting, even though matching
-    // emitted values is exactly what this guard is supposed to permit.
-    // Fixing it means resolving property-level refs before this fingerprint
-    // runs -- deferred rather than reworked this late in review; nothing in
-    // the real corpus has two property-level `$ref` tokens sharing a
-    // `cssProperty`.
+    // emitted values is exactly what this guard is supposed to permit. The
+    // same applies to a whole-token `$ref` alias -- `toEntry` records its raw
+    // reference STRING as `.value` (it has no `$value` of its own), so two
+    // whole-token aliases to different targets that themselves share this
+    // `cssProperty` hit the identical false-rejection. Fixing either means
+    // resolving the ref before this fingerprint runs -- deferred rather than
+    // reworked this late in review; nothing in the real corpus has two `$ref`
+    // tokens of either form sharing a `cssProperty`.
     const emitted = JSON.stringify({
       type: entry.type,
       value: entry.value,
@@ -827,10 +830,216 @@ export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): vo
   throw new Error(`Conflicting cssProperty mappings in the token corpus: ${detail}`);
 }
 
+/**
+ * The same conflict {@link assertUniqueCssProperties} catches for `baseIndex`,
+ * applied to ONE override block (a theme or motion context) in isolation.
+ * `$extends` can legitimately give two base paths the same `cssProperty` with
+ * IDENTICAL base values (assertUniqueCssProperties already lets that through) --
+ * but nothing stopped a theme or motion override from then explicitly
+ * diverging those two paths to DIFFERENT values, because the base-only guard
+ * ran exactly once, against `baseIndex`, and never again against an override
+ * block.
+ *
+ * An override token does not always restate its own `cssProperty` extension --
+ * it is inherited, immutable metadata; an override document typically states
+ * only a new `$value` -- so grouping by `entry.cssProperty` alone would skip
+ * most override entries as property-less. `baseIndex` supplies whichever
+ * `cssProperty` (and `$type`, needed for the same type-directed fingerprint
+ * `assertUniqueCssProperties` already keys on) an override entry left
+ * unstated, so the same two-paths-one-property conflict this guards against
+ * at the base level is caught here too.
+ */
+export function assertUniqueOverrideCssProperties(
+  overrides: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+  scopeIndex: Map<string, CorpusEntry>,
+  blockName: string,
+): void {
+  // Comparing only the paths PRESENT in `overrides` misses a base claimant
+  // that shares a `cssProperty` with an overridden path but is not itself
+  // overridden in THIS block -- e.g. `$extends` gives "alias.a" and
+  // "swatch.a" the same property, and this block overrides only "alias.a".
+  // That claimant's effective value in this context is NOT necessarily its
+  // raw base value: `documentsForResolutionOrder` composes each block's
+  // scope from base PLUS whichever other modifier's document this block's
+  // context implicitly includes (e.g. the `motion.reduced` block's scope
+  // includes the default THEME document too) -- so a sibling untouched by
+  // THIS block may already have been changed by a DIFFERENT modifier's
+  // override earlier in that composed scope. Falling back to raw
+  // `baseIndex` ignores that intermediate composition and can miss a real
+  // divergence (light changes both paths 1 -> 2, motion changes only one
+  // back to 1 -- comparing against base "1" for the untouched path sees no
+  // conflict, even though the light+motion combination actually holds 1 and
+  // 2). `scopeIndex` -- the FULLY composed, already-resolved-by-precedence
+  // corpus for this exact block's scope -- is what an unoverridden sibling's
+  // effective value must come from instead.
+  const basePathsByCssProperty = new Map<string, string[]>();
+  for (const [path, entry] of baseIndex) {
+    if (!entry.cssProperty) continue;
+    const paths = basePathsByCssProperty.get(entry.cssProperty) ?? [];
+    paths.push(path);
+    basePathsByCssProperty.set(entry.cssProperty, paths);
+  }
+  // `renderOverrideDeclarations` always emits an override under its BASE
+  // token's `cssProperty` -- it never honors a `cssProperty` an override
+  // document happens to restate (that only ever originates from a document
+  // echoing inherited extension data, not a real per-context property
+  // change). Grouping or resolving by an override's own restated
+  // `cssProperty` instead of its base's would let this guard separate two
+  // claimants that generation actually emits to the SAME property, missing
+  // the exact conflict it exists to catch.
+  const relevantPaths = new Set<string>();
+  for (const [path, entry] of overrides) {
+    relevantPaths.add(path);
+    const cssProperty = baseIndex.get(path)?.cssProperty ?? entry.cssProperty;
+    if (!cssProperty) continue;
+    for (const sibling of basePathsByCssProperty.get(cssProperty) ?? []) relevantPaths.add(sibling);
+  }
+  const resolved = new Map<string, CorpusEntry>();
+  for (const path of relevantPaths) {
+    const base = baseIndex.get(path);
+    // This block's own override wins; otherwise the path's value already
+    // resolved into this block's fully composed scope (which may itself
+    // reflect a DIFFERENT modifier's override applied earlier in that
+    // scope's resolution order); only fall back to the raw base entry if
+    // the path is somehow absent from the composed scope entirely.
+    const entry = overrides.get(path) ?? scopeIndex.get(path) ?? base;
+    if (!entry) continue;
+    resolved.set(path, {
+      ...entry,
+      cssProperty: base?.cssProperty ?? entry.cssProperty,
+      type: entry.type ?? base?.type,
+    });
+  }
+  try {
+    assertUniqueCssProperties(resolved);
+  } catch (error) {
+    if (error instanceof Error)
+      throw new Error(`[${blockName}] ${error.message}`, { cause: error });
+    throw error;
+  }
+}
+
+/**
+ * `tokens-base.css`'s block structure is FIXED, not derived from
+ * `resolver.resolutionOrder`: `:root` is always assembled from every `sets`
+ * entry (regardless of where it sits in `resolutionOrder`), and the theme
+ * override blocks (`[data-theme='dark']`/`[data-theme='light']`) are always
+ * emitted before the motion override blocks (the `prefers-reduced-motion`
+ * media block and the `data-reduced-motion='on'` override) -- see
+ * `buildTokensBaseCss`'s `darkDeclarations`/`lightDeclarations` vs.
+ * `reducedMotionDeclarations`/`forcedReducedMotionDeclarations` ordering in
+ * the template below.
+ *
+ * DECISION (CIN-469 finding 5): rather than deriving CSS block order from
+ * `resolutionOrder` at generation time -- a bigger, riskier change for a PR
+ * whose whole point is a no-diff, tests-and-generator-only fix -- this
+ * generator keeps its fixed block structure and instead REJECTS a resolver
+ * document whose `resolutionOrder` the fixed structure cannot faithfully
+ * express: every `sets` entry must precede every `modifiers` entry (so
+ * `:root`'s "every set, unconditionally" assembly matches what
+ * `resolutionOrder` actually says the base layer is), and the `theme`
+ * modifier must precede the `motion` modifier (so theme-before-motion block
+ * emission matches cascade precedence, i.e. a motion override still wins over
+ * a theme override for a token both touch, the same way "last non-`:root`
+ * block wins" already works today). `cinder.resolver.json`'s current
+ * `resolutionOrder` -- foundation, then theme, then motion -- already
+ * satisfies this, so the guard is presently a no-op; it exists so a future
+ * resolver edit that would silently desync `resolutionOrder` from emission
+ * order fails loudly at generate time instead of shipping a CSS cascade that
+ * disagrees with the resolver's own stated precedence. If `resolutionOrder`
+ * ever legitimately needs a different shape, deriving block order for real
+ * -- not just validating it -- is the follow-up.
+ */
+export function assertResolutionOrderMatchesCssBlockStructure(resolver: ResolverDocument): void {
+  const order = parseResolutionOrder(resolver);
+  const lastSetsIndex = order.reduce(
+    (last, entry, index) => (entry.kind === 'sets' ? index : last),
+    -1,
+  );
+  const firstModifierIndex = order.findIndex((entry) => entry.kind === 'modifiers');
+  if (firstModifierIndex !== -1 && lastSetsIndex > firstModifierIndex) {
+    throw new Error(
+      'resolver\'s resolutionOrder interleaves a "sets" entry after a "modifiers" entry, but ' +
+        'tokens-base.css always assembles :root from every "sets" entry unconditionally, ' +
+        'regardless of position -- reorder resolutionOrder so every "sets" entry precedes every ' +
+        '"modifiers" entry, or teach buildTokensBaseCss to derive :root membership from position.',
+    );
+  }
+  const themeIndex = order.findIndex(
+    (entry) => entry.kind === 'modifiers' && entry.name === 'theme',
+  );
+  const motionIndex = order.findIndex(
+    (entry) => entry.kind === 'modifiers' && entry.name === 'motion',
+  );
+  if (themeIndex !== -1 && motionIndex !== -1 && themeIndex > motionIndex) {
+    throw new Error(
+      'resolver\'s resolutionOrder has "motion" before "theme", but tokens-base.css always ' +
+        "emits the theme override blocks ([data-theme='dark']/[data-theme='light']) before the " +
+        'motion override blocks (prefers-reduced-motion / data-reduced-motion) -- reorder ' +
+        'resolutionOrder so "theme" precedes "motion", or teach buildTokensBaseCss to derive ' +
+        'override block order from resolutionOrder.',
+    );
+  }
+  // Known gap, tracked in CIN-493 (a pre-existing cinder architecture question,
+  // not something CIN-469/470 introduced): this check -- and every guard built
+  // on top of it -- assumes emitting motion's block after theme's in SOURCE
+  // ORDER is sufficient for motion to win on a shared property. That only
+  // holds when both declarations target the SAME element. Cinder's theme
+  // blocks use a bare `[data-theme='dark']`/`[data-theme='light']` selector
+  // (not `:root`-scoped) specifically so a theme can be scoped to a subtree
+  // (see docs/theming.md); the motion blocks are always `:root`-anchored with
+  // no scoped variant. For a token overridden by BOTH theme and motion,
+  // inside a theme-scoped subtree, ordinary CSS inheritance (not specificity,
+  // not source order) makes the descendant's own declared theme value win
+  // over the merely-inherited :root motion value -- the opposite of what the
+  // resolved snapshots model. Deferred: confirmed no token path is overridden
+  // by both a theme document and a motion document in the real corpus today
+  // (verified by direct path-set intersection).
+  // `buildTokensBaseCss`'s override-block template is hardcoded to exactly two
+  // modifiers, "theme" and "motion" -- it never reads `resolver.modifiers` generically,
+  // so a third modifier's context documents would never reach ANY emitted CSS block,
+  // while `buildResolvedContexts`/`modifierValuesForCombo` fill every declared
+  // modifier (including a third one, at its own default) when composing each resolved
+  // snapshot's document scope. A third modifier whose default context overrides
+  // anything the base sets don't would then make a published resolved-context
+  // snapshot disagree with what the actual CSS renders, for every combination, not just
+  // a cross-modifier edge case -- the same class of artifact/CSS disagreement this
+  // whole guard exists to prevent, just triggered structurally instead of by a specific
+  // value collision. Reject a third modifier here rather than silently generating CSS
+  // that can't express it.
+  const unsupportedModifiers = Object.keys(resolver.modifiers).filter(
+    (name) => name !== 'theme' && name !== 'motion',
+  );
+  if (unsupportedModifiers.length > 0) {
+    throw new Error(
+      `resolver declares modifier(s) ${unsupportedModifiers.map((name) => `"${name}"`).join(', ')}, ` +
+        'but tokens-base.css\'s override-block template only knows how to emit "theme" and ' +
+        '"motion" -- add support for the new modifier to buildTokensBaseCss (and to ' +
+        "buildResolvedContexts's published combos) before adding it to the resolver, or the " +
+        'generated CSS and published resolved-context snapshots will silently disagree.',
+    );
+  }
+  // Known gap, tracked in CIN-491: this function validates modifier NAMES and
+  // ORDERING, but never inspects whether motion.default's own context
+  // document is actually empty. buildTokensBaseCss assembles :root
+  // exclusively from `sets` and only emits motion declarations for `reduced`
+  // and `forced-reduced-motion` -- motion.default's document is never read
+  // for CSS emission at all -- while buildResolvedContexts DOES include it
+  // when composing the default-motion resolved-context snapshots. A
+  // non-empty motion.default override would therefore reach the published
+  // JSON but never the generated CSS, the same class of silent disagreement
+  // the third-modifier rejection above exists to prevent, just for an
+  // existing modifier's default CONTENT rather than its existence. Deferred:
+  // modes/motion-default.tokens.json is deliberately empty today (its own
+  // $description explains why), and nothing else in the corpus overrides it.
+}
+
 export async function buildTokensBaseCss(
   resolver: ResolverDocument,
   documentsByPath: Map<string, TokenDocument>,
 ): Promise<string> {
+  assertResolutionOrderMatchesCssBlockStructure(resolver);
   // Every set the resolver orders, not just `foundation`. Naming one set here would
   // silently drop a second set's tokens from `:root` while the resolved snapshots --
   // which walk `resolutionOrder` -- still exposed them, and an override targeting one
@@ -949,6 +1158,162 @@ export async function buildTokensBaseCss(
     undefined,
     forcedReducedMotionOverrides,
   );
+
+  // Per-block, not just once for `baseIndex`: `$extends` can legitimately give
+  // two base paths the same `cssProperty` with identical base values, and a
+  // theme or motion override can then explicitly diverge them to different
+  // values -- see `assertUniqueOverrideCssProperties`'s docstring. Each
+  // block's `scopeIndex` is the SAME fully composed scope already used for
+  // `$extends` lookup and nested-reference resolution above (base plus
+  // whichever other modifier's document this block's context implicitly
+  // includes), so an unoverridden sibling's comparison value reflects any
+  // OTHER modifier's override already baked into that scope, not just base.
+  const lightScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(lightScopeDocuments), '', undefined, lightScopeIndex);
+  const darkScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
+  assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
+  assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
+  // Known gap, tracked in CIN-490 (the symmetric case of CIN-489): these two
+  // calls validate each theme override's scope filled with the DEFAULT
+  // motion context. If a light/dark override contained a reference to a
+  // token that motion.reduced/motion.forced-reduced-motion changes, the
+  // theme declaration would serialize once from the default-motion value
+  // while the reduced-motion resolved snapshots re-resolve it under reduced
+  // motion -- silently disagreeing, for a path with a unique cssProperty
+  // where the uniqueness guard is a no-op. Deferred: confirmed no theme
+  // document contains a $ref at all today.
+  // The motion blocks are emitted as a fixed `@media`/attribute selector that
+  // applies regardless of which `[data-theme]` is active -- unlike theme
+  // (which always cascades BEFORE motion, so a theme block's own internal
+  // consistency never depends on which motion state is active), a motion
+  // block's internal consistency must hold under EVERY theme it can combine
+  // with at runtime. `reducedMotionScopeDocuments`/`forcedReducedMotionScopeDocuments`
+  // above (used for `$extends` lookup and nested-reference resolution) compose
+  // motion with the THEME axis defaulted to `resolver.modifiers.theme.default`
+  // (`modifierValuesForContext`'s fill), which is 'light' in the corpus today
+  // but is not schema-guaranteed to be -- an earlier version of this fix
+  // wrongly assumed that default-filled scope WAS "light" and built only an
+  // explicit "dark" counterpart to check alongside it, which would silently
+  // validate the SAME theme twice (and leave light entirely unchecked) if
+  // `theme.default` were ever changed to 'dark'. Build BOTH theme scopes
+  // explicitly by name for the guard, instead of treating either as "whatever
+  // the default happens to be".
+  const lightReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'light-reduced-motion',
+      theme: 'light',
+      motion: 'reduced',
+    }),
+  );
+  const lightReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(lightReducedMotionScopeDocuments),
+    '',
+    undefined,
+    lightReducedMotionScopeIndex,
+  );
+  const darkReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'dark-reduced-motion',
+      theme: 'dark',
+      motion: 'reduced',
+    }),
+  );
+  const darkReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(darkReducedMotionScopeDocuments),
+    '',
+    undefined,
+    darkReducedMotionScopeIndex,
+  );
+  const lightForcedReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'light-forced-reduced-motion',
+      theme: 'light',
+      motion: 'forced-reduced-motion',
+    }),
+  );
+  const lightForcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(lightForcedReducedMotionScopeDocuments),
+    '',
+    undefined,
+    lightForcedReducedMotionScopeIndex,
+  );
+  const darkForcedReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'dark-forced-reduced-motion',
+      theme: 'dark',
+      motion: 'forced-reduced-motion',
+    }),
+  );
+  const darkForcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(darkForcedReducedMotionScopeDocuments),
+    '',
+    undefined,
+    darkForcedReducedMotionScopeIndex,
+  );
+  assertUniqueOverrideCssProperties(
+    reducedMotionOverrides,
+    baseIndex,
+    lightReducedMotionScopeIndex,
+    'motion.reduced (light theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    reducedMotionOverrides,
+    baseIndex,
+    darkReducedMotionScopeIndex,
+    'motion.reduced (dark theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    lightForcedReducedMotionScopeIndex,
+    'motion.forced-reduced-motion (light theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    darkForcedReducedMotionScopeIndex,
+    'motion.forced-reduced-motion (dark theme)',
+  );
+
+  // Known gap, tracked in CIN-492: the four calls above check only the
+  // light-composed and dark-composed scopes. Cinder also supports a third,
+  // fully-supported theme state -- "system" mode, where NO [data-theme]
+  // attribute is set and :root's color-scheme: light dark follows the OS
+  // preference (see docs/theming.md's pre-paint script). In that mode
+  // neither theme block's selector matches anything, so an element sees
+  // only :root's BASE declarations plus whatever motion adds -- a scope
+  // distinct from either light-composed or dark-composed. Deferred: nothing
+  // in the real corpus's motion documents can trigger a conflict against
+  // this unthemed scope today (see CIN-489's confirmation that motion
+  // documents don't reference anything theme-varying).
+
+  // Known gap, tracked in CIN-489: the four calls above only catch a conflict
+  // when TWO paths share one cssProperty and disagree across theme scopes.
+  // They say nothing about a SINGLE motion-overridden path (a unique
+  // cssProperty) whose own serialized value could legitimately differ
+  // between light and dark -- e.g. a property-level $ref or composite value
+  // nested-referencing a color token that varies by theme. The motion blocks
+  // below are emitted ONCE each (theme-agnostic selectors), serialized from
+  // exactly one resolver -- if such a value existed, the single emitted
+  // declaration could only ever be correct for one theme, while the
+  // published per-theme resolved-context snapshots would resolve it
+  // correctly per-theme, silently disagreeing with the CSS. Deferred rather
+  // than reworked this late in review: nothing in the real corpus's motion
+  // token documents contains a $ref or a theme-varying nested reference
+  // today (every value is a literal duration).
 
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
   // a nested reference inside a context's composite value may target a token that a DIFFERENT

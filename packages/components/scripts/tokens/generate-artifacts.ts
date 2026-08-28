@@ -612,12 +612,64 @@ function toCodeSpan(content: string): string {
   return `${fence}${padding}${content}${padding}${fence}`;
 }
 
+/**
+ * Escapes a `|` in a cell body so GFM always reads it as a literal pipe, never a
+ * column delimiter -- WITHOUT double-escaping a value that already contains a
+ * `\|` (a value that, taken alone, is itself a legally-escaped pipe).
+ *
+ * Unconditionally appending a backslash (`.replaceAll('|', '\\|')`, this
+ * function's predecessor) turns an already-escaped `foo\|bar` into
+ * `foo\\|bar`: GFM's left-to-right backslash pairing reads the two leading
+ * backslashes as one escaped backslash, leaving the `|` unescaped after all --
+ * a malformed row (see this file's git history for the CIN-470 fix, and
+ * `tokens-doc-drift.test.ts`'s `extractDocTokens`, which decodes the inverse
+ * of exactly this).
+ *
+ * Naively conditioning on "escape only when the existing run is already odd"
+ * is not the fix: `foo|bar` (0 backslashes) and `foo\|bar` (1 backslash) would
+ * both then encode to the identical cell text `foo\|bar`, which no decoder can
+ * un-collapse back to two different originals -- and `tokens-doc-drift.test.ts`
+ * must decode ANY corpus value back to itself, not just the ones the corpus
+ * happens to contain today. So the run of backslashes immediately preceding
+ * each `|` is DOUBLED first (protecting every backslash that was already
+ * there, the same way any backslash-escaping scheme must protect its own
+ * escape character) and only THEN is the escaping backslash for the pipe
+ * itself appended -- a run of length `k` becomes `2k + 1`, always odd (GFM
+ * escaped), and losslessly invertible: `extractDocTokens` recovers `k` as
+ * `(2k + 1 - 1) / 2`.
+ */
 function toTableCell(text: string): string {
   return text
     .replaceAll(/\s*[\r\n]\s*/g, ' ')
     .trim()
-    .replaceAll('|', '\\|');
+    .replace(/(\\*)\|/g, (_match, backslashes: string) => `${backslashes}${backslashes}\\|`);
 }
+
+// Known gap, tracked in CIN-488: the GFM spec's own table example (a pipe
+// inside a code span, escaped as `` `\|` ``) confirms this escaping IS
+// required -- a code span does not protect a cell's `|` from being read as a
+// column delimiter, so `toCodeSpan`'s callers below are right to escape
+// first. But CommonMark also never interprets backslash escapes INSIDE a
+// code span (its content renders exactly as written), so the escaping
+// backslashes this function inserts to survive row-splitting are never
+// consumed -- they render as literal characters in the `cssProperty`/`value`
+// columns. A value's escaping thus becomes visible in the rendered doc: one
+// backslash in the source value (`foo\|bar`) displays as three
+// (`foo\\\|bar`) once GFM's row-split escaping and this function's own
+// escaping compose. This is a structural GFM limitation (escaping a pipe for
+// row-splitting and displaying that pipe unescaped inside a code span are
+// mutually exclusive), not a simple bug -- there is no encoding of this
+// function's output that both survives row-splitting AND renders back to the
+// exact original bytes inside a code span. `tokens-doc-drift.test.ts`'s
+// decoder still round-trips correctly (it reads the MARKDOWN SOURCE, not the
+// rendered HTML), so no corpus value is silently corrupted -- only a human
+// reading the rendered `docs/tokens.md` page would see the extra
+// backslashes. Deferred rather than reworked this late in review: nothing in
+// the real corpus contains a `\` or `|` in any value today, and a real fix
+// means choosing a different rendering strategy for such values (e.g.
+// falling back to the description column's plain-escaped style instead of a
+// code span) rather than a change to this function's escaping math, which is
+// already correct for its actual job of keeping row-splitting safe.
 
 export async function renderDocTable(
   section: DocSection,
