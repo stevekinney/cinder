@@ -118,8 +118,16 @@
      * Pad the block axis by enough to clear the larger of the two, then pull the
      * padding straight back out with a matching negative margin so the bar's own
      * height is unchanged.
+     *
+     * Derived from the ring recipe itself rather than from a spacing token that merely
+     * happened to be big enough: `max()` picks whichever of the two focus treatments
+     * reaches further, so retuning `--cinder-ring-offset` or `--cinder-ring-width`
+     * keeps this correct, and a change to the spacing scale can no longer silently
+     * shrink the clearance below what the ring needs.
      */
-    --_cinder-navigation-bar-tab-ring-room: calc(var(--cinder-ring-width) + var(--cinder-space-1));
+    --_cinder-navigation-bar-tab-ring-room: calc(
+      var(--cinder-ring-width) + max(var(--cinder-ring-offset), 3px)
+    );
 
     padding-block: var(--_cinder-navigation-bar-tab-ring-room);
     margin-block: calc(-1 * var(--_cinder-navigation-bar-tab-ring-room));
