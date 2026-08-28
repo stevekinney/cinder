@@ -26,8 +26,8 @@ test.describe('Footer responsive layout', () => {
             --cinder-surface: #ffffff;
             --cinder-text-default: #111827;
             --cinder-text-muted: #4b5563;
-            --cinder-text-sm: 0.875rem;
-            --cinder-text-lg: 1.125rem;
+            --cinder-text-sm: 0.8125rem;
+            --cinder-text-lg: 1rem;
             --cinder-font-semibold: 600;
             --cinder-font-sans: sans-serif;
             --cinder-ring-width: 0.1875rem;
@@ -184,8 +184,8 @@ test.describe('Footer responsive layout', () => {
           --cinder-surface: #ffffff;
           --cinder-text-default: #111827;
           --cinder-text-muted: #4b5563;
-          --cinder-text-sm: 0.875rem;
-          --cinder-text-lg: 1.125rem;
+          --cinder-text-sm: 0.8125rem;
+          --cinder-text-lg: 1rem;
           --cinder-font-semibold: 600;
           --cinder-font-sans: sans-serif;
           --cinder-ring-width: 0.1875rem;

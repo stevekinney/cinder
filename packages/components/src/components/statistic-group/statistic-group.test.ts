@@ -58,12 +58,42 @@ describe('StatisticGroup', () => {
 
     expect(defaultBlock).toContain('border: 1px solid var(--cinder-border)');
 
-    const dividerBlock =
+    // Divider direction follows the effective column count, not a standalone breakpoint.
+    // A single-column layout gets horizontal dividers; anything multi-column gets
+    // vertical ones. Pinning both halves keeps them from drifting back to one rule that
+    // flips for every layout at a width unrelated to when columns actually collapse.
+    const singleColumnDividers =
       css.match(
-        /\.cinder-statistic-group\[data-cinder-variant='default'\]\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
+        /\[data-cinder-variant='default'\]\[data-cinder-columns='1'\]\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
       )?.[0] ?? '';
+    expect(singleColumnDividers).toContain(
+      'border-block-end: 1px solid var(--cinder-border-muted)',
+    );
+    expect(singleColumnDividers).not.toContain('border-inline-end:');
 
-    expect(dividerBlock).toContain('border-inline-end: 1px solid var(--cinder-border-muted)');
+    const multiColumnDividers =
+      css.match(
+        /\[data-cinder-variant='default'\]:not\(\[data-cinder-columns='1'\]\)\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
+      )?.[0] ?? '';
+    expect(multiColumnDividers).toContain(
+      'border-inline-end: 1px solid var(--cinder-border-muted)',
+    );
+    expect(multiColumnDividers).not.toContain('border-block-end:');
+
+    // The collapse threshold must match the layout rules (18rem), not the 30rem value an
+    // earlier version used — at 18-30rem a columns='2' group is still two columns wide.
+    expect(css).toContain('@container cinder-statistic-group (max-width: 18rem)');
+    // Two 18rem container blocks exist — the layout collapse and the divider flip — so
+    // pick the one that actually carries the default variant's divider rules.
+    const collapsedDividers = [
+      ...css.matchAll(/@container cinder-statistic-group \(max-width: 18rem\) \{[\s\S]*?\n {2}\}/g),
+    ]
+      .map((match) => match[0])
+      .find((block) => block.includes("[data-cinder-variant='default']"));
+
+    expect(collapsedDividers).toBeDefined();
+    expect(collapsedDividers).toContain('border-inline-end: none');
+    expect(collapsedDividers).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
   });
 
   test('renders .cinder-statistic-group wrapping its children', () => {

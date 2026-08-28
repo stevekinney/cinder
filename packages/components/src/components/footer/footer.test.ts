@@ -101,9 +101,11 @@ describe('Footer', () => {
     };
 
     function gapTokenFor(selector: string): string {
-      const block = css.match(
-        new RegExp(`${selector.replace(/[.#]/g, '\\$&')}\\s*\\{([^}]*)\\}`),
-      )?.[1];
+      // Escape every regex metacharacter, matching the repo's cssRuleBody() helpers
+      // (see chip.test.ts). Escaping only `.` and `#` would break the moment a selector
+      // here grows a `:where(...)`, an attribute matcher, or a `+`/`~` combinator.
+      const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const block = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1];
       const token = block?.match(/gap:\s*var\((--cinder-space-\d+)\)/)?.[1];
       if (!token) {
         throw new Error(`Expected a --cinder-space-* gap token on ${selector}`);

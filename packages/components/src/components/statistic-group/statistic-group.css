@@ -61,17 +61,43 @@
     background: var(--cinder-surface-inset);
   }
 
-  .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:not(:last-child) {
+  /*
+   * Divider direction follows the EFFECTIVE column count, not a standalone breakpoint.
+   *
+   * The layout rules above collapse fixed counts at 18rem, not 30rem, and columns='1'
+   * is single-column at every width. An earlier version flipped direction for every
+   * layout at 30rem, which was wrong three ways: columns='2' is still two columns
+   * between 18rem and 30rem and lost its vertical dividers there; columns='1' kept
+   * border-inline-end at wider sizes despite never having a second column; and
+   * columns='3'/'4' render as two columns in that band, so horizontal dividers left a
+   * stray border under a cell with a sibling beside it.
+   *
+   * So: single-column layouts get horizontal dividers, multi-column layouts get
+   * vertical ones, and the thresholds mirror the layout rules exactly.
+   */
+
+  /* Single column at every width — horizontal dividers only. */
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='1']
+    > .cinder-statistic:not(:last-child) {
+    border-block-end: 1px solid var(--cinder-border-muted);
+  }
+
+  /* Multi-column layouts — vertical dividers between cells. */
+  .cinder-statistic-group[data-cinder-variant='default']:not([data-cinder-columns='1'])
+    > .cinder-statistic:not(:last-child) {
     border-inline-end: 1px solid var(--cinder-border-muted);
   }
 
-  @container cinder-statistic-group (max-width: 30rem) {
-    .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic {
+  /* Below 18rem every fixed count collapses to one column (and auto-fit's 16rem track
+     has already done the same), so the dividers turn with the layout. */
+  @container cinder-statistic-group (max-width: 18rem) {
+    .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:not(:last-child) {
       border-inline-end: none;
       border-block-end: 1px solid var(--cinder-border-muted);
     }
 
     .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:last-child {
+      border-inline-end: none;
       border-block-end: none;
     }
   }

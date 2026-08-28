@@ -49,9 +49,26 @@
     flex: 1;
   }
 
+  /*
+   * CIN-109: the three text tiers are feature (label), status text (annotation),
+   * and this content block (body copy). They are differentiated as:
+   *
+   *   feature      base / semibold / --cinder-text-default   via .cinder-_label-text
+   *   status text  sm   / normal   / --cinder-text-muted     via .cinder-_value-text
+   *   content      sm   / normal   / --cinder-text-default   here
+   *
+   * Status text and content differ by colour alone, which is deliberate: they sit in
+   * structurally separate regions (the __status row versus this block), so type is not
+   * the only thing telling them apart.
+   *
+   * Do not "fix" that by adding font-weight: var(--cinder-font-medium) here. That was
+   * tried and reverted — system-ui has no distinct 500 face in the canonical Ubuntu
+   * Jammy Playwright environment, so 500 renders identically to the inherited 400 and
+   * the regenerated baselines came back byte-for-byte unchanged. It looks like a
+   * hierarchy fix in the diff and is a no-op on screen.
+   */
   .cinder-capability-gate__content {
     font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
     line-height: var(--cinder-leading-normal);
     color: var(--cinder-text-default);
   }
