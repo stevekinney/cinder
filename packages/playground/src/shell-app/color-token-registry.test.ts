@@ -138,6 +138,25 @@ const INTENTIONALLY_UNREGISTERED_COLOR_TOKENS = new Set([
   // them, and they belong with --cinder-button-border above.
   '--cinder-button-background',
   '--cinder-button-foreground',
+  // Component-scoped colors added when the DTCG corpus started modeling
+  // these 22 components' variable surfaces (CIN-472) — same class as the
+  // button/toggle exclusions above: derived, single-consumer, not a general
+  // theme role a playground user would tweak from the global color panel.
+  '--cinder-alert-info',
+  '--cinder-code-block-background',
+  '--cinder-file-upload-background',
+  '--cinder-file-upload-border-color',
+  '--cinder-file-upload-progress-background',
+  '--cinder-file-upload-progress-fill',
+  '--cinder-kanban-column-background',
+  '--cinder-kanban-card-background',
+  '--cinder-kanban-board-scroll-edge',
+  '--cinder-modal-backdrop',
+  '--cinder-spinner-indicator',
+  '--cinder-status-dot-color',
+  '--cinder-table-of-contents-link-color',
+  '--cinder-table-of-contents-link-active-color',
+  '--cinder-tree-drop-line-color',
 ]);
 
 const TOKENS_BASE_PATH = join(
