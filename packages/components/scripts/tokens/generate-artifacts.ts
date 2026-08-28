@@ -485,6 +485,187 @@ const DOC_SECTIONS: readonly DocSection[] = [
       '--cinder-button-radius-xl',
     ],
   },
+  {
+    slug: 'accordion-item',
+    headings: ['## Component tokens', '### Accordion Item'],
+    cssProperties: [
+      '--cinder-accordion-item-trigger-gap',
+      '--cinder-accordion-item-trigger-padding-block',
+      '--cinder-accordion-item-trigger-padding-inline',
+      '--cinder-accordion-item-trigger-font-size',
+      '--cinder-accordion-item-trigger-font-weight',
+      '--cinder-accordion-item-panel-inner-padding-block-start',
+      '--cinder-accordion-item-panel-inner-padding-block-end',
+      '--cinder-accordion-item-panel-inner-padding-inline',
+      '--cinder-accordion-item-panel-font-size',
+      '--cinder-accordion-item-panel-line-height',
+    ],
+  },
+  {
+    slug: 'action-row',
+    headings: ['## Component tokens', '### Action Row'],
+    cssProperties: [
+      '--cinder-action-row-padding-block',
+      '--cinder-action-row-padding-inline',
+      '--cinder-action-row-layout-column-gap',
+      '--cinder-action-row-layout-row-gap',
+      '--cinder-action-row-body-gap',
+      '--cinder-action-row-title-font-size',
+      '--cinder-action-row-description-font-size',
+      '--cinder-action-row-meta-font-size',
+      '--cinder-action-row-trailing-gap',
+    ],
+  },
+  {
+    slug: 'alert',
+    headings: ['## Component tokens', '### Alert'],
+    cssProperties: ['--cinder-alert-info'],
+  },
+  {
+    slug: 'avatar-group',
+    headings: ['## Component tokens', '### Avatar Group'],
+    cssProperties: ['--cinder-avatar-group-overlap'],
+  },
+  {
+    slug: 'card',
+    headings: ['## Component tokens', '### Card'],
+    cssProperties: ['--cinder-card-mobile-bleed'],
+  },
+  {
+    slug: 'carousel',
+    headings: ['## Component tokens', '### Carousel'],
+    cssProperties: [
+      '--cinder-carousel-slide-size',
+      '--cinder-carousel-gap',
+      '--cinder-carousel-aspect-ratio',
+      '--cinder-carousel-dot-size',
+    ],
+  },
+  {
+    slug: 'code-block',
+    headings: ['## Component tokens', '### Code Block'],
+    cssProperties: [
+      '--cinder-code-block-background',
+      '--cinder-code-block-font-size',
+      '--cinder-code-block-height',
+      '--cinder-code-block-line-height',
+      '--cinder-code-block-padding',
+    ],
+  },
+  {
+    slug: 'data-table',
+    headings: ['## Component tokens', '### Data Table'],
+    cssProperties: ['--cinder-data-table-height'],
+  },
+  {
+    slug: 'feed-event',
+    headings: ['## Component tokens', '### Feed Event'],
+    cssProperties: ['--cinder-feed-event-rail-size'],
+  },
+  {
+    slug: 'file-upload',
+    headings: ['## Component tokens', '### File Upload'],
+    cssProperties: [
+      '--cinder-file-upload-background',
+      '--cinder-file-upload-border-color',
+      '--cinder-file-upload-progress-background',
+      '--cinder-file-upload-progress-fill',
+    ],
+  },
+  {
+    slug: 'kanban-board',
+    headings: ['## Component tokens', '### Kanban Board'],
+    cssProperties: [
+      '--cinder-kanban-column-width',
+      '--cinder-kanban-column-gap',
+      '--cinder-kanban-column-background',
+      '--cinder-kanban-card-background',
+      '--cinder-kanban-board-scroll-edge',
+    ],
+  },
+  {
+    slug: 'marquee',
+    headings: ['## Component tokens', '### Marquee'],
+    cssProperties: ['--cinder-marquee-duration', '--cinder-marquee-gap'],
+  },
+  {
+    slug: 'modal',
+    headings: ['## Component tokens', '### Modal'],
+    cssProperties: ['--cinder-modal-backdrop'],
+  },
+  {
+    slug: 'selectable-row',
+    headings: ['## Component tokens', '### Selectable Row'],
+    cssProperties: [
+      '--cinder-selectable-row-padding-block',
+      '--cinder-selectable-row-padding-inline',
+      '--cinder-selectable-row-column-gap',
+      '--cinder-selectable-row-content-gap',
+      '--cinder-selectable-row-leading-gap',
+      '--cinder-selectable-row-trailing-actions-gap',
+    ],
+  },
+  {
+    slug: 'side-navigation',
+    headings: ['## Component tokens', '### Side Navigation'],
+    cssProperties: ['--cinder-side-navigation-list-gap'],
+  },
+  {
+    slug: 'spinner',
+    headings: ['## Component tokens', '### Spinner'],
+    cssProperties: ['--cinder-spinner-indicator', '--cinder-spinner-size'],
+  },
+  {
+    slug: 'statistic',
+    headings: ['## Component tokens', '### Statistic'],
+    cssProperties: [
+      '--cinder-statistic-row-gap',
+      '--cinder-statistic-column-gap',
+      '--cinder-statistic-label-font-size',
+      '--cinder-statistic-value-font-size',
+      '--cinder-statistic-value-font-weight',
+      '--cinder-statistic-value-line-height',
+      '--cinder-statistic-change-gap',
+      '--cinder-statistic-change-font-size',
+    ],
+  },
+  {
+    slug: 'statistic-group',
+    headings: ['## Component tokens', '### Statistic Group'],
+    cssProperties: [
+      '--cinder-statistic-group-gap',
+      '--cinder-statistic-group-card-padding',
+      '--cinder-statistic-group-shared-cell-padding',
+    ],
+  },
+  {
+    slug: 'status-dot',
+    headings: ['## Component tokens', '### Status Dot'],
+    cssProperties: ['--cinder-status-dot-color', '--cinder-status-dot-size'],
+  },
+  {
+    slug: 'table-of-contents',
+    headings: ['## Component tokens', '### Table Of Contents'],
+    cssProperties: [
+      '--cinder-table-of-contents-link-color',
+      '--cinder-table-of-contents-link-active-color',
+      '--cinder-table-of-contents-link-indent-step',
+    ],
+  },
+  {
+    slug: 'tree',
+    headings: ['## Component tokens', '### Tree'],
+    cssProperties: [
+      '--cinder-tree-drop-line-color',
+      '--cinder-tree-drop-line-thickness',
+      '--cinder-tree-item-dragging-opacity',
+    ],
+  },
+  {
+    slug: 'virtual-list',
+    headings: ['## Component tokens', '### Virtual List'],
+    cssProperties: ['--cinder-virtual-list-height'],
+  },
 ];
 
 /**

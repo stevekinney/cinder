@@ -1,7 +1,3 @@
-const variables: readonly string[] = [
-  '--cinder-marquee-duration',
-  '--cinder-marquee-gap',
-  '--cinder-marquee-play-state',
-];
+const variables: readonly string[] = ['--cinder-marquee-duration', '--cinder-marquee-gap'];
 
 export default variables;

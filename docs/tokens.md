@@ -2,6 +2,8 @@
 
 cinder ships its design tokens as plain CSS custom properties on `:root`. Every token has a `--cinder-*` prefix; that prefix is the public surface, and you can override any of them at `:root` (globally) or on any ancestor selector (scoped) to reskin the system. Internal-only custom properties use `--_cinder-*`; those are not part of the contract and may change without notice.
 
+**Exception:** most [component-owned tokens](#component-tokens) do not yet honor this. Each component's own CSS still redeclares its `--cinder-<component>-*` custom properties directly on the component's root class (the pre-corpus, hand-authored pattern) rather than consuming the `:root` value the corpus now also emits — an element-level declaration always wins over an inherited one, so an ancestor or `:root` override of one of these has no effect today. `Button` and `Toggle` are the exceptions: both were already consume-only (their component CSS never redeclares these tokens, only references them via `var()`), so `--cinder-button-*` and `--cinder-toggle-track-*` overrides do work as described above. Migrating the rest is tracked separately; until then, treat each `## Component tokens` section as documenting that component's _default_, not a working override point.
+
 The token tables below are generated from the DTCG token corpus at [`src/tokens/`](../packages/components/src/tokens/) — everything between a `<!-- BEGIN GENERATED TOKEN TABLE: <slug> -->` / `<!-- END GENERATED TOKEN TABLE -->` marker pair is rewritten by `bun run --filter=@lostgradient/cinder tokens:generate`; edit the corpus, not the tables. The rest of this file — this intro, the callouts, and the explanatory prose between sections — is hand-maintained. A drift test in [`tokens-doc-drift.test.ts`](../packages/components/src/styles/tokens-doc-drift.test.ts) keeps the generated tables in sync with the corpus, and `tokens:generate -- --check` fails if they have drifted; add a new token by adding it to the corpus and to the matching section in [`generate-artifacts.ts`](../packages/components/scripts/tokens/generate-artifacts.ts), or CI will fail.
 
 All tokens are declared in [`tokens-base.css`](../packages/components/src/styles/tokens-base.css). The aggregator [`tokens.css`](../packages/components/src/styles/tokens.css) imports the base file and is the entry point components consume.
@@ -542,5 +544,281 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 | `--cinder-button-height-xl`    | `2.5rem`                  | Extra-large button height (40px).      |
 | `--cinder-button-font-size-xl` | `var(--cinder-text-lg)`   | Extra-large button label font size.    |
 | `--cinder-button-radius-xl`    | `var(--cinder-radius-md)` | Extra-large button corner radius.      |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+## Component tokens
+
+Component-owned custom-property theming surfaces, one section per component (besides [`Button`](#button) above, and `Toggle`, whose two component-owned tokens are documented in the [Borders](#borders) section instead). Each section documents that component's default value for every `--cinder-*` custom property its own CSS declares; a component-owned state/density/size variant that locally overrides one of these (e.g. `[data-cinder-density='condensed']`) is documented in the component's own README, not here.
+
+### Accordion Item
+
+<!-- BEGIN GENERATED TOKEN TABLE: accordion-item -->
+
+| Token                                                     | Default                        | Description                                          |
+| --------------------------------------------------------- | ------------------------------ | ---------------------------------------------------- |
+| `--cinder-accordion-item-trigger-gap`                     | `var(--cinder-space-4)`        | Gap between the trigger's disclosure icon and label. |
+| `--cinder-accordion-item-trigger-padding-block`           | `var(--cinder-space-4)`        | Trigger block padding.                               |
+| `--cinder-accordion-item-trigger-padding-inline`          | `var(--cinder-space-5)`        | Trigger inline padding.                              |
+| `--cinder-accordion-item-trigger-font-size`               | `var(--cinder-text-base)`      | Trigger label font size.                             |
+| `--cinder-accordion-item-trigger-font-weight`             | `var(--cinder-font-semibold)`  | Trigger label font weight.                           |
+| `--cinder-accordion-item-panel-inner-padding-block-start` | `var(--cinder-space-4)`        | Panel content padding, block-start edge.             |
+| `--cinder-accordion-item-panel-inner-padding-block-end`   | `var(--cinder-space-5)`        | Panel content padding, block-end edge.               |
+| `--cinder-accordion-item-panel-inner-padding-inline`      | `var(--cinder-space-5)`        | Panel content inline padding.                        |
+| `--cinder-accordion-item-panel-font-size`                 | `var(--cinder-text-base)`      | Panel content font size.                             |
+| `--cinder-accordion-item-panel-line-height`               | `var(--cinder-leading-normal)` | Panel content line height.                           |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Action Row
+
+<!-- BEGIN GENERATED TOKEN TABLE: action-row -->
+
+| Token                                       | Default                 | Description                                            |
+| ------------------------------------------- | ----------------------- | ------------------------------------------------------ |
+| `--cinder-action-row-padding-block`         | `var(--cinder-space-3)` | Row block padding (default density).                   |
+| `--cinder-action-row-padding-inline`        | `var(--cinder-space-4)` | Row inline padding (default density).                  |
+| `--cinder-action-row-layout-column-gap`     | `var(--cinder-space-3)` | Grid column gap between leading/body/trailing regions. |
+| `--cinder-action-row-layout-row-gap`        | `var(--cinder-space-2)` | Grid row gap between leading/body/trailing regions.    |
+| `--cinder-action-row-body-gap`              | `var(--cinder-space-1)` | Gap between title, description, and meta lines.        |
+| `--cinder-action-row-title-font-size`       | `var(--cinder-text-sm)` | Title font size.                                       |
+| `--cinder-action-row-description-font-size` | `var(--cinder-text-sm)` | Description font size.                                 |
+| `--cinder-action-row-meta-font-size`        | `var(--cinder-text-xs)` | Meta line font size.                                   |
+| `--cinder-action-row-trailing-gap`          | `var(--cinder-space-2)` | Gap between items in the trailing region.              |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Alert
+
+<!-- BEGIN GENERATED TOKEN TABLE: alert -->
+
+| Token                 | Default                                                | Description                                                                                                                                     |
+| --------------------- | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-alert-info` | `light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245))` | Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Avatar Group
+
+<!-- BEGIN GENERATED TOKEN TABLE: avatar-group -->
+
+| Token                           | Default                 | Description                                 |
+| ------------------------------- | ----------------------- | ------------------------------------------- |
+| `--cinder-avatar-group-overlap` | `var(--cinder-space-3)` | Horizontal overlap between stacked avatars. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Card
+
+<!-- BEGIN GENERATED TOKEN TABLE: card -->
+
+| Token                        | Default                 | Description                                                                      |
+| ---------------------------- | ----------------------- | -------------------------------------------------------------------------------- |
+| `--cinder-card-mobile-bleed` | `var(--cinder-space-4)` | Horizontal bleed a card's mobile layout extends past its container on each side. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Carousel
+
+<!-- BEGIN GENERATED TOKEN TABLE: carousel -->
+
+| Token                            | Default                 | Description                                                                                                                                                                                                                                                                                                             |
+| -------------------------------- | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-carousel-slide-size`   | `100%`                  | Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length. |
+| `--cinder-carousel-gap`          | `var(--cinder-space-3)` | Gap between slides.                                                                                                                                                                                                                                                                                                     |
+| `--cinder-carousel-aspect-ratio` | `16 / 9`                | Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value.              |
+| `--cinder-carousel-dot-size`     | `2.75rem`               | Pagination dot hit-target size.                                                                                                                                                                                                                                                                                         |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Code Block
+
+<!-- BEGIN GENERATED TOKEN TABLE: code-block -->
+
+| Token                             | Default                                                                 | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
+| --------------------------------- | ----------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-code-block-background`  | `light-dark(var(--cinder-surface-raised), var(--cinder-surface-inset))` | Code surface background. Light arm MUST stay pure `surface-raised` (not `surface-inset`) -- Shiki's github-light token colors measure their AA contrast against that surface with almost no margin; darkening it fails the axe sweep. See code-block.css for the full rationale. Dark arm uses `surface-inset` for the deeper github-dark ground.                                                                                                           |
+| `--cinder-code-block-font-size`   | `var(--cinder-text-sm)`                                                 | Code text font size.                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| `--cinder-code-block-height`      | `auto`                                                                  | Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height. |
+| `--cinder-code-block-line-height` | `var(--cinder-leading-relaxed)`                                         | Code text line height.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| `--cinder-code-block-padding`     | `var(--cinder-space-4)`                                                 | Code viewport padding.                                                                                                                                                                                                                                                                                                                                                                                                                                      |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Data Table
+
+<!-- BEGIN GENERATED TOKEN TABLE: data-table -->
+
+| Token                        | Default | Description                     |
+| ---------------------------- | ------- | ------------------------------- |
+| `--cinder-data-table-height` | `24rem` | Default scroll-viewport height. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Feed Event
+
+<!-- BEGIN GENERATED TOKEN TABLE: feed-event -->
+
+| Token                           | Default                 | Description                              |
+| ------------------------------- | ----------------------- | ---------------------------------------- |
+| `--cinder-feed-event-rail-size` | `var(--cinder-space-6)` | Rail marker box size (width and height). |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### File Upload
+
+<!-- BEGIN GENERATED TOKEN TABLE: file-upload -->
+
+| Token                                      | Default                       | Description                    |
+| ------------------------------------------ | ----------------------------- | ------------------------------ |
+| `--cinder-file-upload-background`          | `var(--cinder-surface)`       | Dropzone background.           |
+| `--cinder-file-upload-border-color`        | `var(--cinder-border)`        | Dropzone border color.         |
+| `--cinder-file-upload-progress-background` | `var(--cinder-surface-inset)` | Progress bar track background. |
+| `--cinder-file-upload-progress-fill`       | `var(--cinder-accent-solid)`  | Progress bar fill.             |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Kanban Board
+
+<!-- BEGIN GENERATED TOKEN TABLE: kanban-board -->
+
+| Token                               | Default                                                            | Description                                                                                                         |
+| ----------------------------------- | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-kanban-column-width`      | `18rem`                                                            | Column inline-size.                                                                                                 |
+| `--cinder-kanban-column-gap`        | `var(--cinder-space-4)`                                            | Gap between columns.                                                                                                |
+| `--cinder-kanban-column-background` | `var(--cinder-surface-raised)`                                     | Column background.                                                                                                  |
+| `--cinder-kanban-card-background`   | `var(--cinder-surface)`                                            | Card background.                                                                                                    |
+| `--cinder-kanban-board-scroll-edge` | `color-mix(in oklch, var(--cinder-text-default), transparent 88%)` | Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Marquee
+
+<!-- BEGIN GENERATED TOKEN TABLE: marquee -->
+
+| Token                       | Default                 | Description                                |
+| --------------------------- | ----------------------- | ------------------------------------------ |
+| `--cinder-marquee-duration` | `24s`                   | Default scroll duration for one full loop. |
+| `--cinder-marquee-gap`      | `var(--cinder-space-6)` | Gap between marquee items.                 |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Modal
+
+<!-- BEGIN GENERATED TOKEN TABLE: modal -->
+
+| Token                     | Default                          | Description                                                                                                                                                                                                            |
+| ------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-modal-backdrop` | `var(--cinder-overlay-backdrop)` | `::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Selectable Row
+
+<!-- BEGIN GENERATED TOKEN TABLE: selectable-row -->
+
+| Token                                          | Default                 | Description                                             |
+| ---------------------------------------------- | ----------------------- | ------------------------------------------------------- |
+| `--cinder-selectable-row-padding-block`        | `var(--cinder-space-3)` | Row block padding (default density).                    |
+| `--cinder-selectable-row-padding-inline`       | `var(--cinder-space-4)` | Row inline padding (default density).                   |
+| `--cinder-selectable-row-column-gap`           | `var(--cinder-space-2)` | Gap between the row's leading/primary/trailing regions. |
+| `--cinder-selectable-row-content-gap`          | `var(--cinder-space-1)` | Gap between primary content lines.                      |
+| `--cinder-selectable-row-leading-gap`          | `var(--cinder-space-3)` | Gap between the leading control and label.              |
+| `--cinder-selectable-row-trailing-actions-gap` | `var(--cinder-space-2)` | Gap between trailing action items.                      |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Side Navigation
+
+<!-- BEGIN GENERATED TOKEN TABLE: side-navigation -->
+
+| Token                               | Default                 | Description                             |
+| ----------------------------------- | ----------------------- | --------------------------------------- |
+| `--cinder-side-navigation-list-gap` | `var(--cinder-space-1)` | Gap between top-level navigation items. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Spinner
+
+<!-- BEGIN GENERATED TOKEN TABLE: spinner -->
+
+| Token                        | Default        | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ---------------------------- | -------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-spinner-indicator` | `currentColor` | Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`. |
+| `--cinder-spinner-size`      | `1.5rem`       | Spinner diameter (md default; 24px).                                                                                                                                                                                                                                                                                                                                                                                                                              |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Statistic
+
+<!-- BEGIN GENERATED TOKEN TABLE: statistic -->
+
+| Token                                  | Default                       | Description                                          |
+| -------------------------------------- | ----------------------------- | ---------------------------------------------------- |
+| `--cinder-statistic-row-gap`           | `var(--cinder-space-1)`       | Gap between label/value/change rows.                 |
+| `--cinder-statistic-column-gap`        | `var(--cinder-space-3)`       | Gap between statistic columns when laid out inline.  |
+| `--cinder-statistic-label-font-size`   | `var(--cinder-text-sm)`       | Label font size.                                     |
+| `--cinder-statistic-value-font-size`   | `var(--cinder-text-4xl)`      | Value font size.                                     |
+| `--cinder-statistic-value-font-weight` | `var(--cinder-font-semibold)` | Value font weight.                                   |
+| `--cinder-statistic-value-line-height` | `1.1`                         | Value line height (unitless).                        |
+| `--cinder-statistic-change-gap`        | `var(--cinder-space-1)`       | Gap between the change indicator icon and its label. |
+| `--cinder-statistic-change-font-size`  | `var(--cinder-text-sm)`       | Change indicator font size.                          |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Statistic Group
+
+<!-- BEGIN GENERATED TOKEN TABLE: statistic-group -->
+
+| Token                                          | Default                 | Description                                                |
+| ---------------------------------------------- | ----------------------- | ---------------------------------------------------------- |
+| `--cinder-statistic-group-gap`                 | `var(--cinder-space-4)` | Gap between statistic cards.                               |
+| `--cinder-statistic-group-card-padding`        | `var(--cinder-space-4)` | Padding inside each statistic card.                        |
+| `--cinder-statistic-group-shared-cell-padding` | `var(--cinder-space-4)` | Padding inside each cell in the shared-border layout mode. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Status Dot
+
+<!-- BEGIN GENERATED TOKEN TABLE: status-dot -->
+
+| Token                       | Default                    | Description                              |
+| --------------------------- | -------------------------- | ---------------------------------------- |
+| `--cinder-status-dot-color` | `var(--cinder-text-muted)` | Dot fill color (default, no status set). |
+| `--cinder-status-dot-size`  | `0.625rem`                 | Dot diameter (md default; 10px).         |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Table Of Contents
+
+<!-- BEGIN GENERATED TOKEN TABLE: table-of-contents -->
+
+| Token                                          | Default                      | Description                           |
+| ---------------------------------------------- | ---------------------------- | ------------------------------------- |
+| `--cinder-table-of-contents-link-color`        | `var(--cinder-text-muted)`   | Inactive link color.                  |
+| `--cinder-table-of-contents-link-active-color` | `var(--cinder-text-default)` | Active link color.                    |
+| `--cinder-table-of-contents-link-indent-step`  | `var(--cinder-space-3)`      | Indent added per heading-depth level. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Tree
+
+<!-- BEGIN GENERATED TOKEN TABLE: tree -->
+
+| Token                                 | Default                      | Description                                   |
+| ------------------------------------- | ---------------------------- | --------------------------------------------- |
+| `--cinder-tree-drop-line-color`       | `var(--cinder-accent-solid)` | Drop-target indicator line/ring color.        |
+| `--cinder-tree-drop-line-thickness`   | `2px`                        | Drop-target indicator line thickness.         |
+| `--cinder-tree-item-dragging-opacity` | `0.55`                       | Opacity of an item's row while being dragged. |
+
+<!-- END GENERATED TOKEN TABLE -->
+
+### Virtual List
+
+<!-- BEGIN GENERATED TOKEN TABLE: virtual-list -->
+
+| Token                          | Default | Description                     |
+| ------------------------------ | ------- | ------------------------------- |
+| `--cinder-virtual-list-height` | `20rem` | Default scroll-viewport height. |
 
 <!-- END GENERATED TOKEN TABLE -->

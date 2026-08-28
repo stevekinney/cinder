@@ -41,7 +41,6 @@ Render continuously looping horizontal or vertical ticker content with pause and
 
 - `--cinder-marquee-duration`
 - `--cinder-marquee-gap`
-- `--cinder-marquee-play-state`
 <!-- generated:variables:end -->
 
 ## Subcomponents

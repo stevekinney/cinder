@@ -62,6 +62,13 @@ describe('landing stylesheet', () => {
     expect(stylesheet).toContain('.cinder-button');
     expect(stylesheet).toContain('--cinder-code-block');
     expect(stylesheet).toContain('.cinder-color-picker');
-    expect(stylesheet).not.toContain('--cinder-table');
+    // A bare `--cinder-table` substring check would false-positive on the
+    // unrelated `--cinder-table-of-contents-*` custom properties (global
+    // :root tokens present in every stylesheet), which share the "table"
+    // prefix but belong to a different component. `.cinder-table__body` is
+    // Table's own class selector -- unambiguous, and the same selector the
+    // sibling "documentation stylesheet" test above uses to confirm Table
+    // styles ARE present there.
+    expect(stylesheet).not.toContain('.cinder-table__body');
   });
 });

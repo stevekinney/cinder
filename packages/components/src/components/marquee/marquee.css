@@ -3,7 +3,7 @@
   .cinder-marquee {
     --cinder-marquee-duration: 24s;
     --cinder-marquee-gap: 1.5rem;
-    --cinder-marquee-play-state: running;
+    --_cinder-marquee-play-state: running;
     display: block;
     position: relative;
   }
@@ -66,7 +66,7 @@
     gap: var(--cinder-marquee-gap);
     inline-size: max-content;
     animation: cinder-marquee-horizontal var(--cinder-marquee-duration) linear infinite;
-    animation-play-state: var(--cinder-marquee-play-state);
+    animation-play-state: var(--_cinder-marquee-play-state);
     will-change: transform;
   }
 
@@ -75,7 +75,7 @@
   }
 
   .cinder-marquee[data-cinder-manual-paused='true'] .cinder-marquee__track {
-    --cinder-marquee-play-state: paused;
+    --_cinder-marquee-play-state: paused;
   }
 
   .cinder-marquee__item {
@@ -110,7 +110,7 @@
   @media (hover: hover) {
     .cinder-marquee[data-cinder-pause-hover='true']:not([data-cinder-manual-resumed='true']):hover
       .cinder-marquee__track {
-      --cinder-marquee-play-state: paused;
+      --_cinder-marquee-play-state: paused;
     }
   }
 
@@ -118,7 +118,7 @@
       [data-cinder-manual-resumed='true']
     ):focus-within
     .cinder-marquee__track {
-    --cinder-marquee-play-state: paused;
+    --_cinder-marquee-play-state: paused;
   }
 
   @media (prefers-reduced-motion: reduce) {
