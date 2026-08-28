@@ -118,11 +118,7 @@ describe('StatisticGroup', () => {
     // The fixed-count collapse threshold must match the LAYOUT rules (18rem), not the
     // 30rem an earlier version used -- between 18rem and 30rem a columns='2' group is
     // still two columns and must keep its vertical dividers.
-    const collapsedDividers = blockAfter(
-      css,
-      '@container cinder-statistic-group (max-width: 18rem)',
-      "[data-cinder-variant='default']",
-    );
+    const collapsedDividers = blockAfter(css, '@container cinder-statistic-group (width <= 18rem)');
     expect(collapsedDividers).toBeDefined();
     expect(collapsedDividers).toContain('border-inline-end: none');
     expect(collapsedDividers).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
@@ -131,10 +127,7 @@ describe('StatisticGroup', () => {
     // the container can hold two of them plus the 1rem gap, at 33rem. Flipping it at
     // 18rem left an auto group between 18rem and 33rem single-column with vertical
     // dividers hanging off its cells.
-    const autoSingleColumn = blockAfter(
-      css,
-      '@container cinder-statistic-group (max-width: 32.99rem)',
-    );
+    const autoSingleColumn = blockAfter(css, '@container cinder-statistic-group (width < 33rem)');
     expect(autoSingleColumn).toBeDefined();
     expect(autoSingleColumn).toContain("[data-cinder-columns='auto']");
     expect(autoSingleColumn).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
@@ -142,21 +135,43 @@ describe('StatisticGroup', () => {
     // Row ends. In a multi-ROW grid the last cell of a row has no neighbour to its right,
     // so `:not(:last-child)` alone drew a divider off the grid's trailing edge. Each
     // effective count suppresses its own `nth-child(Nn)`.
-    const twoColumnRowEnds = blockAfter(
-      css,
-      '@container cinder-statistic-group (min-width: 18.01rem) {',
-    );
+    const twoColumnRowEnds = blockAfter(css, '@container cinder-statistic-group (width > 18rem) {');
     expect(twoColumnRowEnds).toBeDefined();
     expect(twoColumnRowEnds).toContain(':nth-child(2n)');
     expect(twoColumnRowEnds).toContain('border-inline-end: none');
 
-    const wideFixedRowEnds = blockAfter(
-      css,
-      '@container cinder-statistic-group (min-width: 30.01rem)',
-    );
+    const wideFixedRowEnds = blockAfter(css, '@container cinder-statistic-group (width > 30rem)');
     expect(wideFixedRowEnds).toBeDefined();
     expect(wideFixedRowEnds).toContain(':nth-child(3n)');
     expect(wideFixedRowEnds).toContain(':nth-child(4n)');
+  });
+
+  test('divider query bands are contiguous, leaving no uncovered fractional widths', async () => {
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+
+    // An earlier version approximated exclusive boundaries by nudging a hundredth of a
+    // rem -- `max-width: 32.99rem` beside `min-width: 33rem`. The interval BETWEEN those
+    // two values matches neither band, so a container sized by percentage (which lands
+    // on fractional widths routinely) fell through to the generic rule and got back
+    // exactly the dangling borders the bands exist to remove.
+    //
+    // Range syntax states the boundary once and shares it, so there is no gap to fall
+    // through. Guard the smell directly: no divider band may use a hundredth-of-a-rem
+    // boundary.
+    // Comments stripped first: the explanation above this guard names the very
+    // anti-pattern it forbids, and would otherwise trip it.
+    const declarations = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    expect(declarations).not.toMatch(/\d+\.99rem/);
+    expect(declarations).not.toMatch(/\d+\.01rem/);
+
+    // auto-fit needs k*16rem + (k-1)*1rem for k tracks, so each band starts at 17k - 1.
+    // Enumerated past four columns: a five-track `auto` group holding enough statistics
+    // to wrap is unusual but reachable, and every row end in it drew a dangling divider.
+    for (const columnCount of [2, 3, 4, 5, 6, 7, 8]) {
+      const lowerBound = 17 * columnCount - 1;
+      expect(css).toContain(`(width >= ${lowerBound}rem)`);
+      expect(css).toContain(`:nth-child(${columnCount}n)`);
+    }
   });
 
   test('single-column divider rules are declared AFTER the generic multi-column rule', async () => {
@@ -174,12 +189,8 @@ describe('StatisticGroup', () => {
     const genericMultiColumn = css.indexOf(
       "[data-cinder-variant='default']:not([data-cinder-columns='1'])",
     );
-    const fixedCountCollapse = css.indexOf(
-      '@container cinder-statistic-group (max-width: 18rem)',
-      // Skip the LAYOUT block of the same name earlier in the file.
-      genericMultiColumn,
-    );
-    const autoCollapse = css.indexOf('@container cinder-statistic-group (max-width: 32.99rem)');
+    const fixedCountCollapse = css.indexOf('@container cinder-statistic-group (width <= 18rem)');
+    const autoCollapse = css.indexOf('@container cinder-statistic-group (width < 33rem)');
 
     expect(genericMultiColumn).toBeGreaterThan(-1);
     expect(fixedCountCollapse).toBeGreaterThan(-1);

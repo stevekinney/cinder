@@ -68,35 +68,35 @@
    * EFFECTIVE column count -- how many tracks the grid actually renders at the current
    * container width -- not the `columns` prop alone, and not a standalone breakpoint.
    *
-   * Two consequences, both of which earlier versions got wrong:
+   * Three things follow, and earlier versions got each of them wrong in turn:
    *
    *   Direction. Single-column layouts need horizontal dividers, multi-column ones
    *   vertical. `columns='1'` is single-column at every width; fixed counts collapse to
-   *   one column under 18rem; and `auto` renders a single 16rem track until the
-   *   container reaches 33rem (two 16rem tracks plus the 1rem gap). An earlier version
-   *   flipped every layout at 30rem, which stranded `columns='2'` without vertical
-   *   dividers between 18rem and 30rem and left `auto` with vertical dividers while it
-   *   was still one column.
+   *   one column at 18rem; and `auto` renders a single 16rem track until the container
+   *   reaches 33rem (two 16rem tracks plus the 1rem gap).
    *
    *   Row ends. In a multi-ROW grid the last cell of each row has no neighbour to its
    *   right, but `:not(:last-child)` drew one there anyway -- a divider hanging off the
-   *   grid's trailing edge. Every effective count therefore also suppresses
-   *   `:nth-child(Nn)`.
+   *   grid's trailing edge. Every effective count suppresses its own `:nth-child(Nn)`.
    *
-   * ORDER IS LOAD-BEARING. Every rule below carries the same specificity -- one class,
-   * one attribute, one pseudo-class -- so the cascade is decided purely by source
-   * order. The single-column `@container` blocks that turn `border-inline-end` OFF must
-   * therefore come AFTER the generic multi-column rule that turns it on. When they came
-   * first, that generic rule re-applied a vertical border underneath them and a narrow
-   * group rendered BOTH dividers at once.
+   *   Contiguity. These bands use range syntax (`width > 18rem`) rather than
+   *   `min-width: 18.01rem`. Approximating exclusivity by nudging a hundredth of a rem
+   *   leaves the interval BETWEEN the two values matching neither band -- and a
+   *   percentage-sized container lands on fractional widths routinely, where the
+   *   generic rule would take over and restore exactly the dangling borders these rules
+   *   remove. Every boundary below is shared exactly by the band on each side.
+   *
+   * ORDER IS LOAD-BEARING. Every rule carries the same specificity -- one class, one
+   * attribute, one pseudo-class -- so the cascade is decided purely by source order.
+   * The single-column blocks that turn `border-inline-end` OFF must come AFTER the
+   * generic multi-column rule that turns it on. When they came first, that rule
+   * re-applied a vertical border underneath them and a narrow group rendered BOTH
+   * dividers at once.
    *
    * `shared-borders` avoids all of this with a 1px gap filled by the container
-   * background, which needs no column count at all. That technique requires opaque cell
+   * background, which needs no column count. That technique requires opaque cell
    * backgrounds and a 1px gap -- exactly what distinguishes that variant from this one
-   * -- so the counts are enumerated here instead. Known residual: an `auto` group wider
-   * than 84rem AND wrapping past four columns still draws a divider on its row-end
-   * cells. Enumerating further is unbounded, and that configuration is not reachable
-   * from any current example.
+   * -- so the counts are enumerated here instead.
    * ---------------------------------------- */
 
   /* --- Multiple effective columns: vertical dividers --- */
@@ -107,20 +107,20 @@
   }
 
   /*
-   * Row-end suppression. Each rule names the width band in which that layout renders
-   * exactly N columns, so `nth-child(Nn)` really is the last cell of a row there.
+   * Row-end suppression, per band in which that layout renders exactly N columns.
    *
-   * `columns='2'` is two columns from 18rem up; `columns='3'`/`'4'` are two columns
-   * between 18rem and 30rem and their full count above it.
+   * `columns='2'` is two columns above 18rem; `columns='3'`/`'4'` are two columns
+   * between 18rem and 30rem and their full count above it. The thresholds mirror the
+   * layout rules at the top of this file exactly.
    */
-  @container cinder-statistic-group (min-width: 18.01rem) {
+  @container cinder-statistic-group (width > 18rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
       > .cinder-statistic:nth-child(2n) {
       border-inline-end: none;
     }
   }
 
-  @container cinder-statistic-group (min-width: 18.01rem) and (max-width: 30rem) {
+  @container cinder-statistic-group (width > 18rem) and (width <= 30rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
       > .cinder-statistic:nth-child(2n),
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
@@ -129,7 +129,7 @@
     }
   }
 
-  @container cinder-statistic-group (min-width: 30.01rem) {
+  @container cinder-statistic-group (width > 30rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
       > .cinder-statistic:nth-child(3n) {
       border-inline-end: none;
@@ -141,24 +141,88 @@
     }
   }
 
-  /* auto-fit column count by band: k tracks need k*16rem + (k-1)*1rem of inline size. */
-  @container cinder-statistic-group (min-width: 33rem) and (max-width: 49.99rem) {
+  /*
+   * auto-fit bands. k tracks need k*16rem + (k-1)*1rem, so the boundaries are
+   * 17k - 1: 33rem, 50rem, 67rem, 84rem, and so on. Enumerated rather than left at
+   * four columns -- an `auto` group wide enough for five tracks AND holding enough
+   * statistics to wrap is unusual, but it is reachable, and it drew a dangling divider
+   * on every row end.
+   */
+  @container cinder-statistic-group (width >= 33rem) and (width < 50rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
       > .cinder-statistic:nth-child(2n) {
       border-inline-end: none;
     }
   }
 
-  @container cinder-statistic-group (min-width: 50rem) and (max-width: 66.99rem) {
+  @container cinder-statistic-group (width >= 50rem) and (width < 67rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
       > .cinder-statistic:nth-child(3n) {
       border-inline-end: none;
     }
   }
 
-  @container cinder-statistic-group (min-width: 67rem) and (max-width: 83.99rem) {
+  @container cinder-statistic-group (width >= 67rem) and (width < 84rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
       > .cinder-statistic:nth-child(4n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 84rem) and (width < 101rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(5n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 101rem) and (width < 118rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(6n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 118rem) and (width < 135rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(7n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 135rem) and (width < 152rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(8n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 152rem) and (width < 169rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(9n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 169rem) and (width < 186rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(10n) {
+      border-inline-end: none;
+    }
+  }
+
+  @container cinder-statistic-group (width >= 186rem) and (width < 203rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(11n) {
+      border-inline-end: none;
+    }
+  }
+
+  /* 12+ columns. Open-ended: 203rem is over 3200px, past any real display, so
+     nothing beyond this band is reachable. */
+  @container cinder-statistic-group (width >= 203rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
+      > .cinder-statistic:nth-child(12n) {
       border-inline-end: none;
     }
   }
@@ -166,16 +230,15 @@
   /* --- Single effective column: horizontal dividers --- */
   /* These come LAST on purpose -- see the ORDER note above. */
 
-  /* No `border-inline-end: none` needed here: the generic multi-column rule above
-     excludes `columns='1'` outright, so this layout never gains a vertical border to
-     reset. */
+  /* No `border-inline-end: none` needed here: the generic multi-column rule excludes
+     `columns='1'` outright, so this layout never gains a vertical border to reset. */
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='1']
     > .cinder-statistic:not(:last-child) {
     border-block-end: 1px solid var(--cinder-border-muted);
   }
 
-  /* Every fixed count is one column below 18rem. */
-  @container cinder-statistic-group (max-width: 18rem) {
+  /* Every fixed count is one column at 18rem and below. */
+  @container cinder-statistic-group (width <= 18rem) {
     .cinder-statistic-group[data-cinder-variant='default']:not([data-cinder-columns='auto'])
       > .cinder-statistic:not(:last-child) {
       border-inline-end: none;
@@ -184,7 +247,7 @@
   }
 
   /* auto-fit fits a second 16rem track only from 33rem up. */
-  @container cinder-statistic-group (max-width: 32.99rem) {
+  @container cinder-statistic-group (width < 33rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='auto']
       > .cinder-statistic:not(:last-child) {
       border-inline-end: none;
