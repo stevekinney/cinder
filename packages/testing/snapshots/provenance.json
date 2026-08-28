@@ -2,12 +2,9 @@
   "schemaVersion": 1,
   "componentScope": [
     "card",
-    "color-field",
-    "date-picker",
-    "date-range-field",
     "share-card"
   ],
-  "renderedSourceSha": "faff54650766e1cf5bd902d19caafec146f83e1c",
+  "renderedSourceSha": "0a40b37624491782039f7b1ed6c66063ba1c4c1e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
