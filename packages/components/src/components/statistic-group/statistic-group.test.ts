@@ -159,6 +159,35 @@ describe('StatisticGroup', () => {
     expect(wideFixedRowEnds).toContain(':nth-child(4n)');
   });
 
+  test('single-column divider rules are declared AFTER the generic multi-column rule', async () => {
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+
+    // Every divider rule carries the same specificity -- one class, one attribute, one
+    // pseudo-class -- so source order alone decides the cascade. The `@container` rules
+    // that switch a narrow group to horizontal dividers turn `border-inline-end` OFF,
+    // and the generic multi-column rule turns it ON. With the container blocks written
+    // first, that generic rule re-applied a vertical border underneath them and a narrow
+    // group rendered BOTH dividers at once.
+    //
+    // Order is the entire fix, and nothing else here would catch a regression: both
+    // orderings parse, and every selector-content assertion above passes either way.
+    const genericMultiColumn = css.indexOf(
+      "[data-cinder-variant='default']:not([data-cinder-columns='1'])",
+    );
+    const fixedCountCollapse = css.indexOf(
+      '@container cinder-statistic-group (max-width: 18rem)',
+      // Skip the LAYOUT block of the same name earlier in the file.
+      genericMultiColumn,
+    );
+    const autoCollapse = css.indexOf('@container cinder-statistic-group (max-width: 32.99rem)');
+
+    expect(genericMultiColumn).toBeGreaterThan(-1);
+    expect(fixedCountCollapse).toBeGreaterThan(-1);
+    expect(autoCollapse).toBeGreaterThan(-1);
+    expect(fixedCountCollapse).toBeGreaterThan(genericMultiColumn);
+    expect(autoCollapse).toBeGreaterThan(genericMultiColumn);
+  });
+
   test('renders .cinder-statistic-group wrapping its children', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('stat content'),
