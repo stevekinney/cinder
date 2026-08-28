@@ -118,6 +118,19 @@
     placement: () => placement,
     offset: () => offset,
     widthMode: () => 'content',
+    // CIN-332: this menu's height tracks its filtered result count, and `autoUpdate`
+    // re-runs positioning on every resize. With `flip` free to re-decide each time, a
+    // list that shrinks past the fit threshold flips the whole surface across the caret
+    // and back as the query narrows and widens. Locking holds the placement resolved on
+    // open, so the anchored edge stays put while the list changes size.
+    lockPlacement: () => true,
+    // Locking gives up the flip rescue, so the panel has to degrade by shrinking when it
+    // runs out of room below the caret. `size` caps it to the space actually available;
+    // `.cinder-command-menu` already sets `overflow-y: auto`, so the list scrolls inside
+    // that cap. The 20rem ceiling mirrors the `max-block-size` in command-menu.css —
+    // keep the two in step.
+    size: () => true,
+    sizeMaxBlockSize: () => '20rem',
   });
 
   // ---------------------------------------------------------------------

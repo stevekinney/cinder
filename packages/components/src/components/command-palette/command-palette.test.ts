@@ -715,47 +715,49 @@ describe('CommandPalette — attachment registration', () => {
 // ── Visual contract ───────────────────────────────────────────────────────
 
 describe('CommandPalette — visual contract', () => {
-  test('keyboard focus is indicated by the search row bottom border, not a ring on the input', async () => {
+  test('keyboard focus is indicated by the standard library ring on the input, via :focus-visible', async () => {
     const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
 
-    // The search row reserves a 2px bottom border AT REST so focusing only changes
-    // its color (no width change → no layout shift of the option list below).
+    // The bespoke bottom-border-recolor idiom is gone; the search row no longer
+    // paints any focus indication of its own.
+    expect(css).not.toMatch(/\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end/);
+    expect(css).not.toMatch(/\.cinder-command-palette__search:focus-within/);
+
+    // The input now carries the library's standard ring recipe — transparent
+    // outline + the shared two-stop box-shadow formula — gated on :focus-visible
+    // (not :focus) so a mouse click does not show the ring.
     expect(css).toMatch(
-      /\.cinder-command-palette__search\s*\{[\s\S]*?border-block-end:\s*2px solid var\(--cinder-border-muted\);/,
+      /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid transparent;/,
     );
-    // :focus-within recolors that border to the ring color — the focus indicator.
     expect(css).toMatch(
-      /\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*var\(--cinder-ring-color\);/,
+      /\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?box-shadow:\s*var\(--_cinder-focus-ring-shadow\);/,
     );
-    // forced-colors fallback maps the same border to the system Highlight color.
+    expect(css).not.toMatch(/\.cinder-command-palette__input:focus\s*\{/);
+
+    // forced-colors fallback matches the library's other :focus-visible inputs.
     expect(css).toMatch(
-      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__search:focus-within\s*\{[\s\S]*?border-block-end-color:\s*Highlight;/,
+      /@media \(forced-colors: active\)\s*\{[\s\S]*?\.cinder-command-palette__input:focus-visible\s*\{[\s\S]*?outline:\s*var\(--cinder-ring-width\) solid Highlight;/,
     );
     expect(css).toMatch(
       /\.cinder-command-palette__search\s*\{[\s\S]*?background:\s*var\(--cinder-surface-raised\);/,
     );
   });
 
-  test('the search input carries NO ring of its own (the edgeless input must not float a box)', async () => {
-    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+  test('search input padding-block matches the command item rhythm (both use --cinder-space-2-5)', async () => {
+    const paletteCss = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
+    const commandItemCss = await Bun.file(
+      new URL('../command-item/command-item.css', import.meta.url),
+    ).text();
 
-    // The user-reported "terrible" ring was the input's own 3px box-shadow ring.
-    // The input must not reintroduce any box-shadow/heavy-outline focus ring.
-    expect(css).not.toMatch(
-      /\.cinder-command-palette__input:focus(?:-visible)?\s*\{[\s\S]*?box-shadow\s*:/,
+    // The search input's own vertical padding must agree with the block padding
+    // of the rows beneath it — both use --cinder-space-2-5 (0.625rem), not the
+    // old --cinder-space-4 (1rem) that produced an uneven gap before the first
+    // result row.
+    expect(paletteCss).toMatch(
+      /\.cinder-command-palette__input\s*\{[\s\S]*?padding-block:\s*var\(--cinder-space-2-5\);/,
     );
-    expect(css).not.toMatch(
-      /\.cinder-command-palette__input:focus(?:-visible)?\s*\{[\s\S]*?outline\s*:\s*var\(--cinder-ring-width\)\s+solid\s+(?!none)/,
-    );
-  });
-
-  test('search wrapper must not carry a heavy box-shadow/outline focus ring (a border recolor is fine)', async () => {
-    const css = await Bun.file(new URL('./command-palette.css', import.meta.url)).text();
-
-    // The old #159-era inset box-shadow ring on the row read as a heavy floating box;
-    // it must not return. A border-color recolor (the current approach) is allowed.
-    expect(css).not.toMatch(
-      /\.cinder-command-palette__search:focus-within\s*\{[^}]*(?:box-shadow|outline)\s*:/,
+    expect(commandItemCss).toMatch(
+      /\.cinder-command-item\s*\{[\s\S]*?padding:\s*var\(--cinder-space-2-5\)\s+var\(--cinder-space-5\);/,
     );
   });
 
