@@ -146,4 +146,46 @@ describe('Footer', () => {
     expect(legalBlock).toContain('border-top: 1px solid var(--cinder-border-muted)');
     expect(legalBlock).toContain('padding-top: var(--cinder-space-2)');
   });
+
+  test('a legal-only footer omits the main wrapper entirely', () => {
+    // `copyright`/`legalLinks` without brand, description, or groups is a valid
+    // combination. An unconditional `.cinder-footer__main` would still be a grid item
+    // there, so the root's (now larger) main-to-legal gap would open blank space above
+    // the legal row with no main region to separate it from -- the widened gap making
+    // the empty wrapper more visible, not less.
+    const { container } = render(Footer, {
+      copyright: '© 2026 Example',
+      legalLinks: [{ id: 'privacy', label: 'Privacy', href: '/privacy' }],
+    });
+
+    expect(container.querySelector('.cinder-footer__main')).toBeNull();
+    expect(container.querySelector('.cinder-footer__legal')).not.toBeNull();
+    expect(container.querySelector('.cinder-footer__legal')?.textContent).toContain('Privacy');
+  });
+
+  test('the main wrapper renders as soon as any of its three sources is present', () => {
+    // The guard is a three-way OR; a regression that narrowed it to `brand` alone would
+    // silently drop a groups-only or description-only footer's entire main region.
+    // Rendered separately rather than over an array of prop objects: a mixed array
+    // widens to a union that `exactOptionalPropertyTypes` rejects.
+    const brandOnly = render(Footer, { brand: 'Example' });
+    expect(brandOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    brandOnly.unmount();
+
+    const descriptionOnly = render(Footer, { description: 'A description' });
+    expect(descriptionOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    descriptionOnly.unmount();
+
+    const groupsOnly = render(Footer, {
+      groups: [
+        {
+          id: 'product',
+          title: 'Product',
+          links: [{ id: 'docs', label: 'Docs', href: '/docs' }],
+        },
+      ],
+    });
+    expect(groupsOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    groupsOnly.unmount();
+  });
 });
