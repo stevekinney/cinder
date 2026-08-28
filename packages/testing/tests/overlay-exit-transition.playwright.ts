@@ -173,7 +173,7 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   const closingCard = page
     .locator('.cinder-hover-card[data-cinder-closing]')
     .filter({ hasText: 'CIN-99' });
-  const closingStarted = closingCard.waitFor({ state: 'attached' });
+  const closingStarted = closingCard.waitFor({ state: 'attached', timeout: 5_000 });
   await page.mouse.move(0, 0);
   await closingStarted;
 
