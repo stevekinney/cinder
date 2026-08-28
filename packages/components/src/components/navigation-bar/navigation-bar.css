@@ -91,6 +91,28 @@
     align-self: stretch;
     justify-content: space-around;
     gap: 0;
+    /*
+     * CIN-125 pins each tab to the 44px touch-target floor on the inline axis. That
+     * floor is not negotiable, so with enough tabs in a narrow bar the children can
+     * exceed this container — nine tabs at 375px, say. Without somewhere for that
+     * overflow to go, the excess either runs off the page or, more often, is clipped
+     * and unreachable, because a bottom bar is normally sticky or fixed inside a host
+     * that clips. Scrolling keeps the floor AND keeps every tab reachable.
+     *
+     * Deliberately no scroll-fade: _scroll-fade.css's third design rule is never to
+     * fade a focusable edge, because roving focus scrolls an item to the boundary and
+     * a fade would obscure the focused control. Every tab here is focusable.
+     */
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: none;
+  }
+
+  /* The bar is chrome, not content — a visible scrollbar would sit on top of the tab
+     row. Reachability comes from scrolling and from roving focus, not from the bar. */
+  .cinder-navigation-bar[data-cinder-placement='bottom']
+    .cinder-navigation-bar__items::-webkit-scrollbar {
+    display: none;
   }
 
   .cinder-navigation-bar__actions {

@@ -2238,6 +2238,20 @@ describe('NavigationBar responsive CSS', () => {
     );
   });
 
+  test('the bottom tab row scrolls rather than clipping when the touch floor overflows it', () => {
+    // The inline floor above is non-negotiable, so enough tabs in a narrow bar WILL
+    // exceed the container. Without an overflow strategy the excess is clipped and
+    // unreachable, because a bottom bar is normally sticky or fixed inside a clipping
+    // host — the floor would then trade one accessibility failure for another.
+    const bottomItemsRule =
+      navigationBarCss.match(
+        /\.cinder-navigation-bar\[data-cinder-placement='bottom'\] \.cinder-navigation-bar__items \{[^}]*\}/,
+      )?.[0] ?? '';
+
+    expect(bottomItemsRule).toContain('overflow-x: auto');
+    expect(bottomItemsRule).not.toContain('overflow-x: hidden');
+  });
+
   test('top-collapsible mobile active items use row selection instead of the horizontal underline', () => {
     expect(navigationBarCss).toMatch(
       /\.cinder-navigation-bar__items\[data-cinder-mobile-panel\]\[data-cinder-visible\][\s\S]*?\.cinder-navigation-item\[data-variant='mobile'\][\s\S]*?border-bottom:\s*none;[\s\S]*?border-inline-start:\s*2px solid transparent;/,

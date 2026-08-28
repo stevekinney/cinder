@@ -59,8 +59,10 @@ describe('StackedListItem', () => {
     const baseDescriptionLineHeight = stylesheet.match(
       /__description\s*\{[^}]*line-height:\s*(var\(--cinder-[\w-]+\))/,
     )?.[1];
+    // Whitespace-tolerant rather than pinning newlines and indentation: a reformat
+    // must not fail a test about line-height values.
     const condensedLineHeightMatch = stylesheet.match(
-      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__description,\s*\n\s*\.cinder-stacked-list-item\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__meta \{\s*\n\s*line-height:\s*(var\(--cinder-[\w-]+\))/,
+      /\[data-cinder-density='condensed'\] \.cinder-stacked-list-item__description,[\s\S]*?__meta \{[\s\S]*?line-height:\s*(var\(--cinder-[\w-]+\))/,
     )?.[1];
 
     expect(baseDescriptionLineHeight).toBe('var(--cinder-leading-snug)');
