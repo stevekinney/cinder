@@ -166,8 +166,16 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   const instantReopenCard = page.locator('.cinder-hover-card').filter({ hasText: 'CIN-99' });
   await expect(instantReopenCard).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  // Arm the transient-state wait before moving the pointer. The closing
+  // attribute exists only for the real 120ms exit transition, so beginning
+  // a polling assertion after the pointer action can miss the state entirely
+  // under runner contention and observe only the already-unmounted card.
+  const closingCard = page
+    .locator('.cinder-hover-card[data-cinder-closing]')
+    .filter({ hasText: 'CIN-99' });
+  const closingStarted = closingCard.waitFor({ state: 'attached', timeout: 5_000 });
   await page.mouse.move(0, 0);
-  await expect(instantReopenCard).toHaveAttribute('data-cinder-closing', '');
+  await closingStarted;
 
   await instantReopenTrigger.hover();
 
