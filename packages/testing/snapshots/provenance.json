@@ -1,10 +1,12 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "matrix-chart",
-    "transfer-list"
+    "command-menu",
+    "command-palette",
+    "filter-bar",
+    "kanban-board"
   ],
-  "renderedSourceSha": "5a28b37e540a48a4c3939adf13847d37051a8894",
+  "renderedSourceSha": "64061d730e139826dfb5e9281d2b51d49e1b39a2",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
