@@ -789,13 +789,14 @@
     "slide-size": {
       "$type": "number",
       "$value": 100,
-      "$description": "Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation.",
+      "$description": "Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-carousel-slide-size",
           "public": true,
           "category": "layout",
           "component": "carousel",
+          "nonRepresentableValue": true,
           "cssRecipe": "100%"
         }
       }
@@ -817,13 +818,14 @@
     "aspect-ratio": {
       "$type": "number",
       "$value": 1.7778,
-      "$description": "Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax.",
+      "$description": "Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-carousel-aspect-ratio",
           "public": true,
           "category": "layout",
           "component": "carousel",
+          "nonRepresentableValue": true,
           "cssRecipe": "16 / 9"
         }
       }
@@ -881,13 +883,14 @@
         "value": 0,
         "unit": "rem"
       },
-      "$description": "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision.",
+      "$description": "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-code-block-height",
           "public": true,
           "category": "size",
           "component": "code-block",
+          "nonRepresentableValue": true,
           "cssRecipe": "auto"
         }
       }
@@ -1260,13 +1263,14 @@
     "indicator": {
       "$type": "color",
       "$value": "{text.default}",
-      "$description": "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution.",
+      "$description": "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-spinner-indicator",
           "public": true,
           "category": "color",
           "component": "spinner",
+          "nonRepresentableValue": true,
           "cssRecipe": "currentColor"
         }
       }

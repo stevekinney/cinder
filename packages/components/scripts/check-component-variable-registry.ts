@@ -143,19 +143,20 @@ async function main(): Promise<void> {
     if (reportOnly) {
       process.stdout.write(
         `check:component-variable-registry — --report-only: ${result.unmodelled.length} ` +
-          `component(s) ship a variable manifest the corpus does not model:\n${detail}\n`,
+          `component(s) ship a variable manifest the corpus does not model:\n${detail}\n\n` +
+          `${result.checked.length} other component(s) are fully checked against the corpus.\n`,
       );
-    } else {
-      process.stderr.write(
-        `check:component-variable-registry — ${result.unmodelled.length} component(s) ship a ` +
-          `variable manifest the corpus does not model:\n${detail}\n\nAdd tokens to the DTCG ` +
-          `corpus with a \`component\` extension naming the component, or mark every ` +
-          `declaration \`@runtime-state\` if none of it is a theming API. Pass --report-only ` +
-          `to downgrade this to a warning while iterating locally.\n`,
-      );
-      process.exitCode = 1;
       return;
     }
+    process.stderr.write(
+      `check:component-variable-registry — ${result.unmodelled.length} component(s) ship a ` +
+        `variable manifest the corpus does not model:\n${detail}\n\nAdd tokens to the DTCG ` +
+        `corpus with a \`component\` extension naming the component, or mark every ` +
+        `declaration \`@runtime-state\` if none of it is a theming API. Pass --report-only ` +
+        `to downgrade this to a warning while iterating locally.\n`,
+    );
+    process.exitCode = 1;
+    return;
   }
 
   process.stdout.write(

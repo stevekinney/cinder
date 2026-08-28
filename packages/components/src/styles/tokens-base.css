@@ -538,11 +538,11 @@
   --cinder-avatar-group-overlap: var(--cinder-space-3);
   /* Horizontal bleed a card's mobile layout extends past its container on each side. */
   --cinder-card-mobile-bleed: var(--cinder-space-4);
-  /* Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. */
+  /* Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length. */
   --cinder-carousel-slide-size: 100%;
   /* Gap between slides. */
   --cinder-carousel-gap: var(--cinder-space-3);
-  /* Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. */
+  /* Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value. */
   --cinder-carousel-aspect-ratio: 16 / 9;
   /* Pagination dot hit-target size. */
   --cinder-carousel-dot-size: 2.75rem;
@@ -553,7 +553,7 @@
   );
   /* Code text font size. */
   --cinder-code-block-font-size: var(--cinder-text-sm);
-  /* Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. */
+  /* Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height. */
   --cinder-code-block-height: auto;
   /* Code text line height. */
   --cinder-code-block-line-height: var(--cinder-leading-relaxed);
@@ -605,7 +605,7 @@
   --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
   /* Gap between top-level navigation items. */
   --cinder-side-navigation-list-gap: var(--cinder-space-1);
-  /* Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. */
+  /* Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`. */
   --cinder-spinner-indicator: currentColor;
   /* Spinner diameter (md default; 24px). */
   --cinder-spinner-size: 1.5rem;
@@ -799,6 +799,8 @@
   --cinder-checker-base: oklch(28% 0.02 245);
   --cinder-checker-tile: oklch(38% 0.02 245);
   --cinder-alert-info: oklch(78% 0.15 245);
+  --cinder-code-block-background: var(--cinder-surface-inset);
+  --cinder-kanban-board-scroll-edge: oklch(92% 0.02 245 / 0.12);
 }
 
 [data-theme='light'] {

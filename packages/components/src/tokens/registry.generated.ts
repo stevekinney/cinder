@@ -2307,7 +2307,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: false,
       deprecated: false,
       description:
-        'Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation.',
+        'Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length.',
     },
     {
       path: 'carousel.gap',
@@ -2328,7 +2328,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: false,
       deprecated: false,
       description:
-        'Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax.',
+        'Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value.',
     },
     {
       path: 'carousel.dot-size',
@@ -2346,7 +2346,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       category: 'color',
       component: 'code-block',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
       description:
         "Code surface background. Light arm MUST stay pure `surface-raised` (not `surface-inset`) -- Shiki's github-light token colors measure their AA contrast against that surface with almost no margin; darkening it fails the axe sweep. See code-block.css for the full rationale. Dark arm uses `surface-inset` for the deeper github-dark ground.",
@@ -2370,7 +2370,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: false,
       deprecated: false,
       description:
-        "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision.",
+        "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height.",
     },
     {
       path: 'code-block.line-height',
@@ -2498,7 +2498,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       category: 'color',
       component: 'kanban-board',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
       description:
         'Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves.',
@@ -2613,7 +2613,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: false,
       deprecated: false,
       description:
-        "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution.",
+        "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`.",
     },
     {
       path: 'spinner.size',

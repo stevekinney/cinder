@@ -3138,20 +3138,6 @@
       }
     }
   },
-  "carousel.slide-size": {
-    "$type": "number",
-    "$value": 100,
-    "$description": "Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-carousel-slide-size",
-        "public": true,
-        "category": "layout",
-        "component": "carousel",
-        "cssRecipe": "100%"
-      }
-    }
-  },
   "carousel.gap": {
     "$type": "dimension",
     "$value": { "value": 0.75, "unit": "rem" },
@@ -3163,20 +3149,6 @@
         "category": "spacing",
         "component": "carousel",
         "cssRecipe": null
-      }
-    }
-  },
-  "carousel.aspect-ratio": {
-    "$type": "number",
-    "$value": 1.7778,
-    "$description": "Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-carousel-aspect-ratio",
-        "public": true,
-        "category": "layout",
-        "component": "carousel",
-        "cssRecipe": "16 / 9"
       }
     }
   },
@@ -3219,20 +3191,6 @@
         "category": "typography",
         "component": "code-block",
         "cssRecipe": null
-      }
-    }
-  },
-  "code-block.height": {
-    "$type": "dimension",
-    "$value": { "value": 0, "unit": "rem" },
-    "$description": "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-code-block-height",
-        "public": true,
-        "category": "size",
-        "component": "code-block",
-        "cssRecipe": "auto"
       }
     }
   },
@@ -3555,20 +3513,6 @@
         "category": "spacing",
         "component": "side-navigation",
         "cssRecipe": null
-      }
-    }
-  },
-  "spinner.indicator": {
-    "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.2, 0.018, 245] },
-    "$description": "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution.",
-    "$extensions": {
-      "com.lostgradient.cinder": {
-        "cssProperty": "--cinder-spinner-indicator",
-        "public": true,
-        "category": "color",
-        "component": "spinner",
-        "cssRecipe": "currentColor"
       }
     }
   },

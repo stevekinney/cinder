@@ -965,5 +965,23 @@
         "components": [0.78, 0.15, 245]
       }
     }
+  },
+  "code-block": {
+    "background": {
+      "$type": "color",
+      "$value": "{surface.inset}"
+    }
+  },
+  "kanban-board": {
+    "board": {
+      "scroll-edge": {
+        "$type": "color",
+        "$value": {
+          "colorSpace": "oklch",
+          "components": [0.92, 0.02, 245],
+          "alpha": 0.12
+        }
+      }
+    }
   }
 }
