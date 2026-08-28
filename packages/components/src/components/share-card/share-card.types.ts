@@ -33,8 +33,8 @@ export type ShareCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'chi
    * displays with line breaks collapsed (native single-line `<input>`
    * behavior). This affects DISPLAY only: every copy/share action, and a
    * manual select-and-copy on the field itself, always sends the exact,
-   * unmodified string you pass here — see share-card.svelte's `handleCopy`/
-   * `handleFieldCopy`. In dev, a multi-line `value` logs a console warning.
+   * unmodified string you pass here. In dev, a multi-line `value` logs a
+   * console warning.
    */
   value: string;
   /** Human-readable title for the share card. */

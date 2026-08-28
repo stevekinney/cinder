@@ -68,7 +68,13 @@
     const form = element.closest('form');
     if (!form) return;
     function restoreValueAfterReset() {
-      element.value = value;
+      // The `reset` event fires BEFORE the controls are cleared — resetting IS its
+      // default action — so assigning synchronously here would just be overwritten a
+      // moment later. Restore on the microtask after dispatch, once the native reset
+      // has actually run.
+      queueMicrotask(() => {
+        element.value = value;
+      });
     }
     form.addEventListener('reset', restoreValueAfterReset);
     return () => form.removeEventListener('reset', restoreValueAfterReset);
@@ -218,8 +224,14 @@
   // copy/share action buttons already send (they read `value`/`copyValue`
   // from JS state, never from the DOM, so they were never affected).
   function handleFieldCopy(event: ClipboardEvent) {
+    // Only take the copy over when the replacement can actually be written. Calling
+    // preventDefault() unconditionally would cancel the native copy even in an
+    // environment that exposes no clipboardData, leaving the clipboard untouched —
+    // strictly worse than the collapsed line breaks this exists to avoid.
+    const { clipboardData } = event;
+    if (!clipboardData) return;
     event.preventDefault();
-    event.clipboardData?.setData('text/plain', value);
+    clipboardData.setData('text/plain', value);
   }
 
   // Dev-only signal that `value` contains a line break. The field's DISPLAY

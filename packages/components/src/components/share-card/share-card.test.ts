@@ -488,6 +488,12 @@ describe('ShareCard Input composition', () => {
 
     form.reset();
 
+    // Restoration is deferred by one microtask, deliberately: the `reset` event fires
+    // BEFORE the controls are cleared — clearing them IS its default action — so a
+    // synchronous re-assert inside the listener would simply be overwritten. Await the
+    // microtask before asserting rather than testing the pre-reset value by accident.
+    await Promise.resolve();
+
     // The field is a read-only DISPLAY, not editable form state — the
     // ambient form's reset must not revert it to whatever was rendered at
     // mount (`valueFieldAttachment`'s `reset` listener re-asserts the
