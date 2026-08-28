@@ -447,6 +447,65 @@ describe('ShareCard Input composition', () => {
     warnSpy.mockRestore();
   });
 
+  test('the two Input arms stay in sync on everything but the trailing addon', async () => {
+    // `labelSnippet` presence decides whether the actions ride inside `Input`'s trailing
+    // addon or render as a sibling row, and those are two separate `Input` invocations.
+    // A review rightly flagged that switching arms tears the value field down, dropping
+    // focus and selection on a presentation-only change.
+    //
+    // Collapsing to one call site does not work: a conditional spread widens `trailing`
+    // to optional, which `InputProps`' leading/trailing union rejects under
+    // `exactOptionalPropertyTypes`. And it would not have helped anyway -- `Input` wraps
+    // its `<input>` in `.cinder-input-group` only when `trailing` is set, so the element
+    // is recreated inside `Input` regardless of what this file does.
+    //
+    // What IS worth guarding is that the two arms cannot drift: everything except the
+    // trailing addon must be identical, or the field would silently change behaviour
+    // with the layout.
+    const source = await Bun.file(new URL('./share-card.svelte', import.meta.url)).text();
+    const inputCallSites = source.match(/<Input\b[\s\S]*?\/>/g) ?? [];
+    expect(inputCallSites).toHaveLength(2);
+
+    const withoutTrailing = inputCallSites.map((site) =>
+      site
+        .replace(/^\s*trailing=\{actionsRow\}\s*$/m, '')
+        .replace(/^\s*trailingInteractive\s*$/m, '')
+        .replace(/\s+/g, ' ')
+        .trim(),
+    );
+    expect(withoutTrailing[0]).toBe(withoutTrailing[1]);
+  });
+
+  test('both action layouts render exactly one value field, in the right place', () => {
+    const richLabel = createRawSnippet(() => ({ render: () => '<span>Copy it</span>' }));
+
+    const compact = render(ShareCard, {
+      value: 'https://example.com/a',
+      actions: [{ key: 'copy', label: 'Copy', copyValue: 'https://example.com/a' }],
+    });
+    expect(compact.container.querySelectorAll('.cinder-share-card__value')).toHaveLength(1);
+    // Compact layout: the actions ride inside the field's trailing addon.
+    expect(
+      compact.container.querySelector('.cinder-input-group__trailing .cinder-share-card__actions'),
+    ).not.toBeNull();
+    compact.unmount();
+
+    const rich = render(ShareCard, {
+      value: 'https://example.com/a',
+      actions: [
+        { key: 'copy', label: 'Copy', labelSnippet: richLabel, copyValue: 'https://example.com/a' },
+      ],
+    });
+    expect(rich.container.querySelectorAll('.cinder-share-card__value')).toHaveLength(1);
+    // Rich layout: the actions render outside the field, where the narrow trailing slot
+    // would otherwise clip them.
+    expect(
+      rich.container.querySelector('.cinder-input-group__trailing .cinder-share-card__actions'),
+    ).toBeNull();
+    expect(rich.container.querySelector('.cinder-share-card__actions')).not.toBeNull();
+    rich.unmount();
+  });
+
   test('copying a PARTIAL selection leaves the native copy alone', () => {
     // The handler exists because a single-line <input> renders a multi-line value with
     // its breaks collapsed, so copying the displayed text would lose them. That covers
@@ -709,16 +768,27 @@ describe('ShareCard native share', () => {
     (navigator as { share?: unknown }).share = async () => {
       throw new DOMException('denied', 'NotAllowedError');
     };
+    // Sync on the clipboard write ITSELF rather than polling for its effect. The
+    // share -> fallback-copy chain awaits navigator.share and then the write, so the
+    // copied state lands a few microtasks after the click. A fixed sleep papers over
+    // that race; a bare `waitFor` resolves it but inherits Testing Library's 1000ms
+    // deadline, so a chain that stalls holds CI for a second per occurrence. Resolving
+    // a promise from inside the mock gives an exact signal with no threshold at all.
+    let signalWriteCalled: () => void = () => {};
+    const clipboardWriteCalled = new Promise<void>((resolve) => {
+      signalWriteCalled = resolve;
+    });
     setNavigatorClipboard({
-      writeText: async () => {},
+      writeText: async () => {
+        signalWriteCalled();
+      },
     });
     const { container } = render(ShareCard, { value: 'https://example.com/x' });
     const shareButton = container.querySelector('[data-cinder-action="native-share"]');
     await fireEvent.click(shareButton!);
-    // The share -> fallback-copy chain awaits navigator.share and then the clipboard
-    // write, so the copied state lands a couple of microtasks later. Poll for it
-    // rather than sleeping a fixed interval: check:timeout-increases rejects wait
-    // thresholds because they paper over the race instead of resolving it.
+    await clipboardWriteCalled;
+    // One flush for handleCopy's state write after copyToClipboard resolves.
+    await tick();
     //
     // The fallback copy succeeded — the share button must surface the copied
     // affordance visually (icon + `data-cinder-copied`), but its accessible
@@ -727,9 +797,7 @@ describe('ShareCard native share', () => {
     // source of truth for the transient announcement, so the name changing
     // too would risk a redundant re-announcement and would also make
     // `getByRole(..., { name: 'Share' })` unable to find the button mid-copy.
-    await waitFor(() => {
-      expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
-    });
+    expect(shareButton?.getAttribute('data-cinder-copied')).toBe('');
     expect(shareButton?.getAttribute('aria-label')).toBe('Share');
   });
 });

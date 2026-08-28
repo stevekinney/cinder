@@ -56,7 +56,9 @@
   // elsewhere on the page (e.g. a "Reset filters" button) resets.
   //
   // Fix: use `Input`'s `inputAttachment` escape hatch to reach the real
-  // `<input>` DOM node, find its nearest ancestor `<form>` (if any), and
+  // `<input>` DOM node, find its owning `<form>` (if any) — by `element.form`, which
+  // also covers a form the input is associated with by `form="<id>"` rather than
+  // nested inside — and
   // re-assert the CURRENT `value` prop back onto it on every native 'reset'.
   // This mirrors `color-picker.svelte`'s established `hiddenInput` +
   // `form.addEventListener('reset', ...)` pattern for the same class of
@@ -355,6 +357,23 @@
        is present, `Input`'s trailing slot is too narrow for rich content
        (`max-inline-size: 40%`), so the actions render OUTSIDE the field as
        a normal full-width row instead of being clipped inside it. -->
+  <!-- Two `Input` arms rather than one call site with the addon applied conditionally.
+       That would be preferable — a review rightly noted that switching arms tears the
+       value field down, so a parent reactively updating `actions` across the
+       `labelSnippet` boundary drops the user's focus and selection. Both alternatives
+       were tried and neither works here:
+
+       A conditional spread (`{...cond ? {} : { trailing, trailingInteractive }}`) does
+       not typecheck: `InputProps` pairs `leading`/`trailing` in a union that requires
+       both, and spreading widens `trailing` to optional, which no longer satisfies
+       either branch under `exactOptionalPropertyTypes`.
+
+       And it would not have fixed the teardown regardless: `Input` wraps its `<input>`
+       in `.cinder-input-group` only when `trailing` is set (input.svelte's
+       `{#if hasGroupWrapper}`), so the element is recreated INSIDE `Input` when the
+       addon appears or disappears, whatever this file does. Preserving it across that
+       switch is a change to the shared primitive, affecting every consumer, and is
+       tracked separately. -->
   {#if hasLabelSnippetAction}
     <Input
       id={valueFieldId}
