@@ -19,6 +19,39 @@ function textSnippet(text: string) {
   }));
 }
 
+/**
+ * Extract the `{ ... }` block that follows `header`, matching braces rather than
+ * assuming a particular indentation. An earlier version of these tests sliced
+ * `@container` blocks with `/\n {2}\}/`, which silently matched nothing the moment
+ * the formatter reflowed the file -- and a regex that matches nothing makes every
+ * `toContain` on it fail loudly but for the wrong reason.
+ */
+function blockAfter(css: string, header: string, mustContain?: string): string | undefined {
+  let searchFrom = 0;
+  for (;;) {
+    const start = css.indexOf(header, searchFrom);
+    if (start === -1) return undefined;
+    searchFrom = start + 1;
+    const open = css.indexOf('{', start + header.length - 1);
+    if (open === -1) return undefined;
+    let depth = 0;
+    for (let index = open; index < css.length; index += 1) {
+      if (css[index] === '{') depth += 1;
+      else if (css[index] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          const block = css.slice(start, index + 1);
+          // Several blocks can share a header -- the 18rem `@container` guards both the
+          // layout collapse and the divider flip. `mustContain` picks the intended one by
+          // content rather than by ordinal position or indentation.
+          if (mustContain === undefined || block.includes(mustContain)) return block;
+          break;
+        }
+      }
+    }
+  }
+}
+
 describe('StatisticGroup', () => {
   test('imports the Statistic leaf source for compound namespace composition', async () => {
     const source = await readFile(new URL('./index.ts', import.meta.url), 'utf8');
@@ -58,42 +91,72 @@ describe('StatisticGroup', () => {
 
     expect(defaultBlock).toContain('border: 1px solid var(--cinder-border)');
 
-    // Divider direction follows the effective column count, not a standalone breakpoint.
-    // A single-column layout gets horizontal dividers; anything multi-column gets
-    // vertical ones. Pinning both halves keeps them from drifting back to one rule that
-    // flips for every layout at a width unrelated to when columns actually collapse.
-    const singleColumnDividers =
-      css.match(
-        /\[data-cinder-variant='default'\]\[data-cinder-columns='1'\]\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
-      )?.[0] ?? '';
+    // Divider direction follows the EFFECTIVE column count -- how many tracks the grid
+    // actually renders at the current width -- not the `columns` prop alone and not a
+    // standalone breakpoint. A single-column layout gets horizontal dividers; a
+    // multi-column one gets vertical dividers, suppressed on each row's last cell.
+    const singleColumnDividers = blockAfter(
+      css,
+      "[data-cinder-variant='default'][data-cinder-columns='1']",
+    );
+    expect(singleColumnDividers).toBeDefined();
     expect(singleColumnDividers).toContain(
       'border-block-end: 1px solid var(--cinder-border-muted)',
     );
     expect(singleColumnDividers).not.toContain('border-inline-end:');
 
-    const multiColumnDividers =
-      css.match(
-        /\[data-cinder-variant='default'\]:not\(\[data-cinder-columns='1'\]\)\s*>\s*\.cinder-statistic:not\(:last-child\)\s*\{[^}]*\}/,
-      )?.[0] ?? '';
+    const multiColumnDividers = blockAfter(
+      css,
+      "[data-cinder-variant='default']:not([data-cinder-columns='1'])",
+    );
+    expect(multiColumnDividers).toBeDefined();
     expect(multiColumnDividers).toContain(
       'border-inline-end: 1px solid var(--cinder-border-muted)',
     );
     expect(multiColumnDividers).not.toContain('border-block-end:');
 
-    // The collapse threshold must match the layout rules (18rem), not the 30rem value an
-    // earlier version used — at 18-30rem a columns='2' group is still two columns wide.
-    expect(css).toContain('@container cinder-statistic-group (max-width: 18rem)');
-    // Two 18rem container blocks exist — the layout collapse and the divider flip — so
-    // pick the one that actually carries the default variant's divider rules.
-    const collapsedDividers = [
-      ...css.matchAll(/@container cinder-statistic-group \(max-width: 18rem\) \{[\s\S]*?\n {2}\}/g),
-    ]
-      .map((match) => match[0])
-      .find((block) => block.includes("[data-cinder-variant='default']"));
-
+    // The fixed-count collapse threshold must match the LAYOUT rules (18rem), not the
+    // 30rem an earlier version used -- between 18rem and 30rem a columns='2' group is
+    // still two columns and must keep its vertical dividers.
+    const collapsedDividers = blockAfter(
+      css,
+      '@container cinder-statistic-group (max-width: 18rem)',
+      "[data-cinder-variant='default']",
+    );
     expect(collapsedDividers).toBeDefined();
     expect(collapsedDividers).toContain('border-inline-end: none');
     expect(collapsedDividers).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
+
+    // `auto` is NOT covered by the 18rem rule: auto-fit keeps a single 16rem track until
+    // the container can hold two of them plus the 1rem gap, at 33rem. Flipping it at
+    // 18rem left an auto group between 18rem and 33rem single-column with vertical
+    // dividers hanging off its cells.
+    const autoSingleColumn = blockAfter(
+      css,
+      '@container cinder-statistic-group (max-width: 32.99rem)',
+    );
+    expect(autoSingleColumn).toBeDefined();
+    expect(autoSingleColumn).toContain("[data-cinder-columns='auto']");
+    expect(autoSingleColumn).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
+
+    // Row ends. In a multi-ROW grid the last cell of a row has no neighbour to its right,
+    // so `:not(:last-child)` alone drew a divider off the grid's trailing edge. Each
+    // effective count suppresses its own `nth-child(Nn)`.
+    const twoColumnRowEnds = blockAfter(
+      css,
+      '@container cinder-statistic-group (min-width: 18.01rem) {',
+    );
+    expect(twoColumnRowEnds).toBeDefined();
+    expect(twoColumnRowEnds).toContain(':nth-child(2n)');
+    expect(twoColumnRowEnds).toContain('border-inline-end: none');
+
+    const wideFixedRowEnds = blockAfter(
+      css,
+      '@container cinder-statistic-group (min-width: 30.01rem)',
+    );
+    expect(wideFixedRowEnds).toBeDefined();
+    expect(wideFixedRowEnds).toContain(':nth-child(3n)');
+    expect(wideFixedRowEnds).toContain(':nth-child(4n)');
   });
 
   test('renders .cinder-statistic-group wrapping its children', () => {
