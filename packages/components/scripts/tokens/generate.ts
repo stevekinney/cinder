@@ -1141,37 +1141,40 @@ export async function buildTokensBaseCss(
   collectEntries(mergeAndExpandExtends(lightScopeDocuments), '', undefined, lightScopeIndex);
   const darkScopeIndex = new Map<string, CorpusEntry>();
   collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
-  const reducedMotionScopeIndex = new Map<string, CorpusEntry>();
-  collectEntries(
-    mergeAndExpandExtends(reducedMotionScopeDocuments),
-    '',
-    undefined,
-    reducedMotionScopeIndex,
-  );
-  const forcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
-  collectEntries(
-    mergeAndExpandExtends(forcedReducedMotionScopeDocuments),
-    '',
-    undefined,
-    forcedReducedMotionScopeIndex,
-  );
   assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
   assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
-  // The motion blocks above default the THEME axis (via `modifierValuesForContext`)
-  // to its own declared default -- light -- so `reducedMotionScopeIndex`/
-  // `forcedReducedMotionScopeIndex` only compose light+motion. But unlike theme
+  // The motion blocks are emitted as a fixed `@media`/attribute selector that
+  // applies regardless of which `[data-theme]` is active -- unlike theme
   // (which always cascades BEFORE motion, so a theme block's own internal
-  // consistency never depends on which motion state is active), the motion
-  // blocks are emitted as a fixed `@media`/attribute selector that applies
-  // regardless of which `[data-theme]` is active -- dark+reduced and
-  // dark+forced-reduced-motion are just as reachable at runtime as their
-  // light counterparts. Checking only against the light-composed scope can
-  // miss a real conflict that only shows up under dark: an unoverridden
-  // sibling's effective value differs between themes, so a motion override
-  // that happens to agree with LIGHT's value can still silently diverge from
-  // DARK's -- the published dark-theme resolved-context snapshot would then
-  // disagree with what the cascade actually renders. Re-run the same guard
-  // against a dark-composed scope for each motion block to catch that.
+  // consistency never depends on which motion state is active), a motion
+  // block's internal consistency must hold under EVERY theme it can combine
+  // with at runtime. `reducedMotionScopeDocuments`/`forcedReducedMotionScopeDocuments`
+  // above (used for `$extends` lookup and nested-reference resolution) compose
+  // motion with the THEME axis defaulted to `resolver.modifiers.theme.default`
+  // (`modifierValuesForContext`'s fill), which is 'light' in the corpus today
+  // but is not schema-guaranteed to be -- an earlier version of this fix
+  // wrongly assumed that default-filled scope WAS "light" and built only an
+  // explicit "dark" counterpart to check alongside it, which would silently
+  // validate the SAME theme twice (and leave light entirely unchecked) if
+  // `theme.default` were ever changed to 'dark'. Build BOTH theme scopes
+  // explicitly by name for the guard, instead of treating either as "whatever
+  // the default happens to be".
+  const lightReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'light-reduced-motion',
+      theme: 'light',
+      motion: 'reduced',
+    }),
+  );
+  const lightReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(lightReducedMotionScopeDocuments),
+    '',
+    undefined,
+    lightReducedMotionScopeIndex,
+  );
   const darkReducedMotionScopeDocuments = documentsForResolutionOrder(
     resolver,
     documentsByPath,
@@ -1187,6 +1190,22 @@ export async function buildTokensBaseCss(
     '',
     undefined,
     darkReducedMotionScopeIndex,
+  );
+  const lightForcedReducedMotionScopeDocuments = documentsForResolutionOrder(
+    resolver,
+    documentsByPath,
+    modifierValuesForCombo(resolver, {
+      name: 'light-forced-reduced-motion',
+      theme: 'light',
+      motion: 'forced-reduced-motion',
+    }),
+  );
+  const lightForcedReducedMotionScopeIndex = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(lightForcedReducedMotionScopeDocuments),
+    '',
+    undefined,
+    lightForcedReducedMotionScopeIndex,
   );
   const darkForcedReducedMotionScopeDocuments = documentsForResolutionOrder(
     resolver,
@@ -1207,7 +1226,7 @@ export async function buildTokensBaseCss(
   assertUniqueOverrideCssProperties(
     reducedMotionOverrides,
     baseIndex,
-    reducedMotionScopeIndex,
+    lightReducedMotionScopeIndex,
     'motion.reduced (light theme)',
   );
   assertUniqueOverrideCssProperties(
@@ -1219,7 +1238,7 @@ export async function buildTokensBaseCss(
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
-    forcedReducedMotionScopeIndex,
+    lightForcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion (light theme)',
   );
   assertUniqueOverrideCssProperties(
@@ -1228,6 +1247,21 @@ export async function buildTokensBaseCss(
     darkForcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion (dark theme)',
   );
+
+  // Known gap, tracked in CIN-489: the four calls above only catch a conflict
+  // when TWO paths share one cssProperty and disagree across theme scopes.
+  // They say nothing about a SINGLE motion-overridden path (a unique
+  // cssProperty) whose own serialized value could legitimately differ
+  // between light and dark -- e.g. a property-level $ref or composite value
+  // nested-referencing a color token that varies by theme. The motion blocks
+  // below are emitted ONCE each (theme-agnostic selectors), serialized from
+  // exactly one resolver -- if such a value existed, the single emitted
+  // declaration could only ever be correct for one theme, while the
+  // published per-theme resolved-context snapshots would resolve it
+  // correctly per-theme, silently disagreeing with the CSS. Deferred rather
+  // than reworked this late in review: nothing in the real corpus's motion
+  // token documents contains a $ref or a theme-varying nested reference
+  // today (every value is a literal duration).
 
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
   // a nested reference inside a context's composite value may target a token that a DIFFERENT

@@ -2027,6 +2027,70 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
       /\[motion\.reduced \(dark theme\)\].*--test-shared-swatch is claimed with conflicting values/,
     );
   });
+
+  test('a motion override that only agrees with the non-default theme is still rejected -- neither theme scope is assumed to be "light"', async () => {
+    // theme.default is DARK here (schema-valid, if unusual) -- an earlier
+    // version of this fix wrongly assumed the default-filled scope was
+    // always "light" and only added an explicit "dark" counterpart to check
+    // alongside it, which would validate dark TWICE here and leave light
+    // entirely unchecked. Both theme scopes must be built explicitly by
+    // name, not by assuming which one the default happens to be.
+    const colorValue = (lightness: number) => ({
+      colorSpace: 'oklch',
+      components: [lightness, 0.1, 250],
+    });
+    const baseDocument: TokenDocument = {
+      swatch: {
+        $type: 'color',
+        a: {
+          $value: colorValue(0.5),
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-shared-swatch' } },
+        },
+      },
+      alias: { $extends: '{swatch}' },
+    };
+    const themeLightDocument: TokenDocument = {
+      swatch: { $type: 'color', a: { $value: colorValue(0.9) } },
+      alias: { $type: 'color', a: { $value: colorValue(0.9) } },
+    };
+    const motionReducedDocument: TokenDocument = {
+      swatch: { $type: 'color', a: { $value: colorValue(0.5) } },
+    };
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'theme-light.json' }], dark: [{ $ref: 'theme-dark.json' }] },
+          default: 'dark',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-default.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', themeLightDocument],
+      ['theme-dark.json', {}],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', motionReducedDocument],
+    ]);
+
+    await expect(buildTokensBaseCss(resolver, documentsByPath)).rejects.toThrow(
+      /\[motion\.reduced \(light theme\)\].*--test-shared-swatch is claimed with conflicting values/,
+    );
+  });
 });
 
 describe('CIN-469 finding 4: a $root JSON Pointer alias normalizes like a group.base one', () => {
