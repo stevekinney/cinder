@@ -12,6 +12,54 @@ setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: FilterBar } = await import('./filter-bar.svelte');
 
+/**
+ * Slice one rule body out of a stylesheet, failing loudly when the selector is gone.
+ *
+ * Nested `indexOf` calls without this guard silently produce `-1` boundaries when a
+ * selector is renamed, so the slice comes back as garbage and the assertion fails with
+ * an unrelated-looking message instead of "that selector no longer exists".
+ */
+function ruleBody(css: string, selector: string): string {
+  const opening = `${selector} {`;
+  const start = css.indexOf(opening);
+  if (start === -1) {
+    throw new Error(`Expected filter-bar.css to contain a rule for \`${selector}\``);
+  }
+  const end = css.indexOf('}', start);
+  if (end === -1) {
+    throw new Error(`Unterminated rule for \`${selector}\` in filter-bar.css`);
+  }
+  return css.slice(start, end);
+}
+
+/**
+ * Slice a whole `@container` block out of a stylesheet by matching braces.
+ *
+ * `css.slice(css.indexOf(header))` has two failure modes this avoids: a renamed header
+ * yields `indexOf === -1`, so the slice silently becomes the file's last character; and
+ * even on a hit it runs to end-of-file, so an assertion can be satisfied by a rule in
+ * some entirely different block further down.
+ */
+function containerBlock(css: string, header: string): string {
+  const start = css.indexOf(header);
+  if (start === -1) {
+    throw new Error(`Expected filter-bar.css to contain \`${header}\``);
+  }
+  const open = css.indexOf('{', start + header.length - 1);
+  if (open === -1) {
+    throw new Error(`Unterminated block for \`${header}\` in filter-bar.css`);
+  }
+  let depth = 0;
+  for (let index = open; index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    else if (css[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return css.slice(start, index + 1);
+    }
+  }
+  throw new Error(`Unterminated block for \`${header}\` in filter-bar.css`);
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -487,5 +535,69 @@ describe('FilterBar CSS snapshot', () => {
     expect(css).toContain('@media (forced-colors: active)');
     expect(css).toContain('outline: var(--cinder-ring-width) solid ButtonText');
     expect(css).toContain('.cinder-filter-bar__select:focus-visible');
+  });
+
+  // CIN-335: the controls row used raw `flex-wrap: wrap`, so facets on a
+  // wrapped row packed to their own content width instead of lining up
+  // under the facets above them, and `.cinder-filter-bar__search`'s
+  // `flex: 1 1 14rem` let flex-grow absorb every pixel of leftover row
+  // space. happy-dom does not model `@container` at all (see grid.css's
+  // own doc comment on this), so — like grid.test.ts's container-query
+  // tests — these assert on the raw CSS source rather than computed
+  // layout.
+  test('controls row is driven by a container query, not raw flex-wrap', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    expect(css).toContain('container-type: inline-size;');
+    expect(css).toContain('container-name: cinder-filter-bar;');
+    expect(css).toContain('@container cinder-filter-bar (min-width: 40rem)');
+
+    const controlsRule = ruleBody(css, '.cinder-filter-bar__controls');
+    expect(controlsRule).toContain('display: grid;');
+    expect(controlsRule).not.toContain('flex-wrap');
+
+    const containerRule = containerBlock(css, '@container cinder-filter-bar (min-width: 40rem)');
+    expect(containerRule).toContain('grid-template-columns:');
+    expect(containerRule).toContain('repeat(auto-fit, minmax(9rem, max-content))');
+  });
+
+  test('search field track has a bounded max width instead of flex-grow', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    // The search field's own rule no longer declares a growing `flex`
+    // shorthand — its width now comes from the grid track.
+    const searchRule = ruleBody(css, '.cinder-filter-bar__search');
+    expect(searchRule).not.toContain('flex:');
+    expect(searchRule).not.toContain('flex-grow');
+
+    // The search spans the row rather than occupying a track of its own, and is
+    // capped rather than handed an unbounded `1fr`.
+    expect(css).toContain('grid-column: 1 / -1;');
+    expect(css).toContain('max-inline-size: 20rem;');
+    expect(css).not.toMatch(/grid-template-columns:\s*minmax\([^)]*,\s*1fr\)/);
+  });
+
+  test('every facet sits in an identically sized track, including after a wrap', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    // The search must NOT be a grid track. When it was, auto-placement wrapped the
+    // next overflowing facet into column 1 — the wide search track — rendering that
+    // one facet far wider than its siblings and reintroducing the ragged alignment
+    // this issue removes, just at the wrap boundary instead of within a row.
+    const containerRule = containerBlock(css, '@container cinder-filter-bar (min-width: 40rem)');
+    expect(containerRule).toMatch(
+      /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(9rem,\s*max-content\)\);/,
+    );
+    expect(containerRule).not.toContain('minmax(14rem, 20rem) repeat(');
+  });
+
+  test('the facet select fills its wrapper so the chevron stays attached', async () => {
+    const css = await Bun.file(new URL('./filter-bar.css', import.meta.url)).text();
+
+    // The chevron is absolutely positioned against `.cinder-filter-bar__facet`. In the
+    // stacked single-column layout the wrapper stretches to the full row while a native
+    // select stays content-sized, leaving the chevron floating in the gap beside it.
+    const selectInFacetRule = ruleBody(css, '.cinder-filter-bar__facet .cinder-filter-bar__select');
+    expect(selectInFacetRule).toContain('flex: 1 1 auto;');
   });
 });

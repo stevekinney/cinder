@@ -27,6 +27,12 @@ mock.module('@floating-ui/dom', () => ({
   flip: () => ({ name: 'flip', fn: () => ({}) }),
   shift: () => ({ name: 'shift', fn: () => ({}) }),
   offset: offsetSpy,
+  // ChatComposerPopover renders CommandMenu, which opts into the shared anchored
+  // overlay's `size` middleware (CIN-332): it locks its placement on open, so it
+  // needs `size` to shrink rather than overflow when it stops fitting. This mock
+  // stands in for the whole module, so every middleware factory the composed tree
+  // reaches has to be present or the helper calls `undefined`.
+  size: (options: unknown) => ({ name: 'size', options, fn: () => ({}) }),
 }));
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
