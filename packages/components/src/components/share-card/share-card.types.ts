@@ -27,7 +27,15 @@ export type ShareCardAction = {
 
 /** Props for the ShareCard component. */
 export type ShareCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
-  /** The URL or text to share/copy. */
+  /**
+   * The URL or text to share/copy. Expected to be single-line — the value
+   * field renders as a single-line control, so a value containing `\n`/`\r`
+   * displays with line breaks collapsed (native single-line `<input>`
+   * behavior). This affects DISPLAY only: every copy/share action, and a
+   * manual select-and-copy on the field itself, always sends the exact,
+   * unmodified string you pass here. In dev, a multi-line `value` logs a
+   * console warning.
+   */
   value: string;
   /** Human-readable title for the share card. */
   title?: string;
@@ -53,7 +61,10 @@ export type ShareCardProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'chi
  * Cinder-specific props for ShareCard, used by the schema generator.
  */
 export interface ShareCardSchemaProps {
-  /** The URL or text to share/copy. */
+  /**
+   * The URL or text to share/copy. Expected to be single-line; see
+   * `ShareCardProps.value` for the full multi-line-input contract.
+   */
   value: string;
   /** Human-readable title for the share card. */
   title?: string;

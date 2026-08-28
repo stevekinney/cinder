@@ -1,4 +1,8 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* ShareCard's value field composes Input, so its sidecar has to travel with this one.
+   Without this, a consumer importing only `@lostgradient/cinder/share-card` à la carte
+   gets an unstyled input. Same chaining search-field.css does for the same reason. */
+@import '../input/input.css';
 @layer cinder.components {
   .cinder-share-card {
     display: flex;
@@ -36,27 +40,18 @@
     margin: 0;
   }
 
+  /* The value field composes the `Input` primitive (`variant="code"`, with the
+     copy/share actions as its `trailing` addon), so the bordered/inset well, the
+     monospace metrics, and the focus ring all come from the primitive — hand-rolling
+     any of those here would just fight it (the mistake CIN-328 flagged on Kanban).
+     Truncation is the exception: `variant="code"` changes font metrics only and
+     supplies no overflow behaviour, so without these three declarations a value wider
+     than the field ends in a hard clip with no signal that it continues. An earlier
+     revision dropped them on the assumption `Input` provided them; it does not. */
   .cinder-share-card__value {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-1);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
-    border: 1px solid var(--cinder-border);
-    border-radius: var(--cinder-radius-sm);
-    background-color: var(--cinder-surface-inset);
-    font-size: var(--cinder-text-xs);
-    font-family: var(--cinder-font-mono, monospace);
-    min-width: 0;
-  }
-
-  .cinder-share-card__value-text {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    flex: 1;
-    min-width: 0;
-    color: var(--cinder-text-muted);
-    user-select: all;
   }
 
   .cinder-share-card__actions {
@@ -65,11 +60,17 @@
     gap: var(--cinder-space-1);
   }
 
+  /* Matches component-page.svelte's `.dx-import__copy`: a comfortable square
+     icon-only hit target. `action.label` still carries the accessible name
+     via `aria-label` in the markup — this is a purely visual change. */
   .cinder-share-card__action {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: var(--cinder-space-1);
-    padding: var(--cinder-space-1) var(--cinder-space-2);
+    inline-size: 2.25rem;
+    min-block-size: 2.25rem;
+    padding: 0 var(--cinder-space-2);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background-color: var(--cinder-surface);
@@ -81,6 +82,14 @@
       background-color var(--cinder-duration-fast) var(--cinder-ease-standard),
       border-color var(--cinder-duration-fast) var(--cinder-ease-standard);
     white-space: nowrap;
+  }
+
+  /* A consumer-supplied `labelSnippet` renders visible rich content next to
+     the icon (the CIN-358-ratified escape hatch) — let the button grow to
+     fit it instead of clipping to the icon-only square. */
+  .cinder-share-card__action[data-cinder-has-label] {
+    inline-size: auto;
+    padding: var(--cinder-space-1) var(--cinder-space-2);
   }
 
   @media (hover: hover) {
