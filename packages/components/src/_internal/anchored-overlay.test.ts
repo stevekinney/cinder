@@ -330,6 +330,34 @@ describe('anchored overlay placement locking', () => {
     expect(middlewareNames(1)).not.toContain('flip');
   });
 
+  test('holds the placement across an anchor change, not just a resize', async () => {
+    // The regression this pins: the lock originally lived inside the positioning
+    // effect. That effect reads options.anchor(), so it reruns whenever the anchor's
+    // identity changes — and CommandMenu's anchor is a $derived over the caret, so a
+    // new object arrives on every keystroke. An effect-scoped lock therefore reset on
+    // each character typed, retaking the flip decision exactly as often as before and
+    // leaving the menu jumping: the fix was a no-op for the interaction it targeted.
+    const { rerender } = render(AnchoredOverlayBoundaryFixture, {
+      lockPlacement: true,
+      virtualAnchor: true,
+      anchorGeneration: 0,
+    });
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(0);
+    });
+    expect(middlewareNames(0)).toContain('flip');
+
+    // Bump the generation the way typing does — a brand new anchor object.
+    await rerender({ lockPlacement: true, virtualAnchor: true, anchorGeneration: 1 });
+    await waitFor(() => {
+      expect(computePositionSpy.mock.calls.length).toBeGreaterThan(1);
+    });
+
+    const latest = computePositionSpy.mock.calls.length - 1;
+    expect(requestedPlacement(latest)).toBe('bottom-start');
+    expect(middlewareNames(latest)).not.toContain('flip');
+  });
+
   test('keeps re-deciding placement on every reposition when not locked', async () => {
     render(AnchoredOverlayBoundaryFixture);
     await waitFor(() => {

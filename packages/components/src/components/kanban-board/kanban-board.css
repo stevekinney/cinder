@@ -1,4 +1,10 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+/* CIN-328 moved the column-handle and collapse controls onto the shared Button and
+   deleted their bespoke styling, so Button's sidecar now has to travel with this one.
+   Without it an a-la-carte consumer importing only `@lostgradient/cinder/kanban-board`
+   gets controls with no styling at all — worse than before the change, since there is
+   no longer any local rule to fall back on. */
+@import '../button/button.css';
 @layer cinder.components {
   .cinder-kanban-board {
     --cinder-kanban-column-width: 18rem;

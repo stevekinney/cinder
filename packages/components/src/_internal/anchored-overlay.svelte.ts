@@ -154,6 +154,22 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
   let positionStyle = $state('');
   let availableHeightStyle = $state('');
   let resolvedPlacement = $state<Placement>(options.placement?.() ?? DEFAULT_PLACEMENT);
+
+  /**
+   * The placement held by `lockPlacement`, for as long as the overlay stays open.
+   *
+   * Deliberately at function scope rather than inside the positioning effect. That
+   * effect reads `options.anchor()`, so it reruns whenever the anchor identity
+   * changes — and CommandMenu's anchor is a `$derived` over the caret position, which
+   * changes on every keystroke. A lock scoped to the effect run would therefore reset
+   * on each character typed, which is precisely the interaction the lock exists to
+   * stabilise: the flip decision would be retaken exactly as often as before and the
+   * menu would still jump.
+   *
+   * Not `$state`: nothing renders from it, and making it reactive would invalidate
+   * the very effect that assigns it.
+   */
+  let lockedPlacement: Placement | undefined;
   let arrowStyle = $state('');
 
   // Speculatively prefetch `@floating-ui/dom` as soon as the anchor/panel elements exist,
@@ -178,6 +194,9 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
       availableHeightStyle = '';
       arrowStyle = '';
       resolvedPlacement = options.placement?.() ?? DEFAULT_PLACEMENT;
+      // Release the lock on CLOSE, which is the real session boundary. See the
+      // declaration above for why this cannot live inside the effect.
+      lockedPlacement = undefined;
       return;
     }
 
@@ -206,8 +225,6 @@ export function createAnchoredOverlay(options: AnchoredOverlayOptions) {
     const lockPlacement = options.lockPlacement?.() ?? false;
     let cancelled = false;
     let generation = 0;
-    // Scoped to this effect run, so it resets whenever the overlay reopens.
-    let lockedPlacement: Placement | undefined;
     let stopAutoUpdate: (() => void) | undefined;
     let boundaryResizeObserver: ResizeObserver | undefined;
 
