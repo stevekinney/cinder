@@ -40,14 +40,19 @@
     margin: 0;
   }
 
-  /* No `.cinder-share-card__value` ruleset: the value field now composes the
-     `Input` primitive (`variant="code"`, with the copy/share actions as its
-     `trailing` addon). `Input` already supplies the bordered/inset well,
-     the monospace ellipsis metrics, and the focus ring — hand-rolling any
-     of that here would just fight the primitive (the mistake CIN-328
-     flagged on Kanban). `.cinder-share-card__value` is passed through only
-     as a hook class on the rendered `<input>` for tests/consumers, with no
-     rules attached. */
+  /* The value field composes the `Input` primitive (`variant="code"`, with the
+     copy/share actions as its `trailing` addon), so the bordered/inset well, the
+     monospace metrics, and the focus ring all come from the primitive — hand-rolling
+     any of those here would just fight it (the mistake CIN-328 flagged on Kanban).
+     Truncation is the exception: `variant="code"` changes font metrics only and
+     supplies no overflow behaviour, so without these three declarations a value wider
+     than the field ends in a hard clip with no signal that it continues. An earlier
+     revision dropped them on the assumption `Input` provided them; it does not. */
+  .cinder-share-card__value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
 
   .cinder-share-card__actions {
     display: flex;

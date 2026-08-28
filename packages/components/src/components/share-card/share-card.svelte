@@ -64,9 +64,26 @@
   // `value` inside the listener reads the live prop at reset-time (Svelte 5
   // destructured props are reactive bindings, not snapshotted captures), so
   // this stays correct even if `value` changed since the field last mounted.
+  // The rendered value field, captured by the attachment below.
+  //
+  // `handleFieldCopy` needs the element to inspect the current selection, and takes it
+  // from here rather than from `event.target`/`event.currentTarget`: the attachment
+  // already owns this element for the form-reset listener, so this adds no new
+  // lifecycle, and it does not depend on how a given environment populates a copy
+  // event's target (happy-dom, for one, leaves it unset for a synthetic dispatch,
+  // which would make the selection guard untestable).
+  let valueFieldElement: HTMLInputElement | null = null;
+
   const valueFieldAttachment: Attachment<HTMLInputElement> = (element) => {
+    valueFieldElement = element;
     const form = element.closest('form');
-    if (!form) return;
+    if (!form) {
+      // Still release the reference on teardown: a field with no ambient form has no
+      // reset listener to remove, but it is just as capable of being unmounted.
+      return () => {
+        if (valueFieldElement === element) valueFieldElement = null;
+      };
+    }
     function restoreValueAfterReset() {
       // The `reset` event fires BEFORE the controls are cleared — resetting IS its
       // default action — so assigning synchronously here would just be overwritten a
@@ -77,7 +94,10 @@
       });
     }
     form.addEventListener('reset', restoreValueAfterReset);
-    return () => form.removeEventListener('reset', restoreValueAfterReset);
+    return () => {
+      form.removeEventListener('reset', restoreValueAfterReset);
+      if (valueFieldElement === element) valueFieldElement = null;
+    };
   };
 
   // Whether any consumer-supplied action carries a `labelSnippet`. The
@@ -230,6 +250,17 @@
     // strictly worse than the collapsed line breaks this exists to avoid.
     const { clipboardData } = event;
     if (!clipboardData) return;
+
+    // And only when the WHOLE field is selected. This handler exists because a
+    // single-line <input> renders a multi-line `value` with its breaks collapsed, so
+    // copying the displayed text would silently lose them. That reasoning covers a
+    // select-all; it does not cover a user who highlighted one path segment and expects
+    // exactly that segment. Substituting the full value there is a surprise, and the
+    // handler is attached for single-line values too, where it has nothing to fix.
+    const field = valueFieldElement;
+    if (!field) return;
+    if (field.selectionStart !== 0 || field.selectionEnd !== field.value.length) return;
+
     event.preventDefault();
     clipboardData.setData('text/plain', value);
   }
