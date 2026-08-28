@@ -366,10 +366,12 @@
         return;
       }
 
-      overflowSetPinnedByTrigger = null;
-
       const groupId = flexGroupIdFromTarget(event.target);
-      if (!groupId) return;
+      if (!groupId) {
+        // Focus went somewhere this toolbar does not place -- release the trigger's hold.
+        overflowSetPinnedByTrigger = null;
+        return;
+      }
 
       // Snapshot ONLY when entering a group that isn't already the pinned one.
       //
@@ -379,8 +381,21 @@
       // followed by a Tab within the group released the pin and let the group jump
       // anyway, defeating the freeze at the moment it mattered most.
       if (focusedGroupId === groupId) return;
+
+      // Read the EFFECTIVE side -- the set actually on screen, trigger pin included --
+      // and read it BEFORE releasing that pin.
+      //
+      // The order matters. When the trigger is holding a set open and the toolbar has
+      // since grown enough that `rawOverflowGroupIds` is empty, opening the still-visible
+      // trigger moves focus into a group inside the portaled panel. Releasing the pin
+      // first and then reading the raw set would record that group as "was inline" --
+      // and the group pin would then honour that and yank it inline, out of the panel
+      // the user is looking at. Snapshotting the effective side first records what they
+      // can actually see.
+      const wasOverflowing = overflowGroupIds.includes(groupId);
+      overflowSetPinnedByTrigger = null;
       focusedGroupId = groupId;
-      focusedGroupWasOverflowing = rawOverflowGroupIds.includes(groupId);
+      focusedGroupWasOverflowing = wasOverflowing;
     }
 
     function handleFocusOut(event: FocusEvent): void {

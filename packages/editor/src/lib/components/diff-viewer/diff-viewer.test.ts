@@ -174,11 +174,29 @@ describe('DiffViewer: unified diff clipboard handling', () => {
 
     // The function body itself never branches on viewMode: extract it and
     // assert it only reads displayedOriginal/displayedCurrent.
-    const match = source.match(
-      /async function copyUnifiedDiff\(\): Promise<void> \{[\s\S]*?\n  \}\n/,
-    );
-    expect(match).not.toBeNull();
-    const body = match?.[0] ?? '';
+    // Brace-matched rather than regex-terminated. The previous form ended on
+    // `/\n  \}\n/`, which pins the closing brace to exactly two spaces of indentation --
+    // a formatter change, or nesting the function one level deeper, would silently
+    // match nothing (or the wrong span) and the assertions below would then pass or
+    // fail for reasons unrelated to what the test is about.
+    const signature = 'async function copyUnifiedDiff(): Promise<void> {';
+    const start = source.indexOf(signature);
+    expect(start).toBeGreaterThan(-1);
+
+    let depth = 0;
+    let end = -1;
+    for (let index = start + signature.length - 1; index < source.length; index += 1) {
+      if (source[index] === '{') depth += 1;
+      else if (source[index] === '}') {
+        depth -= 1;
+        if (depth === 0) {
+          end = index + 1;
+          break;
+        }
+      }
+    }
+    expect(end).toBeGreaterThan(start);
+    const body = source.slice(start, end);
     expect(body).not.toContain('viewMode');
     expect(body).toContain('displayedOriginal');
     expect(body).toContain('displayedCurrent');

@@ -230,6 +230,37 @@ describe('resolveFocusPinnedOverflow', () => {
     ).toEqual(['lists']);
   });
 
+  it('honours a group pinned on the popover side while the raw set is empty', () => {
+    // The state a focus move INTO the portaled panel must produce. The trigger was
+    // holding a set open after the toolbar grew (raw is now empty); focus lands on a
+    // group inside that panel, and the handler snapshots the EFFECTIVE side -- what the
+    // user can see -- before releasing the trigger pin.
+    //
+    // Snapshotting after the release instead would read the empty raw set, record the
+    // group as "was inline", and the pin would then yank it out of the panel the user is
+    // looking at. This asserts the resulting state resolves the way that ordering
+    // intends.
+    expect(
+      resolveFocusPinnedOverflow({
+        rawOverflowGroupIds: [],
+        overflowSetPinnedByTrigger: null,
+        focusedGroupId: 'lists',
+        focusedGroupWasOverflowing: true,
+      }),
+    ).toEqual(['lists']);
+
+    // The same state recorded the wrong way round collapses the panel instead --
+    // the failure mode, stated so the difference is visible.
+    expect(
+      resolveFocusPinnedOverflow({
+        rawOverflowGroupIds: [],
+        overflowSetPinnedByTrigger: null,
+        focusedGroupId: 'lists',
+        focusedGroupWasOverflowing: false,
+      }),
+    ).toEqual([]);
+  });
+
   it('releases every pin once focus leaves, letting the raw set through again', () => {
     expect(resolveFocusPinnedOverflow({ ...unpinned, rawOverflowGroupIds: [] })).toEqual([]);
   });
