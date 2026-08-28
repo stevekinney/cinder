@@ -41,6 +41,44 @@ describe('TimeField', () => {
     const rule = css.match(/\.cinder-time-field__timezone\s*\{[^}]*\}/)?.[0] ?? '';
     expect(rule).toContain('padding-inline-end: var(--cinder-space-8);');
     expect(rule).toContain('min-inline-size: 12rem;');
+    // Overflowing option text (e.g. long IANA identifiers) clips predictably
+    // instead of relying on undefined native overflow behavior; the select's
+    // `title` attribute (time-field.svelte) discloses the full value.
+    expect(rule).toContain('overflow: hidden;');
+    expect(rule).toContain('white-space: nowrap;');
+    expect(rule).toContain('text-overflow: ellipsis;');
+  });
+
+  test('matches the timezone select to its sibling Input control (vertical rhythm, type, height, radius)', async () => {
+    const css = await Bun.file(new URL('./time-field.css', import.meta.url)).text();
+    const rule = css.match(/\.cinder-time-field__timezone\s*\{[^}]*\}/)?.[0] ?? '';
+    // .cinder-input (input.css) uses padding: space-1-5 space-3, min-height
+    // 2.25rem, border-radius radius-md, text-sm/leading-normal type. The
+    // timezone select must match on every axis that isn't caret clearance
+    // (its inline-end padding is intentionally wider) so the two controls
+    // read as a deliberate pair rather than independently tuned boxes.
+    expect(rule).toContain('padding-block: var(--cinder-space-1-5);');
+    expect(rule).toContain('min-height: 2.25rem;');
+    expect(rule).toContain('border-radius: var(--cinder-radius-md);');
+    expect(rule).toContain('font-size: var(--cinder-text-sm);');
+    expect(rule).toContain('line-height: var(--cinder-leading-normal);');
+  });
+
+  test('discloses the full timezone value via title when the selected option is a long identifier', () => {
+    const longTimezone = 'America/Argentina/ComodRivadavia';
+    const { container } = render(TimeField, {
+      props: {
+        id: 'reminder',
+        label: 'Reminder time',
+        value: '09:30',
+        timezones: ['UTC', longTimezone],
+        timezone: longTimezone,
+      },
+    });
+
+    const timezone = container.querySelector<HTMLSelectElement>('.cinder-time-field__timezone')!;
+    expect(timezone.value).toBe(longTimezone);
+    expect(timezone.getAttribute('title')).toBe(longTimezone);
   });
 
   test('imports the composed Input API through its public subpath', async () => {

@@ -1,12 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "command-menu",
-    "command-palette",
-    "filter-bar",
-    "kanban-board"
+    "mega-menu",
+    "navigation-bar"
   ],
-  "renderedSourceSha": "64061d730e139826dfb5e9281d2b51d49e1b39a2",
+  "renderedSourceSha": "dada65cb0c4ae35240ce2a0539d50cd53a478e91",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

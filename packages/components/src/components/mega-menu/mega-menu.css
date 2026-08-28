@@ -137,8 +137,17 @@
     gap: var(--cinder-space-1);
     text-decoration: none;
     color: inherit;
-    border-radius: var(--cinder-radius-sm);
-    padding-block: var(--cinder-space-1);
+    /*
+     * CIN-123: links and submenu triggers are sibling rows in one panel, so their
+     * resting boxes have to match. Equal padding-block is not enough on its own —
+     * the trigger carries a 1px transparent border on both block edges, which made
+     * every trigger 2px taller than a single-line link. The link takes the same
+     * transparent border so the two contribute identical box height, and the same
+     * radius so a hover or active fill paints the same shape on both.
+     */
+    border: 1px solid transparent;
+    border-radius: var(--cinder-radius-md);
+    padding-block: var(--cinder-space-2);
     padding-inline: 0;
   }
 
