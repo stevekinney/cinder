@@ -48,7 +48,15 @@ const tokensBaseCss = loadCss('../styles/tokens-base.css');
 // Issue #460 — forced-colors fallback additions for 9 components that used
 // transparent-outline + box-shadow without a @media (forced-colors: active) block.
 const capabilityGateCss = loadCss('../components/capability-gate/capability-gate.css');
-const kanbanBoardCss = loadCss('../components/kanban-board/kanban-board.css');
+// CIN-328 moved Kanban's column-handle and collapse controls onto the shared Button and
+// deleted their bespoke :focus-visible rules, so this list no longer pins them.
+//
+// Button is deliberately NOT added in their place. This list pins the canonical
+// transparent-outline + var(--_cinder-focus-ring-shadow) recipe from issue #460's
+// remediation set; Button diverges on purpose, composing its ring from
+// var(--_cinder-button-ring, ...) so variants can retint it. Forward enforcement for
+// every component, Button included, is the Stylelint plugin's job
+// (cinder/no-focus-visible-colored-outline), as this file's header notes.
 const mediaControlsCss = loadCss('../components/media-controls/media-controls.css');
 const permissionMatrixCss = loadCss('../components/permission-matrix/permission-matrix.css');
 const shareCardCss = loadCss('../components/share-card/share-card.css');
@@ -885,18 +893,6 @@ describe('forced-colors fallbacks — issue #460', () => {
       name: 'capability-gate dismiss action',
       css: capabilityGateCss,
       selector: '.cinder-capability-gate__dismiss:focus-visible',
-      expectedOffset: '3px',
-    },
-    {
-      name: 'kanban-board column-handle',
-      css: kanbanBoardCss,
-      selector: '.cinder-kanban-board__column-handle:focus-visible',
-      expectedOffset: '3px',
-    },
-    {
-      name: 'kanban-board collapse',
-      css: kanbanBoardCss,
-      selector: '.cinder-kanban-board__collapse:focus-visible',
       expectedOffset: '3px',
     },
     {
