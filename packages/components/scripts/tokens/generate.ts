@@ -877,10 +877,18 @@ export function assertUniqueOverrideCssProperties(
     paths.push(path);
     basePathsByCssProperty.set(entry.cssProperty, paths);
   }
+  // `renderOverrideDeclarations` always emits an override under its BASE
+  // token's `cssProperty` -- it never honors a `cssProperty` an override
+  // document happens to restate (that only ever originates from a document
+  // echoing inherited extension data, not a real per-context property
+  // change). Grouping or resolving by an override's own restated
+  // `cssProperty` instead of its base's would let this guard separate two
+  // claimants that generation actually emits to the SAME property, missing
+  // the exact conflict it exists to catch.
   const relevantPaths = new Set<string>();
   for (const [path, entry] of overrides) {
     relevantPaths.add(path);
-    const cssProperty = entry.cssProperty ?? baseIndex.get(path)?.cssProperty;
+    const cssProperty = baseIndex.get(path)?.cssProperty ?? entry.cssProperty;
     if (!cssProperty) continue;
     for (const sibling of basePathsByCssProperty.get(cssProperty) ?? []) relevantPaths.add(sibling);
   }
@@ -896,7 +904,7 @@ export function assertUniqueOverrideCssProperties(
     if (!entry) continue;
     resolved.set(path, {
       ...entry,
-      cssProperty: entry.cssProperty ?? base?.cssProperty,
+      cssProperty: base?.cssProperty ?? entry.cssProperty,
       type: entry.type ?? base?.type,
     });
   }

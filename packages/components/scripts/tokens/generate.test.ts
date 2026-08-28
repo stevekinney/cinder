@@ -1882,6 +1882,29 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
     );
   });
 
+  test('an override restating a DIFFERENT cssProperty than its base is still compared under the base property, matching emission', () => {
+    // `renderOverrideDeclarations` always emits an override under its BASE
+    // token's `cssProperty` -- it never honors a `cssProperty` an override
+    // document happens to restate. Here "alias.a" restates "--test-other"
+    // instead of its base "--test-swatch", but generation still writes it
+    // to "--test-swatch". Grouping/resolving by the override's own restated
+    // property would wrongly treat "alias.a" as claiming "--test-other" and
+    // miss that it actually collides with "swatch.a" on "--test-swatch".
+    const baseIndex = new Map<string, CorpusEntry>([
+      ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
+      ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
+    ]);
+    const darkOverrides = new Map<string, CorpusEntry>([
+      ['alias.a', { ...overrideEntry('alias.a', 2), cssProperty: '--test-other' }],
+    ]);
+
+    expect(() =>
+      assertUniqueOverrideCssProperties(darkOverrides, baseIndex, baseIndex, 'theme.dark'),
+    ).toThrow(
+      /\[theme\.dark\].*--test-swatch is claimed with conflicting values by alias\.a, swatch\.a/,
+    );
+  });
+
   test('the full buildTokensBaseCss pipeline rejects a theme override that diverges two $extends-shared paths', async () => {
     const colorValue = (lightness: number) => ({
       colorSpace: 'oklch',
