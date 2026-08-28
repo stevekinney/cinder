@@ -851,9 +851,35 @@ export function assertUniqueOverrideCssProperties(
   baseIndex: Map<string, CorpusEntry>,
   blockName: string,
 ): void {
-  const resolved = new Map<string, CorpusEntry>();
+  // Comparing only the paths PRESENT in `overrides` misses a base claimant
+  // that shares a `cssProperty` with an overridden path but is not itself
+  // overridden in this context (e.g. `$extends` gives "alias.a" and
+  // "swatch.a" the same property; a context overrides only "alias.a"). That
+  // claimant's effective value in this context is still its BASE value,
+  // unchanged -- but it never entered the comparison, so a divergence
+  // between the two was invisible here even though the emitted CSS changes
+  // the one shared custom property for both. Build the comparison from
+  // every base claimant of a `cssProperty` touched by this context, not
+  // just the ones this context happens to restate.
+  const basePathsByCssProperty = new Map<string, string[]>();
+  for (const [path, entry] of baseIndex) {
+    if (!entry.cssProperty) continue;
+    const paths = basePathsByCssProperty.get(entry.cssProperty) ?? [];
+    paths.push(path);
+    basePathsByCssProperty.set(entry.cssProperty, paths);
+  }
+  const relevantPaths = new Set<string>();
   for (const [path, entry] of overrides) {
+    relevantPaths.add(path);
+    const cssProperty = entry.cssProperty ?? baseIndex.get(path)?.cssProperty;
+    if (!cssProperty) continue;
+    for (const sibling of basePathsByCssProperty.get(cssProperty) ?? []) relevantPaths.add(sibling);
+  }
+  const resolved = new Map<string, CorpusEntry>();
+  for (const path of relevantPaths) {
     const base = baseIndex.get(path);
+    const entry = overrides.get(path) ?? base;
+    if (!entry) continue;
     resolved.set(path, {
       ...entry,
       cssProperty: entry.cssProperty ?? base?.cssProperty,

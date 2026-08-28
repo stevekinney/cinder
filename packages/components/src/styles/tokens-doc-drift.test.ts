@@ -124,6 +124,19 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
     const body = match[3].replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+    // The encoder (`toTableCell`) always produces an ODD backslash run before
+    // an escaped pipe (a run of `k` becomes `2k + 1`, which is odd for every
+    // `k >= 0`). A row this regex captured with an EVEN run (0, 2, 4, ...)
+    // immediately before a `|` should therefore never occur in correctly
+    // generated output -- decoding it anyway via a blind `floor(len / 2)`
+    // would silently accept a malformed row and could mask a future
+    // regression in the encoder's pipe-escaping. Fail loudly instead.
+    const evenRunPipe = /(?<!\\)(?:\\\\)*\|/.exec(body);
+    if (evenRunPipe)
+      throw new Error(
+        `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
+          `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
+      );
     const decoded = body.replace(
       /(\\*)\|/g,
       (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
@@ -170,6 +183,27 @@ describe('docs/tokens.md drift', () => {
       missingFromCorpus: [],
       mismatchedValues: [],
     });
+  });
+
+  test('extractDocTokens fails loudly on a malformed row with an unescaped (even-run) pipe', () => {
+    // The encoder always produces an ODD backslash run before an escaped
+    // pipe (2k + 1 for any k >= 0). A cell body containing a pipe preceded
+    // by an EVEN run (0, 2, ...) could never come from correctly generated
+    // output -- decoding it anyway would silently accept a malformed row and
+    // could mask a future regression in the encoder's own pipe escaping.
+    const zeroBackslashes = '| `--cinder-example` | `foo|bar` |\n';
+    expect(() => extractDocTokens(zeroBackslashes)).toThrow(/unescaped pipe/);
+
+    const evenBackslashes = '| `--cinder-example` | `foo\\\\|bar` |\n';
+    expect(() => extractDocTokens(evenBackslashes)).toThrow(/unescaped pipe/);
+
+    // The legitimate, correctly-encoded form (odd run) must still decode
+    // without throwing.
+    const oddBackslashes = '| `--cinder-example` | `foo\\|bar` |\n';
+    expect(() => extractDocTokens(oddBackslashes)).not.toThrow();
+    expect(extractDocTokens(oddBackslashes).tokens.get('--cinder-example')).toBe(
+      normalizeTokenValue('foo|bar'),
+    );
   });
 
   test('keeps exact token references in focused guides current', async () => {

@@ -1808,13 +1808,39 @@ describe('CIN-469 finding 3: the uniqueness guard runs per override block, not o
     );
   });
 
-  test('only ONE of two cssProperty-sharing paths being overridden is not a conflict', () => {
+  test('overriding only ONE of two cssProperty-sharing paths is still a conflict if the other keeps a different base value', () => {
+    // "alias.a" is never restated in this context, so its effective value
+    // stays at its BASE value (1) -- but "swatch.a" is overridden to 2. The
+    // two paths sharing "--test-swatch" now genuinely disagree (1 vs 2), the
+    // same class of artifact-disagreement bug this guard exists to catch,
+    // just reached because one claimant was silently absent from the
+    // override map rather than both being explicitly restated with
+    // different values. Comparing only the paths PRESENT in `overrides`
+    // would miss this -- the base claimant must be pulled in too.
     const baseIndex = new Map<string, CorpusEntry>([
       ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
       ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
     ]);
     const darkOverrides = new Map<string, CorpusEntry>([
       ['swatch.a', overrideEntry('swatch.a', 2)],
+    ]);
+
+    expect(() => assertUniqueOverrideCssProperties(darkOverrides, baseIndex, 'theme.dark')).toThrow(
+      /\[theme\.dark\].*--test-swatch is claimed with conflicting values by alias\.a, swatch\.a/,
+    );
+  });
+
+  test("overriding only ONE of two cssProperty-sharing paths is fine when the override MATCHES the other one's base value", () => {
+    // No genuine divergence here: "swatch.a" is overridden to 1, which is
+    // exactly what "alias.a" (never restated in this context) already has
+    // as its base value -- both paths agree on "--test-swatch" throughout
+    // this context, so there is nothing to reject.
+    const baseIndex = new Map<string, CorpusEntry>([
+      ['swatch.a', { ...overrideEntry('swatch.a', 1), cssProperty: '--test-swatch' }],
+      ['alias.a', { ...overrideEntry('alias.a', 1), cssProperty: '--test-swatch' }],
+    ]);
+    const darkOverrides = new Map<string, CorpusEntry>([
+      ['swatch.a', overrideEntry('swatch.a', 1)],
     ]);
 
     expect(() =>
