@@ -1872,28 +1872,15 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     //
     // The /a-la-carte route imports only `@lostgradient/cinder/button` + `@lostgradient/cinder/button/styles`
     // + tokens + foundation. Its route-scoped CSS must contain a button selector
-    // and a `--cinder-button-*` custom property, and must NOT leak any selector
-    // or custom property unique to the accordion component.
+    // and a `--cinder-button-*` custom property, and must NOT leak the accordion
+    // component's selectors. Component token declarations intentionally live in
+    // the global `:root` token base, so their custom properties are not a valid
+    // route-scoped absence signal.
     const aLaCarteCss = await readRouteCssArtifacts(
       fixtureDirectory,
       'src/routes/a-la-carte/+page.svelte',
     );
-    if (!hasSelectorContaining(aLaCarteCss, '.cinder-button')) {
-      fail(`/a-la-carte route CSS missing .cinder-button selector (à la carte presence)`);
-    }
-    if (!hasCustomPropertyStartingWith(aLaCarteCss, '--cinder-button-')) {
-      fail(
-        `/a-la-carte route CSS missing any --cinder-button-* custom property (à la carte presence)`,
-      );
-    }
-    if (hasSelectorContaining(aLaCarteCss, '.cinder-accordion')) {
-      fail(`/a-la-carte route CSS leaked .cinder-accordion selector (à la carte absence)`);
-    }
-    if (hasCustomPropertyStartingWith(aLaCarteCss, '--cinder-accordion-')) {
-      fail(
-        `/a-la-carte route CSS leaked --cinder-accordion-* custom property (à la carte absence)`,
-      );
-    }
+    assertALaCarteCssContract(aLaCarteCss);
 
     // Auto-CSS import contract: the /no-styles route imports `@lostgradient/cinder/button`
     // ONLY — no `/styles` subpath, no aggregator — and its route-scoped CSS
@@ -2951,10 +2938,10 @@ async function promiseWithTimeout<T>(
   ]);
 }
 
-type CssArtifact = {
+export type CssArtifact = {
   /** Absolute path to the CSS file. */
   filePath: string;
-  /** Selector strings encountered at the top level of the AST (or inside @layer). */
+  /** Selector strings encountered anywhere in the AST. */
   selectors: string[];
   /** Declarations grouped by selector. */
   declarations: Array<{ selector: string; prop: string; value: string }>;
@@ -3063,6 +3050,25 @@ function hasCustomPropertyStartingWith(artifacts: CssArtifact[], prefix: string)
   return artifacts.some((artifact) =>
     artifact.customProperties.some((property) => property.startsWith(prefix)),
   );
+}
+
+/**
+ * Checks the route-scoped CSS contract for the à la carte fixture. Component
+ * token declarations are intentionally global in `:root`; only component
+ * selectors must remain absent when their stylesheet is not imported.
+ */
+export function assertALaCarteCssContract(artifacts: CssArtifact[]): void {
+  if (!hasSelectorContaining(artifacts, '.cinder-button')) {
+    fail(`/a-la-carte route CSS missing .cinder-button selector (à la carte presence)`);
+  }
+  if (!hasCustomPropertyStartingWith(artifacts, '--cinder-button-')) {
+    fail(
+      `/a-la-carte route CSS missing any --cinder-button-* custom property (à la carte presence)`,
+    );
+  }
+  if (hasSelectorContaining(artifacts, '.cinder-accordion')) {
+    fail(`/a-la-carte route CSS leaked .cinder-accordion selector (à la carte absence)`);
+  }
 }
 
 function hasDeclaration(
