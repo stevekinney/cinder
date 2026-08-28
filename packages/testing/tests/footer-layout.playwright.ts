@@ -18,6 +18,10 @@ test.describe('Footer responsive layout', () => {
             --cinder-space-2: 0.5rem;
             --cinder-space-4: 1rem;
             --cinder-space-6: 1.5rem;
+            /* This fixture inlines its own token values rather than loading
+               tokens-base.css, so every token footer.css consumes has to be
+               declared here or the declaration silently resolves to nothing. */
+            --cinder-space-8: 2rem;
             --cinder-border-muted: #d1d5db;
             --cinder-surface: #ffffff;
             --cinder-text-default: #111827;
@@ -175,6 +179,7 @@ test.describe('Footer responsive layout', () => {
           --cinder-space-2: 0.5rem;
           --cinder-space-4: 1rem;
           --cinder-space-6: 1.5rem;
+          --cinder-space-8: 2rem;
           --cinder-border-muted: #d1d5db;
           --cinder-surface: #ffffff;
           --cinder-text-default: #111827;
