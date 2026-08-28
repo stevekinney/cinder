@@ -32,6 +32,34 @@ function ruleBody(css: string, selector: string): string {
   return css.slice(start, end);
 }
 
+/**
+ * Slice a whole `@container` block out of a stylesheet by matching braces.
+ *
+ * `css.slice(css.indexOf(header))` has two failure modes this avoids: a renamed header
+ * yields `indexOf === -1`, so the slice silently becomes the file's last character; and
+ * even on a hit it runs to end-of-file, so an assertion can be satisfied by a rule in
+ * some entirely different block further down.
+ */
+function containerBlock(css: string, header: string): string {
+  const start = css.indexOf(header);
+  if (start === -1) {
+    throw new Error(`Expected filter-bar.css to contain \`${header}\``);
+  }
+  const open = css.indexOf('{', start + header.length - 1);
+  if (open === -1) {
+    throw new Error(`Unterminated block for \`${header}\` in filter-bar.css`);
+  }
+  let depth = 0;
+  for (let index = open; index < css.length; index += 1) {
+    if (css[index] === '{') depth += 1;
+    else if (css[index] === '}') {
+      depth -= 1;
+      if (depth === 0) return css.slice(start, index + 1);
+    }
+  }
+  throw new Error(`Unterminated block for \`${header}\` in filter-bar.css`);
+}
+
 beforeEach(() => document.body.replaceChildren());
 afterEach(() => cleanup());
 
@@ -528,7 +556,7 @@ describe('FilterBar CSS snapshot', () => {
     expect(controlsRule).toContain('display: grid;');
     expect(controlsRule).not.toContain('flex-wrap');
 
-    const containerRule = css.slice(css.indexOf('@container cinder-filter-bar (min-width: 40rem)'));
+    const containerRule = containerBlock(css, '@container cinder-filter-bar (min-width: 40rem)');
     expect(containerRule).toContain('grid-template-columns:');
     expect(containerRule).toContain('repeat(auto-fit, minmax(9rem, max-content))');
   });
@@ -556,7 +584,7 @@ describe('FilterBar CSS snapshot', () => {
     // next overflowing facet into column 1 — the wide search track — rendering that
     // one facet far wider than its siblings and reintroducing the ragged alignment
     // this issue removes, just at the wrap boundary instead of within a row.
-    const containerRule = css.slice(css.indexOf('@container cinder-filter-bar (min-width: 40rem)'));
+    const containerRule = containerBlock(css, '@container cinder-filter-bar (min-width: 40rem)');
     expect(containerRule).toMatch(
       /grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(9rem,\s*max-content\)\);/,
     );
