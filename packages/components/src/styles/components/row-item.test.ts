@@ -8,9 +8,10 @@ describe('shared row-item boundary', () => {
   test('suppresses a divider on both sides of a hovered row', () => {
     const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
 
-    expect(shared).toContain('.cinder-_row-item:hover::after');
-    expect(shared).toContain('.cinder-_row-item:has(+ .cinder-_row-item:hover)::after');
-    expect(shared).toMatch(/\.cinder-_row-item:hover[\s\S]*?visibility:\s*hidden/);
+    expect(shared).toContain('.cinder-command-item');
+    expect(shared).toContain(':hover::after');
+    expect(shared).toMatch(/:has\(\s*\+ :is\(/);
+    expect(shared).toMatch(/:hover::after[\s\S]*?visibility:\s*hidden/);
   });
 
   test('is composed by the option-like families only', () => {

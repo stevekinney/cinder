@@ -15,8 +15,13 @@
     position: relative;
   }
 
-  .cinder-_row-item::after,
-  .cinder-_option-row::after {
+  :is(
+    .cinder-dropdown-item,
+    .cinder-command-item,
+    .cinder-navigation-item,
+    .cinder-combobox__option,
+    .cinder-select__option
+  )::after {
     content: '';
     position: absolute;
     inset-inline: var(--cinder-space-2);
@@ -46,10 +51,28 @@
   /* A divider owned by the preceding row must disappear when either adjacent
    * row is hovered. Otherwise the one-pixel rule cuts through the shared
    * raised-hover surface and makes the active row look visually detached. */
-  .cinder-_row-item:hover::after,
-  .cinder-_row-item:has(+ .cinder-_row-item:hover)::after,
-  .cinder-_option-row:hover::after,
-  .cinder-_option-row:has(+ .cinder-_option-row:hover)::after {
+  :is(
+      .cinder-dropdown-item,
+      .cinder-command-item,
+      .cinder-navigation-item,
+      .cinder-combobox__option,
+      .cinder-select__option
+    ):hover::after,
+  :is(
+      .cinder-dropdown-item,
+      .cinder-command-item,
+      .cinder-navigation-item,
+      .cinder-combobox__option,
+      .cinder-select__option
+    ):has(
+      + :is(
+          .cinder-dropdown-item,
+          .cinder-command-item,
+          .cinder-navigation-item,
+          .cinder-combobox__option,
+          .cinder-select__option
+        ):hover
+    )::after {
     visibility: hidden;
   }
 
