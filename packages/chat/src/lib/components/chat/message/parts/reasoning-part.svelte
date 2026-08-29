@@ -65,7 +65,6 @@
   data-cinder-streaming={part.streaming ? '' : undefined}
   data-cinder-expanded={expanded ? '' : undefined}
 >
-  {#if part.streaming}<span class="chat-reasoning-dot" aria-hidden="true"></span>{/if}
   <EntryFrame
     id={labelId}
     label={`Reasoning${tokenDisplay}`}
@@ -126,16 +125,6 @@
   .chat-reasoning-summary {
     margin: 0 0 var(--cinder-space-2);
     padding-inline-start: var(--cinder-space-5);
-  }
-
-  :global(.chat-reasoning-dot) {
-    animation: chat-reasoning-pulse 1.2s ease-in-out infinite;
-  }
-
-  @keyframes chat-reasoning-pulse {
-    50% {
-      opacity: 0.25;
-    }
   }
 
   /* Forced-colors: the decorative pulse dot and the accent rail use background/

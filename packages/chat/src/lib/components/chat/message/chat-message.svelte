@@ -103,6 +103,7 @@
   import { Pencil, RotateCcw } from '@lostgradient/cinder/icons';
   import CopyButton from '@lostgradient/cinder/copy-button';
   import ChatMessagePartsRenderer from './chat-message-parts-renderer.svelte';
+  import { escapeClipboardHtmlAttribute } from '../../../utilities/clipboard.ts';
 
   let {
     message,
@@ -281,7 +282,7 @@
     const attachmentChips = imageParts
       .map(
         (part, index) =>
-          `<span data-cinder-chat-attachment data-url="${escapeHtml(part.image.url)}">${escapeHtml(part.image.text || `Image attachment ${index + 1}`)}</span>`,
+          `<span data-cinder-chat-attachment data-url="${escapeClipboardHtmlAttribute(part.image.url)}">${escapeHtml(part.image.text || `Image attachment ${index + 1}`)}</span>`,
       )
       .join('');
     return `${body}${attachmentChips}`;

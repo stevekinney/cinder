@@ -199,4 +199,12 @@
       opacity: 1;
     }
   }
+
+  @media (forced-colors: active) {
+    .message-content-streaming :where(.message-content-preview, .message-content-tail) {
+      color: CanvasText;
+      background: none;
+      animation: none;
+    }
+  }
 </style>

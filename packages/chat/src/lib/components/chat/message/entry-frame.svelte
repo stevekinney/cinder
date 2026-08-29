@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { Collapsible } from '@lostgradient/cinder';
+  import { ChevronDown } from 'lucide-svelte';
 
   let {
     id,
@@ -27,16 +27,37 @@
   } = $props();
 </script>
 
-<Collapsible
-  idBase={id}
-  trigger={`${busy ? '● ' : ''}${label}${status ? ` · ${status}` : ''}`}
-  {open}
-  {disabled}
-  onToggle={(nextOpen) => onToggle?.(nextOpen)}
+<div
   class={`chat-entry-frame${labelClass ? ` ${labelClass}` : ''}`}
-  animated={false}
-  {...triggerClass ? { triggerClass } : {}}
-  triggerAriaLabel={({ open: expanded }) => `${expanded ? 'Collapse' : 'Expand'} ${label}`}
+  data-cinder-expanded={open ? '' : undefined}
 >
-  {@render children()}
-</Collapsible>
+  <button
+    id={`${id}-header`}
+    type="button"
+    class={`chat-entry-frame__trigger${triggerClass ? ` ${triggerClass}` : ''}`}
+    aria-label={`${open ? 'Collapse' : 'Expand'} ${label}`}
+    aria-expanded={open}
+    aria-controls={open ? `${id}-panel` : undefined}
+    {disabled}
+    onclick={() => {
+      const nextOpen = !open;
+      open = nextOpen;
+      onToggle?.(nextOpen);
+    }}
+  >
+    {#if busy}<span class="chat-entry-frame__busy" aria-hidden="true"></span>{/if}
+    <span class="chat-entry-frame__label">{label}</span>
+    {#if status}<span class="chat-entry-frame__status">{status}</span>{/if}
+    <ChevronDown class="chat-entry-frame__chevron" aria-hidden="true" />
+  </button>
+  {#if open}
+    <div
+      id={`${id}-panel`}
+      role="region"
+      aria-labelledby={`${id}-header`}
+      class="chat-entry-frame__panel"
+    >
+      <div class="chat-entry-frame__panel-inner">{@render children()}</div>
+    </div>
+  {/if}
+</div>

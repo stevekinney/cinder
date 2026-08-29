@@ -8,7 +8,7 @@
  *   4. aria-expanded matches the expanded prop.
  *   5. aria-controls points to the content region.
  *   6. While streaming, the toggle button is disabled.
- *   7. While streaming, a pulsing dot is present.
+ *   7. While streaming, the shared frame renders one busy indicator.
  *   8. While streaming, the content region has aria-live="off".
  *   9. While streaming=false and expanded=true, a "Reasoning complete." polite region is present.
  *  10. Empty content edge case: still renders (caller is responsible for guarding).
@@ -225,19 +225,19 @@ describe('ReasoningPart — streaming state', () => {
     expect(contentEl?.getAttribute('aria-live')).toBeNull();
   });
 
-  test('pulsing dot is present in the label when streaming', () => {
+  test('shared busy indicator is present in the label when streaming', () => {
     const { container } = render(ReasoningPart, {
       props: { part: makePart({ streaming: true }) },
     });
-    // The dot has class chat-reasoning-dot
-    expect(container.querySelector('.chat-reasoning-dot')).not.toBeNull();
+    expect(container.querySelector('.chat-entry-frame__busy')).not.toBeNull();
+    expect(container.querySelectorAll('.chat-entry-frame__busy')).toHaveLength(1);
   });
 
-  test('pulsing dot is absent when not streaming', () => {
+  test('shared busy indicator is absent when not streaming', () => {
     const { container } = render(ReasoningPart, {
       props: { part: makePart({ streaming: false }) },
     });
-    expect(container.querySelector('.chat-reasoning-dot')).toBeNull();
+    expect(container.querySelector('.chat-entry-frame__busy')).toBeNull();
   });
 });
 
