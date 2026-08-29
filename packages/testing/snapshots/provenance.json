@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "spinner"
-  ],
-  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
+  "componentScope": "all",
+  "shard": "2/8",
+  "renderedSourceSha": "246670e08799e5e1d3140970f4015b8b20d1b019",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
