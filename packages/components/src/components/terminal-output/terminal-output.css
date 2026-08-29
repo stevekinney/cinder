@@ -17,6 +17,6 @@
     min-block-size: 1lh;
   }
   .cinder-terminal-output span[data-bold] {
-    font-weight: 700;
+    font-weight: var(--cinder-font-bold);
   }
 }
