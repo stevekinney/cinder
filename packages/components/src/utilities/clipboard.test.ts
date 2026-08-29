@@ -41,7 +41,7 @@ afterEach(() => {
 
 describe('copyToClipboard', () => {
   test('writes plain text and HTML as one ClipboardItem', async () => {
-    const write = mock(async () => undefined);
+    const write = mock(async (_items: ClipboardItem[]) => undefined);
     const writeText = mock(async () => undefined);
     const OriginalClipboardItem = globalThis.ClipboardItem;
     class TestClipboardItem {
@@ -59,7 +59,8 @@ describe('copyToClipboard', () => {
     try {
       expect(await copyToClipboard('Hello', { html: '<strong>Hello</strong>' })).toBe(true);
       expect(write).toHaveBeenCalledTimes(1);
-      const item = write.mock.calls[0]?.[0]?.[0] as unknown as TestClipboardItem;
+      const [writtenItems] = write.mock.calls[0]!;
+      const item = writtenItems[0] as unknown as TestClipboardItem;
       expect(await item.values['text/plain']?.text()).toBe('Hello');
       expect(await item.values['text/html']?.text()).toBe('<strong>Hello</strong>');
       expect(writeText).not.toHaveBeenCalled();

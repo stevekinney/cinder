@@ -56,7 +56,10 @@
   const copiedAnnouncement = $derived(copied ? (copiedLabel ?? 'Copied') : '');
 
   async function handleClick() {
-    const ok = await copyToClipboard(value, { html, image });
+    const richClipboardContent: { html?: string; image?: Blob | string } = {};
+    if (html !== undefined) richClipboardContent.html = html;
+    if (image !== undefined) richClipboardContent.image = image;
+    const ok = await copyToClipboard(value, richClipboardContent);
     if (!ok) {
       devWarn('[cinder/CopyButton] Clipboard write failed.');
       onError?.();
