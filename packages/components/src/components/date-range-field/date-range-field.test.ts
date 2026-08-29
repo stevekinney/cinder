@@ -760,6 +760,49 @@ describe('DateRangeField', () => {
       expect(changes[0]?.end).toBe('2026-06-30');
     });
 
+    test('clamps manual endpoints to the opposite range boundary', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        value: { start: '2026-06-10', end: '2026-06-20' },
+        onValueChange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      await fireEvent.change(getStartInput(container), {
+        target: { value: '2026-06-25' },
+      });
+      expect(changes.at(-1)).toEqual({ start: '2026-06-20', end: '2026-06-20' });
+
+      await fireEvent.change(getEndInput(container), {
+        target: { value: '2026-06-01' },
+      });
+      expect(changes.at(-1)).toEqual({ start: '2026-06-20', end: '2026-06-20' });
+    });
+
+    test('selects both endpoints through one shared range calendar', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        value: { start: '2026-06-10', end: '2026-06-12' },
+        onValueChange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      await fireEvent.click(
+        container.querySelector<HTMLButtonElement>('.cinder-date-range-field__calendar-trigger')!,
+      );
+      await waitFor(() => {
+        expect(document.querySelector('[id$="-day-2026-06-15"]')).not.toBeNull();
+      });
+
+      await fireEvent.click(document.querySelector('[id$="-day-2026-06-15"]')!);
+      expect(changes.at(-1)).toEqual({ start: '2026-06-15', end: undefined });
+
+      await fireEvent.click(document.querySelector('[id$="-day-2026-06-18"]')!);
+      expect(changes.at(-1)).toEqual({ start: '2026-06-15', end: '2026-06-18' });
+      expect(getStartInput(container).value).toBe('2026-06-15');
+      expect(getEndInput(container).value).toBe('2026-06-18');
+    });
+
     test('clearing an input emits undefined for that bound', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {
@@ -876,19 +919,18 @@ describe('DateRangeField', () => {
       expect(group?.getAttribute('aria-label')).toBe('Date range presets');
     });
 
-    test('CIN-128: composed DatePicker triggers render an icon with no visible "Open" text, keeping the accessible name', () => {
+    test('renders one shared range-calendar trigger with an icon and accessible name', () => {
       const { container } = render(DateRangeField, {
         id: 'drf',
         startLabel: 'Start date',
         endLabel: 'End date',
       });
       const triggers = container.querySelectorAll('.cinder-date-picker__trigger');
-      expect(triggers.length).toBe(2);
-      for (const trigger of triggers) {
-        expect(trigger.textContent?.trim()).toBe('');
-        expect(trigger.querySelector('svg')).not.toBeNull();
-        expect(trigger.getAttribute('aria-label')).toMatch(/^Open .+ calendar$/);
-      }
+      expect(triggers.length).toBe(1);
+      const trigger = triggers[0]!;
+      expect(trigger.textContent?.trim()).toBe('');
+      expect(trigger.querySelector('svg')).not.toBeNull();
+      expect(trigger.getAttribute('aria-label')).toBe('Open date range calendar');
     });
 
     test('root has role="group" and aria-labelledby pointing to the legend when label is provided', () => {

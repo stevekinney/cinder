@@ -2238,6 +2238,29 @@
       }
     },
     {
+      "name": "Form",
+      "id": "form",
+      "import": "@lostgradient/cinder/form",
+      "exportName": "Form",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Thin form root that owns asynchronous submit state and prevents duplicate submissions while preserving native form behavior.",
+      "tags": ["form", "submit"],
+      "useWhen": ["A form needs a shared pending state while an asynchronous submit handler runs."],
+      "avoidWhen": [
+        {
+          "reason": "Submission is entirely native and no pending UI needs to be coordinated."
+        }
+      ],
+      "related": ["form-field", "button"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/form/schema",
+        "variables": "@lostgradient/cinder/form/variables"
+      }
+    },
+    {
       "name": "FormField",
       "id": "form-field",
       "import": "@lostgradient/cinder/form-field",
@@ -2401,6 +2424,31 @@
       "artifacts": {
         "schema": "@lostgradient/cinder/grid-list-item/schema",
         "variables": "@lostgradient/cinder/grid-list-item/variables"
+      }
+    },
+    {
+      "name": "HostProvider",
+      "id": "host-provider",
+      "import": "@lostgradient/cinder/host-provider",
+      "exportName": "HostProvider",
+      "category": "layout",
+      "status": "beta",
+      "purpose": "Context provider that identifies the desktop host platform while defaulting to inert web behavior.",
+      "tags": ["desktop", "provider"],
+      "useWhen": [
+        "A desktop shell needs platform-aware window chrome behavior in descendant components."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "The application is web-only and does not render desktop window chrome."
+        }
+      ],
+      "related": ["modal"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/host-provider/schema",
+        "variables": "@lostgradient/cinder/host-provider/variables"
       }
     },
     {
@@ -3341,6 +3389,31 @@
       }
     },
     {
+      "name": "ParameterField",
+      "id": "parameter-field",
+      "import": "@lostgradient/cinder/parameter-field",
+      "exportName": "ParameterField",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Numeric parameter editor that distinguishes an inherited base value from a local override and makes reset state explicit.",
+      "tags": ["form", "numeric"],
+      "useWhen": [
+        "Editing a numeric setting that inherits a default but can be overridden locally."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Collecting an independent numeric value with no inheritance semantics — use number-input or slider."
+        }
+      ],
+      "related": ["number-input", "slider", "badge"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/parameter-field/schema",
+        "variables": "@lostgradient/cinder/parameter-field/variables"
+      }
+    },
+    {
       "name": "PayloadInspector",
       "id": "payload-inspector",
       "import": "@lostgradient/cinder/payload-inspector",
@@ -3461,6 +3534,31 @@
       }
     },
     {
+      "name": "PolicyLock",
+      "id": "policy-lock",
+      "import": "@lostgradient/cinder/policy-lock",
+      "exportName": "PolicyLock",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Explains why a setting is policy-managed, identifies its source, and exposes the policy scope as a badge.",
+      "tags": ["form", "policy"],
+      "useWhen": [
+        "A control is unavailable because an administrator or policy source owns its value."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A control is unavailable for a temporary or non-policy reason."
+        }
+      ],
+      "related": ["setting-row", "badge", "tooltip"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/policy-lock/schema",
+        "variables": "@lostgradient/cinder/policy-lock/variables"
+      }
+    },
+    {
       "name": "Popover",
       "id": "popover",
       "import": "@lostgradient/cinder/popover",
@@ -3515,6 +3613,35 @@
         "schema": "@lostgradient/cinder/portal/schema",
         "variables": "@lostgradient/cinder/portal/variables",
         "examples": "@lostgradient/cinder/portal/examples"
+      }
+    },
+    {
+      "name": "PreviewPanel",
+      "id": "preview-panel",
+      "import": "@lostgradient/cinder/preview-panel",
+      "exportName": "PreviewPanel",
+      "category": "layout",
+      "status": "alpha",
+      "purpose": "Bounded preview layout shell with title, status, optional chrome regions, and nested overflow discipline.",
+      "tags": ["layout", "preview", "panel"],
+      "useWhen": [
+        "Framing a generated preview, artifact inspection area, or side-by-side review surface.",
+        "A preview needs consistent header, tabs, body, and footer slots without owning product-specific behavior."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Communicating an urgent standalone message — use alert."
+        },
+        {
+          "reason": "You only need generic spacing — use stack."
+        }
+      ],
+      "related": ["stack", "card", "tabs", "alert"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/preview-panel/schema",
+        "variables": "@lostgradient/cinder/preview-panel/variables"
       }
     },
     {
@@ -4103,6 +4230,29 @@
       }
     },
     {
+      "name": "SettingRow",
+      "id": "setting-row",
+      "import": "@lostgradient/cinder/setting-row",
+      "exportName": "SettingRow",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Settings-page row that publishes form-field context to its control and supports managed-policy and disclosure details.",
+      "tags": ["form", "settings"],
+      "useWhen": ["Pairing a setting label and guidance with an Input, Toggle, or Select control."],
+      "avoidWhen": [
+        {
+          "reason": "The control belongs in a conventional stacked form field."
+        }
+      ],
+      "related": ["form-field", "policy-lock"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/setting-row/schema",
+        "variables": "@lostgradient/cinder/setting-row/variables"
+      }
+    },
+    {
       "name": "ShareCard",
       "id": "share-card",
       "import": "@lostgradient/cinder/share-card",
@@ -4130,6 +4280,29 @@
         "schema": "@lostgradient/cinder/share-card/schema",
         "variables": "@lostgradient/cinder/share-card/variables",
         "examples": "@lostgradient/cinder/share-card/examples"
+      }
+    },
+    {
+      "name": "ShortcutField",
+      "id": "shortcut-field",
+      "import": "@lostgradient/cinder/shortcut-field",
+      "exportName": "ShortcutField",
+      "category": "form",
+      "status": "beta",
+      "purpose": "Keyboard shortcut recorder that captures normalized modifier combinations and announces validation results.",
+      "tags": ["form", "keyboard"],
+      "useWhen": ["Letting a user assign or replace an application keyboard shortcut."],
+      "avoidWhen": [
+        {
+          "reason": "Displaying a shortcut without editing it—use kbd or shortcut-hint."
+        }
+      ],
+      "related": ["kbd", "shortcut-hint"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/shortcut-field/schema",
+        "variables": "@lostgradient/cinder/shortcut-field/variables"
       }
     },
     {
@@ -4633,6 +4806,32 @@
         "schema": "@lostgradient/cinder/spinner/schema",
         "variables": "@lostgradient/cinder/spinner/variables",
         "examples": "@lostgradient/cinder/spinner/examples"
+      }
+    },
+    {
+      "name": "Stack",
+      "id": "stack",
+      "import": "@lostgradient/cinder/stack",
+      "exportName": "Stack",
+      "category": "layout",
+      "status": "alpha",
+      "purpose": "One-dimensional flex layout primitive for arranging direct children with controlled direction, spacing, alignment, and wrapping.",
+      "tags": ["layout", "stack", "flex"],
+      "useWhen": [
+        "Arranging related controls, form rows, or panel sections along one axis.",
+        "You need lightweight spacing and alignment without two-dimensional grid placement."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "You need explicit rows and columns — use grid."
+        }
+      ],
+      "related": ["grid", "cluster"],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/stack/schema",
+        "variables": "@lostgradient/cinder/stack/variables"
       }
     },
     {

@@ -1,3 +1,4 @@
+import type { Snippet } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import type { HTMLInputAttributes } from 'svelte/elements';
 export type NumberInputProps = Omit<
@@ -55,5 +56,7 @@ export type NumberInputProps = Omit<
   inputAttachment?: Attachment<HTMLInputElement>;
   /** Custom class merged with `.cinder-input-field` on the root wrapper. */
   class?: string;
+  /** Optional non-interactive adornment rendered before the stepper controls. */
+  adornment?: Snippet | string;
   onValueChange?: (value: number | null) => void;
 };

@@ -20,6 +20,7 @@
 <script lang="ts">
   import type { ModalProps } from './modal.types.ts';
   import { onDestroy } from 'svelte';
+  import { getHostContext } from '../../_internal/host-context.ts';
   import { devWarn } from '../../utilities/dev-warn.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -64,6 +65,7 @@
     onExitComplete,
   }: ModalProps = $props();
 
+  const host = getHostContext();
   const isChromeless = $derived(chrome === 'none');
 
   let dialogElement: HTMLDialogElement | undefined = $state();
@@ -299,6 +301,7 @@
           manageInitialFocus: false,
         })}
       >
+        {#if host.isDesktop}<div class="cinder-modal__drag-strip" aria-hidden="true"></div>{/if}
         {#if !isChromeless}
           <div class="cinder-modal__header">
             <h2 id={titleId} class="cinder-modal__title">{title}</h2>

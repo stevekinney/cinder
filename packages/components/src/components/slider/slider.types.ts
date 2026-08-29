@@ -15,6 +15,8 @@ type SliderBaseProps = {
   label: string;
   /** Formats the numeric value for `aria-valuetext`. */
   valueText?: (value: number) => string;
+  /** Optional unit displayed with the current value, such as `%` or `ms`. */
+  unit?: string;
   /** Optional tick marks. `true` renders one per `step`; an array snaps to those values. */
   ticks?: boolean | number[];
   /** Disables interaction. */

@@ -6,6 +6,8 @@ See also: [`_internal/OVERLAY-POLICY.md`](../_internal/OVERLAY-POLICY.md)
 
 The `<dialog>` element carries an implicit `role="dialog"`. Drawer sets `aria-modal="true"` explicitly because some screen readers do not infer modality from `showModal()` alone.
 
+When `modal={false}`, Drawer renders an `<aside>` instead of a native dialog. The non-modal drawer omits `aria-modal`, does not lock body scroll, does not render a backdrop, and does not attach the focus trap. It still registers with the shared Escape stack while open so Escape ordering remains deterministic with other overlays.
+
 `aria-labelledby` is always set on the dialog. Which element it points to depends on the `header` and `ariaLabelledby` props:
 
 | Props supplied                        | `aria-labelledby` points to                                            |
@@ -25,7 +27,7 @@ The `<dialog>` element carries an implicit `role="dialog"`. Drawer sets `aria-mo
 | `Escape`                        | Close the drawer                                                  |
 | Close button click / activation | Close the drawer                                                  |
 
-The native `<dialog showModal()>` provides the focus trap; Drawer does not implement its own Tab cycling.
+The native `<dialog showModal()>` plus the shared focus-trap attachment provide Tab containment for modal drawers. Non-modal drawers do not trap Tab, so focus can move between the drawer and the page.
 
 ## Focus management
 
@@ -36,7 +38,7 @@ The native `<dialog showModal()>` provides the focus trap; Drawer does not imple
 
 ## Scroll lock
 
-Body scroll is locked via the counted `lockBodyScroll()` helper from `overlay.ts`. The count is shared across all Cinder overlays, so a modal opened on top of an open drawer does not prematurely restore scroll when only the modal closes.
+Modal drawer body scroll is locked via the counted `lockBodyScroll()` helper from `overlay.ts`. The count is shared across all Cinder overlays, so a modal opened on top of an open drawer does not prematurely restore scroll when only the modal closes. Non-modal drawers skip this lock.
 
 Scroll lock is released on every close path, including component unmount while open.
 

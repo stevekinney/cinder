@@ -24,6 +24,10 @@ const schema = {
       type: 'string',
       description: 'Visible label / accessible name for the slider. Required.',
     },
+    unit: {
+      type: 'string',
+      description: 'Optional unit displayed with the current value, such as `%` or `ms`.',
+    },
     ticks: {
       anyOf: [
         {

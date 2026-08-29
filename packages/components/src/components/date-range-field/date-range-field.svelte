@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts">
+  import CalendarDays from 'lucide-svelte/icons/calendar-days';
   import type {
     DateRangeDatePreset,
     DateRangeFieldProps,
@@ -30,7 +31,8 @@
   } from './date-range-field.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { normalizeDateValue } from '../../_internal/date-value.ts';
-  import DatePicker from '../date-picker/date-picker.svelte';
+  import Calendar from '../calendar/calendar.svelte';
+  import Popover from '../popover/popover.svelte';
   import {
     composeDescribedBy,
     describeId,
@@ -107,6 +109,8 @@
     preset: DateRangeDatePreset;
     value: DateRangeValue;
   } | null>(null);
+  let calendarOpen = $state(false);
+  let calendarTrigger = $state<HTMLButtonElement | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -228,9 +232,13 @@
   }
 
   function handleStartChange(nextStart: string | undefined) {
+    const boundedStart =
+      nextStart && normalizedValue.end && nextStart > normalizedValue.end
+        ? normalizedValue.end
+        : nextStart;
     const next = normalizeDateRangeValue(
       {
-        start: nextStart,
+        start: boundedStart,
         end: value.end,
       },
       granularity,
@@ -241,10 +249,14 @@
   }
 
   function handleEndChange(nextEnd: string | undefined) {
+    const boundedEnd =
+      nextEnd && normalizedValue.start && nextEnd < normalizedValue.start
+        ? normalizedValue.start
+        : nextEnd;
     const next = normalizeDateRangeValue(
       {
         start: value.start,
-        end: nextEnd,
+        end: boundedEnd,
       },
       granularity,
     );
@@ -253,7 +265,64 @@
     onValueChange?.(next);
   }
 
+  function handleInputChange(boundary: 'start' | 'end', event: Event): void {
+    const target = event.currentTarget as HTMLInputElement;
+    const next = normalizeDateValue(target.value || undefined, granularity);
+    if (boundary === 'start') handleStartChange(next);
+    else handleEndChange(next);
+  }
+
+  function timeSuffix(endpoint: string | undefined): string {
+    if (granularity === 'day') return '';
+    const existing = endpoint?.slice(10);
+    if (existing) return existing;
+    if (granularity === 'second') return 'T00:00:00';
+    return 'T00:00';
+  }
+
+  function handleCalendarRangeChange(next: {
+    start: string | undefined;
+    end: string | undefined;
+  }): void {
+    if (!next.start) return;
+    const nextValue = normalizeDateRangeValue(
+      {
+        start: `${next.start}${timeSuffix(value.start)}`,
+        end: next.end ? `${next.end}${timeSuffix(value.end)}` : undefined,
+      },
+      granularity,
+    );
+    selectedPresetSnapshot = null;
+    value = nextValue;
+    onValueChange?.(nextValue);
+    if (next.end) calendarOpen = false;
+  }
+
+  function focusCalendarDay(panel: HTMLElement): HTMLElement | null {
+    return panel.querySelector(
+      '.cinder-calendar__day[data-range-start], .cinder-calendar__day[data-focused], .cinder-calendar__day[tabindex="0"]',
+    );
+  }
+
   const hasError = $derived(!!error);
+  const inputStep = $derived(
+    granularity === 'day'
+      ? undefined
+      : granularity === 'second'
+        ? 1
+        : granularity === 'minute'
+          ? 60
+          : 3600,
+  );
+  const inputPlaceholder = $derived(
+    granularity === 'day'
+      ? 'YYYY-MM-DD'
+      : granularity === 'hour'
+        ? 'YYYY-MM-DDTHH:00'
+        : granularity === 'minute'
+          ? 'YYYY-MM-DDTHH:mm'
+          : 'YYYY-MM-DDTHH:mm:ss',
+  );
 </script>
 
 <div
@@ -292,37 +361,74 @@
 
   <div class="cinder-date-range-field__inputs">
     <div class="cinder-date-range-field__input-group">
-      <DatePicker
+      <label for={startId} class="cinder-date-picker__label">{resolvedStartLabel}</label>
+      <input
         id={startId}
-        class="cinder-date-range-field__date-picker"
-        {granularity}
-        value={normalizedValue.start}
-        label={resolvedStartLabel}
+        class="cinder-date-picker__input cinder-date-range-field__date-input"
+        type="text"
+        value={normalizedValue.start ?? ''}
+        placeholder={inputPlaceholder}
         max={normalizedValue.end ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onValueChange={(next) => handleStartChange(next)}
+        onchange={(event) => handleInputChange('start', event)}
       />
     </div>
 
     <span class="cinder-date-range-field__separator" aria-hidden="true">–</span>
 
     <div class="cinder-date-range-field__input-group">
-      <DatePicker
+      <label for={endId} class="cinder-date-picker__label">{resolvedEndLabel}</label>
+      <input
         id={endId}
-        class="cinder-date-range-field__date-picker"
-        {granularity}
-        value={normalizedValue.end}
-        label={resolvedEndLabel}
+        class="cinder-date-picker__input cinder-date-range-field__date-input"
+        type="text"
+        value={normalizedValue.end ?? ''}
+        placeholder={inputPlaceholder}
         min={normalizedValue.start ?? undefined}
+        step={inputStep}
         {disabled}
         aria-invalid={hasError ? 'true' : undefined}
         aria-describedby={describedBy}
-        onValueChange={(next) => handleEndChange(next)}
+        onchange={(event) => handleInputChange('end', event)}
       />
     </div>
+
+    <button
+      bind:this={calendarTrigger}
+      type="button"
+      class="cinder-date-picker__trigger cinder-date-range-field__calendar-trigger"
+      aria-label="Open date range calendar"
+      {disabled}
+      onclick={() => {
+        if (!disabled) calendarOpen = true;
+      }}
+    >
+      <CalendarDays class="cinder-icon-sm" aria-hidden="true" />
+    </button>
   </div>
+
+  <Popover
+    bind:open={calendarOpen}
+    triggerRef={calendarTrigger}
+    role="dialog"
+    label={label ? `${label} calendar` : 'Date range calendar'}
+    focusManagement="panel"
+    initialFocus={focusCalendarDay}
+    widthMode="content"
+    class="cinder-date-range-field__calendar-panel"
+  >
+    <Calendar
+      selectionMode="range"
+      rangeStart={normalizedValue.start?.slice(0, 10)}
+      rangeEnd={normalizedValue.end?.slice(0, 10)}
+      value={normalizedValue.end?.slice(0, 10) ?? normalizedValue.start?.slice(0, 10)}
+      onRangeChange={handleCalendarRangeChange}
+      {disabled}
+    />
+  </Popover>
 
   {#if description}
     <p id={descriptionId} class="cinder-date-range-field__description">{description}</p>

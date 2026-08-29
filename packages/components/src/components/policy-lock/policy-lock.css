@@ -1,0 +1,9 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-policy-lock {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-1);
+  }
+}

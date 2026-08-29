@@ -27,6 +27,10 @@
     disabled: boolean;
     focused: boolean;
     selected: boolean;
+    rangeStart: boolean;
+    rangeEnd: boolean;
+    inRange: boolean;
+    rangePreview: boolean;
     ariaLabel: string;
   };
 
@@ -43,6 +47,11 @@
 
   let {
     id,
+    selectionMode = 'single',
+    rangeStart,
+    rangeEnd,
+    onRangeChange,
+    rangeHover,
     value = $bindable<string | undefined>(undefined),
     month,
     min,
@@ -181,6 +190,7 @@
     startOfMonth(parseISODate(initialAnchorIso) ?? parseISODate(initialTodayIso)!),
   );
   let focusedIso = $state(initialFocusedIso);
+  let hoverIso = $state<string | undefined>(undefined);
   let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
 
@@ -212,6 +222,22 @@
     const first = startOfMonth(visibleMonthDate);
     const gridStart = startOfWeek(first, firstDayOfWeek);
     const selectedIso = value;
+    const start = rangeStart && parseISODate(rangeStart) ? rangeStart : undefined;
+    const end = rangeEnd && parseISODate(rangeEnd) ? rangeEnd : undefined;
+    const preview = hoverIso ?? rangeHover;
+    const previewEnd = preview && parseISODate(preview) ? preview : undefined;
+    const rangeLow =
+      start && (end ?? previewEnd)
+        ? start < (end ?? previewEnd!)
+          ? start
+          : (end ?? previewEnd!)
+        : undefined;
+    const rangeHigh =
+      start && (end ?? previewEnd)
+        ? start > (end ?? previewEnd!)
+          ? start
+          : (end ?? previewEnd!)
+        : undefined;
     const focused = focusedIso;
     const dayLabelFmt = new Intl.DateTimeFormat(locale, {
       weekday: 'long',
@@ -240,6 +266,22 @@
         disabled: disabled || !supported || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
+        rangeStart: selectionMode === 'range' && iso === start,
+        rangeEnd: selectionMode === 'range' && iso === (end ?? previewEnd),
+        inRange:
+          selectionMode === 'range' &&
+          !!rangeLow &&
+          !!rangeHigh &&
+          iso > rangeLow &&
+          iso < rangeHigh,
+        rangePreview:
+          selectionMode === 'range' &&
+          !end &&
+          !!previewEnd &&
+          !!rangeLow &&
+          !!rangeHigh &&
+          iso > rangeLow &&
+          iso < rangeHigh,
         ariaLabel:
           date.getUTCFullYear() <= 0 ? dayLabelWithEraFmt.format(date) : dayLabelFmt.format(date),
       });
@@ -272,6 +314,18 @@
 
   function commitDate(iso: string) {
     if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
+    if (selectionMode === 'range') {
+      const next =
+        !rangeStart || rangeEnd
+          ? { start: iso, end: undefined }
+          : iso < rangeStart
+            ? { start: iso, end: rangeStart }
+            : { start: rangeStart, end: iso };
+      onRangeChange?.(next);
+      value = next.end ?? next.start;
+      focusedIso = iso;
+      return;
+    }
     value = iso;
     focusedIso = iso;
     onValueChange?.(iso);
@@ -423,6 +477,10 @@
               class="cinder-calendar__day"
               data-outside={cell.inMonth ? undefined : ''}
               data-selected={cell.selected ? '' : undefined}
+              data-range-start={cell.rangeStart ? '' : undefined}
+              data-range-end={cell.rangeEnd ? '' : undefined}
+              data-in-range={cell.inRange ? '' : undefined}
+              data-range-preview={cell.rangePreview ? '' : undefined}
               data-focused={cell.focused ? '' : undefined}
               aria-current={cell.iso === todayIso ? 'date' : undefined}
               aria-label={cell.ariaLabel}
@@ -433,6 +491,9 @@
               }}
               onfocus={() => {
                 if (cell.iso) focusedIso = cell.iso;
+              }}
+              onmouseenter={() => {
+                if (selectionMode === 'range' && rangeStart && !rangeEnd) hoverIso = cell.iso;
               }}
             >
               {cell.day}

@@ -64,6 +64,33 @@
   flex: 0 0 auto;
 }
 
+/* Desktop shells use these classes to mark native window drag surfaces. The
+ * prefixed property is ignored by web browsers, making both classes safe
+ * no-ops in ordinary web applications. Interactive descendants are punched
+ * back out automatically and may opt out explicitly with cinder-no-drag. */
+.cinder-drag-region {
+  -webkit-app-region: drag;
+  app-region: drag;
+}
+
+.cinder-drag-region
+  :where(
+    a,
+    button,
+    input,
+    select,
+    summary,
+    textarea,
+    [contenteditable='true'],
+    [role='button'],
+    [role='link'],
+    [tabindex]:not([tabindex='-1'])
+  ),
+.cinder-no-drag {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+}
+
 .cinder-icon-xs {
   inline-size: 0.875rem;
   block-size: 0.875rem;

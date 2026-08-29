@@ -81,6 +81,17 @@
     color: var(--cinder-accent-text);
   }
 
+  .cinder-calendar__day[data-in-range],
+  .cinder-calendar__day[data-range-preview] {
+    background: var(--cinder-accent-muted);
+  }
+
+  .cinder-calendar__day[data-range-start],
+  .cinder-calendar__day[data-range-end] {
+    background: var(--cinder-accent-solid);
+    color: var(--cinder-text-on-accent);
+  }
+
   .cinder-calendar__day[data-focused] {
     box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
   }

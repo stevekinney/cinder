@@ -52,6 +52,63 @@ describe('Calendar', () => {
     expect(selected).toBe('2026-06-15');
   });
 
+  test('range selection commits a start, then an inclusive ordered range', async () => {
+    const ranges: Array<{ start: string | undefined; end: string | undefined }> = [];
+    const { container, rerender } = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      onRangeChange: (range: { start: string | undefined; end: string | undefined }) =>
+        ranges.push(range),
+    });
+    const day = (iso: string) => container.querySelector<HTMLButtonElement>(`[id$="-day-${iso}"]`)!;
+    await fireEvent.click(day('2026-06-10'));
+    expect(ranges.at(-1)).toEqual({ start: '2026-06-10', end: undefined });
+    await rerender({ month: '2026-06-01', selectionMode: 'range', rangeStart: '2026-06-10' });
+    await fireEvent.click(day('2026-06-15'));
+    expect(ranges.at(-1)).toEqual({ start: '2026-06-10', end: '2026-06-15' });
+  });
+
+  test('renders inclusive committed range and hover preview', async () => {
+    const { container } = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+      rangeEnd: '2026-06-15',
+    });
+    expect(
+      container.querySelector('[id$="-day-2026-06-10"]')?.hasAttribute('data-range-start'),
+    ).toBe(true);
+    expect(container.querySelector('[id$="-day-2026-06-15"]')?.hasAttribute('data-range-end')).toBe(
+      true,
+    );
+    for (let day = 11; day <= 14; day += 1) {
+      expect(
+        container.querySelector(`[id$="-day-2026-06-${day}"]`)?.hasAttribute('data-in-range'),
+      ).toBe(true);
+    }
+    const preview = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+      rangeHover: '2026-06-13',
+    });
+    expect(preview.container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
+  });
+
+  test('restarts at a new start after a completed range', async () => {
+    const ranges: Array<{ start: string | undefined; end: string | undefined }> = [];
+    const { container } = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+      rangeEnd: '2026-06-15',
+      onRangeChange: (range: { start: string | undefined; end: string | undefined }) =>
+        ranges.push(range),
+    });
+    await fireEvent.click(container.querySelector('[id$="-day-2026-06-20"]')!);
+    expect(ranges.at(-1)).toEqual({ start: '2026-06-20', end: undefined });
+  });
+
   test('preserves a four-digit year before 1000 when selecting a day', async () => {
     let selected: string | undefined;
     const { container } = render(Calendar, {

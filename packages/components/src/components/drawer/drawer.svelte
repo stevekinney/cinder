@@ -17,9 +17,11 @@
 </script>
 
 <script lang="ts">
-  import type { DrawerProps } from './drawer.types.ts';
+  import type { DrawerPlacement, DrawerProps } from './drawer.types.ts';
   import { onDestroy } from 'svelte';
+  import type { HTMLAttributes } from 'svelte/elements';
 
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
@@ -33,6 +35,7 @@
     open = $bindable(false),
     placement = 'right',
     size = 'md',
+    modal = true,
     title,
     class: className,
     triggerRef = null,
@@ -45,6 +48,7 @@
   }: DrawerProps = $props();
 
   const titleId = $props.id();
+  const asideAttributes = $derived(rest as HTMLAttributes<HTMLElement>);
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
@@ -55,7 +59,7 @@
    * is open or closing does not flip the slide direction mid-animation.
    * Only updated when the drawer actually (re)opens a new cycle.
    */
-  let activePlacement = $state(placement);
+  let activePlacement = $state<DrawerPlacement>();
 
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
@@ -83,7 +87,13 @@
     dialogState.markHydrated();
   });
 
+  $effect.pre(() => {
+    if (!modal || !open || activePlacement) return;
+    activePlacement = placement;
+  });
+
   $effect(() => {
+    if (!modal) return;
     if (open) {
       if (dialogState.isClosing) {
         // Quick-reopen while a close transition is still running.
@@ -102,66 +112,123 @@
     dialogState.syncOpenState();
   });
 
+  $effect(() => {
+    if (modal || !dialogState.hydrated || !open) return;
+    return pushEscapeHandler((event) => {
+      event.preventDefault();
+      open = false;
+    });
+  });
+
   onDestroy(() => {
     dialogState.destroy();
   });
+
+  function requestDrawerClose(): void {
+    if (modal) {
+      dialogState.requestClose();
+      return;
+    }
+    open = false;
+  }
 </script>
 
 {#if dialogState.hydrated}
-  <dialog
-    {...rest}
-    bind:this={dialogElement}
-    class={classNames('cinder-drawer', className)}
-    aria-modal="true"
-    aria-labelledby={ariaLabelledby ?? titleId}
-    data-cinder-closing={dialogState.isClosing ? '' : undefined}
-    onclose={() => dialogState.handleClose()}
-    oncancel={(event) => dialogState.handleNativeCancel(event)}
-    onclick={(event) => dialogState.handleBackdropClick(event)}
-  >
-    {#snippet closeButton()}
-      <button
-        type="button"
-        class="cinder-drawer__close"
-        aria-label="Close drawer"
-        onclick={() => dialogState.requestClose()}
-      >
-        <svg
-          class="cinder-drawer__close-icon"
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          aria-hidden="true"
+  {#if modal}
+    <dialog
+      {...rest}
+      bind:this={dialogElement}
+      class={classNames('cinder-drawer', className)}
+      aria-modal="true"
+      aria-labelledby={ariaLabelledby ?? titleId}
+      data-cinder-modal="true"
+      data-cinder-closing={dialogState.isClosing ? '' : undefined}
+      onclose={() => dialogState.handleClose()}
+      oncancel={(event) => dialogState.handleNativeCancel(event)}
+      onclick={(event) => dialogState.handleBackdropClick(event)}
+    >
+      {#if dialogState.renderPanel}
+        <!--
+          The native <dialog> (showModal) traps focus in supporting browsers; the
+          shared focus-trap is the defence-in-depth fallback. The Drawer owns
+          both focus restoration (returnFocus) and initial focus (the body-focus
+          effect above), so the trap runs with `restoreFocus: false` and
+          `manageInitialFocus: false`.
+        -->
+        <div
+          bind:this={panelElement}
+          class="cinder-drawer__panel"
+          data-cinder-placement={activePlacement ?? placement}
+          data-cinder-size={size}
+          data-cinder-closing={dialogState.isClosing ? '' : undefined}
+          inert={dialogState.isClosing}
+          {@attach createFocusTrap({
+            active: () => open && !dialogState.isClosing,
+            restoreFocus: false,
+            manageInitialFocus: false,
+          })}
         >
-          <path
-            d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
-          />
-        </svg>
-      </button>
-    {/snippet}
+          {#if dragHandleVisible && (activePlacement ?? placement) === 'bottom'}
+            <div class="cinder-drawer__drag-handle" aria-hidden="true">
+              <span class="cinder-drawer__drag-handle-pill"></span>
+            </div>
+          {/if}
 
-    {#if dialogState.renderPanel}
-      <!--
-        The native <dialog> (showModal) traps focus in supporting browsers; the
-        shared focus-trap is the defence-in-depth fallback. The Drawer owns
-        both focus restoration (returnFocus) and initial focus (the body-focus
-        effect above), so the trap runs with `restoreFocus: false` and
-        `manageInitialFocus: false`.
-      -->
-      <div
-        bind:this={panelElement}
-        class="cinder-drawer__panel"
-        data-cinder-placement={activePlacement}
-        data-cinder-size={size}
-        data-cinder-closing={dialogState.isClosing ? '' : undefined}
-        inert={dialogState.isClosing}
-        {@attach createFocusTrap({
-          active: () => open && !dialogState.isClosing,
-          restoreFocus: false,
-          manageInitialFocus: false,
-        })}
-      >
-        {#if dragHandleVisible && activePlacement === 'bottom'}
+          <header class="cinder-drawer__header">
+            {#if header}
+              {#if !ariaLabelledby}
+                <h2 id={titleId} class="cinder-sr-only">{title}</h2>
+              {/if}
+              {@render header()}
+            {:else}
+              <h2 id={titleId} class="cinder-drawer__title">{title}</h2>
+            {/if}
+            <button
+              type="button"
+              class="cinder-drawer__close"
+              aria-label="Close drawer"
+              onclick={requestDrawerClose}
+            >
+              <svg
+                class="cinder-drawer__close-icon"
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 20 20"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path
+                  d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+                />
+              </svg>
+            </button>
+          </header>
+
+          <div
+            bind:this={bodyElement}
+            class="cinder-drawer__body cinder-_scroll-fade"
+            tabindex="-1"
+            {@attach bodyOverflowFade}
+          >
+            {@render children()}
+          </div>
+
+          {#if footer}
+            <div class="cinder-drawer__footer">
+              {@render footer()}
+            </div>
+          {/if}
+        </div>
+      {/if}
+    </dialog>
+  {:else if open}
+    <aside
+      {...asideAttributes}
+      class={classNames('cinder-drawer', className)}
+      aria-labelledby={ariaLabelledby ?? titleId}
+      data-cinder-modal="false"
+    >
+      <div class="cinder-drawer__panel" data-cinder-placement={placement} data-cinder-size={size}>
+        {#if dragHandleVisible && placement === 'bottom'}
           <div class="cinder-drawer__drag-handle" aria-hidden="true">
             <span class="cinder-drawer__drag-handle-pill"></span>
           </div>
@@ -176,7 +243,24 @@
           {:else}
             <h2 id={titleId} class="cinder-drawer__title">{title}</h2>
           {/if}
-          {@render closeButton()}
+          <button
+            type="button"
+            class="cinder-drawer__close"
+            aria-label="Close drawer"
+            onclick={requestDrawerClose}
+          >
+            <svg
+              class="cinder-drawer__close-icon"
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 20 20"
+              fill="currentColor"
+              aria-hidden="true"
+            >
+              <path
+                d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z"
+              />
+            </svg>
+          </button>
         </header>
 
         <div
@@ -194,6 +278,6 @@
           </div>
         {/if}
       </div>
-    {/if}
-  </dialog>
+    </aside>
+  {/if}
 {/if}

@@ -20,6 +20,7 @@ const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
 type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
 const excludesLowercaseNativeCloseHandler: HasKey<DrawerProps, 'onclose'> = false;
 const excludesLowercaseNativeCancelHandler: HasKey<DrawerProps, 'oncancel'> = false;
+const includesModalProp: HasKey<DrawerProps, 'modal'> = true;
 
 setupHappyDom();
 
@@ -115,6 +116,7 @@ describe('Drawer', () => {
   test('omits native dialog handlers owned internally', () => {
     expect(excludesLowercaseNativeCloseHandler).toBe(false);
     expect(excludesLowercaseNativeCancelHandler).toBe(false);
+    expect(includesModalProp).toBe(true);
   });
 
   // ---- 1. Renders open dialog when open=true after hydration ----
@@ -674,6 +676,85 @@ describe('Drawer', () => {
       props: { open: true, title: 'Test', children: emptySnippet },
     });
     expect(container.querySelector('dialog')?.getAttribute('aria-modal')).toBe('true');
+  });
+
+  test('modal=false renders an aside instead of a dialog', () => {
+    const { container } = render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: emptySnippet },
+    });
+
+    expect(container.querySelector('dialog')).toBeNull();
+    const aside = container.querySelector('aside.cinder-drawer');
+    expect(aside).not.toBeNull();
+    expect(aside?.getAttribute('aria-modal')).toBeNull();
+    expect(aside?.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(aside?.querySelector('.cinder-drawer__panel')).not.toBeNull();
+  });
+
+  test('modal=false does not lock body scroll', () => {
+    render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: emptySnippet },
+    });
+
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  test('modal=false close button closes immediately', async () => {
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+
+    await fireEvent.click(container.querySelector('.cinder-drawer__close') as HTMLButtonElement);
+    expect(openValue).toBe(false);
+    await rerender(props());
+    await tick();
+    expect(container.querySelector('aside.cinder-drawer')).toBeNull();
+  });
+
+  test('modal=false uses the escape stack while open', async () => {
+    let openValue = true;
+    let siblingEscapeCount = 0;
+    const releaseSiblingEscape = pushEscapeHandler(() => {
+      siblingEscapeCount += 1;
+    });
+
+    const { rerender } = render(Drawer, {
+      props: {
+        modal: false,
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Inspector',
+        children: emptySnippet,
+      },
+    });
+
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(openValue).toBe(false);
+    expect(siblingEscapeCount).toBe(0);
+
+    await rerender({
+      modal: false,
+      open: false,
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(1);
+    releaseSiblingEscape();
   });
 
   // ---- Additional: footer renders when provided ----

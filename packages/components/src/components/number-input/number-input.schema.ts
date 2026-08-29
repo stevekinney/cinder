@@ -75,6 +75,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'adornment',
+        reason: 'function-or-snippet',
+        description: 'Optional non-interactive adornment rendered before the stepper controls.',
+      },
+      {
         name: 'format',
         reason: 'unknown-shape',
         description:

@@ -34,6 +34,16 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 }
 
 describe('Slider (single)', () => {
+  test('renders a visible value and unit alongside its label', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Latency', value: 42, unit: 'ms' },
+    });
+
+    expect(container.querySelector('.cinder-slider__label')?.textContent).toBe('Latency');
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('42 ms');
+    expect(getThumbs(container)[0]?.getAttribute('aria-valuetext')).toBe('42 ms');
+  });
+
   test('renders one role=slider with min/max/now and accessible name', () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', value: 30 },
@@ -368,6 +378,17 @@ describe('Slider (single)', () => {
 });
 
 describe('Slider (range)', () => {
+  test('renders both range bounds and includes units in accessible values', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Latency window', mode: 'range', value: [20, 80], unit: 'ms' },
+    });
+
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('20 ms–80 ms');
+    const thumbs = getThumbs(container);
+    expect(thumbs[0]?.getAttribute('aria-valuetext')).toBe('20 ms');
+    expect(thumbs[1]?.getAttribute('aria-valuetext')).toBe('80 ms');
+  });
+
   test('renders two thumbs with labels for min and max', () => {
     const { container } = render(Slider, {
       props: {

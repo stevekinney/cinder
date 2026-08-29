@@ -40,6 +40,14 @@
       color var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
+  .cinder-number-input__adornment {
+    display: inline-flex;
+    align-items: center;
+    padding-inline: var(--cinder-space-2);
+    color: var(--cinder-text-muted);
+    white-space: nowrap;
+  }
+
   @media (hover: hover) {
     .cinder-number-input__stepper:hover:not(:disabled) {
       background: var(--cinder-surface-hover);

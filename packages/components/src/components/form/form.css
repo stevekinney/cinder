@@ -1,0 +1,10 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+@layer cinder.components {
+  .cinder-form {
+    inline-size: 100%;
+  }
+  .cinder-form[data-cinder-submitting] {
+    cursor: progress;
+  }
+}
