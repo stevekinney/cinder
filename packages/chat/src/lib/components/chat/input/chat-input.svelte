@@ -276,7 +276,8 @@
       file,
       previewUrl: URL.createObjectURL(file),
       kind,
-      status: kind === 'code' ? 'pending' : 'ready',
+      status: kind === 'code' && restoreText === undefined ? 'pending' : 'ready',
+      ...(restoreText === undefined ? {} : { textContent: restoreText }),
       ...(restoreText === undefined ? {} : { restoreText }),
       ...(restoreRange === undefined ? {} : { restoreRange }),
     };
@@ -286,7 +287,7 @@
     announcer.announce(`${KIND_LABELS[kind]} attached: ${file.name}`);
 
     // Fire-and-forget text extraction for code files
-    if (kind === 'code') {
+    if (kind === 'code' && restoreText === undefined) {
       file.text().then(
         (text) => {
           attachments = attachments.map((a) =>
@@ -438,13 +439,17 @@
       return;
     }
 
+    const submittedContent = trimmedContent || promotedPaste?.restoreText || '';
     const message: MessageInput = {
       role: 'user',
-      content: trimmedContent || promotedPaste?.restoreText || '',
+      content: submittedContent,
     };
 
     // Call onsubmit callback
-    onsubmit?.(message, readyAttachments);
+    onsubmit?.(
+      message,
+      readyAttachments.filter((attachment) => attachment.id !== promotedPaste?.id),
+    );
 
     // In standalone mode, prevent default form submission
     if (!isFormActionMode) {
@@ -464,7 +469,7 @@
       // In form action mode, sync the bound value with trimmed content
       // so the hidden input sends the same content as the callback.
       // This fixes debounce lag and ensures consistent data.
-      value = trimmedContent;
+      value = submittedContent;
     }
   }
 
@@ -514,7 +519,49 @@
   // Fires after `bind:value` has already applied the textarea's new value
   // (Svelte merges the binding's own input listener with this handler on the
   // same event), so `value` here is always current — never one keystroke stale.
+  let previousComposerValue = value;
+
   function handleInput(event: Event): void {
+    if (value !== previousComposerValue) {
+      let prefixLength = 0;
+      while (
+        prefixLength < previousComposerValue.length &&
+        prefixLength < value.length &&
+        previousComposerValue[prefixLength] === value[prefixLength]
+      ) {
+        prefixLength += 1;
+      }
+      let suffixLength = 0;
+      while (
+        suffixLength < previousComposerValue.length - prefixLength &&
+        suffixLength < value.length - prefixLength &&
+        previousComposerValue[previousComposerValue.length - 1 - suffixLength] ===
+          value[value.length - 1 - suffixLength]
+      ) {
+        suffixLength += 1;
+      }
+      const replacedEnd = previousComposerValue.length - suffixLength;
+      const insertedLength = value.length - prefixLength - suffixLength;
+      const translatePosition = (position: number): number => {
+        if (position <= prefixLength) return position;
+        if (position >= replacedEnd) {
+          return position + insertedLength - (replacedEnd - prefixLength);
+        }
+        return prefixLength + insertedLength;
+      };
+      attachments = attachments.map((attachment) =>
+        attachment.restoreRange
+          ? {
+              ...attachment,
+              restoreRange: {
+                start: translatePosition(attachment.restoreRange.start),
+                end: translatePosition(attachment.restoreRange.end),
+              },
+            }
+          : attachment,
+      );
+      previousComposerValue = value;
+    }
     oncomposerinput?.(value, event);
   }
 

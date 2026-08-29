@@ -5,7 +5,13 @@ const chatCss = await Bun.file(`${import.meta.dir}/chat.css`).text();
 
 describe('Chat scoped typography ramp', () => {
   test('publishes one rem-based control that drives a clamped multi-step ramp', () => {
-    expect(variables).toEqual(['--cinder-chat-font-size']);
+    expect(variables).toEqual([
+      '--cinder-chat-font-size',
+      '--cinder-text-base',
+      '--cinder-text-lg',
+      '--cinder-text-sm',
+      '--cinder-text-xs',
+    ]);
     expect(chatCss).toContain('--cinder-chat-font-size: 1rem');
 
     for (const step of ['4xs', '3xs', 'xs', 'sm', 'base', 'lg']) {
@@ -19,5 +25,8 @@ describe('Chat scoped typography ramp', () => {
 
     expect(chatCss).toMatch(/--_cinder-chat-text-xs:\s*clamp\(/);
     expect(chatCss).toMatch(/--_cinder-chat-text-base:\s*clamp\(/);
+    for (const step of ['xs', 'sm', 'base', 'lg']) {
+      expect(chatCss).toContain(`--cinder-text-${step}: var(--_cinder-chat-text-${step})`);
+    }
   });
 });

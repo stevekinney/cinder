@@ -119,10 +119,14 @@ describe('ChatInput', () => {
 
   test('submits a ready promoted paste without requiring unrelated composer text', async () => {
     const submitted: MessageInput[] = [];
+    const submittedAttachments: unknown[][] = [];
     const { container } = render(ChatInput, {
       id: 'submitted-large-paste-composer',
       largePasteThreshold: 5,
-      onsubmit: (message: MessageInput) => submitted.push(message),
+      onsubmit: (message: MessageInput, attachments: unknown[]) => {
+        submitted.push(message);
+        submittedAttachments.push(attachments);
+      },
     });
     const form = container.querySelector('form')!;
 
@@ -135,6 +139,7 @@ describe('ChatInput', () => {
     await fireEvent.submit(form);
 
     expect(submitted).toEqual([{ content: 'sixteen characters', role: 'user' }]);
+    expect(submittedAttachments).toEqual([[]]);
   });
 
   test('restores a promoted paste at its original selection', async () => {
@@ -159,6 +164,26 @@ describe('ChatInput', () => {
     expect(composer.value).toBe('before replacement text after');
     expect(composer.selectionStart).toBe(23);
     expect(composer.selectionEnd).toBe(23);
+  });
+
+  test('tracks the promoted paste restoration range through composer edits', async () => {
+    const { container } = render(ChatInput, {
+      id: 'edited-large-paste-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'replacement text' },
+    });
+
+    await fireEvent.input(composer, { target: { value: 'prefix before SELECT after' } });
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    await tick();
+
+    expect(composer.value).toBe('prefix before replacement text after');
   });
 
   test('shows an instructional copy-drop overlay with copy semantics', async () => {

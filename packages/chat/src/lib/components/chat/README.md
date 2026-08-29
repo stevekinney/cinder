@@ -595,6 +595,10 @@ data: content } }` when adding composer attachments to conversation state.
 <!-- generated:variables:start -->
 
 - `--cinder-chat-font-size`
+- `--cinder-text-base`
+- `--cinder-text-lg`
+- `--cinder-text-sm`
+- `--cinder-text-xs`
 <!-- generated:variables:end -->
 
 ## Subcomponents

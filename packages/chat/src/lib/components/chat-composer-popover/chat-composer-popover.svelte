@@ -89,11 +89,17 @@
   const query = $derived(activeMatch?.query ?? '');
   const trigger = $derived(activeMatch?.trigger ?? triggers[0] ?? '/');
   const filteredItems = $derived.by(() => {
-    if (!activeMatch) return [] as TItem[];
-    return [
-      ...filter(itemDefinitions, activeMatch.query, activeMatch.trigger),
-      ...sourceGroups.flatMap((group) => group.items),
-    ];
+    if (!activeMatch) return [] as Array<{ item: TItem; selectionValue: string }>;
+    const staticItems = filter(itemDefinitions, activeMatch.query, activeMatch.trigger).map(
+      (item, index) => ({ item, selectionValue: JSON.stringify(['static', index, item.value]) }),
+    );
+    const sourcedItems = sourceGroups.flatMap((group) =>
+      group.items.map((item, index) => ({
+        item,
+        selectionValue: JSON.stringify([group.id, index, item.value]),
+      })),
+    );
+    return [...staticItems, ...sourcedItems];
   });
 
   $effect(() => {
@@ -305,7 +311,7 @@
       if (activeItem) {
         event.preventDefault();
         event.stopPropagation();
-        handleSelect({ value: activeItem.value, query });
+        handleSelect({ value: activeItem.selectionValue, query });
       }
       return;
     }
@@ -353,12 +359,15 @@
   }
 
   function handleSelect(selection: { value: string; query: string }): void {
-    const selectedItem = filteredItems.find((candidate) => candidate.value === selection.value);
-    if (!selectedItem || !activeMatch) return;
+    const selectedRow = filteredItems.find(
+      (candidate) => candidate.selectionValue === selection.value,
+    );
+    if (!selectedRow || !activeMatch) return;
+    const selectedItem = selectedRow.item;
 
     const detail: ChatComposerPopoverSelection<TItem> = {
       item: selectedItem,
-      value: selection.value,
+      value: selectedItem.value,
       query: activeMatch.query,
       trigger: activeMatch.trigger,
       range: {
@@ -399,9 +408,9 @@
     onStateChange={handleStateChange}
   >
     {#snippet items()}
-      {#each filter(itemDefinitions, query, trigger) as command (command.value)}
+      {#each filter(itemDefinitions, query, trigger) as command, commandIndex (`static-${commandIndex}-${command.value}`)}
         <CommandItem
-          value={command.value}
+          value={JSON.stringify(['static', commandIndex, command.value])}
           disabled={command.disabled === true}
           description={item ? '' : (command.description ?? '')}
           accessibleLabel={command.description
@@ -418,9 +427,9 @@
       {/each}
       {#each sourceGroups as group (group.id)}
         {#if group.items.length > 0}
-          {#each group.items as command, commandIndex (command.value)}
+          {#each group.items as command, commandIndex (`${group.id}-${commandIndex}-${command.value}`)}
             <CommandItem
-              value={command.value}
+              value={JSON.stringify([group.id, commandIndex, command.value])}
               disabled={command.disabled === true}
               description={item ? '' : (command.description ?? '')}
               accessibleLabel={`${group.label}: ${command.description ? `${command.label}, ${command.description}` : command.label}`}

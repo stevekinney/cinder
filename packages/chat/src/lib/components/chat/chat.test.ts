@@ -825,7 +825,7 @@ describe('Chat — interactions', () => {
     );
 
     expect(onrollback).not.toHaveBeenCalled();
-    expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(3);
+    expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(4);
     expect(getByRole('dialog', { name: 'Rollback conversation?' })).not.toBeNull();
 
     await fireEvent.click(getByRole('button', { name: 'Rollback conversation' }));

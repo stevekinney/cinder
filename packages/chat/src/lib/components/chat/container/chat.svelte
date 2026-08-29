@@ -381,6 +381,9 @@
   const messageIndexById = $derived(
     new Map(messages.map((message, index) => [message.id, index] as const)),
   );
+  $effect(() => {
+    if (rollbackMessageId && rollbackBoundaryIndex < 0) rollbackMessageId = null;
+  });
 
   function confirmRollback(): void {
     if (!rollbackMessageId) return;
@@ -2582,7 +2585,7 @@
         oneditingchange={(editing) => handleEditingChange(message.id, editing)}
         onrollback={onrollback ? (messageId) => (rollbackMessageId = messageId) : undefined}
         rollbackDiscarded={rollbackBoundaryIndex >= 0 &&
-          (messageIndexById.get(message.id) ?? -1) > rollbackBoundaryIndex}
+          (messageIndexById.get(message.id) ?? -1) >= rollbackBoundaryIndex}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}

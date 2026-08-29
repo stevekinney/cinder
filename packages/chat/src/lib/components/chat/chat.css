@@ -44,6 +44,10 @@
     --_cinder-chat-text-sm: clamp(0.8125rem, calc(var(--cinder-chat-font-size) - 0.125rem), 1rem);
     --_cinder-chat-text-base: clamp(0.875rem, var(--cinder-chat-font-size), 1.125rem);
     --_cinder-chat-text-lg: clamp(1rem, calc(var(--cinder-chat-font-size) + 0.125rem), 1.25rem);
+    --cinder-text-xs: var(--_cinder-chat-text-xs);
+    --cinder-text-sm: var(--_cinder-chat-text-sm);
+    --cinder-text-base: var(--_cinder-chat-text-base);
+    --cinder-text-lg: var(--_cinder-chat-text-lg);
 
     container-type: inline-size;
     display: flex;

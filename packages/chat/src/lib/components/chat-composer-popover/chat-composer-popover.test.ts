@@ -150,6 +150,34 @@ describe('ChatComposerPopover', () => {
     expect(document.body.textContent).not.toContain('Loading suggestions');
   });
 
+  test('selects the correct occurrence when source items share a value', async () => {
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'people',
+          label: 'People',
+          load: async () => [
+            { value: 'shared', label: 'First result' },
+            { value: 'shared', label: 'Second result' },
+          ],
+        },
+      ],
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) => {
+        selected.push(selection);
+      },
+    });
+
+    const composer = await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('Second result'));
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    await fireEvent.keyDown(composer, { key: 'Enter' });
+
+    expect(selected[0]?.item.label).toBe('Second result');
+    expect(selected[0]?.value).toBe('shared');
+  });
+
   test('preserves the active static suggestion when an async source resolves', async () => {
     let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
     const pending = new Promise<TestComposerCommand[]>((resolve) => {

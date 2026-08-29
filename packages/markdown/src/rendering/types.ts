@@ -40,7 +40,7 @@ export interface RenderOptions {
   stripLinks?: boolean;
 
   /**
-   * Wrap top-level code blocks and tables in stable node placeholders for
+   * Wrap code blocks and tables at any nesting depth in stable node placeholders for
    * component-level rendering overrides.
    * @default false
    */

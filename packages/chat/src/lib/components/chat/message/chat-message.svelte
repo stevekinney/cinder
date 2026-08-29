@@ -278,7 +278,7 @@
   const copyHtml = $derived.by(() => {
     const escapeHtml = (value: string): string =>
       value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
-    const body = `<div data-cinder-chat-message>${escapeHtml(textContent).replaceAll('\n', '<br>')}</div>`;
+    const body = `<div data-cinder-chat-message style="white-space: pre-wrap">${escapeHtml(textContent)}</div>`;
     const attachmentChips = imageParts
       .map(
         (part, index) =>
@@ -287,7 +287,13 @@
       .join('');
     return `${body}${attachmentChips}`;
   });
-  const copyImage = $derived(imageParts[0]?.image.url);
+  const copyValue = $derived(
+    textContent || imageParts.map((part) => part.image.text || 'Image attachment').join('\n'),
+  );
+  const copyImage = $derived.by(() => {
+    const url = imageParts[0]?.image.url;
+    return url?.startsWith('blob:') || url?.startsWith('data:') ? url : undefined;
+  });
 
   // Content truncation threshold (characters)
   const TRUNCATE_THRESHOLD = 500;
@@ -412,15 +418,15 @@
     {/if}
   </article>
 
-  {#if actions || (showDefaultActions && textContent) || canEdit || (message.role === 'user' && onrollback)}
+  {#if actions || (showDefaultActions && copyValue) || canEdit || (message.role === 'user' && onrollback)}
     <footer class="chat-message-footer" role="none">
       <div class="chat-message-actions" role="group" aria-label="Message actions">
         {#if actions}
           {@render actions()}
         {/if}
-        {#if showDefaultActions && textContent}
+        {#if showDefaultActions && copyValue}
           <CopyButton
-            value={textContent}
+            value={copyValue}
             html={copyHtml}
             {...copyImage ? { image: copyImage } : {}}
             label="Copy message"
