@@ -1,0 +1,17 @@
+@layer cinder.components {
+  .cinder-terminal-output {
+    margin: 0;
+    padding: var(--cinder-space-3);
+    overflow: auto;
+    color: var(--cinder-text-default);
+    background: var(--cinder-surface-inset);
+    font-family: var(--cinder-font-mono);
+    white-space: pre;
+  }
+  .cinder-terminal-output__line {
+    min-block-size: 1lh;
+  }
+  .cinder-terminal-output span[data-bold] {
+    font-weight: 700;
+  }
+}
