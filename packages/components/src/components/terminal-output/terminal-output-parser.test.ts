@@ -14,6 +14,17 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X', bold: false }]]);
     expect(parseTerminalOutput('e\u0301\rX')).toEqual([[{ text: 'X', bold: false }]]);
   });
+  test('preserves split surrogate pairs and combining marks across appended chunks', () => {
+    const surrogateParser = new TerminalOutputParser();
+    surrogateParser.append('\ud83d');
+    surrogateParser.append('\ude00\rX');
+    expect(surrogateParser.lines()).toEqual([[{ text: 'X', bold: false }]]);
+
+    const combiningParser = new TerminalOutputParser();
+    combiningParser.append('e');
+    combiningParser.append('\u0301\rY');
+    expect(combiningParser.lines()).toEqual([[{ text: 'Y', bold: false }]]);
+  });
   test('erase to end preserves text before the cursor', () =>
     expect(parseTerminalOutput('old\u001b[0Knew')).toEqual([[{ text: 'oldnew', bold: false }]]));
   test('CSI sequences stop at their final byte and preserve later text', () =>

@@ -46,6 +46,7 @@ export class TerminalOutputParser {
   #foreground: TerminalForeground | undefined;
   #bold = false;
   #pending = '';
+  #pendingGrapheme = '';
 
   reset(): void {
     this.#lines = [[]];
@@ -54,11 +55,13 @@ export class TerminalOutputParser {
     this.#foreground = undefined;
     this.#bold = false;
     this.#pending = '';
+    this.#pendingGrapheme = '';
   }
 
   append(value: string): void {
-    const input = this.#pending + value;
+    const input = this.#pending + this.#pendingGrapheme + value;
     this.#pending = '';
+    this.#pendingGrapheme = '';
     for (let index = 0; index < input.length; index += 1) {
       const character = input[index]!;
       if ((character === '\u001b' && input[index + 1] === ']') || character === '\u009d') {
@@ -135,7 +138,13 @@ export class TerminalOutputParser {
         continue;
       }
       const grapheme = graphemeSegmenter.segment(input.slice(index)).containing(0)?.segment;
-      if (grapheme) index += grapheme.length - 1;
+      if (grapheme) {
+        index += grapheme.length - 1;
+        if (index === input.length - 1) {
+          this.#pendingGrapheme = grapheme;
+          break;
+        }
+      }
       const line = this.#lines[this.#line] ?? (this.#lines[this.#line] = []);
       line[this.#column++] = {
         character: grapheme ?? character,
@@ -146,15 +155,23 @@ export class TerminalOutputParser {
   }
 
   lines(): TerminalLine[] {
-    return toLines(this.#lines);
+    if (!this.#pendingGrapheme) return toLines(this.#lines);
+    const snapshot = this.#lines.map((line) => line.slice());
+    const line = snapshot[this.#line] ?? (snapshot[this.#line] = []);
+    line[this.#column] = this.cell(this.#pendingGrapheme);
+    return toLines(snapshot);
   }
 
-  private blankCell(): Cell {
+  private cell(character: string): Cell {
     return {
-      character: ' ',
+      character,
       ...(this.#foreground === undefined ? {} : { foreground: this.#foreground }),
       bold: this.#bold,
     };
+  }
+
+  private blankCell(): Cell {
+    return this.cell(' ');
   }
 
   private applySgr(command: string): void {

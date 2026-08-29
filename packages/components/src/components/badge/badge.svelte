@@ -64,7 +64,6 @@
       ? undefined
       : subscriptionStateConfigurations[subscriptionState],
   );
-  const resolvedVariant = $derived(subscriptionStateConfiguration?.variant ?? variant);
   const severityVariant = $derived<BadgeVariant | undefined>(
     severity === 'critical'
       ? undefined
@@ -82,7 +81,7 @@
 
 <span
   class={classNames('cinder-badge', customClassName)}
-  data-cinder-variant={severityVariant ?? resolvedVariant}
+  data-cinder-variant={subscriptionStateConfiguration?.variant ?? severityVariant ?? variant}
   data-cinder-severity={severity}
   data-cinder-size={size}
   data-cinder-monospace={monospace ? '' : undefined}

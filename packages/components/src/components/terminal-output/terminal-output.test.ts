@@ -34,7 +34,7 @@ describe('TerminalOutput', () => {
     tokens.forEach((token, index) => {
       expect(css).toMatch(
         new RegExp(
-          `data-foreground='${index}'\\]\\s*\\{\\s*color:\\s*var\\(--cinder-terminal-ansi-${token}\\);`,
+          `data-cinder-foreground='${index}'\\]\\s*\\{\\s*color:\\s*var\\(--cinder-terminal-ansi-${token}\\);`,
         ),
       );
     });
@@ -45,6 +45,15 @@ describe('TerminalOutput', () => {
     const output = container.querySelector('.cinder-terminal-output');
     expect(output?.getAttribute('role')).toBe('log');
     expect(output?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('namespaces ANSI run-state data attributes', () => {
+    const { container } = render(TerminalOutput, { props: { value: '\u001b[1;31merror' } });
+    const run = container.querySelector('.cinder-terminal-output span');
+    expect(run?.getAttribute('data-cinder-foreground')).toBe('1');
+    expect(run?.hasAttribute('data-cinder-bold')).toBe(true);
+    expect(run?.hasAttribute('data-foreground')).toBe(false);
+    expect(run?.hasAttribute('data-bold')).toBe(false);
   });
 
   test('pauses following when the user scrolls away and resumes at the end', async () => {

@@ -102,6 +102,18 @@ describe('QuotaMeter', () => {
     );
   });
 
+  test('formats the Unix epoch when resetsAt is zero', () => {
+    const { container } = render(QuotaMeter, {
+      used: 24,
+      resetsAt: 0,
+      locale: 'en-US',
+      timeZone: 'UTC',
+    });
+    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toContain(
+      'resets Jan 1, 1970',
+    );
+  });
+
   test('documents required props in component usage examples', async () => {
     const [quotaReadme, codeLocationReadme, citationReadme] = await Promise.all([
       Bun.file(new URL('../quota-meter/README.md', import.meta.url)).text(),

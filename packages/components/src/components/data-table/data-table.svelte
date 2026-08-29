@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts" generics="Row extends DataTableRow">
-  import { tick, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
 
   import Checkbox from '../checkbox/checkbox.svelte';
   import TableBody from '../table-body/table-body.svelte';
@@ -78,6 +78,7 @@
   let shouldStickAfterAppend = false;
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   let columnWidths = $state<Record<string, number>>(Object.create(null));
+  let activeResizeCleanup: (() => void) | undefined;
   const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
   /**
@@ -181,6 +182,7 @@
   }
   function handleResizePointer(event: PointerEvent, column: DataTableColumn<Row>): void {
     if (!resizable || event.button !== 0) return;
+    activeResizeCleanup?.();
     event.preventDefault();
     const startX = event.clientX;
     const startWidth = measuredColumnWidth(event, column);
@@ -193,6 +195,10 @@
     };
     const end = (endEvent: PointerEvent) => {
       if (endEvent.pointerId !== event.pointerId) return;
+      activeResizeCleanup?.();
+      activeResizeCleanup = undefined;
+    };
+    activeResizeCleanup = () => {
       document.removeEventListener('pointermove', move);
       document.removeEventListener('pointerup', end);
       document.removeEventListener('pointercancel', end);
@@ -201,6 +207,8 @@
     document.addEventListener('pointerup', end);
     document.addEventListener('pointercancel', end);
   }
+
+  onDestroy(() => activeResizeCleanup?.());
 
   function resolveRowId(row: Row, index: number): string {
     if (getRowId) return getRowId(row, index);

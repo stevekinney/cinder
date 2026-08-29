@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import type { DataTableSelectionMode as RootDataTableSelectionMode } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -93,6 +94,11 @@ describe('DataTable — table structure', () => {
 });
 
 describe('DataTable — column resizing', () => {
+  test('retains cleanup for active document resize listeners', () => {
+    const source = readFileSync(new URL('./data-table.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('let activeResizeCleanup');
+    expect(source).toContain('onDestroy(() => activeResizeCleanup?.())');
+  });
   test('renders keyboard-accessible separators and clamps arrow-key resizing', async () => {
     const resized: Array<[string, number]> = [];
     const { getByRole } = render(DataTable, {

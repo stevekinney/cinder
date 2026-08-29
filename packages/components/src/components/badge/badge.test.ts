@@ -147,6 +147,16 @@ describe('Badge — subscription state preset', () => {
     );
   });
 
+  test('subscriptionState tone remains authoritative when severity is also supplied', () => {
+    const { container } = render(Badge, {
+      subscriptionState: 'active',
+      severity: 'high',
+    });
+    expect(container.querySelector('.cinder-badge')?.getAttribute('data-cinder-variant')).toBe(
+      'success',
+    );
+  });
+
   test('subscriptionState children override the preset label', async () => {
     const { container } = render(Badge, {
       subscriptionState: 'active',

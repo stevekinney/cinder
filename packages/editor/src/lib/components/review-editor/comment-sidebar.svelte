@@ -56,6 +56,7 @@
 
   let showConfirmClear = $state(false);
   const actionsTriggerId = $derived(`${id}-actions-trigger`);
+  const documentCommentTriggerId = $derived(`${id}-add-comment`);
 
   /** Whether the user is composing a new document-level comment */
   let composingDocumentComment = $state(false);
@@ -113,7 +114,12 @@
 
   async function restoreActionsFocus(): Promise<void> {
     await tick();
-    document.getElementById(actionsTriggerId)?.focus();
+    const actionsTrigger = document.getElementById(actionsTriggerId) as HTMLButtonElement | null;
+    if (actionsTrigger && !actionsTrigger.disabled) {
+      actionsTrigger.focus();
+      return;
+    }
+    document.getElementById(documentCommentTriggerId)?.focus();
   }
 
   function handleConfirmClear() {
@@ -136,6 +142,7 @@
 
     {#if !readonly}
       <Button
+        id={documentCommentTriggerId}
         variant="ghost"
         size="xs"
         aria-label={composingDocumentComment ? 'Cancel document comment' : 'Add document comment'}

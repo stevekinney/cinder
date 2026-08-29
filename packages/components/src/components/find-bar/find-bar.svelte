@@ -14,9 +14,9 @@
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
   import { onDestroy } from 'svelte';
-  import FormField from '../form-field/form-field.svelte';
-  import Input from '../input/input.svelte';
-  import Button from '../button/button.svelte';
+  import FormField from '@lostgradient/cinder/form-field';
+  import Input from '@lostgradient/cinder/input';
+  import Button from '@lostgradient/cinder/button';
   import X from 'lucide-svelte/icons/x';
   import ChevronLeft from 'lucide-svelte/icons/chevron-left';
   import ChevronRight from 'lucide-svelte/icons/chevron-right';
