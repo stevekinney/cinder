@@ -46,7 +46,7 @@
     await tick();
     const target =
       rows.length === 0
-        ? editorElement?.querySelector<HTMLButtonElement>('.cinder-button')
+        ? editorElement?.querySelector<HTMLButtonElement>('.cinder-key-value-editor__add')
         : editorElement?.querySelectorAll<HTMLButtonElement>(
             '.cinder-key-value-editor__row button',
           )[Math.min(index - 1 >= 0 ? index - 1 : index, rows.length - 1)];
@@ -60,14 +60,15 @@
 </script>
 
 <div bind:this={editorElement} {...rest} class={classNames('cinder-key-value-editor', className)}>
-  <Grid
-    columns="minmax(8rem, 1fr) minmax(12rem, 2fr) auto"
-    gap="var(--cinder-space-2)"
-    class="cinder-key-value-editor__rows"
-    role="list"
-  >
+  <Grid columns={1} gap="var(--cinder-space-2)" class="cinder-key-value-editor__rows" role="list">
     {#each rows as row, index (index)}
-      <div class="cinder-key-value-editor__row" role="listitem">
+      <Grid
+        columns="minmax(8rem, 1fr) minmax(12rem, 2fr) auto"
+        gap="var(--cinder-space-2)"
+        narrowCollapseEnabled
+        class="cinder-key-value-editor__row"
+        role="listitem"
+      >
         <Input
           id={`${instanceId}-key-${index}`}
           label="Key"
@@ -89,13 +90,14 @@
           aria-label={removeLabel(row.key)}
           onclick={() => removeRow(index)}>Remove</Button
         >
-      </div>
+      </Grid>
     {/each}
   </Grid>
   <Button
     type="button"
     variant="secondary"
     size="sm"
+    class="cinder-key-value-editor__add"
     onclick={() => commit([...rows, { key: '', value: '' }])}>{addLabel}</Button
   >
 </div>

@@ -108,14 +108,13 @@ describe('KeyValueEditor', () => {
   });
 
   test('stacks key-value rows within narrow containers', () => {
-    const css = readFileSync(new URL('./key-value-editor.css', import.meta.url), 'utf8');
+    const source = readFileSync(new URL('./key-value-editor.svelte', import.meta.url), 'utf8');
     const { container } = render(KeyValueEditor, {
       entries: [{ key: 'Host', value: 'localhost' }],
     });
     expect(container.querySelector('.cinder-key-value-editor__row')).not.toBeNull();
-    expect(css).toContain('@container cinder-grid (max-width: 48rem)');
-    expect(css).toContain('grid-column: 1 / -1;');
-    expect(css).toContain('grid-template-columns: minmax(0, 1fr) auto;');
+    expect(source).toContain('narrowCollapseEnabled');
+    expect(source).toContain('columns="minmax(8rem, 1fr) minmax(12rem, 2fr) auto"');
   });
 
   test('composes primitives through public component subpaths', async () => {
