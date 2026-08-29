@@ -80,6 +80,21 @@ describe('Meter', () => {
     expect(element?.getAttribute('aria-label')).toBe('Service health: Unknown');
   });
 
+  test('falls back to an explicit label for a known verdict with an empty label', () => {
+    const { container } = render(Meter, {
+      props: {
+        value: 20,
+        verdict: { level: 'low', label: '   ' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const element = container.querySelector('[role="meter"]');
+
+    expect(element?.querySelector('.cinder-meter__label')?.textContent).toBe('Low');
+    expect(element?.getAttribute('aria-valuetext')).toBe('Low');
+    expect(element?.getAttribute('data-cinder-state')).toBe('low');
+  });
+
   test('ignores a malformed verdict instead of throwing', () => {
     const { container } = render(Meter, {
       props: {

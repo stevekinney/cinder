@@ -95,6 +95,11 @@
       .cinder-spinner__arc-indicator {
       animation: none;
     }
+
+    :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off'])
+      .cinder-spinner[data-cinder-variant='arc'] {
+      --cinder-spinner-indicator: currentColor;
+    }
   }
 
   :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on']) .cinder-spinner {
@@ -109,6 +114,11 @@
   :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
     :is(.cinder-spinner__arc, .cinder-spinner__arc-indicator) {
     animation: none;
+  }
+
+  :root:is([data-cinder-reduced-motion='true'], [data-reduced-motion='on'])
+    .cinder-spinner[data-cinder-variant='arc'] {
+    --cinder-spinner-indicator: currentColor;
   }
 
   /* ----------------------------------------

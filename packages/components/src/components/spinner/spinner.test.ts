@@ -50,6 +50,11 @@ describe('Spinner', () => {
     expect(css).toContain('stroke-dashoffset: 32');
     expect(css).toContain('stroke-dashoffset: 50');
     expect(css).toContain('stroke-dashoffset: 14');
+    expect(
+      css.match(
+        /\.cinder-spinner\[data-cinder-variant='arc'\]\s*\{[^}]*--cinder-spinner-indicator: currentColor/gs,
+      ),
+    ).toHaveLength(2);
   });
 
   test('applies class prop alongside cinder-spinner', () => {

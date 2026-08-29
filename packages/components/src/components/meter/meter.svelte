@@ -60,6 +60,9 @@
   const verdictLabel = $derived.by(() => {
     const label = (verdict as { label?: unknown } | undefined)?.label;
     if (typeof label === 'string' && label.trim().length > 0) return label.trim();
+    if (verdictLevel === 'low') return 'Low';
+    if (verdictLevel === 'optimum') return 'Optimum';
+    if (verdictLevel === 'high') return 'High';
     return isUnknownVerdict ? 'Unknown' : undefined;
   });
   const verdictLabelId = $derived(verdictLabel ? `${generatedId}-verdict` : undefined);
@@ -205,7 +208,7 @@
       devWarn(
         isUnknownVerdict
           ? '[cinder/Meter] an unknown verdict requires a non-empty label. Falling back to "Unknown".'
-          : '[cinder/Meter] a known verdict requires a non-empty label for visible and accessible value text.',
+          : `[cinder/Meter] a ${verdictLevel} verdict requires a non-empty label. Falling back to "${verdictLabel}".`,
       );
     }
     const hasAriaLabel = normalizedAriaLabel !== undefined;
