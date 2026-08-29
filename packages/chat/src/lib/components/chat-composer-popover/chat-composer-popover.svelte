@@ -15,6 +15,7 @@
    * @a11yPattern WAI-ARIA Combobox with Listbox Popup
    * @keyboardShortcut ArrowUp / ArrowDown | Moves the active suggestion.
    * @keyboardShortcut Enter | Selects the active suggestion.
+   * @keyboardShortcut Tab | Selects the active suggestion and keeps focus in the composer.
    * @keyboardShortcut Escape | Dismisses the suggestion popover.
    * @a11yNote Passes combobox role and aria-expanded, aria-controls, aria-activedescendant, and aria-autocomplete through to ChatInput's composer overlay API.
    */
@@ -24,6 +25,7 @@
     ChatComposerPopoverItemSnippetContext,
     ChatComposerPopoverProps,
     ChatComposerPopoverSelection,
+    ChatComposerPopoverSource,
     ChatComposerPopoverTriggerMatch,
   } from './chat-composer-popover.types.ts';
   export {
@@ -46,13 +48,15 @@
     ChatComposerPopoverItem,
     ChatComposerPopoverProps,
     ChatComposerPopoverSelection,
+    ChatComposerPopoverSource,
     ChatComposerPopoverTriggerMatch,
   } from './chat-composer-popover.types.ts';
 
   let {
     id,
     value = $bindable(''),
-    items,
+    items: itemDefinitions = [],
+    sources = [],
     triggers = ['/', '@'],
     label = 'Composer suggestions',
     placement = 'top-start',
@@ -76,13 +80,52 @@
   let lastSyncedValue = $state(value);
   let suppressNextValueSync = false;
   let suppressCommittedSelectionSync = false;
+  let sourceRequestId = 0;
+  let loadingSources = $state(false);
+  let sourceGeneration = $state(0);
+  let sourceGroups = $state<Array<{ id: string; label: string; items: readonly TItem[] }>>([]);
 
   const emptyContent = $derived(empty);
   const query = $derived(activeMatch?.query ?? '');
   const trigger = $derived(activeMatch?.trigger ?? triggers[0] ?? '/');
   const filteredItems = $derived.by(() => {
     if (!activeMatch) return [] as TItem[];
-    return [...filter(items, activeMatch.query, activeMatch.trigger)];
+    return [
+      ...filter(itemDefinitions, activeMatch.query, activeMatch.trigger),
+      ...sourceGroups.flatMap((group) => group.items),
+    ];
+  });
+
+  $effect(() => {
+    const match = activeMatch;
+    const requestId = ++sourceRequestId;
+    if (!match || sources.length === 0) {
+      sourceGroups = [];
+      loadingSources = false;
+      return;
+    }
+
+    loadingSources = true;
+    void Promise.all(
+      sources.map(async (source: ChatComposerPopoverSource<TItem>) => {
+        const candidates = await source.load({ query: match.query, trigger: match.trigger });
+        const filtered = filter(candidates, match.query, match.trigger);
+        const limit = Math.max(0, Math.floor(source.limit ?? filtered.length));
+        return { id: source.id, label: source.label, items: filtered.slice(0, limit) };
+      }),
+    ).then(
+      (groups) => {
+        if (requestId !== sourceRequestId) return;
+        sourceGroups = groups;
+        loadingSources = false;
+        sourceGeneration += 1;
+      },
+      () => {
+        if (requestId !== sourceRequestId) return;
+        sourceGroups = [];
+        loadingSources = false;
+      },
+    );
   });
 
   const composerProps = $derived({
@@ -234,6 +277,28 @@
       return;
     }
 
+    if (
+      event.key === 'Tab' &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      const activeOption = activeItemId ? document.getElementById(activeItemId) : null;
+      const optionIndex = activeOption
+        ? Array.from(activeOption.parentElement?.querySelectorAll('[role="option"]') ?? []).indexOf(
+            activeOption,
+          )
+        : -1;
+      const activeItem = filteredItems[optionIndex];
+      if (activeItem) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleSelect({ value: activeItem.value, query });
+      }
+      return;
+    }
+
     const isNavigationKey =
       event.key === 'ArrowDown' ||
       event.key === 'ArrowUp' ||
@@ -307,44 +372,71 @@
 
 {@render composer(composerProps)}
 
-<CommandMenu
-  bind:open
-  {anchor}
-  {caretIndex}
-  {query}
-  {placement}
-  {offset}
-  {label}
-  {listboxId}
-  onSelect={handleSelect}
-  onDismiss={() => dismiss({ restoreFocus: false })}
-  onStateChange={handleStateChange}
->
-  {#snippet items()}
-    {#each filteredItems as command (command.value)}
-      <CommandItem
-        value={command.value}
-        disabled={command.disabled === true}
-        description={item ? '' : (command.description ?? '')}
-        accessibleLabel={command.description
-          ? `${command.label}, ${command.description}`
-          : command.label}
-        selectionMode="parent"
-      >
-        {#if item}
-          {@render item({ item: command, query, trigger })}
-        {:else}
-          {command.label}
+{#key sourceGeneration}
+  <CommandMenu
+    bind:open
+    {anchor}
+    {caretIndex}
+    {query}
+    {placement}
+    {offset}
+    {label}
+    {listboxId}
+    class="chat-composer-popover"
+    onSelect={handleSelect}
+    onDismiss={() => dismiss({ restoreFocus: false })}
+    onStateChange={handleStateChange}
+  >
+    {#snippet items()}
+      {#each filter(itemDefinitions, query, trigger) as command (command.value)}
+        <CommandItem
+          value={command.value}
+          disabled={command.disabled === true}
+          description={item ? '' : (command.description ?? '')}
+          accessibleLabel={command.description
+            ? `${command.label}, ${command.description}`
+            : command.label}
+          selectionMode="parent"
+        >
+          {#if item}
+            {@render item({ item: command, query, trigger })}
+          {:else}
+            {command.label}
+          {/if}
+        </CommandItem>
+      {/each}
+      {#each sourceGroups as group (group.id)}
+        {#if group.items.length > 0}
+          {#each group.items as command, commandIndex (command.value)}
+            <CommandItem
+              value={command.value}
+              disabled={command.disabled === true}
+              description={item ? '' : (command.description ?? '')}
+              accessibleLabel={`${group.label}: ${command.description ? `${command.label}, ${command.description}` : command.label}`}
+              selectionMode="parent"
+            >
+              {#if commandIndex === 0}
+                <span class="chat-composer-popover__group-label">{group.label}</span>
+              {/if}
+              {#if item}
+                {@render item({ item: command, query, trigger })}
+              {:else}
+                {command.label}
+              {/if}
+            </CommandItem>
+          {/each}
         {/if}
-      </CommandItem>
-    {/each}
-  {/snippet}
+      {/each}
+    {/snippet}
 
-  {#snippet empty()}
-    {#if emptyContent}
-      {@render emptyContent()}
-    {:else}
-      No suggestions
-    {/if}
-  {/snippet}
-</CommandMenu>
+    {#snippet empty()}
+      {#if loadingSources}
+        Loading suggestions
+      {:else if emptyContent}
+        {@render emptyContent()}
+      {:else}
+        No suggestions
+      {/if}
+    {/snippet}
+  </CommandMenu>
+{/key}

@@ -79,6 +79,55 @@ afterEach(() => {
 });
 
 describe('ChatComposerPopover', () => {
+  test('loads grouped async sources and enforces each source limit', async () => {
+    let loadCount = 0;
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'files',
+          label: 'Files',
+          limit: 1,
+          load: () => {
+            loadCount += 1;
+            return pending;
+          },
+        },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() =>
+      expect(document.body.querySelector('.cinder-command-menu__empty')?.textContent).toContain(
+        'Loading suggestions',
+      ),
+    );
+    resolveItems?.([
+      { value: 'readme', label: 'README.md' },
+      { value: 'package', label: 'package.json' },
+    ]);
+    await waitFor(() => expect(loadCount).toBe(1));
+    await waitFor(() =>
+      expect(queryListbox()?.getAttribute('aria-label')).toBe('Composer suggestions'),
+    );
+    await waitFor(() =>
+      expect(document.body.querySelector('.chat-composer-popover__group-label')).not.toBeNull(),
+    );
+
+    expect(document.body.querySelector('.chat-composer-popover__group-label')?.textContent).toBe(
+      'Files',
+    );
+    const options = document.body.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(1);
+    expect(options[0]?.textContent).toContain('README.md');
+    expect(options[0]?.getAttribute('aria-label')).toContain('Files:');
+    expect(document.body.textContent).not.toContain('package.json');
+  });
+
   test('passes combobox ARIA through to the ChatInput composer while open', async () => {
     render(ChatComposerPopoverFixture);
     const composer = await typeComposer('/h');
@@ -128,6 +177,31 @@ describe('ChatComposerPopover', () => {
     expect(selected[0]?.query).toBe('');
     expect(selected[0]?.trigger).toBe('/');
     expect(selected[0]?.range).toEqual({ start: 0, end: 1 });
+    await waitFor(() => expect(queryListbox()).toBeNull());
+    expect(document.activeElement).toBe(composer);
+  });
+
+  test('Tab commits the active suggestion and keeps focus in the composer', async () => {
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) => {
+        selected.push(selection);
+      },
+    });
+    const composer = await typeComposer('/');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    composer.dispatchEvent(tabEvent);
+    await tick();
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.item.value).toBe('help');
     await waitFor(() => expect(queryListbox()).toBeNull());
     expect(document.activeElement).toBe(composer);
   });

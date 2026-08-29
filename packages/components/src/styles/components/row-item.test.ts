@@ -5,6 +5,16 @@ import { resolve } from 'node:path';
 const componentsRoot = resolve(import.meta.dir, '../../components');
 
 describe('shared row-item boundary', () => {
+  test('suppresses a divider on both sides of a hovered row', () => {
+    const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
+
+    expect(shared).toContain('.cinder-_row-item:hover .cinder-_row-item__divider');
+    expect(shared).toContain(
+      '.cinder-_row-item:has(+ .cinder-_row-item:hover) .cinder-_row-item__divider',
+    );
+    expect(shared).toMatch(/\.cinder-_row-item:hover[\s\S]*?visibility:\s*hidden/);
+  });
+
   test('is composed by the option-like families only', () => {
     const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
     const floatingSurface = readFileSync(

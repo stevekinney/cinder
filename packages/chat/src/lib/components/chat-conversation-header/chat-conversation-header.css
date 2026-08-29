@@ -20,7 +20,7 @@
     margin: 0;
     overflow: hidden;
     color: var(--cinder-text-default);
-    font-size: var(--cinder-text-lg);
+    font-size: var(--_cinder-chat-text-lg, var(--cinder-text-lg));
     font-weight: var(--cinder-font-semibold);
     line-height: var(--cinder-leading-tight);
     text-overflow: ellipsis;
@@ -31,7 +31,7 @@
     margin: var(--cinder-space-0-5) 0 0;
     overflow: hidden;
     color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     text-overflow: ellipsis;
     white-space: nowrap;
   }

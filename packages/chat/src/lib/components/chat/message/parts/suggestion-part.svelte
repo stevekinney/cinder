@@ -63,7 +63,7 @@
     border: 1px solid var(--cinder-chat-suggestion-border);
     border-radius: var(--cinder-radius-full, 9999px);
     color: var(--cinder-chat-suggestion-text);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     line-height: 1.25;
     cursor: pointer;
     white-space: nowrap;

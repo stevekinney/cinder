@@ -46,6 +46,18 @@ export type MessagePartOverride = Snippet<
   [part: BodyMessagePart, renderDefault: Snippet<[BodyMessagePart]>]
 >;
 
+export type ChatMarkdownNode = {
+  kind: 'code-block' | 'table' | 'mermaid';
+  html: string;
+  text: string;
+  language?: string | undefined;
+  index: number;
+};
+
+export type MarkdownNodeOverride = Snippet<
+  [node: ChatMarkdownNode, renderDefault: Snippet<[ChatMarkdownNode]>]
+>;
+
 /** Props for {@link ChatMessagePartsRenderer}. */
 export type ChatMessagePartsRendererProps = {
   /** The ordered render parts for one message. */
@@ -60,6 +72,8 @@ export type ChatMessagePartsRendererProps = {
    * step parts via `messagePart`.
    */
   messagePart?: MessagePartOverride | undefined;
+  /** Optional override for wide or interactive block nodes inside markdown. */
+  markdownNode?: MarkdownNodeOverride | undefined;
   /** Disclosure state for tool-call parts. Owned by the message. */
   expanded?: boolean;
   /** Called when a tool-call part's disclosure toggle is activated. */

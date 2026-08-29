@@ -12,10 +12,13 @@
   import StepPart from './parts/step-part.svelte';
   import SuggestionPart from './parts/suggestion-part.svelte';
   import ImagePart from './parts/image-part.svelte';
+  import EntryFrame from './entry-frame.svelte';
+  import TranscriptEntryPart from './parts/transcript-entry-part.svelte';
 
   let {
     parts,
     messagePart,
+    markdownNode,
     expanded = false,
     onToggle,
     onapprove,
@@ -75,7 +78,7 @@
 -->
 {#snippet renderDefault(part: BodyMessagePart)}
   {#if part.type === 'markdown'}
-    <MarkdownPart {part} />
+    <MarkdownPart {part} {markdownNode} />
   {:else if part.type === 'tool-call'}
     <ToolCallPart {part} {expanded} {onToggle} />
   {:else if part.type === 'tool-result'}
@@ -84,6 +87,8 @@
     <ToolApprovalPart {part} {onapprove} {ondeny} />
   {:else if part.type === 'reasoning'}
     <ReasoningPart {part} expanded={reasoningExpanded} onToggle={onreasoning} />
+  {:else if part.type === 'transcript-entry'}
+    <TranscriptEntryPart {part} />
   {:else}
     <!-- Unhandled part type — a new ChatMessagePart variant was added without a
          renderer branch. `part` narrows to `never` here, so svelte-check flags
@@ -98,11 +103,18 @@
     <ImagePart parts={unit.images} />
   {:else if unit.kind === 'steps'}
     <!-- Step parts are grouped and wrapped in a single <ol> stepper. -->
-    <ol class="chat-step-list" aria-label="Steps">
-      {#each unit.steps as step (step.key)}
-        <StepPart part={step} />
-      {/each}
-    </ol>
+    <EntryFrame
+      id={`steps-${unit.key.replace(/[^a-z0-9-]/gi, '-')}`}
+      label="Steps"
+      status={`${unit.steps.filter((step) => step.status === 'done').length}/${unit.steps.length} complete`}
+      open
+    >
+      <ol class="chat-step-list" aria-label="Steps">
+        {#each unit.steps as step (step.key)}
+          <StepPart part={step} />
+        {/each}
+      </ol>
+    </EntryFrame>
   {:else if unit.kind === 'suggestions'}
     <!-- Suggestion chips are grouped into a single toolbar. APG toolbar pattern:
          Tab enters → active chip (tabindex=0); Left/Right arrows move focus

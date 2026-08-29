@@ -9,6 +9,8 @@ export interface ChatAttachment {
   previewUrl: string;
   kind: AttachmentKind;
   textContent?: string;
+  /** Original pasted text restored to the composer when this promoted attachment is removed. */
+  restoreText?: string;
   status: FileUploadStatus;
   error?: string;
 }

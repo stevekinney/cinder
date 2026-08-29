@@ -1,3 +1,3 @@
-const variables: readonly string[] = [];
+const variables: readonly string[] = ['--cinder-chat-font-size'];
 
 export default variables;

@@ -17,8 +17,8 @@
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
   import { stringify } from '../../../utilities/stringify.ts';
-  import { Check, ChevronDown, CircleAlert, MoreHorizontal, X } from '@lostgradient/cinder/icons';
   import ToolPayloadCode from './tool-payload-code.svelte';
+  import EntryFrame from './entry-frame.svelte';
 
   let {
     pair,
@@ -65,43 +65,20 @@
 </script>
 
 <div class={classNames('tool-call-group', className)} data-status={status} {...rest}>
-  <button
-    type="button"
-    class="tool-call-header"
-    aria-expanded={expanded}
-    aria-controls={detailsId}
-    aria-label={`Toggle tool call details for ${pair.call.name}`}
-    onclick={handleToggle}
+  <EntryFrame
+    id={detailsId}
+    label={pair.call.name}
+    status={isError
+      ? 'Failed'
+      : isSuccess
+        ? 'Complete'
+        : isActionRequired
+          ? 'Action required'
+          : 'Pending'}
+    open={expanded}
+    triggerClass="tool-call-header"
+    onToggle={() => handleToggle()}
   >
-    <span class="tool-call-icon" aria-hidden="true">
-      {#if isError}
-        <X class="cinder-icon-xs" />
-      {:else if isSuccess}
-        <Check class="cinder-icon-xs" />
-      {:else if isActionRequired}
-        <CircleAlert class="cinder-icon-xs" />
-      {:else}
-        <MoreHorizontal class="cinder-icon-xs" />
-      {/if}
-    </span>
-    <span class="tool-call-name">{pair.call.name}</span>
-    <span class="tool-call-status" role="status" aria-live="polite">
-      {#if isError}
-        Failed
-      {:else if isSuccess}
-        Complete
-      {:else if isActionRequired}
-        Action required
-      {:else}
-        Pending
-      {/if}
-    </span>
-    <span class="tool-call-chevron" aria-hidden="true" data-expanded={expanded}>
-      <ChevronDown class="cinder-icon-xs" />
-    </span>
-  </button>
-
-  {#if expanded}
     <div id={detailsId} class="tool-call-details" role="region" aria-label="Tool details">
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
@@ -125,7 +102,7 @@
         </div>
       {/if}
     </div>
-  {/if}
+  </EntryFrame>
 </div>
 
 <style>
@@ -150,107 +127,16 @@
     border-color: var(--cinder-status-warning-solid);
   }
 
-  /* Uses min-height for WCAG 2.2 AA touch target compliance */
-  .tool-call-header {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    width: 100%;
-    min-height: var(--cinder-touch-target-min);
-    padding: var(--cinder-space-2) var(--cinder-space-3);
-    background: var(--cinder-surface);
-    border: none;
-    cursor: pointer;
-    user-select: none;
-    text-align: left;
-    font: inherit;
-    color: inherit;
-  }
-
-  /* Hover: subtle inset tint instead of the full surface-hover gray, which
-   * looked harsh against the colored card border. */
-  @media (hover: hover) {
-    .tool-call-header:hover {
-      background: color-mix(in oklch, var(--cinder-surface), var(--cinder-text-default) 4%);
-    }
-  }
-
-  /* Focus: ring travels via box-shadow, not outline, so it sits inside the
-   * card's colored border instead of doubling up on top of it. */
-  .tool-call-header:focus-visible {
+  :global(.tool-call-header:focus-visible) {
     outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width)
-      var(--_cinder-tool-call-header-ring, var(--cinder-ring-color));
+    box-shadow: inset 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
   @media (forced-colors: active) {
-    .tool-call-header:focus-visible {
+    :global(.tool-call-header:focus-visible) {
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: calc(var(--cinder-ring-width) * -1);
     }
-  }
-
-  .tool-call-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--cinder-text-muted);
-  }
-
-  .tool-call-group[data-status='error'] .tool-call-icon {
-    color: var(--cinder-status-danger-solid);
-  }
-
-  .tool-call-group[data-status='success'] .tool-call-icon {
-    color: var(--cinder-status-success-solid);
-  }
-
-  .tool-call-group[data-status='action-required'] .tool-call-icon {
-    color: var(--cinder-status-warning-solid);
-  }
-
-  .tool-call-name {
-    font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-text-default);
-    flex: 1;
-    min-width: 0;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-
-  .tool-call-status {
-    font-size: var(--cinder-text-xs);
-    color: var(--cinder-text-subtle);
-    flex-shrink: 0;
-  }
-
-  .tool-call-group[data-status='error'] .tool-call-status {
-    color: var(--cinder-status-danger-solid);
-  }
-
-  .tool-call-group[data-status='success'] .tool-call-status {
-    color: var(--cinder-status-success-solid);
-  }
-
-  .tool-call-group[data-status='action-required'] .tool-call-status {
-    color: var(--cinder-status-warning-text);
-  }
-
-  .tool-call-chevron {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    color: var(--cinder-text-muted);
-    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
-  }
-
-  .tool-call-chevron[data-expanded='true'] {
-    transform: rotate(180deg);
   }
 
   .tool-call-details {
@@ -269,7 +155,7 @@
   }
 
   .tool-call-section-title {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -282,7 +168,7 @@
     background: var(--cinder-status-danger-background);
     border-radius: var(--cinder-radius-md);
     color: var(--cinder-status-danger-text);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
   }
 
   .tool-call-section[data-error] :global(.cinder-code-block) {
@@ -294,6 +180,6 @@
     background: var(--cinder-status-warning-background);
     border-radius: var(--cinder-radius-md);
     color: var(--cinder-status-warning-text);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
   }
 </style>

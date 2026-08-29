@@ -32,6 +32,16 @@
     box-shadow: inset 0 0 0 1px var(--cinder-ring-color);
   }
 
+  /* A divider owned by the preceding row must disappear when either adjacent
+   * row is hovered. Otherwise the one-pixel rule cuts through the shared
+   * raised-hover surface and makes the active row look visually detached. */
+  .cinder-_row-item:hover .cinder-_row-item__divider,
+  .cinder-_row-item:has(+ .cinder-_row-item:hover) .cinder-_row-item__divider,
+  .cinder-_option-row:hover .cinder-_row-item__divider,
+  .cinder-_option-row:has(+ .cinder-_option-row:hover) .cinder-_row-item__divider {
+    visibility: hidden;
+  }
+
   .cinder-_row-item[aria-disabled='true'],
   .cinder-_row-item[data-cinder-disabled],
   .cinder-_option-row[aria-disabled='true'],

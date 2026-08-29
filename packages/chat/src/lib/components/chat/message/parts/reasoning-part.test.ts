@@ -87,13 +87,11 @@ describe('ReasoningPart — collapsed state (default)', () => {
     expect(onToggle).toHaveBeenCalledTimes(1);
   });
 
-  test('button has aria-controls pointing to the content region', () => {
+  test('collapsed shared disclosure omits a dangling aria-controls reference', () => {
     const { container } = render(ReasoningPart, { props: { part: makePart() } });
     const button = container.querySelector('button');
     const controlsId = button?.getAttribute('aria-controls');
-    expect(controlsId).toBeTruthy();
-    const controlled = controlsId ? container.querySelector(`#${controlsId}`) : null;
-    expect(controlled).not.toBeNull();
+    expect(controlsId).toBeNull();
   });
 });
 
@@ -213,9 +211,7 @@ describe('ReasoningPart — streaming state', () => {
     const { container } = render(ReasoningPart, {
       props: { part: makePart({ streaming: true }), expanded: true },
     });
-    const button = container.querySelector('button');
-    const contentId = button?.getAttribute('aria-controls');
-    const contentEl = contentId ? container.querySelector(`#${contentId}`) : null;
+    const contentEl = container.querySelector('.chat-reasoning-content');
     expect(contentEl?.getAttribute('aria-live')).toBe('off');
   });
 

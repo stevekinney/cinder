@@ -76,7 +76,6 @@ const schema = {
       {
         name: 'items',
         reason: 'generic-type-parameter',
-        required: true,
         description: 'Consumer-owned command or mention definitions.',
       },
       {
@@ -89,6 +88,11 @@ const schema = {
         name: 'onSelect',
         reason: 'function-or-snippet',
         description: 'Invoked when an enabled item is selected by keyboard or pointer.',
+      },
+      {
+        name: 'sources',
+        reason: 'unknown-shape',
+        description: 'Typed synchronous or asynchronous grouped suggestion sources. Default `[]`.',
       },
     ],
   },

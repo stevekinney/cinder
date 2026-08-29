@@ -1,16 +1,18 @@
 <script lang="ts" module>
   import type { MarkdownMessagePart } from '../../utilities/types.ts';
+  import type { MarkdownNodeOverride } from '../chat-message-parts.ts';
 
   export type MarkdownPartProps = {
     /** The markdown render part to display. */
     part: MarkdownMessagePart;
+    markdownNode?: MarkdownNodeOverride | undefined;
   };
 </script>
 
 <script lang="ts">
   import MessageContent from '../message-content.svelte';
 
-  let { part }: MarkdownPartProps = $props();
+  let { part, markdownNode }: MarkdownPartProps = $props();
 </script>
 
 <!--
@@ -20,4 +22,9 @@
   no `overrideContent` plumbing leaks into the part layer. Streaming and
   expanded are presentation hints carried on the part.
 -->
-<MessageContent content={part.content} streaming={part.streaming} expanded={part.expanded} />
+<MessageContent
+  content={part.content}
+  streaming={part.streaming}
+  expanded={part.expanded}
+  {markdownNode}
+/>

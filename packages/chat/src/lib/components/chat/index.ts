@@ -140,7 +140,12 @@ export {
   type ToolResultMessage,
   type UnresolvedToolApproval,
 } from './utilities/index.ts';
-export type { StepInfo } from './utilities/types.ts';
+export type {
+  ReasoningInfo,
+  StepInfo,
+  TranscriptEntryInfo,
+  TranscriptEntryKind,
+} from './utilities/types.ts';
 
 // Input
 export {

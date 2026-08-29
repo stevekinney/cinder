@@ -99,7 +99,7 @@ describe('Chat focus-ring recipes', () => {
       styles.messageAttachments,
       '.message-attachment-button:focus-visible',
     ],
-    ['tool-call header', styles.toolCallGroup, '.tool-call-header:focus-visible'],
+    ['tool-call header', styles.toolCallGroup, ':global(.tool-call-header:focus-visible)'],
   ] as const;
 
   for (const [name, style, selector] of insetCases) {

@@ -58,7 +58,7 @@ describe('ChatInput', () => {
     expect(composer?.readOnly).toBe(false);
   });
 
-  test('keeps the composer read-only but focusable while sending', () => {
+  test('keeps the composer editable and focusable while sending', () => {
     const { container } = render(ChatInput, {
       id: 'sending-composer',
       sending: true,
@@ -66,7 +66,7 @@ describe('ChatInput', () => {
 
     const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
     expect(composer?.disabled).toBe(false);
-    expect(composer?.readOnly).toBe(true);
+    expect(composer?.readOnly).toBe(false);
   });
 
   test('hides the programmatic file picker from the accessibility tree', () => {
@@ -75,6 +75,42 @@ describe('ChatInput', () => {
     expect(picker?.getAttribute('aria-hidden')).toBe('true');
     expect(picker?.tabIndex).toBe(-1);
     expect(container.querySelector('button[aria-label="Attach file"]')).not.toBeNull();
+  });
+
+  test('promotes a large plain-text paste to an attachment and restores it when removed', async () => {
+    const { container } = render(ChatInput, {
+      id: 'large-paste-composer',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'sixteen characters' : ''),
+      },
+    });
+
+    expect(container.querySelector('[aria-label="Attached files"]')).not.toBeNull();
+    expect(composer.value).toBe('');
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    expect(composer.value).toBe('sixteen characters');
+  });
+
+  test('shows an instructional copy-drop overlay with copy semantics', async () => {
+    const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
+    const form = container.querySelector('form')!;
+    const dataTransfer = { dropEffect: 'none' };
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+
+    await fireEvent.dragEnter(form, { dataTransfer });
+    form.dispatchEvent(dragOver);
+    expect(dataTransfer.dropEffect).toBe('copy');
+    expect(container.querySelector('.chat-input-drop-overlay')?.textContent).toContain(
+      'Drop files to attach',
+    );
   });
 
   describe('getValue()', () => {
@@ -306,6 +342,55 @@ describe('ChatInput', () => {
   });
 
   describe('oncomposerkeydown', () => {
+    test('supports modifier-enter submission', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'modifier-enter-composer',
+          submitOn: 'modifier-enter',
+          onsubmit: () => (submitCount += 1),
+        },
+      });
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'send this' } });
+
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(0);
+      await fireEvent.keyDown(composer, { key: 'Enter', metaKey: true });
+      expect(submitCount).toBe(1);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('submits only single-line content in enter-if-single-line mode', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'single-line-enter-composer',
+          submitOn: 'enter-if-single-line',
+          clearOnSubmit: false,
+          onsubmit: () => (submitCount += 1),
+        },
+      });
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'first\nsecond' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(0);
+      await fireEvent.input(composer, { target: { value: 'single line' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(1);
+
+      unmount(instance);
+      target.remove();
+    });
+
     test('fires before Enter-to-send internal handling', async () => {
       const calls: string[] = [];
       const target = document.createElement('div');

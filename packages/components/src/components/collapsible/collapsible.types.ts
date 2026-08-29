@@ -32,6 +32,10 @@ export type CollapsibleProps = Omit<
    * react without requiring `bind:open`.
    */
   triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
+  /** Additional class names applied to the disclosure trigger button. */
+  triggerClass?: string;
+  /** Whether opening and closing uses the slide transition. Default `true`. */
+  animated?: boolean;
   /**
    * Base used to derive the trigger and panel ARIA ids (`<base>-header`,
    * `<base>-label`, `<base>-panel`). NOT the root element id. Auto-generated
@@ -68,6 +72,10 @@ export interface CollapsibleSchemaProps {
    * Schema can only model the string variant.
    */
   triggerAriaLabel?: string;
+  /** Additional class names applied to the disclosure trigger button. */
+  triggerClass?: string;
+  /** Whether opening and closing uses the slide transition. Default `true`. */
+  animated?: boolean;
   /** Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;
   /** Additional classes merged onto the root element. */

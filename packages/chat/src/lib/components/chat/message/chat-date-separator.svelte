@@ -96,7 +96,7 @@
   }
 
   .chat-date-separator-text {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-subtle);
     text-transform: uppercase;

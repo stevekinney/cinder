@@ -44,6 +44,8 @@
     // Submission behavior
     /** Whether to clear input after submit (default: true). Set to false for error recovery. */
     clearOnSubmit?: boolean;
+    /** Keyboard gesture that submits the composer. Default `'enter'`. */
+    submitOn?: 'enter' | 'modifier-enter' | 'enter-if-single-line';
 
     // Attachment configuration
     /** Enable file attachments (default: true) */
@@ -52,6 +54,8 @@
     maxFileSize?: number;
     /** Accepted MIME types (default: ['image/*']) */
     acceptedTypes?: string[];
+    /** Plain-text paste length promoted to a reversible attachment. Default `8000`. */
+    largePasteThreshold?: number;
 
     // Events
     /** Called when the message is submitted */
@@ -138,6 +142,7 @@
     action,
     name = 'content',
     clearOnSubmit = true,
+    submitOn = 'enter',
     allowAttachments = true,
     maxFileSize = 10 * 1024 * 1024, // 10MB
     acceptedTypes = [
@@ -155,6 +160,7 @@
       'application/sql',
       'application/toml',
     ],
+    largePasteThreshold = 8_000,
     onsubmit,
     onstop,
     oncomposerinput,
@@ -181,6 +187,7 @@
   // Internal state
   let attachments = $state<ChatAttachment[]>([]);
   let isDragOver = $state(false);
+  let dragEnterDepth = 0;
   let isComposing = $state(false);
 
   // Screen reader announcements
@@ -221,21 +228,21 @@
     document: 'Document',
   };
 
-  function addAttachment(file: File): void {
+  function addAttachment(file: File, restoreText?: string): ChatAttachment | null {
     // Type validation
     if (!isValidType(file)) {
       onattachmentfailure?.(
         file,
         `Invalid file type: ${file.type}. Accepted types: ${acceptedTypes.join(', ')}.`,
       );
-      return;
+      return null;
     }
 
     // Size validation
     if (file.size > maxFileSize) {
       const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
       onattachmentfailure?.(file, `File exceeds ${maxSizeMB}MB limit`);
-      return;
+      return null;
     }
 
     const kind = deriveAttachmentKind(file.type);
@@ -261,6 +268,7 @@
       previewUrl: URL.createObjectURL(file),
       kind,
       status: kind === 'code' ? 'pending' : 'ready',
+      ...(restoreText === undefined ? {} : { restoreText }),
     };
 
     attachments = [...attachments, attachment];
@@ -284,6 +292,7 @@
         },
       );
     }
+    return attachment;
   }
 
   function removeAttachment(attachmentId: string): void {
@@ -291,6 +300,10 @@
     if (attachment) {
       URL.revokeObjectURL(attachment.previewUrl);
       attachments = attachments.filter((a) => a.id !== attachmentId);
+      if (attachment.restoreText) {
+        value = `${value}${value.length > 0 && !value.endsWith('\n') ? '\n' : ''}${attachment.restoreText}`;
+        oncomposerinput?.(value);
+      }
       onattachmentremove?.(attachment);
       announcer.announce(`${KIND_LABELS[attachment.kind]} removed`);
     }
@@ -300,7 +313,7 @@
     const input = event.target as HTMLInputElement;
     const files = input.files;
     if (files) {
-      Array.from(files).forEach(addAttachment);
+      Array.from(files).forEach((file) => addAttachment(file));
     }
     // Reset input for re-selection of same file
     input.value = '';
@@ -327,12 +340,24 @@
     // (including calling onattachmentfailure for invalid types/sizes)
     if (files.length > 0) {
       event.preventDefault();
-      files.forEach(addAttachment);
+      files.forEach((file) => addAttachment(file));
+      return;
+    }
+
+    const pastedText = event.clipboardData?.getData('text/plain') ?? '';
+    if (pastedText.length >= largePasteThreshold) {
+      event.preventDefault();
+      const file = new File([pastedText], 'pasted-text.txt', {
+        type: 'text/plain',
+        lastModified: 0,
+      });
+      addAttachment(file, pastedText);
     }
   }
 
   function handleDrop(event: DragEvent): void {
     isDragOver = false;
+    dragEnterDepth = 0;
 
     if (!allowAttachments) return;
 
@@ -346,19 +371,29 @@
     const files = event.dataTransfer?.files;
     if (files) {
       // Let addAttachment handle all validation (type and size)
-      Array.from(files).forEach(addAttachment);
+      Array.from(files).forEach((file) => addAttachment(file));
     }
   }
 
   function handleDragOver(event: DragEvent): void {
     if (!allowAttachments) return;
     event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    isDragOver = true;
+  }
+
+  function handleDragEnter(event: DragEvent): void {
+    if (!allowAttachments) return;
+    event.preventDefault();
+    dragEnterDepth += 1;
     isDragOver = true;
   }
 
   function handleDragLeave(event: DragEvent): void {
-    // Only set isDragOver to false if we're leaving the form entirely
-    if (!formElement?.contains(event.relatedTarget as Node)) {
+    if (!allowAttachments) return;
+    dragEnterDepth = Math.max(0, dragEnterDepth - 1);
+    if (dragEnterDepth === 0 || !formElement?.contains(event.relatedTarget as Node)) {
+      dragEnterDepth = 0;
       isDragOver = false;
     }
   }
@@ -434,13 +469,16 @@
       }
     }
 
-    // Shift+Enter: Newline (let editor handle it)
-    if (event.key === 'Enter' && event.shiftKey) {
-      return;
-    }
+    if (event.key !== 'Enter' || event.shiftKey || event.altKey) return;
 
-    // Enter (no modifiers): Submit
-    if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    const modifierPressed = event.metaKey || event.ctrlKey;
+    const shouldSubmit =
+      submitOn === 'modifier-enter'
+        ? modifierPressed
+        : !modifierPressed &&
+          (submitOn === 'enter' || (submitOn === 'enter-if-single-line' && !value.includes('\n')));
+
+    if (shouldSubmit) {
       event.preventDefault();
       if (canSubmit) {
         formElement?.requestSubmit();
@@ -514,7 +552,7 @@
 
   export function addFiles(files: File[]): void {
     if (!allowAttachments) return;
-    files.forEach(addAttachment);
+    files.forEach((file) => addAttachment(file));
   }
 
   // =========================================================================
@@ -539,6 +577,7 @@
   onsubmit={handleSubmit}
   onpaste={handlePaste}
   ondrop={handleDrop}
+  ondragenter={handleDragEnter}
   ondragover={handleDragOver}
   ondragleave={handleDragLeave}
   oncompositionstart={handleCompositionStart}
@@ -547,6 +586,12 @@
   aria-busy={sending || undefined}
   {...rest}
 >
+  {#if isDragOver}
+    <div class="chat-input-drop-overlay" aria-hidden="true">
+      <Paperclip class="cinder-icon-md" />
+      <span>Drop files to attach</span>
+    </div>
+  {/if}
   <!-- Hidden input for form action mode -->
   {#if isFormActionMode}
     <input type="hidden" {name} {value} />
@@ -590,7 +635,6 @@
       aria-activedescendant={composerAriaActiveDescendant}
       aria-autocomplete={composerAriaAutocomplete}
       {disabled}
-      readonly={sending}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
       rows="1"
@@ -711,6 +755,7 @@
 
 <style>
   .chat-input {
+    position: relative;
     container-type: inline-size;
     display: flex;
     flex-direction: column;
@@ -730,6 +775,23 @@
     border-style: dashed;
     border-color: var(--cinder-accent-solid);
     background: color-mix(in oklch, var(--cinder-accent-solid), transparent 95%);
+  }
+
+  .chat-input-drop-overlay {
+    position: absolute;
+    z-index: 1;
+    inset: var(--cinder-space-2);
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--cinder-space-2);
+    border: 2px dashed var(--cinder-accent-solid);
+    border-radius: calc(var(--cinder-radius-lg) - var(--cinder-space-1));
+    background: color-mix(in oklch, var(--cinder-surface-raised), transparent 8%);
+    color: var(--cinder-text-default);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
+    font-weight: var(--cinder-font-medium);
+    pointer-events: none;
   }
 
   /* Attachment previews */
@@ -845,7 +907,7 @@
     display: block;
     width: 100%;
     min-height: 2.5rem;
-    max-height: 12rem;
+    max-height: min(12rem, 35dvh);
     padding: var(--cinder-space-1) var(--cinder-space-3);
     resize: none;
     field-sizing: content;
@@ -888,7 +950,7 @@
   }
 
   .chat-input-hint {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-subtle);
   }
 
@@ -900,7 +962,7 @@
     height: 1.25rem;
     padding: 0 var(--cinder-space-1);
     font-family: inherit;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -994,7 +1056,7 @@
   /* Error */
   .chat-input-error {
     margin: 0;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-status-danger-solid);
   }
 

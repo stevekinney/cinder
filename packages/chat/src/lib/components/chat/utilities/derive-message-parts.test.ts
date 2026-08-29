@@ -221,6 +221,37 @@ describe('deriveMessageParts — context parts', () => {
     ]);
   });
 
+  it('keeps reasoning as one body and forwards its optional summary', () => {
+    const parts = deriveMessageParts(message({ id: 'reasoned', role: 'assistant' }), {
+      reasoning: { content: 'Full reasoning', summary: ['First', 'Second'] },
+    });
+    expect(parts[0]).toEqual({
+      type: 'reasoning',
+      key: 'reasoned:reasoning',
+      content: 'Full reasoning',
+      summary: ['First', 'Second'],
+      streaming: false,
+    });
+  });
+
+  it('emits every supported structured transcript entry kind in order', () => {
+    const entries = [
+      { kind: 'interrupted' as const, content: 'Generation stopped' },
+      { kind: 'redirect' as const, content: 'Changed direction' },
+      { kind: 'stateChange' as const, content: 'Mode changed' },
+      { kind: 'slashCommand' as const, content: '/compact' },
+      { kind: 'turnSummary' as const, content: 'Completed the audit' },
+    ];
+    const parts = deriveMessageParts(message({ id: 'events', role: 'assistant' }), { entries });
+    expect(parts.slice(0, 5)).toEqual(
+      entries.map((entry, index) => ({
+        type: 'transcript-entry',
+        key: `events:entry:${index}`,
+        ...entry,
+      })),
+    );
+  });
+
   it('emits suggestions after the markdown body and before images', () => {
     const content: MultiModalContent[] = [
       { type: 'text', text: 'choose one' },

@@ -19,7 +19,36 @@
  * falls back to a contenteditable / `execCommand('copy')` shim for older
  * browsers and edge cases.
  */
-export async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyToClipboard(
+  text: string,
+  rich: { html?: string; image?: Blob | string } = {},
+): Promise<boolean> {
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.clipboard?.write &&
+    typeof ClipboardItem !== 'undefined' &&
+    (rich.html !== undefined || rich.image !== undefined)
+  ) {
+    try {
+      const representations: Record<string, Blob> = {
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+      };
+      if (rich.html !== undefined) {
+        representations['text/html'] = new Blob([rich.html], { type: 'text/html' });
+      }
+      if (rich.image !== undefined) {
+        const imageBlob =
+          typeof rich.image === 'string'
+            ? await fetch(rich.image).then((response) => response.blob())
+            : rich.image;
+        if (imageBlob.type.startsWith('image/')) representations[imageBlob.type] = imageBlob;
+      }
+      await navigator.clipboard.write([new ClipboardItem(representations)]);
+      return true;
+    } catch {
+      // Fall through to writeText and finally the legacy selection path.
+    }
+  }
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);

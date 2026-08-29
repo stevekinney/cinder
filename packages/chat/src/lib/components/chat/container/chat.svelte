@@ -35,6 +35,7 @@
     pairToolCallsWithResults,
     resolveMessageArtifact,
     resolveMessageReasoning,
+    resolveMessageTranscriptEntries,
     resolveMessageSteps,
     resolveMessageSuggestions,
   } from '../utilities/index.ts';
@@ -68,7 +69,9 @@
   import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
   import ChatParticipantTyping from './chat-participant-typing.svelte';
   import ChatReadReceipt from '../message/chat-read-receipt.svelte';
+  import ToolCallTimeline from '../message/tool-call-timeline.svelte';
   import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
+  import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -118,6 +121,8 @@
     messageStatus,
     row,
     messagePart,
+    markdownNode,
+    onrollback,
     viewportAttachment,
     typingParticipants,
     readReceipts,
@@ -369,6 +374,16 @@
   // C5 — suggested replies are a per-TURN affordance shown only beneath the last
   // message, not on every historical message that still carries the metadata.
   const lastMessageId = $derived(messages.at(-1)?.id);
+  let rollbackMessageId = $state<string | null>(null);
+  const rollbackBoundaryIndex = $derived(
+    rollbackMessageId ? messages.findIndex((message) => message.id === rollbackMessageId) : -1,
+  );
+
+  function confirmRollback(): void {
+    if (!rollbackMessageId) return;
+    onrollback?.(rollbackMessageId);
+    rollbackMessageId = null;
+  }
   // Transcript shape from the auto-scroll effect's previous run, used to tell
   // a history PREPEND (first id changes, last id unchanged) from an APPEND
   // (#1237). Plain lets, NOT $state: they are only read/written inside that
@@ -430,12 +445,20 @@
     }
     return map;
   });
+  const actionRequiredToolCallIds = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const [callId, pairs] of toolCallPairsByCallId) {
+      if (pairs.some((pair) => pair.result?.outcome === 'action_required')) ids.add(callId);
+    }
+    return ids;
+  });
   const renderRows = $derived.by(() => {
     const pairedToolResultIds = findPairedToolResultIds(messages);
     const messagesWithDates = buildMessagesWithDateSeparators(messages, pairedToolResultIds);
     return buildChatRenderRows(messagesWithDates, {
       firstUnreadId: unreadState.firstUnreadId,
       showTypingIndicator,
+      ungroupedToolCallIds: actionRequiredToolCallIds,
     });
   });
   let hasMounted = $state(false);
@@ -2527,6 +2550,7 @@
          malformed callback can never break the chat render (see resolve* in
          chat/utilities). A plain transcript yields `undefined` for all three. -->
     {@const derivedReasoning = resolveMessageReasoning(message, messageReasoning)}
+    {@const derivedEntries = resolveMessageTranscriptEntries(message)}
     {@const derivedSteps = resolveMessageSteps(message, messageSteps)}
     {@const derivedSuggestions =
       message.id === lastMessageId
@@ -2544,9 +2568,13 @@
         {message}
         toolCallPairs={pairs}
         {messagePart}
+        {markdownNode}
         onretry={allowRetry && canRetry ? handleRetry : undefined}
         onedit={allowEditing && canEdit ? handleEdit : undefined}
         oneditingchange={(editing) => handleEditingChange(message.id, editing)}
+        onrollback={onrollback ? (messageId) => (rollbackMessageId = messageId) : undefined}
+        rollbackDiscarded={rollbackBoundaryIndex >= 0 &&
+          messages.findIndex((candidate) => candidate.id === message.id) > rollbackBoundaryIndex}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}
@@ -2558,6 +2586,7 @@
         onapprove={canApprove ? handleApprove : undefined}
         ondeny={canDeny ? handleDeny : undefined}
         reasoning={derivedReasoning}
+        entries={derivedEntries}
         steps={derivedSteps}
         suggestions={derivedSuggestions}
         reasoningExpanded={reasoningState.isExpanded(message.id)}
@@ -2599,6 +2628,12 @@
       </div>
     {:else if renderRow.type === 'typing'}
       {@render renderTypingIndicator()}
+    {:else if renderRow.type === 'tool-call-group'}
+      <ToolCallTimeline
+        pairs={renderRow.messages.flatMap((message) =>
+          message.toolCall?.id ? (toolCallPairsByCallId.get(message.toolCall.id) ?? []) : [],
+        )}
+      />
     {:else}
       {@render renderMessageRow(renderRow)}
     {/if}
@@ -2754,6 +2789,16 @@
   </div>
 </div>
 
+<ConfirmDialog
+  open={rollbackMessageId !== null}
+  title="Rollback conversation?"
+  description="The dimmed transcript entries will be discarded before this message is retried."
+  confirmLabel="Rollback conversation"
+  destructive
+  onConfirm={confirmRollback}
+  onCancel={() => (rollbackMessageId = null)}
+/>
+
 <style>
   .chat-container {
     container-type: inline-size;
@@ -2808,7 +2853,7 @@
   }
 
   .chat-drop-label {
-    font-size: var(--cinder-text-lg);
+    font-size: var(--_cinder-chat-text-lg, var(--cinder-text-lg));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     background: var(--cinder-surface);
@@ -2916,7 +2961,7 @@
 
   .chat-empty-prompt {
     padding: var(--cinder-space-2) var(--cinder-space-3);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -2964,7 +3009,7 @@
     display: inline-flex;
     align-items: center;
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
@@ -3001,7 +3046,7 @@
   }
 
   .chat-typing-status {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-muted);
     font-style: italic;
   }

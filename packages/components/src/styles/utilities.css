@@ -228,6 +228,9 @@ svg.cinder-icon-lg {
 }
 
 .cinder-markdown-content :where(:not(pre) > code) {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  unicode-bidi: isolate;
   padding: 0.125em 0.375em;
   border-radius: var(--cinder-radius-sm);
   background: var(--cinder-surface-inset);

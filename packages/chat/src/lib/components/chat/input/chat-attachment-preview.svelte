@@ -137,7 +137,7 @@
   }
 
   .chat-attachment-preview-name {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     white-space: nowrap;
@@ -149,7 +149,7 @@
     display: flex;
     align-items: center;
     gap: var(--cinder-space-1);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-subtle);
   }
 
@@ -189,7 +189,7 @@
     justify-content: center;
     width: 1rem;
     height: 1rem;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-bold);
     color: white;
     background: var(--cinder-status-danger-solid);

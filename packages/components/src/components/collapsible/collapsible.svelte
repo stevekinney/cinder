@@ -30,6 +30,8 @@
     onToggle,
     disabled = false,
     triggerAriaLabel,
+    triggerClass,
+    animated = true,
     idBase,
     class: className,
     ...rest
@@ -74,7 +76,7 @@
   <button
     type="button"
     id={headerId}
-    class="cinder-collapsible__trigger"
+    class={classNames('cinder-collapsible__trigger', triggerClass)}
     aria-label={computedTriggerAriaLabel}
     aria-expanded={open}
     aria-controls={open ? panelId : undefined}
@@ -106,7 +108,7 @@
     </svg>
   </button>
 
-  {#if open}
+  {#if open && animated}
     <div
       transition:slide={{ duration: slideMs }}
       id={panelId}
@@ -114,6 +116,12 @@
       aria-labelledby={labelId}
       class="cinder-collapsible__panel"
     >
+      <div class="cinder-collapsible__panel-inner">
+        {@render children()}
+      </div>
+    </div>
+  {:else if open}
+    <div id={panelId} role="region" aria-labelledby={labelId} class="cinder-collapsible__panel">
       <div class="cinder-collapsible__panel-inner">
         {@render children()}
       </div>

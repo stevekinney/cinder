@@ -803,6 +803,36 @@ describe('Chat — interactions', () => {
     expect(container.querySelector('.chat-drop-overlay')).toBeNull();
   });
 
+  test('rollback previews discarded rows and commits only through confirmation', async () => {
+    let conversation = createConversation({ id: 'conversation-rollback' });
+    conversation = appendUserMessage(conversation, 'First request');
+    conversation = appendAssistantMessage(conversation, 'First response');
+    conversation = appendUserMessage(conversation, 'Second request');
+    conversation = appendAssistantMessage(conversation, 'Second response');
+    const firstUserId = conversation.ids[0]!;
+    const onrollback = jest.fn();
+    const { container, getByRole } = render(Chat, {
+      props: { id: 'chat-rollback', conversation, onrollback },
+    });
+
+    const firstMessage = container.querySelector<HTMLElement>(
+      `#message-${firstUserId}`,
+    )?.parentElement;
+    if (!firstMessage) throw new Error('Expected the first message row to render');
+    await fireEvent.mouseEnter(firstMessage);
+    await fireEvent.click(
+      firstMessage.querySelector<HTMLButtonElement>('.chat-message-rollback-button')!,
+    );
+
+    expect(onrollback).not.toHaveBeenCalled();
+    expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(3);
+    expect(getByRole('dialog', { name: 'Rollback conversation?' })).not.toBeNull();
+
+    await fireEvent.click(getByRole('button', { name: 'Rollback conversation' }));
+    expect(onrollback).toHaveBeenCalledWith(firstUserId);
+    expect(container.querySelectorAll('[data-cinder-rollback-discarded]')).toHaveLength(0);
+  });
+
   test('non-file drops are ignored by the container-level file drop handler', async () => {
     const conversation = createConversation({ id: 'conversation-non-file-drop' });
     const { container } = render(Chat, {

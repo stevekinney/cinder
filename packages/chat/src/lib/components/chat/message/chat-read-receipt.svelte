@@ -80,7 +80,7 @@
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     line-height: 1;
   }
 
@@ -102,7 +102,7 @@
   }
 
   .chat-read-receipt-label {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
   }
 
   /* High-contrast mode: rely on system colors rather than accent/muted. */
