@@ -22,6 +22,7 @@ export type {
   ChatComposerPopoverItemSnippetContext,
   ChatComposerPopoverProps,
   ChatComposerPopoverSelection,
+  ChatComposerPopoverSource,
   ChatComposerPopoverTriggerMatch,
 } from './chat-composer-popover.types.ts';
 export { ChatComposerPopover };

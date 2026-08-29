@@ -98,7 +98,7 @@
   }
 
   .artifact-panel-title {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     overflow: hidden;

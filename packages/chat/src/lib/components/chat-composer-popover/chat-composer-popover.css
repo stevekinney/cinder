@@ -2,4 +2,16 @@
 
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
+  .cinder-command-menu.chat-composer-popover {
+    min-inline-size: min(24rem, calc(100vw - var(--cinder-space-4)));
+    max-inline-size: min(36rem, calc(100vw - var(--cinder-space-4)));
+  }
+
+  .chat-composer-popover__group-label {
+    display: block;
+    padding: var(--cinder-space-2) var(--cinder-space-3) var(--cinder-space-1);
+    color: var(--cinder-text-muted);
+    font-size: var(--cinder-text-xs);
+    font-weight: var(--cinder-font-medium);
+  }
 }

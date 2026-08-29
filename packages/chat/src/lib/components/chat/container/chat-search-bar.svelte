@@ -181,7 +181,7 @@
     flex: 1;
     min-width: 0;
     padding: var(--cinder-space-1) var(--cinder-space-2);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-default);
     background: transparent;
     border: none;
@@ -196,7 +196,7 @@
 
   .chat-search-match-count {
     flex-shrink: 0;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-muted);
     white-space: nowrap;
     padding: 0 var(--cinder-space-1);

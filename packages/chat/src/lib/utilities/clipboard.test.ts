@@ -2,7 +2,7 @@
 import { afterEach, beforeEach, describe, expect, mock, test } from 'bun:test';
 
 import { setupHappyDom } from '../test/happy-dom.ts';
-import { copyToClipboard } from './clipboard.ts';
+import { copyToClipboard, escapeClipboardHtmlAttribute } from './clipboard.ts';
 
 setupHappyDom();
 
@@ -56,5 +56,13 @@ describe('copyToClipboard', () => {
     }) as typeof document.execCommand;
     expect(await copyToClipboard('nope')).toBe(false);
     expect(document.querySelector('textarea')).toBeNull();
+  });
+});
+
+describe('escapeClipboardHtmlAttribute', () => {
+  test('keeps attachment URLs inside their quoted data attribute', () => {
+    expect(escapeClipboardHtmlAttribute('https://example.test/" onmouseover="alert(1)')).toBe(
+      'https://example.test/&quot; onmouseover=&quot;alert(1)',
+    );
   });
 });

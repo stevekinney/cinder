@@ -13,6 +13,7 @@
 
 <script lang="ts">
   import { stringify } from '../../../../utilities/stringify.ts';
+  import EntryFrame from '../entry-frame.svelte';
 
   let { part, onapprove, ondeny }: ToolApprovalPartProps = $props();
 
@@ -95,10 +96,9 @@
   <p id={descId} class="chat-tool-approval-message">{actionMessage}</p>
 
   {#if actionSchema !== undefined}
-    <details class="chat-tool-approval-args">
-      <summary class="chat-tool-approval-args-toggle">View parameters</summary>
+    <EntryFrame id={`${safeKey}-parameters`} label="Parameters">
       <pre class="chat-tool-approval-args-code"><code>{actionSchema}</code></pre>
-    </details>
+    </EntryFrame>
   {/if}
 
   {#if isPending}
@@ -156,7 +156,7 @@
 
   .chat-tool-approval-icon {
     flex-shrink: 0;
-    font-size: var(--cinder-text-base);
+    font-size: var(--_cinder-chat-text-base, var(--cinder-text-base));
     line-height: 1;
   }
 
@@ -173,14 +173,14 @@
   }
 
   .chat-tool-approval-title {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
   }
 
   .chat-tool-approval-name {
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     background: var(--cinder-surface-inset);
     padding-inline: var(--cinder-space-1);
     border-radius: var(--cinder-radius-sm);
@@ -188,23 +188,9 @@
 
   .chat-tool-approval-message {
     margin: 0;
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-muted);
     line-height: var(--cinder-leading-normal, 1.5);
-  }
-
-  .chat-tool-approval-args {
-    font-size: var(--cinder-text-sm);
-  }
-
-  .chat-tool-approval-args-toggle {
-    cursor: pointer;
-    color: var(--cinder-text-muted);
-    user-select: none;
-
-    &:hover {
-      color: var(--cinder-text-default);
-    }
   }
 
   .chat-tool-approval-args-code {
@@ -213,7 +199,7 @@
     background: var(--cinder-surface-inset);
     border-radius: var(--cinder-radius-sm);
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     overflow-x: auto;
     white-space: pre-wrap;
     word-break: break-all;
@@ -236,7 +222,7 @@
     padding-inline: var(--cinder-button-padding-x-md);
     border: 1px solid transparent;
     border-radius: var(--cinder-radius-md);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     font-weight: var(--cinder-font-medium);
     cursor: pointer;
     transition: background-color var(--cinder-duration-fast) var(--cinder-ease-standard);

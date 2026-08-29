@@ -21,11 +21,15 @@ export {
   type ImageMessagePart,
   type MarkdownMessagePart,
   type MessagePartDerivationContext,
+  type ReasoningInfo,
   type ToolCallMessagePart,
   type ToolResultMessagePart,
+  type TranscriptEntryInfo,
+  type TranscriptEntryKind,
 } from './types.ts';
 export {
   CINDER_ARTIFACT_METADATA_KEY,
+  CINDER_ENTRIES_METADATA_KEY,
   CINDER_REASONING_METADATA_KEY,
   CINDER_STEPS_METADATA_KEY,
   CINDER_SUGGESTIONS_METADATA_KEY,
@@ -39,5 +43,6 @@ export {
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
+  resolveMessageTranscriptEntries,
   toMultiModalArray,
 } from './utilities.ts';

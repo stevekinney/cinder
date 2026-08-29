@@ -51,13 +51,30 @@ export type ChatComposerPopoverItemSnippetContext<TItem extends ChatComposerPopo
   trigger: string;
 };
 
+export type ChatComposerPopoverSource<TItem extends ChatComposerPopoverItem> = {
+  /** Stable source identifier used for keyed rendering. */
+  id: string;
+  /** Visible and accessible heading for this result group. */
+  label: string;
+  /** Resolve candidates for the active token. May return synchronously or asynchronously. */
+  load: (context: {
+    query: string;
+    trigger: string;
+  }) => readonly TItem[] | Promise<readonly TItem[]>;
+  /** Maximum filtered results rendered from this source. */
+  limit?: number;
+};
+
 export type ChatComposerPopoverProps<TItem extends ChatComposerPopoverItem> = {
   /** Unique identifier used for the listbox and item ids. */
   id: string;
   /** Current composer value. Keep this synchronized through ChatInput binding or Chat's oncomposerinput. */
   value?: string;
   /** Consumer-owned command or mention definitions. */
-  items: readonly TItem[];
+  /** Immediate, ungrouped suggestions. Default `[]`. */
+  items?: readonly TItem[];
+  /** Typed synchronous or asynchronous grouped suggestion sources. Default `[]`. */
+  sources?: readonly ChatComposerPopoverSource<TItem>[];
   /** Trigger characters that open the popover. Default `['/', '@']`. */
   triggers?: readonly string[];
   /** Accessible listbox label. Default `'Composer suggestions'`. */

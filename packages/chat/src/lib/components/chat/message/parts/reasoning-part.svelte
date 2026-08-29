@@ -12,6 +12,8 @@
 </script>
 
 <script lang="ts">
+  import EntryFrame from '../entry-frame.svelte';
+
   let { part, expanded = false, onToggle }: ReasoningPartProps = $props();
 
   const labelId = $derived(`reasoning-label-${part.key.replace(/[^a-z0-9-]/gi, '-')}`);
@@ -63,50 +65,33 @@
   data-cinder-streaming={part.streaming ? '' : undefined}
   data-cinder-expanded={expanded ? '' : undefined}
 >
-  <button
-    type="button"
-    class="chat-reasoning-toggle"
+  <EntryFrame
     id={labelId}
-    aria-expanded={expanded}
-    aria-controls={contentId}
+    label={`Reasoning${tokenDisplay}`}
+    labelClass="chat-reasoning-label"
+    status={part.streaming ? 'In progress' : undefined}
+    triggerClass="chat-reasoning-toggle"
+    busy={part.streaming}
+    open={expanded}
     disabled={part.streaming}
-    onclick={handleToggle}
+    onToggle={() => handleToggle()}
   >
-    <span class="chat-reasoning-label" aria-hidden="true">
-      {#if part.streaming}
-        <span class="chat-reasoning-dot" aria-hidden="true"></span>
-      {/if}
-      Reasoning{tokenDisplay}
-    </span>
-    <span class="sr-only">
-      {#if part.streaming}
-        Reasoning in progress
-      {:else if expanded}
-        Collapse reasoning
-      {:else}
-        Expand reasoning
-      {/if}
-    </span>
-    <span class="chat-reasoning-chevron" aria-hidden="true">
-      {expanded ? '▲' : '▼'}
-    </span>
-  </button>
-
-  <!-- The controlled region carries `id`/`aria-hidden` on the SAME element the
-       toggle's aria-controls points at, so the relationship is never to an
-       element buried inside an aria-hidden subtree. When collapsed it is hidden
-       from AT and removed from the tab order. -->
-  <div class="chat-reasoning-body">
     <div
       id={contentId}
       class="chat-reasoning-content"
-      aria-hidden={!expanded}
       aria-live={part.streaming ? 'off' : undefined}
       aria-busy={part.streaming ? true : undefined}
     >
+      {#if part.summary && part.summary.length > 0}
+        <ul class="chat-reasoning-summary" aria-label="Reasoning summary">
+          {#each part.summary as item}
+            <li>{item}</li>
+          {/each}
+        </ul>
+      {/if}
       {part.content}
     </div>
-  </div>
+  </EntryFrame>
 
   <!-- Always-present polite live region. Fires "Reasoning complete." once when
        streaming ends (part.streaming: true→false). Clearing on resume ensures it
@@ -121,137 +106,25 @@
     --cinder-chat-reasoning-border: var(--cinder-border);
     --cinder-chat-reasoning-text: var(--cinder-text-muted);
 
-    display: flex;
-    flex-direction: column;
-    border-inline-start: 2px solid var(--cinder-chat-reasoning-border);
-    background: var(--cinder-chat-reasoning-bg);
-    border-radius: 0 var(--cinder-radius-md) var(--cinder-radius-md) 0;
-    overflow: hidden;
-  }
-
-  .chat-reasoning-toggle {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: var(--cinder-space-2);
-    padding-block: var(--cinder-space-2);
-    padding-inline: var(--cinder-space-3);
-    min-block-size: var(--cinder-touch-target-min, 44px);
-    background: transparent;
-    border: none;
-    cursor: pointer;
-    text-align: start;
-    font-size: var(--cinder-text-xs);
-    font-weight: var(--cinder-font-medium);
-    text-transform: uppercase;
-    letter-spacing: 0.05em;
-    color: var(--cinder-chat-reasoning-text);
-    font-style: italic;
-    width: 100%;
-
-    &:disabled {
-      cursor: default;
-    }
-
-    @media (hover: hover) {
-      &:not(:disabled):hover {
-        color: var(--cinder-text-default);
-        background: color-mix(in oklch, var(--cinder-chat-reasoning-bg), transparent 20%);
-      }
-    }
-
-    &:focus-visible {
-      outline: var(--cinder-ring-width) solid transparent;
-      outline-offset: -2px;
-      box-shadow: var(--_cinder-focus-ring-shadow);
-    }
-
-    @media (forced-colors: active) {
-      &:focus-visible {
-        outline: var(--cinder-ring-width) solid ButtonText;
-        outline-offset: 2px;
-        box-shadow: none;
-      }
-    }
-  }
-
-  .chat-reasoning-label {
-    display: flex;
-    align-items: center;
-    gap: var(--cinder-space-2);
-    flex: 1;
-  }
-
-  .chat-reasoning-chevron {
-    flex-shrink: 0;
-    font-size: 0.625rem;
-    opacity: 0.6;
-  }
-
-  /* Pulsing dot during streaming — opacity-only, respects prefers-reduced-motion */
-  .chat-reasoning-dot {
-    display: inline-block;
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
-    background: var(--cinder-chat-reasoning-border);
-    animation: chat-reasoning-pulse 1.2s ease-in-out infinite;
-    flex-shrink: 0;
-  }
-
-  @keyframes chat-reasoning-pulse {
-    0%,
-    100% {
-      opacity: 1;
-    }
-    50% {
-      opacity: 0.25;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chat-reasoning-dot {
-      animation: none;
-      opacity: 0.6;
-    }
-  }
-
-  /* Expand/collapse via grid-template-rows (avoids max-height clamping) */
-  .chat-reasoning-body {
-    display: grid;
-    grid-template-rows: 0fr;
-    transition: grid-template-rows var(--cinder-duration-base) var(--cinder-ease-standard);
-  }
-
-  [data-cinder-expanded] .chat-reasoning-body {
-    grid-template-rows: 1fr;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chat-reasoning-body {
-      transition: none;
-    }
+    display: block;
   }
 
   .chat-reasoning-content {
-    max-block-size: 16rem;
-    overflow-y: auto;
     /* Hidden + non-focusable while collapsed. A scrollable region with
        overflow-y:auto is keyboard-focusable in some browsers even at zero
        height; visibility:hidden removes it from the tab order (and from AT),
        complementing aria-hidden. The parent grid (0fr) clips it visually. */
-    visibility: hidden;
-    padding-block: var(--cinder-space-2);
-    padding-inline: var(--cinder-space-3);
-    font-size: var(--cinder-text-sm);
+    padding: 0;
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-chat-reasoning-text);
     line-height: var(--cinder-leading-relaxed, 1.625);
     white-space: pre-wrap;
     word-break: break-word;
   }
 
-  [data-cinder-expanded] .chat-reasoning-content {
-    visibility: visible;
+  .chat-reasoning-summary {
+    margin: 0 0 var(--cinder-space-2);
+    padding-inline-start: var(--cinder-space-5);
   }
 
   /* Forced-colors: the decorative pulse dot and the accent rail use background/
@@ -260,16 +133,6 @@
   @media (forced-colors: active) {
     .chat-reasoning {
       border-inline-start-color: ButtonText;
-    }
-
-    .chat-reasoning-dot {
-      background: ButtonText;
-      forced-color-adjust: none;
-    }
-
-    .chat-reasoning-toggle:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: -2px;
     }
   }
 

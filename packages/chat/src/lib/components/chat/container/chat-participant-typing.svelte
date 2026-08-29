@@ -90,7 +90,7 @@
   }
 
   .chat-participant-typing-label {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-muted);
   }
 

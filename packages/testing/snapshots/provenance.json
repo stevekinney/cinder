@@ -1,11 +1,16 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "spinner"
+    "dropdown",
+    "menu-bar",
+    "navigation-bar",
+    "navigation-item",
+    "side-navigation",
+    "sidebar"
   ],
-  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
+  "renderedSourceSha": "4edfe522c5ef1d93cb97302140db6167bad7c29c",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "x64",
+  "architecture": "arm64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }

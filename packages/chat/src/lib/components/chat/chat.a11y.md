@@ -51,3 +51,11 @@ rather than fading toward an incorrect color (see `chat.types.ts`).
 `@media (forced-colors: active)` disables the fade outright.
 
 Related components: `markdown-editor`.
+
+## Shared transcript entry frame
+
+Reasoning, tool calls, approval details, and step groups use the same Collapsible-based entry frame. The nearest existing patterns are `Collapsible` for disclosure state and `RunStepTimeline` for grouped execution history. The frame exists to unify the trigger, chevron, expanded-region semantics, and bounded body while leaving each domain part responsible for its own status and controls.
+
+Design review outcome: approved. The frame removes competing disclosure treatments without inventing a second visual hierarchy, keeps native button semantics, and preserves the existing tool-approval actions. Consecutive completed tool calls may collapse into a timeline summary; action-required calls stay individual so Approve and Reject remain available.
+
+Accessibility review outcome: approved with an explicit scroll-fade boundary. The message timeline and non-interactive bounded reading regions may use the shared overflow fade. Keyboard-navigable toolbars, tab lists, menus, listboxes, and chip rows intentionally do not: roving focus can place an item flush against an edge, where an opaque fade would obscure its focus indicator or text. Firefox continues to receive the non-animation fallback or no decorative fade; no control depends on the fade to communicate overflow.

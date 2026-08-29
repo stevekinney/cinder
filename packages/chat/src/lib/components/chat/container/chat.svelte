@@ -35,6 +35,7 @@
     pairToolCallsWithResults,
     resolveMessageArtifact,
     resolveMessageReasoning,
+    resolveMessageTranscriptEntries,
     resolveMessageSteps,
     resolveMessageSuggestions,
   } from '../utilities/index.ts';
@@ -68,7 +69,9 @@
   import { useChatReadReceipts } from './use-chat-read-receipts.svelte.ts';
   import ChatParticipantTyping from './chat-participant-typing.svelte';
   import ChatReadReceipt from '../message/chat-read-receipt.svelte';
+  import ToolCallTimeline from '../message/tool-call-timeline.svelte';
   import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
+  import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -118,6 +121,8 @@
     messageStatus,
     row,
     messagePart,
+    markdownNode,
+    onrollback,
     viewportAttachment,
     typingParticipants,
     readReceipts,
@@ -233,6 +238,10 @@
   }
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+  const stepsState = useChatDisclosureState({
+    onRemeasureRow: remeasureRow,
+    defaultExpanded: true,
+  });
 
   // Content-driven streams do not call beginStreaming, so warm the renderer
   // when streaming starts or when Chat mounts during an already-active stream.
@@ -261,6 +270,7 @@
     editingMessageIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
+    stepsState.reset();
     typingIndicatorState.reset();
     readReceiptsState.reset();
     clearConsumerAnnouncements();
@@ -369,6 +379,28 @@
   // C5 — suggested replies are a per-TURN affordance shown only beneath the last
   // message, not on every historical message that still carries the metadata.
   const lastMessageId = $derived(messages.at(-1)?.id);
+  let rollbackMessageId = $state<string | null>(null);
+  let rollbackConversationIdentity: string | undefined;
+  const rollbackBoundaryIndex = $derived(
+    rollbackMessageId ? messages.findIndex((message) => message.id === rollbackMessageId) : -1,
+  );
+  const messageIndexById = $derived(
+    new Map(messages.map((message, index) => [message.id, index] as const)),
+  );
+  $effect(() => {
+    if (rollbackConversationIdentity !== conversationId) {
+      rollbackMessageId = null;
+      rollbackConversationIdentity = conversationId;
+      return;
+    }
+    if (rollbackMessageId && rollbackBoundaryIndex < 0) rollbackMessageId = null;
+  });
+
+  function confirmRollback(): void {
+    if (!rollbackMessageId) return;
+    onrollback?.(rollbackMessageId);
+    rollbackMessageId = null;
+  }
   // Transcript shape from the auto-scroll effect's previous run, used to tell
   // a history PREPEND (first id changes, last id unchanged) from an APPEND
   // (#1237). Plain lets, NOT $state: they are only read/written inside that
@@ -430,12 +462,33 @@
     }
     return map;
   });
+  const actionRequiredToolCallIds = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const [callId, pairs] of toolCallPairsByCallId) {
+      if (pairs.some((pair) => pair.result?.outcome === 'action_required')) ids.add(callId);
+    }
+    return ids;
+  });
   const renderRows = $derived.by(() => {
     const pairedToolResultIds = findPairedToolResultIds(messages);
     const messagesWithDates = buildMessagesWithDateSeparators(messages, pairedToolResultIds);
     return buildChatRenderRows(messagesWithDates, {
       firstUnreadId: unreadState.firstUnreadId,
       showTypingIndicator,
+      ungroupedToolCallIds:
+        row ||
+        messagePart ||
+        messageActions ||
+        messageStatus ||
+        messageReasoning ||
+        messageSteps ||
+        onExpandedChange ||
+        searchState.isOpen ||
+        rollbackMessageId
+          ? new Set(
+              messages.flatMap((message) => (message.toolCall?.id ? [message.toolCall.id] : [])),
+            )
+          : actionRequiredToolCallIds,
     });
   });
   let hasMounted = $state(false);
@@ -503,11 +556,13 @@
   });
 
   function pinHistoryAnchorVirtualItem(row: ChatRenderRow, virtualItem: VirtualItem): VirtualItem {
-    if (
-      historyAnchorViewportOffset === null ||
-      row.type !== 'message' ||
-      row.message.id !== historyAnchorMessageId
-    ) {
+    const rowAnchorMessageId =
+      row.type === 'message'
+        ? row.message.id
+        : row.type === 'tool-call-group'
+          ? row.messages[0]?.id
+          : undefined;
+    if (historyAnchorViewportOffset === null || rowAnchorMessageId !== historyAnchorMessageId) {
       return virtualItem;
     }
 
@@ -662,6 +717,64 @@
       }
     }
     return '';
+  });
+  let hasObservedToolStatuses = false;
+  let observedToolStatusConversationId: string | undefined;
+  let previousToolStatuses = new Map<string, { name: string; status: string }>();
+  $effect(() => {
+    const currentConversationId = conversationId;
+    const currentToolStatuses = new Map<string, { name: string; status: string }>();
+    const callOccurrenceKeys = new Map<string, string[]>();
+    const aggregatedMessageIds = new Set(
+      renderRows.flatMap((row) =>
+        row.type === 'tool-call-group' ? row.messages.map((message) => message.id) : [],
+      ),
+    );
+    for (const message of messages) {
+      if (message.role === 'tool-call' && message.toolCall) {
+        if (!aggregatedMessageIds.has(message.id)) continue;
+        const occurrenceKey = message.id;
+        const occurrenceKeys = callOccurrenceKeys.get(message.toolCall.id) ?? [];
+        occurrenceKeys.push(occurrenceKey);
+        callOccurrenceKeys.set(message.toolCall.id, occurrenceKeys);
+        currentToolStatuses.set(occurrenceKey, {
+          name: message.toolCall.name,
+          status: 'pending',
+        });
+      } else if (message.role === 'tool-result' && message.toolResult) {
+        const occurrenceKey = callOccurrenceKeys.get(message.toolResult.callId)?.at(-1);
+        if (!occurrenceKey) continue;
+        const previous = currentToolStatuses.get(occurrenceKey);
+        currentToolStatuses.set(occurrenceKey, {
+          name: previous?.name ?? 'Tool call',
+          status: message.toolResult.outcome,
+        });
+      }
+    }
+    if (currentConversationId !== observedToolStatusConversationId) {
+      hasObservedToolStatuses = false;
+      observedToolStatusConversationId = currentConversationId;
+    }
+    if (hasObservedToolStatuses) {
+      const statusAnnouncements: string[] = [];
+      for (const [callId, current] of currentToolStatuses) {
+        const previous = previousToolStatuses.get(callId);
+        if (!previous || previous.status === current.status) continue;
+        if (current.status === 'action_required') continue;
+        const statusLabel =
+          current.status === 'success'
+            ? 'complete'
+            : current.status === 'error'
+              ? 'failed'
+              : current.status;
+        statusAnnouncements.push(`${current.name} ${statusLabel}`);
+      }
+      if (statusAnnouncements.length > 0) {
+        setConsumerPoliteAnnouncement(statusAnnouncements.join('. '));
+      }
+    }
+    previousToolStatuses = currentToolStatuses;
+    hasObservedToolStatuses = true;
   });
   const assertiveAnnouncement = $derived(
     toolApprovalAssertiveMessage || consumerAssertiveAnnouncement,
@@ -2081,7 +2194,9 @@
     if (!viewport) return null;
 
     const viewportRect = viewport.getBoundingClientRect();
-    for (const message of viewport.querySelectorAll<HTMLElement>('.chat-message')) {
+    for (const message of viewport.querySelectorAll<HTMLElement>(
+      '.chat-message, .chat-tool-call-timeline',
+    )) {
       const messageId = messageIdFromElement(message);
       if (!messageId) continue;
 
@@ -2122,7 +2237,7 @@
     if (!isVirtualized || !viewport) return false;
     const activeElement =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (!activeElement?.classList.contains('chat-message')) return false;
+    if (!activeElement?.matches('.chat-message, .chat-tool-call-timeline')) return false;
 
     const currentMessageId = messageIdFromElement(activeElement);
     if (!currentMessageId) return false;
@@ -2137,9 +2252,11 @@
       targetIndex += step
     ) {
       const targetRow = renderRows[targetIndex];
-      if (targetRow?.type !== 'message') continue;
-
-      void focusVirtualMessage(targetRow.message.id);
+      if (targetRow?.type !== 'message' && targetRow?.type !== 'tool-call-group') continue;
+      const targetMessageId =
+        targetRow.type === 'message' ? targetRow.message.id : targetRow.messages[0]?.id;
+      if (!targetMessageId) continue;
+      void focusVirtualMessage(targetMessageId);
       return true;
     }
 
@@ -2527,6 +2644,7 @@
          malformed callback can never break the chat render (see resolve* in
          chat/utilities). A plain transcript yields `undefined` for all three. -->
     {@const derivedReasoning = resolveMessageReasoning(message, messageReasoning)}
+    {@const derivedEntries = resolveMessageTranscriptEntries(message)}
     {@const derivedSteps = resolveMessageSteps(message, messageSteps)}
     {@const derivedSuggestions =
       message.id === lastMessageId
@@ -2544,9 +2662,13 @@
         {message}
         toolCallPairs={pairs}
         {messagePart}
+        {markdownNode}
         onretry={allowRetry && canRetry ? handleRetry : undefined}
         onedit={allowEditing && canEdit ? handleEdit : undefined}
         oneditingchange={(editing) => handleEditingChange(message.id, editing)}
+        onrollback={onrollback ? (messageId) => (rollbackMessageId = messageId) : undefined}
+        rollbackDiscarded={rollbackBoundaryIndex >= 0 &&
+          (messageIndexById.get(message.id) ?? -1) >= rollbackBoundaryIndex}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}
@@ -2558,10 +2680,13 @@
         onapprove={canApprove ? handleApprove : undefined}
         ondeny={canDeny ? handleDeny : undefined}
         reasoning={derivedReasoning}
+        entries={derivedEntries}
         steps={derivedSteps}
         suggestions={derivedSuggestions}
         reasoningExpanded={reasoningState.isExpanded(message.id)}
         onreasoning={() => reasoningState.toggle(message.id)}
+        stepsExpanded={stepsState.isExpanded(message.id)}
+        onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
         onSuggestionSelect={handleSuggestionSelect}
@@ -2599,6 +2724,16 @@
       </div>
     {:else if renderRow.type === 'typing'}
       {@render renderTypingIndicator()}
+    {:else if renderRow.type === 'tool-call-group'}
+      <ToolCallTimeline
+        messageId={renderRow.messages[0]!.id}
+        pairs={renderRow.messages.flatMap((message) => {
+          if (!message.toolCall?.id) return [];
+          const pairs = toolCallPairsByCallId.get(message.toolCall.id) ?? [];
+          const pair = pairs.find((candidate) => candidate.call === message.toolCall) ?? pairs[0];
+          return pair ? [pair] : [];
+        })}
+      />
     {:else}
       {@render renderMessageRow(renderRow)}
     {/if}
@@ -2754,6 +2889,16 @@
   </div>
 </div>
 
+<ConfirmDialog
+  open={rollbackMessageId !== null}
+  title="Rollback conversation?"
+  description="The dimmed transcript entries will be discarded before this message is retried."
+  confirmLabel="Rollback conversation"
+  destructive
+  onConfirm={confirmRollback}
+  onCancel={() => (rollbackMessageId = null)}
+/>
+
 <style>
   .chat-container {
     container-type: inline-size;
@@ -2808,7 +2953,7 @@
   }
 
   .chat-drop-label {
-    font-size: var(--cinder-text-lg);
+    font-size: var(--_cinder-chat-text-lg, var(--cinder-text-lg));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     background: var(--cinder-surface);
@@ -2916,7 +3061,7 @@
 
   .chat-empty-prompt {
     padding: var(--cinder-space-2) var(--cinder-space-3);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -2964,7 +3109,7 @@
     display: inline-flex;
     align-items: center;
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     background: color-mix(in oklch, var(--cinder-accent-solid), transparent 92%);
@@ -3001,7 +3146,7 @@
   }
 
   .chat-typing-status {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     color: var(--cinder-text-muted);
     font-style: italic;
   }

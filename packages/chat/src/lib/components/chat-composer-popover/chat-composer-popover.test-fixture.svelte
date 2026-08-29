@@ -13,9 +13,11 @@
   import type { MessageInput } from '../chat/conversation-model.ts';
   import ChatComposerPopover from './chat-composer-popover.svelte';
   import type { ChatComposerPopoverSelection } from './chat-composer-popover.types.ts';
+  import type { ChatComposerPopoverSource } from './chat-composer-popover.types.ts';
 
   type Props = {
     commands?: TestComposerCommand[];
+    sources?: ChatComposerPopoverSource<TestComposerCommand>[];
     initialValue?: string;
     onSelected?: (selection: ChatComposerPopoverSelection<TestComposerCommand>) => void;
     onDismissed?: () => void;
@@ -27,6 +29,7 @@
 
   let {
     commands: commandItems,
+    sources = [],
     initialValue = '',
     onSelected = () => {},
     onDismissed = () => {},
@@ -74,6 +77,7 @@
   id="test-composer-popover"
   bind:value
   items={commands}
+  {sources}
   onSelect={handleSelected}
   onDismiss={onDismissed}
 >

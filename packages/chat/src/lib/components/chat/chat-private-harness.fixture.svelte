@@ -540,7 +540,7 @@
       {#if !parsedToolArguments.ok}
         <span
           data-testid="tool-arguments-error"
-          style="color: var(--cinder-status-danger-solid); font-size: var(--cinder-text-xs);"
+          style="color: var(--cinder-status-danger-solid); font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));"
         >
           Arguments must be valid JSON.
         </span>
@@ -633,7 +633,7 @@
         role="group"
         aria-label="Event log"
         tabindex={0}
-        style="display: grid; gap: 0.15rem; max-height: 10rem; overflow: auto; font-size: var(--cinder-text-xs); font-family: var(--cinder-font-mono);"
+        style="display: grid; gap: 0.15rem; max-height: 10rem; overflow: auto; font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs)); font-family: var(--cinder-font-mono);"
       >
         {#each log as entry (entry.id)}
           <div data-testid="event-log-entry" data-event={entry.event} data-payload={entry.payload}>

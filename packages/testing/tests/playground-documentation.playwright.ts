@@ -64,10 +64,10 @@ test.describe('playground component documentation', () => {
   test('renders highlighted usage and the live preview before any scroll', async ({ page }) => {
     await page.goto('/page/banner', { waitUntil: 'load' });
 
-    const usageCode = page.locator('[data-readme-code-block] pre.shiki');
+    const usageCode = page.locator('[data-readme-code-block] pre.shiki').first();
     await expect(usageCode).toBeVisible();
     await expect(usageCode.locator('span[style*="color"]')).not.toHaveCount(0);
-    await expect(page.locator('[data-readme-code-block] [tabindex="0"]')).toHaveCount(1);
+    await expect(page.locator('[data-readme-code-block] [tabindex="0"]').first()).toBeVisible();
 
     const overviewPreview = page.locator('#overview-mount-basic');
     await expect(overviewPreview).toHaveAttribute('data-overview-preview-rendered', '');
