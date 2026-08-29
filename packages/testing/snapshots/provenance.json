@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["guidance-region", "key-value-editor"],
-  "renderedSourceSha": "0b41e2f9c1710bed1093f0c998e10b109aaddd24",
+  "componentScope": ["citation", "code-location", "guidance-region", "key-value-editor"],
+  "renderedSourceSha": "6a5f9e4aa209406644faab9632b522a728370561",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "arm64",
