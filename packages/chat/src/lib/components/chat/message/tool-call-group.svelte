@@ -65,6 +65,15 @@
 </script>
 
 <div class={classNames('tool-call-group', className)} data-status={status} {...rest}>
+  <span class="sr-only" aria-live="polite" aria-atomic="true">
+    {pair.call.name}: {isError
+      ? 'Failed'
+      : isSuccess
+        ? 'Complete'
+        : isActionRequired
+          ? 'Action required'
+          : 'Pending'}
+  </span>
   <EntryFrame
     id={detailsId}
     label={pair.call.name}

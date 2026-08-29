@@ -69,6 +69,31 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(container.textContent).toContain('lookup');
   });
 
+  test('announces standalone tool status transitions', async () => {
+    const message = toolCallMessage();
+    const rendered = render(ChatMessage, {
+      props: {
+        message,
+        toolCallPairs: [{ call: message.toolCall! }],
+      },
+    });
+    const liveRegion = rendered.container.querySelector('[aria-live="polite"][aria-atomic="true"]');
+    expect(liveRegion?.textContent).toContain('lookup: Pending');
+
+    await rendered.rerender({
+      message,
+      toolCallPairs: [
+        {
+          call: message.toolCall!,
+          result: { callId: 'call-1', outcome: 'success', content: 'found' },
+        },
+      ],
+    });
+    await tick();
+
+    expect(liveRegion?.textContent).toContain('lookup: Complete');
+  });
+
   test('grouped repeated call ids remain unique and preserve structured error details', async () => {
     const { container } = render(ToolCallTimeline, {
       props: {
