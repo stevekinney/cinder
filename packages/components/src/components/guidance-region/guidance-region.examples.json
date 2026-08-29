@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic guidance region",
       "description": "Provide contextual guidance claims to an application surface.",
-      "code": "<script lang=\"ts\">\n  import { GuidanceRegion } from '@lostgradient/cinder/guidance-region';\n  const claims = [{ id: 'welcome', content: 'Start by exploring the workspace.' }];\n</script>\n\n<GuidanceRegion {claims} version=\"1.0.0\">\n  {#snippet children()}\n    <p>Workspace content</p>\n  {/snippet}\n</GuidanceRegion>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { GuidanceRegion, type GuidanceClaim } from '@lostgradient/cinder/guidance-region';\n\n  const claims = [\n    { id: 'welcome', anchor: 'workspace-start', content: 'Start by exploring the workspace.' },\n  ] satisfies GuidanceClaim[];\n  let anchor: HTMLElement;\n</script>\n\n<GuidanceRegion {claims} version=\"1.0.0\" anchorResolver={() => anchor}>\n  {#snippet children()}\n    <span bind:this={anchor}><Button>Explore workspace</Button></span>\n  {/snippet}\n</GuidanceRegion>\n"
     }
   ]
 }

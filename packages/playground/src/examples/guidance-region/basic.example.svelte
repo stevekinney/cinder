@@ -4,12 +4,17 @@
 </script>
 
 <script lang="ts">
-  import { GuidanceRegion } from '@lostgradient/cinder/guidance-region';
-  const claims = [{ id: 'welcome', content: 'Start by exploring the workspace.' }];
+  import { Button } from '@lostgradient/cinder/button';
+  import { GuidanceRegion, type GuidanceClaim } from '@lostgradient/cinder/guidance-region';
+
+  const claims = [
+    { id: 'welcome', anchor: 'workspace-start', content: 'Start by exploring the workspace.' },
+  ] satisfies GuidanceClaim[];
+  let anchor: HTMLElement;
 </script>
 
-<GuidanceRegion {claims} version="1.0.0">
+<GuidanceRegion {claims} version="1.0.0" anchorResolver={() => anchor}>
   {#snippet children()}
-    <p>Workspace content</p>
+    <span bind:this={anchor}><Button>Explore workspace</Button></span>
   {/snippet}
 </GuidanceRegion>
