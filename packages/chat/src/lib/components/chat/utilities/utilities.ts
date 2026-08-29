@@ -49,7 +49,7 @@ const TRANSCRIPT_ENTRY_KINDS = new Set([
 function isReasoningInfo(value: unknown): value is ReasoningInfo {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
   if (!('content' in value) || typeof value.content !== 'string') return false;
-  if (!('summary' in value)) return true;
+  if (!('summary' in value) || value.summary === undefined) return true;
   return Array.isArray(value.summary) && value.summary.every((item) => typeof item === 'string');
 }
 

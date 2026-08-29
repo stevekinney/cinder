@@ -317,6 +317,7 @@
         value = `${value.slice(0, start)}${attachment.restoreText}${value.slice(end)}`;
         oncomposerinput?.(value);
         const caretIndex = start + attachment.restoreText.length;
+        previousComposerValue = value;
         queueMicrotask(() => editorElement?.setSelectionRange(caretIndex, caretIndex));
       }
       onattachmentremove?.(attachment);
@@ -433,13 +434,28 @@
 
     // Re-check for whitespace-only after getting latest content
     const readyAttachments = attachments.filter((a) => a.status === 'ready');
-    const promotedPaste = readyAttachments.find((attachment) => attachment.restoreText);
-    if (trimmedContent.length === 0 && !promotedPaste) {
+    const promotedPastes = readyAttachments.filter(
+      (attachment) => attachment.restoreText !== undefined,
+    );
+    if (trimmedContent.length === 0 && promotedPastes.length === 0) {
       event.preventDefault();
       return;
     }
 
-    const submittedContent = trimmedContent || promotedPaste?.restoreText || '';
+    const submittedContent = promotedPastes
+      .map((attachment, index) => ({ attachment, index }))
+      .sort(
+        (left, right) =>
+          (right.attachment.restoreRange?.start ?? latestContent.length) -
+            (left.attachment.restoreRange?.start ?? latestContent.length) ||
+          right.index - left.index,
+      )
+      .reduce((content, { attachment }) => {
+        const start = Math.min(attachment.restoreRange?.start ?? content.length, content.length);
+        const end = Math.min(attachment.restoreRange?.end ?? start, content.length);
+        return `${content.slice(0, start)}${attachment.restoreText ?? ''}${content.slice(end)}`;
+      }, latestContent)
+      .trim();
     const message: MessageInput = {
       role: 'user',
       content: submittedContent,
@@ -448,7 +464,7 @@
     // Call onsubmit callback
     onsubmit?.(
       message,
-      readyAttachments.filter((attachment) => attachment.id !== promotedPaste?.id),
+      readyAttachments.filter((attachment) => attachment.restoreText === undefined),
     );
 
     // In standalone mode, prevent default form submission

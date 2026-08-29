@@ -227,6 +227,12 @@ describe('resolveMessageReasoning', () => {
     expect(resolveMessageReasoning(m)).toEqual(reasoning);
   });
 
+  it('accepts structured reasoning with an explicitly undefined optional summary', () => {
+    const reasoning = { content: 'Full reasoning', summary: undefined };
+    const m = message({ role: 'assistant' });
+    expect(resolveMessageReasoning(m, () => reasoning)).toEqual(reasoning);
+  });
+
   it('rejects malformed structured reasoning and empty content', () => {
     expect(
       resolveMessageReasoning(

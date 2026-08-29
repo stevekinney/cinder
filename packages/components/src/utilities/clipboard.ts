@@ -38,7 +38,7 @@ export async function copyToClipboard(
       }
       if (rich.image !== undefined) {
         const imageBlob = await resolveOptionalImage(rich.image);
-        if (imageBlob.type.startsWith('image/')) representations[imageBlob.type] = imageBlob;
+        if (imageBlob?.type.startsWith('image/')) representations[imageBlob.type] = imageBlob;
       }
       await navigator.clipboard.write([new ClipboardItem(representations)]);
       return true;
@@ -57,14 +57,20 @@ export async function copyToClipboard(
   return legacyCopy(text);
 }
 
-async function resolveOptionalImage(image: Blob | string): Promise<Blob> {
+async function resolveOptionalImage(image: Blob | string): Promise<Blob | undefined> {
   if (image instanceof Blob) return image;
+  const resolvedUrl = new URL(image, document.baseURI);
+  const isLocallyResolvable =
+    resolvedUrl.protocol === 'blob:' ||
+    resolvedUrl.protocol === 'data:' ||
+    resolvedUrl.origin === globalThis.location.origin;
+  if (!isLocallyResolvable) return undefined;
   try {
-    const response = await fetch(image);
-    if (!response.ok) return new Blob();
+    const response = await fetch(resolvedUrl);
+    if (!response.ok) return undefined;
     return await response.blob();
   } catch {
-    return new Blob();
+    return undefined;
   }
 }
 

@@ -697,6 +697,42 @@
     }
     return '';
   });
+  let hasObservedToolStatuses = false;
+  let previousToolStatuses = new Map<string, { name: string; status: string }>();
+  $effect(() => {
+    const currentToolStatuses = new Map<string, { name: string; status: string }>();
+    for (const message of messages) {
+      if (message.role === 'tool-call' && message.toolCall) {
+        currentToolStatuses.set(message.toolCall.id, {
+          name: message.toolCall.name,
+          status: 'pending',
+        });
+      } else if (message.role === 'tool-result' && message.toolResult) {
+        const previous = currentToolStatuses.get(message.toolResult.callId);
+        currentToolStatuses.set(message.toolResult.callId, {
+          name: previous?.name ?? 'Tool call',
+          status: message.toolResult.outcome,
+        });
+      }
+    }
+    if (hasObservedToolStatuses) {
+      for (const [callId, current] of currentToolStatuses) {
+        const previous = previousToolStatuses.get(callId);
+        if (!previous || previous.status === current.status) continue;
+        const statusLabel =
+          current.status === 'success'
+            ? 'complete'
+            : current.status === 'error'
+              ? 'failed'
+              : current.status === 'action_required'
+                ? 'requires action'
+                : current.status;
+        setConsumerPoliteAnnouncement(`${current.name} ${statusLabel}`);
+      }
+    }
+    previousToolStatuses = currentToolStatuses;
+    hasObservedToolStatuses = true;
+  });
   const assertiveAnnouncement = $derived(
     toolApprovalAssertiveMessage || consumerAssertiveAnnouncement,
   );

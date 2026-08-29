@@ -142,6 +142,34 @@ describe('ChatInput', () => {
     expect(submittedAttachments).toEqual([[]]);
   });
 
+  test('reconstructs composer text with every promoted paste and excludes their attachments', async () => {
+    const submissions: Array<{ message: MessageInput; attachments: unknown[] }> = [];
+    const { container } = render(ChatInput, {
+      id: 'multiple-promoted-pastes',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput, attachments: unknown[]) =>
+        submissions.push({ message, attachments }),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'first document' },
+    });
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => ' second document' },
+    });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([
+      {
+        message: { role: 'user', content: 'summarize: first document second document' },
+        attachments: [],
+      },
+    ]);
+  });
+
   test('restores a promoted paste at its original selection', async () => {
     const { container } = render(ChatInput, {
       id: 'selected-large-paste-composer',

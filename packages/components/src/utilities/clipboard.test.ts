@@ -115,6 +115,7 @@ describe('copyToClipboard', () => {
       const item = writtenItems[0] as unknown as TestClipboardItem;
       expect(await item.values['text/html']?.text()).toBe('<strong>Hello</strong>');
       expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
       expect(writeText).not.toHaveBeenCalled();
     } finally {
       Object.defineProperty(globalThis, 'fetch', {
