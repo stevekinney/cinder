@@ -1,9 +1,25 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "terminal-frame"
+    "citation",
+    "code-location",
+    "confirm-dialog",
+    "data-table",
+    "donut-chart",
+    "find-bar",
+    "guidance-region",
+    "inline-confirm",
+    "key-value-editor",
+    "modal-region",
+    "quota-meter",
+    "relative-time",
+    "review-editor",
+    "table",
+    "terminal-frame",
+    "terminal-output",
+    "zoom-pan-viewer"
   ],
-  "renderedSourceSha": "f48471d960939ecf1ddd9a25aa95c6bfe6351e00",
+  "renderedSourceSha": "8e106bf8da13c345182c7de9459bb6e9845de054",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
