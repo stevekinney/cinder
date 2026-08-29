@@ -54,6 +54,24 @@ describe('FindBar', () => {
     expect(onQueryChange).toHaveBeenCalledWith('new query');
   });
 
+  test('debounces the user query rather than a later controlled replacement', async () => {
+    jest.useFakeTimers();
+    const onQueryChange = mock(() => {});
+    const { container, rerender } = render(FindBar, {
+      value: '',
+      debounceMs: 10,
+      onQueryChange,
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+
+    await fireEvent.input(input, { target: { value: 'user query' } });
+    await rerender({ value: 'programmatic replacement', debounceMs: 10, onQueryChange });
+    jest.advanceTimersByTime(10);
+
+    expect(onQueryChange).toHaveBeenCalledWith('user query');
+    expect(onQueryChange).not.toHaveBeenCalledWith('programmatic replacement');
+  });
+
   test('uses an undebounced keydown path for match navigation', async () => {
     const onNext = mock(() => {});
     const onPrevious = mock(() => {});

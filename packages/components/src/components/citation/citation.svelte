@@ -45,7 +45,12 @@
     return url;
   });
   $effect(() => {
-    if (page >= sources.length) page = Math.max(0, sources.length - 1);
+    if (sources.length === 0) {
+      page = 0;
+      open = false;
+    } else if (page >= sources.length) {
+      page = sources.length - 1;
+    }
   });
 </script>
 

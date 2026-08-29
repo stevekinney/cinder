@@ -104,10 +104,18 @@ export class TerminalOutputParser {
         }
         if (end >= 0) {
           const command = input.slice(sequenceStart, end);
-          if (input[end] === 'K' && (command === '' || command === '0' || command === '2')) {
+          if (
+            input[end] === 'K' &&
+            (command === '' || command === '0' || command === '1' || command === '2')
+          ) {
             if (command === '2') {
               const length = Math.max(this.#column, this.#lines[this.#line]?.length ?? 0);
               this.#lines[this.#line] = Array.from({ length }, () => this.blankCell());
+            } else if (command === '1') {
+              const line = this.#lines[this.#line] ?? (this.#lines[this.#line] = []);
+              const length = Math.max(this.#column + 1, line.length);
+              for (let cell = 0; cell <= this.#column; cell += 1) line[cell] = this.blankCell();
+              line.length = length;
             } else this.#lines[this.#line]?.splice(this.#column);
           }
           if (input[end] === 'm') this.applySgr(command || '0');

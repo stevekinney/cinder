@@ -107,6 +107,17 @@ describe('KeyValueEditor', () => {
     expect(entry).not.toContain('secret-value-field.css');
   });
 
+  test('stacks key-value rows within narrow containers', () => {
+    const css = readFileSync(new URL('./key-value-editor.css', import.meta.url), 'utf8');
+    const { container } = render(KeyValueEditor, {
+      entries: [{ key: 'Host', value: 'localhost' }],
+    });
+    expect(container.querySelector('.cinder-key-value-editor__row')).not.toBeNull();
+    expect(css).toContain('@container cinder-grid (max-width: 48rem)');
+    expect(css).toContain('grid-column: 1 / -1;');
+    expect(css).toContain('grid-template-columns: minmax(0, 1fr) auto;');
+  });
+
   test('composes primitives through public component subpaths', async () => {
     const source = await Bun.file(new URL('./key-value-editor.svelte', import.meta.url)).text();
     expect(source).toContain("from '@lostgradient/cinder/grid';");

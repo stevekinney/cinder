@@ -62,11 +62,12 @@
       queryWasEligible = false;
       onQueryChange?.('');
     }
+    const query = value;
     timer = setTimeout(() => {
       timer = undefined;
-      if (value.trim().length >= minQueryLength) {
+      if (query.trim().length >= minQueryLength) {
         queryWasEligible = true;
-        onQueryChange?.(value);
+        onQueryChange?.(query);
       }
     }, debounceMs);
   }

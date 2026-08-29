@@ -92,4 +92,17 @@ describe('Citation', () => {
     await rerender({ sources: [{ label: 'One' }] });
     await waitFor(() => expect(document.querySelector('section strong')?.textContent).toBe('One'));
   });
+
+  test('closes when sources become empty and stays closed when replenished', async () => {
+    const { container, rerender } = render(Citation, {
+      sources: [{ label: 'One' }],
+    });
+    await fireEvent.click(container.querySelector('.cinder-citation__marker')!);
+    await waitFor(() => expect(document.querySelector('section strong')).not.toBeNull());
+
+    await rerender({ sources: [] });
+    await waitFor(() => expect(document.querySelector('section')).toBeNull());
+    await rerender({ sources: [{ label: 'Replenished' }] });
+    expect(document.querySelector('section')).toBeNull();
+  });
 });

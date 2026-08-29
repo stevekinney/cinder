@@ -36,6 +36,8 @@ describe('parseTerminalOutput', () => {
   });
   test('erase to end preserves text before the cursor', () =>
     expect(parseTerminalOutput('old\u001b[0Knew')).toEqual([[{ text: 'oldnew', bold: false }]]));
+  test('erase from start clears through the cursor and preserves its column', () =>
+    expect(parseTerminalOutput('abcdef\u001b[1KX')).toEqual([[{ text: '      X', bold: false }]]));
   test('CSI sequences stop at their final byte and preserve later text', () =>
     expect(parseTerminalOutput('\u001b[31;foo m text')).toEqual([
       [{ text: 'oo m text', bold: false }],

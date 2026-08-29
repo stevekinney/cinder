@@ -106,9 +106,11 @@ describe('RelativeTime', () => {
     const originalSetInterval = window.setInterval;
     const originalClearInterval = window.clearInterval;
     let intervalCount = 0;
+    const intervalDelays: number[] = [];
     let clearCount = 0;
     window.setInterval = ((callback: TimerHandler, delay?: number) => {
       intervalCount += 1;
+      intervalDelays.push(delay ?? 0);
       return originalSetInterval(callback, delay);
     }) as typeof window.setInterval;
     window.clearInterval = ((timer?: number) => {
@@ -120,6 +122,7 @@ describe('RelativeTime', () => {
       const first = render(RelativeTime, { date: Date.now() });
       const second = render(RelativeTime, { date: Date.now() });
       expect(intervalCount).toBe(1);
+      expect(intervalDelays).toEqual([1_000]);
       first.unmount();
       expect(clearCount).toBe(0);
       second.unmount();

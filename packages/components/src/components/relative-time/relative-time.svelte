@@ -21,7 +21,7 @@
       clockTimer = window.setInterval(() => {
         const now = Date.now();
         for (const notify of clockSubscribers) notify(now);
-      }, 30_000);
+      }, 1_000);
     }
     return () => {
       clockSubscribers.delete(subscriber);
