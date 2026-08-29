@@ -77,6 +77,7 @@
           : 'Pending'}
     open={expanded}
     triggerClass="tool-call-header"
+    labelClass="tool-call-name"
     onToggle={() => handleToggle()}
   >
     <div id={detailsId} class="tool-call-details" role="region" aria-label="Tool details">

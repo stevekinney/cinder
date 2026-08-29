@@ -61,6 +61,7 @@ describe('ChatMessage — tool-call rendering', () => {
       },
     });
     expect(container.querySelector('.tool-call-group')).not.toBeNull();
+    expect(container.querySelector('.tool-call-name')?.textContent).toBe('lookup');
     expect(container.textContent).toContain('lookup');
   });
 
