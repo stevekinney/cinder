@@ -36,7 +36,7 @@
   }
 
   .cinder-slider[data-cinder-disabled] .cinder-slider__value {
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
   }
 
   .cinder-slider__track {

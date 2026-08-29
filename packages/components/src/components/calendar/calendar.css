@@ -83,13 +83,13 @@
 
   .cinder-calendar__day[data-in-range],
   .cinder-calendar__day[data-range-preview] {
-    background: var(--cinder-accent-muted);
+    background: var(--cinder-accent-background);
   }
 
   .cinder-calendar__day[data-range-start],
   .cinder-calendar__day[data-range-end] {
     background: var(--cinder-accent-solid);
-    color: var(--cinder-text-on-accent);
+    color: var(--cinder-accent-contrast);
   }
 
   .cinder-calendar__day[data-focused] {
