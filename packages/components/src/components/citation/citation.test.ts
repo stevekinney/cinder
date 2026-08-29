@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -9,13 +9,15 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { cleanup, render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Citation } = await import('./citation.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
 // A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
+
+afterEach(cleanup);
 
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
