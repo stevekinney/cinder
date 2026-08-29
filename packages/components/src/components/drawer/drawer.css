@@ -70,6 +70,10 @@
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
   }
 
+  .cinder-drawer__portal-scope {
+    display: contents;
+  }
+
   /* Each placement block owns its slide vector via --_cinder-drawer-slide;
    the single closing rule and single @starting-style rule below consume it,
    so adding a placement means ONE block here — no per-placement motion

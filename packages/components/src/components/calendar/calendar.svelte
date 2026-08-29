@@ -208,10 +208,20 @@
     start: undefined,
     end: undefined,
   });
+  let wasRangeControlled = $state(false);
   let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
   const selectedRangeStart = $derived(rangeStart ?? uncontrolledRange.start);
   const selectedRangeEnd = $derived(rangeEnd ?? uncontrolledRange.end);
+
+  // Keep the internal range mirror in step with controlled callers, including
+  // the transition from an endpoint to `undefined`. Without the remembered
+  // controlled mode, clearing both props would reveal the last clicked range.
+  $effect(() => {
+    if (!wasRangeControlled && rangeStart === undefined && rangeEnd === undefined) return;
+    uncontrolledRange = { start: rangeStart, end: rangeEnd };
+    wasRangeControlled = true;
+  });
 
   $effect(() => {
     if (anchorIso === lastSyncedAnchorIso) return;
@@ -345,6 +355,7 @@
           : iso < start
             ? { start: iso, end: start }
             : { start, end: iso };
+      if (next.end && rangeContainsDisabledDate(next.start, next.end)) return;
       uncontrolledRange = next;
       onRangeChange?.(next);
       value = next.end ?? next.start;
@@ -354,6 +365,16 @@
     value = iso;
     focusedIso = iso;
     onValueChange?.(iso);
+  }
+
+  function rangeContainsDisabledDate(start: string, end: string): boolean {
+    const first = parseISODate(start);
+    const last = parseISODate(end);
+    if (!first || !last) return true;
+    for (let date = addDays(first, 1); toISODate(date) < end; date = addDays(date, 1)) {
+      if (isDateDisabled(toISODate(date))) return true;
+    }
+    return false;
   }
 
   async function moveFocusedByDays(delta: number) {

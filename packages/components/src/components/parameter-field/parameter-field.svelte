@@ -53,8 +53,8 @@
 
 <div
   class={classNames('cinder-parameter-field', className)}
-  data-overridden={overridden || undefined}
-  data-unsaved={unsaved || undefined}
+  data-cinder-overridden={overridden || undefined}
+  data-cinder-unsaved={unsaved || undefined}
 >
   <div class="cinder-parameter-field__header">
     <span id={labelId} class="cinder-parameter-field__label">{label}</span>

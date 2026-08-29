@@ -54,6 +54,7 @@
     description,
     error,
     disabled = false,
+    disabledDate,
     class: className,
     onValueChange,
     'aria-describedby': consumerDescribedBy,
@@ -487,6 +488,7 @@
       rangeEnd={normalizedValue.end?.slice(0, 10)}
       value={normalizedValue.end?.slice(0, 10) ?? normalizedValue.start?.slice(0, 10)}
       onRangeChange={handleCalendarRangeChange}
+      {...disabledDate ? { disabledDate } : {}}
       {disabled}
     />
     {#if granularity !== 'day'}

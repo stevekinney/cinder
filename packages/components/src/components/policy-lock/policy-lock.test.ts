@@ -25,3 +25,10 @@ test('renders reason, source, scope badge, and tooltip association', () => {
     container.querySelector('.cinder-policy-lock__explanation')?.getAttribute('aria-label'),
   ).toBe('Policy details');
 });
+
+test('policy details button has a 44px hit-area pseudo-element', async () => {
+  const css = await Bun.file(new URL('./policy-lock.css', import.meta.url)).text();
+  expect(css).toMatch(
+    /\.cinder-policy-lock__explanation::after\s*\{[^}]*width:\s*44px;[^}]*height:\s*44px;/s,
+  );
+});

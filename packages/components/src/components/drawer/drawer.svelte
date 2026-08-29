@@ -49,11 +49,13 @@
   }: DrawerProps = $props();
 
   const titleId = $props.id();
+  const nonModalPortalScopeId = `${titleId}-scope`;
   const asideAttributes = $derived(rest as HTMLAttributes<HTMLElement>);
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
+  let nonModalAsideElement: HTMLElement | undefined = $state();
   let nonModalPanelElement: HTMLDivElement | undefined = $state();
   let nonModalReturnFocusTarget: HTMLElement | null = null;
   let wasNonModalOpen = false;
@@ -65,6 +67,15 @@
    * Only updated when the drawer actually (re)opens a new cycle.
    */
   let activePlacement = $state<DrawerPlacement>();
+
+  function isValidNonModalFocusTarget(target: HTMLElement | null): target is HTMLElement {
+    return (
+      target !== null &&
+      target.isConnected &&
+      target.ownerDocument === document &&
+      !nonModalAsideElement?.contains(target)
+    );
+  }
 
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
@@ -147,14 +158,17 @@
       const activeElement =
         document.activeElement instanceof HTMLElement ? document.activeElement : null;
       nonModalReturnFocusTarget =
-        triggerRef ?? (dialogElement?.contains(activeElement) ? null : activeElement);
+        (isValidNonModalFocusTarget(triggerRef) && triggerRef) ||
+        (isValidNonModalFocusTarget(activeElement) && activeElement) ||
+        null;
       wasNonModalOpen = true;
       return;
     }
 
     if (!open && wasNonModalOpen) {
       wasNonModalOpen = false;
-      const returnTarget = triggerRef ?? nonModalReturnFocusTarget;
+      const returnTarget =
+        (isValidNonModalFocusTarget(triggerRef) ? triggerRef : null) ?? nonModalReturnFocusTarget;
       nonModalReturnFocusTarget = null;
       const activeElement = document.activeElement;
       if (
@@ -174,7 +188,9 @@
         activeElement === document.body ||
         (activeElement instanceof HTMLElement && nonModalPanelElement?.contains(activeElement))
       ) {
-        restoreFocusTo(triggerRef ?? nonModalReturnFocusTarget);
+        restoreFocusTo(
+          (isValidNonModalFocusTarget(triggerRef) ? triggerRef : null) ?? nonModalReturnFocusTarget,
+        );
       }
     }
     dialogState.destroy();
@@ -278,11 +294,14 @@
     </dialog>
   {:else if open}
     <aside
+      bind:this={nonModalAsideElement}
       {...asideAttributes}
       class={classNames('cinder-drawer', className)}
       aria-labelledby={ariaLabelledby ?? titleId}
       data-cinder-modal="false"
+      data-cinder-portal-owner={nonModalPortalScopeId}
     >
+      <div id={nonModalPortalScopeId} class="cinder-drawer__portal-scope"></div>
       <div
         bind:this={nonModalPanelElement}
         class="cinder-drawer__panel"

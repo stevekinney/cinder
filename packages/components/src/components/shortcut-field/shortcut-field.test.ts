@@ -23,7 +23,14 @@ describe('ShortcutField', () => {
     await fireEvent.keyDown(field, { key: 'k', ctrlKey: true });
     expect(container.textContent).toContain('Reserved shortcut');
     expect(field.getAttribute('aria-invalid')).toBe('true');
+    const describedBy = field.getAttribute('aria-describedby');
+    expect(describedBy).not.toBeNull();
+    expect(describedBy).not.toBe('shortcut-field-error');
+    expect(container.querySelector(`#${describedBy}`)?.textContent).toContain('Reserved shortcut');
     await fireEvent.keyDown(field, { key: 'Escape' });
+    expect(field.getAttribute('aria-invalid')).toBeNull();
+    expect(field.getAttribute('aria-describedby')).toBeNull();
+    expect(container.querySelector('.cinder-shortcut-field__error')).toBeNull();
   });
   test('clear action is available for an existing value', async () => {
     const { container } = render(ShortcutField, { value: ['Control', 'K'] });
@@ -55,6 +62,7 @@ describe('ShortcutField', () => {
     const { container } = render(ShortcutField, { value: ['Control', 'K'], disabled: true });
     const field = container.querySelector('[role="textbox"]')!;
     expect(container.querySelector('[aria-label="Clear shortcut"]')).toBeNull();
+    expect(container.querySelector('.cinder-shortcut-field--disabled')).not.toBeNull();
     await fireEvent.keyDown(field, { key: 'x', ctrlKey: true });
     expect(container.textContent).toContain('Control');
   });

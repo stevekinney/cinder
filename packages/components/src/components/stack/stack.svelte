@@ -40,7 +40,7 @@
   data-cinder-align={align}
   data-cinder-justify={justify}
   data-cinder-wrap={wrap ? '' : undefined}
-  style:--cinder-stack-gap={gap}
+  style:--_cinder-stack-gap={gap}
 >
   {@render children?.()}
 </svelte:element>

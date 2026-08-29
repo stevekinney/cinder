@@ -16,9 +16,11 @@ test('defaults to inert web host values and publishes host-fed safe-header inset
 
 test('accepts platform and titlebar insets from a desktop host', () => {
   const { container } = render(HostProvider, {
-    platform: 'macos',
-    safeHeaderLeft: '5rem',
-    safeHeaderRight: '1rem',
+    props: {
+      platform: 'macos',
+      safeHeaderLeft: '5rem',
+      safeHeaderRight: '1rem',
+    },
   });
   const provider = container.querySelector<HTMLElement>('.cinder-host-provider');
   expect(provider?.dataset['cinderHostPlatform']).toBe('macos');

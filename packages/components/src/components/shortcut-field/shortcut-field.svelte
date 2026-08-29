@@ -29,6 +29,8 @@
   let armed = $state(false);
   let message = $state('');
   let validationError = $state('');
+  const fallbackId = $props.id();
+  const errorId = $derived(`${rest.id ?? fallbackId}-error`);
   const modifierNames = new Set(['Meta', 'Control', 'Alt', 'Shift']);
   function normalize(event: KeyboardEvent): string[] {
     const modifiers = [
@@ -53,6 +55,7 @@
       event.stopPropagation();
       armed = false;
       message = 'Shortcut capture cancelled';
+      validationError = '';
       return;
     }
     if (modifierNames.has(event.key)) return;
@@ -85,7 +88,14 @@
   }
 </script>
 
-<div {...rest} class={classNames('cinder-shortcut-field', className)}>
+<div
+  {...rest}
+  class={classNames(
+    'cinder-shortcut-field',
+    disabled && 'cinder-shortcut-field--disabled',
+    className,
+  )}
+>
   <div
     role="textbox"
     tabindex={disabled ? -1 : 0}
@@ -93,7 +103,7 @@
     aria-label={label}
     aria-disabled={disabled ? 'true' : undefined}
     aria-invalid={validationError ? 'true' : undefined}
-    aria-describedby={validationError ? `${rest.id ?? 'shortcut-field'}-error` : undefined}
+    aria-describedby={validationError ? errorId : undefined}
     class="cinder-shortcut-field__control"
     onfocus={arm}
     onclick={arm}
@@ -111,10 +121,7 @@
       aria-label="Clear shortcut"
       onclick={clear}>Clear</button
     >{/if}
-  {#if validationError}<div
-      id={`${rest.id ?? 'shortcut-field'}-error`}
-      class="cinder-shortcut-field__error"
-    >
+  {#if validationError}<div id={errorId} class="cinder-shortcut-field__error">
       {validationError}
     </div>{/if}
   <div class="cinder-sr-only" aria-live="polite">{message}</div>

@@ -872,6 +872,28 @@ describe('DateRangeField', () => {
       expect(getEndInput(container).value).toBe('2026-06-18');
     });
 
+    test('does not commit a range that crosses a disabled calendar date', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        value: { start: '2026-06-10', end: undefined },
+        disabledDate: (iso: string) => iso === '2026-06-12',
+        onValueChange: (next: DateRangeValue) => changes.push(next),
+      });
+
+      await fireEvent.click(
+        container.querySelector<HTMLButtonElement>('.cinder-date-range-field__calendar-trigger')!,
+      );
+      await waitFor(() => {
+        expect(document.querySelector('[id$="-day-2026-06-15"]')).not.toBeNull();
+      });
+      await fireEvent.click(document.querySelector('[id$="-day-2026-06-15"]')!);
+
+      expect(changes).toEqual([]);
+      expect(getStartInput(container).value).toBe('2026-06-10');
+      expect(getEndInput(container).value).toBe('');
+    });
+
     test('clearing an input emits undefined for that bound', async () => {
       const changes: DateRangeValue[] = [];
       const { container } = render(DateRangeField, {

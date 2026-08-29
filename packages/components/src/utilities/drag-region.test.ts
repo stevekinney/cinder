@@ -25,6 +25,7 @@ describe('drag region utilities', () => {
     const css = await Bun.file(new URL('../styles/utilities.css', import.meta.url)).text();
     expect(css).toContain('-webkit-app-region: drag');
     expect(css).toContain('app-region: drag');
+    expect(css).toMatch(/\.cinder-drag-region[\s\S]*\blabel\b/);
     expect(css).toContain("[role='button']");
     expect(css).toContain("[tabindex]:not([tabindex='-1'])");
     expect(css).toContain("[contenteditable]:not([contenteditable='false' i])");

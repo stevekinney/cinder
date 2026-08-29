@@ -89,6 +89,43 @@ describe('Calendar', () => {
     expect(day('2026-06-15').hasAttribute('data-range-end')).toBe(true);
   });
 
+  test('clearing controlled range endpoints does not reveal stale uncontrolled selection', async () => {
+    const { container, rerender } = render(Calendar, {
+      selectionMode: 'range',
+      month: '2026-06-01',
+      rangeStart: '2026-06-10',
+      rangeEnd: '2026-06-15',
+    });
+
+    await rerender({
+      selectionMode: 'range',
+      month: '2026-06-01',
+      rangeStart: undefined,
+      rangeEnd: undefined,
+    });
+
+    expect(container.querySelector('[data-range-start]')).toBeNull();
+    expect(container.querySelector('[data-range-end]')).toBeNull();
+  });
+
+  test('rejects a range whose interior contains a disabled date', async () => {
+    const ranges: Array<{ start: string | undefined; end: string | undefined }> = [];
+    const { container } = render(Calendar, {
+      selectionMode: 'range',
+      month: '2026-06-01',
+      disabledDate: (iso: string) => iso === '2026-06-12',
+      onRangeChange: (range: { start: string | undefined; end: string | undefined }) =>
+        ranges.push(range),
+    });
+
+    await fireEvent.click(container.querySelector('[id$="-day-2026-06-10"]')!);
+    await fireEvent.click(container.querySelector('[id$="-day-2026-06-15"]')!);
+
+    expect(ranges).toEqual([{ start: '2026-06-10', end: undefined }]);
+    expect(container.querySelector('[data-range-start]')?.id).toContain('2026-06-10');
+    expect(container.querySelector('[data-range-end]')).toBeNull();
+  });
+
   test('renders inclusive committed range and hover preview', async () => {
     const { container } = render(Calendar, {
       month: '2026-06-01',

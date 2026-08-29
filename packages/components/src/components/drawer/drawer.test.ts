@@ -59,6 +59,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Drawer } = await import('./drawer.svelte');
+const { findNearestOpenTopLayer } = await import('../portal/portal.utilities.svelte.ts');
 // One shared read for every CSS-contract test below — drawer.css is asserted
 // against nine times; re-reading it per test is pure waste.
 const drawerCss = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
@@ -719,6 +720,24 @@ describe('Drawer', () => {
     await rerender(props());
     await tick();
     expect(container.querySelector('aside.cinder-drawer')).toBeNull();
+  });
+
+  test('modal=false exposes a portal boundary outside the panel overflow context', () => {
+    const child = createRawSnippet(() => ({
+      render: () => '<button data-testid="nested-trigger">Nested trigger</button>',
+      setup: () => {},
+    }));
+    const { container } = render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: child },
+    });
+
+    const aside = container.querySelector('aside.cinder-drawer') as HTMLElement;
+    const scope = aside.querySelector('.cinder-drawer__portal-scope') as HTMLElement;
+    const trigger = aside.querySelector('[data-testid="nested-trigger"]') as HTMLElement;
+
+    expect(aside.dataset['cinderPortalOwner']).toBe(scope.id);
+    expect(drawerCss).toMatch(/\.cinder-drawer__portal-scope\s*\{[^}]*display:\s*contents;/s);
+    expect(findNearestOpenTopLayer(trigger)).toBe(scope);
   });
 
   test('modal=false close restores focus to triggerRef', async () => {

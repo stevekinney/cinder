@@ -23,7 +23,7 @@ describe('ParameterField', () => {
     expect(getByText('0.7')).toBeVisible();
     expect(getByText('K')).toBeVisible();
     expect(container.querySelector('.cinder-parameter-field')).not.toHaveAttribute(
-      'data-overridden',
+      'data-cinder-overridden',
     );
     expect(container.querySelector('.cinder-parameter-field__reset')).toBeNull();
   });
@@ -41,7 +41,9 @@ describe('ParameterField', () => {
       },
     });
 
-    expect(container.querySelector('.cinder-parameter-field')).toHaveAttribute('data-overridden');
+    expect(container.querySelector('.cinder-parameter-field')).toHaveAttribute(
+      'data-cinder-overridden',
+    );
     expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('1.2 K');
 
     const reset = getByRole('button', { name: 'Reset to default' });
@@ -52,13 +54,13 @@ describe('ParameterField', () => {
       expect(changes).toEqual([undefined]);
       expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('0.7 K');
       expect(container.querySelector('.cinder-parameter-field')).not.toHaveAttribute(
-        'data-overridden',
+        'data-cinder-overridden',
       );
     });
   });
 
   test('renders unsaved and experimental badges as textual status', () => {
-    const { getByText } = render(ParameterField, {
+    const { container, getByText } = render(ParameterField, {
       props: {
         id: 'temperature',
         label: 'Temperature',
@@ -70,6 +72,9 @@ describe('ParameterField', () => {
 
     expect(getByText('Unsaved')).toBeVisible();
     expect(getByText('Experimental')).toBeVisible();
+    expect(container.querySelector('.cinder-parameter-field')).toHaveAttribute(
+      'data-cinder-unsaved',
+    );
   });
 
   test('publishes the visible label to the editor region', () => {
