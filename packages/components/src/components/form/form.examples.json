@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic form",
       "description": "Native form submission with Cinder controls.",
-      "code": "<script lang=\"ts\">\n  import { Form } from '@lostgradient/cinder/form';\n  import { Input } from '@lostgradient/cinder/input';\n</script>\n\n<Form onSubmit={() => undefined}>\n  {#snippet children({ submitting })}\n    <Input id=\"form-name\" label=\"Name\" value=\"\" disabled={submitting}>\n      {#snippet leading()}{/snippet}\n      {#snippet trailing()}{/snippet}\n    </Input>\n    <button type=\"submit\" disabled={submitting}>Save</button>\n  {/snippet}\n</Form>\n"
+      "code": "<script lang=\"ts\">\n  import { Form } from '@lostgradient/cinder/form';\n  import { Input } from '@lostgradient/cinder/input';\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<Form onSubmit={() => undefined}>\n  {#snippet children({ submitting })}\n    <Input id=\"form-name\" label=\"Name\" value=\"\" disabled={submitting}>\n      {#snippet leading()}{/snippet}\n      {#snippet trailing()}{/snippet}\n    </Input>\n    <Button type=\"submit\" disabled={submitting}>Save</Button>\n  {/snippet}\n</Form>\n"
     }
   ]
 }
