@@ -1,9 +1,8 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "relative-time"
-  ],
-  "renderedSourceSha": "e9912d2b920af16dd83048719bd7c868d3f95ed7",
+  "componentScope": "all",
+  "shard": "5/8",
+  "renderedSourceSha": "58bf4830800555170af5d13c206f69706d773c37",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
