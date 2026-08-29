@@ -72,6 +72,26 @@ describe('FindBar', () => {
     expect(onQueryChange).not.toHaveBeenCalledWith('programmatic replacement');
   });
 
+  test('clamps the announced match position when the result count shrinks', async () => {
+    const { container, rerender } = render(FindBar, {
+      value: 'query',
+      matchCount: 4,
+      activeIndex: 3,
+    });
+
+    await rerender({ value: 'query', matchCount: 2, activeIndex: 3 });
+
+    expect(container.querySelector('[role="status"]')?.textContent).toBe('2 of 2');
+  });
+
+  test('allows the bar to reflow inside a narrow container', () => {
+    const css = readFileSync(new URL('./find-bar.css', import.meta.url), 'utf8');
+
+    expect(css).toContain('min-inline-size: 0;');
+    expect(css).toContain('flex-wrap: wrap;');
+    expect(css).toContain('min-inline-size: min(12rem, 100%);');
+  });
+
   test('uses an undebounced keydown path for match navigation', async () => {
     const onNext = mock(() => {});
     const onPrevious = mock(() => {});

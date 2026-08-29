@@ -39,6 +39,27 @@ describe('InlineConfirm', () => {
     expect(queryByRole('group')).toBeNull();
   });
 
+  test('restores captured focus when confirmation synchronously unmounts', async () => {
+    const trigger = document.createElement('button');
+    trigger.type = 'button';
+    trigger.textContent = 'Delete trigger';
+    document.body.append(trigger);
+    trigger.focus();
+
+    let unmount: () => void = () => {};
+    const view = render(InlineConfirm, {
+      prompt: 'Delete this comment?',
+      confirmLabel: 'Delete comment',
+      open: true,
+      onConfirm: () => unmount(),
+    });
+    unmount = view.unmount;
+    await fireEvent.click(view.getByRole('button', { name: 'Delete comment' }));
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
   test('focuses the safe cancel action and dismisses from Escape', async () => {
     let cancellations = 0;
     const { getByRole, queryByRole } = render(InlineConfirm, {

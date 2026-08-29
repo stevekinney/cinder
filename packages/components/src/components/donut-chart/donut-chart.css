@@ -26,6 +26,17 @@
     stroke-width: 24;
     stroke: var(--cinder-accent-solid);
   }
+  .cinder-donut-chart g[role='button']:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: var(--cinder-ring-offset);
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .cinder-donut-chart g[role='button']:focus-visible {
+      outline-color: ButtonText;
+      box-shadow: none;
+    }
+  }
   .cinder-donut-chart__total {
     font-size: var(--cinder-text-xl);
     font-weight: var(--cinder-font-semibold);

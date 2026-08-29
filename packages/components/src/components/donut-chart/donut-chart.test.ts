@@ -75,6 +75,12 @@ describe('DonutChart', () => {
     expect(container.querySelector('svg')?.getAttribute('role')).toBeNull();
   });
 
+  test('provides a visible focus indicator for keyboard-activated series', () => {
+    const css = readFileSync(new URL('./donut-chart.css', import.meta.url), 'utf8');
+    expect(css).toContain("g[role='button']:focus-visible");
+    expect(css).toContain('var(--_cinder-focus-ring-shadow)');
+  });
+
   test('does not expose zero-area series as interactive controls', async () => {
     const clicked: number[] = [];
     const { container } = render(DonutChart, {
@@ -136,6 +142,23 @@ describe('DonutChart', () => {
     expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Referral: 0');
     expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Email: 0');
     expect(container.querySelector('.cinder-sr-only')?.textContent).not.toMatch(/NaN|Infinity/);
+    for (const path of container.querySelectorAll('path')) {
+      expect(path.getAttribute('d')).not.toMatch(/NaN|Infinity/);
+    }
+  });
+
+  test('keeps totals and arcs finite when finite values overflow their sum', () => {
+    const { container } = render(DonutChart, {
+      label: 'Traffic',
+      data: [
+        { label: 'Direct', value: Number.MAX_VALUE },
+        { label: 'Search', value: Number.MAX_VALUE },
+      ],
+    });
+
+    expect(container.querySelector('.cinder-donut-chart__total')?.textContent).toBe(
+      String(Number.MAX_VALUE),
+    );
     for (const path of container.querySelectorAll('path')) {
       expect(path.getAttribute('d')).not.toMatch(/NaN|Infinity/);
     }

@@ -168,7 +168,7 @@
     triggerRef={api.resolveAnchor(activeClaim)}
     label="Guidance"
     focusManagement="preserve"
-    wireTriggerAria={false}
+    wireTriggerAria
   >
     <p>{activeClaim.content}</p>
     <Button size="sm" onclick={() => api.dismiss(activeClaim?.id ?? '')}>Got it</Button>

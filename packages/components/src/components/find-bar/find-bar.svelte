@@ -83,6 +83,11 @@
       queryWasEligible = true;
     }
   });
+  $effect(() => {
+    if (matchCount === null) return;
+    const maximumIndex = Math.max(0, matchCount - 1);
+    activeIndex = Math.min(Math.max(activeIndex, 0), maximumIndex);
+  });
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       if (value.trim().length < minQueryLength || !matchCount) return;

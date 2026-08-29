@@ -34,6 +34,11 @@ const exampleSet = (await Bun.file(here('review-editor.examples.json')).json()) 
 };
 
 describe('seeded threads no longer highlight the whole document', () => {
+  test('closes the actions menu when all visible threads disappear', () => {
+    expect(commentSidebarSource).toContain('{#key visibleThreads.length > 0}');
+    expect(commentSidebarSource).toContain('{/key}');
+    expect(commentSidebarSource).toContain('<Dropdown id="{id}-actions">');
+  });
   /**
    * The bug: Milkdown sets the initial document with a single step spanning the
    * entire old doc. Anchors present at that moment were mapped through it —

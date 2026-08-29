@@ -83,6 +83,12 @@ describe('GuidanceRegion', () => {
     expect(source).toContain('anchor.focus()');
   });
 
+  test('wires the consumer-owned anchor to the guidance popover lifecycle', () => {
+    const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('wireTriggerAria');
+    expect(source).not.toContain('wireTriggerAria={false}');
+  });
+
   test('does not let reset settle a stale modal claim into a new claim', async () => {
     let api: import('../../_internal/guidance-context.ts').GuidanceApi | undefined;
     render(GuidanceRegionHost, {

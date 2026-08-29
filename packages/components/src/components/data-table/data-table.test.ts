@@ -136,6 +136,26 @@ describe('DataTable — column resizing', () => {
     expect(resized.at(-1)).toEqual(['name', 155]);
   });
 
+  test('reverses pointer resizing direction in RTL', async () => {
+    const resized: number[] = [];
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 120 }],
+      rows,
+      resizable: true,
+      onColumnResize: (_key: string, width: number) => resized.push(width),
+    });
+    container.style.direction = 'rtl';
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    Object.defineProperty(separator, 'setPointerCapture', { value: () => {} });
+
+    await fireEvent.pointerDown(separator, { button: 0, clientX: 100, pointerId: 8 });
+    await fireEvent.pointerMove(document, { clientX: 135, pointerId: 8 });
+    await fireEvent.pointerUp(document, { clientX: 135, pointerId: 8 });
+
+    expect(resized.at(-1)).toBe(85);
+    expect(separator.getAttribute('aria-valuenow')).toBe('85');
+  });
+
   test('handles prototype-named column keys without width collisions', async () => {
     const { getByRole } = render(DataTable, {
       columns: [{ key: 'constructor', label: 'Constructor', width: 100 }],
@@ -180,6 +200,27 @@ describe('DataTable — column resizing', () => {
     expect(
       getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuemax'),
     ).toBe(String(Number.MAX_SAFE_INTEGER));
+  });
+
+  test('normalizes non-finite width bounds and values', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [
+        {
+          key: 'name',
+          label: 'Name',
+          width: Number.NaN,
+          minWidth: Number.NaN,
+          maxWidth: Number.POSITIVE_INFINITY,
+        },
+      ],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('150');
+    expect(separator.getAttribute('aria-valuemin')).toBe('60');
+    expect(separator.getAttribute('aria-valuemax')).toBe(String(Number.MAX_SAFE_INTEGER));
+    expect(container.querySelector('thead th')?.getAttribute('style')).toContain('width: 150px');
   });
 
   test('clamps the initial rendered column width to its bounds', () => {

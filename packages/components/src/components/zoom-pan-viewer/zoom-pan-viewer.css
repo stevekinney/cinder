@@ -9,6 +9,19 @@
     background: var(--cinder-surface);
     touch-action: none;
   }
+  .cinder-zoom-pan-viewer
+    :where(
+      button,
+      a,
+      input,
+      textarea,
+      select,
+      [contenteditable='true'],
+      [role='button'],
+      [role='link']
+    ) {
+    touch-action: auto;
+  }
   .cinder-zoom-pan-viewer:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);

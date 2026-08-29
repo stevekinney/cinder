@@ -162,27 +162,29 @@
     {/if}
 
     {#if !readonly}
-      <Dropdown id="{id}-actions">
-        <DropdownTrigger
-          id={actionsTriggerId}
-          class="actions-trigger"
-          aria-label="Comment actions"
-          caretVisible={false}
-          disabled={visibleThreads.length === 0}
-        >
-          <MoreHorizontal class="cinder-icon-sm" />
-        </DropdownTrigger>
-        <DropdownMenu>
-          <DropdownItem
-            variant="danger"
-            onclick={handleClearAllClick}
+      {#key visibleThreads.length > 0}
+        <Dropdown id="{id}-actions">
+          <DropdownTrigger
+            id={actionsTriggerId}
+            class="actions-trigger"
+            aria-label="Comment actions"
+            caretVisible={false}
             disabled={visibleThreads.length === 0}
           >
-            <Trash2 class="cinder-icon-sm" />
-            Clear all comments
-          </DropdownItem>
-        </DropdownMenu>
-      </Dropdown>
+            <MoreHorizontal class="cinder-icon-sm" />
+          </DropdownTrigger>
+          <DropdownMenu>
+            <DropdownItem
+              variant="danger"
+              onclick={handleClearAllClick}
+              disabled={visibleThreads.length === 0}
+            >
+              <Trash2 class="cinder-icon-sm" />
+              Clear all comments
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+      {/key}
     {/if}
   </div>
 

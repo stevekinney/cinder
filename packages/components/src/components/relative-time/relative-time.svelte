@@ -12,23 +12,45 @@
    */
   export type { RelativeTimeProps } from './relative-time.types.ts';
 
-  const clockSubscribers = new Set<(now: number) => void>();
+  type ClockSubscriber = {
+    notify: (now: number) => void;
+    getDelay: (now: number) => number;
+    nextAt: number;
+  };
+  const clockSubscribers = new Set<ClockSubscriber>();
   let clockTimer: number | undefined;
 
-  function subscribeToClock(subscriber: (now: number) => void): () => void {
-    clockSubscribers.add(subscriber);
-    if (clockTimer === undefined) {
-      clockTimer = window.setInterval(() => {
-        const now = Date.now();
-        for (const notify of clockSubscribers) notify(now);
-      }, 1_000);
+  function scheduleClock() {
+    if (clockTimer !== undefined) window.clearTimeout(clockTimer);
+    if (clockSubscribers.size === 0) {
+      clockTimer = undefined;
+      return;
     }
+    const now = Date.now();
+    const nextAt = Math.min(...[...clockSubscribers].map(({ nextAt }) => nextAt));
+    clockTimer = window.setTimeout(
+      () => {
+        clockTimer = undefined;
+        const nextNow = Date.now();
+        for (const subscriber of clockSubscribers) {
+          if (subscriber.nextAt <= nextNow) {
+            subscriber.notify(nextNow);
+            subscriber.nextAt = nextNow + subscriber.getDelay(nextNow);
+          }
+        }
+        scheduleClock();
+      },
+      Math.max(1_000, nextAt - now),
+    );
+  }
+
+  function subscribeToClock(subscriber: ClockSubscriber): () => void {
+    subscriber.nextAt = Date.now() + subscriber.getDelay(Date.now());
+    clockSubscribers.add(subscriber);
+    scheduleClock();
     return () => {
       clockSubscribers.delete(subscriber);
-      if (clockSubscribers.size === 0 && clockTimer !== undefined) {
-        window.clearInterval(clockTimer);
-        clockTimer = undefined;
-      }
+      scheduleClock();
     };
   }
 </script>
@@ -59,6 +81,16 @@
   );
   const timestamp = $derived(date instanceof Date ? date.getTime() : new Date(date).getTime());
   const validTimestamp = $derived(Number.isFinite(timestamp));
+  const clockDelay = $derived.by(() => {
+    const absolute = Math.abs(timestamp - now);
+    return absolute < 60_000
+      ? 1_000
+      : absolute < 3_600_000
+        ? 60_000
+        : absolute < 86_400_000
+          ? 3_600_000
+          : 86_400_000;
+  });
   const relative = $derived.by(() => {
     if (!validTimestamp) return 'Invalid date';
     const delta = timestamp - now;
@@ -78,7 +110,11 @@
   });
   $effect(() => {
     if (!tick || typeof window === 'undefined') return;
-    return subscribeToClock((nextNow) => (now = nextNow));
+    return subscribeToClock({
+      notify: (nextNow) => (now = nextNow),
+      getDelay: () => clockDelay,
+      nextAt: 0,
+    });
   });
 </script>
 

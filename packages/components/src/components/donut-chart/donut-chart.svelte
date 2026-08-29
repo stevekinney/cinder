@@ -32,12 +32,26 @@
     })),
   );
   const total = $derived(normalizedData.reduce((sum, datum) => sum + datum.value, 0));
+  const maximumValue = $derived(
+    normalizedData.reduce((maximum, datum) => Math.max(maximum, datum.value), 0),
+  );
+  const arcTotal = $derived.by(() => {
+    if (Number.isFinite(total)) return total;
+    if (maximumValue === 0) return 0;
+    return normalizedData.reduce((sum, datum) => sum + datum.value / maximumValue, 0);
+  });
+  const finiteTotal = $derived(Number.isFinite(total) ? total : Number.MAX_VALUE);
   const arcs = $derived.by(() => {
     let offset = 0;
     return normalizedData.map((datum, index) => {
       const value = datum.value;
       const start = offset;
-      offset += total ? value / total : 0;
+      const arcValue = Number.isFinite(total)
+        ? value
+        : maximumValue === 0
+          ? 0
+          : value / maximumValue;
+      offset += arcTotal ? arcValue / arcTotal : 0;
       return { datum, index, start, end: offset };
     });
   });
@@ -88,7 +102,8 @@
             stroke={seriesColor(arc.datum.color, arc.index)}
           ></path></g
         >{/each}
-      <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total">{total}</text
+      <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total"
+        >{finiteTotal}</text
       >{#if centerLabel}<text x="100" y="116" text-anchor="middle" class="cinder-donut-chart__label"
           >{centerLabel}</text
         >{/if}

@@ -114,6 +114,14 @@ describe('ZoomPanViewer', () => {
     ).toContain('translate(0px');
   });
 
+  test('allows native touch behavior for interactive descendants', () => {
+    const css = readFileSync(new URL('./zoom-pan-viewer.css', import.meta.url), 'utf8');
+    expect(css).toMatch(
+      /\.cinder-zoom-pan-viewer\s+:where\([\s\S]*button,[\s\S]*touch-action:\s*auto;/,
+    );
+    expect(css).toContain("[contenteditable='true']");
+  });
+
   test('cleans up cancelled pointers without dispatching pointerup', async () => {
     let pointerupCount = 0;
     let pointercancelCount = 0;

@@ -52,15 +52,20 @@
     } else {
       releaseEscape?.();
       releaseEscape = null;
-      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
-      trigger = null;
+      restoreTriggerFocus();
     }
   });
 
   onDestroy(() => {
     releaseEscape?.();
     releaseEscape = null;
+    restoreTriggerFocus();
   });
+
+  function restoreTriggerFocus(): void {
+    if (trigger?.isConnected) trigger.focus({ preventScroll: true });
+    trigger = null;
+  }
 
   function cancel(): void {
     open = false;

@@ -158,7 +158,18 @@
     column: DataTableColumn<Row>,
     width = rawColumnWidth(column) ?? 150,
   ): number {
-    return Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+    const minWidth = Number.isFinite(column.minWidth) ? column.minWidth! : 60;
+    const maxWidth = Number.isFinite(column.maxWidth) ? column.maxWidth! : Infinity;
+    const finiteWidth = Number.isFinite(width) ? width : 150;
+    return Math.min(maxWidth, Math.max(minWidth, finiteWidth));
+  }
+  function columnAriaMax(column: DataTableColumn<Row>): number {
+    return Number.isFinite(column.maxWidth)
+      ? Math.max(0, column.maxWidth!)
+      : Number.MAX_SAFE_INTEGER;
+  }
+  function columnAriaMin(column: DataTableColumn<Row>): number {
+    return Number.isFinite(column.minWidth) ? Math.max(0, column.minWidth!) : 60;
   }
   function columnWidth(column: DataTableColumn<Row>): number | undefined {
     const width = rawColumnWidth(column);
@@ -206,11 +217,13 @@
     const startX = event.clientX;
     const startWidth = measuredColumnWidth(event, column);
     const handle = event.currentTarget as HTMLElement;
+    const isRtl = getComputedStyle(handle).direction === 'rtl';
     handle.setPointerCapture?.(event.pointerId);
 
     const move = (moveEvent: PointerEvent) => {
       if (moveEvent.pointerId !== event.pointerId) return;
-      setColumnWidth(column, startWidth + moveEvent.clientX - startX);
+      const delta = moveEvent.clientX - startX;
+      setColumnWidth(column, startWidth + (isRtl ? -delta : delta));
     };
     const end = (endEvent: PointerEvent) => {
       if (endEvent.pointerId !== event.pointerId) return;
@@ -557,8 +570,8 @@
                   role="separator"
                   aria-orientation="vertical"
                   aria-label={`Resize ${column.label} column`}
-                  aria-valuemin={column.minWidth ?? 60}
-                  aria-valuemax={column.maxWidth ?? Number.MAX_SAFE_INTEGER}
+                  aria-valuemin={columnAriaMin(column)}
+                  aria-valuemax={columnAriaMax(column)}
                   aria-valuenow={boundedColumnWidth(column)}
                   tabindex="0"
                   onkeydown={(event) => handleResizeKey(event, column)}
