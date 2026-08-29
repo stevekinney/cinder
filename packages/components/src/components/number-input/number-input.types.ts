@@ -7,6 +7,8 @@ export interface NumberInputSchemaProps {
   min?: number;
   max?: number;
   step?: number;
+  /** Locale-aware formatting options passed to `Intl.NumberFormat`. */
+  format?: Intl.NumberFormatOptions;
   locale?: string;
   disabled?: boolean;
   required?: boolean;

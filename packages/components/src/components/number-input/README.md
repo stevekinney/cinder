@@ -48,6 +48,7 @@ Numeric text input with increment and decrement stepper controls.
 | `required`        | `boolean`          | no       | —       |                                                                                                                                               |
 | `step`            | `number`           | no       | —       |                                                                                                                                               |
 | `value`           | `number` \| `null` | no       | —       |                                                                                                                                               |
+| `format`          | `(opaque)`         | no       | —       | Locale-aware formatting options passed to `Intl.NumberFormat`. Not expressible in JSON Schema; see the component types for the signature.     |
 | `inputAttachment` | `(opaque)`         | no       | —       | Attachment for native input access and lifecycle-scoped listeners. Not expressible in JSON Schema; see the component types for the signature. |
 | `onValueChange`   | `(opaque)`         | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                    |
 

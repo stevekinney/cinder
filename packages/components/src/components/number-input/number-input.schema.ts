@@ -60,6 +60,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'format',
+        reason: 'unknown-shape',
+        description: 'Locale-aware formatting options passed to `Intl.NumberFormat`.',
+      },
+      {
         name: 'inputAttachment',
         reason: 'function-or-snippet',
         description: 'Attachment for native input access and lifecycle-scoped listeners.',
