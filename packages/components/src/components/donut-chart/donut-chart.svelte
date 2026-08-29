@@ -26,7 +26,10 @@
     ...rest
   }: DonutChartProps = $props();
   const normalizedData = $derived(
-    data.map((datum) => ({ ...datum, value: Math.max(0, datum.value) })),
+    data.map((datum) => ({
+      ...datum,
+      value: Number.isFinite(datum.value) ? Math.max(0, datum.value) : 0,
+    })),
   );
   const total = $derived(normalizedData.reduce((sum, datum) => sum + datum.value, 0));
   const arcs = $derived.by(() => {

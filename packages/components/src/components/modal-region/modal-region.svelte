@@ -77,7 +77,9 @@
         },
         { title: options.title },
       ) as Promise<boolean>;
-      const entry = entries.find((candidate) => candidate.id === id);
+      const entry = entries.find(
+        (candidate) => candidate.id === id && candidate.promise === promise && !candidate.settled,
+      );
       if (entry) {
         entry.props['onConfirm'] = () => finishEntry(entry.key, true);
         entry.props['onCancel'] = () => finishEntry(entry.key, false);

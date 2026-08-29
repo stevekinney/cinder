@@ -148,7 +148,16 @@
   function cleanupPointer(event: PointerEvent & { currentTarget: HTMLDivElement }) {
     pointers.delete(event.pointerId);
     pinchDistance = 0;
-    dragging = false;
+    const remaining = pointers.values().next().value as { x: number; y: number } | undefined;
+    if (remaining) {
+      dragging = true;
+      startX = remaining.x;
+      startY = remaining.y;
+      originX = x;
+      originY = y;
+    } else {
+      dragging = false;
+    }
   }
   function pointerup(event: PointerEvent & { currentTarget: HTMLDivElement }) {
     cleanupPointer(event);

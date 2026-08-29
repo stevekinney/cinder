@@ -57,7 +57,19 @@ describe('ModalRegion', () => {
     expect(source).toContain('{#each entries as entry (entry.key)}');
     expect(source).toContain('entries.filter((entry) => entry.key !== key)');
     expect(source).toContain('onExitComplete={() => remove(entry.key)}');
+    expect(source).toContain(
+      'candidate.id === id && candidate.promise === promise && !candidate.settled',
+    );
     expect(source).toContain('resolve: (value: unknown) => finishEntry(entry.key, value)');
     expect(source).toContain('close: () => finishEntry(entry.key, undefined)');
+  });
+
+  test('reopened stable-id confirmations bind callbacks to the new promise entry', () => {
+    const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain(
+      'candidate.id === id && candidate.promise === promise && !candidate.settled',
+    );
+    expect(source).toContain("entry.props['onConfirm'] = () => finishEntry(entry.key, true)");
+    expect(source).toContain("entry.props['onCancel'] = () => finishEntry(entry.key, false)");
   });
 });

@@ -99,4 +99,12 @@ describe('GuidanceRegion', () => {
 
     expect(api?.claims()).toHaveLength(1);
   });
+
+  test('canonical example claims welcome guidance from its descendant', () => {
+    const example = JSON.parse(
+      readFileSync(new URL('./guidance-region.examples.json', import.meta.url), 'utf8'),
+    ).examples[0].code as string;
+    expect(example).toContain('useGuidance');
+    expect(example).toContain("guidance.claim('welcome')");
+  });
 });

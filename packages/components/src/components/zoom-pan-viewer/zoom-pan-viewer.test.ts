@@ -123,4 +123,15 @@ describe('ZoomPanViewer', () => {
     expect(viewport.getAttribute('style')).not.toContain('translate(0px, 0px)');
     expect(viewport.getAttribute('style')).toContain('scale(1.5)');
   });
+
+  test('resumes one-pointer panning after a pinch pointer is released', async () => {
+    const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
+    const viewer = container.querySelector('[role="region"]') as HTMLDivElement;
+    const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport')!;
+    await fireEvent.pointerDown(viewer, { pointerId: 1, clientX: 10, clientY: 10 });
+    await fireEvent.pointerDown(viewer, { pointerId: 2, clientX: 30, clientY: 30 });
+    await fireEvent.pointerUp(viewer, { pointerId: 2, clientX: 30, clientY: 30 });
+    await fireEvent.pointerMove(viewer, { pointerId: 1, clientX: 40, clientY: 10 });
+    expect(viewport.getAttribute('style')).toContain('translate(30px, 0px)');
+  });
 });

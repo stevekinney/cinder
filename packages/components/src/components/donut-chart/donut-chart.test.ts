@@ -110,4 +110,26 @@ describe('DonutChart', () => {
     expect(container.querySelector('.cinder-donut-chart__total')?.textContent).toBe('2');
     expect(container.querySelectorAll('path')[0]?.getAttribute('d')).not.toContain('NaN');
   });
+
+  test('normalizes non-finite values before rendering arcs and accessible summaries', () => {
+    const { container } = render(DonutChart, {
+      label: 'Traffic',
+      data: [
+        { label: 'Direct', value: 3 },
+        { label: 'Search', value: Number.NaN },
+        { label: 'Referral', value: Number.POSITIVE_INFINITY },
+        { label: 'Email', value: Number.NEGATIVE_INFINITY },
+        { label: 'Social', value: 2 },
+      ],
+    });
+
+    expect(container.querySelector('.cinder-donut-chart__total')?.textContent).toBe('5');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Search: 0');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Referral: 0');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Email: 0');
+    expect(container.querySelector('.cinder-sr-only')?.textContent).not.toMatch(/NaN|Infinity/);
+    for (const path of container.querySelectorAll('path')) {
+      expect(path.getAttribute('d')).not.toMatch(/NaN|Infinity/);
+    }
+  });
 });
