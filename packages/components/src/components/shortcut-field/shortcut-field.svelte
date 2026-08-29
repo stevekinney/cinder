@@ -41,15 +41,18 @@
   }
   function handleKeydown(event: KeyboardEvent): void {
     if (disabled || !armed) return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (event.key === 'Tab') return;
     if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       armed = false;
       message = 'Shortcut capture cancelled';
       return;
     }
     const next = normalize(event);
     if (next.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
     const error = validate?.(next);
     if (error) {
       message = error;
@@ -61,6 +64,7 @@
     armed = false;
   }
   function clear(): void {
+    if (disabled) return;
     value = [];
     onValueChange?.([]);
     message = 'Shortcut cleared';
@@ -78,13 +82,14 @@
     onfocus={() => (armed = true)}
     onclick={() => (armed = true)}
     onkeydown={handleKeydown}
+    onblur={() => (armed = false)}
   >
     {#if value.length}{#each value as key (key)}<Kbd label={key} size="sm" />{/each}{:else}<span
         class="cinder-shortcut-field__placeholder"
         >{armed ? 'Press a key combination' : 'Click to record shortcut'}</span
       >{/if}
   </div>
-  {#if value.length}<button
+  {#if value.length && !disabled}<button
       type="button"
       class="cinder-shortcut-field__clear"
       aria-label="Clear shortcut"

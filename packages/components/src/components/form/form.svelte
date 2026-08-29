@@ -21,8 +21,8 @@
   let submitting = $state(false);
 
   async function handleSubmit(event: SubmitEvent): Promise<void> {
-    if (!onSubmit || submitting) return;
     event.preventDefault();
+    if (!onSubmit || submitting) return;
     submitting = true;
     try {
       await onSubmit(event);

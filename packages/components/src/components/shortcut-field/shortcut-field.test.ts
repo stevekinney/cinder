@@ -29,4 +29,31 @@ describe('ShortcutField', () => {
     const { container } = render(ShortcutField, { value: ['Control', 'K'] });
     expect(container.querySelector('[aria-label="Clear shortcut"]')).not.toBeNull();
   });
+
+  test('does not consume Tab or modifier-only keys and disarms on blur', async () => {
+    const { container } = render(ShortcutField);
+    const field = container.querySelector('[role="textbox"]')!;
+    await fireEvent.focus(field);
+    const tab = new KeyboardEvent('keydown', { key: 'Tab', bubbles: true, cancelable: true });
+    field.dispatchEvent(tab);
+    expect(tab.defaultPrevented).toBe(false);
+    const modifier = new KeyboardEvent('keydown', {
+      key: 'Control',
+      bubbles: true,
+      cancelable: true,
+    });
+    field.dispatchEvent(modifier);
+    expect(modifier.defaultPrevented).toBe(false);
+    await fireEvent.blur(field);
+    await fireEvent.keyDown(field, { key: 'x', ctrlKey: true });
+    expect(container.textContent).not.toContain('Control');
+  });
+
+  test('disabled fields are inert and cannot clear their value', async () => {
+    const { container } = render(ShortcutField, { value: ['Control', 'K'], disabled: true });
+    const field = container.querySelector('[role="textbox"]')!;
+    expect(container.querySelector('[aria-label="Clear shortcut"]')).toBeNull();
+    await fireEvent.keyDown(field, { key: 'x', ctrlKey: true });
+    expect(container.textContent).toContain('Control');
+  });
 });

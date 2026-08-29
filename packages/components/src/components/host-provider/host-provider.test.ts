@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
-
-import { render } from '@testing-library/svelte';
+import { setupHappyDom } from '../../test/happy-dom.ts';
 import HostProvider from './host-provider.svelte';
+
+setupHappyDom();
+
+const { render } = await import('@testing-library/svelte');
 
 test('defaults to inert web host values and publishes host-fed safe-header insets', () => {
   const { container } = render(HostProvider);
