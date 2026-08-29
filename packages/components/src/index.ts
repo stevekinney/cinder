@@ -391,7 +391,7 @@ export { default as FocusTrap, createFocusTrap } from './components/focus-trap/i
 export type { FocusTrapOptions, FocusTrapProps } from './components/focus-trap/index.ts';
 
 export { default as FormField } from './components/form-field/index.ts';
-export type { FormFieldProps } from './components/form-field/index.ts';
+export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
 
 export { default as FormSection } from './components/form-section/index.ts';
 export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section/index.ts';
@@ -541,7 +541,13 @@ export { default as Message } from './components/message/index.ts';
 export type { MessageProps, MessageRole } from './components/message/index.ts';
 
 export { default as Meter } from './components/meter/index.ts';
-export type { MeterProps, MeterSize, MeterState } from './components/meter/index.ts';
+export type {
+  MeterProps,
+  MeterSize,
+  MeterState,
+  MeterVerdict,
+  MeterVerdictLevel,
+} from './components/meter/index.ts';
 
 export { default as MatrixChart } from './components/matrix-chart/index.ts';
 export type {
@@ -812,7 +818,7 @@ export type {
 } from './components/spectrum-chart/index.ts';
 
 export { default as Spinner } from './components/spinner/index.ts';
-export type { SpinnerProps, SpinnerSize } from './components/spinner/index.ts';
+export type { SpinnerProps, SpinnerSize, SpinnerVariant } from './components/spinner/index.ts';
 
 export { default as SpeedDial } from './components/speed-dial/index.ts';
 export type {

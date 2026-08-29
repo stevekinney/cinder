@@ -9,6 +9,105 @@ const { render } = await import('@testing-library/svelte');
 const { default: Meter } = await import('./meter.svelte');
 
 describe('Meter', () => {
+  test('renders an unknown verdict as a named status without fabricating numeric value attributes', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: 'Awaiting data' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const el = container.querySelector('[role="status"]');
+
+    expect(el).not.toBeNull();
+    expect(el?.querySelector('.cinder-meter__track')).not.toBeNull();
+    expect(el?.querySelector('.cinder-meter__fill')).toBeNull();
+    expect(el?.getAttribute('aria-valuemin')).toBeNull();
+    expect(el?.getAttribute('aria-valuemax')).toBeNull();
+    expect(el?.getAttribute('aria-valuenow')).toBeNull();
+    expect(el?.getAttribute('data-value')).toBeNull();
+    expect(el?.getAttribute('data-min')).toBeNull();
+    expect(el?.getAttribute('data-max')).toBeNull();
+    expect(el?.querySelector('.cinder-meter__label')?.textContent).toBe('Awaiting data');
+    expect(el?.getAttribute('aria-valuetext')).toBeNull();
+    expect(el?.getAttribute('aria-label')).toBe('Service health: Awaiting data');
+  });
+
+  test('uses the verdict label as both the visible label and aria-valuetext', () => {
+    const { container } = render(Meter, {
+      props: {
+        value: 20,
+        verdict: { level: 'low', label: 'Degraded' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const el = container.querySelector('[role="meter"]');
+
+    expect(el?.querySelector('.cinder-meter__label')?.textContent).toBe('Degraded');
+    expect(el?.getAttribute('aria-valuetext')).toBe('Degraded');
+    expect(el?.getAttribute('data-cinder-state')).toBe('low');
+    expect(el?.getAttribute('aria-valuenow')).toBe('20');
+    expect(el?.querySelector('.cinder-meter__fill')?.getAttribute('style')).toContain(
+      '--_cinder-meter-progress: 0.2',
+    );
+  });
+
+  test('preserves an external label and includes the unknown verdict in aria-labelledby', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: 'Awaiting data' },
+        ariaLabelledby: 'service-health-label',
+      },
+    });
+    const element = container.querySelector('[role="status"]');
+    const verdictElement = element?.querySelector('.cinder-meter__label');
+
+    expect(element?.getAttribute('aria-label')).toBeNull();
+    expect(element?.getAttribute('aria-labelledby')).toBe(
+      `service-health-label ${verdictElement?.id}`,
+    );
+  });
+
+  test('falls back to an explicit label for an unknown verdict with an empty label', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: '   ' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const element = container.querySelector('[role="status"]');
+
+    expect(element?.querySelector('.cinder-meter__label')?.textContent).toBe('Unknown');
+    expect(element?.getAttribute('aria-label')).toBe('Service health: Unknown');
+  });
+
+  test('falls back to an explicit label for a known verdict with an empty label', () => {
+    const { container } = render(Meter, {
+      props: {
+        value: 20,
+        verdict: { level: 'low', label: '   ' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const element = container.querySelector('[role="meter"]');
+
+    expect(element?.querySelector('.cinder-meter__label')?.textContent).toBe('Low');
+    expect(element?.getAttribute('aria-valuetext')).toBe('Low');
+    expect(element?.getAttribute('data-cinder-state')).toBe('low');
+  });
+
+  test('ignores a malformed verdict instead of throwing', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: null } as never,
+        ariaLabel: 'Service health',
+      },
+    });
+
+    expect(container.querySelector('[role="status"] .cinder-meter__label')?.textContent).toBe(
+      'Unknown',
+    );
+  });
+
   test('renders role=meter with default bounds and value', () => {
     const { container } = render(Meter, { ariaLabel: 'Battery level' });
     const el = container.querySelector('[role="meter"]');

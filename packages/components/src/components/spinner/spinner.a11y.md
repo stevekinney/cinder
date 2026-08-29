@@ -30,6 +30,12 @@ When Spinner accepts snippets or arbitrary children, the caller owns the semanti
 
 ## Verification
 
+### Review outcome
+
+Reviewed 2026-08-28. Nearest neighbours are Skeleton and Progress. Arc is a visual treatment of the existing indeterminate loading state, so a Spinner variant is preferable to a second component. The visual result keeps the same footprint while animating a rounded growing and shrinking stroke. Spinner remains non-interactive and does not affect focus. The root retains `role="status"` and the loading label; the SVG is decorative. Reduced motion stops both animations, while forced colors continue to inherit `currentColor`.
+
+The `arc` variant preserves the same `role="status"` and accessible loading label as the default treatment. Its SVG is decorative, and both rotation and stroke-length animation stop when reduced motion is active.
+
 - Render Spinner in the playground or a focused test fixture.
 - Navigate the component with keyboard only.
 - Inspect the accessible name, role, and state in browser accessibility tools.

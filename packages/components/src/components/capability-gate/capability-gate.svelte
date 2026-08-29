@@ -24,6 +24,7 @@
     supported: 'Available',
     unsupported: 'Not supported in this browser',
     'permission-needed': 'Permission required',
+    'permission-limited': 'Limited permission',
     'permission-denied': 'Permission was denied',
     loading: 'Checking availability…',
     unavailable: 'Not available',
@@ -39,6 +40,7 @@
     'supported',
     'unsupported',
     'permission-needed',
+    'permission-limited',
     'permission-denied',
     'loading',
     'unavailable',
@@ -88,7 +90,9 @@
   const isError = $derived(
     availabilityState === 'permission-denied' || availabilityState === 'unsupported',
   );
-  const isWarning = $derived(availabilityState === 'permission-needed');
+  const isWarning = $derived(
+    availabilityState === 'permission-needed' || availabilityState === 'permission-limited',
+  );
   const isSuccess = $derived(availabilityState === 'supported');
 
   const resolvedVariant = $derived(

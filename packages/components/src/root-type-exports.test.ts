@@ -5,8 +5,11 @@ import type {
   BarChartDataTableVisibility,
   FeedBoundaryProps,
   FeedConnectionState,
+  FormFieldManaged,
   LineChartDataTableVisibility,
   MatrixChartDataTableVisibility,
+  MeterVerdict,
+  MeterVerdictLevel,
   PopoverFocusManagement,
   PopoverWidthMode,
   ResizablePanelSizeUnit,
@@ -14,6 +17,7 @@ import type {
   SegmentCurrentToken,
   SpectrogramDataTableVisibility,
   SpectrumChartDataTableVisibility,
+  SpinnerVariant,
   TreeItemSelectionState,
   TreeReorderTarget,
   WaveformDataTableVisibility,
@@ -54,6 +58,17 @@ test('root barrel exposes the five component barrel-gap public types', () => {
   expect(sizeUnit).toBe('px');
   expect(reorderTarget.position).toBe('before');
   expect(selectionState.checked).toBe(true);
+});
+
+test('root barrel exposes standalone-component foundation public types', () => {
+  const managed: FormFieldManaged = { by: 'Organization policy' };
+  const verdictLevel: MeterVerdictLevel = 'unknown';
+  const verdict: MeterVerdict = { level: verdictLevel, label: 'Awaiting estimate' };
+  const spinnerVariant: SpinnerVariant = 'arc';
+
+  expect(managed.by).toBe('Organization policy');
+  expect(verdict.label).toBe('Awaiting estimate');
+  expect(spinnerVariant).toBe('arc');
 });
 
 test('root barrel exposes ChartDataTableVisibility from all seven chart component barrels', () => {

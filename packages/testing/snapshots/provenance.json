@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "statistic-group"
+    "spinner"
   ],
-  "renderedSourceSha": "fff14629b60c8c40cae5f5918a8a5dfc133ccd95",
+  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

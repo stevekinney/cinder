@@ -12,8 +12,8 @@
     {
       "id": "sizes",
       "title": "Spinner sizes",
-      "description": "Small, medium, and large loading spinners.",
-      "code": "<script lang=\"ts\">\n  import { Spinner } from '@lostgradient/cinder/spinner';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <Spinner size=\"sm\" label=\"Loading small\" />\n  <Spinner size=\"md\" label=\"Loading medium\" />\n  <Spinner size=\"lg\" label=\"Loading large\" />\n</div>\n"
+      "description": "Small, medium, and large loading spinners in both treatments.",
+      "code": "<script lang=\"ts\">\n  import { Spinner } from '@lostgradient/cinder/spinner';\n</script>\n\n<div class=\"example-preview-row\" style=\"align-items: center;\">\n  <Spinner size=\"sm\" label=\"Loading small\" />\n  <Spinner size=\"md\" label=\"Loading medium\" />\n  <Spinner size=\"lg\" label=\"Loading large\" />\n  <Spinner size=\"sm\" variant=\"arc\" label=\"Loading small arc\" />\n  <Spinner size=\"md\" variant=\"arc\" label=\"Loading medium arc\" />\n  <Spinner size=\"lg\" variant=\"arc\" label=\"Loading large arc\" />\n</div>\n"
     }
   ]
 }

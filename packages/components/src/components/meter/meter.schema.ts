@@ -4,6 +4,21 @@ const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
   properties: {
+    verdict: {
+      type: 'object',
+      properties: {
+        level: {
+          enum: ['low', 'optimum', 'high', 'unknown'],
+        },
+        label: {
+          type: 'string',
+        },
+      },
+      additionalProperties: false,
+      required: ['label', 'level'],
+      description:
+        'Semantic label for a measurement; `unknown` represents the non-numeric status case.',
+    },
     value: {
       type: 'number',
       description: 'Current measurement value. Defaults to 0.',

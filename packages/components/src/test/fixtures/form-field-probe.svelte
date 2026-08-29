@@ -13,7 +13,9 @@
     id: string;
     label?: string;
     description?: string;
+    warning?: string;
     error?: string;
+    managed?: { by?: string; reason?: string };
     required?: boolean;
     disabled?: boolean;
   };
@@ -23,11 +25,14 @@
   import FormField from '../../components/form-field/form-field.svelte';
   import FormFieldContextProbe from './form-field-context-probe.svelte';
 
-  let { id, label, description, error, required, disabled }: FormFieldProbeProps = $props();
+  let { id, label, description, warning, error, managed, required, disabled }: FormFieldProbeProps =
+    $props();
 
   const optionalProps = $derived({
     ...(description !== undefined ? { description } : {}),
+    ...(warning !== undefined ? { warning } : {}),
     ...(error !== undefined ? { error } : {}),
+    ...(managed !== undefined ? { managed } : {}),
     ...(required !== undefined ? { required } : {}),
     ...(disabled !== undefined ? { disabled } : {}),
   });

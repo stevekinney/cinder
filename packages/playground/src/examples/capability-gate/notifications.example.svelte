@@ -16,6 +16,11 @@
       <Button size="sm" variant="ghost" label="Dismiss" onclick={dismiss} />
     {/snippet}
   </CapabilityGate>
+  <CapabilityGate feature="Location" state="permission-limited" variant="banner">
+    <p style="font-size: 0.875rem; color: var(--cinder-text-muted); margin: 0;">
+      Approximate location is available. Grant precise access in system settings if needed.
+    </p>
+  </CapabilityGate>
   <CapabilityGate feature="Offline storage" state="unsupported" variant="callout">
     <p style="font-size: 0.875rem; color: var(--cinder-text-muted); margin: 0;">
       Your browser does not support offline storage. Some features may be limited.

@@ -12,6 +12,7 @@
     overflow: hidden;
     background: var(--cinder-surface);
     font-size: var(--cinder-text-sm);
+    user-select: none;
   }
 
   /* ----------------------------------------
@@ -83,6 +84,11 @@
     border: 1px solid var(--cinder-border);
     white-space: pre-wrap;
     word-break: break-all;
+    user-select: text;
+  }
+
+  .cinder-payload-inspector__panel .cinder-json-viewer {
+    user-select: text;
   }
 
   /* ----------------------------------------
@@ -99,6 +105,7 @@
     border: 1px solid var(--cinder-border);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
+    user-select: text;
   }
 
   .cinder-payload-inspector__notice--warning {

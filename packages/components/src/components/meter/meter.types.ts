@@ -2,6 +2,12 @@ import type { HTMLAttributes } from 'svelte/elements';
 
 export type MeterSize = 'sm' | 'md' | 'lg';
 export type MeterState = 'low' | 'optimum' | 'high';
+export type MeterVerdictLevel = MeterState | 'unknown';
+/** @schemaObject */
+export type MeterVerdict = {
+  level: MeterVerdictLevel;
+  label: string;
+};
 
 /**
  * Props for the Meter component.
@@ -18,6 +24,8 @@ export type MeterState = 'low' | 'optimum' | 'high';
 // over the bespoke `ariaLabel`/`ariaLabelledby` props below, with the bespoke props as a
 // fallback) rather than discarding them. See meter.svelte for the resolution.
 export type MeterProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+  /** Semantic label for a measurement; `unknown` represents the non-numeric status case. */
+  verdict?: MeterVerdict;
   /** Current measurement value. Defaults to 0. */
   value?: number;
   /** Lower bound for the range. Defaults to 0. */
