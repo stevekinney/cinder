@@ -152,10 +152,12 @@
     animation: cinder-chat-live-text-shimmer 1.8s steps(48, end) infinite;
   }
 
-  .message-content-streaming:hover :where(.message-content-preview, .message-content-tail) {
-    color: var(--cinder-text-default);
-    background: none;
-    animation: none;
+  @media (hover: hover) {
+    .message-content-streaming:hover :where(.message-content-preview, .message-content-tail) {
+      color: var(--cinder-text-default);
+      background: none;
+      animation: none;
+    }
   }
 
   @keyframes cinder-chat-live-text-shimmer {
