@@ -7,6 +7,7 @@
    * @tag citation
    * @useWhen Attaching sources to an inline claim or generated answer.
    * @avoidWhen Building a full bibliography page.
+   * @related hover-card
    * @rationale Nearest alternative: HoverCard — Citation adds source pagination and an inline marker.
    */
   export type { CitationProps, CitationSource } from './citation.types.ts';

@@ -4,6 +4,10 @@
    * @category overlay
    * @status beta
    * @purpose Context-scoped host for imperative Modal registration and promise-returning confirmations.
+   * @useWhen Application code must open deduplicated modals or await a confirmation result imperatively.
+   * @avoidWhen A single declarative modal is sufficient; use Modal directly.
+   * @related modal, confirm-dialog
+   * @rationale Nearest alternative: Modal owns one declarative surface; this owns an imperative modal registry.
    */
   export type { ModalRegionProps } from './modal-region.types.ts';
 </script>

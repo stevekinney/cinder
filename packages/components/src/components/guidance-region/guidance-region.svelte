@@ -4,6 +4,10 @@
    * @category data-display
    * @status beta
    * @purpose Context-scoped registry for versioned, dismissible product guidance claims.
+   * @useWhen Coordinating coachmarks that must respect product versions and reversible dismissal.
+   * @avoidWhen Showing an isolated anchored explanation without registry lifecycle; use Popover.
+   * @related popover
+   * @rationale Nearest alternative: Popover displays one anchored surface; this owns guidance lifecycle and arbitration.
    */
   export type { GuidanceRegionProps } from './guidance-region.types.ts';
 </script>

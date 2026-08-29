@@ -7,6 +7,7 @@
    * @tag relative-time
    * @useWhen Showing when a message, issue, or event happened.
    * @avoidWhen An exact calendar date is required.
+   * @related date-picker
    * @rationale Nearest alternative: time element — RelativeTime owns localized relative phrasing and ticking.
    */
   export type { RelativeTimeProps } from './relative-time.types.ts';

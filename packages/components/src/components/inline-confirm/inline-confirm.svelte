@@ -4,6 +4,10 @@
    * @category feedback
    * @status stable
    * @purpose In-flow confirmation for reversible actions without modal interruption.
+   * @useWhen Confirming a reversible action in the same flow as its trigger.
+   * @avoidWhen The action requires modal interruption or extensive consequences; use ConfirmDialog.
+   * @related confirm-dialog
+   * @rationale Nearest alternative: ConfirmDialog interrupts with a modal; this keeps confirmation in flow.
    */
   export type { InlineConfirmProps } from './inline-confirm.types.ts';
 </script>

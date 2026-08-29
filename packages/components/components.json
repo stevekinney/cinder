@@ -1031,7 +1031,7 @@
           "reason": "Building a full bibliography page."
         }
       ],
-      "related": [],
+      "related": ["hover-card"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1792,7 +1792,7 @@
           "reason": "Comparing many categories or precise values; use BarChart."
         }
       ],
-      "related": [],
+      "related": ["bar-chart"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -2530,9 +2530,15 @@
       "status": "beta",
       "purpose": "Context-scoped registry for versioned, dismissible product guidance claims.",
       "tags": [],
-      "useWhen": [],
-      "avoidWhen": [],
-      "related": [],
+      "useWhen": [
+        "Coordinating coachmarks that must respect product versions and reversible dismissal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing an isolated anchored explanation without registry lifecycle; use Popover."
+        }
+      ],
+      "related": ["popover"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -2635,9 +2641,13 @@
       "status": "stable",
       "purpose": "In-flow confirmation for reversible actions without modal interruption.",
       "tags": [],
-      "useWhen": [],
-      "avoidWhen": [],
-      "related": [],
+      "useWhen": ["Confirming a reversible action in the same flow as its trigger."],
+      "avoidWhen": [
+        {
+          "reason": "The action requires modal interruption or extensive consequences; use ConfirmDialog."
+        }
+      ],
+      "related": ["confirm-dialog"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -2905,7 +2915,7 @@
           "reason": "Values need rich structured content; use Table."
         }
       ],
-      "related": [],
+      "related": ["secret-value-field", "table"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -3375,9 +3385,15 @@
       "status": "beta",
       "purpose": "Context-scoped host for imperative Modal registration and promise-returning confirmations.",
       "tags": [],
-      "useWhen": [],
-      "avoidWhen": [],
-      "related": [],
+      "useWhen": [
+        "Application code must open deduplicated modals or await a confirmation result imperatively."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A single declarative modal is sufficient; use Modal directly."
+        }
+      ],
+      "related": ["modal", "confirm-dialog"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
@@ -4015,7 +4031,7 @@
           "reason": "An exact calendar date is required."
         }
       ],
-      "related": [],
+      "related": ["date-picker"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
