@@ -76,6 +76,7 @@
       storage?.set(`${storageKey}:${id}`, true);
       if (activeClaim?.id === id) {
         const wasModal = activeClaim.kind === 'modal';
+        if (wasModal) modalApi?.dismiss(`cinder-guidance-${id}`);
         anchoredOpen = false;
         activeClaim = null;
         if (wasModal) modalSlot.reset();
@@ -88,6 +89,11 @@
       activeClaim = null;
       anchoredOpen = false;
       openedModalId = null;
+      if (modalApi) {
+        for (const claim of initialClaims) {
+          if (claim.kind === 'modal') modalApi.dismiss(`cinder-guidance-${claim.id}`);
+        }
+      }
       modalSlot.reset();
     },
     claims: () => activeClaims,

@@ -37,10 +37,11 @@
       localeContext?.locale ??
       (typeof navigator !== 'undefined' ? navigator.language : 'en-US'),
   );
+  const parsedResetDate = $derived(resetsAt ? new Date(resetsAt) : undefined);
   const resetDate = $derived(
-    resetsAt
+    parsedResetDate && !Number.isNaN(parsedResetDate.getTime())
       ? new Intl.DateTimeFormat(resolvedLocale, { dateStyle: 'medium', timeZone }).format(
-          new Date(resetsAt),
+          parsedResetDate,
         )
       : undefined,
   );
@@ -53,8 +54,9 @@
 
 <div class={classNames('cinder-quota-meter', customClassName)} {...rest}>
   <Meter
-    value={unlimited ? 0 : used}
-    max={unlimited ? 1 : limit}
+    {...unlimited ? { verdict: { level: 'unknown' as const, label: valueText } } : {}}
+    value={used}
+    max={limit}
     ariaLabel={label}
     ariaValueText={valueText}
   />{#if children}{@render children()}{/if}

@@ -11,7 +11,7 @@
   import QuotaMeter from '@lostgradient/cinder/quota-meter';
 </script>
 
-<QuotaMeter>Content</QuotaMeter>
+<QuotaMeter used={72} />
 ```
 
 ## Props

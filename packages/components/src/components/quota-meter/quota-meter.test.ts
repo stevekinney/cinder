@@ -62,9 +62,27 @@ describe('QuotaMeter', () => {
 
   test('announces unlimited quotas without inventing a finite limit', () => {
     const { container } = render(QuotaMeter, { used: 24, unlimited: true });
-    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toBe(
+    expect(container.querySelector('[role="status"]')?.getAttribute('aria-label')).toContain(
       '24 used, unlimited',
     );
-    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuenow')).toBe('0');
+    expect(container.querySelector('[role="meter"]')).toBeNull();
+  });
+
+  test('ignores an invalid reset date instead of throwing during render', () => {
+    const { container } = render(QuotaMeter, { used: 24, resetsAt: 'not-a-date' });
+    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toBe(
+      '24 of 100 used',
+    );
+  });
+
+  test('documents required props in component usage examples', async () => {
+    const [quotaReadme, codeLocationReadme, citationReadme] = await Promise.all([
+      Bun.file(new URL('../quota-meter/README.md', import.meta.url)).text(),
+      Bun.file(new URL('../code-location/README.md', import.meta.url)).text(),
+      Bun.file(new URL('../citation/README.md', import.meta.url)).text(),
+    ]);
+    expect(quotaReadme).toContain('<QuotaMeter used={72} />');
+    expect(codeLocationReadme).toContain('<CodeLocation file=');
+    expect(citationReadme).toContain('<Citation sources=');
   });
 });

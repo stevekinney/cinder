@@ -11,7 +11,7 @@
   import Citation from '@lostgradient/cinder/citation';
 </script>
 
-<Citation>Content</Citation>
+<Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]} />
 ```
 
 ## Props

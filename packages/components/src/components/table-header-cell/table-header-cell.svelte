@@ -70,44 +70,48 @@
   data-cinder-sortable={isSortable || undefined}
   aria-sort={ariaSort}
 >
-  {#if isSortable}
-    <button
-      {...sortButtonDescriptionAttributes}
-      type="button"
-      class="cinder-table__sort-button"
-      onclick={handleClick}
-    >
-      {@render children()}
-      <span
-        class="cinder-table__sort-indicator"
-        aria-hidden="true"
-        data-cinder-direction={ariaSort}
+  <div class="cinder-table__header-content">
+    {#if isSortable}
+      <button
+        {...sortButtonDescriptionAttributes}
+        type="button"
+        class="cinder-table__sort-button"
+        onclick={handleClick}
       >
-        <svg
-          viewBox="0 0 16 16"
-          width="12"
-          height="12"
-          fill="none"
-          stroke="currentColor"
-          stroke-width="2"
-          stroke-linecap="round"
-          stroke-linejoin="round"
+        {@render children()}
+        <span
+          class="cinder-table__sort-indicator"
+          aria-hidden="true"
+          data-cinder-direction={ariaSort}
         >
-          <!--
-            CIN-127: the two chevrons' flat ends sit 6 viewBox units apart, not 4.
-            Round caps at stroke-width 2 grow each polyline by 1 unit past its
-            endpoints, so a 4-unit endpoint gap left only 2 units of visible ink
-            gap — about 1.5px at the 12px render size, which read as one smudge
-            rather than two marks. 6 units leaves 4 units of gap (~3px).
-            Ink now spans y=0..16, flush with the viewBox but inside it.
-          -->
-          <polyline class="cinder-table__sort-chevron-up" points="4 5 8 1 12 5" />
-          <polyline class="cinder-table__sort-chevron-down" points="4 11 8 15 12 11" />
-        </svg>
-      </span>
-    </button>
-  {:else}
-    {@render children()}
-  {/if}
-  {#if actions}{@render actions()}{/if}
+          <svg
+            viewBox="0 0 16 16"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            stroke-width="2"
+            stroke-linecap="round"
+            stroke-linejoin="round"
+          >
+            <!--
+              CIN-127: the two chevrons' flat ends sit 6 viewBox units apart, not 4.
+              Round caps at stroke-width 2 grow each polyline by 1 unit past its
+              endpoints, so a 4-unit endpoint gap left only 2 units of visible ink
+              gap — about 1.5px at the 12px render size, which read as one smudge
+              rather than two marks. 6 units leaves 4 units of gap (~3px).
+              Ink now spans y=0..16, flush with the viewBox but inside it.
+            -->
+            <polyline class="cinder-table__sort-chevron-up" points="4 5 8 1 12 5" />
+            <polyline class="cinder-table__sort-chevron-down" points="4 11 8 15 12 11" />
+          </svg>
+        </span>
+      </button>
+    {:else}
+      {@render children()}
+    {/if}
+    {#if actions}
+      <div class="cinder-table__header-actions">{@render actions()}</div>
+    {/if}
+  </div>
 </th>

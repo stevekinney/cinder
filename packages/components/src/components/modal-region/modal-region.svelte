@@ -39,7 +39,7 @@
       if (destroyed) return Promise.resolve(undefined);
       const typedProps = props as Record<string, unknown> & { id?: string };
       const id = typeof typedProps.id === 'string' ? typedProps.id : `cinder-modal-${++sequence}`;
-      const duplicate = entries.find((entry) => entry.id === id);
+      const duplicate = entries.find((entry) => entry.id === id && !entry.settled);
       if (duplicate?.promise) return duplicate.promise;
       let resolver: (value: unknown) => void = () => {};
       const promise = new Promise<unknown>((resolve) => {
@@ -48,6 +48,7 @@
       entries = [
         ...entries,
         {
+          key: ++sequence,
           id,
           component: component as ModalComponent,
           props: { ...typedProps },
@@ -57,6 +58,9 @@
         },
       ];
       return promise;
+    },
+    dismiss(id) {
+      finish(id, false);
     },
     confirm(options) {
       if (destroyed) return Promise.resolve(false);
@@ -84,7 +88,9 @@
   };
 
   function finish(id: string | undefined, value: unknown): void {
-    const entry = entries.find((candidate) => candidate.id === (id ?? entries.at(-1)?.id));
+    const entry = entries.find(
+      (candidate) => candidate.id === (id ?? entries.at(-1)?.id) && !candidate.settled,
+    );
     if (!entry || entry.settled) return;
     entry.settled = true;
     entry.resolve(value);
@@ -104,7 +110,7 @@
 </script>
 
 {@render children?.()}
-{#each entries as entry (entry.id)}
+{#each entries as entry (entry.key)}
   {@const Component = entry.component}
   {#if entry.ownsModal}
     <Component

@@ -49,4 +49,11 @@ describe('ModalRegion', () => {
     expect(source).toContain('title: options.title');
     expect(source).toContain('modal={{');
   });
+
+  test('deduplicates only unsettled requests and keys exit instances uniquely', () => {
+    const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('entry.id === id && !entry.settled');
+    expect(source).toContain('key: ++sequence');
+    expect(source).toContain('{#each entries as entry (entry.key)}');
+  });
 });

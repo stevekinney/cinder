@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import {
@@ -69,5 +70,11 @@ describe('GuidanceRegion', () => {
 
     expect(anchoredClaim.anchor).toBe('search');
     expect(modalClaim.kind).toBe('modal');
+  });
+
+  test('settles an active modal claim when dismissed or reset', () => {
+    const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${id}`)');
+    expect(source).toContain('modalApi.dismiss(`cinder-guidance-${claim.id}`)');
   });
 });

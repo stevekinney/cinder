@@ -3,6 +3,7 @@ import { createContext } from 'svelte';
 
 export type ModalComponent = Component<Record<string, unknown>>;
 export type ModalEntry = {
+  key: number;
   id: string;
   component: ModalComponent;
   props: Record<string, unknown>;
@@ -34,6 +35,7 @@ export type ModalApi = {
     destructive?: boolean;
     id?: string;
   }) => Promise<boolean>;
+  dismiss: (id: string) => void;
 };
 
 const [getModalContext, setModalContext] = createContext<ModalApi>();

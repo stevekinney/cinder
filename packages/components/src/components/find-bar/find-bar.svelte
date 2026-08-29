@@ -43,6 +43,7 @@
   let lastKeystroke = 0;
   let inputNode = $state<HTMLInputElement | null>(null);
   let queryWasEligible = false;
+  let lastObservedValue = '';
   const inputAttachment: Attachment<HTMLInputElement> = (element) => {
     inputNode = element;
     return () => {
@@ -51,6 +52,7 @@
   };
   function handleInput(event: Event) {
     value = (event.currentTarget as HTMLInputElement).value;
+    lastObservedValue = value;
     matchCount = null;
     activeIndex = 0;
     lastKeystroke = Date.now();
@@ -68,6 +70,18 @@
       }
     }, debounceMs);
   }
+  $effect(() => {
+    const nextValue = value;
+    if (nextValue === lastObservedValue) return;
+    lastObservedValue = nextValue;
+    const eligible = nextValue.trim().length >= minQueryLength;
+    if (!eligible && queryWasEligible) {
+      queryWasEligible = false;
+      onQueryChange?.('');
+    } else if (eligible) {
+      queryWasEligible = true;
+    }
+  });
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       if (value.trim().length < minQueryLength || !matchCount) return;

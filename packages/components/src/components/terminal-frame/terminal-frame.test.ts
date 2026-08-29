@@ -31,6 +31,8 @@ describe('TerminalFrame', () => {
       'Build shell',
     );
     expect(container.querySelector('.cinder-terminal-frame__status')?.textContent).toBe('error');
+    expect(container.querySelector('[data-cinder-status="error"]')).not.toBeNull();
+    expect(container.querySelector('[data-status]')).toBeNull();
     expect(container.querySelector('[data-testid="pty"]')).not.toBeNull();
     expect(getByRole('region', { name: 'Build shell' })).not.toBeNull();
     expect(getByRole('alert').textContent).toContain('Connection lost');
@@ -77,7 +79,6 @@ describe('TerminalFrame', () => {
     const originalResizeObserver = globalThis.ResizeObserver;
     let observations = 0;
     globalThis.ResizeObserver = class {
-      constructor() {}
       observe() {
         observations++;
       }

@@ -66,6 +66,26 @@ describe('ZoomPanViewer', () => {
     ).toContain('translate(0px');
   });
 
+  test('cleans up cancelled pointers without dispatching pointerup', async () => {
+    let pointerupCount = 0;
+    let pointercancelCount = 0;
+    const { container } = render(ZoomPanViewer, {
+      children: textSnippet('diagram'),
+      onpointerup: () => (pointerupCount += 1),
+      onpointercancel: () => (pointercancelCount += 1),
+    });
+    const viewer = container.querySelector('[role="region"]')!;
+    const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport')!;
+
+    await fireEvent.pointerDown(viewer, { pointerId: 1, clientX: 10, clientY: 10 });
+    await fireEvent.pointerCancel(viewer, { pointerId: 1, clientX: 10, clientY: 10 });
+    await fireEvent.pointerMove(viewer, { pointerId: 1, clientX: 40, clientY: 40 });
+
+    expect(pointerupCount).toBe(0);
+    expect(pointercancelCount).toBe(1);
+    expect(viewport.getAttribute('style')).toContain('translate(0px, 0px)');
+  });
+
   test('anchors pinch zoom at the gesture midpoint', async () => {
     const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
     const viewer = container.querySelector('[role="region"]') as HTMLDivElement;

@@ -141,14 +141,17 @@
       update(normalizedScale, originX + event.clientX - startX, originY + event.clientY - startY);
     consumerOnpointermove?.(event);
   }
-  function pointerup(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+  function cleanupPointer(event: PointerEvent & { currentTarget: HTMLDivElement }) {
     pointers.delete(event.pointerId);
     pinchDistance = 0;
     dragging = false;
+  }
+  function pointerup(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+    cleanupPointer(event);
     consumerOnpointerup?.(event);
   }
   function pointercancel(event: PointerEvent & { currentTarget: HTMLDivElement }) {
-    pointerup(event);
+    cleanupPointer(event);
     consumerOnpointercancel?.(event);
   }
 </script>

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -9,6 +10,17 @@ const { render } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/table-header-cell-fixture.svelte');
 
 describe('TableHeaderCell', () => {
+  test('reserves sortable header space for adjacent actions', () => {
+    const componentCss = readFileSync(new URL('./table-header-cell.css', import.meta.url), 'utf8');
+    const tableCss = readFileSync(new URL('../table/table.css', import.meta.url), 'utf8');
+    const sortButtonRule = tableCss.split('.cinder-table__sort-button {')[1]?.split('}')[0];
+
+    expect(componentCss).toMatch(/\.cinder-table__header-content\s*\{[\s\S]*display:\s*flex;/);
+    expect(componentCss).toMatch(/\.cinder-table__header-actions\s*\{[\s\S]*flex:\s*0\s+0\s+auto;/);
+    expect(sortButtonRule).toContain('flex: 1 1 auto;');
+    expect(sortButtonRule).toContain('min-width: 0;');
+  });
+
   test('align defaults to left', () => {
     const { container } = render(Fixture, {});
     expect(container.querySelector('th')?.getAttribute('data-cinder-align')).toBe('left');

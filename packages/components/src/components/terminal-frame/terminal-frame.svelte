@@ -80,7 +80,7 @@
 <div
   {...rest}
   class={classNames('cinder-terminal-frame', customClassName)}
-  data-status={status}
+  data-cinder-status={status}
   role="region"
   aria-labelledby={titleId}
 >

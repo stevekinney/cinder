@@ -49,10 +49,12 @@
   }: RelativeTimeProps = $props();
   const localeContext = getLocaleContext();
   let now = $state(Date.now());
+  let hasMounted = $state(false);
+  $effect(() => {
+    hasMounted = true;
+  });
   const resolvedLocale = $derived(
-    locale ??
-      localeContext?.locale ??
-      (typeof navigator !== 'undefined' ? navigator.language : 'en-US'),
+    locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
   const timestamp = $derived(date instanceof Date ? date.getTime() : new Date(date).getTime());
   const validTimestamp = $derived(Number.isFinite(timestamp));

@@ -11,7 +11,7 @@
   import CodeLocation from '@lostgradient/cinder/code-location';
 </script>
 
-<CodeLocation>Content</CodeLocation>
+<CodeLocation file="src/routes/+page.svelte" />
 ```
 
 ## Props
