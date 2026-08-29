@@ -35,6 +35,10 @@
     cursor: not-allowed;
   }
 
+  .cinder-slider[data-cinder-disabled] .cinder-slider__value {
+    color: var(--cinder-text);
+  }
+
   .cinder-slider__track {
     position: relative;
     width: 100%;

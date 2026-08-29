@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -286,6 +287,14 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('aria-valuenow')).toBe('30');
     expect(thumb.getAttribute('aria-disabled')).toBe('true');
     expect(thumb.getAttribute('tabindex')).toBe('-1');
+  });
+
+  test('disabled visible value uses the stronger text token before root opacity is applied', () => {
+    const styles = readFileSync(new URL('./slider.css', import.meta.url), 'utf8');
+
+    expect(styles).toMatch(
+      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__value\s*\{[^}]*color:\s*var\(--cinder-text\);/,
+    );
   });
 
   test('renders a hidden input with name for form submission', () => {
