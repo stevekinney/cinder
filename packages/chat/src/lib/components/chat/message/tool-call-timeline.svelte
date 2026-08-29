@@ -1,8 +1,13 @@
 <script lang="ts">
   import RunStepTimeline, { type RunStep } from '@lostgradient/cinder/run-step-timeline';
+  import { stringify } from '../../../utilities/stringify.ts';
   import type { ToolCallPair } from '../conversation-model.ts';
 
   let { pairs }: { pairs: ToolCallPair[] } = $props();
+
+  function formatPayload(value: unknown): string {
+    return value === null ? 'null' : stringify(value);
+  }
 
   const steps = $derived(
     pairs.map(
@@ -21,7 +26,7 @@
           {
             id: `${index}:${pair.call.id}-arguments`,
             label: 'Arguments',
-            content: JSON.stringify(pair.call.arguments, null, 2),
+            content: formatPayload(pair.call.arguments),
           },
           ...(pair.result
             ? [
@@ -31,7 +36,7 @@
                   content:
                     pair.result.outcome === 'error' && pair.result.error?.message
                       ? pair.result.error.message
-                      : JSON.stringify(pair.result.content, null, 2),
+                      : formatPayload(pair.result.content),
                 },
               ]
             : []),

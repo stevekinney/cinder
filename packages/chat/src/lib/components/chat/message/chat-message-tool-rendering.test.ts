@@ -105,6 +105,26 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(container.textContent).toContain('Network unavailable');
   });
 
+  test('grouped action-required results render null payloads explicitly', async () => {
+    const { container } = render(ToolCallTimeline, {
+      props: {
+        pairs: [
+          {
+            call: { id: 'approval', name: 'request-approval', arguments: {} },
+            result: { callId: 'approval', outcome: 'action_required', content: null },
+          },
+        ],
+      },
+    });
+
+    await fireEvent.click(
+      Array.from(container.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Result'),
+      )!,
+    );
+    expect(container.textContent).toContain('null');
+  });
+
   test('tool-call card is collapsed by default (arguments hidden)', () => {
     const message = toolCallMessage();
     const { container } = render(ChatMessage, {
