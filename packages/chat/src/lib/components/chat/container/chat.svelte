@@ -482,6 +482,7 @@
         messageStatus ||
         messageReasoning ||
         messageSteps ||
+        onExpandedChange ||
         searchState.isOpen ||
         rollbackMessageId
           ? new Set(
@@ -724,8 +725,14 @@
     const currentConversationId = conversationId;
     const currentToolStatuses = new Map<string, { name: string; status: string }>();
     const callOccurrenceKeys = new Map<string, string[]>();
+    const aggregatedMessageIds = new Set(
+      renderRows.flatMap((row) =>
+        row.type === 'tool-call-group' ? row.messages.map((message) => message.id) : [],
+      ),
+    );
     for (const message of messages) {
       if (message.role === 'tool-call' && message.toolCall) {
+        if (!aggregatedMessageIds.has(message.id)) continue;
         const occurrenceKey = message.id;
         const occurrenceKeys = callOccurrenceKeys.get(message.toolCall.id) ?? [];
         occurrenceKeys.push(occurrenceKey);

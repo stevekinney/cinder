@@ -645,6 +645,14 @@
 
   function handleBeforeInput(event: InputEvent): void {
     if (!editorElement) return;
+    if (
+      event.inputType.startsWith('delete') &&
+      event.inputType !== 'deleteContentBackward' &&
+      event.inputType !== 'deleteContentForward'
+    ) {
+      pendingInputRange = null;
+      return;
+    }
     let start = editorElement.selectionStart;
     let end = editorElement.selectionEnd;
     if (start === end && event.inputType === 'deleteContentBackward')

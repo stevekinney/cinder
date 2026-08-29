@@ -281,6 +281,31 @@ describe('ChatInput', () => {
     expect(submissions).toEqual([{ role: 'user', content: 'aaaPASTEaa' }]);
   });
 
+  test('uses the resulting string diff for word-deletion input ranges', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'word-deletion-paste-composer',
+      value: 'alphaomega',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(5, 5);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'PASTED CONTENT' },
+    });
+
+    composer.setSelectionRange(5, 5);
+    composer.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, inputType: 'deleteWordBackward' }),
+    );
+    await fireEvent.input(composer, { target: { value: 'omega' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'PASTED CONTENTomega' }]);
+  });
+
   test('tracks the promoted paste restoration range through composer edits', async () => {
     const { container } = render(ChatInput, {
       id: 'edited-large-paste-composer',

@@ -5,7 +5,7 @@
   }
 
   .cinder-chat .message-content-wide {
-    inline-size: max-content;
+    inline-size: min(var(--cinder-content-width-wide), calc(100cqi - (2 * var(--cinder-space-4))));
     min-inline-size: 100%;
     max-inline-size: min(
       var(--cinder-content-width-wide),
