@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["shortcut-field"],
-  "renderedSourceSha": "6c4ce8c77ad84fb5211f9e0666d11aecdf1017b0",
+  "componentScope": [
+    "date-range-field"
+  ],
+  "renderedSourceSha": "12fb5cb953cc622096ca4a03881d711c8a65373e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "arm64",
+  "architecture": "x64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }
