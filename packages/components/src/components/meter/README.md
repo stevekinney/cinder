@@ -40,7 +40,7 @@ label through `aria-valuetext`.
 | `optimum`        | `number`                                                                      | no       | —       | Optimal target value. Influences computed state semantics to match native meter expectations.                                         |
 | `size`           | `"sm"` \| `"md"` \| `"lg"`                                                    | no       | —       | Size token for track height. Default `md`.                                                                                            |
 | `value`          | `number`                                                                      | no       | —       | Current measurement value. Defaults to 0.                                                                                             |
-| `verdict`        | { label: `string`; level: `"low"` \| `"optimum"` \| `"high"` \| `"unknown"` } | no       | —       | Semantic verdict for measurements without a numeric reading.                                                                          |
+| `verdict`        | { label: `string`; level: `"low"` \| `"optimum"` \| `"high"` \| `"unknown"` } | no       | —       | Semantic label for a measurement; `unknown` represents the non-numeric status case.                                                   |
 
 <!-- generated:props:end -->
 

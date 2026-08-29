@@ -24,7 +24,7 @@ export type MeterVerdict = {
 // over the bespoke `ariaLabel`/`ariaLabelledby` props below, with the bespoke props as a
 // fallback) rather than discarding them. See meter.svelte for the resolution.
 export type MeterProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
-  /** Semantic verdict for measurements without a numeric reading. */
+  /** Semantic label for a measurement; `unknown` represents the non-numeric status case. */
   verdict?: MeterVerdict;
   /** Current measurement value. Defaults to 0. */
   value?: number;

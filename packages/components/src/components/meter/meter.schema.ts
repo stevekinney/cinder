@@ -16,7 +16,8 @@ const schema = {
       },
       additionalProperties: false,
       required: ['label', 'level'],
-      description: 'Semantic verdict for measurements without a numeric reading.',
+      description:
+        'Semantic label for a measurement; `unknown` represents the non-numeric status case.',
     },
     value: {
       type: 'number',
