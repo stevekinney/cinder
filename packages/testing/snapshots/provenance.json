@@ -1,8 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "shard": "4/8",
-  "renderedSourceSha": "0f50c3686e814bdaa3be9793e31908c34c3fc65e",
+  "componentScope": [
+    "shortcut-field"
+  ],
+  "renderedSourceSha": "6c4ce8c77ad84fb5211f9e0666d11aecdf1017b0",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
