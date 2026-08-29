@@ -41,7 +41,7 @@
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface);
-    color: var(--cinder-text);
+    color: var(--cinder-text-default);
     cursor: pointer;
   }
   @media (hover: hover) {
