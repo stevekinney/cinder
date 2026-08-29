@@ -241,6 +241,8 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
+export { default as GuidanceRegion } from './components/guidance-region/index.ts';
+export type { GuidanceRegionProps } from './components/guidance-region/index.ts';
 export { default as InlineConfirm } from './components/inline-confirm/index.ts';
 export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
 
@@ -1045,6 +1047,8 @@ export type {
 } from './utilities/use-reduced-motion.types.ts';
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
+export { useGuidance } from './utilities/use-guidance.ts';
+export type { GuidanceApi, GuidanceClaim, GuidanceStorage } from './utilities/use-guidance.ts';
 export { useModal } from './utilities/use-modal.ts';
 export type { ModalApi } from './utilities/use-modal.ts';
 export { useToast } from './utilities/use-toast.ts';

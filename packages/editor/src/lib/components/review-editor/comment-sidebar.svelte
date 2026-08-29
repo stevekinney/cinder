@@ -35,6 +35,7 @@
 
   import { getVisibleComments, isDocumentAnchor } from '../../comments/index.ts';
   import Button from '@lostgradient/cinder/button';
+  import InlineConfirm from '@lostgradient/cinder/inline-confirm';
   import Dropdown from '@lostgradient/cinder/dropdown';
   import DropdownTrigger from '@lostgradient/cinder/dropdown-trigger';
   import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
@@ -160,17 +161,14 @@
   </div>
 
   <!-- Confirmation banner for clear all -->
-  {#if showConfirmClear}
-    <div class="confirm-clear" role="alertdialog" aria-labelledby="{id}-confirm-title">
-      <p id="{id}-confirm-title" class="confirm-message">
-        Delete all {visibleThreads.length} comment threads?
-      </p>
-      <div class="confirm-actions">
-        <Button variant="secondary" size="xs" onclick={handleCancelClear}>Cancel</Button>
-        <Button variant="danger" size="xs" onclick={handleConfirmClear}>Delete All</Button>
-      </div>
-    </div>
-  {/if}
+  <InlineConfirm
+    prompt="Delete all {visibleThreads.length} comment threads?"
+    confirmLabel="Delete All"
+    destructive
+    bind:open={showConfirmClear}
+    onConfirm={handleConfirmClear}
+    onCancel={handleCancelClear}
+  />
 
   <!-- Document comment composer -->
   {#if composingDocumentComment}
@@ -318,29 +316,6 @@
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
     }
-  }
-
-  /* Confirmation banner */
-  .confirm-clear {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-2);
-    padding: var(--cinder-space-3);
-    background: var(--cinder-status-danger-background);
-    border-bottom: 1px solid var(--cinder-status-danger-border);
-  }
-
-  .confirm-message {
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-status-danger-text);
-    margin: 0;
-  }
-
-  .confirm-actions {
-    display: flex;
-    gap: var(--cinder-space-2);
-    justify-content: flex-end;
   }
 
   /* Document comment composer */

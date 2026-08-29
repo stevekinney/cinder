@@ -1,0 +1,28 @@
+@layer cinder.components {
+  .cinder-inline-confirm {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--cinder-space-3);
+    padding: var(--cinder-space-3);
+    background: var(--cinder-status-danger-background);
+    border-block: 1px solid var(--cinder-status-danger-border);
+  }
+  .cinder-inline-confirm__prompt {
+    margin: 0;
+    color: var(--cinder-status-danger-text);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+  }
+  .cinder-inline-confirm__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--cinder-space-2);
+  }
+  @media (max-width: 32rem) {
+    .cinder-inline-confirm {
+      align-items: stretch;
+      flex-direction: column;
+    }
+  }
+}
