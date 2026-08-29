@@ -13,6 +13,7 @@ const schema = {
         'supported',
         'unsupported',
         'permission-needed',
+        'permission-limited',
         'permission-denied',
         'loading',
         'unavailable',

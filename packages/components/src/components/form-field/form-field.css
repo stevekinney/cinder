@@ -45,6 +45,20 @@
     margin: 0;
   }
 
+  .cinder-form-field__warning {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-status-warning-text);
+    margin: 0;
+  }
+
+  .cinder-form-field__managed {
+    font-size: var(--cinder-text-xs);
+    line-height: var(--cinder-leading-normal);
+    color: var(--cinder-text-muted);
+    margin: 0;
+  }
+
   .cinder-form-field__error {
     font-size: var(--cinder-text-xs);
     line-height: var(--cinder-leading-normal);

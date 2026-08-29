@@ -9,6 +9,11 @@ const schema = {
       description: 'Spinner size.',
       default: 'md',
     },
+    variant: {
+      enum: ['default', 'arc'],
+      description: 'Visual treatment.',
+      default: 'default',
+    },
     label: {
       type: 'string',
       description: 'Accessible loading label.',

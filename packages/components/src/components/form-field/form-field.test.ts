@@ -9,6 +9,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: FormField } = await import('./form-field.svelte');
+const { default: FormFieldSupportingTextControlsFixture } =
+  await import('../../test/fixtures/form-field-supporting-text-controls-fixture.svelte');
 const { default: FormFieldProbe } = await import('../../test/fixtures/form-field-probe.svelte');
 const { default: FormFieldContextProbe } =
   await import('../../test/fixtures/form-field-context-probe.svelte');
@@ -19,6 +21,20 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('FormField rendering', () => {
+  test('all context-aware grouped controls consume warning and managed supporting text', () => {
+    const { container } = render(FormFieldSupportingTextControlsFixture);
+
+    for (const id of [
+      'supporting-pin',
+      'supporting-toggle',
+      'supporting-phone',
+      'supporting-rating',
+    ]) {
+      const expected = `${id}-warning ${id}-managed`;
+      const controls = container.querySelectorAll(`[aria-describedby="${expected}"]`);
+      expect(controls.length).toBeGreaterThan(0);
+    }
+  });
   test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
     const { container } = render(FormField, {
       props: { id: 'no-error-yet', label: 'Username', children: emptySnippet },
@@ -159,6 +175,42 @@ describe('FormField rendering', () => {
 });
 
 describe('FormField context via probe', () => {
+  test('orders description, warning, and error ids without treating warning as invalid', () => {
+    const { container } = render(FormFieldProbe, {
+      props: {
+        id: 'endpoint',
+        label: 'Endpoint',
+        description: 'Service URL',
+        warning: 'Plain HTTP sends credentials in cleartext',
+      },
+    });
+    const probe = container.querySelector('[data-probe]');
+
+    expect(probe?.getAttribute('data-described-by')).toBe('endpoint-description endpoint-warning');
+    expect(probe?.getAttribute('data-invalid')).toBeNull();
+  });
+
+  test('renders managed ownership and reason without disabling the field', () => {
+    const { container } = render(FormFieldProbe, {
+      props: {
+        id: 'policy-field',
+        label: 'Policy field',
+        managed: { by: 'Acme IT', reason: 'Required for compliance' },
+      },
+    });
+    const root = container.querySelector('.cinder-form-field');
+
+    expect(root?.getAttribute('data-cinder-managed')).toBe('');
+    expect(root?.getAttribute('data-cinder-managed-by')).toBe('Acme IT');
+    expect(container.querySelector('.cinder-form-field__managed')?.textContent).toContain(
+      'Managed by Acme IT: Required for compliance',
+    );
+    expect(container.querySelector('[data-probe]')?.getAttribute('data-described-by')).toBe(
+      'policy-field-managed',
+    );
+    expect(container.querySelector('[data-probe]')?.getAttribute('data-disabled')).toBeNull();
+  });
+
   test('probe reports controlId and labelId', () => {
     const { container } = render(FormFieldProbe, {
       props: { id: 'test-field', label: 'Test' },

@@ -139,4 +139,30 @@ describe('field-control helpers', () => {
       'email-select-description email-select-error email-description email-error',
     );
   });
+
+  test('resolveFieldControl keeps local supporting text before the ordered outer context', () => {
+    const resolved = resolveFieldControl({
+      generatedId: 'email',
+      id: 'email',
+      context: {
+        controlId: 'email',
+        descriptionId: 'email-description',
+        warningId: 'email-warning',
+        managedId: 'email-managed',
+        errorId: 'email-error',
+        describedBy: 'email-description email-warning email-managed email-error',
+        invalid: 'true',
+        required: false,
+        disabled: false,
+      },
+      localIdNamespace: 'input',
+      hasDescription: true,
+      hasError: true,
+      additionalDescribedBy: ['email-input-warning'],
+    });
+
+    expect(resolved.describedBy).toBe(
+      'email-input-description email-input-warning email-input-error email-description email-warning email-managed email-error',
+    );
+  });
 });

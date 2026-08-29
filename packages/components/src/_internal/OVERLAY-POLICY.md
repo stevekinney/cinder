@@ -17,6 +17,10 @@ The runtime helpers backing this policy live in `src/_internal/overlay.ts` and
 CSS Anchor Positioning remains a progressive enhancement. Do not require it for
 correctness until the support policy changes.
 
+### Select positioning is trigger-aligned
+
+Cinder deliberately declines Radix-style item-aligned Select positioning. Aligning the selected option over the trigger imitates one macOS presentation, but it fights viewport clamping, creates avoidable movement as selection changes, and adds geometry that does not improve keyboard or assistive-technology behavior. Native `<select>` remains the preferred primitive where native platform presentation is the requirement. Cinder's custom Select uses the shared trigger-anchored overlay path and viewport collision handling instead.
+
 ## Portal root
 
 - Default portal root: `document.body`.

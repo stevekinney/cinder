@@ -2,8 +2,14 @@
 @layer cinder.components {
   .cinder-meter {
     display: inline-flex;
+    flex-direction: column;
     align-items: center;
+    gap: var(--cinder-space-1);
     width: 100%;
+  }
+
+  .cinder-meter__label {
+    align-self: flex-start;
   }
 
   .cinder-meter__track {

@@ -321,5 +321,16 @@ describe('PayloadInspector', () => {
       expect(css).toContain("@import '../copy-button/copy-button.css';");
       expect(css).toContain("@import '../json-viewer/json-viewer.css';");
     });
+
+    test('keeps inspector chrome unselectable while diagnostic and payload detail stays selectable', () => {
+      const css = readFileSync(new URL('./payload-inspector.css', import.meta.url), 'utf8');
+
+      expect(css).toMatch(/\.cinder-payload-inspector\s*\{[^}]*user-select:\s*none/s);
+      expect(css).toMatch(/\.cinder-payload-inspector__notice\s*\{[^}]*user-select:\s*text/s);
+      expect(css).toMatch(/\.cinder-payload-inspector__primitive\s*\{[^}]*user-select:\s*text/s);
+      expect(css).toMatch(
+        /\.cinder-payload-inspector__panel \.cinder-json-viewer\s*\{[^}]*user-select:\s*text/s,
+      );
+    });
   });
 });

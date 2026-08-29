@@ -35,13 +35,15 @@ without interrupting ongoing speech.
 
 ## Description text
 
+Supporting text is referenced in deterministic description, warning, then error order. A warning describes a legal but risky value and does not set `aria-invalid`; only an error marks the field invalid. Managed-policy metadata explains ownership without disabling the control or removing it from form submission.
+
 When `description` is set, FormField renders a `<p id="${id}-description">` and
 exposes `descriptionId` on the context. Opted-in controls include this in their
 `aria-describedby` so screen readers read the helper text after the label.
 
 If both `description` and `error` are set, the composed `aria-describedby`
-includes both ids (description first, then error), matching the reading order in
-the DOM.
+includes every rendered supporting-text id in DOM order: description, warning,
+managed policy metadata, then error.
 
 ## Unlabeled fields
 
@@ -55,16 +57,18 @@ no `labelId` in that case, so a control must not rely on a generated label id.
 FormField publishes a `FormFieldContext` via Svelte context so descendant
 controls can inherit ARIA wiring without re-implementing it:
 
-| Field           | Purpose                                                         |
-| --------------- | --------------------------------------------------------------- |
-| `controlId`     | Stable id expected on the wrapped control element               |
-| `labelId`       | Id of the `<label>` element, when a label is rendered           |
-| `describedBy`   | Composed `aria-describedby` (description + error), or undefined |
-| `descriptionId` | Id of the description `<p>`, or undefined                       |
-| `errorId`       | Id of the error `<p>`, or undefined                             |
-| `invalid`       | `'true'` when error is set, else undefined                      |
-| `required`      | Boolean from the `required` prop                                |
-| `disabled`      | Boolean from the `disabled` prop                                |
+| Field           | Purpose                                                                |
+| --------------- | ---------------------------------------------------------------------- |
+| `controlId`     | Stable id expected on the wrapped control element                      |
+| `labelId`       | Id of the `<label>` element, when a label is rendered                  |
+| `describedBy`   | Composed `aria-describedby` in supporting-text DOM order, or undefined |
+| `descriptionId` | Id of the description `<p>`, or undefined                              |
+| `warningId`     | Id of the advisory warning `<p>`, or undefined                         |
+| `managedId`     | Id of the managed-policy metadata `<p>`, or undefined                  |
+| `errorId`       | Id of the error `<p>`, or undefined                                    |
+| `invalid`       | `'true'` when error is set, else undefined                             |
+| `required`      | Boolean from the `required` prop                                       |
+| `disabled`      | Boolean from the `disabled` prop                                       |
 
 All fields are getter properties — reads inside `$derived` stay reactive.
 
@@ -96,6 +100,10 @@ until PR-B lands.
 
 FormField itself adds no keyboard behavior — it is a layout primitive. Each
 wrapped control retains its native keyboard behavior.
+
+## Design and accessibility review
+
+Reviewed 2026-08-28. Nearest neighbours are Input, FormSection, Label, and grouped controls. Warning and managed metadata belong in FormField because they participate in the same control-description relationship rather than introducing new interaction. Warning uses the status-warning text token; managed ownership remains visually muted. Keyboard and focus behavior do not change. Description, warning, managed metadata, and error are referenced in that order through `aria-describedby`; only error sets `aria-invalid`. There is no motion. Status tokens and ordinary text remain available to forced-colors rendering without relying on color as the only distinction.
 
 ## Color contrast
 

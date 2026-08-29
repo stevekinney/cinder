@@ -16,13 +16,16 @@
     label,
     labelVisible = true,
     description,
+    warning,
     error,
+    managed,
     required = false,
     disabled = false,
     class: className,
     controlClass,
     labelClass,
     descriptionClass,
+    warningClass,
     errorClass,
     descriptionId: descriptionIdOverride,
     errorId: errorIdOverride,
@@ -43,13 +46,16 @@
     label?: string | undefined;
     labelVisible?: boolean | undefined;
     description?: string | undefined;
+    warning?: string | undefined;
     error?: string | undefined;
+    managed?: { by?: string | undefined; reason?: string | undefined } | undefined;
     required?: boolean | undefined;
     disabled?: boolean | undefined;
     class?: string | undefined;
     controlClass?: string | undefined;
     labelClass?: string | undefined;
     descriptionClass?: string | undefined;
+    warningClass?: string | undefined;
     errorClass?: string | undefined;
     descriptionId?: string | undefined;
     errorId?: string | undefined;
@@ -85,8 +91,10 @@
 
   const labelId = $derived(label ? `${id}-label` : undefined);
   const descriptionId = $derived(descriptionIdOverride ?? describeId(id, !!description));
+  const warningId = $derived(warning ? `${id}-warning` : undefined);
+  const managedId = $derived(managed ? `${id}-managed` : undefined);
   const errorId = $derived(errorIdOverride ?? buildErrorId(id, !!error));
-  const describedBy = $derived(composeDescribedBy(descriptionId, errorId));
+  const describedBy = $derived(composeDescribedBy(descriptionId, warningId, managedId, errorId));
   const invalid = $derived(ariaInvalid(!!error));
   const needsControlWrapper = $derived(!!controlClass || !!before || !!after);
   const context: FormFieldContext = {
@@ -101,6 +109,12 @@
     },
     get descriptionId() {
       return descriptionId;
+    },
+    get warningId() {
+      return warningId;
+    },
+    get managedId() {
+      return managedId;
     },
     get errorId() {
       return errorId;
@@ -121,6 +135,8 @@
   {...rest}
   class={classNames('cinder-form-field', className)}
   data-cinder-full-width={fullWidth ? '' : undefined}
+  data-cinder-managed={managed ? '' : undefined}
+  data-cinder-managed-by={managed?.by || undefined}
 >
   {#if label}
     <label
@@ -152,6 +168,18 @@
   {#if description}
     <p id={descriptionId} class={classNames('cinder-form-field__description', descriptionClass)}>
       {description}
+    </p>
+  {/if}
+  {#if warning}
+    <p id={warningId} class={classNames('cinder-form-field__warning', warningClass)}>
+      {warning}
+    </p>
+  {/if}
+  {#if managed}
+    <p id={managedId} class="cinder-form-field__managed">
+      {managed.by ? `Managed by ${managed.by}` : 'Managed by policy'}{managed.reason
+        ? `: ${managed.reason}`
+        : ''}
     </p>
   {/if}
   {#if message}{@render message()}{/if}

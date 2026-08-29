@@ -96,9 +96,9 @@
   const ownErrorId = $derived(
     error && defaultErrorId === context?.errorId ? `${id}-pin-error` : defaultErrorId,
   );
-  const resolvedDescriptionId = $derived(ownDescriptionId ?? context?.descriptionId);
-  const resolvedErrorId = $derived(ownErrorId ?? context?.errorId);
-  const describedBy = $derived(composeDescribedBy(resolvedDescriptionId, resolvedErrorId));
+  const describedBy = $derived(
+    composeDescribedBy(ownDescriptionId, ownErrorId, context?.describedBy),
+  );
   const resolvedAriaInvalid = $derived(error ? ariaInvalid(true) : context?.invalid);
   const resolvedRequired = $derived(required ?? context?.required ?? false);
   const resolvedDisabled = $derived(disabled ?? context?.disabled ?? false);

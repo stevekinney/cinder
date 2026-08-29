@@ -46,6 +46,7 @@
   const ownLabelId = $derived(label ? `${id ?? generatedId}-label` : undefined);
   const labelId = $derived(context?.labelId ?? ownLabelId);
   const resolvedId = $derived(context?.controlId ?? id);
+  const describedBy = $derived(context?.describedBy);
 
   function toggle(): void {
     if (!resolvedDisabled) {
@@ -68,6 +69,7 @@
     role="switch"
     aria-checked={checked}
     aria-labelledby={labelId}
+    aria-describedby={describedBy}
     disabled={resolvedDisabled}
     onclick={toggle}
     class={classNames('cinder-toggle', customClassName)}
