@@ -67,6 +67,32 @@ describe('Meter', () => {
     );
   });
 
+  test('falls back to an explicit label for an unknown verdict with an empty label', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: '   ' },
+        ariaLabel: 'Service health',
+      },
+    });
+    const element = container.querySelector('[role="status"]');
+
+    expect(element?.querySelector('.cinder-meter__label')?.textContent).toBe('Unknown');
+    expect(element?.getAttribute('aria-label')).toBe('Service health: Unknown');
+  });
+
+  test('ignores a malformed verdict instead of throwing', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: null } as never,
+        ariaLabel: 'Service health',
+      },
+    });
+
+    expect(container.querySelector('[role="status"] .cinder-meter__label')?.textContent).toBe(
+      'Unknown',
+    );
+  });
+
   test('renders role=meter with default bounds and value', () => {
     const { container } = render(Meter, { ariaLabel: 'Battery level' });
     const el = container.querySelector('[role="meter"]');

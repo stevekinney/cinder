@@ -49,9 +49,19 @@
 
   const generatedId = $props.id();
 
-  const hasVerdict = $derived(verdict !== undefined);
-  const isUnknownVerdict = $derived(verdict?.level === 'unknown');
-  const verdictLabel = $derived(verdict?.label.trim() || undefined);
+  const verdictLevel = $derived.by<MeterState | 'unknown' | undefined>(() => {
+    const level = (verdict as { level?: unknown } | undefined)?.level;
+    return level === 'low' || level === 'optimum' || level === 'high' || level === 'unknown'
+      ? level
+      : undefined;
+  });
+  const hasVerdict = $derived(verdictLevel !== undefined);
+  const isUnknownVerdict = $derived(verdictLevel === 'unknown');
+  const verdictLabel = $derived.by(() => {
+    const label = (verdict as { label?: unknown } | undefined)?.label;
+    if (typeof label === 'string' && label.trim().length > 0) return label.trim();
+    return isUnknownVerdict ? 'Unknown' : undefined;
+  });
   const verdictLabelId = $derived(verdictLabel ? `${generatedId}-verdict` : undefined);
 
   const hasValidRange = $derived(Number.isFinite(min) && Number.isFinite(max) && max > min);
@@ -124,7 +134,7 @@
   );
 
   const meterState = $derived.by<MeterState | undefined>(() => {
-    if (hasVerdict) return verdict?.level === 'unknown' ? undefined : verdict?.level;
+    if (hasVerdict) return verdictLevel === 'unknown' ? undefined : verdictLevel;
     if (!hasThresholds) return undefined;
     if (effectiveOptimum <= segmentLow) {
       if (clampedValue <= segmentLow) return 'optimum';
@@ -180,6 +190,22 @@
     if (optimum !== undefined && !Number.isFinite(optimum)) {
       devWarn(
         `[cinder/Meter] optimum threshold must be finite when provided. Received ${String(optimum)}.`,
+      );
+    }
+    if (verdict !== undefined && verdictLevel === undefined) {
+      devWarn(
+        '[cinder/Meter] verdict.level must be one of "low", "optimum", "high", or "unknown". Ignoring the malformed verdict.',
+      );
+    }
+    const suppliedVerdictLabel = (verdict as { label?: unknown } | undefined)?.label;
+    if (
+      verdictLevel !== undefined &&
+      (typeof suppliedVerdictLabel !== 'string' || suppliedVerdictLabel.trim().length === 0)
+    ) {
+      devWarn(
+        isUnknownVerdict
+          ? '[cinder/Meter] an unknown verdict requires a non-empty label. Falling back to "Unknown".'
+          : '[cinder/Meter] a known verdict requires a non-empty label for visible and accessible value text.',
       );
     }
     const hasAriaLabel = normalizedAriaLabel !== undefined;

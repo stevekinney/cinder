@@ -24,7 +24,12 @@ describe('FormField rendering', () => {
   test('all context-aware grouped controls consume warning and managed supporting text', () => {
     const { container } = render(FormFieldSupportingTextControlsFixture);
 
-    for (const id of ['supporting-pin', 'supporting-phone', 'supporting-rating']) {
+    for (const id of [
+      'supporting-pin',
+      'supporting-toggle',
+      'supporting-phone',
+      'supporting-rating',
+    ]) {
       const expected = `${id}-warning ${id}-managed`;
       const controls = container.querySelectorAll(`[aria-describedby="${expected}"]`);
       expect(controls.length).toBeGreaterThan(0);

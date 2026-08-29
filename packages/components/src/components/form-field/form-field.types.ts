@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+/** @schemaObject */
 export type FormFieldManaged = {
   /** Policy or administrator that owns the value. */
   by?: string | undefined;

@@ -33,6 +33,21 @@ const schema = {
       type: 'string',
       description: 'Validation error; sets `aria-invalid="true"` on opted-in controls via context.',
     },
+    managed: {
+      type: 'object',
+      properties: {
+        by: {
+          type: 'string',
+          description: 'Policy or administrator that owns the value.',
+        },
+        reason: {
+          type: 'string',
+          description: 'Human-readable explanation for the constraint.',
+        },
+      },
+      additionalProperties: false,
+      description: 'Policy ownership metadata displayed without disabling the control.',
+    },
     required: {
       type: 'boolean',
       description: 'Renders a visual required marker and exposes `required: true` on the context.',
@@ -55,11 +70,6 @@ const schema = {
         reason: 'function-or-snippet',
         required: true,
         description: 'Control(s) rendered inside the field.',
-      },
-      {
-        name: 'managed',
-        reason: 'unknown-shape',
-        description: 'Policy ownership metadata displayed without disabling the control.',
       },
     ],
   },

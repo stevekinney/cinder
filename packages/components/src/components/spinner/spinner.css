@@ -43,6 +43,7 @@
     stroke: var(--cinder-spinner-indicator, currentColor);
     stroke-linecap: round;
     stroke-dasharray: 56.55;
+    stroke-dashoffset: 32;
     transform: rotate(-90deg);
     transform-origin: center;
     animation: cinder-spinner-arc var(--cinder-duration-spin) ease-in-out infinite alternate;

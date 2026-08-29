@@ -47,6 +47,7 @@ describe('Spinner', () => {
     expect(spinner?.getAttribute('data-cinder-variant')).toBe('arc');
     expect(spinner?.querySelector('.cinder-spinner__arc-indicator')).not.toBeNull();
     expect(css).toContain('@keyframes cinder-spinner-arc');
+    expect(css).toContain('stroke-dashoffset: 32');
     expect(css).toContain('stroke-dashoffset: 50');
     expect(css).toContain('stroke-dashoffset: 14');
   });

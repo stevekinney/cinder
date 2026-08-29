@@ -3,6 +3,7 @@
   import PhoneInput from '../../components/phone-input/phone-input.svelte';
   import PinInput from '../../components/pin-input/pin-input.svelte';
   import Rating from '../../components/rating/rating.svelte';
+  import Toggle from '../../components/toggle/toggle.svelte';
 </script>
 
 <FormField
@@ -12,6 +13,15 @@
   managed={{ by: 'Security policy' }}
 >
   <PinInput id="supporting-pin" />
+</FormField>
+
+<FormField
+  id="supporting-toggle"
+  label="Telemetry"
+  warning="Usage data may include metadata."
+  managed={{ by: 'Organization policy' }}
+>
+  <Toggle id="supporting-toggle" label="Telemetry" />
 </FormField>
 
 <FormField

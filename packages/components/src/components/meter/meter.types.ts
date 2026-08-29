@@ -3,6 +3,7 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type MeterSize = 'sm' | 'md' | 'lg';
 export type MeterState = 'low' | 'optimum' | 'high';
 export type MeterVerdictLevel = MeterState | 'unknown';
+/** @schemaObject */
 export type MeterVerdict = {
   level: MeterVerdictLevel;
   label: string;
