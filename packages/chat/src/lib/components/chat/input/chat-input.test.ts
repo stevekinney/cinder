@@ -5,6 +5,7 @@ import { mount, tick, unmount } from 'svelte';
 import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
+import type { MessageInput } from '../conversation-model.ts';
 
 setupHappyDom();
 
@@ -58,7 +59,7 @@ describe('ChatInput', () => {
     expect(composer?.readOnly).toBe(false);
   });
 
-  test('keeps the composer read-only but focusable while sending', () => {
+  test('keeps the composer editable and focusable while sending', () => {
     const { container } = render(ChatInput, {
       id: 'sending-composer',
       sending: true,
@@ -66,7 +67,7 @@ describe('ChatInput', () => {
 
     const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor');
     expect(composer?.disabled).toBe(false);
-    expect(composer?.readOnly).toBe(true);
+    expect(composer?.readOnly).toBe(false);
   });
 
   test('hides the programmatic file picker from the accessibility tree', () => {
@@ -75,6 +76,371 @@ describe('ChatInput', () => {
     expect(picker?.getAttribute('aria-hidden')).toBe('true');
     expect(picker?.tabIndex).toBe(-1);
     expect(container.querySelector('button[aria-label="Attach file"]')).not.toBeNull();
+  });
+
+  test('promotes a large plain-text paste to an attachment and restores it when removed', async () => {
+    const { container } = render(ChatInput, {
+      id: 'large-paste-composer',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'sixteen characters' : ''),
+      },
+    });
+
+    expect(container.querySelector('[aria-label="Attached files"]')).not.toBeNull();
+    expect(composer.value).toBe('');
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    expect(composer.value).toBe('sixteen characters');
+  });
+
+  test('notifies composer listeners after promoting a large paste', async () => {
+    const values: string[] = [];
+    const { container } = render(ChatInput, {
+      id: 'large-paste-callback-composer',
+      value: 'keep SELECT',
+      largePasteThreshold: 5,
+      oncomposerinput: (nextValue: string) => values.push(nextValue),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(5, 11);
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'promoted content' },
+    });
+
+    expect(composer.value).toBe('keep ');
+    expect(values).toEqual(['keep ']);
+  });
+
+  test('does not consume a large paste when attachment validation rejects it', () => {
+    const { container } = render(ChatInput, {
+      id: 'rejected-large-paste-composer',
+      largePasteThreshold: 5,
+      acceptedTypes: ['image/png'],
+    });
+    const form = container.querySelector('form')!;
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', {
+      value: { items: [], getData: () => 'sixteen characters' },
+    });
+
+    form.dispatchEvent(paste);
+
+    expect(paste.defaultPrevented).toBe(false);
+    expect(container.querySelector('[aria-label="Attached files"]')).toBeNull();
+  });
+
+  test('submits a ready promoted paste without requiring unrelated composer text', async () => {
+    const submitted: MessageInput[] = [];
+    const submittedAttachments: unknown[][] = [];
+    const { container } = render(ChatInput, {
+      id: 'submitted-large-paste-composer',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput, attachments: unknown[]) => {
+        submitted.push(message);
+        submittedAttachments.push(attachments);
+      },
+    });
+    const form = container.querySelector('form')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'sixteen characters' : ''),
+      },
+    });
+    await fireEvent.submit(form);
+
+    expect(submitted).toEqual([{ content: 'sixteen characters', role: 'user' }]);
+    expect(submittedAttachments).toEqual([[]]);
+  });
+
+  test('rejects a whitespace-only promoted paste', async () => {
+    const submitted: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'whitespace-large-paste-composer',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submitted.push(message),
+    });
+    const form = container.querySelector('form')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => '          ' },
+    });
+    await fireEvent.submit(form);
+
+    expect(submitted).toEqual([]);
+  });
+
+  test('reconstructs composer text with every promoted paste and excludes their attachments', async () => {
+    const submissions: Array<{ message: MessageInput; attachments: unknown[] }> = [];
+    const { container } = render(ChatInput, {
+      id: 'multiple-promoted-pastes',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput, attachments: unknown[]) =>
+        submissions.push({ message, attachments }),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'first document' },
+    });
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => ' second document' },
+    });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([
+      {
+        message: { role: 'user', content: 'summarize: first document second document' },
+        attachments: [],
+      },
+    ]);
+  });
+
+  test('restores a promoted paste at its original selection', async () => {
+    const { container } = render(ChatInput, {
+      id: 'selected-large-paste-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'replacement text' : ''),
+      },
+    });
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    await tick();
+
+    expect(composer.value).toBe('before replacement text after');
+    expect(composer.selectionStart).toBe(23);
+    expect(composer.selectionEnd).toBe(23);
+  });
+
+  test('preserves instructions typed after promoting a paste over a selection', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'selected-paste-follow-up-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'replacement text' },
+    });
+    expect(composer.selectionStart).toBe(7);
+    expect(composer.selectionEnd).toBe(7);
+    await fireEvent.input(composer, { target: { value: 'before summarize  after' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([
+      { role: 'user', content: 'before replacement textsummarize  after' },
+    ]);
+  });
+
+  test('tracks promoted paste anchors through ambiguous repeated-character edits', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'repeated-character-paste-composer',
+      value: 'aaaa',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(2, 2);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'PASTE' },
+    });
+
+    composer.setSelectionRange(0, 0);
+    composer.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, inputType: 'insertText', data: 'a' }),
+    );
+    await fireEvent.input(composer, { target: { value: 'aaaaa' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'aaaPASTEaa' }]);
+  });
+
+  test('uses the resulting string diff for word-deletion input ranges', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'word-deletion-paste-composer',
+      value: 'alphaomega',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(5, 5);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'PASTED CONTENT' },
+    });
+
+    composer.setSelectionRange(5, 5);
+    composer.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, inputType: 'deleteWordBackward' }),
+    );
+    await fireEvent.input(composer, { target: { value: 'omega' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'PASTED CONTENTomega' }]);
+  });
+
+  test('tracks the promoted paste restoration range through composer edits', async () => {
+    const { container } = render(ChatInput, {
+      id: 'edited-large-paste-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'replacement text' },
+    });
+
+    await fireEvent.input(composer, { target: { value: 'prefix before  after' } });
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    await tick();
+
+    expect(composer.value).toBe('prefix before replacement text after');
+  });
+
+  test('translates remaining promoted-paste ranges when an earlier paste is restored', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'translated-promoted-pastes',
+      value: 'ab',
+      largePasteThreshold: 1,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+
+    composer.setSelectionRange(0, 0);
+    await fireEvent.paste(form, { clipboardData: { items: [], getData: () => 'A' } });
+    composer.setSelectionRange(2, 2);
+    await fireEvent.paste(form, { clipboardData: { items: [], getData: () => 'B' } });
+
+    const removeButtons = container.querySelectorAll<HTMLButtonElement>(
+      'button[aria-label="Remove pasted-text.txt"]',
+    );
+    await fireEvent.click(removeButtons[0]!);
+    await tick();
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'AabB' }]);
+  });
+
+  test('clears promoted-paste state after an enhanced form-action submission', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'form-action-promoted-paste',
+      action: '/messages',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    form.addEventListener('submit', (event) => event.preventDefault());
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'source document' },
+    });
+
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(composer.value).toBe('summarize: source document');
+
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(submissions).toEqual([
+      { role: 'user', content: 'summarize: source document' },
+      { role: 'user', content: 'summarize: source document' },
+    ]);
+  });
+
+  test('rebases promoted-paste ranges when the bound value changes externally', async () => {
+    const submissions: MessageInput[] = [];
+    const rendered = render(ChatInput, {
+      id: 'external-value-promoted-paste',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = rendered.container.querySelector('form')!;
+    const composer = rendered.container.querySelector<HTMLTextAreaElement>(
+      'textarea.chat-input-editor',
+    )!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'source document' },
+    });
+
+    await rendered.rerender({
+      id: 'external-value-promoted-paste',
+      value: 'Please summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    await tick();
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'Please summarize: source document' }]);
+  });
+
+  test('shows an instructional copy-drop overlay with copy semantics', async () => {
+    const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
+    const form = container.querySelector('form')!;
+    const dataTransfer = { dropEffect: 'none', types: ['Files'], files: [] };
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+
+    await fireEvent.dragEnter(form, { dataTransfer });
+    form.dispatchEvent(dragOver);
+    expect(dataTransfer.dropEffect).toBe('copy');
+    expect(container.querySelector('.chat-input-drop-overlay')?.textContent).toContain(
+      'Drop files to attach',
+    );
+  });
+
+  test('does not show the file overlay for non-file drags', async () => {
+    const { container } = render(ChatInput, { id: 'non-file-drop-overlay-composer' });
+    const form = container.querySelector('form')!;
+    const dataTransfer = { dropEffect: 'none', types: ['text/plain'], files: [] };
+    const dragEnter = new Event('dragenter', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragEnter, 'dataTransfer', { value: dataTransfer });
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+
+    form.dispatchEvent(dragEnter);
+    form.dispatchEvent(dragOver);
+
+    expect(dragEnter.defaultPrevented).toBe(false);
+    expect(dragOver.defaultPrevented).toBe(false);
+    expect(dataTransfer.dropEffect).toBe('none');
+    expect(container.querySelector('.chat-input-drop-overlay')).toBeNull();
   });
 
   describe('getValue()', () => {
@@ -306,6 +672,63 @@ describe('ChatInput', () => {
   });
 
   describe('oncomposerkeydown', () => {
+    test('supports modifier-enter submission', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'modifier-enter-composer',
+          submitOn: 'modifier-enter',
+          onsubmit: () => (submitCount += 1),
+        },
+      });
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      const shortcutDescription = target.querySelector(
+        `#${composer.getAttribute('aria-describedby')}`,
+      );
+      expect(shortcutDescription?.textContent).toContain('Command+Enter or Control+Enter to send');
+      expect(target.querySelector('.chat-input-hint')?.textContent).toContain('Ctrl');
+      await fireEvent.input(composer, { target: { value: 'send this' } });
+
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(0);
+      await fireEvent.keyDown(composer, { key: 'Enter', metaKey: true });
+      expect(submitCount).toBe(1);
+
+      unmount(instance);
+      target.remove();
+    });
+
+    test('submits only single-line content in enter-if-single-line mode', async () => {
+      let submitCount = 0;
+      const target = document.createElement('div');
+      document.body.append(target);
+      const instance = mount(ChatInput, {
+        target,
+        props: {
+          id: 'single-line-enter-composer',
+          submitOn: 'enter-if-single-line',
+          clearOnSubmit: false,
+          onsubmit: () => (submitCount += 1),
+        },
+      });
+      const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      await fireEvent.input(composer, { target: { value: 'first\nsecond' } });
+      expect(target.querySelector('.chat-input-hint')?.textContent).toContain(
+        'Use the send button to send this multiline message',
+      );
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(0);
+      await fireEvent.input(composer, { target: { value: 'single line' } });
+      await fireEvent.keyDown(composer, { key: 'Enter' });
+      expect(submitCount).toBe(1);
+
+      unmount(instance);
+      target.remove();
+    });
+
     test('fires before Enter-to-send internal handling', async () => {
       const calls: string[] = [];
       const target = document.createElement('div');

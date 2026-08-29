@@ -96,7 +96,7 @@
     border-radius: var(--cinder-radius-md);
     overflow-x: auto;
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     line-height: var(--leading-relaxed);
     color: var(--cinder-text-default);
     white-space: pre;
@@ -112,7 +112,7 @@
 
   .artifact-mermaid-note {
     margin-top: var(--cinder-space-3);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-muted);
     font-style: italic;
   }

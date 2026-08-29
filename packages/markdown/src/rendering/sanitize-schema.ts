@@ -72,6 +72,7 @@ export function createSanitizeSchema(options: { allowDataImages?: boolean } = {}
     tagNames: [
       ...(defaultSchema.tagNames ?? []).filter((tag) => !BLOCKED_TAGS.includes(tag)),
       ...KATEX_MATHML_TAGS,
+      'cinder-markdown-node',
     ],
     // Strip all attributes by default, then allowlist specific ones
     attributes: {
@@ -109,6 +110,11 @@ export function createSanitizeSchema(options: { allowDataImages?: boolean } = {}
       ],
       // Tables
       table: ['className'],
+      'cinder-markdown-node': [
+        ['dataCinderMarkdownKind', 'code-block', 'table', 'mermaid'],
+        'dataCinderMarkdownIndex',
+        'dataLanguage',
+      ],
       th: ['align', 'valign', 'scope'],
       td: ['align', 'valign'],
       // KaTeX MathML: math element needs xmlns for proper MathML rendering

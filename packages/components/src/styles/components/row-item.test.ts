@@ -5,6 +5,15 @@ import { resolve } from 'node:path';
 const componentsRoot = resolve(import.meta.dir, '../../components');
 
 describe('shared row-item boundary', () => {
+  test('suppresses a divider on both sides of a hovered row', () => {
+    const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
+
+    expect(shared).toContain('.cinder-command-item');
+    expect(shared).toContain(':hover::after');
+    expect(shared).toMatch(/:has\(\s*\+ :is\(/);
+    expect(shared).toMatch(/:hover::after[\s\S]*?visibility:\s*hidden/);
+  });
+
   test('is composed by the option-like families only', () => {
     const shared = readFileSync(resolve(import.meta.dir, '_row-item.css'), 'utf8');
     const floatingSurface = readFileSync(

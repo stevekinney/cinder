@@ -65,7 +65,7 @@
     background: var(--cinder-status-danger-background);
     border-radius: var(--cinder-radius-md);
     color: var(--cinder-status-danger-text);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
   }
 
   /* `.chat-message-tool-action` is intentionally unstyled here — the historical

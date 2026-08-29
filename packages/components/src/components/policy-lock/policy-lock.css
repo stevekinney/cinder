@@ -1,9 +1,43 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../tooltip/tooltip.css';
 
 @layer cinder.components {
   .cinder-policy-lock {
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
+  }
+  .cinder-policy-lock__explanation {
+    display: inline-flex;
+    position: relative;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    cursor: help;
+  }
+  /* Expand the icon button's interactive target to 44×44px without changing
+   * the inline layout of the policy lock and its scope badge. */
+  .cinder-policy-lock__explanation::after {
+    content: '';
+    position: absolute;
+    inset: 50% auto auto 50%;
+    width: 44px;
+    height: 44px;
+    transform: translate(-50%, -50%);
+  }
+  .cinder-policy-lock__explanation:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  @media (forced-colors: active) {
+    .cinder-policy-lock__explanation:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 2px;
+      box-shadow: none;
+    }
   }
 }

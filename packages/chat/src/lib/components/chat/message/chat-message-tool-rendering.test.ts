@@ -20,6 +20,7 @@ setupHappyDom();
 
 const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: ChatMessage } = await import('./chat-message.svelte');
+const { default: ToolCallTimeline } = await import('./tool-call-timeline.svelte');
 
 afterEach(() => {
   cleanup();
@@ -48,7 +49,7 @@ describe('ChatMessage — tool-call rendering', () => {
   test('uses the warning foreground token for action-required status text', () => {
     const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
     expect(source).toMatch(
-      /\.tool-call-group\[data-status=['"]action-required['"]\]\s+\.tool-call-status\s*\{\s*color:\s*var\(--cinder-status-warning-text\);/u,
+      /\.tool-call-action\s*\{[\s\S]*?color:\s*var\(--cinder-status-warning-text\);/u,
     );
   });
 
@@ -61,7 +62,96 @@ describe('ChatMessage — tool-call rendering', () => {
       },
     });
     expect(container.querySelector('.tool-call-group')).not.toBeNull();
+    expect(container.querySelector('.tool-call-name')?.textContent).toBe('lookup');
+    expect(container.querySelector('.tool-call-header')?.getAttribute('aria-label')).toContain(
+      'Pending',
+    );
     expect(container.textContent).toContain('lookup');
+  });
+
+  test('announces standalone tool status transitions', async () => {
+    const message = toolCallMessage();
+    const rendered = render(ChatMessage, {
+      props: {
+        message,
+        toolCallPairs: [{ call: message.toolCall! }],
+      },
+    });
+    const liveRegion = rendered.container.querySelector('[aria-live="polite"][aria-atomic="true"]');
+    expect(liveRegion?.textContent).toContain('lookup: Pending');
+
+    await rendered.rerender({
+      message,
+      toolCallPairs: [
+        {
+          call: message.toolCall!,
+          result: { callId: 'call-1', outcome: 'success', content: 'found' },
+        },
+      ],
+    });
+    await tick();
+
+    expect(liveRegion?.textContent).toContain('lookup: Complete');
+  });
+
+  test('grouped repeated call ids remain unique and preserve structured error details', async () => {
+    const { container } = render(ToolCallTimeline, {
+      props: {
+        pairs: [
+          { call: { id: 'repeated', name: 'first', arguments: {} } },
+          {
+            call: { id: 'repeated', name: 'second', arguments: {} },
+            result: {
+              callId: 'repeated',
+              outcome: 'error',
+              content: null,
+              error: {
+                code: 'offline',
+                category: 'internal',
+                retryable: true,
+                message: 'Network unavailable',
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    const steps = container.querySelectorAll('.cinder-run-step-timeline__item');
+    const timeline = container.querySelector('section');
+    const heading = container.querySelector('h3');
+    expect(steps).toHaveLength(2);
+    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    expect(heading?.textContent).toContain('Called 2 tools');
+    expect(new Set(Array.from(steps, (step) => step.getAttribute('data-cinder-path'))).size).toBe(
+      2,
+    );
+    await fireEvent.click(
+      Array.from(container.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Result'),
+      )!,
+    );
+    expect(container.textContent).toContain('Network unavailable');
+  });
+
+  test('grouped action-required results render null payloads explicitly', async () => {
+    const { container } = render(ToolCallTimeline, {
+      props: {
+        pairs: [
+          {
+            call: { id: 'approval', name: 'request-approval', arguments: {} },
+            result: { callId: 'approval', outcome: 'action_required', content: null },
+          },
+        ],
+      },
+    });
+
+    await fireEvent.click(
+      Array.from(container.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Result'),
+      )!,
+    );
+    expect(container.textContent).toContain('null');
   });
 
   test('tool-call card is collapsed by default (arguments hidden)', () => {

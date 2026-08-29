@@ -15,6 +15,7 @@
 
 <script lang="ts">
   import { setHostContext } from '../../_internal/host-context.ts';
+  import { classNames } from '../../utilities/class-names.ts';
   import type { HostProviderProps } from './host-provider.types.ts';
 
   let {
@@ -35,10 +36,10 @@
 </script>
 
 <div
-  class="cinder-host-provider"
+  class={classNames('cinder-host-provider')}
   data-cinder-host-platform={platform}
-  style:--spacing-token-safe-header-left={safeHeaderLeft}
-  style:--spacing-token-safe-header-right={safeHeaderRight}
+  style:--_cinder-safe-header-left={safeHeaderLeft}
+  style:--_cinder-safe-header-right={safeHeaderRight}
 >
   {@render children?.()}
 </div>

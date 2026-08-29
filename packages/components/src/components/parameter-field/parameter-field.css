@@ -1,4 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../grid/grid.css';
+@import '../tooltip/tooltip.css';
 
 @layer cinder.components {
   .cinder-parameter-field {
@@ -33,7 +36,7 @@
     background: var(--cinder-border-muted);
   }
 
-  .cinder-parameter-field[data-overridden] .cinder-parameter-field__rail {
+  .cinder-parameter-field[data-cinder-overridden] .cinder-parameter-field__rail {
     background: var(--cinder-accent-solid);
   }
 

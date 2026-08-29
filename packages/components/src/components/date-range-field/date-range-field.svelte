@@ -23,6 +23,7 @@
 
 <script lang="ts">
   import CalendarDays from 'lucide-svelte/icons/calendar-days';
+  import type { Attachment } from 'svelte/attachments';
   import type {
     DateRangeDatePreset,
     DateRangeFieldProps,
@@ -32,6 +33,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { normalizeDateValue } from '../../_internal/date-value.ts';
   import Calendar from '../calendar/calendar.svelte';
+  import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
   import Popover from '../popover/popover.svelte';
   import {
@@ -52,6 +54,7 @@
     description,
     error,
     disabled = false,
+    disabledDate,
     class: className,
     onValueChange,
     'aria-describedby': consumerDescribedBy,
@@ -112,6 +115,11 @@
   } | null>(null);
   let calendarOpen = $state(false);
   let calendarTrigger = $state<HTMLButtonElement | null>(null);
+  let startInputInvalid = $state(false);
+  let endInputInvalid = $state(false);
+  let calendarTimeSnapshot = $state({ start: '', end: '' });
+  let startInputElement = $state<HTMLInputElement | null>(null);
+  let endInputElement = $state<HTMLInputElement | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -274,22 +282,86 @@
     return 'T00:00';
   }
 
+  function attachInputElement(endpoint: 'start' | 'end'): Attachment<HTMLInputElement> {
+    return (element) => {
+      if (endpoint === 'start') startInputElement = element;
+      else endInputElement = element;
+
+      return () => {
+        if (endpoint === 'start' && startInputElement === element) startInputElement = null;
+        if (endpoint === 'end' && endInputElement === element) endInputElement = null;
+      };
+    };
+  }
+
+  const startInputAttachment = attachInputElement('start');
+  const endInputAttachment = attachInputElement('end');
+
+  function clearDraftValidity(): void {
+    startInputInvalid = false;
+    endInputInvalid = false;
+    startInputElement?.setCustomValidity('');
+    endInputElement?.setCustomValidity('');
+  }
+
+  function clampSameDayEndTime(next: DateRangeValue): DateRangeValue {
+    if (granularity === 'day' || !next.start || !next.end) return next;
+    if (next.start.slice(0, 10) !== next.end.slice(0, 10)) return next;
+    if (next.end >= next.start) return next;
+    return { start: next.start, end: next.start };
+  }
+
+  function openCalendar(): void {
+    if (disabled) return;
+    calendarTimeSnapshot = { start: timeSuffix(value.start), end: timeSuffix(value.end) };
+    calendarOpen = true;
+  }
+  function handleInputDraft(event: Event, endpoint: 'start' | 'end'): void {
+    const input = event.currentTarget as HTMLInputElement;
+    const draft = input.value;
+    const normalized = normalizeDateValue(draft || undefined, granularity);
+    const invalid = draft.length > 0 && !normalized;
+    input.setCustomValidity(invalid ? `Enter a valid ${inputPlaceholder}.` : '');
+    if (endpoint === 'start') startInputInvalid = invalid;
+    else endInputInvalid = invalid;
+    if (invalid) return;
+    if (endpoint === 'start') handleStartChange(normalized);
+    else handleEndChange(normalized);
+  }
+  function handleCalendarTimeChange(endpoint: 'start' | 'end', time: string): void {
+    const date = normalizedValue[endpoint]?.slice(0, 10);
+    if (!date) return;
+    const suffix = time ? `T${time}` : timeSuffix(undefined);
+    if (endpoint === 'start') {
+      calendarTimeSnapshot.start = suffix;
+      handleStartChange(`${date}${suffix}`);
+    } else {
+      calendarTimeSnapshot.end = suffix;
+      handleEndChange(`${date}${suffix}`);
+    }
+  }
+
   function handleCalendarRangeChange(next: {
     start: string | undefined;
     end: string | undefined;
   }): void {
     if (!next.start) return;
-    const nextValue = normalizeDateRangeValue(
-      {
-        start: `${next.start}${timeSuffix(value.start)}`,
-        end: next.end ? `${next.end}${timeSuffix(value.end)}` : undefined,
-      },
-      granularity,
+    const nextValue = clampSameDayEndTime(
+      normalizeDateRangeValue(
+        {
+          start: `${next.start}${calendarTimeSnapshot.start || timeSuffix(value.start)}`,
+          end: next.end
+            ? `${next.end}${calendarTimeSnapshot.end || timeSuffix(value.end)}`
+            : undefined,
+        },
+        granularity,
+      ),
     );
     selectedPresetSnapshot = null;
+    clearDraftValidity();
     value = nextValue;
     onValueChange?.(nextValue);
-    if (next.end) calendarOpen = false;
+    if (next.end && granularity === 'day') calendarOpen = false;
   }
 
   function focusCalendarDay(panel: HTMLElement): HTMLElement | null {
@@ -363,13 +435,11 @@
       placeholder={inputPlaceholder}
       max={normalizedValue.end ?? undefined}
       step={inputStep}
+      inputAttachment={startInputAttachment}
       {disabled}
-      aria-invalid={hasError ? 'true' : undefined}
+      aria-invalid={hasError || startInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}
-      onchange={(event) => {
-        const next = (event.currentTarget as HTMLInputElement).value;
-        handleStartChange(normalizeDateValue(next || undefined, granularity));
-      }}
+      onchange={(event) => handleInputDraft(event, 'start')}
     />
 
     <span class="cinder-date-range-field__separator" aria-hidden="true">–</span>
@@ -383,13 +453,11 @@
       placeholder={inputPlaceholder}
       min={normalizedValue.start ?? undefined}
       step={inputStep}
+      inputAttachment={endInputAttachment}
       {disabled}
-      aria-invalid={hasError ? 'true' : undefined}
+      aria-invalid={hasError || endInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}
-      onchange={(event) => {
-        const next = (event.currentTarget as HTMLInputElement).value;
-        handleEndChange(normalizeDateValue(next || undefined, granularity));
-      }}
+      onchange={(event) => handleInputDraft(event, 'end')}
     />
 
     <button
@@ -398,9 +466,7 @@
       class="cinder-date-picker__trigger cinder-date-range-field__calendar-trigger"
       aria-label="Open date range calendar"
       {disabled}
-      onclick={() => {
-        if (!disabled) calendarOpen = true;
-      }}
+      onclick={openCalendar}
     >
       <CalendarDays class="cinder-icon-sm" aria-hidden="true" />
     </button>
@@ -422,8 +488,39 @@
       rangeEnd={normalizedValue.end?.slice(0, 10)}
       value={normalizedValue.end?.slice(0, 10) ?? normalizedValue.start?.slice(0, 10)}
       onRangeChange={handleCalendarRangeChange}
+      {...disabledDate ? { disabledDate } : {}}
       {disabled}
     />
+    {#if granularity !== 'day'}
+      <Grid
+        columns="repeat(2, minmax(0, 1fr))"
+        gap="var(--cinder-space-3)"
+        class="cinder-date-range-field__time-controls"
+        role="group"
+        aria-label="Range times"
+      >
+        <Input
+          id={`${id}-start-time`}
+          type="time"
+          label={resolvedStartLabel}
+          step={inputStep}
+          value={normalizedValue.start?.slice(11) ?? ''}
+          {disabled}
+          onchange={(event) =>
+            handleCalendarTimeChange('start', (event.currentTarget as HTMLInputElement).value)}
+        />
+        <Input
+          id={`${id}-end-time`}
+          type="time"
+          label={resolvedEndLabel}
+          step={inputStep}
+          value={normalizedValue.end?.slice(11) ?? ''}
+          disabled={disabled || !normalizedValue.end}
+          onchange={(event) =>
+            handleCalendarTimeChange('end', (event.currentTarget as HTMLInputElement).value)}
+        />
+      </Grid>
+    {/if}
   </Popover>
 
   {#if description}

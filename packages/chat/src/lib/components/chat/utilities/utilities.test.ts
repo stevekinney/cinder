@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
 import type { Message, MultiModalContent } from '../conversation-model.ts';
+import type { TranscriptEntryInfo } from './types.ts';
 import {
   CINDER_ARTIFACT_METADATA_KEY,
   formatMessageAsMarkdown,
@@ -12,6 +13,7 @@ import {
   resolveMessageReasoning,
   resolveMessageSteps,
   resolveMessageSuggestions,
+  resolveMessageTranscriptEntries,
   toMultiModalArray,
 } from './utilities.ts';
 
@@ -216,6 +218,37 @@ describe('resolveMessageReasoning', () => {
     expect(resolveMessageReasoning(m)).toBe('I thought hard');
   });
 
+  it('accepts one reasoning body with an optional summary list', () => {
+    const reasoning = {
+      content: 'Full reasoning',
+      summary: ['Checked constraints', 'Compared APIs'],
+    };
+    const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': reasoning } });
+    expect(resolveMessageReasoning(m)).toEqual(reasoning);
+  });
+
+  it('accepts structured reasoning with an explicitly undefined optional summary', () => {
+    const reasoning = { content: 'Full reasoning', summary: undefined };
+    const m = message({ role: 'assistant' });
+    expect(resolveMessageReasoning(m, () => reasoning)).toEqual(reasoning);
+  });
+
+  it('rejects malformed structured reasoning and empty content', () => {
+    expect(
+      resolveMessageReasoning(
+        message({ role: 'assistant', metadata: { 'cinder:reasoning': { content: '' } } }),
+      ),
+    ).toBeUndefined();
+    expect(
+      resolveMessageReasoning(
+        message({
+          role: 'assistant',
+          metadata: { 'cinder:reasoning': { content: 'body', summary: [42] } },
+        }),
+      ),
+    ).toBeUndefined();
+  });
+
   it('treats empty-string metadata as absent', () => {
     const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': '' } });
     expect(resolveMessageReasoning(m)).toBeUndefined();
@@ -250,6 +283,47 @@ describe('resolveMessageReasoning', () => {
   it('a callback returning an empty string suppresses reasoning (does NOT fall back)', () => {
     const m = message({ role: 'assistant', metadata: { 'cinder:reasoning': 'meta' } });
     expect(resolveMessageReasoning(m, () => '')).toBe('');
+  });
+});
+
+describe('resolveMessageTranscriptEntries', () => {
+  it('resolves every supported transcript entry kind from namespaced metadata', () => {
+    const entries: TranscriptEntryInfo[] = [
+      { kind: 'interrupted', content: 'Generation interrupted' },
+      { kind: 'redirect', content: 'Try another path' },
+      { kind: 'stateChange', content: 'State changed' },
+      { kind: 'slashCommand', content: '/compact' },
+      { kind: 'turnSummary', content: 'Reviewed the API' },
+    ];
+
+    expect(
+      resolveMessageTranscriptEntries(
+        message({ role: 'assistant', metadata: { 'cinder:entries': entries } }),
+      ),
+    ).toEqual(entries);
+  });
+
+  it('drops malformed entries and suppresses empty metadata', () => {
+    expect(
+      resolveMessageTranscriptEntries(
+        message({
+          role: 'assistant',
+          metadata: {
+            'cinder:entries': [
+              { kind: 'turnSummary', content: 'Valid summary' },
+              { kind: 'unknown', content: 'Unsupported' },
+              { kind: 'redirect', content: '' },
+              null,
+            ],
+          },
+        }),
+      ),
+    ).toEqual([{ kind: 'turnSummary', content: 'Valid summary' }]);
+    expect(
+      resolveMessageTranscriptEntries(
+        message({ role: 'assistant', metadata: { 'cinder:entries': [] } }),
+      ),
+    ).toBeUndefined();
   });
 });
 

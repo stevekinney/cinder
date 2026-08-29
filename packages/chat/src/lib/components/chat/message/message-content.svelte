@@ -1,5 +1,6 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
+  import type { MarkdownNodeOverride } from './chat-message-parts.ts';
 
   export type MessageContentProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** Raw markdown/text content to render */
@@ -14,6 +15,8 @@
     overrideContent?: string | undefined;
     /** Additional CSS class */
     class?: string;
+    /** Optional renderer seam for fenced code, table, and Mermaid nodes. */
+    markdownNode?: MarkdownNodeOverride | undefined;
   };
 </script>
 
@@ -28,6 +31,7 @@
     streaming = false,
     overrideContent,
     class: className,
+    markdownNode,
     ...rest
   }: MessageContentProps = $props();
 
@@ -101,7 +105,7 @@
   {...rest}
 >
   {#if displayContent}
-    <MarkdownPreview content={displayContent} />
+    <MarkdownPreview content={displayContent} {markdownNode} />
   {/if}
   {#if streaming && streamingTail}
     <span class="message-content-tail">{streamingTail}</span>
@@ -124,13 +128,44 @@
     display: block;
     margin-top: var(--cinder-space-1);
     color: var(--cinder-text-muted);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
   }
 
   /* Streaming tail: raw text that hasn't been through markdown rendering yet */
   .message-content-tail {
     white-space: pre-wrap;
     word-break: break-word;
+  }
+
+  .message-content-streaming :global(.message-content-preview),
+  .message-content-streaming .message-content-tail {
+    color: transparent;
+    background: linear-gradient(
+      100deg,
+      var(--cinder-text-muted) 0%,
+      var(--cinder-text-default) 45%,
+      var(--cinder-text-muted) 60%,
+      var(--cinder-text-default) 100%
+    );
+    background-size: 240% 100%;
+    background-clip: text;
+    -webkit-background-clip: text;
+    animation: cinder-chat-live-text-shimmer 1.8s steps(48, end) infinite;
+  }
+
+  @media (hover: hover) {
+    .message-content-streaming:hover :global(.message-content-preview),
+    .message-content-streaming:hover .message-content-tail {
+      color: var(--cinder-text-default);
+      background: none;
+      animation: none;
+    }
+  }
+
+  @keyframes cinder-chat-live-text-shimmer {
+    to {
+      background-position: -240% 0;
+    }
   }
 
   /* Blinking cursor during streaming */
@@ -155,9 +190,25 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
+    .message-content-streaming :global(.message-content-preview),
+    .message-content-streaming .message-content-tail {
+      color: var(--cinder-text-default);
+      background: none;
+      animation: none;
+    }
+
     .message-content-cursor {
       animation: none;
       opacity: 1;
+    }
+  }
+
+  @media (forced-colors: active) {
+    .message-content-streaming :global(.message-content-preview),
+    .message-content-streaming .message-content-tail {
+      color: CanvasText;
+      background: none;
+      animation: none;
     }
   }
 </style>

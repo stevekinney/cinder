@@ -8,6 +8,11 @@ const schema = {
       type: 'string',
       description: 'Text to copy to the clipboard.',
     },
+    html: {
+      type: 'string',
+      description:
+        'Optional HTML representation written alongside text/plain through ClipboardItem.',
+    },
     confirmDuration: {
       type: 'number',
       description: 'Duration in ms to show the confirmation state. Default 1500.',
@@ -44,6 +49,11 @@ const schema = {
         name: 'confirmation',
         reason: 'function-or-snippet',
         description: 'Content rendered while in the "copied" state.',
+      },
+      {
+        name: 'image',
+        reason: 'unknown-shape',
+        description: 'Optional image blob or URL written alongside text and HTML when supported.',
       },
       {
         name: 'onError',

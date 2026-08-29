@@ -35,4 +35,27 @@ describe('Form', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(form.hasAttribute('data-cinder-submitting')).toBe(false);
   });
+
+  test('prevents the native second submit event while pending', async () => {
+    let release!: () => void;
+    const pending = new Promise<void>((resolve) => (release = resolve));
+    const { container } = render(Form, {
+      props: { onSubmit: () => pending, children: content },
+    });
+    const form = container.querySelector('form')!;
+    const event = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(event);
+    const duplicate = new Event('submit', { bubbles: true, cancelable: true });
+    form.dispatchEvent(duplicate);
+    expect(duplicate.defaultPrevented).toBe(true);
+    release();
+    await pending;
+  });
+
+  test('preserves native submission when no handler is provided', () => {
+    const { container } = render(Form, { props: { children: content } });
+    const event = new Event('submit', { bubbles: true, cancelable: true });
+    container.querySelector('form')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
 });

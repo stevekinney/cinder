@@ -28,6 +28,9 @@
   }: ShortcutFieldProps = $props();
   let armed = $state(false);
   let message = $state('');
+  let validationError = $state('');
+  const fallbackId = $props.id();
+  const errorId = $derived(`${rest.id ?? fallbackId}-error`);
   const modifierNames = new Set(['Meta', 'Control', 'Alt', 'Shift']);
   function normalize(event: KeyboardEvent): string[] {
     const modifiers = [
@@ -36,59 +39,90 @@
       event.altKey ? 'Alt' : '',
       event.shiftKey ? 'Shift' : '',
     ].filter(Boolean);
-    const key = modifierNames.has(event.key) ? '' : event.key === ' ' ? 'Space' : event.key;
+    const rawKey = event.key === ' ' ? 'Space' : event.key;
+    const key = modifierNames.has(rawKey)
+      ? ''
+      : rawKey.length === 1 && /[a-z]/i.test(rawKey)
+        ? rawKey.toUpperCase()
+        : rawKey;
     return [...modifiers, ...(key ? [key] : [])];
   }
   function handleKeydown(event: KeyboardEvent): void {
     if (disabled || !armed) return;
-    event.preventDefault();
-    event.stopPropagation();
+    if (event.key === 'Tab') return;
     if (event.key === 'Escape') {
+      event.preventDefault();
+      event.stopPropagation();
       armed = false;
       message = 'Shortcut capture cancelled';
+      validationError = '';
       return;
     }
+    if (modifierNames.has(event.key)) return;
     const next = normalize(event);
     if (next.length === 0) return;
+    event.preventDefault();
+    event.stopPropagation();
     const error = validate?.(next);
     if (error) {
       message = error;
+      validationError = error;
       return;
     }
+    validationError = '';
     value = next;
     onValueChange?.(next);
     message = `Captured ${next.join(' plus ')}`;
     armed = false;
   }
   function clear(): void {
+    if (disabled) return;
     value = [];
     onValueChange?.([]);
     message = 'Shortcut cleared';
+    validationError = '';
+  }
+
+  function arm(): void {
+    if (!disabled) armed = true;
   }
 </script>
 
-<div {...rest} class={classNames('cinder-shortcut-field', className)}>
+<div
+  {...rest}
+  class={classNames(
+    'cinder-shortcut-field',
+    disabled && 'cinder-shortcut-field--disabled',
+    className,
+  )}
+>
   <div
     role="textbox"
     tabindex={disabled ? -1 : 0}
     aria-readonly="true"
     aria-label={label}
     aria-disabled={disabled ? 'true' : undefined}
+    aria-invalid={validationError ? 'true' : undefined}
+    aria-describedby={validationError ? errorId : undefined}
     class="cinder-shortcut-field__control"
-    onfocus={() => (armed = true)}
-    onclick={() => (armed = true)}
+    onfocus={arm}
+    onclick={arm}
     onkeydown={handleKeydown}
+    onblur={() => (armed = false)}
   >
     {#if value.length}{#each value as key (key)}<Kbd label={key} size="sm" />{/each}{:else}<span
         class="cinder-shortcut-field__placeholder"
         >{armed ? 'Press a key combination' : 'Click to record shortcut'}</span
       >{/if}
   </div>
-  {#if value.length}<button
+  {#if value.length && !disabled}<button
       type="button"
       class="cinder-shortcut-field__clear"
       aria-label="Clear shortcut"
       onclick={clear}>Clear</button
     >{/if}
+  {#if validationError}<div id={errorId} class="cinder-shortcut-field__error">
+      {validationError}
+    </div>{/if}
   <div class="cinder-sr-only" aria-live="polite">{message}</div>
 </div>

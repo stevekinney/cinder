@@ -172,6 +172,10 @@
             "action": "Selects the active suggestion."
           },
           {
+            "keys": "Tab",
+            "action": "Selects the active suggestion and keeps focus in the composer."
+          },
+          {
             "keys": "Escape",
             "action": "Dismisses the suggestion popover."
           }

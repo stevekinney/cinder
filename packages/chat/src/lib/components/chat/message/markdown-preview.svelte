@@ -1,19 +1,85 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
+  import type { ChatMarkdownNode, MarkdownNodeOverride } from './chat-message-parts.ts';
 
   export type ChatMarkdownPreviewProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     content: string;
     class?: string;
+    markdownNode?: MarkdownNodeOverride | undefined;
   };
+
+  export type MarkdownSegment =
+    | { kind: 'html'; html: string }
+    | { kind: 'node'; node: ChatMarkdownNode }
+    | {
+        kind: 'element';
+        tag: string;
+        attributes: Record<string, string>;
+        children: MarkdownSegment[];
+      };
+
+  function serializeNode(node: Node, ownerDocument: Document): string {
+    const container = ownerDocument.createElement('div');
+    container.append(node.cloneNode(true));
+    return container.innerHTML;
+  }
+
+  function segmentNode(
+    node: Node,
+    fallbackIndex: number,
+    ownerDocument: Document,
+  ): MarkdownSegment {
+    if (node.nodeType !== 1) return { kind: 'html', html: serializeNode(node, ownerDocument) };
+    const element = node as HTMLElement;
+    if (element.matches('cinder-markdown-node')) {
+      return {
+        kind: 'node',
+        node: {
+          kind: element.dataset['cinderMarkdownKind'] as ChatMarkdownNode['kind'],
+          html: element.innerHTML,
+          text: element.textContent ?? '',
+          language: element.dataset['language'],
+          index: Number(element.dataset['cinderMarkdownIndex'] ?? fallbackIndex),
+        },
+      };
+    }
+    if (!element.querySelector('cinder-markdown-node')) {
+      return { kind: 'html', html: element.outerHTML };
+    }
+    return {
+      kind: 'element',
+      tag: element.tagName.toLowerCase(),
+      attributes: Object.fromEntries(
+        Array.from(element.attributes, (attribute) => [attribute.name, attribute.value]),
+      ),
+      children: Array.from(element.childNodes, (child, index) =>
+        segmentNode(child, fallbackIndex + index, ownerDocument),
+      ),
+    };
+  }
+
+  /** Preserves placeholder ancestors so nested markdown nodes remain overridable. */
+  export function segmentRenderedMarkdown(
+    html: string,
+    ownerDocument: Document = document,
+  ): MarkdownSegment[] {
+    const template = ownerDocument.createElement('template');
+    template.innerHTML = html;
+    return Array.from(template.content.childNodes, (child, index) =>
+      segmentNode(child, index, ownerDocument),
+    );
+  }
 </script>
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
+  import CodeBlock from '@lostgradient/cinder/code-block';
   import { preloadMarkdownPipeline } from './markdown-pipeline.ts';
 
-  let { content, class: className, ...rest }: ChatMarkdownPreviewProps = $props();
+  let { content, markdownNode, class: className, ...rest }: ChatMarkdownPreviewProps = $props();
 
   let renderedHtml = $state('');
+  let segments = $state<MarkdownSegment[]>([]);
 
   $effect(() => {
     // Capture the content snapshot for this run. If `content` updates
@@ -28,6 +94,7 @@
     // this reset, a streaming or reused message briefly shows the
     // previous content's rendered HTML during the re-render gap.
     renderedHtml = '';
+    segments = [];
 
     let cancelled = false;
 
@@ -52,7 +119,7 @@
           if (!pipeline || cancelled) return;
           const { renderMarkdownWithMath } = pipeline;
           try {
-            const result = await renderMarkdownWithMath(snapshot);
+            const result = await renderMarkdownWithMath(snapshot, { nodePlaceholders: true });
             // Re-check cancelled and verify the snapshot still matches
             // the live content. The latter handles a subtle race: if
             // content updates AFTER cancelled was set but BEFORE this
@@ -62,6 +129,7 @@
             // committing HTML that doesn't match the current props.
             if (!cancelled && snapshot === content) {
               renderedHtml = result.html;
+              segments = segmentRenderedMarkdown(result.html);
             }
           } catch {
             if (!cancelled && snapshot === content) renderedHtml = '';
@@ -79,9 +147,43 @@
   });
 </script>
 
+{#snippet renderDefaultNode(node: ChatMarkdownNode)}
+  <div class="message-content-wide" data-cinder-markdown-node={node.kind}>
+    {#if node.kind === 'code-block' || node.kind === 'mermaid'}
+      {#if node.language || node.kind === 'mermaid'}
+        <CodeBlock code={node.text} language={node.language ?? 'mermaid'} />
+      {:else}
+        <CodeBlock code={node.text} />
+      {/if}
+    {:else}
+      {@html node.html}
+    {/if}
+  </div>
+{/snippet}
+
+{#snippet renderSegment(segment: MarkdownSegment)}
+  {#if segment.kind === 'node'}
+    {#if markdownNode}
+      {@render markdownNode(segment.node, renderDefaultNode)}
+    {:else}
+      {@render renderDefaultNode(segment.node)}
+    {/if}
+  {:else if segment.kind === 'element'}
+    <svelte:element this={segment.tag} {...segment.attributes}>
+      {#each segment.children as child}
+        {@render renderSegment(child)}
+      {/each}
+    </svelte:element>
+  {:else}
+    {@html segment.html}
+  {/if}
+{/snippet}
+
 <div class={classNames('cinder-markdown-content message-content-preview', className)} {...rest}>
   {#if renderedHtml}
-    {@html renderedHtml}
+    {#each segments as segment, index (`${segment.kind}:${index}`)}
+      {@render renderSegment(segment)}
+    {/each}
   {:else}
     <p>{content}</p>
   {/if}

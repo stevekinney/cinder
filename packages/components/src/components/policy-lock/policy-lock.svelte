@@ -23,10 +23,12 @@
   const description = $derived(source ? `${reason} Source: ${source}.` : reason);
 </script>
 
-<span {...rest} class={classNames('cinder-policy-lock', className)}>
+<span {...rest} {id} class={classNames('cinder-policy-lock', className)}>
   <Tooltip text={description}>
-    <span aria-hidden="true"><Lock size={14} /></span>
+    <button type="button" class="cinder-policy-lock__explanation" aria-label="Policy details">
+      <Lock size={14} aria-hidden="true" />
+    </button>
   </Tooltip>
-  <span {id} class="cinder-sr-only">{description}</span>
+  <span id={`${id}-description`} class="cinder-sr-only">{description}</span>
   {#if scope}<Badge variant="neutral" size="xs">{scope}</Badge>{/if}
 </span>

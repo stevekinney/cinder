@@ -79,6 +79,168 @@ afterEach(() => {
 });
 
 describe('ChatComposerPopover', () => {
+  test('loads grouped async sources and enforces each source limit', async () => {
+    let loadCount = 0;
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'files',
+          label: 'Files',
+          limit: 1,
+          load: () => {
+            loadCount += 1;
+            return pending;
+          },
+        },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() =>
+      expect(document.body.querySelector('.cinder-command-menu__empty')?.textContent).toContain(
+        'Loading suggestions',
+      ),
+    );
+    resolveItems?.([
+      { value: 'readme', label: 'README.md' },
+      { value: 'package', label: 'package.json' },
+    ]);
+    await waitFor(() => expect(loadCount).toBe(1));
+    await waitFor(() =>
+      expect(queryListbox()?.getAttribute('aria-label')).toBe('Composer suggestions'),
+    );
+    await waitFor(() =>
+      expect(document.body.querySelector('.chat-composer-popover__group-label')).not.toBeNull(),
+    );
+
+    expect(document.body.querySelector('.chat-composer-popover__group-label')?.textContent).toBe(
+      'Files',
+    );
+    const options = document.body.querySelectorAll('[role="option"]');
+    expect(options).toHaveLength(1);
+    expect(options[0]?.textContent).toContain('README.md');
+    expect(options[0]?.getAttribute('aria-label')).toContain('Files:');
+    expect(document.body.textContent).not.toContain('package.json');
+  });
+
+  test('keeps healthy async source groups when another source rejects', async () => {
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'healthy',
+          label: 'Healthy',
+          load: async () => [{ value: 'readme', label: 'README.md' }],
+        },
+        {
+          id: 'failed',
+          label: 'Failed',
+          load: async () => Promise.reject(new Error('offline')),
+        },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    expect(document.body.textContent).not.toContain('Loading suggestions');
+  });
+
+  test('shows resolved source groups while another source is still pending', async () => {
+    const neverSettles = new Promise<TestComposerCommand[]>(() => {});
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'healthy',
+          label: 'Healthy',
+          load: async () => [{ value: 'readme', label: 'README.md' }],
+        },
+        { id: 'pending', label: 'Pending', load: () => neverSettles },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    expect(document.body.textContent).not.toContain('Pending');
+  });
+
+  test('selects the correct occurrence when source items share a value', async () => {
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'people',
+          label: 'People',
+          load: async () => [
+            { value: 'shared', label: 'First result' },
+            { value: 'shared', label: 'Second result' },
+          ],
+        },
+      ],
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) => {
+        selected.push(selection);
+      },
+    });
+
+    const composer = await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('Second result'));
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    await fireEvent.keyDown(composer, { key: 'Enter' });
+
+    expect(selected[0]?.item.label).toBe('Second result');
+    expect(selected[0]?.value).toBe('shared');
+  });
+
+  test('preserves the active static suggestion when an async source resolves', async () => {
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    render(ChatComposerPopoverFixture, {
+      sources: [{ id: 'files', label: 'Files', load: () => pending }],
+    });
+
+    const composer = await typeComposer('/');
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    const activeBefore = composer.getAttribute('aria-activedescendant');
+    expect(activeBefore).toBeTruthy();
+
+    resolveItems?.([{ value: 'readme', label: 'README.md' }]);
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    await waitFor(() => expect(composer.getAttribute('aria-activedescendant')).toBe(activeBefore));
+  });
+
+  test('preserves the active suggestion identity when labels are duplicated', async () => {
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      commands: [
+        { value: 'first', label: 'Duplicate' },
+        { value: 'second', label: 'Duplicate' },
+      ],
+      sources: [{ id: 'files', label: 'Files', load: () => pending }],
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) =>
+        selected.push(selection),
+    });
+
+    const composer = await typeComposer('/');
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    resolveItems?.([{ value: 'source', label: 'Source result' }]);
+    await waitFor(() => expect(document.body.textContent).toContain('Source result'));
+    await fireEvent.keyDown(composer, { key: 'Enter' });
+
+    expect(selected[0]?.item.value).toBe('second');
+  });
+
   test('passes combobox ARIA through to the ChatInput composer while open', async () => {
     render(ChatComposerPopoverFixture);
     const composer = await typeComposer('/h');
@@ -128,6 +290,31 @@ describe('ChatComposerPopover', () => {
     expect(selected[0]?.query).toBe('');
     expect(selected[0]?.trigger).toBe('/');
     expect(selected[0]?.range).toEqual({ start: 0, end: 1 });
+    await waitFor(() => expect(queryListbox()).toBeNull());
+    expect(document.activeElement).toBe(composer);
+  });
+
+  test('Tab commits the active suggestion and keeps focus in the composer', async () => {
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) => {
+        selected.push(selection);
+      },
+    });
+    const composer = await typeComposer('/');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    const tabEvent = new KeyboardEvent('keydown', {
+      key: 'Tab',
+      bubbles: true,
+      cancelable: true,
+    });
+    composer.dispatchEvent(tabEvent);
+    await tick();
+
+    expect(tabEvent.defaultPrevented).toBe(true);
+    expect(selected).toHaveLength(1);
+    expect(selected[0]?.item.value).toBe('help');
     await waitFor(() => expect(queryListbox()).toBeNull());
     expect(document.activeElement).toBe(composer);
   });
@@ -374,5 +561,17 @@ describe('ChatComposerPopover', () => {
     await waitFor(() => expect(queryListbox()).not.toBeNull());
     const options = Array.from(document.body.querySelectorAll('[role="option"]'));
     expect(options.map((option) => option.textContent?.trim())).toEqual(['Steve Kinney']);
+  });
+
+  test('uses the nearest configured trigger after an opening delimiter', async () => {
+    render(ChatComposerPopoverFixture, {
+      commands: [{ value: 'alice', label: 'Alice' }],
+    });
+    await typeComposer('/(@ali');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    expect(Array.from(document.body.querySelectorAll('[role="option"]'))[0]?.textContent).toContain(
+      'Alice',
+    );
   });
 });

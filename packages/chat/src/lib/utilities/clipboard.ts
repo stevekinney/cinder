@@ -14,6 +14,16 @@
 
 /// <reference lib="dom" />
 
+/** Escape untrusted text before interpolating it into a double-quoted HTML attribute. */
+export function escapeClipboardHtmlAttribute(value: string): string {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;');
+}
+
 /**
  * Copy `text` to the clipboard. Prefers the modern Async Clipboard API and
  * falls back to a contenteditable / `execCommand('copy')` shim for older

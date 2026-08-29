@@ -15,6 +15,7 @@
    * @a11yPattern WAI-ARIA Combobox with Listbox Popup
    * @keyboardShortcut ArrowUp / ArrowDown | Moves the active suggestion.
    * @keyboardShortcut Enter | Selects the active suggestion.
+   * @keyboardShortcut Tab | Selects the active suggestion and keeps focus in the composer.
    * @keyboardShortcut Escape | Dismisses the suggestion popover.
    * @a11yNote Passes combobox role and aria-expanded, aria-controls, aria-activedescendant, and aria-autocomplete through to ChatInput's composer overlay API.
    */
@@ -24,6 +25,7 @@
     ChatComposerPopoverItemSnippetContext,
     ChatComposerPopoverProps,
     ChatComposerPopoverSelection,
+    ChatComposerPopoverSource,
     ChatComposerPopoverTriggerMatch,
   } from './chat-composer-popover.types.ts';
   export {
@@ -39,7 +41,7 @@
     detectTrigger as detectCommandTrigger,
   } from '@lostgradient/cinder/command-menu';
   import CommandItem from '@lostgradient/cinder/command-item';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { filterFuzzySubsequence } from './chat-composer-popover-filter.ts';
   import type {
     ChatComposerPopoverComposerProps,
@@ -52,7 +54,8 @@
   let {
     id,
     value = $bindable(''),
-    items,
+    items: itemDefinitions = [],
+    sources = [],
     triggers = ['/', '@'],
     label = 'Composer suggestions',
     placement = 'top-start',
@@ -71,18 +74,90 @@
   let caretIndex = $state(0);
   const listboxId = $derived(`${id}-listbox`);
   let activeItemId = $state<string | null>(null);
+  let activeSelectionValue: string | null = null;
   let activeMatch = $state<ChatComposerPopoverTriggerMatch | null>(null);
   let composerSyncTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSyncedValue = $state(value);
   let suppressNextValueSync = false;
   let suppressCommittedSelectionSync = false;
+  let sourceRequestId = 0;
+  let loadingSources = $state(false);
+  let sourceGeneration = $state(0);
+  let sourceGroups = $state<Array<{ id: string; label: string; items: readonly TItem[] }>>([]);
 
   const emptyContent = $derived(empty);
   const query = $derived(activeMatch?.query ?? '');
   const trigger = $derived(activeMatch?.trigger ?? triggers[0] ?? '/');
   const filteredItems = $derived.by(() => {
-    if (!activeMatch) return [] as TItem[];
-    return [...filter(items, activeMatch.query, activeMatch.trigger)];
+    if (!activeMatch) return [] as Array<{ item: TItem; selectionValue: string }>;
+    const staticItems = filter(itemDefinitions, activeMatch.query, activeMatch.trigger).map(
+      (item, index) => ({ item, selectionValue: JSON.stringify(['static', index, item.value]) }),
+    );
+    const sourcedItems = sourceGroups.flatMap((group) =>
+      group.items.map((item, index) => ({
+        item,
+        selectionValue: JSON.stringify([group.id, index, item.value]),
+      })),
+    );
+    return [...staticItems, ...sourcedItems];
+  });
+
+  $effect(() => {
+    const match = activeMatch;
+    const requestId = ++sourceRequestId;
+    if (!match || sources.length === 0) {
+      sourceGroups = [];
+      loadingSources = false;
+      return;
+    }
+
+    loadingSources = true;
+    sourceGroups = [];
+    const resolvedGroups = new Map<
+      string,
+      { id: string; label: string; items: readonly TItem[] }
+    >();
+    let pendingSourceCount = sources.length;
+
+    for (const source of sources) {
+      void (async () => {
+        try {
+          const candidates = await source.load({ query: match.query, trigger: match.trigger });
+          const filtered = filter(candidates, match.query, match.trigger);
+          const limit = Math.max(0, Math.floor(source.limit ?? filtered.length));
+          resolvedGroups.set(source.id, {
+            id: source.id,
+            label: source.label,
+            items: filtered.slice(0, limit),
+          });
+        } catch {
+          resolvedGroups.delete(source.id);
+        } finally {
+          if (requestId !== sourceRequestId) return;
+          const preservedSelectionValue = activeSelectionValue;
+          sourceGroups = sources.flatMap((candidate) => {
+            const group = resolvedGroups.get(candidate.id);
+            return group ? [group] : [];
+          });
+          pendingSourceCount -= 1;
+          loadingSources = pendingSourceCount > 0;
+          sourceGeneration += 1;
+          if (preservedSelectionValue) {
+            await tick();
+            if (requestId !== sourceRequestId) return;
+            const optionIndex = filteredItems.findIndex(
+              (candidate) => candidate.selectionValue === preservedSelectionValue,
+            );
+            const option = Array.from(
+              document
+                .getElementById(listboxId)
+                ?.querySelectorAll<HTMLElement>('[role="option"]') ?? [],
+            )[optionIndex];
+            option?.dispatchEvent(new Event('pointerenter'));
+          }
+        }
+      })();
+    }
   });
 
   const composerProps = $derived({
@@ -112,14 +187,11 @@
   ): ChatComposerPopoverTriggerMatch | null {
     if (detectTrigger) return detectTrigger(text, selectionStart, selectionEnd);
 
-    for (const triggerChar of triggers) {
+    return triggers.reduce<ChatComposerPopoverTriggerMatch | null>((nearest, triggerChar) => {
       const match = detectCommandTrigger({ text, selectionStart, selectionEnd, triggerChar });
-      if (match) {
-        return { ...match, trigger: triggerChar };
-      }
-    }
-
-    return null;
+      if (!match || (nearest && nearest.start >= match.start)) return nearest;
+      return { ...match, trigger: triggerChar };
+    }, null);
   }
 
   function updateFromComposer(
@@ -138,6 +210,7 @@
     open = activeMatch !== null && anchor !== null;
     if (!open) {
       activeItemId = null;
+      activeSelectionValue = null;
       if (wasOpen) onDismiss?.();
     }
   }
@@ -158,6 +231,7 @@
     clearComposerSyncTimer();
     open = false;
     activeItemId = null;
+    activeSelectionValue = null;
     activeMatch = null;
     if (restoreFocus) anchor?.focus();
     onDismiss?.();
@@ -234,6 +308,28 @@
       return;
     }
 
+    if (
+      event.key === 'Tab' &&
+      !event.shiftKey &&
+      !event.altKey &&
+      !event.ctrlKey &&
+      !event.metaKey
+    ) {
+      const activeOption = activeItemId ? document.getElementById(activeItemId) : null;
+      const optionIndex = activeOption
+        ? Array.from(activeOption.parentElement?.querySelectorAll('[role="option"]') ?? []).indexOf(
+            activeOption,
+          )
+        : -1;
+      const activeItem = filteredItems[optionIndex];
+      if (activeItem) {
+        event.preventDefault();
+        event.stopPropagation();
+        handleSelect({ value: activeItem.selectionValue, query });
+      }
+      return;
+    }
+
     const isNavigationKey =
       event.key === 'ArrowDown' ||
       event.key === 'ArrowUp' ||
@@ -259,6 +355,7 @@
   }
 
   onDestroy(() => {
+    sourceRequestId += 1;
     clearComposerSyncTimer();
   });
 
@@ -274,15 +371,26 @@
 
   function handleStateChange(state: { activeItemId: string | null }): void {
     activeItemId = state.activeItemId;
+    if (!state.activeItemId || typeof document === 'undefined') return;
+    const activeOption = document.getElementById(state.activeItemId);
+    const optionIndex = activeOption
+      ? Array.from(activeOption.parentElement?.querySelectorAll('[role="option"]') ?? []).indexOf(
+          activeOption,
+        )
+      : -1;
+    activeSelectionValue = filteredItems[optionIndex]?.selectionValue ?? null;
   }
 
   function handleSelect(selection: { value: string; query: string }): void {
-    const selectedItem = filteredItems.find((candidate) => candidate.value === selection.value);
-    if (!selectedItem || !activeMatch) return;
+    const selectedRow = filteredItems.find(
+      (candidate) => candidate.selectionValue === selection.value,
+    );
+    if (!selectedRow || !activeMatch) return;
+    const selectedItem = selectedRow.item;
 
     const detail: ChatComposerPopoverSelection<TItem> = {
       item: selectedItem,
-      value: selection.value,
+      value: selectedItem.value,
       query: activeMatch.query,
       trigger: activeMatch.trigger,
       range: {
@@ -293,6 +401,7 @@
 
     open = false;
     activeItemId = null;
+    activeSelectionValue = null;
     activeMatch = null;
     anchor?.focus();
     suppressNextValueSync = true;
@@ -307,44 +416,71 @@
 
 {@render composer(composerProps)}
 
-<CommandMenu
-  bind:open
-  {anchor}
-  {caretIndex}
-  {query}
-  {placement}
-  {offset}
-  {label}
-  {listboxId}
-  onSelect={handleSelect}
-  onDismiss={() => dismiss({ restoreFocus: false })}
-  onStateChange={handleStateChange}
->
-  {#snippet items()}
-    {#each filteredItems as command (command.value)}
-      <CommandItem
-        value={command.value}
-        disabled={command.disabled === true}
-        description={item ? '' : (command.description ?? '')}
-        accessibleLabel={command.description
-          ? `${command.label}, ${command.description}`
-          : command.label}
-        selectionMode="parent"
-      >
-        {#if item}
-          {@render item({ item: command, query, trigger })}
-        {:else}
-          {command.label}
+{#key sourceGeneration}
+  <CommandMenu
+    bind:open
+    {anchor}
+    {caretIndex}
+    {query}
+    {placement}
+    {offset}
+    {label}
+    {listboxId}
+    class="chat-composer-popover"
+    onSelect={handleSelect}
+    onDismiss={() => dismiss({ restoreFocus: false })}
+    onStateChange={handleStateChange}
+  >
+    {#snippet items()}
+      {#each filter(itemDefinitions, query, trigger) as command, commandIndex (`static-${commandIndex}-${command.value}`)}
+        <CommandItem
+          value={JSON.stringify(['static', commandIndex, command.value])}
+          disabled={command.disabled === true}
+          description={item ? '' : (command.description ?? '')}
+          accessibleLabel={command.description
+            ? `${command.label}, ${command.description}`
+            : command.label}
+          selectionMode="parent"
+        >
+          {#if item}
+            {@render item({ item: command, query, trigger })}
+          {:else}
+            {command.label}
+          {/if}
+        </CommandItem>
+      {/each}
+      {#each sourceGroups as group (group.id)}
+        {#if group.items.length > 0}
+          {#each group.items as command, commandIndex (`${group.id}-${commandIndex}-${command.value}`)}
+            <CommandItem
+              value={JSON.stringify([group.id, commandIndex, command.value])}
+              disabled={command.disabled === true}
+              description={item ? '' : (command.description ?? '')}
+              accessibleLabel={`${group.label}: ${command.description ? `${command.label}, ${command.description}` : command.label}`}
+              selectionMode="parent"
+            >
+              {#if commandIndex === 0}
+                <span class="chat-composer-popover__group-label">{group.label}</span>
+              {/if}
+              {#if item}
+                {@render item({ item: command, query, trigger })}
+              {:else}
+                {command.label}
+              {/if}
+            </CommandItem>
+          {/each}
         {/if}
-      </CommandItem>
-    {/each}
-  {/snippet}
+      {/each}
+    {/snippet}
 
-  {#snippet empty()}
-    {#if emptyContent}
-      {@render emptyContent()}
-    {:else}
-      No suggestions
-    {/if}
-  {/snippet}
-</CommandMenu>
+    {#snippet empty()}
+      {#if loadingSources}
+        Loading suggestions
+      {:else if emptyContent}
+        {@render emptyContent()}
+      {:else}
+        No suggestions
+      {/if}
+    {/snippet}
+  </CommandMenu>
+{/key}

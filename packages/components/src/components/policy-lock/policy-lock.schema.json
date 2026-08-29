@@ -13,16 +13,11 @@
     },
     "scope": {
       "type": "string"
+    },
+    "class": {
+      "type": "string"
     }
   },
   "additionalProperties": false,
-  "required": ["id", "reason"],
-  "metadata": {
-    "unsupportedProps": [
-      {
-        "name": "class",
-        "reason": "unknown-shape"
-      }
-    ]
-  }
+  "required": ["id", "reason"]
 }

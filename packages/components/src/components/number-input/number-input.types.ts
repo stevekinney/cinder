@@ -1,6 +1,25 @@
 import type { Snippet } from 'svelte';
 import type { Attachment } from 'svelte/attachments';
 import type { HTMLInputAttributes } from 'svelte/elements';
+export interface NumberInputSchemaProps {
+  id: string;
+  value?: number | null;
+  min?: number;
+  max?: number;
+  step?: number;
+  /** Locale-aware formatting options passed to `Intl.NumberFormat`. */
+  format?: Intl.NumberFormatOptions;
+  locale?: string;
+  disabled?: boolean;
+  required?: boolean;
+  name?: string;
+  label?: string;
+  description?: string;
+  error?: string;
+  class?: string;
+  /** Optional non-interactive text rendered before the stepper controls. */
+  adornment?: string;
+}
 export type NumberInputProps = Omit<
   HTMLInputAttributes,
   | 'value'

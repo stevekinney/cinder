@@ -1,5 +1,7 @@
+import type { RenderOptions } from '@lostgradient/markdown/rendering';
+
 type MarkdownPipeline = {
-  renderMarkdownWithMath: (content: string) => Promise<{ html: string }>;
+  renderMarkdownWithMath: (content: string, options?: RenderOptions) => Promise<{ html: string }>;
 };
 
 type MarkdownPipelineLoader = () => Promise<MarkdownPipeline>;

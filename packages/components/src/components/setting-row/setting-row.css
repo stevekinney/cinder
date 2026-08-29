@@ -1,4 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../button/button.css';
+@import '../form-field/form-field.css';
 
 @layer cinder.components {
   .cinder-setting-row {
@@ -7,7 +9,7 @@
     justify-content: space-between;
     gap: var(--cinder-space-4);
   }
-  .cinder-setting-row > :global(.cinder-form-field) {
+  .cinder-setting-row > .cinder-form-field {
     flex: 1;
   }
 }

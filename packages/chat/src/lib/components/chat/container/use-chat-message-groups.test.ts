@@ -157,4 +157,93 @@ describe('chat render rows', () => {
   test('keys a start unread divider when callers provide one explicitly', () => {
     expect(chatRenderRowKey({ type: 'unread-divider', afterMessageId: null })).toBe('unread-start');
   });
+
+  test('splits a grouped tool run at the unread boundary', () => {
+    const first = message({
+      id: 'first',
+      role: 'tool-call',
+      toolCall: { id: 'one', name: 'one', arguments: {} },
+    });
+    const second = message({
+      id: 'second',
+      role: 'tool-call',
+      toolCall: { id: 'two', name: 'two', arguments: {} },
+    });
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([first, second], new Set()), {
+      firstUnreadId: 'second',
+    });
+
+    expect(rows.map((row) => row.type)).toEqual([
+      'date',
+      'tool-call-group',
+      'unread-divider',
+      'tool-call-group',
+    ]);
+  });
+
+  test('keeps image-bearing tool calls as individual message rows', () => {
+    const imageCall = message({
+      id: 'image-call',
+      role: 'tool-call',
+      content: [{ type: 'image', url: 'https://example.test/result.png' }],
+      toolCall: { id: 'image', name: 'screenshot', arguments: {} },
+    });
+    const textCall = message({
+      id: 'text-call',
+      role: 'tool-call',
+      toolCall: { id: 'text', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(
+      buildMessagesWithDateSeparators([imageCall, textCall], new Set()),
+    );
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message', 'tool-call-group']);
+  });
+
+  test('keeps tool calls with structured transcript entries as individual message rows', () => {
+    const structuredCall = message({
+      id: 'structured-call',
+      role: 'tool-call',
+      metadata: {
+        'cinder:entries': [{ type: 'reasoning', content: 'Inspect the repository' }],
+      },
+      toolCall: { id: 'structured', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([structuredCall], new Set()));
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message']);
+  });
+
+  test('keeps failed-delivery tool calls as individual message rows', () => {
+    const failedCall = message({
+      id: 'failed-call',
+      role: 'tool-call',
+      metadata: { _deliveryStatus: 'failed' },
+      toolCall: { id: 'failed', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([failedCall], new Set()));
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message']);
+  });
+
+  test('encodes tool-group message ids without delimiter collisions', () => {
+    const firstKey = chatRenderRowKey({
+      type: 'tool-call-group',
+      messages: [
+        message({ id: 'a-b', role: 'assistant' }),
+        message({ id: 'c', role: 'assistant' }),
+      ],
+    });
+    const secondKey = chatRenderRowKey({
+      type: 'tool-call-group',
+      messages: [
+        message({ id: 'a', role: 'assistant' }),
+        message({ id: 'b-c', role: 'assistant' }),
+      ],
+    });
+    expect(firstKey).not.toBe(secondKey);
+  });
 });

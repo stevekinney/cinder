@@ -27,7 +27,7 @@ export function detectTrigger({
   if (triggerStart < 0) return null;
 
   const beforeTrigger = triggerStart === 0 ? '' : text[triggerStart - 1];
-  if (beforeTrigger && !/\s/u.test(beforeTrigger)) return null;
+  if (beforeTrigger && !/[\s([{]/u.test(beforeTrigger)) return null;
 
   const query = text.slice(triggerStart + triggerChar.length, caretIndex);
   if (/\s/u.test(query)) return null;

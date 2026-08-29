@@ -3,7 +3,7 @@
    * @cinder
    * @category action
    * @status stable
-   * @purpose Button that writes a string value to the clipboard and flips to a confirmation state for a short window after a successful copy.
+   * @purpose Button that writes plain text plus optional rich HTML/image clipboard representations and flips to a confirmation state after success.
    * @tag action
    * @tag clipboard
    * @useWhen Offering one-click copy of a token, snippet, share link, or code sample.
@@ -27,6 +27,8 @@
 
   let {
     value,
+    html,
+    image,
     confirmDuration = 1500,
     label,
     copiedLabel,
@@ -54,7 +56,10 @@
   const copiedAnnouncement = $derived(copied ? (copiedLabel ?? 'Copied') : '');
 
   async function handleClick() {
-    const ok = await copyToClipboard(value);
+    const richClipboardContent: { html?: string; image?: Blob | string } = {};
+    if (html !== undefined) richClipboardContent.html = html;
+    if (image !== undefined) richClipboardContent.image = image;
+    const ok = await copyToClipboard(value, richClipboardContent);
     if (!ok) {
       devWarn('[cinder/CopyButton] Clipboard write failed.');
       onError?.();

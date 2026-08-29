@@ -1511,7 +1511,7 @@
       "exportName": "CopyButton",
       "category": "action",
       "status": "stable",
-      "purpose": "Button that writes a string value to the clipboard and flips to a confirmation state for a short window after a successful copy.",
+      "purpose": "Button that writes plain text plus optional rich HTML/image clipboard representations and flips to a confirmation state after success.",
       "tags": ["action", "clipboard"],
       "useWhen": [
         "Offering one-click copy of a token, snippet, share link, or code sample.",
@@ -2348,10 +2348,11 @@
       ],
       "related": ["form-field", "button"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/form/schema",
-        "variables": "@lostgradient/cinder/form/variables"
+        "variables": "@lostgradient/cinder/form/variables",
+        "examples": "@lostgradient/cinder/form/examples"
       }
     },
     {
@@ -2558,10 +2559,11 @@
       ],
       "related": ["modal"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/host-provider/schema",
-        "variables": "@lostgradient/cinder/host-provider/variables"
+        "variables": "@lostgradient/cinder/host-provider/variables",
+        "examples": "@lostgradient/cinder/host-provider/examples"
       }
     },
     {
@@ -3581,10 +3583,11 @@
       ],
       "related": ["number-input", "slider", "badge"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/parameter-field/schema",
-        "variables": "@lostgradient/cinder/parameter-field/variables"
+        "variables": "@lostgradient/cinder/parameter-field/variables",
+        "examples": "@lostgradient/cinder/parameter-field/examples"
       }
     },
     {
@@ -3726,10 +3729,11 @@
       ],
       "related": ["setting-row", "badge", "tooltip"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/policy-lock/schema",
-        "variables": "@lostgradient/cinder/policy-lock/variables"
+        "variables": "@lostgradient/cinder/policy-lock/variables",
+        "examples": "@lostgradient/cinder/policy-lock/examples"
       }
     },
     {
@@ -3812,10 +3816,11 @@
       ],
       "related": ["stack", "card", "tabs", "alert"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/preview-panel/schema",
-        "variables": "@lostgradient/cinder/preview-panel/variables"
+        "variables": "@lostgradient/cinder/preview-panel/variables",
+        "examples": "@lostgradient/cinder/preview-panel/examples"
       }
     },
     {
@@ -4468,10 +4473,11 @@
       ],
       "related": ["form-field", "policy-lock"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/setting-row/schema",
-        "variables": "@lostgradient/cinder/setting-row/variables"
+        "variables": "@lostgradient/cinder/setting-row/variables",
+        "examples": "@lostgradient/cinder/setting-row/examples"
       }
     },
     {
@@ -4521,10 +4527,11 @@
       ],
       "related": ["kbd", "shortcut-hint"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/shortcut-field/schema",
-        "variables": "@lostgradient/cinder/shortcut-field/variables"
+        "variables": "@lostgradient/cinder/shortcut-field/variables",
+        "examples": "@lostgradient/cinder/shortcut-field/examples"
       }
     },
     {
@@ -5048,12 +5055,13 @@
           "reason": "You need explicit rows and columns — use grid."
         }
       ],
-      "related": ["grid", "cluster"],
+      "related": ["grid"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/stack/schema",
-        "variables": "@lostgradient/cinder/stack/variables"
+        "variables": "@lostgradient/cinder/stack/variables",
+        "examples": "@lostgradient/cinder/stack/examples"
       }
     },
     {

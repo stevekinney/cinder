@@ -43,6 +43,21 @@ import { describe, expect, it } from 'bun:test';
 
 const TOKENS_DIRECTORY = join(dirname(fileURLToPath(import.meta.url)), '..', 'tokens');
 
+describe('non-color component tokens', () => {
+  it('documents the Chat typography control and keeps it out of the color contract', () => {
+    const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+    const chatCss = readFileSync(
+      join(repositoryRoot, 'packages/chat/src/lib/components/chat/chat.css'),
+      'utf8',
+    );
+    const tokenDocumentation = readFileSync(join(repositoryRoot, 'docs/tokens.md'), 'utf8');
+
+    expect(chatCss).toContain('--cinder-chat-font-size: 1rem');
+    expect(chatCss).toContain('--_cinder-chat-text-base: clamp(');
+    expect(tokenDocumentation).toContain('`--cinder-chat-font-size`');
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Color math
 // ---------------------------------------------------------------------------

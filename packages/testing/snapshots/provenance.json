@@ -1,9 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "spinner"
-  ],
-  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
+  "componentScope": ["date-range-field"],
+  "renderedSourceSha": "12fb5cb953cc622096ca4a03881d711c8a65373e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

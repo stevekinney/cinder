@@ -2489,6 +2489,10 @@
       "types": "./dist/components/form/form.css.d.ts",
       "default": "./dist/components/form/form.css"
     },
+    "./form/examples": {
+      "import": "./src/components/form/form.examples.json",
+      "default": "./src/components/form/form.examples.json"
+    },
     "./form-field": {
       "types": "./dist/components/form-field/index.d.ts",
       "browser": "./src/components/form-field/index.ts",
@@ -2716,6 +2720,10 @@
     "./host-provider/styles": {
       "types": "./dist/components/host-provider/host-provider.css.d.ts",
       "default": "./dist/components/host-provider/host-provider.css"
+    },
+    "./host-provider/examples": {
+      "import": "./src/components/host-provider/host-provider.examples.json",
+      "default": "./src/components/host-provider/host-provider.examples.json"
     },
     "./hover-card": {
       "types": "./dist/components/hover-card/index.d.ts",
@@ -3809,6 +3817,10 @@
       "types": "./dist/components/parameter-field/parameter-field.css.d.ts",
       "default": "./dist/components/parameter-field/parameter-field.css"
     },
+    "./parameter-field/examples": {
+      "import": "./src/components/parameter-field/parameter-field.examples.json",
+      "default": "./src/components/parameter-field/parameter-field.examples.json"
+    },
     "./payload-inspector": {
       "types": "./dist/components/payload-inspector/index.d.ts",
       "browser": "./src/components/payload-inspector/index.ts",
@@ -3965,6 +3977,10 @@
       "types": "./dist/components/policy-lock/policy-lock.css.d.ts",
       "default": "./dist/components/policy-lock/policy-lock.css"
     },
+    "./policy-lock/examples": {
+      "import": "./src/components/policy-lock/policy-lock.examples.json",
+      "default": "./src/components/policy-lock/policy-lock.examples.json"
+    },
     "./popover": {
       "types": "./dist/components/popover/index.d.ts",
       "browser": "./src/components/popover/index.ts",
@@ -4052,6 +4068,10 @@
     "./preview-panel/styles": {
       "types": "./dist/components/preview-panel/preview-panel.css.d.ts",
       "default": "./dist/components/preview-panel/preview-panel.css"
+    },
+    "./preview-panel/examples": {
+      "import": "./src/components/preview-panel/preview-panel.examples.json",
+      "default": "./src/components/preview-panel/preview-panel.examples.json"
     },
     "./pricing-card": {
       "types": "./dist/components/pricing-card/index.d.ts",
@@ -4717,6 +4737,10 @@
       "types": "./dist/components/setting-row/setting-row.css.d.ts",
       "default": "./dist/components/setting-row/setting-row.css"
     },
+    "./setting-row/examples": {
+      "import": "./src/components/setting-row/setting-row.examples.json",
+      "default": "./src/components/setting-row/setting-row.examples.json"
+    },
     "./share-card": {
       "types": "./dist/components/share-card/index.d.ts",
       "browser": "./src/components/share-card/index.ts",
@@ -4776,6 +4800,10 @@
     "./shortcut-field/styles": {
       "types": "./dist/components/shortcut-field/shortcut-field.css.d.ts",
       "default": "./dist/components/shortcut-field/shortcut-field.css"
+    },
+    "./shortcut-field/examples": {
+      "import": "./src/components/shortcut-field/shortcut-field.examples.json",
+      "default": "./src/components/shortcut-field/shortcut-field.examples.json"
     },
     "./shortcut-hint": {
       "types": "./dist/components/shortcut-hint/index.d.ts",
@@ -5292,6 +5320,10 @@
     "./stack/styles": {
       "types": "./dist/components/stack/stack.css.d.ts",
       "default": "./dist/components/stack/stack.css"
+    },
+    "./stack/examples": {
+      "import": "./src/components/stack/stack.examples.json",
+      "default": "./src/components/stack/stack.examples.json"
     },
     "./stacked-list-item": {
       "types": "./dist/components/stacked-list-item/index.d.ts",

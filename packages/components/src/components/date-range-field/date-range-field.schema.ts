@@ -55,6 +55,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'disabledDate',
+        reason: 'function-or-snippet',
+        description: 'Return true to disable a specific day in the calendar.',
+      },
+      {
         name: 'onValueChange',
         reason: 'function-or-snippet',
         description: 'Called when the user changes the date range (preset or manual input).',

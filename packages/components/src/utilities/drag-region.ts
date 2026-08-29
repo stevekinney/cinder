@@ -14,4 +14,4 @@ export function noDragProps(platform: HostPlatform = 'web'): Record<string, stri
 }
 
 export const safeHeaderDragStyle =
-  'padding-inline-start: var(--spacing-token-safe-header-left, 0px); padding-inline-end: var(--spacing-token-safe-header-right, 0px);';
+  'padding-inline-start: var(--_cinder-safe-header-left, 0px); padding-inline-end: var(--_cinder-safe-header-right, 0px);';

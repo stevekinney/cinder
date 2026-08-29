@@ -45,6 +45,18 @@ test('expanded trigger clears its bottom radii at the panel seam', async () => {
   expect(expandedTriggerBlock).toContain('border-end-end-radius: 0');
 });
 
+test('applies a custom class to the trigger label wrapper', () => {
+  const { container } = render(Collapsible, {
+    trigger: 'Toggle me',
+    labelClass: 'custom-label',
+    children: bodySnippet(),
+  });
+
+  expect(container.querySelector('.cinder-collapsible__label.custom-label')?.textContent).toBe(
+    'Toggle me',
+  );
+});
+
 test('rounded panel preserves overflow from public children', async () => {
   const css = await Bun.file(new URL('./collapsible.css', import.meta.url)).text();
   const rootBlock = css.match(/\.cinder-collapsible\s*\{[^}]*\}/)?.[0] ?? '';

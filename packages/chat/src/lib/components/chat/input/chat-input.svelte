@@ -44,6 +44,8 @@
     // Submission behavior
     /** Whether to clear input after submit (default: true). Set to false for error recovery. */
     clearOnSubmit?: boolean;
+    /** Keyboard gesture that submits the composer. Default `'enter'`. */
+    submitOn?: 'enter' | 'modifier-enter' | 'enter-if-single-line';
 
     // Attachment configuration
     /** Enable file attachments (default: true) */
@@ -52,6 +54,8 @@
     maxFileSize?: number;
     /** Accepted MIME types (default: ['image/*']) */
     acceptedTypes?: string[];
+    /** Plain-text paste length promoted to a reversible attachment. Default `8000`. */
+    largePasteThreshold?: number;
 
     // Events
     /** Called when the message is submitted */
@@ -138,6 +142,7 @@
     action,
     name = 'content',
     clearOnSubmit = true,
+    submitOn = 'enter',
     allowAttachments = true,
     maxFileSize = 10 * 1024 * 1024, // 10MB
     acceptedTypes = [
@@ -155,6 +160,7 @@
       'application/sql',
       'application/toml',
     ],
+    largePasteThreshold = 8_000,
     onsubmit,
     onstop,
     oncomposerinput,
@@ -181,6 +187,7 @@
   // Internal state
   let attachments = $state<ChatAttachment[]>([]);
   let isDragOver = $state(false);
+  let dragEnterDepth = 0;
   let isComposing = $state(false);
 
   // Screen reader announcements
@@ -194,9 +201,14 @@
   const hasPendingAttachments = $derived(
     attachments.some((a) => a.status === 'pending' || a.status === 'uploading'),
   );
+  const hasReadyPromotedPaste = $derived(
+    attachments.some((attachment) => attachment.status === 'ready' && attachment.restoreText),
+  );
   // Allow submit when text is present, even if some attachments errored.
   // Only block on pending/uploading attachments (they're not yet ready to send).
-  const canSubmit = $derived(!isWhitespaceOnly && !disabled && !sending && !hasPendingAttachments);
+  const canSubmit = $derived(
+    (!isWhitespaceOnly || hasReadyPromotedPaste) && !disabled && !sending && !hasPendingAttachments,
+  );
 
   // Determine if we're in form action mode
   const isFormActionMode = $derived(!!action);
@@ -221,21 +233,25 @@
     document: 'Document',
   };
 
-  function addAttachment(file: File): void {
+  function addAttachment(
+    file: File,
+    restoreText?: string,
+    restoreRange?: { start: number; end: number },
+  ): ChatAttachment | null {
     // Type validation
     if (!isValidType(file)) {
       onattachmentfailure?.(
         file,
         `Invalid file type: ${file.type}. Accepted types: ${acceptedTypes.join(', ')}.`,
       );
-      return;
+      return null;
     }
 
     // Size validation
     if (file.size > maxFileSize) {
       const maxSizeMB = Math.round(maxFileSize / (1024 * 1024));
       onattachmentfailure?.(file, `File exceeds ${maxSizeMB}MB limit`);
-      return;
+      return null;
     }
 
     const kind = deriveAttachmentKind(file.type);
@@ -260,7 +276,10 @@
       file,
       previewUrl: URL.createObjectURL(file),
       kind,
-      status: kind === 'code' ? 'pending' : 'ready',
+      status: kind === 'code' && restoreText === undefined ? 'pending' : 'ready',
+      ...(restoreText === undefined ? {} : { textContent: restoreText }),
+      ...(restoreText === undefined ? {} : { restoreText }),
+      ...(restoreRange === undefined ? {} : { restoreRange }),
     };
 
     attachments = [...attachments, attachment];
@@ -268,7 +287,7 @@
     announcer.announce(`${KIND_LABELS[kind]} attached: ${file.name}`);
 
     // Fire-and-forget text extraction for code files
-    if (kind === 'code') {
+    if (kind === 'code' && restoreText === undefined) {
       file.text().then(
         (text) => {
           attachments = attachments.map((a) =>
@@ -284,6 +303,7 @@
         },
       );
     }
+    return attachment;
   }
 
   function removeAttachment(attachmentId: string): void {
@@ -291,6 +311,33 @@
     if (attachment) {
       URL.revokeObjectURL(attachment.previewUrl);
       attachments = attachments.filter((a) => a.id !== attachmentId);
+      if (attachment.restoreText) {
+        const start = Math.min(attachment.restoreRange?.start ?? value.length, value.length);
+        const end = Math.min(attachment.restoreRange?.end ?? value.length, value.length);
+        const insertedLength = attachment.restoreText.length;
+        const replacedLength = end - start;
+        const translatePosition = (position: number): number => {
+          if (position <= start) return position;
+          if (position >= end) return position + insertedLength - replacedLength;
+          return start + insertedLength;
+        };
+        attachments = attachments.map((remainingAttachment) =>
+          remainingAttachment.restoreRange
+            ? {
+                ...remainingAttachment,
+                restoreRange: {
+                  start: translatePosition(remainingAttachment.restoreRange.start),
+                  end: translatePosition(remainingAttachment.restoreRange.end),
+                },
+              }
+            : remainingAttachment,
+        );
+        value = `${value.slice(0, start)}${attachment.restoreText}${value.slice(end)}`;
+        oncomposerinput?.(value);
+        const caretIndex = start + attachment.restoreText.length;
+        previousComposerValue = value;
+        queueMicrotask(() => editorElement?.setSelectionRange(caretIndex, caretIndex));
+      }
       onattachmentremove?.(attachment);
       announcer.announce(`${KIND_LABELS[attachment.kind]} removed`);
     }
@@ -300,7 +347,7 @@
     const input = event.target as HTMLInputElement;
     const files = input.files;
     if (files) {
-      Array.from(files).forEach(addAttachment);
+      Array.from(files).forEach((file) => addAttachment(file));
     }
     // Reset input for re-selection of same file
     input.value = '';
@@ -327,14 +374,37 @@
     // (including calling onattachmentfailure for invalid types/sizes)
     if (files.length > 0) {
       event.preventDefault();
-      files.forEach(addAttachment);
+      files.forEach((file) => addAttachment(file));
+      return;
+    }
+
+    const pastedText = event.clipboardData?.getData('text/plain') ?? '';
+    if (pastedText.length >= largePasteThreshold) {
+      const file = new File([pastedText], 'pasted-text.txt', {
+        type: 'text/plain',
+        lastModified: 0,
+      });
+      const restoreRange = {
+        start: editorElement?.selectionStart ?? value.length,
+        end: editorElement?.selectionEnd ?? value.length,
+      };
+      if (addAttachment(file, pastedText, { start: restoreRange.start, end: restoreRange.start })) {
+        event.preventDefault();
+        if (editorElement) {
+          editorElement.setRangeText('', restoreRange.start, restoreRange.end, 'start');
+          value = editorElement.value;
+          previousComposerValue = value;
+          oncomposerinput?.(value, event);
+        }
+      }
     }
   }
 
   function handleDrop(event: DragEvent): void {
     isDragOver = false;
+    dragEnterDepth = 0;
 
-    if (!allowAttachments) return;
+    if (!allowAttachments || !isFileDrag(event)) return;
 
     // Prevent default (browser opening/downloading the file) and stop propagation
     // only when attachments are enabled and we are actually handling the drop.
@@ -346,21 +416,36 @@
     const files = event.dataTransfer?.files;
     if (files) {
       // Let addAttachment handle all validation (type and size)
-      Array.from(files).forEach(addAttachment);
+      Array.from(files).forEach((file) => addAttachment(file));
     }
   }
 
   function handleDragOver(event: DragEvent): void {
-    if (!allowAttachments) return;
+    if (!allowAttachments || !isFileDrag(event)) return;
     event.preventDefault();
+    if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
+    isDragOver = true;
+  }
+
+  function handleDragEnter(event: DragEvent): void {
+    if (!allowAttachments || !isFileDrag(event)) return;
+    event.preventDefault();
+    dragEnterDepth += 1;
     isDragOver = true;
   }
 
   function handleDragLeave(event: DragEvent): void {
-    // Only set isDragOver to false if we're leaving the form entirely
-    if (!formElement?.contains(event.relatedTarget as Node)) {
+    if (!allowAttachments) return;
+    dragEnterDepth = Math.max(0, dragEnterDepth - 1);
+    if (dragEnterDepth === 0 || !formElement?.contains(event.relatedTarget as Node)) {
+      dragEnterDepth = 0;
       isDragOver = false;
     }
+  }
+
+  function isFileDrag(event: DragEvent): boolean {
+    const transfer = event.dataTransfer;
+    return Boolean(transfer?.types.includes('Files') || transfer?.files.length);
   }
 
   // =========================================================================
@@ -379,20 +464,43 @@
     const trimmedContent = latestContent.trim();
 
     // Re-check for whitespace-only after getting latest content
-    if (trimmedContent.length === 0) {
+    const readyAttachments = attachments.filter((a) => a.status === 'ready');
+    const promotedPastes = readyAttachments.filter(
+      (attachment) => attachment.restoreText !== undefined,
+    );
+    if (trimmedContent.length === 0 && promotedPastes.length === 0) {
       event.preventDefault();
       return;
     }
 
+    const submittedContent = promotedPastes
+      .map((attachment, index) => ({ attachment, index }))
+      .sort(
+        (left, right) =>
+          (right.attachment.restoreRange?.start ?? latestContent.length) -
+            (left.attachment.restoreRange?.start ?? latestContent.length) ||
+          right.index - left.index,
+      )
+      .reduce((content, { attachment }) => {
+        const start = Math.min(attachment.restoreRange?.start ?? content.length, content.length);
+        const end = Math.min(attachment.restoreRange?.end ?? start, content.length);
+        return `${content.slice(0, start)}${attachment.restoreText ?? ''}${content.slice(end)}`;
+      }, latestContent)
+      .trim();
+    if (submittedContent.length === 0) {
+      event.preventDefault();
+      return;
+    }
     const message: MessageInput = {
       role: 'user',
-      content: trimmedContent,
+      content: submittedContent,
     };
 
-    const readyAttachments = attachments.filter((a) => a.status === 'ready');
-
     // Call onsubmit callback
-    onsubmit?.(message, readyAttachments);
+    onsubmit?.(
+      message,
+      readyAttachments.filter((attachment) => attachment.restoreText === undefined),
+    );
 
     // In standalone mode, prevent default form submission
     if (!isFormActionMode) {
@@ -401,6 +509,7 @@
       if (clearOnSubmit) {
         // Clear state
         value = '';
+        previousComposerValue = '';
         attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
         attachments = [];
       }
@@ -412,7 +521,12 @@
       // In form action mode, sync the bound value with trimmed content
       // so the hidden input sends the same content as the callback.
       // This fixes debounce lag and ensures consistent data.
-      value = trimmedContent;
+      flushSync(() => {
+        value = submittedContent;
+        for (const attachment of promotedPastes) URL.revokeObjectURL(attachment.previewUrl);
+        attachments = attachments.filter((attachment) => attachment.restoreText === undefined);
+      });
+      previousComposerValue = submittedContent;
     }
   }
 
@@ -434,13 +548,16 @@
       }
     }
 
-    // Shift+Enter: Newline (let editor handle it)
-    if (event.key === 'Enter' && event.shiftKey) {
-      return;
-    }
+    if (event.key !== 'Enter' || event.shiftKey || event.altKey) return;
 
-    // Enter (no modifiers): Submit
-    if (event.key === 'Enter' && !event.metaKey && !event.ctrlKey && !event.altKey) {
+    const modifierPressed = event.metaKey || event.ctrlKey;
+    const shouldSubmit =
+      submitOn === 'modifier-enter'
+        ? modifierPressed
+        : !modifierPressed &&
+          (submitOn === 'enter' || (submitOn === 'enter-if-single-line' && !value.includes('\n')));
+
+    if (shouldSubmit) {
       event.preventDefault();
       if (canSubmit) {
         formElement?.requestSubmit();
@@ -459,8 +576,91 @@
   // Fires after `bind:value` has already applied the textarea's new value
   // (Svelte merges the binding's own input listener with this handler on the
   // same event), so `value` here is always current — never one keystroke stale.
+  let previousComposerValue = value;
+  let pendingInputRange: { start: number; end: number } | null = null;
+
+  function translatePromotedPasteRanges(
+    previousValue: string,
+    nextValue: string,
+    replacementRange?: { start: number; end: number } | null,
+  ): void {
+    let prefixLength = replacementRange?.start ?? 0;
+    let replacedEnd = replacementRange?.end ?? 0;
+    if (!replacementRange) {
+      while (
+        prefixLength < previousValue.length &&
+        prefixLength < nextValue.length &&
+        previousValue[prefixLength] === nextValue[prefixLength]
+      ) {
+        prefixLength += 1;
+      }
+      let suffixLength = 0;
+      while (
+        suffixLength < previousValue.length - prefixLength &&
+        suffixLength < nextValue.length - prefixLength &&
+        previousValue[previousValue.length - 1 - suffixLength] ===
+          nextValue[nextValue.length - 1 - suffixLength]
+      ) {
+        suffixLength += 1;
+      }
+      replacedEnd = previousValue.length - suffixLength;
+    }
+    const insertedLength = nextValue.length - (previousValue.length - (replacedEnd - prefixLength));
+    const translatePosition = (position: number): number => {
+      if (position <= prefixLength) return position;
+      if (position >= replacedEnd) {
+        return position + insertedLength - (replacedEnd - prefixLength);
+      }
+      return prefixLength + insertedLength;
+    };
+    attachments = attachments.map((attachment) =>
+      attachment.restoreRange
+        ? {
+            ...attachment,
+            restoreRange: {
+              start: translatePosition(attachment.restoreRange.start),
+              end: translatePosition(attachment.restoreRange.end),
+            },
+          }
+        : attachment,
+    );
+  }
+
+  $effect(() => {
+    const synchronizedValue = value;
+    if (editorElement?.value === synchronizedValue && synchronizedValue !== previousComposerValue) {
+      translatePromotedPasteRanges(previousComposerValue, synchronizedValue);
+      previousComposerValue = synchronizedValue;
+    }
+  });
+
   function handleInput(event: Event): void {
+    if (value !== previousComposerValue) {
+      translatePromotedPasteRanges(previousComposerValue, value, pendingInputRange);
+      previousComposerValue = value;
+    }
+    pendingInputRange = null;
     oncomposerinput?.(value, event);
+  }
+
+  function handleBeforeInput(event: InputEvent): void {
+    if (!editorElement) return;
+    if (
+      event.inputType.startsWith('delete') &&
+      event.inputType !== 'deleteContentBackward' &&
+      event.inputType !== 'deleteContentForward'
+    ) {
+      pendingInputRange = null;
+      return;
+    }
+    let start = editorElement.selectionStart;
+    let end = editorElement.selectionEnd;
+    if (start === end && event.inputType === 'deleteContentBackward')
+      start = Math.max(0, start - 1);
+    if (start === end && event.inputType === 'deleteContentForward') {
+      end = Math.min(previousComposerValue.length, end + 1);
+    }
+    pendingInputRange = { start, end };
   }
 
   /** Apply the Web IDL unsigned-long coercion used by textarea range methods. */
@@ -478,6 +678,7 @@
 
   export function clear(): void {
     value = '';
+    previousComposerValue = '';
     attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
     attachments = [];
   }
@@ -504,9 +705,27 @@
     editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
     const nextValue = editorElement.value;
     const caret = nextValue.length - (previousValue.length - replacementEnd);
+    const delta = text.length - (replacementEnd - replacementStart);
+    const translatePosition = (position: number): number => {
+      if (position <= replacementStart) return position;
+      if (position >= replacementEnd) return position + delta;
+      return replacementStart + text.length;
+    };
+    attachments = attachments.map((attachment) =>
+      attachment.restoreRange
+        ? {
+            ...attachment,
+            restoreRange: {
+              start: translatePosition(attachment.restoreRange.start),
+              end: translatePosition(attachment.restoreRange.end),
+            },
+          }
+        : attachment,
+    );
     flushSync(() => {
       value = nextValue;
     });
+    previousComposerValue = nextValue;
     editorElement.focus();
     editorElement.setSelectionRange(caret, caret);
     oncomposerinput?.(value);
@@ -514,7 +733,7 @@
 
   export function addFiles(files: File[]): void {
     if (!allowAttachments) return;
-    files.forEach(addAttachment);
+    files.forEach((file) => addAttachment(file));
   }
 
   // =========================================================================
@@ -539,6 +758,7 @@
   onsubmit={handleSubmit}
   onpaste={handlePaste}
   ondrop={handleDrop}
+  ondragenter={handleDragEnter}
   ondragover={handleDragOver}
   ondragleave={handleDragLeave}
   oncompositionstart={handleCompositionStart}
@@ -547,6 +767,12 @@
   aria-busy={sending || undefined}
   {...rest}
 >
+  {#if isDragOver}
+    <div class="chat-input-drop-overlay" aria-hidden="true">
+      <Paperclip class="cinder-icon-md" />
+      <span>Drop files to attach</span>
+    </div>
+  {/if}
   <!-- Hidden input for form action mode -->
   {#if isFormActionMode}
     <input type="hidden" {name} {value} />
@@ -578,6 +804,7 @@
       id={`${id}-editor`}
       bind:value
       onkeydown={handleKeyDown}
+      onbeforeinput={handleBeforeInput}
       oninput={handleInput}
       onpointerup={oncomposerselectionchange}
       onselect={oncomposerselectionchange}
@@ -590,7 +817,6 @@
       aria-activedescendant={composerAriaActiveDescendant}
       aria-autocomplete={composerAriaAutocomplete}
       {disabled}
-      readonly={sending}
       class="chat-input-editor"
       aria-describedby={shortcutDescriptionId}
       rows="1"
@@ -629,13 +855,26 @@
       <span id={shortcutDescriptionId} class="sr-only">
         {#if showStopButton}
           Response is streaming. Use the stop button to stop generation.
+        {:else if submitOn === 'modifier-enter'}
+          Press Command+Enter or Control+Enter to send. Press Enter for a newline.
+        {:else if submitOn === 'enter-if-single-line' && value.includes('\n')}
+          This message has multiple lines. Use the send button to send it. Press Enter for a
+          newline.
+        {:else if submitOn === 'enter-if-single-line'}
+          Press Enter to send a single-line message. Press Shift+Enter for a newline.
         {:else}
-          Press Enter to send, Shift+Enter for newline
+          Press Enter to send. Press Shift+Enter for a newline.
         {/if}
       </span>
       {#if !showStopButton}
         <span id={hintId} class="chat-input-hint" aria-hidden="true">
-          <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
+          {#if submitOn === 'modifier-enter'}
+            <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
+          {:else if submitOn === 'enter-if-single-line' && value.includes('\n')}
+            Use the send button to send this multiline message
+          {:else}
+            <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
+          {/if}
         </span>
       {/if}
     </div>
@@ -711,6 +950,7 @@
 
 <style>
   .chat-input {
+    position: relative;
     container-type: inline-size;
     display: flex;
     flex-direction: column;
@@ -730,6 +970,23 @@
     border-style: dashed;
     border-color: var(--cinder-accent-solid);
     background: color-mix(in oklch, var(--cinder-accent-solid), transparent 95%);
+  }
+
+  .chat-input-drop-overlay {
+    position: absolute;
+    z-index: 1;
+    inset: var(--cinder-space-2);
+    display: grid;
+    place-content: center;
+    justify-items: center;
+    gap: var(--cinder-space-2);
+    border: 2px dashed var(--cinder-accent-solid);
+    border-radius: calc(var(--cinder-radius-lg) - var(--cinder-space-1));
+    background: color-mix(in oklch, var(--cinder-surface-raised), transparent 8%);
+    color: var(--cinder-text-default);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
+    font-weight: var(--cinder-font-medium);
+    pointer-events: none;
   }
 
   /* Attachment previews */
@@ -845,7 +1102,7 @@
     display: block;
     width: 100%;
     min-height: 2.5rem;
-    max-height: 12rem;
+    max-height: min(12rem, 35dvh);
     padding: var(--cinder-space-1) var(--cinder-space-3);
     resize: none;
     field-sizing: content;
@@ -888,7 +1145,7 @@
   }
 
   .chat-input-hint {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-subtle);
   }
 
@@ -900,7 +1157,7 @@
     height: 1.25rem;
     padding: 0 var(--cinder-space-1);
     font-family: inherit;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -994,7 +1251,7 @@
   /* Error */
   .chat-input-error {
     margin: 0;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-status-danger-solid);
   }
 

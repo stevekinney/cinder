@@ -136,7 +136,7 @@
     min-width: 1.25rem;
     height: 1.25rem;
     padding: 0 var(--cinder-space-1);
-    font-size: var(--cinder-text-3xs);
+    font-size: var(--_cinder-chat-text-3xs, var(--cinder-text-3xs));
     font-weight: var(--cinder-font-semibold);
     background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
@@ -144,7 +144,7 @@
   }
 
   .chat-jump-badge[data-large] {
-    font-size: var(--cinder-text-4xs);
+    font-size: var(--_cinder-chat-text-4xs, var(--cinder-text-4xs));
     padding: 0 var(--cinder-space-0-5);
   }
 
@@ -163,7 +163,7 @@
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
     background: var(--cinder-accent-solid);
     color: var(--cinder-accent-contrast);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     border: none;
     border-radius: var(--cinder-radius-full);

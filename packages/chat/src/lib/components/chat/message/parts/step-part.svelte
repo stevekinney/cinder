@@ -76,7 +76,7 @@
 
   .chat-step-indicator {
     flex-shrink: 0;
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     line-height: 1.5;
     color: var(--cinder-chat-step-indicator-color);
   }
@@ -102,7 +102,7 @@
   }
 
   .chat-step-title {
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     line-height: 1.5;
@@ -117,7 +117,7 @@
   }
 
   .chat-step-content {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-muted);
     line-height: var(--cinder-leading-normal, 1.5);
   }

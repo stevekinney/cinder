@@ -189,7 +189,7 @@
 
   .copied-label {
     margin-inline-start: auto;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-status-success-solid);
     font-weight: var(--cinder-font-medium);
   }

@@ -24,6 +24,19 @@ const schema = {
       description:
         'Accessible name override for the trigger button. The runtime prop also\naccepts a state-aware function (`{ open, disabled } => string`), but JSON\nSchema can only model the string variant.',
     },
+    triggerClass: {
+      type: 'string',
+      description: 'Additional class names applied to the disclosure trigger button.',
+    },
+    labelClass: {
+      type: 'string',
+      description: 'Additional class names applied to the trigger label wrapper.',
+    },
+    animated: {
+      type: 'boolean',
+      description: 'Whether opening and closing uses the slide transition.',
+      default: true,
+    },
     idBase: {
       type: 'string',
       description:

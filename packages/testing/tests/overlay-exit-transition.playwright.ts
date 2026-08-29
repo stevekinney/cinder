@@ -103,10 +103,24 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   const tip = page.locator(`[id="${tooltipId}"][role="tooltip"]`).first();
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  await tip.evaluate((element) => {
+    document.documentElement.removeAttribute('data-test-tooltip-closing-observed');
+    const observer = new MutationObserver(() => {
+      if (element.hasAttribute('data-cinder-closing')) {
+        document.documentElement.setAttribute('data-test-tooltip-closing-observed', '');
+        observer.disconnect();
+      }
+    });
+    observer.observe(element, {
+      attributes: true,
+      attributeFilter: ['data-cinder-closing'],
+    });
+  });
+
   // Move away to trigger the hide/close path.
   await page.mouse.move(0, 0);
 
-  await expect(tip).toHaveAttribute('data-cinder-closing', '');
+  await expect(page.locator('html')).toHaveAttribute('data-test-tooltip-closing-observed', '');
   await expect(tip).toBeHidden();
 });
 

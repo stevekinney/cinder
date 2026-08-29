@@ -60,6 +60,6 @@ describe('Stack', () => {
     expect(root.getAttribute('data-cinder-align')).toBe('center');
     expect(root.getAttribute('data-cinder-justify')).toBe('between');
     expect(root.hasAttribute('data-cinder-wrap')).toBe(true);
-    expect(root.style.getPropertyValue('--cinder-stack-gap')).toBe('var(--cinder-space-3)');
+    expect(root.style.getPropertyValue('--_cinder-stack-gap')).toBe('var(--cinder-space-3)');
   });
 });

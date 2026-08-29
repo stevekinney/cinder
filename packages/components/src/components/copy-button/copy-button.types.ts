@@ -28,6 +28,10 @@ export type CopyButtonProps = Omit<
 > & {
   /** Text to copy to the clipboard. */
   value: string;
+  /** Optional HTML representation written alongside text/plain through ClipboardItem. */
+  html?: string;
+  /** Optional image blob or URL written alongside text and HTML when supported. */
+  image?: Blob | string;
   /** Duration in ms to show the confirmation state. Default 1500. */
   confirmDuration?: number;
   /** Accessible label for the idle state. Defaults to "Copy to clipboard". */

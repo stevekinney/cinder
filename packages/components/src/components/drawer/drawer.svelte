@@ -18,12 +18,13 @@
 
 <script lang="ts">
   import type { DrawerPlacement, DrawerProps } from './drawer.types.ts';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
 
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import {
@@ -48,11 +49,17 @@
   }: DrawerProps = $props();
 
   const titleId = $props.id();
+  const nonModalPortalScopeId = `${titleId}-scope`;
   const asideAttributes = $derived(rest as HTMLAttributes<HTMLElement>);
 
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
+  let nonModalAsideElement: HTMLElement | undefined = $state();
+  let nonModalPanelElement: HTMLDivElement | undefined = $state();
+  let nonModalReturnFocusTarget: HTMLElement | null = null;
+  let wasNonModalOpen = false;
+  let wasModal = $state(untrack(() => modal));
   /**
    * The placement that was active when the current open/close cycle began.
    * Snapshotted at open time so that a placement-prop change while the drawer
@@ -60,6 +67,15 @@
    * Only updated when the drawer actually (re)opens a new cycle.
    */
   let activePlacement = $state<DrawerPlacement>();
+
+  function isValidNonModalFocusTarget(target: HTMLElement | null): target is HTMLElement {
+    return (
+      target !== null &&
+      target.isConnected &&
+      target.ownerDocument === document &&
+      !nonModalAsideElement?.contains(target)
+    );
+  }
 
   const reducedMotion = useReducedMotion();
   const bodyOverflowFade = overflowFade();
@@ -72,6 +88,9 @@
     getPanelElement: () => panelElement,
     getReducedMotion: () => reducedMotion.current,
     getTriggerRef: () => triggerRef,
+    onClosed: () => {
+      activePlacement = undefined;
+    },
     // Host-managed initial focus (the Modal policy, via the trap's
     // `manageInitialFocus: false` opt-out): focus the body container unless a
     // child is autofocused, so opening never lands focus on the close button.
@@ -90,6 +109,14 @@
   $effect.pre(() => {
     if (!modal || !open || activePlacement) return;
     activePlacement = placement;
+  });
+
+  $effect(() => {
+    if (wasModal && !modal) {
+      activePlacement = undefined;
+      dialogState.releaseModalState();
+    }
+    wasModal = modal;
   });
 
   $effect(() => {
@@ -120,7 +147,52 @@
     });
   });
 
+  $effect(() => {
+    if (modal || !dialogState.hydrated) {
+      wasNonModalOpen = false;
+      nonModalReturnFocusTarget = null;
+      return;
+    }
+
+    if (open && !wasNonModalOpen) {
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      nonModalReturnFocusTarget =
+        (isValidNonModalFocusTarget(triggerRef) && triggerRef) ||
+        (isValidNonModalFocusTarget(activeElement) && activeElement) ||
+        null;
+      wasNonModalOpen = true;
+      return;
+    }
+
+    if (!open && wasNonModalOpen) {
+      wasNonModalOpen = false;
+      const returnTarget =
+        (isValidNonModalFocusTarget(triggerRef) ? triggerRef : null) ?? nonModalReturnFocusTarget;
+      nonModalReturnFocusTarget = null;
+      const activeElement = document.activeElement;
+      if (
+        activeElement === document.body ||
+        (activeElement instanceof HTMLElement && nonModalPanelElement?.contains(activeElement))
+      ) {
+        restoreFocusTo(returnTarget);
+      }
+      activePlacement = undefined;
+    }
+  });
+
   onDestroy(() => {
+    if (!modal && wasNonModalOpen) {
+      const activeElement = document.activeElement;
+      if (
+        activeElement === document.body ||
+        (activeElement instanceof HTMLElement && nonModalPanelElement?.contains(activeElement))
+      ) {
+        restoreFocusTo(
+          (isValidNonModalFocusTarget(triggerRef) ? triggerRef : null) ?? nonModalReturnFocusTarget,
+        );
+      }
+    }
     dialogState.destroy();
   });
 
@@ -133,7 +205,7 @@
   }
 </script>
 
-{#if dialogState.hydrated}
+{#if dialogState.hydrated || (!modal && open)}
   {#if modal}
     <dialog
       {...rest}
@@ -222,12 +294,20 @@
     </dialog>
   {:else if open}
     <aside
+      bind:this={nonModalAsideElement}
       {...asideAttributes}
       class={classNames('cinder-drawer', className)}
       aria-labelledby={ariaLabelledby ?? titleId}
       data-cinder-modal="false"
+      data-cinder-portal-owner={nonModalPortalScopeId}
     >
-      <div class="cinder-drawer__panel" data-cinder-placement={placement} data-cinder-size={size}>
+      <div id={nonModalPortalScopeId} class="cinder-drawer__portal-scope"></div>
+      <div
+        bind:this={nonModalPanelElement}
+        class="cinder-drawer__panel"
+        data-cinder-placement={placement}
+        data-cinder-size={size}
+      >
         {#if dragHandleVisible && placement === 'bottom'}
           <div class="cinder-drawer__drag-handle" aria-hidden="true">
             <span class="cinder-drawer__drag-handle-pill"></span>

@@ -78,10 +78,11 @@
     a,
     button,
     input,
+    label,
     select,
     summary,
     textarea,
-    [contenteditable='true'],
+    [contenteditable]:not([contenteditable='false' i]),
     [role='button'],
     [role='link'],
     [tabindex]:not([tabindex='-1'])
@@ -255,6 +256,9 @@ svg.cinder-icon-lg {
 }
 
 .cinder-markdown-content :where(:not(pre) > code) {
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+  unicode-bidi: isolate;
   padding: 0.125em 0.375em;
   border-radius: var(--cinder-radius-sm);
   background: var(--cinder-surface-inset);

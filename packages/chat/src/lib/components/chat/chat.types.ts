@@ -16,8 +16,8 @@ import type {
 } from './container/chat-events.ts';
 import type { ConversationHistory, Message, ToolCallPair } from './conversation-model.ts';
 import type { ChatAttachment } from './input/chat-attachment.ts';
-import type { MessagePartOverride } from './message/chat-message-parts.ts';
-import type { StepInfo } from './utilities/types.ts';
+import type { MarkdownNodeOverride, MessagePartOverride } from './message/chat-message-parts.ts';
+import type { ReasoningInfo, StepInfo } from './utilities/types.ts';
 
 /**
  * A participant who is currently typing. Out-of-band UI state — NOT stored on
@@ -207,6 +207,8 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
    * render through the grouped attachment grid, not this override.
    */
   messagePart?: MessagePartOverride;
+  /** Per-node override for fenced code blocks, tables, and Mermaid blocks inside markdown messages. */
+  markdownNode?: MarkdownNodeOverride;
   viewportAttachment?: Attachment<HTMLElement>;
   /**
    * Participants who are currently typing. Out-of-band UI state — NOT stored on
@@ -247,6 +249,8 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   onsubmit?: (event: ChatSubmitEvent) => void;
   onretry?: (messageId: string) => void;
   onedit?: (event: { messageId: string; content: string }) => void;
+  /** Commits a confirmed transcript rollback to immediately before the selected user message. */
+  onrollback?: (messageId: string) => void;
   /**
    * Called when the user approves an action-required tool call. The
    * consumer is responsible for updating its transcript (e.g. calling
@@ -263,10 +267,11 @@ export type ChatProps = Omit<HTMLAttributes<HTMLElement>, 'class' | 'onsubmit'> 
   ondeny?: (toolCallId: string) => void;
   /**
    * Override or supplement the reasoning text for a message. Called per-message;
-   * return a non-empty string to show a reasoning block, `undefined` to fall back
-   * to `message.metadata['cinder:reasoning']`, empty string to suppress reasoning.
+   * return a non-empty string or `{ content, summary? }` to show one reasoning
+   * body, `undefined` to fall back to `message.metadata['cinder:reasoning']`,
+   * or an empty string to suppress reasoning.
    */
-  messageReasoning?: (message: Message) => string | undefined;
+  messageReasoning?: (message: Message) => string | ReasoningInfo | undefined;
   /**
    * Override or supplement the step list for a message. Called per-message;
    * return an array to show step indicators, `undefined` to fall back to

@@ -19,7 +19,46 @@
  * falls back to a contenteditable / `execCommand('copy')` shim for older
  * browsers and edge cases.
  */
-export async function copyToClipboard(text: string): Promise<boolean> {
+export async function copyToClipboard(
+  text: string,
+  rich: { html?: string; image?: Blob | string } = {},
+): Promise<boolean> {
+  if (
+    typeof navigator !== 'undefined' &&
+    navigator.clipboard?.write &&
+    typeof ClipboardItem !== 'undefined' &&
+    (rich.html !== undefined || rich.image !== undefined)
+  ) {
+    try {
+      const baseRepresentations: Record<string, Blob | Promise<Blob>> = {
+        'text/plain': new Blob([text], { type: 'text/plain' }),
+      };
+      if (rich.html !== undefined) {
+        baseRepresentations['text/html'] = new Blob([rich.html], { type: 'text/html' });
+      }
+      const representations = { ...baseRepresentations };
+      let includedImage = false;
+      if (rich.image !== undefined) {
+        const imageRepresentation = optionalImageRepresentation(rich.image);
+        if (imageRepresentation) {
+          representations[imageRepresentation.type] = imageRepresentation.value;
+          includedImage = true;
+        }
+      }
+      try {
+        await navigator.clipboard.write([new ClipboardItem(representations)]);
+        return true;
+      } catch {
+        if (includedImage && rich.html !== undefined) {
+          await navigator.clipboard.write([new ClipboardItem(baseRepresentations)]);
+          return true;
+        }
+        throw new Error('Rich clipboard write failed');
+      }
+    } catch {
+      // Fall through to writeText and finally the legacy selection path.
+    }
+  }
   if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
     try {
       await navigator.clipboard.writeText(text);
@@ -29,6 +68,65 @@ export async function copyToClipboard(text: string): Promise<boolean> {
     }
   }
   return legacyCopy(text);
+}
+
+function supportsClipboardType(type: string): boolean {
+  if (!type.startsWith('image/')) return false;
+  if (type === 'image/png') return true;
+  return typeof ClipboardItem.supports === 'function' && ClipboardItem.supports(type);
+}
+
+function optionalImageRepresentation(
+  image: Blob | string,
+): { type: string; value: Blob | Promise<Blob> } | undefined {
+  if (image instanceof Blob) {
+    return supportsClipboardType(image.type) ? { type: image.type, value: image } : undefined;
+  }
+  if (!image.trim() || typeof document === 'undefined' || typeof location === 'undefined') {
+    return undefined;
+  }
+  let resolvedUrl: URL;
+  try {
+    resolvedUrl = new URL(image, document.baseURI);
+  } catch {
+    return undefined;
+  }
+  const isLocallyResolvable =
+    resolvedUrl.protocol === 'blob:' ||
+    resolvedUrl.protocol === 'data:' ||
+    resolvedUrl.origin === location.origin;
+  if (!isLocallyResolvable) return undefined;
+
+  const type = imageTypeFromUrl(resolvedUrl);
+  if (!type || !supportsClipboardType(type)) return undefined;
+
+  return {
+    type,
+    value: fetch(resolvedUrl).then(async (response) => {
+      if (!response.ok) throw new Error(`Unable to fetch clipboard image: ${response.status}`);
+      const blob = await response.blob();
+      if (blob.type && blob.type !== type) {
+        throw new Error(`Clipboard image type mismatch: expected ${type}, received ${blob.type}`);
+      }
+      return blob.type ? blob : new Blob([blob], { type });
+    }),
+  };
+}
+
+function imageTypeFromUrl(url: URL): string | undefined {
+  if (url.protocol === 'data:') {
+    return /^data:(image\/[a-z0-9.+-]+)[;,]/iu.exec(url.href)?.[1]?.toLowerCase();
+  }
+  if (url.protocol === 'blob:') return undefined;
+  const extension = /\.([a-z0-9]+)$/iu.exec(url.pathname)?.[1]?.toLowerCase();
+  if (extension === 'png') return 'image/png';
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'webp') return 'image/webp';
+  // ClipboardItem needs its representation key before the asynchronous fetch
+  // resolves. Extensionless same-origin attachment routes conventionally serve
+  // PNG clipboard payloads; the deferred representation still verifies the
+  // response MIME type and falls back to text/HTML when that contract is false.
+  return url.origin === location.origin ? 'image/png' : undefined;
 }
 
 function legacyCopy(text: string): boolean {

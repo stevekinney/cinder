@@ -23,7 +23,7 @@
  * @module
  */
 
-import type { Root as HastRoot } from 'hast';
+import type { Element as HastElement, Root as HastRoot } from 'hast';
 import type {
   Definition,
   Html,
@@ -417,6 +417,46 @@ function renderFromMdast(
     .use(rehypeShikiSync, { theme: 'depict', defaultLanguage: 'plaintext' })
     // eslint-disable-next-line no-unsafe-type-assertion -- unified's `runSync` returns the broad unist `Node`; the remark→rehype pipeline guarantees a hast `Root` here.
     .runSync(mathRenderedHast as HastRoot);
+
+  if (options.nodePlaceholders) {
+    let placeholderIndex = 0;
+    let codeBlockIndex = 0;
+    visit(highlightedHast, 'element', (node: HastElement, index, parent) => {
+      const elementParent = parent as HastRoot | HastElement | undefined;
+      if (index === undefined || !elementParent) return;
+      const code =
+        node.tagName === 'pre'
+          ? node.children.find(
+              (child): child is HastElement => child.type === 'element' && child.tagName === 'code',
+            )
+          : undefined;
+      // Shiki may replace the original `language-*` class, so use the metadata
+      // extracted from mdast before highlighting as the stable language source.
+      const language = code ? codeBlocks[codeBlockIndex++]?.language : undefined;
+      const kind =
+        language === 'mermaid'
+          ? 'mermaid'
+          : node.tagName === 'table'
+            ? 'table'
+            : code
+              ? 'code-block'
+              : null;
+      if (!kind) return;
+
+      const placeholder: HastElement = {
+        type: 'element',
+        tagName: 'cinder-markdown-node',
+        properties: {
+          dataCinderMarkdownKind: kind,
+          dataCinderMarkdownIndex: placeholderIndex++,
+          ...(language ? { dataLanguage: language } : {}),
+        },
+        children: [node],
+      };
+      elementParent.children.splice(index, 1, placeholder);
+      return index + 1;
+    });
+  }
 
   // Sanitize the hast - MUST use runSync() to execute the transform
   // Note: stringify() only runs the compiler, not transforms, so we need

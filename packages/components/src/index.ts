@@ -73,19 +73,10 @@ export type {
 export { default as Badge } from './components/badge/index.ts';
 export type {
   BadgeProps,
-  BadgeSeverity,
   BadgeSize,
   BadgeSubscriptionState,
   BadgeVariant,
 } from './components/badge/index.ts';
-export { default as Citation } from './components/citation/index.ts';
-export type { CitationProps, CitationSource } from './components/citation/index.ts';
-export { default as CodeLocation } from './components/code-location/index.ts';
-export type { CodeLocationProps } from './components/code-location/index.ts';
-export { default as QuotaMeter } from './components/quota-meter/index.ts';
-export type { QuotaMeterProps } from './components/quota-meter/index.ts';
-export { default as RelativeTime } from './components/relative-time/index.ts';
-export type { RelativeTimeProps } from './components/relative-time/index.ts';
 
 export { default as Backdrop } from './components/backdrop/index.ts';
 export type { BackdropProps } from './components/backdrop/index.ts';
@@ -241,14 +232,6 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
-export { default as GuidanceRegion } from './components/guidance-region/index.ts';
-export type { GuidanceRegionProps } from './components/guidance-region/index.ts';
-export { default as InlineConfirm } from './components/inline-confirm/index.ts';
-export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
-
-export { default as ModalRegion } from './components/modal-region/index.ts';
-export type { ModalRegionProps } from './components/modal-region/index.ts';
-
 export { default as ConnectionIndicator } from './components/connection-indicator/index.ts';
 export type {
   ConnectionIndicatorProps,
@@ -294,11 +277,6 @@ export type {
   DataTableRow,
   DataTableSelectionMode,
 } from './components/data-table/index.ts';
-
-export { default as DonutChart } from './components/donut-chart/index.ts';
-export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
-export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
-export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
 
 export { default as DatePicker } from './components/date-picker/index.ts';
 export type { DatePickerGranularity, DatePickerProps } from './components/date-picker/index.ts';
@@ -392,19 +370,6 @@ export type {
   FeedProps,
 } from './components/feed/index.ts';
 
-export { default as TerminalFrame } from './components/terminal-frame/index.ts';
-export type { TerminalFrameProps } from './components/terminal-frame/index.ts';
-export {
-  default as TerminalOutput,
-  parseTerminalOutput,
-} from './components/terminal-output/index.ts';
-export type {
-  TerminalForeground,
-  TerminalLine,
-  TerminalOutputProps,
-  TerminalTextRun,
-} from './components/terminal-output/index.ts';
-
 export { default as FloatingAction } from './components/floating-action/index.ts';
 export type {
   FloatingActionProps,
@@ -428,12 +393,8 @@ export type { FocusTrapOptions, FocusTrapProps } from './components/focus-trap/i
 export { default as Form } from './components/form/index.ts';
 export type { FormProps, FormSubmitContext } from './components/form/index.ts';
 
-export { default as FindBar } from './components/find-bar/index.ts';
-export type { FindBarProps } from './components/find-bar/index.ts';
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
-export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
-export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';
 
 export { default as FormSection } from './components/form-section/index.ts';
 export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section/index.ts';
@@ -687,11 +648,11 @@ export type { PricingCardProps } from './components/pricing-card/index.ts';
 export { default as PreviewPanel } from './components/preview-panel/index.ts';
 export type { PreviewPanelProps, PreviewPanelStatus } from './components/preview-panel/index.ts';
 
-export { default as ParameterField } from './components/parameter-field/parameter-field.svelte';
+export { default as ParameterField } from './components/parameter-field/index.ts';
 export type {
   ParameterFieldEditorState,
   ParameterFieldProps,
-} from './components/parameter-field/parameter-field.types.ts';
+} from './components/parameter-field/index.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
@@ -798,7 +759,7 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover/index.ts';
 
-export { default as SettingRow, SettingRowDisclosure } from './components/setting-row/index.ts';
+export { default as SettingRow } from './components/setting-row/index.ts';
 export type { SettingRowProps } from './components/setting-row/index.ts';
 
 export { default as ShareCard } from './components/share-card/index.ts';
@@ -865,7 +826,12 @@ export type {
 } from './components/stacked-list-item/index.ts';
 
 export { default as Stack } from './components/stack/index.ts';
-export type { StackProps } from './components/stack/index.ts';
+export type {
+  StackAlign,
+  StackDirection,
+  StackJustify,
+  StackProps,
+} from './components/stack/index.ts';
 
 export { default as Spectrogram } from './components/spectrogram/index.ts';
 export type {
@@ -1035,10 +1001,6 @@ export type {
 } from './utilities/use-reduced-motion.types.ts';
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
-export { useGuidance } from './utilities/use-guidance.ts';
-export type { GuidanceApi, GuidanceClaim, GuidanceStorage } from './utilities/use-guidance.ts';
-export { useModal } from './utilities/use-modal.ts';
-export type { ModalApi } from './utilities/use-modal.ts';
 export { useToast } from './utilities/use-toast.ts';
 
 export {

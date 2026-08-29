@@ -42,6 +42,7 @@ export class SlidingDialogState {
   #releaseScrollLock: (() => void) | null = null;
   #releaseEscape: (() => void) | null = null;
   #cancelPendingClose: (() => void) | null = null;
+  #suppressedNativeCloseEvents = 0;
   #disposed = false;
   // Hard, per-generation idempotence guard for `#completeCloseOnce()` (PR
   // #1422 review, round 4 — "per-generation idempotence audit" — widened in
@@ -238,6 +239,11 @@ export class SlidingDialogState {
   // given generation completes it; every other event that ever resolves
   // to that same generation, for any reason, does nothing at all.
   handleClose(): void {
+    if (this.#suppressedNativeCloseEvents > 0) {
+      this.#suppressedNativeCloseEvents -= 1;
+      return;
+    }
+
     // Shift the OLDEST pending generation off the FIFO queue. Queued native
     // `close` events fire in the same order their `.close()` calls were
     // made (the WHATWG "close the dialog" steps queue a task per call, and
@@ -390,6 +396,29 @@ export class SlidingDialogState {
     if (wasOpen) {
       this.#returnFocus();
     }
+  }
+
+  releaseModalState(options: { restoreFocus?: boolean } = {}): void {
+    this.#cancelPendingClose?.();
+    this.#cancelPendingClose = null;
+    this.#pendingNativeCloseGenerations = [];
+    this.#closeGeneration += 1;
+    this.isClosing = false;
+    this.renderPanel = false;
+
+    this.#releaseScrollLock?.();
+    this.#releaseScrollLock = null;
+    this.#releaseEscape?.();
+    this.#releaseEscape = null;
+
+    const dialogElement = this.#options.getDialogElement();
+    if (dialogElement?.open) {
+      this.#suppressedNativeCloseEvents += 1;
+      dialogElement.close();
+    }
+
+    if (options.restoreFocus) this.#returnFocus();
+    else this.#capturedFocus = null;
   }
 
   #finishClosing(generation: number): void {

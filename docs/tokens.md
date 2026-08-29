@@ -82,6 +82,8 @@ Shared height tier for any interactive control that needs to align with its sibl
 
 Font stacks, type scale, line heights, letter spacing, and weights. The base font size is `0.875rem` (`--cinder-text-base`) — slightly smaller than the browser default, tuned for dense application UI.
 
+Chat exposes `--cinder-chat-font-size` on its root as a scoped, inheritable base size. Override it on an individual Chat container to scale transcript body text, labels, metadata, and nested Cinder controls together; the derived ramp retains rem-based minimums for browser text zoom.
+
 <!-- BEGIN GENERATED TOKEN TABLE: typography -->
 
 | Token                       | Default                                                                                          | Description                                                                                                                              |
