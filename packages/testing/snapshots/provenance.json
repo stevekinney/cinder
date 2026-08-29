@@ -1,21 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "citation",
-    "code-location",
-    "donut-chart",
-    "find-bar",
-    "guidance-region",
-    "inline-confirm",
-    "key-value-editor",
-    "modal-region",
-    "quota-meter",
-    "relative-time",
-    "terminal-frame",
-    "terminal-output",
-    "zoom-pan-viewer"
+    "terminal-frame"
   ],
-  "renderedSourceSha": "d41202e7fba07a35eb6029aee53e0a2aca9de888",
+  "renderedSourceSha": "f48471d960939ecf1ddd9a25aa95c6bfe6351e00",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
