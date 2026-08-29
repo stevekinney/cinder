@@ -29,6 +29,21 @@
   let page = $state(0);
   let open = $state(false);
   const source = $derived(sources[page]);
+  const safeSourceUrl = $derived.by(() => {
+    const url = source?.url?.trim();
+    if (!url || /[\u0000-\u001f\u007f\\]/.test(url) || /^[\\/]{2}/.test(url)) return undefined;
+
+    if (/^[A-Za-z][A-Za-z\d+.-]*:/.test(url)) {
+      try {
+        const protocol = new URL(url).protocol;
+        return protocol === 'http:' || protocol === 'https:' ? url : undefined;
+      } catch {
+        return undefined;
+      }
+    }
+
+    return url;
+  });
   $effect(() => {
     if (page >= sources.length) page = Math.max(0, sources.length - 1);
   });
@@ -46,7 +61,7 @@
     <section aria-label={label}>
       <strong>{source?.label}</strong>{#if source?.detail}<p>
           {source.detail}
-        </p>{/if}{#if source?.url}<a href={source.url}>Open source</a>{/if}
+        </p>{/if}{#if safeSourceUrl}<a href={safeSourceUrl}>Open source</a>{/if}
       {#if sources.length > 1}<div class="cinder-citation__pagination">
           <button
             type="button"

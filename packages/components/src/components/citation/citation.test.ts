@@ -57,6 +57,20 @@ describe('Citation', () => {
     expect(marker?.textContent).toBe('[2]');
   });
 
+  test('renders only safe HTTP or relative source links', async () => {
+    const { container, rerender } = render(Citation, {
+      sources: [{ label: 'Unsafe source', url: 'javascript:alert(1)' }],
+    });
+    await fireEvent.click(container.querySelector('.cinder-citation__marker')!);
+    await waitFor(() => expect(document.querySelector('section strong')).not.toBeNull());
+    expect(document.querySelector('section a')).toBeNull();
+
+    await rerender({ sources: [{ label: 'Safe source', url: '/sources/one' }] });
+    await waitFor(() =>
+      expect(document.querySelector('section a')?.getAttribute('href')).toBe('/sources/one'),
+    );
+  });
+
   test('clamps the current page when sources are removed', async () => {
     const { container, rerender } = render(Citation, {
       sources: [{ label: 'One' }, { label: 'Two' }],

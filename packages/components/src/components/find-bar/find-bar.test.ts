@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
@@ -75,5 +76,12 @@ describe('FindBar', () => {
     jest.advanceTimersByTime(1);
     await fireEvent.input(input, { target: { value: 'ab' } });
     expect(onQueryChange).toHaveBeenLastCalledWith('');
+  });
+
+  test('CSS sidecar imports composed primitive styles', () => {
+    const css = readFileSync(new URL('./find-bar.css', import.meta.url), 'utf8');
+
+    expect(css).toContain("@import '../button/button.css';");
+    expect(css).toContain("@import '../input/input.css';");
   });
 });
