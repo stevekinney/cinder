@@ -204,6 +204,8 @@ describe('buildComponentDocumentation', () => {
     const readme = renderReadmeDocumentation(`
 # Example
 
+<!-- generated:a11y-record:required -->
+
 Consumer-facing introduction.
 
 ## Authoring checklist
@@ -219,6 +221,8 @@ Consumer-facing usage.
 
     expect(readme.html).toContain('Consumer-facing introduction.');
     expect(readme.html).toContain('Consumer-facing usage.');
+    expect(readme.hadUnsafeContent).toBe(false);
+    expect(readme.rawMarkdown).not.toContain('generated:a11y-record:required');
     expect(readme.html).not.toContain('Authoring checklist');
     expect(readme.html).not.toContain('internal authoring pre-flight');
   });

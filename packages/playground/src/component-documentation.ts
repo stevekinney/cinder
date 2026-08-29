@@ -265,6 +265,12 @@ const generatedSectionWithHeadingPattern =
 // so it is dropped from the Overview render.
 const leadingTitlePattern = /^#\s+[^\n]*\n+/;
 
+// The component scaffold keeps this marker in the README so repository checks
+// can require a sibling accessibility review record. It is contributor-only
+// metadata, not public documentation, and raw HTML comments are intentionally
+// rejected by the Markdown sanitizer.
+const requiredAccessibilityRecordPattern = /^<!-- generated:a11y-record:required -->\n*/m;
+
 /**
  * Trim the README markdown for the page's **Overview** section: drop the leading
  * `# <Name>` title (the hero already shows it) and the generated reference
@@ -273,7 +279,10 @@ const leadingTitlePattern = /^#\s+[^\n]*\n+/;
  * (Usage, comparisons, etc.) is what remains.
  */
 function trimReadmeForOverview(markdown: string): string {
-  return markdown.replace(leadingTitlePattern, '').replace(generatedSectionWithHeadingPattern, '');
+  return markdown
+    .replace(leadingTitlePattern, '')
+    .replace(requiredAccessibilityRecordPattern, '')
+    .replace(generatedSectionWithHeadingPattern, '');
 }
 
 function componentReadmeSourceHref(
