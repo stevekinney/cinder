@@ -9,6 +9,13 @@ const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { createRawSnippet } = await import('svelte');
 const { default: CapabilityGate } = await import('./capability-gate.svelte');
 
+const capabilityGateCss = await Bun.file(new URL('./capability-gate.css', import.meta.url)).text();
+
+function cssRuleBody(selector: string) {
+  const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return capabilityGateCss.match(new RegExp(`${escapedSelector}\\s*\\{([\\s\\S]*?)\\}`))?.[1] ?? '';
+}
+
 function snippet(text: string) {
   return createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
 }
@@ -137,6 +144,22 @@ describe('CapabilityGate', () => {
     const content = container.querySelector('.cinder-capability-gate__content');
     expect(content).not.toBeNull();
     expect(content?.textContent).toContain('Custom content');
+  });
+
+  test('content keeps full text strength rather than collapsing into the muted value tier', () => {
+    const contentBody = cssRuleBody('.cinder-capability-gate__content');
+    expect(contentBody).toContain('color: var(--cinder-text-default)');
+    // CIN-107's ratified _label-value.css keeps primary body content a distinct third
+    // tier: it is not a value/annotation, so it must not take --cinder-text-muted.
+    expect(contentBody).not.toContain('color: var(--cinder-text-muted)');
+
+    // CIN-109: deliberately NO font-weight here. A --cinder-font-medium (500) override
+    // was tried and reverted — system-ui has no distinct 500 face in the canonical
+    // Ubuntu Jammy Playwright environment, so it rendered identically to the inherited
+    // 400 and the regenerated baselines came back byte-for-byte unchanged. Pinning its
+    // absence keeps a future diff from re-adding a change that looks like a hierarchy
+    // fix and is a no-op on screen.
+    expect(contentBody).not.toContain('font-weight:');
   });
 
   test('omits the content wrapper entirely when no children are passed', () => {

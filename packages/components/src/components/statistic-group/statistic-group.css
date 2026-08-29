@@ -52,11 +52,95 @@
     }
   }
 
-  /* variant: default — a quiet shared surface with spacing doing the grouping. */
+  /* variant: default — a quiet shared surface with a resting border and
+     per-cell dividers, matching the treatment cards/shared-borders use. */
   .cinder-statistic-group[data-cinder-variant='default'] {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
+    border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-md);
     background: var(--cinder-surface-inset);
+  }
+
+  /* ----------------------------------------
+   * default-variant dividers
+   *
+   * A divider belongs BETWEEN two adjacent cells, so a divider rule is only correct
+   * where the effective column count is knowable.
+   *
+   * For the fixed counts it is the declared count, at every width, for a STANDALONE
+   * group. The collapse rules above (30rem, 18rem) look like they change that, but for
+   * a standalone group they never fire: their subject is `.cinder-statistic-group`,
+   * which is itself the named query container, and an element is never its own
+   * container -- a container query resolves against the nearest ANCESTOR container.
+   *
+   * They are not universally inert, though: a group NESTED inside another
+   * StatisticGroup does have an ancestor container, so there the collapse fires and
+   * resolves against the OUTER group's width. See the note on the row-end rules below
+   * for what that means for dividers. Either way this is a pre-existing layout defect,
+   * tracked separately; fixing it needs a wrapper element so the group can query
+   * something other than itself, which is a markup change this PR is not making.
+   *
+   * What matters here is that the dividers must describe the grid that actually
+   * renders. An earlier revision of this block mirrored the collapse thresholds, so at
+   * narrow widths it flipped to horizontal dividers while the grid was still showing
+   * its full column count -- dividers drawn across a layout that had not changed. With
+   * the thresholds gone, `nth-child(Nn)` needs no width bands at all.
+   *
+   * For `columns='auto'` the count is not knowable: `repeat(auto-fit, ...)` renders
+   * however many 16rem tracks fit, without an upper bound, and CSS cannot select "the
+   * last cell in a row" without that number. Enumerating width bands only moves the
+   * failure outward -- a previous revision covered twelve columns and justified the cap
+   * by claiming 203rem was past any real display, which is false. So `auto` carries no
+   * per-cell dividers, keeping the variant's resting border, inset surface, and gap.
+   * That is what makes `default` read as deliberate rather than unstyled (CIN-113); the
+   * dividers are an enhancement applied where they can be drawn correctly.
+   *
+   * ORDER IS LOAD-BEARING. Every rule carries the same specificity, so source order
+   * alone decides the cascade: the row-end and single-column resets must follow the
+   * generic rule that turns `border-inline-end` on.
+   * ---------------------------------------- */
+
+  /* --- Fixed multi-column counts: vertical dividers --- */
+
+  .cinder-statistic-group[data-cinder-variant='default']:not([data-cinder-columns='1']):not(
+      [data-cinder-columns='auto']
+    )
+    > .cinder-statistic:not(:last-child) {
+    border-inline-end: 1px solid var(--cinder-border-muted);
+  }
+
+  /* Row ends: the last cell of each row has no neighbour to its right. No container
+     query needed -- for a standalone group, a fixed count renders that many tracks at
+     every width, because the collapse rules above never fire (see the note above).
+
+     One case does diverge: a group nested INSIDE another StatisticGroup. The inner
+     group still cannot query itself, but it now has an ancestor container, so the
+     collapse rules DO resolve -- against the outer group's width. An inner
+     `columns={3}` inside a 20rem outer group therefore renders two tracks while these
+     rules still suppress every third divider. That is the same inert-collapse defect
+     seen from the other side, and it cannot be fixed here: while the collapse fires for
+     some groups and not others, no divider rule is correct for both. It resolves when
+     the layout gets a wrapper element to query, tracked with that fix. */
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+    > .cinder-statistic:nth-child(2n),
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+    > .cinder-statistic:nth-child(3n),
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+    > .cinder-statistic:nth-child(4n) {
+    border-inline-end: none;
+  }
+
+  /* --- Single column: horizontal dividers --- */
+
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='1']
+    > .cinder-statistic:not(:last-child) {
+    border-block-end: 1px solid var(--cinder-border-muted);
+  }
+
+  /* The final cell never has a neighbour in either axis, in any layout. */
+  .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:last-child {
+    border-inline-end: none;
+    border-block-end: none;
   }
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */

@@ -78,4 +78,170 @@ describe('Footer', () => {
       }
     }
   });
+
+  test('CIN-124: resting spacing forms a strictly increasing related-to-unrelated hierarchy', async () => {
+    // Regression for CIN-124: proximity should communicate relationship.
+    // Same-group links (most related) < sibling nav groups < brand-to-groups
+    // (still related, inside .cinder-footer__main) < main-to-legal (the
+    // least related pairing, and the only one reinforced by a rule/padding
+    // boundary too). Each step must resolve to a distinct px value so no two
+    // relationships of different closeness collapse onto the same gap --
+    // that collision (both using --cinder-space-6) is exactly what made
+    // CIN-124 still real. Asserted against the shipped CSS source (not
+    // computed styles) because this test does not load a real CSS engine;
+    // the resting layout math itself is covered by
+    // packages/testing/tests/footer-layout.playwright.ts.
+    const css = await Bun.file(new URL('./footer.css', import.meta.url)).text();
+
+    // Derived from tokens-base.css rather than transcribed. A hard-coded map duplicates
+    // the scale, so a retune of the spacing tokens would have to be mirrored here by
+    // hand -- and until it was, this test would compare the footer's real gaps against
+    // stale numbers and report a hierarchy break that does not exist.
+    const tokensCss = await Bun.file(
+      new URL('../../styles/tokens-base.css', import.meta.url),
+    ).text();
+
+    const tokenPx: Record<string, number> = {};
+    for (const match of tokensCss.matchAll(/(--cinder-space-\d+):\s*([\d.]+)rem/g)) {
+      const [, name, rem] = match;
+      // Capture groups are `string | undefined` under noUncheckedIndexedAccess even
+      // though this pattern cannot match without them.
+      if (name === undefined || rem === undefined) continue;
+      // 1rem = 16px at the root font size these tokens are authored against; only the
+      // ORDERING of these values is asserted below, so the multiplier just has to be
+      // consistent.
+      tokenPx[name] = Number.parseFloat(rem) * 16;
+    }
+
+    // Fail loudly if the scale stops being readable, rather than silently comparing
+    // undefined values.
+    for (const required of [
+      '--cinder-space-2',
+      '--cinder-space-4',
+      '--cinder-space-6',
+      '--cinder-space-8',
+    ]) {
+      expect(tokenPx[required]).toBeGreaterThan(0);
+    }
+
+    function gapTokenFor(selector: string): string {
+      // Escape every regex metacharacter, matching the repo's cssRuleBody() helpers
+      // (see chip.test.ts). Escaping only `.` and `#` would break the moment a selector
+      // here grows a `:where(...)`, an attribute matcher, or a `+`/`~` combinator.
+      const escapedSelector = selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      const block = css.match(new RegExp(`${escapedSelector}\\s*\\{([^}]*)\\}`))?.[1];
+      // Tolerate the fallback form too -- `var(--cinder-space-4, 1rem)` names the same
+      // token and expresses the same hierarchy, so matching only the bare form would
+      // fail this test on a change that is not a regression.
+      const token = block?.match(/gap:\s*var\(\s*(--cinder-space-\d+)\s*[,)]/)?.[1];
+      if (!token) {
+        throw new Error(`Expected a --cinder-space-* gap token on ${selector}`);
+      }
+      return token;
+    }
+
+    const listToken = gapTokenFor('.cinder-footer__list');
+    const groupsToken = gapTokenFor('.cinder-footer__groups');
+    const mainToken = gapTokenFor('.cinder-footer__main');
+    const footerToken = gapTokenFor('.cinder-footer');
+
+    function pxFor(token: string, selector: string): number {
+      const px = tokenPx[token];
+      if (px === undefined) {
+        throw new Error(`Unmapped spacing token ${token} on ${selector}`);
+      }
+      return px;
+    }
+
+    const listPx = pxFor(listToken, '.cinder-footer__list');
+    const groupsPx = pxFor(groupsToken, '.cinder-footer__groups');
+    const mainPx = pxFor(mainToken, '.cinder-footer__main');
+    const footerPx = pxFor(footerToken, '.cinder-footer');
+
+    expect(listPx).toBeLessThan(groupsPx);
+    expect(groupsPx).toBeLessThan(mainPx);
+    expect(mainPx).toBeLessThan(footerPx);
+
+    // The main-to-legal gap must not reuse the same token as any
+    // related-sibling gap inside .cinder-footer__main.
+    expect(footerToken).not.toBe(mainToken);
+    expect(footerToken).not.toBe(groupsToken);
+    expect(footerToken).not.toBe(listToken);
+
+    // The main-to-legal boundary keeps its own rule + padding — but scoped to that
+    // boundary, not to the legal row itself. A legal-only footer omits
+    // `.cinder-footer__main` entirely, and an unconditional border there would draw a
+    // divider above the only content in the footer.
+    const boundaryBlock =
+      css.match(/\.cinder-footer__main \+ \.cinder-footer__legal\s*\{([^}]*)\}/)?.[1] ?? '';
+    expect(boundaryBlock).toContain('border-top: 1px solid var(--cinder-border-muted)');
+    expect(boundaryBlock).toContain('padding-top: var(--cinder-space-2)');
+
+    // And the bare legal rule must NOT carry them, or the sibling scoping is moot.
+    //
+    // Matched by EXACT selector rather than by substring. `.cinder-footer__legal` is a
+    // suffix of `.cinder-footer__main + .cinder-footer__legal`, so a plain substring
+    // match finds the boundary rule instead and this assertion inverts — it would then
+    // demand the boundary rule NOT carry the separator it exists to apply. A previous
+    // version anchored on a leading newline to dodge that, which worked but tied the
+    // match to whitespace; comparing the trimmed selector says what is actually meant.
+    // Comments are stripped first so a selector capture cannot absorb the prose above it.
+    const withoutComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+    const legalBlock =
+      [...withoutComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find(
+        (rule) => rule[1]?.trim() === '.cinder-footer__legal',
+      )?.[2] ?? '';
+    expect(legalBlock).not.toBe('');
+    expect(legalBlock).not.toContain('border-top:');
+    expect(legalBlock).not.toContain('padding-top:');
+  });
+
+  test('a legal-only footer omits the main wrapper entirely', () => {
+    // `copyright`/`legalLinks` without brand, description, or groups is a valid
+    // combination. An unconditional `.cinder-footer__main` would still be a grid item
+    // there, so the root's (now larger) main-to-legal gap would open blank space above
+    // the legal row with no main region to separate it from -- the widened gap making
+    // the empty wrapper more visible, not less.
+    const { container } = render(Footer, {
+      copyright: '© 2026 Example',
+      legalLinks: [{ id: 'privacy', label: 'Privacy', href: '/privacy' }],
+    });
+
+    expect(container.querySelector('.cinder-footer__main')).toBeNull();
+    expect(container.querySelector('.cinder-footer__legal')).not.toBeNull();
+    expect(container.querySelector('.cinder-footer__legal')?.textContent).toContain('Privacy');
+
+    // And the legal row must not be preceded by a `.cinder-footer__main` sibling, which
+    // is what the separator rule keys on. Without a main region there is nothing above
+    // the legal row to separate it FROM, so drawing a divider there would double up with
+    // the footer's own top border.
+    const legal = container.querySelector('.cinder-footer__legal');
+    expect(legal?.previousElementSibling).toBeNull();
+  });
+
+  test('the main wrapper renders as soon as any of its three sources is present', () => {
+    // The guard is a three-way OR; a regression that narrowed it to `brand` alone would
+    // silently drop a groups-only or description-only footer's entire main region.
+    // Rendered separately rather than over an array of prop objects: a mixed array
+    // widens to a union that `exactOptionalPropertyTypes` rejects.
+    const brandOnly = render(Footer, { brand: 'Example' });
+    expect(brandOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    brandOnly.unmount();
+
+    const descriptionOnly = render(Footer, { description: 'A description' });
+    expect(descriptionOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    descriptionOnly.unmount();
+
+    const groupsOnly = render(Footer, {
+      groups: [
+        {
+          id: 'product',
+          title: 'Product',
+          links: [{ id: 'docs', label: 'Docs', href: '/docs' }],
+        },
+      ],
+    });
+    expect(groupsOnly.container.querySelector('.cinder-footer__main')).not.toBeNull();
+    groupsOnly.unmount();
+  });
 });
