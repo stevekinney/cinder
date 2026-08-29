@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "shard": "3/8",
+  "componentScope": ["find-bar"],
   "renderedSourceSha": "689890ef9036ef60f4b485270d9c7442ada5f01b",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
