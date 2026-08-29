@@ -5,54 +5,54 @@
     flex-direction: column;
     min-block-size: 0;
     overflow: hidden;
-    color: var(--cinder-terminal-foreground, var(--cinder-text));
-    background: var(--cinder-terminal-background, var(--cinder-surface));
+    color: var(--cinder-text-default);
+    background: var(--cinder-surface-inset);
     border: 1px solid var(--cinder-border);
     border-radius: var(--cinder-radius-lg);
   }
 
   .cinder-terminal-frame__chrome {
     min-block-size: 2.25rem;
-    padding-inline: var(--cinder-spacing-3);
+    padding-inline: var(--cinder-space-3);
     align-items: center;
     border-block-end: 1px solid var(--cinder-border);
   }
 
   .cinder-terminal-frame__traffic-lights {
     display: flex;
-    gap: var(--cinder-spacing-1);
+    gap: var(--cinder-space-1);
   }
 
   .cinder-terminal-frame__traffic-lights span {
     inline-size: 0.625rem;
     block-size: 0.625rem;
-    background: var(--cinder-muted);
+    background: var(--cinder-text-muted);
     border-radius: 50%;
   }
 
   .cinder-terminal-frame__title {
     margin: 0;
-    font: var(--cinder-font-label-sm);
+    font: var(--cinder-font-medium) var(--cinder-text-sm) / 1.4 var(--cinder-font-sans);
   }
 
   .cinder-terminal-frame__status {
     justify-self: end;
     color: var(--cinder-text-muted);
-    font: var(--cinder-font-label-xs);
+    font: var(--cinder-font-medium) var(--cinder-text-xs) / 1.4 var(--cinder-font-sans);
   }
 
   .cinder-terminal-frame__error {
     display: flex;
-    padding: var(--cinder-spacing-2) var(--cinder-spacing-3);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
     align-items: center;
     justify-content: space-between;
-    color: var(--cinder-critical-foreground, var(--cinder-danger-foreground));
-    background: var(--cinder-critical-subtle, var(--cinder-danger-subtle));
-    gap: var(--cinder-spacing-3);
+    color: var(--cinder-status-danger-text);
+    background: var(--cinder-status-danger-background);
+    gap: var(--cinder-space-3);
   }
 
   .cinder-terminal-frame__reload {
-    padding: var(--cinder-spacing-1) var(--cinder-spacing-2);
+    padding: var(--cinder-space-1) var(--cinder-space-2);
     color: inherit;
     background: transparent;
     border: 1px solid currentColor;
