@@ -35,12 +35,13 @@
 </script>
 
 <span class={classNames('cinder-citation', customClassName)} {...rest}
-  >{#if children}{@render children()}{/if}<Popover bind:open {label}>
+  ><Popover bind:open {label}>
     {#snippet trigger()}<button
         type="button"
         class="cinder-citation__marker"
         onclick={() => (open = !open)}
-        aria-label={`${label} (${sources.length})`}>[{sources.length}]</button
+        aria-label={`${label} (${sources.length})`}
+        >{#if children}{@render children()}{:else}[{sources.length}]{/if}</button
       >{/snippet}
     <section aria-label={label}>
       <strong>{source?.label}</strong>{#if source?.detail}<p>

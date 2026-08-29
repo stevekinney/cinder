@@ -24,11 +24,13 @@ function textSnippet(text: string) {
 }
 
 describe('Citation', () => {
-  test('renders the cinder-citation wrapper with its children', () => {
+  test('renders custom marker children inside the trigger without the default marker', () => {
     const { container } = render(Citation, { sources: [], children: textSnippet('content') });
     const element = container.querySelector('.cinder-citation');
+    const marker = container.querySelector('.cinder-citation__marker');
     expect(element).not.toBeNull();
-    expect(element?.textContent).toContain('content');
+    expect(marker?.textContent).toBe('content');
+    expect(element?.textContent).not.toContain('[0]');
   });
 
   test('merges a custom class alongside cinder-citation', () => {

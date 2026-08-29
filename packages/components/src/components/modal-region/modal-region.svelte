@@ -56,6 +56,7 @@
       return promise;
     },
     confirm(options) {
+      if (destroyed) return Promise.resolve(false);
       const id = options.id ?? `cinder-confirm-${++sequence}`;
       const promise = api.openModal(ConfirmDialog, {
         ...options,

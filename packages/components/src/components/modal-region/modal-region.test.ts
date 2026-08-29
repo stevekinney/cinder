@@ -8,6 +8,8 @@ setupHappyDom();
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: ModalRegion } = await import('./modal-region.svelte');
+const { default: ModalRegionHost } = await import('./modal-region-host.test.svelte');
+type ModalApi = import('../../_internal/modal-context.ts').ModalApi;
 
 afterEach(cleanup);
 
@@ -20,5 +22,19 @@ describe('ModalRegion', () => {
 
     expect(container.querySelector('[data-testid="application"]')?.textContent).toBe('Open modal');
     expect(container.children).toHaveLength(1);
+  });
+
+  test('resolves confirmation as false after the region is destroyed', async () => {
+    let api: ModalApi | undefined;
+    const { unmount } = render(ModalRegionHost, {
+      onReady: (value: ModalApi) => {
+        api = value;
+      },
+    });
+
+    expect(api).toBeDefined();
+    unmount();
+
+    await expect(api!.confirm({ title: 'Confirm action' })).resolves.toBe(false);
   });
 });
