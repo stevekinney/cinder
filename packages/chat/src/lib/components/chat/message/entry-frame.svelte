@@ -27,10 +27,7 @@
   } = $props();
 </script>
 
-<div
-  class={`chat-entry-frame${labelClass ? ` ${labelClass}` : ''}`}
-  data-cinder-expanded={open ? '' : undefined}
->
+<div class="chat-entry-frame" data-cinder-expanded={open ? '' : undefined}>
   <button
     id={`${id}-header`}
     type="button"
@@ -46,7 +43,7 @@
     }}
   >
     {#if busy}<span class="chat-entry-frame__busy" aria-hidden="true"></span>{/if}
-    <span class="chat-entry-frame__label">{label}</span>
+    <span class={`chat-entry-frame__label${labelClass ? ` ${labelClass}` : ''}`}>{label}</span>
     {#if status}<span class="chat-entry-frame__status">{status}</span>{/if}
     <ChevronDown class="chat-entry-frame__chevron" aria-hidden="true" />
   </button>
