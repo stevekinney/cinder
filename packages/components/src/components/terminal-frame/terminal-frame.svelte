@@ -20,6 +20,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
+  import Grid from '../grid/grid.svelte';
   import type { TerminalFrameProps } from './terminal-frame.types.ts';
 
   let {
@@ -64,13 +65,13 @@
   data-status={status}
   aria-labelledby={titleId}
 >
-  <header class="cinder-terminal-frame__chrome">
+  <Grid as="header" columns="1fr auto 1fr" gap="0" class="cinder-terminal-frame__chrome">
     <span class="cinder-terminal-frame__traffic-lights" aria-hidden="true">
       <span></span><span></span><span></span>
     </span>
     <h2 id={titleId} class="cinder-terminal-frame__title">{title}</h2>
     <span class="cinder-terminal-frame__status">{status}</span>
-  </header>
+  </Grid>
 
   {#if error}
     <div class="cinder-terminal-frame__error" role="alert">

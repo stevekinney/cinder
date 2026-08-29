@@ -12,6 +12,7 @@
 </script>
 
 <script lang="ts">
+  import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
   import SecretValueField from '../secret-value-field/secret-value-field.svelte';
   import { classNames } from '../../utilities/class-names.ts';
@@ -37,7 +38,12 @@
 </script>
 
 <div {...rest} class={classNames('cinder-key-value-editor', className)}>
-  <div class="cinder-key-value-editor__rows" role="list">
+  <Grid
+    columns="minmax(8rem, 1fr) minmax(12rem, 2fr) auto"
+    gap="var(--cinder-space-2)"
+    class="cinder-key-value-editor__rows"
+    role="list"
+  >
     {#each rows as row, index (index)}
       <div class="cinder-key-value-editor__row" role="listitem">
         <Input
@@ -64,7 +70,7 @@
         >
       </div>
     {/each}
-  </div>
+  </Grid>
   <button type="button" onclick={() => commit([...rows, { key: '', value: '' }])}>{addLabel}</button
   >
 </div>
