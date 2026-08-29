@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic find bar",
       "description": "A find-in-page control with match navigation.",
-      "code": "<script lang=\"ts\">\n  import { FindBar } from '@lostgradient/cinder/find-bar';\n</script>\n<FindBar value=\"terminal\" activeIndex={1} matchCount={4} />\n"
+      "code": "<script lang=\"ts\">\n  import { FindBar } from '@lostgradient/cinder/find-bar';\n</script>\n\n<FindBar value=\"terminal\" activeIndex={1} matchCount={4} />\n"
     }
   ]
 }

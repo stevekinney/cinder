@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic key-value editor",
       "description": "Edit a small set of environment-style key-value entries.",
-      "code": "<script lang=\"ts\">\n  import { KeyValueEditor } from '@lostgradient/cinder/key-value-editor';\n  let entries = $state([\n    { key: 'HOST', value: 'localhost' },\n    { key: 'PORT', value: '3000' },\n  ]);\n</script>\n<KeyValueEditor bind:entries />\n"
+      "code": "<script lang=\"ts\">\n  import { KeyValueEditor } from '@lostgradient/cinder/key-value-editor';\n  let entries = $state([\n    { key: 'HOST', value: 'localhost' },\n    { key: 'PORT', value: '3000' },\n  ]);\n</script>\n\n<KeyValueEditor bind:entries />\n"
     }
   ]
 }

@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic terminal output",
       "description": "Render read-only output with ANSI colors and progress updates.",
-      "code": "<script lang=\"ts\">\n  import { TerminalOutput } from '@lostgradient/cinder/terminal-output';\n  const value = '\\u001b[32mPASS\\u001b[0m build\\n\\u001b[33mWARN\\u001b[0m cache miss';\n</script>\n<TerminalOutput {value} />\n"
+      "code": "<script lang=\"ts\">\n  import { TerminalOutput } from '@lostgradient/cinder/terminal-output';\n  const value = '\\u001b[32mPASS\\u001b[0m build\\n\\u001b[33mWARN\\u001b[0m cache miss';\n</script>\n\n<TerminalOutput {value} />\n"
     }
   ]
 }

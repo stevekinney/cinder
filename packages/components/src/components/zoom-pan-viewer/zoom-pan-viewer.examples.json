@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic zoom and pan viewer",
       "description": "Inspect a large surface with pointer zoom and pan controls.",
-      "code": "<script lang=\"ts\">\n  import { ZoomPanViewer } from '@lostgradient/cinder/zoom-pan-viewer';\n</script>\n<ZoomPanViewer ariaLabel=\"Architecture diagram\">\n  {#snippet children()}\n    <div style=\"min-width: 36rem; min-height: 12rem; padding: 3rem; background: var(--cinder-surface-raised);\">Architecture diagram</div>\n  {/snippet}\n</ZoomPanViewer>\n"
+      "code": "<script lang=\"ts\">\n  import { ZoomPanViewer } from '@lostgradient/cinder/zoom-pan-viewer';\n</script>\n\n<ZoomPanViewer ariaLabel=\"Architecture diagram\">\n  {#snippet children()}\n    <div\n      style=\"min-width: 36rem; min-height: 12rem; padding: 3rem; background: var(--cinder-surface-raised);\"\n    >\n      Architecture diagram\n    </div>\n  {/snippet}\n</ZoomPanViewer>\n"
     }
   ]
 }
