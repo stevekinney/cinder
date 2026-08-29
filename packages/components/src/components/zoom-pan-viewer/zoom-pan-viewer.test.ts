@@ -3,7 +3,7 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { createEvent, fireEvent, render } = await import('@testing-library/svelte');
 const { default: ZoomPanViewer } = await import('./zoom-pan-viewer.svelte');
 const { createRawSnippet } = await import('svelte');
 const textSnippet = (text: string) =>
@@ -112,6 +112,18 @@ describe('ZoomPanViewer', () => {
     expect(
       container.querySelector('.cinder-zoom-pan-viewer__viewport')?.getAttribute('style'),
     ).toContain('translate(0px');
+  });
+
+  test('prevents native dragging for noninteractive pan content', () => {
+    const { container } = render(ZoomPanViewer, {
+      children: textSnippet('<img src="diagram.png" alt="Diagram" />'),
+    });
+    const image = container.querySelector('img')!;
+    const dragEvent = createEvent.dragStart(image);
+
+    fireEvent(image, dragEvent);
+
+    expect(dragEvent.defaultPrevented).toBe(true);
   });
 
   test('allows native touch behavior for interactive descendants', () => {

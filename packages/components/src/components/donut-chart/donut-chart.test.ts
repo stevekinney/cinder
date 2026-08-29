@@ -77,8 +77,10 @@ describe('DonutChart', () => {
 
   test('provides a visible focus indicator for keyboard-activated series', () => {
     const css = readFileSync(new URL('./donut-chart.css', import.meta.url), 'utf8');
-    expect(css).toContain("g[role='button']:focus-visible");
-    expect(css).toContain('var(--_cinder-focus-ring-shadow)');
+    expect(css).toContain("g[role='button']:focus-visible .cinder-donut-chart__focus-ring-layer");
+    expect(css).toContain('stroke-width: var(--cinder-ring-width)');
+    expect(css).toContain('vector-effect: non-scaling-stroke');
+    expect(css).toContain('@media (forced-colors: active)');
   });
 
   test('does not expose zero-area series as interactive controls', async () => {
@@ -157,7 +159,7 @@ describe('DonutChart', () => {
     });
 
     expect(container.querySelector('.cinder-donut-chart__total')?.textContent).toBe(
-      String(Number.MAX_VALUE),
+      '3.595386269724629e+308',
     );
     for (const path of container.querySelectorAll('path')) {
       expect(path.getAttribute('d')).not.toMatch(/NaN|Infinity/);

@@ -94,7 +94,9 @@ describe('ModalRegion', () => {
 
   test('resolves custom modal dismissal paths as undefined', () => {
     const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
-    expect(source).toContain('dismiss(id) {\n      finish(id, undefined);');
+    expect(source).toContain(
+      'if (entry) finishEntry(entry.key, entry.confirmation ? false : undefined)',
+    );
     expect(source).toContain('onDismiss={() => finishEntry(entry.key, undefined)}');
     expect(source).toContain(
       'onDismiss={() => finishEntry(entry.key, entry.confirmation ? false : undefined)}',

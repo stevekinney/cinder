@@ -54,7 +54,7 @@ describe('FindBar', () => {
     expect(onQueryChange).toHaveBeenCalledWith('new query');
   });
 
-  test('debounces the user query rather than a later controlled replacement', async () => {
+  test('cancels a pending user query after a controlled replacement', async () => {
     jest.useFakeTimers();
     const onQueryChange = mock(() => {});
     const { container, rerender } = render(FindBar, {
@@ -68,7 +68,7 @@ describe('FindBar', () => {
     await rerender({ value: 'programmatic replacement', debounceMs: 10, onQueryChange });
     jest.advanceTimersByTime(10);
 
-    expect(onQueryChange).toHaveBeenCalledWith('user query');
+    expect(onQueryChange).not.toHaveBeenCalledWith('user query');
     expect(onQueryChange).not.toHaveBeenCalledWith('programmatic replacement');
   });
 
@@ -212,6 +212,7 @@ describe('FindBar', () => {
     const css = readFileSync(new URL('./find-bar.css', import.meta.url), 'utf8');
 
     expect(css).toContain("@import '../button/button.css';");
+    expect(css).toContain("@import '../form-field/form-field.css';");
     expect(css).toContain("@import '../input/input.css';");
   });
 });

@@ -26,15 +26,36 @@
     stroke-width: 24;
     stroke: var(--cinder-accent-solid);
   }
-  .cinder-donut-chart g[role='button']:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    outline-offset: var(--cinder-ring-offset);
-    box-shadow: var(--_cinder-focus-ring-shadow);
+  .cinder-donut-chart__focus-ring-layer {
+    display: none;
+    pointer-events: none;
+  }
+  .cinder-donut-chart g[role='button']:focus-visible .cinder-donut-chart__focus-ring-layer {
+    display: block;
+  }
+  .cinder-donut-chart__focus-ring,
+  .cinder-donut-chart__focus-ring-halo {
+    fill: none;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .cinder-donut-chart__focus-ring {
+    stroke: var(--cinder-ring-color);
+    stroke-width: var(--cinder-ring-width);
+  }
+  .cinder-donut-chart__focus-ring-halo {
+    stroke: var(--cinder-ring-offset-color);
+    stroke-width: calc(
+      var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset)
+    );
   }
   @media (forced-colors: active) {
-    .cinder-donut-chart g[role='button']:focus-visible {
-      outline-color: ButtonText;
-      box-shadow: none;
+    .cinder-donut-chart__focus-ring-halo {
+      display: none;
+    }
+    .cinder-donut-chart__focus-ring {
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
     }
   }
   .cinder-donut-chart__total {

@@ -74,7 +74,11 @@
   $effect(() => {
     const nextValue = value;
     const eligible = nextValue.trim().length >= minQueryLength;
-    if (nextValue === lastObservedValue && eligible === queryWasEligible) return;
+    if (nextValue === lastObservedValue && (eligible || !queryWasEligible)) return;
+    if (timer) {
+      clearTimeout(timer);
+      timer = undefined;
+    }
     lastObservedValue = nextValue;
     if (!eligible && queryWasEligible) {
       queryWasEligible = false;

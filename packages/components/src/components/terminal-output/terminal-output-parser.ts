@@ -115,6 +115,29 @@ export class TerminalOutputParser {
         index = end - 1;
         continue;
       }
+      if (
+        (character === '\u001b' && ['P', 'X', '^', '_'].includes(input[index + 1] ?? '')) ||
+        ['\u0090', '\u0098', '\u009e', '\u009f'].includes(character)
+      ) {
+        const payloadStart = character === '\u001b' ? index + 2 : index + 1;
+        let end = -1;
+        for (let candidate = payloadStart; candidate < input.length; candidate += 1) {
+          if (input[candidate] === '\u009c') {
+            end = candidate + 1;
+            break;
+          }
+          if (input[candidate] === '\u001b' && input[candidate + 1] === '\\') {
+            end = candidate + 2;
+            break;
+          }
+        }
+        if (end < 0) {
+          this.#pending = input.slice(index);
+          break;
+        }
+        index = end - 1;
+        continue;
+      }
       if ((character === '\u001b' && input[index + 1] === '[') || character === '\u009b') {
         const sequenceStart = character === '\u009b' ? index + 1 : index + 2;
         let end = -1;

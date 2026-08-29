@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { tick } from 'svelte';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { KeyValueEntry } from './key-value-editor.types.ts';
 setupHappyDom();
@@ -50,6 +51,29 @@ describe('KeyValueEditor', () => {
       entries: [{ key: 'Host', value: 'localhost' }],
     });
     expect(container.querySelectorAll('input')).toHaveLength(2);
+  });
+
+  test('focuses the new key input after adding a pair', async () => {
+    const updates: KeyValueEntry[][] = [];
+    const { container } = render(KeyValueEditor, {
+      entries: [{ key: 'Host', value: 'localhost' }],
+      onValueChange: (next: KeyValueEntry[]) => updates.push(next),
+    });
+    const addButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Add pair',
+    );
+    await fireEvent.click(addButton!);
+    await tick();
+
+    expect(updates).toEqual([
+      [
+        { key: 'Host', value: 'localhost' },
+        { key: '', value: '' },
+      ],
+    ]);
+    const source = readFileSync(new URL('./key-value-editor.svelte', import.meta.url), 'utf8');
+    expect(source).toContain("querySelectorAll<HTMLInputElement>('input')");
+    expect(source).toContain('[newIndex * 2]?.focus({ preventScroll: true })');
   });
   test('marks secret cells as password inputs', () => {
     const { container } = render(KeyValueEditor, {

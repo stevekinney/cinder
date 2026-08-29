@@ -41,6 +41,14 @@
   function update(index: number, field: 'key' | 'value', value: string) {
     commit(rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
+  async function addRow(): Promise<void> {
+    const newIndex = rows.length;
+    commit([...rows, { key: '', value: '' }]);
+    await tick();
+    editorElement
+      ?.querySelectorAll<HTMLInputElement>('input')
+      [newIndex * 2]?.focus({ preventScroll: true });
+  }
   async function removeRow(index: number): Promise<void> {
     commit(rows.filter((_, i) => i !== index));
     await tick();
@@ -98,6 +106,6 @@
     variant="secondary"
     size="sm"
     class="cinder-key-value-editor__add"
-    onclick={() => commit([...rows, { key: '', value: '' }])}>{addLabel}</Button
+    onclick={addRow}>{addLabel}</Button
   >
 </div>

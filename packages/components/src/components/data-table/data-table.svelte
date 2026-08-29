@@ -92,6 +92,11 @@
   );
   const selectionEnabled = $derived(selectable !== 'none');
   const selectedRowIdSet = $derived(new Set(selectedRowIds));
+  const resizableTableWidth = $derived(
+    resizable
+      ? columns.reduce((total, column) => total + boundedColumnWidth(column), 0)
+      : undefined,
+  );
   const selectableRowIds = $derived(
     rows
       .map((row, index) => ({
@@ -154,22 +159,25 @@
   function rawColumnWidth(column: DataTableColumn<Row>): number | undefined {
     return columnWidths[column.key] ?? column.width;
   }
+  function columnWidthBounds(column: DataTableColumn<Row>): { min: number; max: number } {
+    const first = Number.isFinite(column.minWidth) ? Math.max(0, column.minWidth!) : 60;
+    const second = Number.isFinite(column.maxWidth) ? Math.max(0, column.maxWidth!) : Infinity;
+    return { min: Math.min(first, second), max: Math.max(first, second) };
+  }
   function boundedColumnWidth(
     column: DataTableColumn<Row>,
     width = rawColumnWidth(column) ?? 150,
   ): number {
-    const minWidth = Number.isFinite(column.minWidth) ? column.minWidth! : 60;
-    const maxWidth = Number.isFinite(column.maxWidth) ? column.maxWidth! : Infinity;
+    const { min, max } = columnWidthBounds(column);
     const finiteWidth = Number.isFinite(width) ? width : 150;
-    return Math.min(maxWidth, Math.max(minWidth, finiteWidth));
+    return Math.min(max, Math.max(min, finiteWidth));
   }
   function columnAriaMax(column: DataTableColumn<Row>): number {
-    return Number.isFinite(column.maxWidth)
-      ? Math.max(0, column.maxWidth!)
-      : Number.MAX_SAFE_INTEGER;
+    const { max } = columnWidthBounds(column);
+    return Number.isFinite(max) ? max : Number.MAX_SAFE_INTEGER;
   }
   function columnAriaMin(column: DataTableColumn<Row>): number {
-    return Number.isFinite(column.minWidth) ? Math.max(0, column.minWidth!) : 60;
+    return columnWidthBounds(column).min;
   }
   function columnWidth(column: DataTableColumn<Row>): number | undefined {
     const width = rawColumnWidth(column);
@@ -681,6 +689,7 @@
   data-cinder-resizable={resizable || undefined}
   data-cinder-selectable={selectionEnabled || undefined}
   style:--cinder-data-table-height={shouldVirtualizeRows ? height : undefined}
+  style:--_cinder-data-table-width={resizableTableWidth ? `${resizableTableWidth}px` : undefined}
   style:--_cinder-data-table-row-height={shouldVirtualizeRows
     ? `${resolvedRowHeight}px`
     : undefined}

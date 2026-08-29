@@ -97,6 +97,10 @@
       )
     );
   }
+  function dragstart(event: DragEvent & { currentTarget: HTMLDivElement }) {
+    if (isInteractiveTarget(event.target)) return;
+    event.preventDefault();
+  }
   function pointerdown(event: PointerEvent & { currentTarget: HTMLDivElement }) {
     if (isInteractiveTarget(event.target)) {
       consumerOnpointerdown?.(event);
@@ -177,6 +181,7 @@
   aria-label={ariaLabel}
   tabindex="0"
   onkeydown={keydown}
+  ondragstart={dragstart}
   onwheel={(event) => {
     if (event.deltaY === 0) {
       consumerOnwheel?.(event);

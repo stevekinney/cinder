@@ -28,6 +28,9 @@
   }: CitationProps = $props();
   let page = $state(0);
   let open = $state(false);
+  let markerElement = $state<HTMLButtonElement | null>(null);
+  let preserveMarkerForClose = $state(false);
+  const markerDisabled = $derived(sources.length === 0 && !preserveMarkerForClose);
   const source = $derived(sources[page]);
   const safeSourceUrl = $derived.by(() => {
     const url = source?.url?.trim();
@@ -47,19 +50,33 @@
   $effect(() => {
     if (sources.length === 0) {
       page = 0;
-      open = false;
+      if (open) {
+        preserveMarkerForClose = true;
+        open = false;
+      }
     } else if (page >= sources.length) {
       page = sources.length - 1;
+      preserveMarkerForClose = false;
+    } else if (preserveMarkerForClose) {
+      preserveMarkerForClose = false;
     }
   });
 </script>
 
 <span class={classNames('cinder-citation', customClassName)} {...rest}
-  ><Popover bind:open {label}>
+  ><Popover
+    bind:open
+    {label}
+    triggerRef={markerElement}
+    onExitComplete={() => {
+      preserveMarkerForClose = false;
+    }}
+  >
     {#snippet trigger()}<button
+        bind:this={markerElement}
         type="button"
         class="cinder-citation__marker"
-        disabled={sources.length === 0}
+        disabled={markerDisabled}
         onclick={() => {
           if (sources.length > 0) open = !open;
         }}

@@ -58,6 +58,14 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('before\u009d8;;https://example.com\u009clinkedafter')).toEqual([
       [{ text: 'beforelinkedafter', bold: false }],
     ]));
+  test('consumes DCS payloads through ST without rendering them', () => {
+    expect(parseTerminalOutput('before\u001bP1;2|hidden\u001b\\after')).toEqual([
+      [{ text: 'beforeafter', bold: false }],
+    ]);
+    expect(parseTerminalOutput('before\u00901;2|hidden\u009cafter')).toEqual([
+      [{ text: 'beforeafter', bold: false }],
+    ]);
+  });
   test('consumes terminal-title OSC sequences terminated by BEL or ST', () =>
     expect(
       parseTerminalOutput('before\u001b]0;title\u0007middle\u001b]2;title\u001b\\after'),

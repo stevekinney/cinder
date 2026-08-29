@@ -60,7 +60,8 @@
       return promise;
     },
     dismiss(id) {
-      finish(id, undefined);
+      const entry = entries.find((candidate) => candidate.id === id && !candidate.settled);
+      if (entry) finishEntry(entry.key, entry.confirmation ? false : undefined);
     },
     confirm(options) {
       if (destroyed) return Promise.resolve(false);
@@ -93,14 +94,6 @@
       return promise;
     },
   };
-
-  function finish(id: string | undefined, value: unknown): void {
-    const entry = entries.find(
-      (candidate) => candidate.id === (id ?? entries.at(-1)?.id) && !candidate.settled,
-    );
-    if (!entry || entry.settled) return;
-    finishEntry(entry.key, value);
-  }
 
   function finishEntry(key: number, value: unknown): void {
     const entry = entries.find((candidate) => candidate.key === key && !candidate.settled);

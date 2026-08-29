@@ -230,6 +230,18 @@ describe('DataTable — column resizing', () => {
     expect(container.querySelector('thead th')?.getAttribute('style')).toContain('width: 150px');
   });
 
+  test('normalizes contradictory finite width bounds for sizing and ARIA', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 150, minWidth: 200, maxWidth: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    expect(separator.getAttribute('aria-valuemin')).toBe('100');
+    expect(separator.getAttribute('aria-valuemax')).toBe('200');
+    expect(separator.getAttribute('aria-valuenow')).toBe('150');
+  });
+
   test('clamps the initial rendered column width to its bounds', () => {
     const { container, getByRole } = render(DataTable, {
       columns: [{ key: 'name', label: 'Name', width: 40, minWidth: 80, maxWidth: 120 }],
@@ -286,6 +298,11 @@ describe('DataTable — column resizing', () => {
     ).toBe(true);
     expect(css).toContain('.cinder-data-table[data-cinder-resizable] .cinder-table');
     expect(css).toContain('table-layout: fixed;');
+    expect(css).toContain('inline-size: var(--_cinder-data-table-width);');
+    expect(css).toContain('min-inline-size: var(--_cinder-data-table-width);');
+    expect(container.querySelector('.cinder-data-table')?.getAttribute('style')).toContain(
+      '--_cinder-data-table-width: 100px',
+    );
   });
 });
 

@@ -74,6 +74,8 @@
 
   .cinder-data-table[data-cinder-resizable] .cinder-table {
     table-layout: fixed;
+    inline-size: var(--_cinder-data-table-width);
+    min-inline-size: var(--_cinder-data-table-width);
   }
 
   @media (forced-colors: active) {

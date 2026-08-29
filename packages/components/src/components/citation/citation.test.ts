@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -104,5 +105,25 @@ describe('Citation', () => {
     await waitFor(() => expect(document.querySelector('section')).toBeNull());
     await rerender({ sources: [{ label: 'Replenished' }] });
     expect(document.querySelector('section')).toBeNull();
+  });
+
+  test('restores focus to the citation marker when open sources become empty', async () => {
+    const { container, rerender } = render(Citation, {
+      sources: [{ label: 'One' }],
+    });
+    const marker = container.querySelector<HTMLButtonElement>('.cinder-citation__marker')!;
+
+    await fireEvent.click(marker);
+    await waitFor(() => expect(document.querySelector('section strong')).not.toBeNull());
+    await rerender({ sources: [] });
+    await waitFor(() => expect(document.querySelector('section')).toBeNull());
+
+    expect(document.activeElement).toBe(marker);
+  });
+
+  test('composes Popover styles through the citation entry point', () => {
+    const stylesheet = readFileSync(new URL('./citation.css', import.meta.url), 'utf8');
+
+    expect(stylesheet).toContain("@import '../popover/popover.css';");
   });
 });

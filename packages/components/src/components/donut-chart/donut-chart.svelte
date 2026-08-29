@@ -40,7 +40,13 @@
     if (maximumValue === 0) return 0;
     return normalizedData.reduce((sum, datum) => sum + datum.value / maximumValue, 0);
   });
-  const finiteTotal = $derived(Number.isFinite(total) ? total : Number.MAX_VALUE);
+  const totalLabel = $derived.by(() => {
+    if (Number.isFinite(total)) return String(total);
+    if (maximumValue === 0 || arcTotal === 0) return '0';
+    const exponent = Math.floor(Math.log10(maximumValue));
+    const mantissa = (maximumValue / 10 ** exponent) * arcTotal;
+    return `${mantissa.toPrecision(16)}e+${exponent}`;
+  });
   const arcs = $derived.by(() => {
     let offset = 0;
     return normalizedData.map((datum, index) => {
@@ -100,10 +106,23 @@
             d={arcPath(arc.start, arc.end)}
             pathLength="1"
             stroke={seriesColor(arc.datum.color, arc.index)}
-          ></path></g
+          ></path>{#if interactive}<g
+              class="cinder-donut-chart__focus-ring-layer"
+              aria-hidden="true"
+            >
+              <path
+                class="cinder-donut-chart__focus-ring-halo"
+                d={arcPath(arc.start, arc.end)}
+                pathLength="1"
+              ></path>
+              <path
+                class="cinder-donut-chart__focus-ring"
+                d={arcPath(arc.start, arc.end)}
+                pathLength="1"
+              ></path>
+            </g>{/if}</g
         >{/each}
-      <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total"
-        >{finiteTotal}</text
+      <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total">{totalLabel}</text
       >{#if centerLabel}<text x="100" y="116" text-anchor="middle" class="cinder-donut-chart__label"
           >{centerLabel}</text
         >{/if}
