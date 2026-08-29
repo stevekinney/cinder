@@ -56,6 +56,7 @@
     density = 'comfortable',
     scrollable = false,
     resizable = false,
+    onColumnResize,
     virtualized = false,
     rowHeight = 44,
     overscan = 5,
@@ -151,17 +152,38 @@
   function columnWidth(column: DataTableColumn<Row>): number | undefined {
     return columnWidths[column.key] ?? column.width;
   }
+  function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
+    const nextWidth = Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+    columnWidths = { ...columnWidths, [column.key]: nextWidth };
+    onColumnResize?.(column.key, nextWidth);
+  }
   function handleResizeKey(event: KeyboardEvent, column: DataTableColumn<Row>): void {
     if (!resizable || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     event.preventDefault();
     const current = columnWidth(column) ?? 150;
-    columnWidths = {
-      ...columnWidths,
-      [column.key]: Math.min(
-        column.maxWidth ?? Infinity,
-        Math.max(column.minWidth ?? 60, current + (event.key === 'ArrowRight' ? 10 : -10)),
-      ),
+    setColumnWidth(column, current + (event.key === 'ArrowRight' ? 10 : -10));
+  }
+  function handleResizePointer(event: PointerEvent, column: DataTableColumn<Row>): void {
+    if (!resizable || event.button !== 0) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = columnWidth(column) ?? 150;
+    const handle = event.currentTarget as HTMLElement;
+    handle.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== event.pointerId) return;
+      setColumnWidth(column, startWidth + moveEvent.clientX - startX);
     };
+    const end = (endEvent: PointerEvent) => {
+      if (endEvent.pointerId !== event.pointerId) return;
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', end);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
   }
 
   function resolveRowId(row: Row, index: number): string {
@@ -483,14 +505,22 @@
             style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
           >
             {column.label}
-            {#if resizable}<div
+            {#if resizable}
+              <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+              <div
                 class="cinder-data-table__column-resizer"
                 role="separator"
                 aria-orientation="vertical"
                 aria-label={`Resize ${column.label} column`}
+                aria-valuemin={column.minWidth ?? 60}
+                aria-valuemax={column.maxWidth}
+                aria-valuenow={columnWidth(column) ?? 150}
                 tabindex="0"
                 onkeydown={(event) => handleResizeKey(event, column)}
-              ></div>{/if}
+                onpointerdown={(event) => handleResizePointer(event, column)}
+              ></div>
+            {/if}
           </TableHeaderCell>
         {/each}
       </TableRow>

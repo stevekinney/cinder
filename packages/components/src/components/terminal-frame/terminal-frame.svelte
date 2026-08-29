@@ -51,14 +51,14 @@
       if (columns === previousColumns && rows === previousRows) return;
       previousColumns = columns;
       previousRows = rows;
-      onresize({ columns, rows });
+      onresize({ cols: columns, rows });
     });
     observer.observe(viewport);
     return () => observer.disconnect();
   });
 </script>
 
-<section
+<div
   {...rest}
   class={classNames('cinder-terminal-frame', customClassName)}
   data-status={status}
@@ -86,4 +86,4 @@
   <div class="cinder-terminal-frame__viewport" bind:this={viewport}>
     {@render children()}
   </div>
-</section>
+</div>

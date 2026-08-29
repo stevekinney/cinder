@@ -72,7 +72,9 @@
       originY = y;
     } else if (pointers.size === 2) {
       const values = [...pointers.values()];
-      pinchDistance = Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+      const first = values[0];
+      const second = values[1];
+      if (first && second) pinchDistance = Math.hypot(first.x - second.x, first.y - second.y);
       dragging = false;
     }
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
@@ -82,7 +84,10 @@
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.size >= 2) {
       const values = [...pointers.values()];
-      const distance = Math.hypot(values[0].x - values[1].x, values[0].y - values[1].y);
+      const first = values[0];
+      const second = values[1];
+      if (!first || !second) return;
+      const distance = Math.hypot(first.x - second.x, first.y - second.y);
       if (pinchDistance) zoomAt(distance / pinchDistance);
       pinchDistance = distance;
     } else if (dragging)

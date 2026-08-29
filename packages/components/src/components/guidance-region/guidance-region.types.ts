@@ -5,5 +5,7 @@ export type GuidanceRegionProps = {
   version?: string;
   storage?: GuidanceStorage;
   storageKey?: string;
+  /** Resolves a claim anchor using consumer-owned DOM knowledge. */
+  anchorResolver?: (anchor: string) => HTMLElement | null;
   children?: Snippet;
 };

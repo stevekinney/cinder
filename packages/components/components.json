@@ -1785,20 +1785,19 @@
       "category": "data-display",
       "status": "beta",
       "purpose": "Displays categorical proportions as an accessible donut with an optional center total.",
-      "tags": ["donut-chart"],
+      "tags": ["chart"],
       "useWhen": ["Showing a small number of parts-of-whole categories."],
       "avoidWhen": [
         {
-          "reason": "Comparing many categories or precise values — use BarChart with its data table."
+          "reason": "Comparing many categories or precise values; use BarChart."
         }
       ],
       "related": [],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/donut-chart/schema",
-        "variables": "@lostgradient/cinder/donut-chart/variables",
-        "examples": "@lostgradient/cinder/donut-chart/examples"
+        "variables": "@lostgradient/cinder/donut-chart/variables"
       }
     },
     {
@@ -2233,9 +2232,7 @@
       "status": "beta",
       "purpose": "Docked, backend-agnostic find controls with debounced query notifications and match navigation.",
       "tags": ["find-bar"],
-      "useWhen": [
-        "Providing find-in-document or find-in-view controls backed by a host search implementation."
-      ],
+      "useWhen": ["Providing find-in-document controls backed by a host search implementation."],
       "avoidWhen": [
         {
           "reason": "Building a general search field with suggestions — use SearchField or Combobox."
@@ -2243,11 +2240,10 @@
       ],
       "related": ["input", "form-field", "button"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/find-bar/schema",
-        "variables": "@lostgradient/cinder/find-bar/variables",
-        "examples": "@lostgradient/cinder/find-bar/examples"
+        "variables": "@lostgradient/cinder/find-bar/variables"
       }
     },
     {
@@ -2531,21 +2527,16 @@
       "exportName": "GuidanceRegion",
       "category": "data-display",
       "status": "beta",
-      "purpose": "TODO: one-sentence description of what GuidanceRegion renders and when to reach for it.",
-      "tags": ["guidance-region"],
-      "useWhen": ["TODO: describe a scenario where GuidanceRegion is the right choice."],
-      "avoidWhen": [
-        {
-          "reason": "TODO: describe when a different component fits better."
-        }
-      ],
+      "purpose": "Context-scoped registry for versioned, dismissible product guidance claims.",
+      "tags": [],
+      "useWhen": [],
+      "avoidWhen": [],
       "related": [],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/guidance-region/schema",
-        "variables": "@lostgradient/cinder/guidance-region/variables",
-        "examples": "@lostgradient/cinder/guidance-region/examples"
+        "variables": "@lostgradient/cinder/guidance-region/variables"
       }
     },
     {
@@ -2631,6 +2622,25 @@
         "schema": "@lostgradient/cinder/image/schema",
         "variables": "@lostgradient/cinder/image/variables",
         "examples": "@lostgradient/cinder/image/examples"
+      }
+    },
+    {
+      "name": "InlineConfirm",
+      "id": "inline-confirm",
+      "import": "@lostgradient/cinder/inline-confirm",
+      "exportName": "InlineConfirm",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "In-flow confirmation for reversible actions without modal interruption.",
+      "tags": [],
+      "useWhen": [],
+      "avoidWhen": [],
+      "related": [],
+      "hasConstraints": false,
+      "hasExamples": false,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/inline-confirm/schema",
+        "variables": "@lostgradient/cinder/inline-confirm/variables"
       }
     },
     {
@@ -2885,21 +2895,20 @@
       "exportName": "KeyValueEditor",
       "category": "data-display",
       "status": "beta",
-      "purpose": "Edits a list of string key/value pairs with optional masked secret values.",
+      "purpose": "Edits string key/value pairs and masks values selected as secrets.",
       "tags": ["key-value-editor"],
       "useWhen": ["Editing headers, environment variables, or configuration fields."],
       "avoidWhen": [
         {
-          "reason": "Values need rich structured content — use the compositional Table family."
+          "reason": "Values need rich structured content; use Table."
         }
       ],
       "related": [],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/key-value-editor/schema",
-        "variables": "@lostgradient/cinder/key-value-editor/variables",
-        "examples": "@lostgradient/cinder/key-value-editor/examples"
+        "variables": "@lostgradient/cinder/key-value-editor/variables"
       }
     },
     {
@@ -3362,23 +3371,16 @@
       "exportName": "ModalRegion",
       "category": "overlay",
       "status": "beta",
-      "purpose": "Context-scoped host for imperative modal registration, singleton deduplication, and promise-returning confirmations.",
-      "tags": ["overlay", "dialog"],
-      "useWhen": [
-        "Descendants need to open declarative Modal-based components without hoisting local open state through the application tree."
-      ],
-      "avoidWhen": [
-        {
-          "reason": "A single nearby trigger owns one modal — keep that Modal declarative beside its trigger."
-        }
-      ],
-      "related": ["modal", "confirm-dialog", "toast-region"],
+      "purpose": "Context-scoped host for imperative Modal registration and promise-returning confirmations.",
+      "tags": [],
+      "useWhen": [],
+      "avoidWhen": [],
+      "related": [],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/modal-region/schema",
-        "variables": "@lostgradient/cinder/modal-region/variables",
-        "examples": "@lostgradient/cinder/modal-region/examples"
+        "variables": "@lostgradient/cinder/modal-region/variables"
       }
     },
     {
@@ -5587,23 +5589,24 @@
       "id": "terminal-frame",
       "import": "@lostgradient/cinder/terminal-frame",
       "exportName": "TerminalFrame",
-      "category": "data-display",
-      "status": "beta",
-      "purpose": "Terminal shell chrome for consumer-owned PTY output, with title, status, errors, reload, and resize reporting.",
-      "tags": ["terminal-frame"],
-      "useWhen": ["Wrapping TerminalOutput around a real consumer-owned PTY."],
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Frame a consumer-owned real PTY with terminal chrome, connection status, reload handling, and character-cell resize reporting.",
+      "tags": ["terminal", "pty", "shell"],
+      "useWhen": [
+        "Hosting a real interactive terminal implementation that needs consistent chrome and resize dimensions."
+      ],
       "avoidWhen": [
         {
-          "reason": "You need process management or an interactive terminal emulator."
+          "reason": "Rendering a read-only stream — use TerminalOutput."
         }
       ],
-      "related": [],
+      "related": ["terminal-output", "preview-panel"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/terminal-frame/schema",
-        "variables": "@lostgradient/cinder/terminal-frame/variables",
-        "examples": "@lostgradient/cinder/terminal-frame/examples"
+        "variables": "@lostgradient/cinder/terminal-frame/variables"
       }
     },
     {
@@ -5611,23 +5614,24 @@
       "id": "terminal-output",
       "import": "@lostgradient/cinder/terminal-output",
       "exportName": "TerminalOutput",
-      "category": "data-display",
-      "status": "beta",
-      "purpose": "Read-only ANSI terminal output with safe SGR color parsing and append-only log rendering.",
-      "tags": ["terminal-output"],
-      "useWhen": ["Rendering output from a consumer-owned process or PTY."],
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Render a read-only terminal stream with a bounded subset of ANSI SGR color and line-rewrite behavior.",
+      "tags": ["terminal", "ansi", "output"],
+      "useWhen": [
+        "Showing command output or logs that include basic ANSI styling and carriage-return progress updates."
+      ],
       "avoidWhen": [
         {
-          "reason": "You need an interactive terminal emulator, cursor input, or terminal addons."
+          "reason": "Hosting an interactive real PTY — use terminal-frame."
         }
       ],
-      "related": [],
+      "related": ["terminal-frame", "code-block"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/terminal-output/schema",
-        "variables": "@lostgradient/cinder/terminal-output/variables",
-        "examples": "@lostgradient/cinder/terminal-output/examples"
+        "variables": "@lostgradient/cinder/terminal-output/variables"
       }
     },
     {
@@ -6036,11 +6040,10 @@
       ],
       "related": ["image", "button"],
       "hasConstraints": false,
-      "hasExamples": true,
+      "hasExamples": false,
       "artifacts": {
         "schema": "@lostgradient/cinder/zoom-pan-viewer/schema",
-        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables",
-        "examples": "@lostgradient/cinder/zoom-pan-viewer/examples"
+        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables"
       }
     }
   ]

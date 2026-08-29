@@ -20,21 +20,19 @@ entering or leaving the top layer, or making previously static content
 interactive.
 
 - Applies: No—this is a non-interactive timestamp.
-- Reviewer: _Pending when this review applies._
-- Review outcome: _Pending when this review applies._
+- Reviewer: Not applicable.
+- Review outcome: No novel interaction review required.
 
 ### Focus management
 
-_Record initial focus, focus movement, dismissal, restoration, and behavior
-when the trigger or focused target disappears._
+Not applicable; the component is not focusable or interactive.
 
 ### Keyboard matrix
 
-| Key or gesture | Context | Expected behavior |
-| -------------- | ------- | ----------------- |
-| _Pending_      |         |                   |
+| Key or gesture | Context          | Expected behavior        |
+| -------------- | ---------------- | ------------------------ |
+| None           | Static timestamp | No keyboard interaction. |
 
 ### Assistive-technology announcements
 
-_Record the accessible name, role, state, live-region announcements, and the
-screen-reader/browser combinations reviewed._
+The native `time` element exposes the machine-readable timestamp through `datetime`; its localized text is the accessible content and does not use a live region.

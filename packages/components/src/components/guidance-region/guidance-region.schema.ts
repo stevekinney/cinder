@@ -1,1 +1,38 @@
-export default { type: 'object', properties: {} } as const;
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    version: {
+      type: 'string',
+    },
+    storageKey: {
+      type: 'string',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'anchorResolver',
+        reason: 'function-or-snippet',
+        description: 'Resolves a claim anchor using consumer-owned DOM knowledge.',
+      },
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'claims',
+        reason: 'unknown-shape',
+      },
+      {
+        name: 'storage',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

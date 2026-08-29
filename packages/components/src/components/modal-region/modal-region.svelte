@@ -53,7 +53,7 @@
     },
     confirm(options) {
       const id = options.id ?? `cinder-confirm-${++sequence}`;
-      return api.openModal(ConfirmDialog, {
+      const promise = api.openModal(ConfirmDialog, {
         ...options,
         id,
         open: true,
@@ -61,6 +61,12 @@
         onConfirm: () => finish(id, true),
         onCancel: () => finish(id, false),
       }) as Promise<boolean>;
+      const entry = entries.find((candidate) => candidate.id === id);
+      if (entry) {
+        entry.ownsModal = true;
+        entries = [...entries];
+      }
+      return promise;
     },
   };
 
@@ -82,11 +88,15 @@
 {@render children?.()}
 {#each entries as entry (entry.id)}
   {@const Component = entry.component}
-  <Modal
-    open={true}
-    title={typeof entry.props['title'] === 'string' ? entry.props['title'] : 'Dialog'}
-    onDismiss={() => finish(entry.id, false)}
-  >
+  {#if entry.ownsModal}
     <Component {...entry.props} open={true} />
-  </Modal>
+  {:else}
+    <Modal
+      open={true}
+      title={typeof entry.props['title'] === 'string' ? entry.props['title'] : 'Dialog'}
+      onDismiss={() => finish(entry.id, false)}
+    >
+      <Component {...entry.props} open={true} />
+    </Modal>
+  {/if}
 {/each}

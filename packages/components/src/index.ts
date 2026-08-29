@@ -300,12 +300,6 @@ export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/
 export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
 export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
 
-export { default as DonutChart } from './components/donut-chart/index.ts';
-export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
-
-export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
-export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
-
 export { default as DatePicker } from './components/date-picker/index.ts';
 export type { DatePickerGranularity, DatePickerProps } from './components/date-picker/index.ts';
 
@@ -438,12 +432,6 @@ export { default as FindBar } from './components/find-bar/index.ts';
 export type { FindBarProps } from './components/find-bar/index.ts';
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
-export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
-export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';
-
-export { default as FindBar } from './components/find-bar/index.ts';
-export type { FindBarProps } from './components/find-bar/index.ts';
-
 export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
 export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';
 

@@ -40,4 +40,26 @@ describe('RelativeTime', () => {
     expect(element?.getAttribute('class')).toContain('cinder-relative-time');
     expect(element?.getAttribute('class')).toContain('my-custom-class');
   });
+
+  test('formats signed past and future deltas with Intl.RelativeTimeFormat', () => {
+    const realNow = Date.now;
+    Date.now = () => Date.UTC(2026, 0, 2, 12);
+    try {
+      const past = render(RelativeTime, {
+        date: Date.UTC(2026, 0, 2, 11),
+        locale: 'en',
+        tick: false,
+      });
+      expect(past.container.querySelector('time')?.textContent).toBe('1 hour ago');
+      past.unmount();
+      const future = render(RelativeTime, {
+        date: Date.UTC(2026, 0, 2, 13),
+        locale: 'en',
+        tick: false,
+      });
+      expect(future.container.querySelector('time')?.textContent).toBe('in 1 hour');
+    } finally {
+      Date.now = realNow;
+    }
+  });
 });

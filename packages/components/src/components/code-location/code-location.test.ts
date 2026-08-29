@@ -25,7 +25,10 @@ function textSnippet(text: string) {
 
 describe('CodeLocation', () => {
   test('renders the cinder-code-location wrapper with its children', () => {
-    const { container } = render(CodeLocation, { children: textSnippet('content') });
+    const { container } = render(CodeLocation, {
+      file: 'src/index.ts',
+      children: textSnippet('content'),
+    });
     const element = container.querySelector('.cinder-code-location');
     expect(element).not.toBeNull();
     expect(element?.textContent).toContain('content');
@@ -34,10 +37,20 @@ describe('CodeLocation', () => {
   test('merges a custom class alongside cinder-code-location', () => {
     const { container } = render(CodeLocation, {
       children: textSnippet('content'),
+      file: 'src/index.ts',
       class: 'my-custom-class',
     });
     const element = container.querySelector('.cinder-code-location');
     expect(element?.getAttribute('class')).toContain('cinder-code-location');
     expect(element?.getAttribute('class')).toContain('my-custom-class');
+  });
+
+  test('formats file, line, and column as a code location', () => {
+    const { container } = render(CodeLocation, {
+      file: 'src/index.ts',
+      line: 42,
+      column: 7,
+    });
+    expect(container.querySelector('code')?.textContent).toBe('src/index.ts:42:7');
   });
 });

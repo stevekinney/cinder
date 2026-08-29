@@ -117,6 +117,8 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
   scrollable?: boolean;
   /** Enables pointer and keyboard resizing handles in column headers. */
   resizable?: boolean;
+  /** Called after a column width changes through a pointer or keyboard resize handle. */
+  onColumnResize?: (columnKey: string, width: number) => void;
   /**
    * When true, renders only the visible `<tbody>` row window plus spacer rows.
    * Requires a fixed row height. This is intended for large, append-only tables

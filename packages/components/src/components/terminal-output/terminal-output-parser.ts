@@ -1,5 +1,23 @@
 import type { TerminalForeground, TerminalLine, TerminalTextRun } from './terminal-output.types.ts';
-type Cell = { character: string; foreground?: TerminalForeground; bold?: boolean };
+type Cell = { character: string; foreground?: TerminalForeground; bold: boolean };
+const foregroundBySgrCode = new Map<number, TerminalForeground>([
+  [30, 0],
+  [31, 1],
+  [32, 2],
+  [33, 3],
+  [34, 4],
+  [35, 5],
+  [36, 6],
+  [37, 7],
+  [90, 8],
+  [91, 9],
+  [92, 10],
+  [93, 11],
+  [94, 12],
+  [95, 13],
+  [96, 14],
+  [97, 15],
+]);
 export function parseTerminalOutput(value: string): TerminalLine[] {
   const lines: Cell[][] = [[]];
   let line = 0;
@@ -24,8 +42,7 @@ export function parseTerminalOutput(value: string): TerminalLine[] {
             } else if (code === 1) bold = true;
             else if (code === 22) bold = false;
             else if (code === 39) foreground = undefined;
-            else if (code >= 30 && code <= 37) foreground = (code - 30) as TerminalForeground;
-            else if (code >= 90 && code <= 97) foreground = (code - 82) as TerminalForeground;
+            else if (foregroundBySgrCode.has(code)) foreground = foregroundBySgrCode.get(code);
           }
         i = end;
         continue;
@@ -41,7 +58,12 @@ export function parseTerminalOutput(value: string): TerminalLine[] {
       column = 0;
       continue;
     }
-    lines[line][column++] = { character: c, foreground, bold };
+    const currentLine = lines[line] ?? (lines[line] = []);
+    currentLine[column++] = {
+      character: c,
+      ...(foreground === undefined ? {} : { foreground }),
+      bold,
+    };
   }
   return lines.map((cells) => {
     const runs: TerminalTextRun[] = [];
@@ -50,7 +72,12 @@ export function parseTerminalOutput(value: string): TerminalLine[] {
       const prev = runs.at(-1);
       if (prev && prev.foreground === cell.foreground && prev.bold === cell.bold)
         prev.text += cell.character;
-      else runs.push({ text: cell.character, foreground: cell.foreground, bold: cell.bold });
+      else
+        runs.push({
+          text: cell.character,
+          ...(cell.foreground === undefined ? {} : { foreground: cell.foreground }),
+          bold: cell.bold,
+        });
     }
     return runs;
   });

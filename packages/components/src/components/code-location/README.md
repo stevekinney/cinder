@@ -2,7 +2,7 @@
 
 <!-- generated:a11y-record:required -->
 
-TODO: one-line purpose statement for CodeLocation.
+`CodeLocation` formats a file path and optional line and column as a compact source-location chip.
 
 ## Usage
 

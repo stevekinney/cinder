@@ -8,6 +8,7 @@ export type ModalEntry = {
   props: Record<string, unknown>;
   resolve: (value: unknown) => void;
   promise?: Promise<unknown>;
+  ownsModal?: boolean;
 };
 
 export type ModalApi = {

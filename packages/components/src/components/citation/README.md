@@ -2,7 +2,7 @@
 
 <!-- generated:a11y-record:required -->
 
-TODO: one-line purpose statement for Citation.
+`Citation` pairs an inline source marker with a paginated HoverCard for source details.
 
 ## Usage
 

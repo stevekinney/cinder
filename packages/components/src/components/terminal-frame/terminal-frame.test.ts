@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { TerminalFrameDimensions } from './terminal-frame.types.ts';
 
 setupHappyDom();
 
@@ -49,13 +50,15 @@ describe('TerminalFrame', () => {
     } as unknown as typeof ResizeObserver;
 
     try {
-      const dimensions: Array<{ columns: number; rows: number }> = [];
+      const dimensions: Array<{ cols: number; rows: number }> = [];
       render(TerminalFrame, {
         props: {
           title: 'Shell',
           columnWidth: 10,
           rowHeight: 20,
-          onresize: (value) => dimensions.push(value),
+          onresize: (value: TerminalFrameDimensions) => {
+            dimensions.push(value);
+          },
           children,
         },
       });
@@ -63,7 +66,7 @@ describe('TerminalFrame', () => {
       const entry = { contentRect: { width: 805, height: 405 } } as ResizeObserverEntry;
       callback?.([entry], {} as ResizeObserver);
       callback?.([entry], {} as ResizeObserver);
-      expect(dimensions).toEqual([{ columns: 80, rows: 20 }]);
+      expect(dimensions).toEqual([{ cols: 80, rows: 20 }]);
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
     }

@@ -1,3 +1,4 @@
+import './citation.css';
 import Citation from './citation.svelte';
 
 export default Citation;

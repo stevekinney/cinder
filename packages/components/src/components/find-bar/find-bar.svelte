@@ -13,6 +13,7 @@
 
 <script lang="ts">
   import type { Attachment } from 'svelte/attachments';
+  import { onDestroy } from 'svelte';
   import FormField from '../form-field/form-field.svelte';
   import Input from '../input/input.svelte';
   import Button from '../button/button.svelte';
@@ -20,21 +21,23 @@
   import { classNames } from '../../utilities/class-names.ts';
   import type { FindBarProps } from './find-bar.types.ts';
   let {
-    query = $bindable(''),
-    total = $bindable(),
-    match = $bindable(),
+    value = $bindable(''),
+    matchCount = $bindable(null),
+    activeIndex = $bindable(0),
     minQueryLength = 3,
     debounceMs = 250,
     onQueryChange,
     onPrevious,
     onNext,
-    onClose,
+    onDismiss,
     label = 'Find',
     class: customClassName,
     id,
     ...rest
   }: FindBarProps = $props();
   let timer: ReturnType<typeof setTimeout> | undefined;
+  const generatedId = $props.id();
+  const inputId = $derived(id ?? generatedId);
   let lastKeystroke = 0;
   let inputNode = $state<HTMLInputElement | null>(null);
   const inputAttachment: Attachment<HTMLInputElement> = (element) => {
@@ -44,14 +47,14 @@
     };
   };
   function handleInput(event: Event) {
-    query = (event.currentTarget as HTMLInputElement).value;
-    total = undefined;
-    match = undefined;
+    value = (event.currentTarget as HTMLInputElement).value;
+    matchCount = null;
+    activeIndex = 0;
     lastKeystroke = Date.now();
     if (timer) clearTimeout(timer);
     timer = setTimeout(() => {
       timer = undefined;
-      if (query.trim().length >= minQueryLength) onQueryChange?.(query);
+      if (value.trim().length >= minQueryLength) onQueryChange?.(value);
     }, debounceMs);
   }
   function handleKeydown(event: KeyboardEvent) {
@@ -60,31 +63,39 @@
       (event.shiftKey ? onPrevious : onNext)?.();
     }
   }
-  function refocus() {
+  function handleInputFocus() {
     if (Date.now() - lastKeystroke > 400) {
       inputNode?.focus();
       inputNode?.select();
     }
   }
   const status = $derived(
-    total === undefined ? '' : total === 0 ? 'No matches' : `${match ?? 1} of ${total}`,
+    value.trim().length < minQueryLength || matchCount === null
+      ? ''
+      : matchCount === 0
+        ? 'No matches'
+        : `${activeIndex + 1} of ${matchCount}`,
   );
+  onDestroy(() => {
+    if (timer) clearTimeout(timer);
+  });
 </script>
 
-<div class={classNames('cinder-find-bar', customClassName)} {...rest} onfocusin={refocus}>
-  <FormField {id} {label} labelVisible={false}
+<div class={classNames('cinder-find-bar', customClassName)} {...rest}>
+  <FormField id={inputId} {label} labelVisible={false}
     >{#snippet children()}<Input
-        {id}
+        id={inputId}
         type="search"
-        value={query}
+        {value}
         {inputAttachment}
-        aria-describedby={`${id ?? 'find'}-description`}
+        aria-describedby={`${inputId}-description`}
         oninput={handleInput}
+        onfocus={handleInputFocus}
         onkeydown={handleKeydown}
         placeholder="Find in page"
       />{/snippet}</FormField
   >
-  <span id={`${id ?? 'find'}-description`} class="cinder-sr-only"
+  <span id={`${inputId}-description`} class="cinder-sr-only"
     >Type at least {minQueryLength} characters to search.</span
   ><span class="cinder-find-bar__status" role="status" aria-live="polite">{status}</span>
   <div class="cinder-find-bar__actions">
@@ -92,11 +103,15 @@
       size="sm"
       variant="ghost"
       aria-label="Previous match"
-      disabled={!total}
+      disabled={!matchCount}
       onclick={onPrevious}>‹</Button
-    ><Button size="sm" variant="ghost" aria-label="Next match" disabled={!total} onclick={onNext}
-      >›</Button
-    ><Button size="sm" variant="ghost" iconOnly aria-label="Close find bar" onclick={onClose}
+    ><Button
+      size="sm"
+      variant="ghost"
+      aria-label="Next match"
+      disabled={!matchCount}
+      onclick={onNext}>›</Button
+    ><Button size="sm" variant="ghost" iconOnly aria-label="Close find bar" onclick={onDismiss}
       ><X /></Button
     >
   </div>

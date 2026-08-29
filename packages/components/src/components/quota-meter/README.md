@@ -2,7 +2,7 @@
 
 <!-- generated:a11y-record:required -->
 
-TODO: one-line purpose statement for QuotaMeter.
+`QuotaMeter` presents quota usage, limits, reset dates, and unlimited states through `Meter`.
 
 ## Usage
 

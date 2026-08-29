@@ -1,24 +1,27 @@
-.cinder-zoom-pan-viewer {
-  position: relative;
-  overflow: hidden;
-  min-block-size: 12rem;
-  outline: none;
-  background: var(--cinder-surface);
-  touch-action: none;
-}
-.cinder-zoom-pan-viewer:focus-visible {
-  outline: 2px solid var(--cinder-focus-ring);
-  outline-offset: -2px;
-}
-.cinder-zoom-pan-viewer__viewport {
-  transform-origin: center;
-  will-change: transform;
-  user-select: none;
-}
-.cinder-zoom-pan-viewer__controls {
-  position: absolute;
-  inset-block-start: var(--cinder-space-2);
-  inset-inline-end: var(--cinder-space-2);
-  display: flex;
-  gap: var(--cinder-space-1);
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-zoom-pan-viewer {
+    position: relative;
+    overflow: hidden;
+    min-block-size: 12rem;
+    outline: none;
+    background: var(--cinder-surface);
+    touch-action: none;
+  }
+  .cinder-zoom-pan-viewer:focus-visible {
+    outline: 2px solid var(--cinder-focus-ring);
+    outline-offset: -2px;
+  }
+  .cinder-zoom-pan-viewer__viewport {
+    transform-origin: center;
+    will-change: transform;
+    user-select: none;
+  }
+  .cinder-zoom-pan-viewer__controls {
+    position: absolute;
+    inset-block-start: var(--cinder-space-2);
+    inset-inline-end: var(--cinder-space-2);
+    display: flex;
+    gap: var(--cinder-space-1);
+  }
 }

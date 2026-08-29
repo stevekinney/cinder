@@ -19,8 +19,9 @@ export type TerminalForeground =
   | 15;
 export type TerminalTextRun = { text: string; foreground?: TerminalForeground; bold?: boolean };
 export type TerminalLine = readonly TerminalTextRun[];
-export type TerminalOutputProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+export type TerminalOutputProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'children'> & {
   value?: string;
+  followLatest?: boolean;
   class?: string;
   children?: Snippet;
 };

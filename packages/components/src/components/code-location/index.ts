@@ -1,3 +1,4 @@
+import './code-location.css';
 import CodeLocation from './code-location.svelte';
 
 export default CodeLocation;

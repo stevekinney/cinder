@@ -25,7 +25,7 @@ function textSnippet(text: string) {
 
 describe('Citation', () => {
   test('renders the cinder-citation wrapper with its children', () => {
-    const { container } = render(Citation, { children: textSnippet('content') });
+    const { container } = render(Citation, { sources: [], children: textSnippet('content') });
     const element = container.querySelector('.cinder-citation');
     expect(element).not.toBeNull();
     expect(element?.textContent).toContain('content');
@@ -34,10 +34,24 @@ describe('Citation', () => {
   test('merges a custom class alongside cinder-citation', () => {
     const { container } = render(Citation, {
       children: textSnippet('content'),
+      sources: [],
       class: 'my-custom-class',
     });
     const element = container.querySelector('.cinder-citation');
     expect(element?.getAttribute('class')).toContain('cinder-citation');
     expect(element?.getAttribute('class')).toContain('my-custom-class');
+  });
+
+  test('names the inline marker with the number of paginated sources', () => {
+    const { container } = render(Citation, {
+      label: 'References',
+      sources: [
+        { label: 'Primary source', url: 'https://example.com/one' },
+        { label: 'Second source', detail: 'Supporting context' },
+      ],
+    });
+    const marker = container.querySelector('.cinder-citation__marker');
+    expect(marker?.getAttribute('aria-label')).toBe('References (2)');
+    expect(marker?.textContent).toBe('[2]');
   });
 });

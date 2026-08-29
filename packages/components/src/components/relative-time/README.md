@@ -2,7 +2,7 @@
 
 <!-- generated:a11y-record:required -->
 
-TODO: one-line purpose statement for RelativeTime.
+`RelativeTime` renders a localized relative timestamp and can keep it current as time passes.
 
 ## Usage
 

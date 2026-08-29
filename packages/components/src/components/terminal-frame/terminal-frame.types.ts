@@ -4,11 +4,14 @@ import type { HTMLAttributes } from 'svelte/elements';
 export type TerminalFrameStatus = 'connecting' | 'connected' | 'disconnected' | 'error';
 
 export type TerminalFrameDimensions = {
-  columns: number;
+  cols: number;
   rows: number;
 };
 
-export type TerminalFrameProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'title'> & {
+export type TerminalFrameProps = Omit<
+  HTMLAttributes<HTMLDivElement>,
+  'class' | 'title' | 'onresize'
+> & {
   title: string;
   status?: TerminalFrameStatus;
   error?: string;

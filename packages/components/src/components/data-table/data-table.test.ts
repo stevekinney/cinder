@@ -92,6 +92,48 @@ describe('DataTable — table structure', () => {
   });
 });
 
+describe('DataTable — column resizing', () => {
+  test('renders keyboard-accessible separators and clamps arrow-key resizing', async () => {
+    const resized: Array<[string, number]> = [];
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100, minWidth: 90, maxWidth: 110 }],
+      rows,
+      resizable: true,
+      onColumnResize: (key: string, width: number) => resized.push([key, width]),
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('100');
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+    expect(resized).toEqual([
+      ['name', 110],
+      ['name', 110],
+    ]);
+  });
+
+  test('resizes from pointer movement and reports the resulting width', async () => {
+    const resized: Array<[string, number]> = [];
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 120 }],
+      rows,
+      resizable: true,
+      onColumnResize: (key: string, width: number) => resized.push([key, width]),
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    Object.defineProperty(separator, 'setPointerCapture', { value: () => {} });
+
+    await fireEvent.pointerDown(separator, { button: 0, clientX: 100, pointerId: 7 });
+    await fireEvent.pointerMove(document, { clientX: 135, pointerId: 7 });
+    await fireEvent.pointerUp(document, { clientX: 135, pointerId: 7 });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('155');
+    expect(resized.at(-1)).toEqual(['name', 155]);
+  });
+});
+
 describe('DataTable — column headers', () => {
   test('renders one <th scope="col"> per column in the header', () => {
     const { container } = render(DataTable, { columns, rows });

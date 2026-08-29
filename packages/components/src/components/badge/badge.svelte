@@ -29,12 +29,7 @@
 
   import { classNames } from '../../utilities/class-names.ts';
 
-  import type {
-    BadgeProps,
-    BadgeSubscriptionState,
-    BadgeVariant,
-    BadgeSeverity,
-  } from './badge.types.ts';
+  import type { BadgeProps, BadgeSubscriptionState, BadgeVariant } from './badge.types.ts';
 
   type SubscriptionStateConfiguration = {
     variant: BadgeVariant;

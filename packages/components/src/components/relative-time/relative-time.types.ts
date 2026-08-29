@@ -1,8 +1,8 @@
 import type { Snippet } from 'svelte';
-import type { HTMLAttributes } from 'svelte/elements';
+import type { HTMLTimeAttributes } from 'svelte/elements';
 
 /** Props for the RelativeTime component. */
-export type RelativeTimeProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
+export type RelativeTimeProps = Omit<HTMLTimeAttributes, 'class' | 'datetime'> & {
   /** Custom class merged with `.cinder-relative-time`. */
   class?: string;
   date?: Date | string | number;

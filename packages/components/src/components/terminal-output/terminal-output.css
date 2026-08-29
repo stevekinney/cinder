@@ -1,3 +1,4 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-terminal-output {
     margin: 0;
@@ -7,6 +8,10 @@
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
     white-space: pre;
+  }
+  .cinder-terminal-output:focus-visible {
+    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
+    outline-offset: calc(var(--cinder-ring-width) * -1);
   }
   .cinder-terminal-output__line {
     min-block-size: 1lh;

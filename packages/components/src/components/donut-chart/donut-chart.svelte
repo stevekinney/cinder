@@ -13,7 +13,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import type { DonutChartDatum, DonutChartProps } from './donut-chart.types.ts';
+  import type { DonutChartProps } from './donut-chart.types.ts';
   let {
     label,
     data,
@@ -42,6 +42,12 @@
       large = end - start > 0.5 ? 1 : 0;
     return `M ${center + radius * Math.cos(startAngle)} ${center + radius * Math.sin(startAngle)} A ${radius} ${radius} 0 ${large} 1 ${center + radius * Math.cos(endAngle)} ${center + radius * Math.sin(endAngle)}`;
   }
+  function handleSeriesKeydown(event: KeyboardEvent, index: number) {
+    if (event.key !== 'Enter' && event.key !== ' ') return;
+    event.preventDefault();
+    const arc = arcs[index];
+    if (arc) onSeriesClick?.(arc.datum, arc.index);
+  }
 </script>
 
 <div
@@ -54,11 +60,12 @@
 >
   <figure aria-label={label}>
     <svg viewBox="0 0 200 200" role="img" aria-label={label}>
-      {#each arcs as arc}<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions --><g
+      {#each arcs as arc}<!-- svelte-ignore a11y_no_noninteractive_tabindex --><g
           role={onSeriesClick ? 'button' : undefined}
           tabindex={onSeriesClick ? 0 : undefined}
           aria-label={onSeriesClick ? `${arc.datum.label}: ${arc.datum.value}` : undefined}
           onclick={() => onSeriesClick?.(arc.datum, arc.index)}
+          onkeydown={(event) => handleSeriesKeydown(event, arc.index)}
           ><path
             class="cinder-donut-chart__arc"
             d={arcPath(arc.start, arc.end)}

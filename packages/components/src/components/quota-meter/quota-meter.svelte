@@ -41,6 +41,5 @@
     max={unlimited ? Math.max(used, 1) : limit}
     ariaLabel={label}
     ariaValueText={valueText}
-    verdict={unlimited ? { level: 'unknown', label: valueText } : undefined}
   />{#if children}{@render children()}{/if}
 </div>
