@@ -1,7 +1,7 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../button/button.css';
 @import '../input/input.css';
 
-@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-find-bar {
     display: flex;
