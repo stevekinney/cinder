@@ -26,7 +26,7 @@
     ...rest
   }: CodeLocationProps = $props();
   const location = $derived(
-    `${file}${line === undefined ? '' : `:${line}`}${column === undefined ? '' : `:${column}`}`,
+    `${file}${line === undefined ? '' : `:${line}${column === undefined ? '' : `:${column}`}`}`,
   );
 </script>
 

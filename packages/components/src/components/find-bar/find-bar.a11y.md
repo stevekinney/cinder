@@ -20,13 +20,13 @@ Focus entering the bar refocuses and selects the query only when the last keystr
 
 ### Keyboard matrix
 
-| Key or gesture  | Context    | Expected behavior                                                  |
-| --------------- | ---------- | ------------------------------------------------------------------ |
-| Enter           | Find input | Invoke next immediately; repeated keydowns continue advancing.     |
-| Shift+Enter     | Find input | Invoke previous immediately; repeated keydowns continue reversing. |
-| Tab / Shift+Tab | Bar        | Native focus order through input and actions.                      |
-| Space / Enter   | Action     | Native button activation.                                          |
+| Key or gesture  | Context    | Expected behavior                                                                           |
+| --------------- | ---------- | ------------------------------------------------------------------------------------------- |
+| Enter           | Find input | Invoke next immediately only when the query meets the minimum length and matches exist.     |
+| Shift+Enter     | Find input | Invoke previous immediately only when the query meets the minimum length and matches exist. |
+| Tab / Shift+Tab | Bar        | Native focus order through input and actions.                                               |
+| Space / Enter   | Action     | Native button activation.                                                                   |
 
 ### Assistive-technology announcements
 
-The input is labelled “Find” and described with the minimum query length. A persistent polite `role="status"` announces “No matches” or “N of total”. Actions expose “Previous match”, “Next match”, and “Close find bar”.
+The input is labelled “Find” and described with the minimum query length. A persistent polite `role="status"` announces “No matches” or “N of total”. When a previously eligible query becomes too short, the host receives an empty query notification so stale results can be cleared. Actions expose “Previous match”, “Next match”, and “Close find bar” with Lucide icons.

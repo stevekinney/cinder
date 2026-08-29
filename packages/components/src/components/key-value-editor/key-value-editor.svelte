@@ -15,7 +15,6 @@
 <script lang="ts">
   import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
-  import SecretValueField from '../secret-value-field/secret-value-field.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { KeyValueEditorProps, KeyValueEntry } from './key-value-editor.types.ts';
   let {
@@ -27,15 +26,23 @@
     class: className,
     ...rest
   }: KeyValueEditorProps = $props();
+  const instanceId = $props.id();
   let rows = $state<KeyValueEntry[]>(entries);
+  let lastExternalEntries = entries;
   function commit(next: KeyValueEntry[]) {
     rows = next;
+    lastExternalEntries = next;
     entries = next;
     onValueChange?.(next);
   }
   function update(index: number, field: 'key' | 'value', value: string) {
     commit(rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
+  $effect(() => {
+    if (entries === lastExternalEntries) return;
+    rows = entries;
+    lastExternalEntries = entries;
+  });
 </script>
 
 <div {...rest} class={classNames('cinder-key-value-editor', className)}>
@@ -48,22 +55,20 @@
     {#each rows as row, index (index)}
       <div class="cinder-key-value-editor__row" role="listitem">
         <Input
-          id={`key-value-editor-key-${index}`}
+          id={`${instanceId}-key-${index}`}
           label="Key"
           labelVisible={false}
           value={row.key}
           onValueChange={(next) => update(index, 'key', next)}
         />
-        {#if secret?.(row.key)}<SecretValueField
-            value={row.value}
-            label={`${row.key || 'Value'} secret`}
-          />{:else}<Input
-            id={`key-value-editor-value-${index}`}
-            label="Value"
-            labelVisible={false}
-            value={row.value}
-            onValueChange={(next) => update(index, 'value', next)}
-          />{/if}
+        <Input
+          id={`${instanceId}-value-${index}`}
+          label="Value"
+          labelVisible={false}
+          type={secret?.(row.key) ? 'password' : 'text'}
+          value={row.value}
+          onValueChange={(next) => update(index, 'value', next)}
+        />
         <button
           type="button"
           aria-label={removeLabel(row.key)}

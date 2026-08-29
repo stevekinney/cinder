@@ -2,7 +2,7 @@
 
 <!-- generated:a11y-record:required -->
 
-`Citation` pairs an inline source marker with a paginated HoverCard for source details.
+`Citation` pairs an inline source marker with a paginated Popover for interactive source details.
 
 ## Usage
 

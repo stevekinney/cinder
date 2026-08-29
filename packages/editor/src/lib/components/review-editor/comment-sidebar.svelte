@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { truncate } from '../../utilities/truncate.ts';
   import {
@@ -54,6 +55,7 @@
   }: CommentSidebarProps = $props();
 
   let showConfirmClear = $state(false);
+  const actionsTriggerId = $derived(`${id}-actions-trigger`);
 
   /** Whether the user is composing a new document-level comment */
   let composingDocumentComment = $state(false);
@@ -109,13 +111,20 @@
     showConfirmClear = true;
   }
 
+  async function restoreActionsFocus(): Promise<void> {
+    await tick();
+    document.getElementById(actionsTriggerId)?.focus();
+  }
+
   function handleConfirmClear() {
     onclearall?.();
     showConfirmClear = false;
+    void restoreActionsFocus();
   }
 
   function handleCancelClear() {
     showConfirmClear = false;
+    void restoreActionsFocus();
   }
 </script>
 
@@ -145,13 +154,23 @@
       </Button>
     {/if}
 
-    {#if !readonly && visibleThreads.length > 0}
+    {#if !readonly}
       <Dropdown id="{id}-actions">
-        <DropdownTrigger class="actions-trigger" aria-label="Comment actions" caretVisible={false}>
+        <DropdownTrigger
+          id={actionsTriggerId}
+          class="actions-trigger"
+          aria-label="Comment actions"
+          caretVisible={false}
+          disabled={visibleThreads.length === 0}
+        >
           <MoreHorizontal class="cinder-icon-sm" />
         </DropdownTrigger>
         <DropdownMenu>
-          <DropdownItem variant="danger" onclick={handleClearAllClick}>
+          <DropdownItem
+            variant="danger"
+            onclick={handleClearAllClick}
+            disabled={visibleThreads.length === 0}
+          >
             <Trash2 class="cinder-icon-sm" />
             Clear all comments
           </DropdownItem>

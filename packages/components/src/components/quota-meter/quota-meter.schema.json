@@ -12,6 +12,15 @@
     "limit": {
       "type": "number"
     },
+    "locale": {
+      "type": "string",
+      "description": "BCP-47 locale used for the reset date. Defaults to LocaleProvider, then the runtime locale."
+    },
+    "timeZone": {
+      "type": "string",
+      "description": "IANA time zone used for the reset date.",
+      "default": "UTC"
+    },
     "unlimited": {
       "type": "boolean"
     },

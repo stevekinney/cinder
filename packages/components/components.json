@@ -1033,7 +1033,7 @@
           "reason": "Building a full bibliography page."
         }
       ],
-      "related": ["hover-card"],
+      "related": ["popover"],
       "hasConstraints": false,
       "hasExamples": true,
       "artifacts": {
@@ -1796,10 +1796,11 @@
       ],
       "related": ["bar-chart"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/donut-chart/schema",
-        "variables": "@lostgradient/cinder/donut-chart/variables"
+        "variables": "@lostgradient/cinder/donut-chart/variables",
+        "examples": "@lostgradient/cinder/donut-chart/examples"
       }
     },
     {
@@ -2242,10 +2243,11 @@
       ],
       "related": ["input", "form-field", "button"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/find-bar/schema",
-        "variables": "@lostgradient/cinder/find-bar/variables"
+        "variables": "@lostgradient/cinder/find-bar/variables",
+        "examples": "@lostgradient/cinder/find-bar/examples"
       }
     },
     {
@@ -2542,10 +2544,11 @@
       ],
       "related": ["popover"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/guidance-region/schema",
-        "variables": "@lostgradient/cinder/guidance-region/variables"
+        "variables": "@lostgradient/cinder/guidance-region/variables",
+        "examples": "@lostgradient/cinder/guidance-region/examples"
       }
     },
     {
@@ -2651,10 +2654,11 @@
       ],
       "related": ["confirm-dialog"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/inline-confirm/schema",
-        "variables": "@lostgradient/cinder/inline-confirm/variables"
+        "variables": "@lostgradient/cinder/inline-confirm/variables",
+        "examples": "@lostgradient/cinder/inline-confirm/examples"
       }
     },
     {
@@ -2919,10 +2923,11 @@
       ],
       "related": ["secret-value-field", "table"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/key-value-editor/schema",
-        "variables": "@lostgradient/cinder/key-value-editor/variables"
+        "variables": "@lostgradient/cinder/key-value-editor/variables",
+        "examples": "@lostgradient/cinder/key-value-editor/examples"
       }
     },
     {
@@ -3397,10 +3402,11 @@
       ],
       "related": ["modal", "confirm-dialog"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/modal-region/schema",
-        "variables": "@lostgradient/cinder/modal-region/variables"
+        "variables": "@lostgradient/cinder/modal-region/variables",
+        "examples": "@lostgradient/cinder/modal-region/examples"
       }
     },
     {
@@ -5629,10 +5635,11 @@
       ],
       "related": ["terminal-output", "preview-panel"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/terminal-frame/schema",
-        "variables": "@lostgradient/cinder/terminal-frame/variables"
+        "variables": "@lostgradient/cinder/terminal-frame/variables",
+        "examples": "@lostgradient/cinder/terminal-frame/examples"
       }
     },
     {
@@ -5654,10 +5661,11 @@
       ],
       "related": ["terminal-frame", "code-block"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/terminal-output/schema",
-        "variables": "@lostgradient/cinder/terminal-output/variables"
+        "variables": "@lostgradient/cinder/terminal-output/variables",
+        "examples": "@lostgradient/cinder/terminal-output/examples"
       }
     },
     {
@@ -6066,10 +6074,11 @@
       ],
       "related": ["image", "button"],
       "hasConstraints": false,
-      "hasExamples": false,
+      "hasExamples": true,
       "artifacts": {
         "schema": "@lostgradient/cinder/zoom-pan-viewer/schema",
-        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables"
+        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables",
+        "examples": "@lostgradient/cinder/zoom-pan-viewer/examples"
       }
     }
   ]

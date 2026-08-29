@@ -27,13 +27,20 @@ export function parseTerminalOutput(value: string): TerminalLine[] {
   for (let i = 0; i < value.length; i++) {
     const c = value[i]!;
     if (c === '\u001b' && value[i + 1] === '[') {
-      const m = value.indexOf('m', i + 2),
-        k = value.indexOf('K', i + 2),
-        end = m >= 0 && (k < 0 || m < k) ? m : k;
+      let end = -1;
+      for (let candidate = i + 2; candidate < value.length; candidate++) {
+        const code = value.charCodeAt(candidate);
+        if (code >= 0x40 && code <= 0x7e) {
+          end = candidate;
+          break;
+        }
+      }
       if (end >= 0) {
         const command = value.slice(i + 2, end);
-        if (value[end] === 'K' && (command === '' || command === '0' || command === '2'))
-          lines[line] = [];
+        if (value[end] === 'K' && (command === '' || command === '0' || command === '2')) {
+          if (command === '2') lines[line] = [];
+          else lines[line]?.splice(column);
+        }
         if (value[end] === 'm')
           for (const code of (command || '0').split(';').map(Number)) {
             if (code === 0) {

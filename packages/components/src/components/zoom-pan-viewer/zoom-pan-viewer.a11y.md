@@ -16,7 +16,7 @@
 
 ### Focus management
 
-The viewer is focusable and labelled by `ariaLabel`; focus remains on it while keyboard transforms operate. Zoom controls are independently focusable. There is no focus trap or overlay.
+The viewer is a labelled `region` and is focusable so keyboard transforms can operate without pretending the whole viewport is a single button. Focus remains on it while transforms operate. Zoom controls are independently focusable. There is no focus trap or overlay.
 
 ### Keyboard matrix
 
@@ -25,6 +25,7 @@ The viewer is focusable and labelled by `ariaLabel`; focus remains on it while k
 | `+` / `=`      | Viewer       | Zoom in, clamped to range.   |
 | `-` / `_`      | Viewer       | Zoom out, clamped to range.  |
 | `0`            | Viewer       | Reset scale and pan.         |
+| Arrow keys     | Viewer       | Pan by a fixed increment.    |
 | Enter / Space  | Zoom control | Activate the focused button. |
 | Wheel          | Viewport     | Zoom about the pointer.      |
 | One pointer    | Viewport     | Drag to pan.                 |

@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -10,6 +11,33 @@ const { default: TerminalOutput } = await import('./terminal-output.svelte');
 afterEach(cleanup);
 
 describe('TerminalOutput', () => {
+  test('maps every ANSI foreground to a registered resting token', () => {
+    const css = readFileSync(new URL('./terminal-output.css', import.meta.url), 'utf8');
+    const tokens = [
+      'black',
+      'red',
+      'green',
+      'yellow',
+      'blue',
+      'magenta',
+      'cyan',
+      'white',
+      'bright-black',
+      'bright-red',
+      'bright-green',
+      'bright-yellow',
+      'bright-blue',
+      'bright-magenta',
+      'bright-cyan',
+      'bright-white',
+    ];
+    tokens.forEach((token, index) => {
+      expect(css).toContain(
+        `data-foreground='${index}'] { color: var(--cinder-terminal-ansi-${token}); }`,
+      );
+    });
+  });
+
   test('renders a named, keyboard-scrollable log', () => {
     const { container } = render(TerminalOutput, { props: { value: 'ready' } });
     const output = container.querySelector('.cinder-terminal-output');

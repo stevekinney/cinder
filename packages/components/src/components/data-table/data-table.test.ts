@@ -108,10 +108,7 @@ describe('DataTable — column resizing', () => {
     await fireEvent.keyDown(separator, { key: 'ArrowRight' });
 
     expect(separator.getAttribute('aria-valuenow')).toBe('110');
-    expect(resized).toEqual([
-      ['name', 110],
-      ['name', 110],
-    ]);
+    expect(resized).toEqual([['name', 110]]);
   });
 
   test('resizes from pointer movement and reports the resulting width', async () => {

@@ -19,6 +19,8 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
+
   import { classNames } from '../../utilities/class-names.ts';
   import Grid from '../grid/grid.svelte';
   import type { TerminalFrameProps } from './terminal-frame.types.ts';
@@ -39,10 +41,19 @@
   let viewport: HTMLDivElement;
   let previousColumns = -1;
   let previousRows = -1;
+  let latestDimensions = $state<{ cols: number; rows: number }>();
   const titleId = $props.id();
 
   $effect(() => {
-    if (!viewport || !onDimensionsChange || typeof ResizeObserver === 'undefined') return;
+    if (
+      !viewport ||
+      typeof ResizeObserver === 'undefined' ||
+      !Number.isFinite(columnWidth) ||
+      columnWidth <= 0 ||
+      !Number.isFinite(rowHeight) ||
+      rowHeight <= 0
+    )
+      return;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -52,10 +63,17 @@
       if (columns === previousColumns && rows === previousRows) return;
       previousColumns = columns;
       previousRows = rows;
-      onDimensionsChange({ cols: columns, rows });
+      latestDimensions = { cols: columns, rows };
+      onDimensionsChange?.(latestDimensions);
     });
     observer.observe(viewport);
     return () => observer.disconnect();
+  });
+
+  $effect(() => {
+    const handler = onDimensionsChange;
+    const dimensions = untrack(() => latestDimensions);
+    if (handler && dimensions) handler(dimensions);
   });
 </script>
 
@@ -63,6 +81,7 @@
   {...rest}
   class={classNames('cinder-terminal-frame', customClassName)}
   data-status={status}
+  role="region"
   aria-labelledby={titleId}
 >
   <Grid as="header" columns="1fr auto 1fr" gap="0" class="cinder-terminal-frame__chrome">

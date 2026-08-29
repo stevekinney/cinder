@@ -13,7 +13,7 @@
 </script>
 
 <script lang="ts">
-  import { tick } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import Button from '../button/button.svelte';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
@@ -21,13 +21,14 @@
 
   let {
     prompt,
-    confirmLabel = 'Confirm',
+    confirmLabel,
     cancelLabel = 'Cancel',
     destructive = false,
     open = $bindable(false),
     onConfirm,
     onCancel,
     class: className,
+    children,
   }: InlineConfirmProps = $props();
   let root: HTMLElement | null = $state(null);
   let trigger: HTMLElement | null = $state(null);
@@ -44,14 +45,21 @@
         cancel();
       });
       void tick().then(() =>
-        root?.querySelector<HTMLElement>('[data-cinder-inline-cancel]')?.focus(),
+        root
+          ?.querySelector<HTMLElement>('[data-cinder-inline-cancel]')
+          ?.focus({ preventScroll: true }),
       );
     } else {
       releaseEscape?.();
       releaseEscape = null;
-      trigger?.focus();
+      if (trigger?.isConnected) trigger.focus({ preventScroll: true });
       trigger = null;
     }
+  });
+
+  onDestroy(() => {
+    releaseEscape?.();
+    releaseEscape = null;
   });
 
   function cancel(): void {
@@ -72,6 +80,7 @@
     aria-label={prompt}
   >
     <p class="cinder-inline-confirm__prompt">{prompt}</p>
+    {@render children?.()}
     <div class="cinder-inline-confirm__actions">
       <Button variant="secondary" size="xs" data-cinder-inline-cancel onclick={cancel}
         >{cancelLabel}</Button

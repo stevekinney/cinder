@@ -52,10 +52,12 @@ describe('QuotaMeter', () => {
       used: 24,
       limit: 100,
       resetsAt: '2026-09-01T00:00:00Z',
+      locale: 'en-US',
+      timeZone: 'UTC',
     });
     const meter = container.querySelector('[role="meter"]');
     expect(meter?.getAttribute('aria-valuetext')).toContain('24 of 100 used');
-    expect(meter?.getAttribute('aria-valuetext')).toContain('resets');
+    expect(meter?.getAttribute('aria-valuetext')).toContain('resets Sep 1, 2026');
   });
 
   test('announces unlimited quotas without inventing a finite limit', () => {
@@ -63,5 +65,6 @@ describe('QuotaMeter', () => {
     expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toBe(
       '24 used, unlimited',
     );
+    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuenow')).toBe('0');
   });
 });

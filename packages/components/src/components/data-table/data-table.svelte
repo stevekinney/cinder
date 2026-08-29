@@ -154,20 +154,26 @@
   }
   function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
     const nextWidth = Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+    if (nextWidth === columnWidth(column)) return;
     columnWidths = { ...columnWidths, [column.key]: nextWidth };
     onColumnResize?.(column.key, nextWidth);
+  }
+  function measuredColumnWidth(event: Event, column: DataTableColumn<Row>): number {
+    const separator = event.currentTarget as HTMLElement;
+    const measuredWidth = separator.closest('th')?.getBoundingClientRect().width;
+    return measuredWidth && measuredWidth > 0 ? measuredWidth : (columnWidth(column) ?? 150);
   }
   function handleResizeKey(event: KeyboardEvent, column: DataTableColumn<Row>): void {
     if (!resizable || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
     event.preventDefault();
-    const current = columnWidth(column) ?? 150;
+    const current = measuredColumnWidth(event, column);
     setColumnWidth(column, current + (event.key === 'ArrowRight' ? 10 : -10));
   }
   function handleResizePointer(event: PointerEvent, column: DataTableColumn<Row>): void {
     if (!resizable || event.button !== 0) return;
     event.preventDefault();
     const startX = event.clientX;
-    const startWidth = columnWidth(column) ?? 150;
+    const startWidth = measuredColumnWidth(event, column);
     const handle = event.currentTarget as HTMLElement;
     handle.setPointerCapture?.(event.pointerId);
 
@@ -505,22 +511,24 @@
             style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
           >
             {column.label}
-            {#if resizable}
-              <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-              <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
-              <div
-                class="cinder-data-table__column-resizer"
-                role="separator"
-                aria-orientation="vertical"
-                aria-label={`Resize ${column.label} column`}
-                aria-valuemin={column.minWidth ?? 60}
-                aria-valuemax={column.maxWidth}
-                aria-valuenow={columnWidth(column) ?? 150}
-                tabindex="0"
-                onkeydown={(event) => handleResizeKey(event, column)}
-                onpointerdown={(event) => handleResizePointer(event, column)}
-              ></div>
-            {/if}
+            {#snippet actions()}
+              {#if resizable}
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                <div
+                  class="cinder-data-table__column-resizer"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={`Resize ${column.label} column`}
+                  aria-valuemin={column.minWidth ?? 60}
+                  aria-valuemax={column.maxWidth}
+                  aria-valuenow={columnWidth(column) ?? 150}
+                  tabindex="0"
+                  onkeydown={(event) => handleResizeKey(event, column)}
+                  onpointerdown={(event) => handleResizePointer(event, column)}
+                ></div>
+              {/if}
+            {/snippet}
           </TableHeaderCell>
         {/each}
       </TableRow>

@@ -37,6 +37,7 @@
     onConfirm,
     onCancel,
     triggerRef = null,
+    onExitComplete,
     class: className,
   }: ConfirmDialogProps = $props();
   const describedById = $derived(description ? descriptionId : undefined);
@@ -76,6 +77,7 @@
   class={classNames('cinder-confirm-dialog', className)}
   {...describedById ? { describedById } : {}}
   {...onCancel ? { onDismiss: onCancel } : {}}
+  {...onExitComplete ? { onExitComplete } : {}}
 >
   {#if description}
     <p id={descriptionId} class="cinder-confirm-dialog__description">{description}</p>

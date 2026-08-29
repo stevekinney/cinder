@@ -62,4 +62,11 @@ describe('RelativeTime', () => {
       Date.now = realNow;
     }
   });
+
+  test.each([new Date('invalid'), 'not-a-date'])('renders invalid dates safely: %s', (date) => {
+    const { container } = render(RelativeTime, { date, tick: false });
+    const element = container.querySelector('time');
+    expect(element?.textContent).toBe('Invalid date');
+    expect(element?.hasAttribute('datetime')).toBe(false);
+  });
 });

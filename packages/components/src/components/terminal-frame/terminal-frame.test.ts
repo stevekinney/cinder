@@ -32,6 +32,7 @@ describe('TerminalFrame', () => {
     );
     expect(container.querySelector('.cinder-terminal-frame__status')?.textContent).toBe('error');
     expect(container.querySelector('[data-testid="pty"]')).not.toBeNull();
+    expect(getByRole('region', { name: 'Build shell' })).not.toBeNull();
     expect(getByRole('alert').textContent).toContain('Connection lost');
     await fireEvent.click(getByRole('button', { name: 'Reload' }));
     expect(reloads).toBe(1);
@@ -67,6 +68,28 @@ describe('TerminalFrame', () => {
       callback?.([entry], {} as ResizeObserver);
       callback?.([entry], {} as ResizeObserver);
       expect(dimensions).toEqual([{ cols: 80, rows: 20 }]);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
+
+  test('ignores invalid character-cell dimensions', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let observations = 0;
+    globalThis.ResizeObserver = class {
+      constructor() {}
+      observe() {
+        observations++;
+      }
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof ResizeObserver;
+
+    try {
+      render(TerminalFrame, {
+        props: { title: 'Shell', columnWidth: 0, rowHeight: Number.NaN, children },
+      });
+      expect(observations).toBe(0);
     } finally {
       globalThis.ResizeObserver = originalResizeObserver;
     }

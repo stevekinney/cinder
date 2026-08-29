@@ -16,6 +16,7 @@ const schema = {
     },
     column: {
       type: 'number',
+      description: 'Rendered only when `line` is also provided.',
     },
   },
   additionalProperties: false,

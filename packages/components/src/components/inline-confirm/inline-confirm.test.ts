@@ -15,6 +15,7 @@ describe('InlineConfirm', () => {
     let confirmations = 0;
     const { getByRole, queryByRole } = render(InlineConfirm, {
       prompt: 'Delete this comment?',
+      confirmLabel: 'Delete comment',
       open: true,
       destructive: true,
       onConfirm: () => confirmations++,
@@ -22,7 +23,7 @@ describe('InlineConfirm', () => {
 
     expect(getByRole('group', { name: 'Delete this comment?' })).not.toBeNull();
     expect(queryByRole('dialog')).toBeNull();
-    await fireEvent.click(getByRole('button', { name: 'Confirm' }));
+    await fireEvent.click(getByRole('button', { name: 'Delete comment' }));
     expect(confirmations).toBe(1);
     expect(queryByRole('group')).toBeNull();
   });
@@ -31,6 +32,7 @@ describe('InlineConfirm', () => {
     let cancellations = 0;
     const { getByRole, queryByRole } = render(InlineConfirm, {
       prompt: 'Delete this comment?',
+      confirmLabel: 'Delete comment',
       open: true,
       onCancel: () => cancellations++,
     });

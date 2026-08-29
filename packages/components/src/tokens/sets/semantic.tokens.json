@@ -1320,13 +1320,13 @@
       }
     },
     "ansi-bright-yellow": {
-      "$value": { "colorSpace": "oklch", "components": [0.58, 0.16, 85] },
+      "$value": { "colorSpace": "oklch", "components": [0.52, 0.16, 85] },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-yellow",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(58% 0.16 85), oklch(88% 0.14 85))"
+          "cssRecipe": "light-dark(oklch(52% 0.16 85), oklch(88% 0.14 85))"
         }
       }
     },

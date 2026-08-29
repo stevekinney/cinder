@@ -21,6 +21,7 @@ snippet. The flat `@lostgradient/cinder/table-header-cell` subpath remains expor
 | `column`   | `string`                            | no       | —        | Column key. Required when `sortable=true` so the parent Table can track which column the user activated.                                                                                       |
 | `scope`    | `"col"` \| `"colgroup"`             | no       | `"col"`  | When set, hint to assistive tech that the column groups multiple rows.                                                                                                                         |
 | `sortable` | `boolean`                           | no       | `false`  | When true, render a button inside the `<th>` and dispatch sort intents to the parent Table. The cell's `aria-sort` reflects the current sort direction (`ascending`, `descending`, or `none`). |
+| `actions`  | `(opaque)`                          | no       | —        | Optional controls rendered beside, but outside, the sortable button. Not expressible in JSON Schema; see the component types for the signature.                                                |
 | `children` | `(opaque)`                          | yes      | —        | Cell content (column label). Not expressible in JSON Schema; see the component types for the signature.                                                                                        |
 
 <!-- generated:props:end -->

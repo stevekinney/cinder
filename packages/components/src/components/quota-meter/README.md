@@ -23,6 +23,8 @@
 | `class`     | `string`   | no       | —       | Custom class merged with `.cinder-quota-meter`.                                                                            |
 | `label`     | `string`   | no       | —       |                                                                                                                            |
 | `limit`     | `number`   | no       | —       |                                                                                                                            |
+| `locale`    | `string`   | no       | —       | BCP-47 locale used for the reset date. Defaults to LocaleProvider, then the runtime locale.                                |
+| `timeZone`  | `string`   | no       | `"UTC"` | IANA time zone used for the reset date.                                                                                    |
 | `unlimited` | `boolean`  | no       | —       |                                                                                                                            |
 | `used`      | `number`   | yes      | —       |                                                                                                                            |
 | `children`  | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature. |

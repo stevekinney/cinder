@@ -9,6 +9,8 @@ export type ModalEntry = {
   resolve: (value: unknown) => void;
   promise?: Promise<unknown>;
   ownsModal?: boolean;
+  settled?: boolean;
+  confirmation?: boolean;
 };
 
 export type ModalApi = {

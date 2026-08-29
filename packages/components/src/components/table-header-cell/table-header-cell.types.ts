@@ -28,4 +28,6 @@ export type TableHeaderCellProps = Omit<
   class?: string;
   /** Cell content (column label). */
   children: Snippet;
+  /** Optional controls rendered beside, but outside, the sortable button. */
+  actions?: Snippet;
 };

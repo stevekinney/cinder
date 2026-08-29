@@ -41,7 +41,13 @@
       startAngle = start * Math.PI * 2 - Math.PI / 2,
       endAngle = end * Math.PI * 2 - Math.PI / 2,
       large = end - start > 0.5 ? 1 : 0;
+    if (end - start >= 1) {
+      return `M ${center} ${center - radius} A ${radius} ${radius} 0 1 1 ${center} ${center + radius} A ${radius} ${radius} 0 1 1 ${center} ${center - radius}`;
+    }
     return `M ${center + radius * Math.cos(startAngle)} ${center + radius * Math.sin(startAngle)} A ${radius} ${radius} 0 ${large} 1 ${center + radius * Math.cos(endAngle)} ${center + radius * Math.sin(endAngle)}`;
+  }
+  function seriesColor(color: string | undefined, index: number): string {
+    return color ?? `var(--cinder-chart-series-${(index % 8) + 1})`;
   }
   function handleSeriesKeydown(event: KeyboardEvent, index: number) {
     if (event.key !== 'Enter' && event.key !== ' ') return;
@@ -60,7 +66,7 @@
   )}
 >
   <figure aria-label={label}>
-    <svg viewBox="0 0 200 200" role="img" aria-label={label}>
+    <svg viewBox="0 0 200 200" role={onSeriesClick ? undefined : 'img'} aria-label={label}>
       {#each arcs as arc}<!-- svelte-ignore a11y_no_noninteractive_tabindex --><g
           role={onSeriesClick ? 'button' : undefined}
           tabindex={onSeriesClick ? 0 : undefined}
@@ -71,7 +77,7 @@
             class="cinder-donut-chart__arc"
             d={arcPath(arc.start, arc.end)}
             pathLength="1"
-            stroke={arc.datum.color}
+            stroke={seriesColor(arc.datum.color, arc.index)}
           ></path></g
         >{/each}
       <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total">{total}</text
@@ -80,6 +86,9 @@
         >{/if}
     </svg>{#if valueLabels}<ul class="cinder-donut-chart__legend">
         {#each data as datum}<li><span>{datum.label}</span><span>{datum.value}</span></li>{/each}
+      </ul>{/if}
+    {#if !valueLabels}<ul class="cinder-sr-only" aria-label="{label} values">
+        {#each data as datum}<li>{datum.label}: {datum.value}</li>{/each}
       </ul>{/if}
   </figure>
 </div>

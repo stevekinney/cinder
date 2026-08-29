@@ -1087,8 +1087,13 @@ export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/
 export { default as FindBar } from './components/find-bar/index.ts';
 export type { FindBarProps } from './components/find-bar/index.ts';
 
-export { default as GuidanceRegion } from './components/guidance-region/index.ts';
-export type { GuidanceRegionProps } from './components/guidance-region/index.ts';
+export { default as GuidanceRegion, useGuidance } from './components/guidance-region/index.ts';
+export type {
+  GuidanceApi,
+  GuidanceClaim,
+  GuidanceRegionProps,
+  GuidanceStorage,
+} from './components/guidance-region/index.ts';
 
 export { default as InlineConfirm } from './components/inline-confirm/index.ts';
 export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
@@ -1096,8 +1101,8 @@ export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
 export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
 export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
 
-export { default as ModalRegion } from './components/modal-region/index.ts';
-export type { ModalRegionProps } from './components/modal-region/index.ts';
+export { default as ModalRegion, useModal } from './components/modal-region/index.ts';
+export type { ModalApi, ModalRegionProps } from './components/modal-region/index.ts';
 
 export { default as QuotaMeter } from './components/quota-meter/index.ts';
 export type { QuotaMeterProps } from './components/quota-meter/index.ts';

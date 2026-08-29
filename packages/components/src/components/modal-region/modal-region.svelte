@@ -68,6 +68,7 @@
       const entry = entries.find((candidate) => candidate.id === id);
       if (entry) {
         entry.ownsModal = true;
+        entry.confirmation = true;
         entries = [...entries];
       }
       return promise;
@@ -76,15 +77,20 @@
 
   function finish(id: string | undefined, value: unknown): void {
     const entry = entries.find((candidate) => candidate.id === (id ?? entries.at(-1)?.id));
-    if (!entry) return;
-    entries = entries.filter((candidate) => candidate !== entry);
+    if (!entry || entry.settled) return;
+    entry.settled = true;
     entry.resolve(value);
+    entries = [...entries];
+  }
+
+  function remove(id: string): void {
+    entries = entries.filter((entry) => entry.id !== id);
   }
 
   setModalContext(api);
   onDestroy(() => {
     destroyed = true;
-    for (const entry of entries) entry.resolve(undefined);
+    for (const entry of entries) entry.resolve(entry.confirmation ? false : undefined);
     entries = [];
   });
 </script>
@@ -93,14 +99,20 @@
 {#each entries as entry (entry.id)}
   {@const Component = entry.component}
   {#if entry.ownsModal}
-    <Component {...entry.props} open={true} />
+    <Component
+      {...entry.props}
+      open={!entry.settled}
+      onDismiss={() => finish(entry.id, false)}
+      onExitComplete={() => remove(entry.id)}
+    />
   {:else}
     <Modal
-      open={true}
+      open={!entry.settled}
       title={typeof entry.props['title'] === 'string' ? entry.props['title'] : 'Dialog'}
       onDismiss={() => finish(entry.id, false)}
+      onExitComplete={() => remove(entry.id)}
     >
-      <Component {...entry.props} open={true} />
+      <Component {...entry.props} open={!entry.settled} />
     </Modal>
   {/if}
 {/each}

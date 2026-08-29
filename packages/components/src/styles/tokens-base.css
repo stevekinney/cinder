@@ -443,7 +443,7 @@
   --cinder-terminal-ansi-bright-black: light-dark(oklch(42% 0 0), oklch(68% 0 0));
   --cinder-terminal-ansi-bright-red: light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25));
   --cinder-terminal-ansi-bright-green: light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145));
-  --cinder-terminal-ansi-bright-yellow: light-dark(oklch(58% 0.16 85), oklch(88% 0.14 85));
+  --cinder-terminal-ansi-bright-yellow: light-dark(oklch(52% 0.16 85), oklch(88% 0.14 85));
   --cinder-terminal-ansi-bright-blue: light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260));
   --cinder-terminal-ansi-bright-magenta: light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325));
   --cinder-terminal-ansi-bright-cyan: light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205));

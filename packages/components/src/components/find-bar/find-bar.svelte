@@ -18,6 +18,8 @@
   import Input from '../input/input.svelte';
   import Button from '../button/button.svelte';
   import X from 'lucide-svelte/icons/x';
+  import ChevronLeft from 'lucide-svelte/icons/chevron-left';
+  import ChevronRight from 'lucide-svelte/icons/chevron-right';
   import { classNames } from '../../utilities/class-names.ts';
   import type { FindBarProps } from './find-bar.types.ts';
   let {
@@ -40,6 +42,7 @@
   const inputId = $derived(id ?? generatedId);
   let lastKeystroke = 0;
   let inputNode = $state<HTMLInputElement | null>(null);
+  let queryWasEligible = false;
   const inputAttachment: Attachment<HTMLInputElement> = (element) => {
     inputNode = element;
     return () => {
@@ -52,13 +55,22 @@
     activeIndex = 0;
     lastKeystroke = Date.now();
     if (timer) clearTimeout(timer);
+    const eligible = value.trim().length >= minQueryLength;
+    if (!eligible && queryWasEligible) {
+      queryWasEligible = false;
+      onQueryChange?.('');
+    }
     timer = setTimeout(() => {
       timer = undefined;
-      if (value.trim().length >= minQueryLength) onQueryChange?.(value);
+      if (value.trim().length >= minQueryLength) {
+        queryWasEligible = true;
+        onQueryChange?.(value);
+      }
     }, debounceMs);
   }
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
+      if (value.trim().length < minQueryLength || !matchCount) return;
       event.preventDefault();
       (event.shiftKey ? onPrevious : onNext)?.();
     }
@@ -104,13 +116,15 @@
       variant="ghost"
       aria-label="Previous match"
       disabled={!matchCount}
-      onclick={onPrevious}>‹</Button
+      iconOnly
+      onclick={onPrevious}><ChevronLeft /></Button
     ><Button
       size="sm"
       variant="ghost"
       aria-label="Next match"
       disabled={!matchCount}
-      onclick={onNext}>›</Button
+      iconOnly
+      onclick={onNext}><ChevronRight /></Button
     ><Button size="sm" variant="ghost" iconOnly aria-label="Close find bar" onclick={onDismiss}
       ><X /></Button
     >

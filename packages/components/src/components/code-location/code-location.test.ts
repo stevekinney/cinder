@@ -53,4 +53,9 @@ describe('CodeLocation', () => {
     });
     expect(container.querySelector('code')?.textContent).toBe('src/index.ts:42:7');
   });
+
+  test('does not render an ambiguous column without a line', () => {
+    const { container } = render(CodeLocation, { file: 'src/index.ts', column: 7 });
+    expect(container.querySelector('code')?.textContent).toBe('src/index.ts');
+  });
 });

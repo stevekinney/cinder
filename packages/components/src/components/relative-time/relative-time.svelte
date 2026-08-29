@@ -14,6 +14,7 @@
 </script>
 
 <script lang="ts">
+  import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
   import type { RelativeTimeProps } from './relative-time.types.ts';
@@ -26,9 +27,17 @@
     children,
     ...rest
   }: RelativeTimeProps = $props();
+  const localeContext = getLocaleContext();
   let now = $state(Date.now());
+  const resolvedLocale = $derived(
+    locale ??
+      localeContext?.locale ??
+      (typeof navigator !== 'undefined' ? navigator.language : 'en-US'),
+  );
   const timestamp = $derived(date instanceof Date ? date.getTime() : new Date(date).getTime());
+  const validTimestamp = $derived(Number.isFinite(timestamp));
   const relative = $derived.by(() => {
+    if (!validTimestamp) return 'Invalid date';
     const delta = timestamp - now;
     const absolute = Math.abs(delta);
     const [value, unit] =
@@ -39,7 +48,7 @@
           : absolute < 86_400_000
             ? [Math.round(delta / 3_600_000), 'hour']
             : [Math.round(delta / 86_400_000), 'day'];
-    return new Intl.RelativeTimeFormat(locale, { numeric: 'auto' }).format(
+    return new Intl.RelativeTimeFormat(resolvedLocale, { numeric: 'auto' }).format(
       value,
       unit as Intl.RelativeTimeFormatUnit,
     );
@@ -53,7 +62,7 @@
 
 <time
   class={classNames('cinder-relative-time', customClassName)}
-  datetime={new Date(timestamp).toISOString()}
+  datetime={validTimestamp ? new Date(timestamp).toISOString() : undefined}
   {...rest}
   >{relative}{#if children}{@render children()}{/if}</time
 >

@@ -13,7 +13,8 @@
       "type": "number"
     },
     "column": {
-      "type": "number"
+      "type": "number",
+      "description": "Rendered only when `line` is also provided."
     }
   },
   "additionalProperties": false,

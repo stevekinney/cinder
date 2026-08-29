@@ -24,7 +24,7 @@ const schema = {
     },
   },
   additionalProperties: false,
-  required: ['prompt'],
+  required: ['confirmLabel', 'prompt'],
   metadata: {
     unsupportedProps: [
       {

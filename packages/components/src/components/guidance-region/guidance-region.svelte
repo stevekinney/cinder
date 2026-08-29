@@ -50,6 +50,7 @@
   const api: GuidanceApi = {
     claim(id) {
       const claim = activeClaims.find((candidate) => candidate.id === id);
+      const anchor = claim?.anchor && anchorResolver ? anchorResolver(claim.anchor) : null;
       if (
         !claim ||
         activeClaim !== null ||
@@ -57,6 +58,7 @@
         dismissed.has(claim.id) ||
         claimed.has(claim.id) ||
         storage?.get(`${storageKey}:${claim.id}`) ||
+        (claim.kind !== 'modal' && (!anchor || !anchor.isConnected)) ||
         (claim.kind === 'modal' && (!modalApi || !claimModalSlot()))
       )
         return false;
@@ -73,8 +75,10 @@
       dismissed = new Set(dismissed).add(id);
       storage?.set(`${storageKey}:${id}`, true);
       if (activeClaim?.id === id) {
+        const wasModal = activeClaim.kind === 'modal';
         anchoredOpen = false;
         activeClaim = null;
+        if (wasModal) resetModalSlot();
       }
     },
     resetAll() {
@@ -83,6 +87,7 @@
       claimed = new Set();
       activeClaim = null;
       anchoredOpen = false;
+      openedModalId = null;
       resetModalSlot();
     },
     claims: () => activeClaims,
@@ -102,7 +107,11 @@
         confirmLabel: 'Got it',
         cancelLabel: 'Dismiss',
       })
-      .then(() => api.dismiss(claim.id));
+      .then(() => {
+        api.dismiss(claim.id);
+        openedModalId = null;
+        resetModalSlot();
+      });
   });
 
   $effect(() => {

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "guidance-region",
+  "import": "@lostgradient/cinder/guidance-region",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic guidance region",
+      "description": "Provide contextual guidance claims to an application surface.",
+      "code": "<script lang=\"ts\">\n  import { GuidanceRegion } from '@lostgradient/cinder/guidance-region';\n  const claims = [{ id: 'welcome', content: 'Start by exploring the workspace.' }];\n</script>\n<GuidanceRegion {claims} version=\"1.0.0\">\n  {#snippet children()}\n    <p>Workspace content</p>\n  {/snippet}\n</GuidanceRegion>\n"
+    }
+  ]
+}

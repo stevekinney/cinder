@@ -1945,6 +1945,10 @@
       "types": "./dist/components/donut-chart/donut-chart.css.d.ts",
       "default": "./dist/components/donut-chart/donut-chart.css"
     },
+    "./donut-chart/examples": {
+      "import": "./src/components/donut-chart/donut-chart.examples.json",
+      "default": "./src/components/donut-chart/donut-chart.examples.json"
+    },
     "./drawer": {
       "types": "./dist/components/drawer/index.d.ts",
       "browser": "./src/components/drawer/index.ts",
@@ -2369,6 +2373,10 @@
       "types": "./dist/components/find-bar/find-bar.css.d.ts",
       "default": "./dist/components/find-bar/find-bar.css"
     },
+    "./find-bar/examples": {
+      "import": "./src/components/find-bar/find-bar.examples.json",
+      "default": "./src/components/find-bar/find-bar.examples.json"
+    },
     "./floating-action": {
       "types": "./dist/components/floating-action/index.d.ts",
       "browser": "./src/components/floating-action/index.ts",
@@ -2693,6 +2701,10 @@
       "import": "./src/components/guidance-region/guidance-region.variables.ts",
       "default": "./dist/components/guidance-region/guidance-region.variables.js"
     },
+    "./guidance-region/examples": {
+      "import": "./src/components/guidance-region/guidance-region.examples.json",
+      "default": "./src/components/guidance-region/guidance-region.examples.json"
+    },
     "./host-provider": {
       "types": "./dist/components/host-provider/index.d.ts",
       "browser": "./src/components/host-provider/index.ts",
@@ -2816,6 +2828,10 @@
     "./inline-confirm/styles": {
       "types": "./dist/components/inline-confirm/inline-confirm.css.d.ts",
       "default": "./dist/components/inline-confirm/inline-confirm.css"
+    },
+    "./inline-confirm/examples": {
+      "import": "./src/components/inline-confirm/inline-confirm.examples.json",
+      "default": "./src/components/inline-confirm/inline-confirm.examples.json"
     },
     "./inline-loading": {
       "types": "./dist/components/inline-loading/index.d.ts",
@@ -3104,6 +3120,10 @@
     "./key-value-editor/styles": {
       "types": "./dist/components/key-value-editor/key-value-editor.css.d.ts",
       "default": "./dist/components/key-value-editor/key-value-editor.css"
+    },
+    "./key-value-editor/examples": {
+      "import": "./src/components/key-value-editor/key-value-editor.examples.json",
+      "default": "./src/components/key-value-editor/key-value-editor.examples.json"
     },
     "./keyboard-shortcuts": {
       "types": "./dist/components/keyboard-shortcuts/index.d.ts",
@@ -3600,6 +3620,10 @@
       "node": "./dist/server/components/modal-region/modal-region.variables.js",
       "import": "./src/components/modal-region/modal-region.variables.ts",
       "default": "./dist/components/modal-region/modal-region.variables.js"
+    },
+    "./modal-region/examples": {
+      "import": "./src/components/modal-region/modal-region.examples.json",
+      "default": "./src/components/modal-region/modal-region.examples.json"
     },
     "./multi-select": {
       "types": "./dist/components/multi-select/index.d.ts",
@@ -5893,6 +5917,10 @@
       "types": "./dist/components/terminal-frame/terminal-frame.css.d.ts",
       "default": "./dist/components/terminal-frame/terminal-frame.css"
     },
+    "./terminal-frame/examples": {
+      "import": "./src/components/terminal-frame/terminal-frame.examples.json",
+      "default": "./src/components/terminal-frame/terminal-frame.examples.json"
+    },
     "./terminal-output": {
       "types": "./dist/components/terminal-output/index.d.ts",
       "browser": "./src/components/terminal-output/index.ts",
@@ -5920,6 +5948,10 @@
     "./terminal-output/styles": {
       "types": "./dist/components/terminal-output/terminal-output.css.d.ts",
       "default": "./dist/components/terminal-output/terminal-output.css"
+    },
+    "./terminal-output/examples": {
+      "import": "./src/components/terminal-output/terminal-output.examples.json",
+      "default": "./src/components/terminal-output/terminal-output.examples.json"
     },
     "./textarea": {
       "types": "./dist/components/textarea/index.d.ts",
@@ -6352,6 +6384,10 @@
     "./zoom-pan-viewer/styles": {
       "types": "./dist/components/zoom-pan-viewer/zoom-pan-viewer.css.d.ts",
       "default": "./dist/components/zoom-pan-viewer/zoom-pan-viewer.css"
+    },
+    "./zoom-pan-viewer/examples": {
+      "import": "./src/components/zoom-pan-viewer/zoom-pan-viewer.examples.json",
+      "default": "./src/components/zoom-pan-viewer/zoom-pan-viewer.examples.json"
     },
     "./experimental/json-viewer": {
       "types": "./dist/components/experimental/json-viewer/index.d.ts",

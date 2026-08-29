@@ -40,12 +40,36 @@ describe('FindBar', () => {
   test('uses an undebounced keydown path for match navigation', async () => {
     const onNext = mock(() => {});
     const onPrevious = mock(() => {});
-    const { container } = render(FindBar, { onNext, onPrevious });
+    const { container } = render(FindBar, {
+      value: 'query',
+      matchCount: 2,
+      onNext,
+      onPrevious,
+    });
     const input = container.querySelector('input') as HTMLInputElement;
 
     await fireEvent.keyDown(input, { key: 'Enter' });
     await fireEvent.keyDown(input, { key: 'Enter', shiftKey: true });
     expect(onNext).toHaveBeenCalledTimes(1);
     expect(onPrevious).toHaveBeenCalledTimes(1);
+  });
+
+  test('does not navigate when the query is ineligible', async () => {
+    const onNext = mock(() => {});
+    const { container } = render(FindBar, { onNext, minQueryLength: 3, matchCount: 2 });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'ab' } });
+    await fireEvent.keyDown(input, { key: 'Enter' });
+    expect(onNext).not.toHaveBeenCalled();
+  });
+
+  test('notifies the host when a previously eligible query becomes ineligible', async () => {
+    const onQueryChange = mock(() => {});
+    const { container } = render(FindBar, { onQueryChange, minQueryLength: 3, debounceMs: 1 });
+    const input = container.querySelector('input') as HTMLInputElement;
+    await fireEvent.input(input, { target: { value: 'abcd' } });
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    await fireEvent.input(input, { target: { value: 'ab' } });
+    expect(onQueryChange).toHaveBeenLastCalledWith('');
   });
 });

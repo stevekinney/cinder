@@ -8,7 +8,7 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
 const { default: Citation } = await import('./citation.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
@@ -53,5 +53,18 @@ describe('Citation', () => {
     const marker = container.querySelector('.cinder-citation__marker');
     expect(marker?.getAttribute('aria-label')).toBe('References (2)');
     expect(marker?.textContent).toBe('[2]');
+  });
+
+  test('clamps the current page when sources are removed', async () => {
+    const { container, rerender } = render(Citation, {
+      sources: [{ label: 'One' }, { label: 'Two' }],
+    });
+    await fireEvent.click(container.querySelector('.cinder-citation__marker')!);
+    await waitFor(() =>
+      expect(document.querySelector('[aria-label="Next source"]')).not.toBeNull(),
+    );
+    await fireEvent.click(document.querySelector('[aria-label="Next source"]')!);
+    await rerender({ sources: [{ label: 'One' }] });
+    await waitFor(() => expect(document.querySelector('section strong')?.textContent).toBe('One'));
   });
 });

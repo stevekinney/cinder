@@ -7,6 +7,7 @@ export type CodeLocationProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> &
   class?: string;
   file: string;
   line?: number;
+  /** Rendered only when `line` is also provided. */
   column?: number;
   children?: Snippet;
 };

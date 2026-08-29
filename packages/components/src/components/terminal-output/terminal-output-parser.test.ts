@@ -12,4 +12,10 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('old\rnew')).toEqual([[{ text: 'new', bold: false }]]));
   test('erases the current line', () =>
     expect(parseTerminalOutput('old\u001b[2Knew')).toEqual([[{ text: 'new', bold: false }]]));
+  test('erase to end preserves text before the cursor', () =>
+    expect(parseTerminalOutput('old\u001b[0Knew')).toEqual([[{ text: 'oldnew', bold: false }]]));
+  test('CSI sequences stop at their final byte and preserve later text', () =>
+    expect(parseTerminalOutput('\u001b[31;foo m text')).toEqual([
+      [{ text: 'oo m text', bold: false }],
+    ]));
 });

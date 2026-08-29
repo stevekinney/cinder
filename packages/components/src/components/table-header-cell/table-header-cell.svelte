@@ -27,6 +27,7 @@
     align = 'left',
     class: className,
     children,
+    actions,
     ...rest
   }: TableHeaderCellProps = $props();
 
@@ -108,4 +109,5 @@
   {:else}
     {@render children()}
   {/if}
+  {#if actions}{@render actions()}{/if}
 </th>

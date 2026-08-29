@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "modal-region",
+  "import": "@lostgradient/cinder/modal-region",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic modal region",
+      "description": "Mount application content inside the modal coordination region.",
+      "code": "<script lang=\"ts\">\n  import { ModalRegion } from '@lostgradient/cinder/modal-region';\n</script>\n<ModalRegion>\n  {#snippet children()}\n    <p>Application content with modal support.</p>\n  {/snippet}\n</ModalRegion>\n"
+    }
+  ]
+}

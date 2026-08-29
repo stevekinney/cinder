@@ -7,15 +7,15 @@
    * @tag citation
    * @useWhen Attaching sources to an inline claim or generated answer.
    * @avoidWhen Building a full bibliography page.
-   * @related hover-card
-   * @rationale Nearest alternative: HoverCard — Citation adds source pagination and an inline marker.
+   * @related popover
+   * @rationale Nearest alternative: Popover — Citation adds source pagination and an inline marker.
    */
   export type { CitationProps, CitationSource } from './citation.types.ts';
 </script>
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import HoverCard from '../hover-card/index.ts';
+  import Popover from '../popover/index.ts';
 
   import type { CitationProps } from './citation.types.ts';
 
@@ -27,14 +27,19 @@
     ...rest
   }: CitationProps = $props();
   let page = $state(0);
+  let open = $state(false);
   const source = $derived(sources[page]);
+  $effect(() => {
+    if (page >= sources.length) page = Math.max(0, sources.length - 1);
+  });
 </script>
 
 <span class={classNames('cinder-citation', customClassName)} {...rest}
-  >{#if children}{@render children()}{/if}<HoverCard>
+  >{#if children}{@render children()}{/if}<Popover bind:open {label}>
     {#snippet trigger()}<button
         type="button"
         class="cinder-citation__marker"
+        onclick={() => (open = !open)}
         aria-label={`${label} (${sources.length})`}>[{sources.length}]</button
       >{/snippet}
     <section aria-label={label}>
@@ -55,5 +60,5 @@
           >
         </div>{/if}
     </section>
-  </HoverCard></span
+  </Popover></span
 >

@@ -24,6 +24,12 @@
     scale = $bindable(1),
     onTransformChange,
     ariaLabel = 'Zoomable viewer',
+    onkeydown: consumerOnkeydown,
+    onwheel: consumerOnwheel,
+    onpointerdown: consumerOnpointerdown,
+    onpointermove: consumerOnpointermove,
+    onpointerup: consumerOnpointerup,
+    onpointercancel: consumerOnpointercancel,
     ...rest
   }: ZoomPanViewerProps = $props();
   let x = $state(0);
@@ -35,8 +41,10 @@
   let originY = 0;
   const pointers = new Map<number, { x: number; y: number }>();
   let pinchDistance = 0;
+  const clampScale = (value: number) => Math.min(8, Math.max(0.25, value));
+  const normalizedScale = $derived(clampScale(scale));
   function update(nextScale: number, nextX = x, nextY = y) {
-    scale = Math.min(8, Math.max(0.25, nextScale));
+    scale = clampScale(nextScale);
     x = nextX;
     y = nextY;
     onTransformChange?.({ scale, x, y });
@@ -46,11 +54,11 @@
     const rect = node?.getBoundingClientRect();
     const px = rect && event ? event.clientX - rect.left - rect.width / 2 : 0;
     const py = rect && event ? event.clientY - rect.top - rect.height / 2 : 0;
-    const next = Math.min(8, Math.max(0.25, scale * factor));
-    const ratio = next / scale;
+    const next = clampScale(normalizedScale * factor);
+    const ratio = next / normalizedScale;
     update(next, px - (px - x) * ratio, py - (py - y) * ratio);
   }
-  function keydown(event: KeyboardEvent) {
+  function keydown(event: KeyboardEvent & { currentTarget: HTMLDivElement }) {
     if (event.key === '+' || event.key === '=') {
       event.preventDefault();
       zoomAt(1.2);
@@ -60,9 +68,37 @@
     } else if (event.key === '0') {
       event.preventDefault();
       update(1, 0, 0);
+    } else if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      panBy(-32, 0);
+    } else if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      panBy(32, 0);
+    } else if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      panBy(0, -32);
+    } else if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      panBy(0, 32);
     }
+    consumerOnkeydown?.(event);
   }
-  function pointerdown(event: PointerEvent) {
+  function panBy(deltaX: number, deltaY: number) {
+    update(normalizedScale, x + deltaX, y + deltaY);
+  }
+  function isInteractiveTarget(target: EventTarget | null): boolean {
+    return (
+      target instanceof Element &&
+      !!target.closest(
+        'button, a, input, textarea, select, [contenteditable="true"], [role="button"], [role="link"]',
+      )
+    );
+  }
+  function pointerdown(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+    if (isInteractiveTarget(event.target)) {
+      consumerOnpointerdown?.(event);
+      return;
+    }
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.size === 1) {
       dragging = true;
@@ -78,47 +114,62 @@
       dragging = false;
     }
     (event.currentTarget as HTMLElement).setPointerCapture(event.pointerId);
+    consumerOnpointerdown?.(event);
   }
-  function pointermove(event: PointerEvent) {
-    if (!pointers.has(event.pointerId)) return;
+  function pointermove(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+    if (!pointers.has(event.pointerId)) {
+      consumerOnpointermove?.(event);
+      return;
+    }
     pointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     if (pointers.size >= 2) {
       const values = [...pointers.values()];
       const first = values[0];
       const second = values[1];
-      if (!first || !second) return;
+      if (!first || !second) {
+        consumerOnpointermove?.(event);
+        return;
+      }
       const distance = Math.hypot(first.x - second.x, first.y - second.y);
       if (pinchDistance) zoomAt(distance / pinchDistance);
       pinchDistance = distance;
     } else if (dragging)
-      update(scale, originX + event.clientX - startX, originY + event.clientY - startY);
+      update(normalizedScale, originX + event.clientX - startX, originY + event.clientY - startY);
+    consumerOnpointermove?.(event);
   }
-  function pointerup(event: PointerEvent) {
+  function pointerup(event: PointerEvent & { currentTarget: HTMLDivElement }) {
     pointers.delete(event.pointerId);
     pinchDistance = 0;
     dragging = false;
+    consumerOnpointerup?.(event);
+  }
+  function pointercancel(event: PointerEvent & { currentTarget: HTMLDivElement }) {
+    pointerup(event);
+    consumerOnpointercancel?.(event);
   }
 </script>
 
+<!-- svelte-ignore a11y_no_noninteractive_tabindex: the region is keyboard-focusable for zoom and pan controls. -->
 <div
   class={classNames('cinder-zoom-pan-viewer', customClassName)}
-  role="button"
+  role="region"
   aria-label={ariaLabel}
   tabindex="0"
   onkeydown={keydown}
   onwheel={(event) => {
     event.preventDefault();
     zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, event);
+    consumerOnwheel?.(event);
   }}
   onpointerdown={pointerdown}
   onpointermove={pointermove}
   onpointerup={pointerup}
-  onpointercancel={pointerup}
+  onpointercancel={pointercancel}
   {...rest}
 >
   <div
     class="cinder-zoom-pan-viewer__viewport"
-    style={`transform: translate(${x}px, ${y}px) scale(${scale})`}
+    style={`transform: translate(${x}px, ${y}px) scale(${normalizedScale})`}
   >
     {@render children()}
   </div>
