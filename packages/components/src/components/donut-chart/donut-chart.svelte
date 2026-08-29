@@ -1,0 +1,77 @@
+<script lang="ts" module>
+  /** @cinder
+   * @category data-display
+   * @status beta
+   * @purpose Displays categorical proportions as an accessible donut with an optional center total.
+   * @tag chart
+   * @useWhen Showing a small number of parts-of-whole categories.
+   * @avoidWhen Comparing many categories or precise values; use BarChart.
+   * @rationale Nearest alternative: BarChart compares magnitudes; this owns part-to-whole arcs.
+   */
+  export type { DonutChartDatum, DonutChartProps } from './donut-chart.types.ts';
+</script>
+
+<script lang="ts">
+  import { classNames } from '../../utilities/class-names.ts';
+  import type { DonutChartDatum, DonutChartProps } from './donut-chart.types.ts';
+  let {
+    label,
+    data,
+    valueLabels = false,
+    centerLabel,
+    scrollable = false,
+    onSeriesClick,
+    class: className,
+    ...rest
+  }: DonutChartProps = $props();
+  const total = $derived(data.reduce((sum, datum) => sum + Math.max(0, datum.value), 0));
+  const arcs = $derived.by(() => {
+    let offset = 0;
+    return data.map((datum, index) => {
+      const value = Math.max(0, datum.value);
+      const start = offset;
+      offset += total ? value / total : 0;
+      return { datum, index, start, end: offset };
+    });
+  });
+  function arcPath(start: number, end: number): string {
+    const radius = 88,
+      center = 100,
+      startAngle = start * Math.PI * 2 - Math.PI / 2,
+      endAngle = end * Math.PI * 2 - Math.PI / 2,
+      large = end - start > 0.5 ? 1 : 0;
+    return `M ${center + radius * Math.cos(startAngle)} ${center + radius * Math.sin(startAngle)} A ${radius} ${radius} 0 ${large} 1 ${center + radius * Math.cos(endAngle)} ${center + radius * Math.sin(endAngle)}`;
+  }
+</script>
+
+<div
+  {...rest}
+  class={classNames(
+    'cinder-donut-chart',
+    scrollable && 'cinder-donut-chart--scrollable',
+    className,
+  )}
+>
+  <figure aria-label={label}>
+    <svg viewBox="0 0 200 200" role="img" aria-label={label}>
+      {#each arcs as arc}<!-- svelte-ignore a11y_no_noninteractive_tabindex a11y_no_noninteractive_element_interactions --><g
+          role={onSeriesClick ? 'button' : undefined}
+          tabindex={onSeriesClick ? 0 : undefined}
+          aria-label={onSeriesClick ? `${arc.datum.label}: ${arc.datum.value}` : undefined}
+          onclick={() => onSeriesClick?.(arc.datum, arc.index)}
+          ><path
+            class="cinder-donut-chart__arc"
+            d={arcPath(arc.start, arc.end)}
+            pathLength="1"
+            stroke={arc.datum.color}
+          ></path></g
+        >{/each}
+      <text x="100" y="96" text-anchor="middle" class="cinder-donut-chart__total">{total}</text
+      >{#if centerLabel}<text x="100" y="116" text-anchor="middle" class="cinder-donut-chart__label"
+          >{centerLabel}</text
+        >{/if}
+    </svg>{#if valueLabels}<ul class="cinder-donut-chart__legend">
+        {#each data as datum}<li><span>{datum.label}</span><span>{datum.value}</span></li>{/each}
+      </ul>{/if}
+  </figure>
+</div>

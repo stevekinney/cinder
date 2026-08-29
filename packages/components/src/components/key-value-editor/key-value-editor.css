@@ -1,0 +1,16 @@
+@layer cinder.components {
+  .cinder-key-value-editor {
+    display: grid;
+    gap: var(--cinder-space-3);
+  }
+  .cinder-key-value-editor__rows {
+    display: grid;
+    gap: var(--cinder-space-2);
+  }
+  .cinder-key-value-editor__row {
+    display: grid;
+    grid-template-columns: minmax(8rem, 1fr) minmax(12rem, 2fr) auto;
+    gap: var(--cinder-space-2);
+    align-items: center;
+  }
+}

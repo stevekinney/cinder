@@ -50,6 +50,7 @@
 @import '../components/command-menu/command-menu.css';
 @import '../components/command-palette/command-palette.css';
 @import '../components/confirm-dialog/confirm-dialog.css';
+@import '../components/inline-confirm/inline-confirm.css';
 @import '../components/connection-indicator/connection-indicator.css';
 @import '../components/citation/citation.css';
 @import '../components/container/container.css';
@@ -58,6 +59,7 @@
 @import '../components/data-grid/data-grid.css';
 @import '../components/data-list/data-list.css';
 @import '../components/data-table/data-table.css';
+@import '../components/donut-chart/donut-chart.css';
 @import '../components/donut-chart/donut-chart.css';
 @import '../components/date-picker/date-picker.css';
 @import '../components/date-range-field/date-range-field.css';
@@ -91,6 +93,7 @@
 @import '../components/json-editor/json-editor.css';
 @import './components/json-highlight.css';
 @import '../components/json-schema-editor/json-schema-editor.css';
+@import '../components/key-value-editor/key-value-editor.css';
 @import '../components/key-value-editor/key-value-editor.css';
 @import '../components/json-viewer/json-viewer.css';
 @import '../components/kanban-board/kanban-board.css';

@@ -55,6 +55,7 @@
     stickyHeader = false,
     density = 'comfortable',
     scrollable = false,
+    resizable = false,
     virtualized = false,
     rowHeight = 44,
     overscan = 5,
@@ -75,6 +76,7 @@
   let hasObservedRowCount = false;
   let shouldStickAfterAppend = false;
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  let columnWidths = $state<Record<string, number>>({});
   const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
   /**
@@ -144,6 +146,22 @@
     if (align === 'end') return 'right';
     if (align === 'center') return 'center';
     return undefined;
+  }
+
+  function columnWidth(column: DataTableColumn<Row>): number | undefined {
+    return columnWidths[column.key] ?? column.width;
+  }
+  function handleResizeKey(event: KeyboardEvent, column: DataTableColumn<Row>): void {
+    if (!resizable || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+    event.preventDefault();
+    const current = columnWidth(column) ?? 150;
+    columnWidths = {
+      ...columnWidths,
+      [column.key]: Math.min(
+        column.maxWidth ?? Infinity,
+        Math.max(column.minWidth ?? 60, current + (event.key === 'ArrowRight' ? 10 : -10)),
+      ),
+    };
   }
 
   function resolveRowId(row: Row, index: number): string {
@@ -462,8 +480,17 @@
             {...column.sortable ? { column: column.key } : {}}
             sortable={column.sortable ?? false}
             align={mapAlign(column.align) ?? 'left'}
+            style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
           >
             {column.label}
+            {#if resizable}<div
+                class="cinder-data-table__column-resizer"
+                role="separator"
+                aria-orientation="vertical"
+                aria-label={`Resize ${column.label} column`}
+                tabindex="0"
+                onkeydown={(event) => handleResizeKey(event, column)}
+              ></div>{/if}
           </TableHeaderCell>
         {/each}
       </TableRow>
@@ -520,6 +547,7 @@
             <TableCell
               as={column.key === rowHeaderKey ? 'th' : 'td'}
               align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
             >
               {virtualRow.row[column.key]}
             </TableCell>

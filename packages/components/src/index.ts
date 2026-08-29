@@ -241,6 +241,12 @@ export type { CommandPaletteProps } from './components/command-palette/index.ts'
 export { default as ConfirmDialog } from './components/confirm-dialog/index.ts';
 export type { ConfirmDialogProps } from './components/confirm-dialog/index.ts';
 
+export { default as InlineConfirm } from './components/inline-confirm/index.ts';
+export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
+
+export { default as ModalRegion } from './components/modal-region/index.ts';
+export type { ModalRegionProps } from './components/modal-region/index.ts';
+
 export { default as ConnectionIndicator } from './components/connection-indicator/index.ts';
 export type {
   ConnectionIndicatorProps,
@@ -286,6 +292,11 @@ export type {
   DataTableRow,
   DataTableSelectionMode,
 } from './components/data-table/index.ts';
+
+export { default as DonutChart } from './components/donut-chart/index.ts';
+export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
+export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
+export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
 
 export { default as DonutChart } from './components/donut-chart/index.ts';
 export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
@@ -1034,6 +1045,8 @@ export type {
 } from './utilities/use-reduced-motion.types.ts';
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
+export { useModal } from './utilities/use-modal.ts';
+export type { ModalApi } from './utilities/use-modal.ts';
 export { useToast } from './utilities/use-toast.ts';
 
 export {

@@ -85,4 +85,16 @@
     padding: 0;
     border: 0;
   }
+  .cinder-data-table__column-resizer {
+    display: inline-block;
+    inline-size: 0.75rem;
+    block-size: 1.5rem;
+    cursor: col-resize;
+    touch-action: none;
+    vertical-align: middle;
+  }
+  .cinder-data-table__column-resizer:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
 }

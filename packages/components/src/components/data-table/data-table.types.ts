@@ -42,6 +42,9 @@ export type DataTableColumn<Row extends DataTableRow = DataTableRow> = {
    * first column automatically acts as the row header.
    */
   rowHeader?: boolean;
+  width?: number;
+  minWidth?: number;
+  maxWidth?: number;
 };
 
 /** Row-selection mode for DataTable. */
@@ -112,6 +115,8 @@ export type DataTableProps<Row extends DataTableRow = DataTableRow> = Omit<
    * enables horizontal overflow scrolling on small viewports.
    */
   scrollable?: boolean;
+  /** Enables pointer and keyboard resizing handles in column headers. */
+  resizable?: boolean;
   /**
    * When true, renders only the visible `<tbody>` row window plus spacer rows.
    * Requires a fixed row height. This is intended for large, append-only tables
