@@ -91,7 +91,10 @@ describe('copyToClipboard', () => {
     class TestClipboardItem {
       constructor(readonly values: Record<string, Blob>) {}
     }
-    globalThis.fetch = mock(async () => Promise.reject(new Error('cors')));
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: mock(async () => Promise.reject(new Error('cors'))),
+    });
     Object.defineProperty(globalThis, 'ClipboardItem', {
       configurable: true,
       value: TestClipboardItem,
@@ -114,7 +117,10 @@ describe('copyToClipboard', () => {
       expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
       expect(writeText).not.toHaveBeenCalled();
     } finally {
-      globalThis.fetch = originalFetch;
+      Object.defineProperty(globalThis, 'fetch', {
+        configurable: true,
+        value: originalFetch,
+      });
       Object.defineProperty(globalThis, 'ClipboardItem', {
         configurable: true,
         value: OriginalClipboardItem,
