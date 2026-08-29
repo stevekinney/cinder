@@ -756,6 +756,59 @@ describe('Drawer', () => {
     document.body.removeChild(trigger);
   });
 
+  test('modal=false does not steal focus from a different surface on close', async () => {
+    const trigger = document.createElement('button');
+    const outside = document.createElement('button');
+    document.body.append(trigger, outside);
+    trigger.focus();
+
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    outside.focus();
+    openValue = false;
+    await rerender(props());
+    await tick();
+
+    expect(document.activeElement).toBe(outside);
+    expect(container.querySelector('aside')).toBeNull();
+    trigger.remove();
+    outside.remove();
+  });
+
+  test('modal=false restores focus to the trigger when unmounted while open', async () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const { unmount } = render(Drawer, {
+      props: {
+        modal: false,
+        open: true,
+        triggerRef: trigger,
+        title: 'Inspector',
+        children: emptySnippet,
+      },
+    });
+
+    const panel = document.querySelector('.cinder-drawer__panel') as HTMLElement;
+    (panel.querySelector('.cinder-drawer__close') as HTMLElement).focus();
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
   test('switching an open drawer from modal to non-modal releases modal coordination state', async () => {
     const trigger = document.createElement('button');
     trigger.textContent = 'Open inspector';
@@ -1299,7 +1352,7 @@ describe('Drawer slide direction lifecycle', () => {
 describe('Drawer SSR contract', () => {
   test('gates the dialog behind the hydrated state that is set only from an effect', async () => {
     const source = await Bun.file(DRAWER_SOURCE).text();
-    const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated}');
+    const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated || (!modal && open)}');
     const dialogIndex = source.indexOf('<dialog', hydratedGateIndex);
 
     expect(source).toMatch(/\$effect\(\(\) => \{\s*dialogState\.markHydrated\(\);\s*\}\);/);
@@ -1312,6 +1365,15 @@ describe('Drawer SSR contract', () => {
 
     expect(html).not.toContain('<dialog');
     expect(html).not.toContain('Server Drawer');
+  });
+
+  test('server output includes an open non-modal drawer', async () => {
+    const source = await Bun.file(DRAWER_SOURCE).text();
+    const renderGate = source.indexOf('{#if dialogState.hydrated || (!modal && open)}');
+    const nonModalBranch = source.indexOf('{:else if open}', renderGate);
+
+    expect(renderGate).toBeGreaterThan(-1);
+    expect(nonModalBranch).toBeGreaterThan(renderGate);
   });
 });
 

@@ -54,6 +54,7 @@
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
+  let nonModalPanelElement: HTMLDivElement | undefined = $state();
   let nonModalReturnFocusTarget: HTMLElement | null = null;
   let wasNonModalOpen = false;
   let wasModal = $state(untrack(() => modal));
@@ -155,12 +156,27 @@
       wasNonModalOpen = false;
       const returnTarget = triggerRef ?? nonModalReturnFocusTarget;
       nonModalReturnFocusTarget = null;
-      restoreFocusTo(returnTarget);
+      const activeElement = document.activeElement;
+      if (
+        activeElement === document.body ||
+        (activeElement instanceof HTMLElement && nonModalPanelElement?.contains(activeElement))
+      ) {
+        restoreFocusTo(returnTarget);
+      }
       activePlacement = undefined;
     }
   });
 
   onDestroy(() => {
+    if (!modal && wasNonModalOpen) {
+      const activeElement = document.activeElement;
+      if (
+        activeElement === document.body ||
+        (activeElement instanceof HTMLElement && nonModalPanelElement?.contains(activeElement))
+      ) {
+        restoreFocusTo(triggerRef ?? nonModalReturnFocusTarget);
+      }
+    }
     dialogState.destroy();
   });
 
@@ -173,7 +189,7 @@
   }
 </script>
 
-{#if dialogState.hydrated}
+{#if dialogState.hydrated || (!modal && open)}
   {#if modal}
     <dialog
       {...rest}
@@ -267,7 +283,12 @@
       aria-labelledby={ariaLabelledby ?? titleId}
       data-cinder-modal="false"
     >
-      <div class="cinder-drawer__panel" data-cinder-placement={placement} data-cinder-size={size}>
+      <div
+        bind:this={nonModalPanelElement}
+        class="cinder-drawer__panel"
+        data-cinder-placement={placement}
+        data-cinder-size={size}
+      >
         {#if dragHandleVisible && placement === 'bottom'}
           <div class="cinder-drawer__drag-handle" aria-hidden="true">
             <span class="cinder-drawer__drag-handle-pill"></span>
