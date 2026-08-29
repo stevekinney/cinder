@@ -105,12 +105,12 @@ describe('RelativeTime', () => {
   test('shares an adaptive clock across mounted instances', () => {
     const originalSetTimeout = window.setTimeout;
     const originalClearTimeout = window.clearTimeout;
-    let timeoutCount = 0;
-    const timeoutDelays: number[] = [];
+    let scheduleCount = 0;
+    const scheduledDelays: number[] = [];
     let clearCount = 0;
     window.setTimeout = ((callback: TimerHandler, delay?: number) => {
-      timeoutCount += 1;
-      timeoutDelays.push(delay ?? 0);
+      scheduleCount += 1;
+      scheduledDelays.push(delay ?? 0);
       return originalSetTimeout(callback, delay);
     }) as typeof window.setTimeout;
     window.clearTimeout = ((timer?: number) => {
@@ -122,8 +122,8 @@ describe('RelativeTime', () => {
       const oldDate = Date.now() - 2 * 60 * 60 * 1_000;
       const first = render(RelativeTime, { date: oldDate });
       const second = render(RelativeTime, { date: oldDate });
-      expect(timeoutCount).toBe(2);
-      expect(timeoutDelays.at(-1)).toBeGreaterThan(3_599_000);
+      expect(scheduleCount).toBe(2);
+      expect(scheduledDelays.at(-1)).toBeGreaterThan(3_599_000);
       first.unmount();
       expect(clearCount).toBe(2);
       second.unmount();
