@@ -4,11 +4,20 @@
   import GuidanceRegionProbe from './guidance-region-probe.test.svelte';
   import ModalRegion from '../modal-region/modal-region.svelte';
 
-  let { onReady }: { onReady: (api: GuidanceApi) => void } = $props();
+  let {
+    onReady,
+    storage,
+  }: {
+    onReady: (api: GuidanceApi) => void;
+    storage?: import('../../_internal/guidance-context.ts').GuidanceStorage;
+  } = $props();
 </script>
 
 <ModalRegion>
-  <GuidanceRegion claims={[{ id: 'upgrade', kind: 'modal', content: 'Upgrade now' }]}>
+  <GuidanceRegion
+    claims={[{ id: 'upgrade', kind: 'modal', content: 'Upgrade now' }]}
+    {...storage ? { storage } : {}}
+  >
     <GuidanceRegionProbe {onReady} />
   </GuidanceRegion>
 </ModalRegion>

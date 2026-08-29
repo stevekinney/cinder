@@ -100,6 +100,39 @@ describe('GuidanceRegion', () => {
     expect(api?.claims()).toHaveLength(1);
   });
 
+  test('excludes claims dismissed in storage when the region is recreated', async () => {
+    const values = new Map<string, boolean>();
+    const storage = {
+      get: (key: string) => values.get(key) === true,
+      set: (key: string, value: boolean) => values.set(key, value),
+      remove: (key: string) => values.delete(key),
+    };
+    let firstApi: import('../../_internal/guidance-context.ts').GuidanceApi | undefined;
+    const first = render(GuidanceRegionHost, {
+      storage,
+      onReady: (value: import('../../_internal/guidance-context.ts').GuidanceApi) => {
+        firstApi = value;
+      },
+    });
+
+    await Promise.resolve();
+    expect(firstApi?.claims()).toHaveLength(1);
+    firstApi?.dismiss('upgrade');
+    expect(values.get('cinder-guidance:upgrade')).toBe(true);
+    first.unmount();
+
+    let secondApi: import('../../_internal/guidance-context.ts').GuidanceApi | undefined;
+    render(GuidanceRegionHost, {
+      storage,
+      onReady: (value: import('../../_internal/guidance-context.ts').GuidanceApi) => {
+        secondApi = value;
+      },
+    });
+    await Promise.resolve();
+    expect(secondApi?.claims()).toHaveLength(0);
+    expect(secondApi?.claim('upgrade')).toBe(false);
+  });
+
   test('canonical example claims welcome guidance from its descendant', () => {
     const example = JSON.parse(
       readFileSync(new URL('./guidance-region.examples.json', import.meta.url), 'utf8'),

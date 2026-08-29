@@ -171,6 +171,16 @@ describe('Badge — subscription state preset', () => {
     );
   });
 
+  test.each(states.map(([state]) => state))(
+    'subscriptionState="%s" suppresses the severity CSS hook',
+    (subscriptionState) => {
+      const { container } = render(Badge, { subscriptionState, severity: 'critical' });
+      expect(container.querySelector('.cinder-badge')?.hasAttribute('data-cinder-severity')).toBe(
+        false,
+      );
+    },
+  );
+
   test('subscriptionState children override the preset label', async () => {
     const { container } = render(Badge, {
       subscriptionState: 'active',

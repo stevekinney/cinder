@@ -1,9 +1,15 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { KeyValueEntry } from './key-value-editor.types.ts';
 setupHappyDom();
+const buttonModule = await import('../button/index.ts');
+const gridModule = await import('../grid/index.ts');
+const inputModule = await import('../input/index.ts');
+mock.module('@lostgradient/cinder/button', () => buttonModule);
+mock.module('@lostgradient/cinder/grid', () => gridModule);
+mock.module('@lostgradient/cinder/input', () => inputModule);
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KeyValueEditor } = await import('./key-value-editor.svelte');
 afterEach(cleanup);
@@ -79,10 +85,35 @@ describe('KeyValueEditor', () => {
     expect(document.activeElement).toBe(addButton as HTMLButtonElement);
   });
 
+  test('restores focus to the preceding row Remove button after removing a later row', async () => {
+    const { container } = render(KeyValueEditor, {
+      entries: [
+        { key: 'Host', value: 'localhost' },
+        { key: 'Port', value: '443' },
+      ],
+    });
+    const removePort = container.querySelector<HTMLButtonElement>('[aria-label="Remove Port"]');
+    const removeHost = container.querySelector<HTMLButtonElement>('[aria-label="Remove Host"]');
+
+    await fireEvent.click(removePort!);
+
+    expect(document.activeElement).toBe(removeHost);
+  });
+
   test('entry point imports only styles used by the rendered composition', () => {
     const entry = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
     expect(entry).toContain("import '../input/input.css';");
     expect(entry).toContain("import '../button/button.css';");
     expect(entry).not.toContain('secret-value-field.css');
+  });
+
+  test('composes primitives through public component subpaths', async () => {
+    const source = await Bun.file(new URL('./key-value-editor.svelte', import.meta.url)).text();
+    expect(source).toContain("from '@lostgradient/cinder/grid';");
+    expect(source).toContain("from '@lostgradient/cinder/input';");
+    expect(source).toContain("from '@lostgradient/cinder/button';");
+    expect(source).not.toContain("from '../grid/grid.svelte'");
+    expect(source).not.toContain("from '../input/input.svelte'");
+    expect(source).not.toContain("from '../button/button.svelte'");
   });
 });

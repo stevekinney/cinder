@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic modal region",
       "description": "Mount application content inside the modal coordination region.",
-      "code": "<script lang=\"ts\">\n  import { ModalRegion } from '@lostgradient/cinder/modal-region';\n</script>\n\n<ModalRegion>\n  {#snippet children()}\n    <p>Application content with modal support.</p>\n  {/snippet}\n</ModalRegion>\n"
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ModalRegion, useModal } from '@lostgradient/cinder/modal-region';\n</script>\n\n<ModalRegion>\n  {#snippet children()}\n    {@const modal = useModal()}\n    <Button onclick={() => modal.confirm({ title: 'Confirm action' })}>Open confirmation</Button>\n  {/snippet}\n</ModalRegion>\n"
     }
   ]
 }

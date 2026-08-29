@@ -102,6 +102,16 @@ describe('QuotaMeter', () => {
     );
   });
 
+  test.each([Number.NaN, Number.POSITIVE_INFINITY, Number.NEGATIVE_INFINITY])(
+    'normalizes a non-finite used value (%s) for Meter and accessible text',
+    (used) => {
+      const { container } = render(QuotaMeter, { used });
+      const meter = container.querySelector('[role="meter"]');
+      expect(meter?.getAttribute('aria-valuenow')).toBe('0');
+      expect(meter?.getAttribute('aria-valuetext')).toBe('0 of 100 used');
+    },
+  );
+
   test('formats the Unix epoch when resetsAt is zero', () => {
     const { container } = render(QuotaMeter, {
       used: 24,

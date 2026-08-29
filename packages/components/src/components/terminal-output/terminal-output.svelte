@@ -100,11 +100,13 @@
   bind:this={viewport}
 >
   <div class="cinder-terminal-output__content" bind:this={content}>
-    {#each lines as line, i}<div class="cinder-terminal-output__line" data-line={i}>
-        {#each line as run}<span
-            data-cinder-foreground={run.foreground}
-            data-cinder-bold={run.bold || undefined}>{run.text}</span
-          >{/each}
-      </div>{/each}{#if !value && children}{@render children()}{/if}
+    {#if value}
+      {#each lines as line, i}<div class="cinder-terminal-output__line" data-line={i}>
+          {#each line as run}<span
+              data-cinder-foreground={run.foreground}
+              data-cinder-bold={run.bold || undefined}>{run.text}</span
+            >{/each}
+        </div>{/each}
+    {:else if children}{@render children()}{/if}
   </div>
 </div>

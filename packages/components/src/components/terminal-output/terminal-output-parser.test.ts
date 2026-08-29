@@ -35,6 +35,10 @@ describe('parseTerminalOutput', () => {
     expect(
       parseTerminalOutput('before\u001b]8;;https://example.com\u0007linked\u001b]8;;\u001b\\after'),
     ).toEqual([[{ text: 'beforelinkedafter', bold: false }]]));
+  test('consumes C1 OSC hyperlinks terminated by C1 ST', () =>
+    expect(parseTerminalOutput('before\u009d8;;https://example.com\u009clinkedafter')).toEqual([
+      [{ text: 'beforelinkedafter', bold: false }],
+    ]));
   test('consumes terminal-title OSC sequences terminated by BEL or ST', () =>
     expect(
       parseTerminalOutput('before\u001b]0;title\u0007middle\u001b]2;title\u001b\\after'),

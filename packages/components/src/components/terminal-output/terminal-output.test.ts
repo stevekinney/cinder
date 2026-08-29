@@ -1,6 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
+import { createRawSnippet } from 'svelte';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -45,6 +46,17 @@ describe('TerminalOutput', () => {
     const output = container.querySelector('.cinder-terminal-output');
     expect(output?.getAttribute('role')).toBe('log');
     expect(output?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('renders fallback children without an empty parsed line', () => {
+    const { container } = render(TerminalOutput, {
+      props: {
+        value: '',
+        children: createRawSnippet(() => ({ render: () => '<p>Fallback</p>' })),
+      },
+    });
+    expect(container.querySelector('.cinder-terminal-output__line')).toBeNull();
+    expect(container.textContent).toContain('Fallback');
   });
 
   test('namespaces ANSI run-state data attributes', () => {

@@ -41,7 +41,8 @@
   let originY = 0;
   const pointers = new Map<number, { x: number; y: number }>();
   let pinchDistance = 0;
-  const clampScale = (value: number) => Math.min(8, Math.max(0.25, value));
+  const clampScale = (value: number) =>
+    Number.isFinite(value) ? Math.min(8, Math.max(0.25, value)) : 1;
   const normalizedScale = $derived(clampScale(scale));
   function update(nextScale: number, nextX = x, nextY = y) {
     scale = clampScale(nextScale);
@@ -177,6 +178,10 @@
   tabindex="0"
   onkeydown={keydown}
   onwheel={(event) => {
+    if (isInteractiveTarget(event.target)) {
+      consumerOnwheel?.(event);
+      return;
+    }
     event.preventDefault();
     const rect = event.currentTarget.getBoundingClientRect();
     zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, {

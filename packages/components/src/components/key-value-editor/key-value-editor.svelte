@@ -14,9 +14,9 @@
 
 <script lang="ts">
   import { tick } from 'svelte';
-  import Grid from '../grid/grid.svelte';
-  import Input from '../input/input.svelte';
-  import Button from '../button/button.svelte';
+  import Button from '@lostgradient/cinder/button';
+  import Grid from '@lostgradient/cinder/grid';
+  import Input from '@lostgradient/cinder/input';
   import { classNames } from '../../utilities/class-names.ts';
   import type { KeyValueEditorProps, KeyValueEntry } from './key-value-editor.types.ts';
   let {
@@ -43,10 +43,14 @@
   }
   async function removeRow(index: number): Promise<void> {
     commit(rows.filter((_, i) => i !== index));
-    if (rows.length === 0) {
-      await tick();
-      editorElement?.querySelector<HTMLButtonElement>('.cinder-button')?.focus();
-    }
+    await tick();
+    const target =
+      rows.length === 0
+        ? editorElement?.querySelector<HTMLButtonElement>('.cinder-button')
+        : editorElement?.querySelectorAll<HTMLButtonElement>(
+            '.cinder-key-value-editor__row button',
+          )[Math.min(index - 1 >= 0 ? index - 1 : index, rows.length - 1)];
+    target?.focus();
   }
   $effect(() => {
     if (entries === lastExternalEntries) return;

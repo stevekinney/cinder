@@ -4,11 +4,13 @@
 </script>
 
 <script lang="ts">
-  import { ModalRegion } from '@lostgradient/cinder/modal-region';
+  import { Button } from '@lostgradient/cinder/button';
+  import { ModalRegion, useModal } from '@lostgradient/cinder/modal-region';
 </script>
 
 <ModalRegion>
   {#snippet children()}
-    <p>Application content with modal support.</p>
+    {@const modal = useModal()}
+    <Button onclick={() => modal.confirm({ title: 'Confirm action' })}>Open confirmation</Button>
   {/snippet}
 </ModalRegion>

@@ -39,6 +39,7 @@
   const resolvedLocale = $derived(
     locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
+  const effectiveUsed = $derived(Number.isFinite(used) ? used : 0);
   const parsedResetDate = $derived(resetsAt === undefined ? undefined : new Date(resetsAt));
   const effectiveLimit = $derived(Number.isFinite(limit) && limit > 0 ? limit : 100);
   const resetDate = $derived(
@@ -50,15 +51,15 @@
   );
   const valueText = $derived(
     unlimited
-      ? `${used} used, unlimited`
-      : `${used} of ${effectiveLimit} used${resetDate ? `, resets ${resetDate}` : ''}`,
+      ? `${effectiveUsed} used, unlimited`
+      : `${effectiveUsed} of ${effectiveLimit} used${resetDate ? `, resets ${resetDate}` : ''}`,
   );
 </script>
 
 <div class={classNames('cinder-quota-meter', customClassName)} {...rest}>
   <Meter
     {...unlimited ? { verdict: { level: 'unknown' as const, label: valueText } } : {}}
-    value={used}
+    value={effectiveUsed}
     max={effectiveLimit}
     ariaLabel={label}
     ariaValueText={valueText}

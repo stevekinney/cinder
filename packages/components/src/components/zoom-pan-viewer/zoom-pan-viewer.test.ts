@@ -45,6 +45,29 @@ describe('ZoomPanViewer', () => {
     ).toContain('translate(32px');
   });
 
+  test('normalizes a non-finite external scale before rendering', () => {
+    const { container } = render(ZoomPanViewer, {
+      children: textSnippet('diagram'),
+      scale: Number.NaN,
+    });
+    expect(
+      container.querySelector('.cinder-zoom-pan-viewer__viewport')?.getAttribute('style'),
+    ).toContain('scale(1)');
+  });
+
+  test('does not consume wheel gestures from interactive descendants', async () => {
+    const { container } = render(ZoomPanViewer, {
+      children: textSnippet('<button type="button">Interactive</button>'),
+    });
+    const button = container.querySelector('button')!;
+    const wheel = new WheelEvent('wheel', { bubbles: true, cancelable: true, deltaY: -100 });
+    button.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+    expect(
+      container.querySelector('.cinder-zoom-pan-viewer__viewport')?.getAttribute('style'),
+    ).toContain('scale(1)');
+  });
+
   test('preserves consumer event handlers while handling keyboard controls', async () => {
     let received = false;
     const { container } = render(ZoomPanViewer, {

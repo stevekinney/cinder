@@ -4,7 +4,11 @@
     min-inline-size: 12rem;
   }
   .cinder-donut-chart--scrollable {
+    min-inline-size: 0;
     overflow-x: auto;
+  }
+  .cinder-donut-chart--scrollable figure {
+    min-inline-size: 12rem;
   }
   .cinder-donut-chart figure {
     display: flex;

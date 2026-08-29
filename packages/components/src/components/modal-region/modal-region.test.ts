@@ -50,6 +50,18 @@ describe('ModalRegion', () => {
     expect(source).toContain('modal={{');
   });
 
+  test('canonical example consumes modal context and opens a confirmation', () => {
+    const example = readFileSync(
+      new URL(
+        '../../../../playground/src/examples/modal-region/basic.example.svelte',
+        import.meta.url,
+      ),
+      'utf8',
+    );
+    expect(example).toContain('useModal()');
+    expect(example).toContain('modal.confirm(');
+  });
+
   test('deduplicates only unsettled requests and keys exit instances uniquely', () => {
     const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
     expect(source).toContain('entry.id === id && !entry.settled');

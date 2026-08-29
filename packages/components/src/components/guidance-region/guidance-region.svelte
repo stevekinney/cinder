@@ -44,8 +44,11 @@
   } catch {
     modalApi = undefined;
   }
+  function isDismissed(claim: GuidanceClaim): boolean {
+    return dismissed.has(claim.id) || storage?.get(`${storageKey}:${claim.id}`) === true;
+  }
   let activeClaims = $derived(
-    initialClaims.filter((claim) => isRelevant(claim, version) && !dismissed.has(claim.id)),
+    initialClaims.filter((claim) => isRelevant(claim, version) && !isDismissed(claim)),
   );
   const api: GuidanceApi = {
     claim(id) {
@@ -55,7 +58,7 @@
         !claim ||
         activeClaim !== null ||
         !isRelevant(claim, version) ||
-        dismissed.has(claim.id) ||
+        isDismissed(claim) ||
         claimed.has(claim.id) ||
         storage?.get(`${storageKey}:${claim.id}`) ||
         (claim.kind !== 'modal' && (!anchor || !anchor.isConnected)) ||

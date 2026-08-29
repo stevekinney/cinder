@@ -1,11 +1,19 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { DonutChartDatum } from './donut-chart.types.ts';
 setupHappyDom();
 const { fireEvent, render } = await import('@testing-library/svelte');
 const { default: DonutChart } = await import('./donut-chart.svelte');
 describe('DonutChart', () => {
+  test('allows a scrollable root to shrink while preserving internal chart width', () => {
+    const css = readFileSync(new URL('./donut-chart.css', import.meta.url), 'utf8');
+    expect(css).toMatch(/\.cinder-donut-chart--scrollable\s*\{[\s\S]*min-inline-size:\s*0/);
+    expect(css).toMatch(
+      /\.cinder-donut-chart--scrollable figure\s*\{[\s\S]*min-inline-size:\s*12rem/,
+    );
+  });
   test('renders arcs and total', () => {
     const { container } = render(DonutChart, {
       label: 'Traffic',

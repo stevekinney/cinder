@@ -72,6 +72,10 @@ export class TerminalOutputParser {
             end = candidate + 1;
             break;
           }
+          if (input[candidate] === '\u009c') {
+            end = candidate + 1;
+            break;
+          }
           if (input[candidate] === '\u001b' && input[candidate + 1] === '\\') {
             end = candidate + 2;
             break;
