@@ -74,6 +74,12 @@ const NO_CLASS_MERGING_ALLOW_LIST = new Set<string>([
   // locale-provider.svelte is intentionally context-only and renders only its
   // children snippet, so it has no class-bearing root element of its own.
   'locale-provider',
+  // guidance-region.svelte is a context provider that renders its children and
+  // an optional Popover portal, so it has no stable class-bearing root.
+  'guidance-region',
+  // modal-region.svelte is a context provider that renders its children and
+  // zero or more modal portals, so it has no stable class-bearing root.
+  'modal-region',
   // schema-form.svelte is a thin wrapper that only renders
   // `{#key schema}<SchemaFormBody {...rest} />{/key}` so a schema change recreates
   // the body's $state (issue #464). It has no class-bearing root element of its own —

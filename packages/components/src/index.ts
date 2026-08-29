@@ -1074,3 +1074,54 @@ export type {
   WaveformRenderMode,
   WaveformSchemaProps,
 } from './components/waveform/index.ts';
+
+export { default as Citation } from './components/citation/index.ts';
+export type { CitationProps, CitationSource } from './components/citation/index.ts';
+
+export { default as CodeLocation } from './components/code-location/index.ts';
+export type { CodeLocationProps } from './components/code-location/index.ts';
+
+export { default as DonutChart } from './components/donut-chart/index.ts';
+export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
+
+export { default as FindBar } from './components/find-bar/index.ts';
+export type { FindBarProps } from './components/find-bar/index.ts';
+
+export { default as GuidanceRegion } from './components/guidance-region/index.ts';
+export type { GuidanceRegionProps } from './components/guidance-region/index.ts';
+
+export { default as InlineConfirm } from './components/inline-confirm/index.ts';
+export type { InlineConfirmProps } from './components/inline-confirm/index.ts';
+
+export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
+export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
+
+export { default as ModalRegion } from './components/modal-region/index.ts';
+export type { ModalRegionProps } from './components/modal-region/index.ts';
+
+export { default as QuotaMeter } from './components/quota-meter/index.ts';
+export type { QuotaMeterProps } from './components/quota-meter/index.ts';
+
+export { default as RelativeTime } from './components/relative-time/index.ts';
+export type { RelativeTimeProps } from './components/relative-time/index.ts';
+
+export { default as TerminalFrame } from './components/terminal-frame/index.ts';
+export type {
+  TerminalFrameDimensions,
+  TerminalFrameProps,
+  TerminalFrameStatus,
+} from './components/terminal-frame/index.ts';
+
+export {
+  default as TerminalOutput,
+  parseTerminalOutput,
+} from './components/terminal-output/index.ts';
+export type {
+  TerminalForeground,
+  TerminalLine,
+  TerminalOutputProps,
+  TerminalTextRun,
+} from './components/terminal-output/index.ts';
+
+export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
+export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';

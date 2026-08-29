@@ -87,23 +87,6 @@
   /* Monospace font stack for code surfaces. */
   --cinder-font-mono:
     ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Consolas, 'Liberation Mono', monospace;
-  /* ANSI 16-color foreground ramp. Each arm is contrast-tested on the terminal inset surface. */
-  --cinder-terminal-ansi-black: light-dark(oklch(25% 0 0), oklch(82% 0 0));
-  --cinder-terminal-ansi-red: light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25));
-  --cinder-terminal-ansi-green: light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145));
-  --cinder-terminal-ansi-yellow: light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85));
-  --cinder-terminal-ansi-blue: light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260));
-  --cinder-terminal-ansi-magenta: light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325));
-  --cinder-terminal-ansi-cyan: light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205));
-  --cinder-terminal-ansi-white: light-dark(oklch(18% 0 0), oklch(94% 0 0));
-  --cinder-terminal-ansi-bright-black: light-dark(oklch(42% 0 0), oklch(68% 0 0));
-  --cinder-terminal-ansi-bright-red: light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25));
-  --cinder-terminal-ansi-bright-green: light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145));
-  --cinder-terminal-ansi-bright-yellow: light-dark(oklch(58% 0.16 85), oklch(88% 0.14 85));
-  --cinder-terminal-ansi-bright-blue: light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260));
-  --cinder-terminal-ansi-bright-magenta: light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325));
-  --cinder-terminal-ansi-bright-cyan: light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205));
-  --cinder-terminal-ansi-bright-white: light-dark(oklch(10% 0 0), oklch(98% 0 0));
   /* Normal font weight. */
   --cinder-font-normal: 400;
   /* Medium font weight. */
@@ -405,9 +388,6 @@
   --cinder-status-danger-text: light-dark(oklch(42% 0.16 25), oklch(90% 0.05 25));
   /* Border color on the soft danger surface. */
   --cinder-status-danger-border: light-dark(oklch(80% 0.06 25), oklch(50% 0.11 25));
-  /* Dedicated highest-severity badge ink and surface. */
-  --cinder-severity-critical: light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25));
-  --cinder-severity-critical-background: light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25));
   /* Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors. */
   --cinder-status-danger-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
@@ -448,6 +428,26 @@
   --cinder-status-neutral-text: var(--cinder-text-default);
   /* Border color on the soft neutral surface. */
   --cinder-status-neutral-border: var(--cinder-border);
+  /* Highest-severity badge foreground. */
+  --cinder-severity-critical: light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25));
+  /* Highest-severity badge background. */
+  --cinder-severity-critical-background: light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25));
+  --cinder-terminal-ansi-black: light-dark(oklch(25% 0 0), oklch(82% 0 0));
+  --cinder-terminal-ansi-red: light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25));
+  --cinder-terminal-ansi-green: light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145));
+  --cinder-terminal-ansi-yellow: light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85));
+  --cinder-terminal-ansi-blue: light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260));
+  --cinder-terminal-ansi-magenta: light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325));
+  --cinder-terminal-ansi-cyan: light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205));
+  --cinder-terminal-ansi-white: light-dark(oklch(18% 0 0), oklch(94% 0 0));
+  --cinder-terminal-ansi-bright-black: light-dark(oklch(42% 0 0), oklch(68% 0 0));
+  --cinder-terminal-ansi-bright-red: light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25));
+  --cinder-terminal-ansi-bright-green: light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145));
+  --cinder-terminal-ansi-bright-yellow: light-dark(oklch(58% 0.16 85), oklch(88% 0.14 85));
+  --cinder-terminal-ansi-bright-blue: light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260));
+  --cinder-terminal-ansi-bright-magenta: light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325));
+  --cinder-terminal-ansi-bright-cyan: light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205));
+  --cinder-terminal-ansi-bright-white: light-dark(oklch(10% 0 0), oklch(98% 0 0));
   /* Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome. */
   --cinder-checker-base: light-dark(#fff, oklch(28% 0.02 245));
   /* Transparency checkerboard alternate tile. */
