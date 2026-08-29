@@ -6,6 +6,7 @@
 <script lang="ts">
   import { Form } from '@lostgradient/cinder/form';
   import { Input } from '@lostgradient/cinder/input';
+  import { Button } from '@lostgradient/cinder/button';
 </script>
 
 <Form onSubmit={() => undefined}>
@@ -14,6 +15,6 @@
       {#snippet leading()}{/snippet}
       {#snippet trailing()}{/snippet}
     </Input>
-    <button type="submit" disabled={submitting}>Save</button>
+    <Button type="submit" disabled={submitting}>Save</Button>
   {/snippet}
 </Form>

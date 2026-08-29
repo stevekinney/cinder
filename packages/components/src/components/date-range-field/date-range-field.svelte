@@ -32,6 +32,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { normalizeDateValue } from '../../_internal/date-value.ts';
   import Calendar from '../calendar/calendar.svelte';
+  import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
   import Popover from '../popover/popover.svelte';
   import {
@@ -451,30 +452,34 @@
       {disabled}
     />
     {#if granularity !== 'day'}
-      <div class="cinder-date-range-field__time-controls" role="group" aria-label="Range times">
-        <label>
-          <span>{resolvedStartLabel}</span>
-          <input
-            type="time"
-            step={inputStep}
-            value={normalizedValue.start?.slice(11) ?? ''}
-            {disabled}
-            onchange={(event) =>
-              handleCalendarTimeChange('start', (event.currentTarget as HTMLInputElement).value)}
-          />
-        </label>
-        <label>
-          <span>{resolvedEndLabel}</span>
-          <input
-            type="time"
-            step={inputStep}
-            value={normalizedValue.end?.slice(11) ?? ''}
-            disabled={disabled || !normalizedValue.end}
-            onchange={(event) =>
-              handleCalendarTimeChange('end', (event.currentTarget as HTMLInputElement).value)}
-          />
-        </label>
-      </div>
+      <Grid
+        columns="repeat(2, minmax(0, 1fr))"
+        gap="var(--cinder-space-3)"
+        class="cinder-date-range-field__time-controls"
+        role="group"
+        aria-label="Range times"
+      >
+        <Input
+          id={`${id}-start-time`}
+          type="time"
+          label={resolvedStartLabel}
+          step={inputStep}
+          value={normalizedValue.start?.slice(11) ?? ''}
+          {disabled}
+          onchange={(event) =>
+            handleCalendarTimeChange('start', (event.currentTarget as HTMLInputElement).value)}
+        />
+        <Input
+          id={`${id}-end-time`}
+          type="time"
+          label={resolvedEndLabel}
+          step={inputStep}
+          value={normalizedValue.end?.slice(11) ?? ''}
+          disabled={disabled || !normalizedValue.end}
+          onchange={(event) =>
+            handleCalendarTimeChange('end', (event.currentTarget as HTMLInputElement).value)}
+        />
+      </Grid>
     {/if}
   </Popover>
 
