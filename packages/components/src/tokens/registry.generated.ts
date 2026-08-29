@@ -1750,7 +1750,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-severity-critical',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
       description: 'Highest-severity badge foreground.',
     },
@@ -1759,7 +1759,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-severity-critical-background',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
       description: 'Highest-severity badge background.',
     },
@@ -1768,7 +1768,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-black',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1776,7 +1776,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-red',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1784,7 +1784,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-green',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1792,7 +1792,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-yellow',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1800,7 +1800,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-blue',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1808,7 +1808,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-magenta',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1816,7 +1816,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-cyan',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1824,7 +1824,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-white',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1832,7 +1832,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-black',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1840,7 +1840,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-red',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1848,7 +1848,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-green',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1856,7 +1856,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-yellow',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1864,7 +1864,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-blue',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1872,7 +1872,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-magenta',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1880,7 +1880,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-cyan',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {
@@ -1888,7 +1888,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       cssProperty: '--cinder-terminal-ansi-bright-white',
       category: 'color',
       public: true,
-      themeAware: false,
+      themeAware: true,
       deprecated: false,
     },
     {

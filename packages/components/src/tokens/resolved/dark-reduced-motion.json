@@ -2379,222 +2379,204 @@
     }
   },
   "severity.critical": {
-    "$value": { "colorSpace": "oklch", "components": [0.38, 0.18, 25] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.95, 0.04, 25] },
     "$description": "Highest-severity badge foreground.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-severity-critical",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "severity.critical-background": {
-    "$value": { "colorSpace": "oklch", "components": [0.93, 0.045, 25] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.24, 0.11, 25] },
     "$description": "Highest-severity badge background.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-severity-critical-background",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-black": {
-    "$value": { "colorSpace": "oklch", "components": [0.25, 0, 0] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0, 0] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-black",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(25% 0 0), oklch(82% 0 0))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-red": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 25] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 25] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-red",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-green": {
-    "$value": { "colorSpace": "oklch", "components": [0.38, 0.13, 145] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.13, 145] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-green",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-yellow": {
-    "$value": { "colorSpace": "oklch", "components": [0.48, 0.14, 85] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0.13, 85] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-yellow",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-blue": {
-    "$value": { "colorSpace": "oklch", "components": [0.4, 0.16, 260] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.72, 0.15, 260] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-blue",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-magenta": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 325] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.75, 0.14, 325] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-magenta",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-cyan": {
-    "$value": { "colorSpace": "oklch", "components": [0.35, 0.11, 205] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.75, 0.12, 205] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-cyan",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-white": {
-    "$value": { "colorSpace": "oklch", "components": [0.18, 0, 0] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.94, 0, 0] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-white",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(18% 0 0), oklch(94% 0 0))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-black": {
-    "$value": { "colorSpace": "oklch", "components": [0.42, 0, 0] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.68, 0, 0] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-black",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(42% 0 0), oklch(68% 0 0))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-red": {
-    "$value": { "colorSpace": "oklch", "components": [0.52, 0.18, 25] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.78, 0.15, 25] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-red",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-green": {
-    "$value": { "colorSpace": "oklch", "components": [0.48, 0.15, 145] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.8, 0.14, 145] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-green",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-yellow": {
-    "$value": { "colorSpace": "oklch", "components": [0.58, 0.16, 85] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.88, 0.14, 85] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-yellow",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(58% 0.16 85), oklch(88% 0.14 85))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-blue": {
-    "$value": { "colorSpace": "oklch", "components": [0.5, 0.18, 260] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.8, 0.16, 260] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-blue",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-magenta": {
-    "$value": { "colorSpace": "oklch", "components": [0.54, 0.18, 325] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0.15, 325] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-magenta",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-cyan": {
-    "$value": { "colorSpace": "oklch", "components": [0.45, 0.13, 205] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.82, 0.13, 205] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-cyan",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "terminal.ansi-bright-white": {
-    "$value": { "colorSpace": "oklch", "components": [0.1, 0, 0] },
+    "$type": "color",
+    "$value": { "colorSpace": "oklch", "components": [0.98, 0, 0] },
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-terminal-ansi-bright-white",
         "public": true,
-        "category": "color",
-        "cssRecipe": "light-dark(oklch(10% 0 0), oklch(98% 0 0))"
+        "category": "color"
       }
-    },
-    "$type": "color"
+    }
   },
   "checker.base": {
     "$type": "color",
