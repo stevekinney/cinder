@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "shard": "2/8",
+  "componentScope": ["chat"],
   "renderedSourceSha": "246670e08799e5e1d3140970f4015b8b20d1b019",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
