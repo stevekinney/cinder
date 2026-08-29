@@ -485,7 +485,9 @@
       // In form action mode, sync the bound value with trimmed content
       // so the hidden input sends the same content as the callback.
       // This fixes debounce lag and ensures consistent data.
-      value = submittedContent;
+      flushSync(() => {
+        value = submittedContent;
+      });
     }
   }
 
@@ -622,9 +624,27 @@
     editorElement.setRangeText(text, replacementStart, replacementEnd, 'end');
     const nextValue = editorElement.value;
     const caret = nextValue.length - (previousValue.length - replacementEnd);
+    const delta = text.length - (replacementEnd - replacementStart);
+    const translatePosition = (position: number): number => {
+      if (position <= replacementStart) return position;
+      if (position >= replacementEnd) return position + delta;
+      return replacementStart + text.length;
+    };
+    attachments = attachments.map((attachment) =>
+      attachment.restoreRange
+        ? {
+            ...attachment,
+            restoreRange: {
+              start: translatePosition(attachment.restoreRange.start),
+              end: translatePosition(attachment.restoreRange.end),
+            },
+          }
+        : attachment,
+    );
     flushSync(() => {
       value = nextValue;
     });
+    previousComposerValue = nextValue;
     editorElement.focus();
     editorElement.setSelectionRange(caret, caret);
     oncomposerinput?.(value);

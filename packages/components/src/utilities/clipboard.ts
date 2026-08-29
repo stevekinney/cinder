@@ -59,11 +59,14 @@ export async function copyToClipboard(
 
 async function resolveOptionalImage(image: Blob | string): Promise<Blob | undefined> {
   if (image instanceof Blob) return image;
+  if (!image.trim() || typeof document === 'undefined' || typeof location === 'undefined') {
+    return undefined;
+  }
   const resolvedUrl = new URL(image, document.baseURI);
   const isLocallyResolvable =
     resolvedUrl.protocol === 'blob:' ||
     resolvedUrl.protocol === 'data:' ||
-    resolvedUrl.origin === globalThis.location.origin;
+    resolvedUrl.origin === location.origin;
   if (!isLocallyResolvable) return undefined;
   try {
     const response = await fetch(resolvedUrl);

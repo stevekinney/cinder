@@ -70,6 +70,10 @@
     reasoningExpanded?: boolean | undefined;
     /** Called when the reasoning disclosure toggle is activated. */
     onreasoning?: (() => void) | undefined;
+    /** Whether the grouped steps disclosure is expanded. */
+    stepsExpanded?: boolean | undefined;
+    /** Called when the grouped steps disclosure is toggled. */
+    onsteps?: (() => void) | undefined;
     /**
      * Whether the tool-call card disclosure is expanded. Collapsed by default —
      * kept separate from `expanded` (which drives markdown "Show more/less"),
@@ -134,6 +138,8 @@
     suggestions,
     reasoningExpanded = false,
     onreasoning,
+    stepsExpanded = true,
+    onsteps,
     toolCallExpanded = $bindable(false),
     ontoolcalltoggle,
     onSuggestionSelect,
@@ -390,6 +396,8 @@
           {ondeny}
           {reasoningExpanded}
           {onreasoning}
+          {stepsExpanded}
+          {onsteps}
           {onSuggestionSelect}
         />
 

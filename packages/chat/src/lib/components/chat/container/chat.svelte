@@ -238,6 +238,7 @@
   }
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+  const stepsState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
 
   // Content-driven streams do not call beginStreaming, so warm the renderer
   // when streaming starts or when Chat mounts during an already-active stream.
@@ -266,6 +267,7 @@
     editingMessageIds = new Set();
     reasoningState.reset();
     toolCallState.reset();
+    stepsState.reset();
     typingIndicatorState.reset();
     readReceiptsState.reset();
     clearConsumerAnnouncements();
@@ -465,7 +467,12 @@
       firstUnreadId: unreadState.firstUnreadId,
       showTypingIndicator,
       ungroupedToolCallIds:
-        row || messageActions || messageStatus || searchState.isOpen || rollbackMessageId
+        row ||
+        messagePart ||
+        messageActions ||
+        messageStatus ||
+        searchState.isOpen ||
+        rollbackMessageId
           ? new Set(
               messages.flatMap((message) => (message.toolCall?.id ? [message.toolCall.id] : [])),
             )
@@ -698,8 +705,10 @@
     return '';
   });
   let hasObservedToolStatuses = false;
+  let observedToolStatusConversationId: string | undefined;
   let previousToolStatuses = new Map<string, { name: string; status: string }>();
   $effect(() => {
+    const currentConversationId = conversationId;
     const currentToolStatuses = new Map<string, { name: string; status: string }>();
     for (const message of messages) {
       if (message.role === 'tool-call' && message.toolCall) {
@@ -715,18 +724,21 @@
         });
       }
     }
+    if (currentConversationId !== observedToolStatusConversationId) {
+      hasObservedToolStatuses = false;
+      observedToolStatusConversationId = currentConversationId;
+    }
     if (hasObservedToolStatuses) {
       for (const [callId, current] of currentToolStatuses) {
         const previous = previousToolStatuses.get(callId);
         if (!previous || previous.status === current.status) continue;
+        if (current.status === 'action_required') continue;
         const statusLabel =
           current.status === 'success'
             ? 'complete'
             : current.status === 'error'
               ? 'failed'
-              : current.status === 'action_required'
-                ? 'requires action'
-                : current.status;
+              : current.status;
         setConsumerPoliteAnnouncement(`${current.name} ${statusLabel}`);
       }
     }
@@ -2638,6 +2650,8 @@
         suggestions={derivedSuggestions}
         reasoningExpanded={reasoningState.isExpanded(message.id)}
         onreasoning={() => reasoningState.toggle(message.id)}
+        stepsExpanded={!stepsState.isExpanded(message.id)}
+        onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
         onSuggestionSelect={handleSuggestionSelect}

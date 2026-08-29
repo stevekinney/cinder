@@ -86,6 +86,10 @@ export type ChatMessagePartsRendererProps = {
   reasoningExpanded?: boolean | undefined;
   /** Called when the reasoning disclosure toggle is activated. */
   onreasoning?: (() => void) | undefined;
+  /** Whether the grouped steps disclosure is expanded. */
+  stepsExpanded?: boolean | undefined;
+  /** Called when the grouped steps disclosure is toggled. */
+  onsteps?: (() => void) | undefined;
   /** Called when the user selects a suggestion chip. */
   onSuggestionSelect?: ((label: string) => void) | undefined;
 };

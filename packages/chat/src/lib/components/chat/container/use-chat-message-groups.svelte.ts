@@ -159,6 +159,7 @@ export function buildChatRenderRows(
       if (
         item.message.role === 'tool-call' &&
         toolCallId &&
+        !item.message.hidden &&
         !options?.ungroupedToolCallIds?.has(toolCallId)
       ) {
         toolCallRun.push(item.message);

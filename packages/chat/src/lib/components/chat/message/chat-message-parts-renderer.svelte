@@ -25,6 +25,8 @@
     ondeny,
     reasoningExpanded = false,
     onreasoning,
+    stepsExpanded = true,
+    onsteps,
     onSuggestionSelect,
   }: ChatMessagePartsRendererProps = $props();
 
@@ -107,7 +109,8 @@
       id={`steps-${unit.key.replace(/[^a-z0-9-]/gi, '-')}`}
       label="Steps"
       status={`${unit.steps.filter((step) => step.status === 'done').length}/${unit.steps.length} complete`}
-      open
+      open={stepsExpanded}
+      onToggle={() => onsteps?.()}
     >
       <ol class="chat-step-list" aria-label="Steps">
         {#each unit.steps as step (step.key)}
