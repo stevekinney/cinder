@@ -7,7 +7,7 @@
 @layer cinder.components {
   .cinder-date-range-field__time-controls {
     padding-top: var(--cinder-space-3);
-    border-top: 1px solid var(--cinder-border-subtle);
+    border-top: 1px solid var(--cinder-border-faint);
   }
   /* ========================================
    * DATE RANGE FIELD
