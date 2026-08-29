@@ -20,6 +20,7 @@ setupHappyDom();
 
 const { render, cleanup, fireEvent } = await import('@testing-library/svelte');
 const { default: ChatMessage } = await import('./chat-message.svelte');
+const { default: ToolCallTimeline } = await import('./tool-call-timeline.svelte');
 
 afterEach(() => {
   cleanup();
@@ -62,7 +63,46 @@ describe('ChatMessage — tool-call rendering', () => {
     });
     expect(container.querySelector('.tool-call-group')).not.toBeNull();
     expect(container.querySelector('.tool-call-name')?.textContent).toBe('lookup');
+    expect(container.querySelector('.tool-call-header')?.getAttribute('aria-label')).toContain(
+      'Pending',
+    );
     expect(container.textContent).toContain('lookup');
+  });
+
+  test('grouped repeated call ids remain unique and preserve structured error details', async () => {
+    const { container } = render(ToolCallTimeline, {
+      props: {
+        pairs: [
+          { call: { id: 'repeated', name: 'first', arguments: {} } },
+          {
+            call: { id: 'repeated', name: 'second', arguments: {} },
+            result: {
+              callId: 'repeated',
+              outcome: 'error',
+              content: null,
+              error: {
+                code: 'offline',
+                category: 'internal',
+                retryable: true,
+                message: 'Network unavailable',
+              },
+            },
+          },
+        ],
+      },
+    });
+
+    const steps = container.querySelectorAll('.cinder-run-step-timeline__item');
+    expect(steps).toHaveLength(2);
+    expect(new Set(Array.from(steps, (step) => step.getAttribute('data-cinder-path'))).size).toBe(
+      2,
+    );
+    await fireEvent.click(
+      Array.from(container.querySelectorAll('button')).find((button) =>
+        button.textContent?.includes('Result'),
+      )!,
+    );
+    expect(container.textContent).toContain('Network unavailable');
   });
 
   test('tool-call card is collapsed by default (arguments hidden)', () => {

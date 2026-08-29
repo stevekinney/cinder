@@ -228,7 +228,11 @@
     document: 'Document',
   };
 
-  function addAttachment(file: File, restoreText?: string): ChatAttachment | null {
+  function addAttachment(
+    file: File,
+    restoreText?: string,
+    restoreRange?: { start: number; end: number },
+  ): ChatAttachment | null {
     // Type validation
     if (!isValidType(file)) {
       onattachmentfailure?.(
@@ -269,6 +273,7 @@
       kind,
       status: kind === 'code' ? 'pending' : 'ready',
       ...(restoreText === undefined ? {} : { restoreText }),
+      ...(restoreRange === undefined ? {} : { restoreRange }),
     };
 
     attachments = [...attachments, attachment];
@@ -301,8 +306,12 @@
       URL.revokeObjectURL(attachment.previewUrl);
       attachments = attachments.filter((a) => a.id !== attachmentId);
       if (attachment.restoreText) {
-        value = `${value}${value.length > 0 && !value.endsWith('\n') ? '\n' : ''}${attachment.restoreText}`;
+        const start = Math.min(attachment.restoreRange?.start ?? value.length, value.length);
+        const end = Math.min(attachment.restoreRange?.end ?? value.length, value.length);
+        value = `${value.slice(0, start)}${attachment.restoreText}${value.slice(end)}`;
         oncomposerinput?.(value);
+        const caretIndex = start + attachment.restoreText.length;
+        queueMicrotask(() => editorElement?.setSelectionRange(caretIndex, caretIndex));
       }
       onattachmentremove?.(attachment);
       announcer.announce(`${KIND_LABELS[attachment.kind]} removed`);
@@ -350,7 +359,11 @@
         type: 'text/plain',
         lastModified: 0,
       });
-      if (addAttachment(file, pastedText)) event.preventDefault();
+      const restoreRange = {
+        start: editorElement?.selectionStart ?? value.length,
+        end: editorElement?.selectionEnd ?? value.length,
+      };
+      if (addAttachment(file, pastedText, restoreRange)) event.preventDefault();
     }
   }
 

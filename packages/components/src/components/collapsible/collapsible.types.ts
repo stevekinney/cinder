@@ -34,7 +34,10 @@ export type CollapsibleProps = Omit<
   triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
   /** Additional class names applied to the disclosure trigger button. */
   triggerClass?: string;
-  /** Whether opening and closing uses the slide transition. Default `true`. */
+  /**
+   * Whether opening and closing uses the slide transition.
+   * @default true
+   */
   animated?: boolean;
   /**
    * Base used to derive the trigger and panel ARIA ids (`<base>-header`,
@@ -74,7 +77,10 @@ export interface CollapsibleSchemaProps {
   triggerAriaLabel?: string;
   /** Additional class names applied to the disclosure trigger button. */
   triggerClass?: string;
-  /** Whether opening and closing uses the slide transition. Default `true`. */
+  /**
+   * Whether opening and closing uses the slide transition.
+   * @default true
+   */
   animated?: boolean;
   /** Base used to derive the trigger, label, and panel ARIA ids. Auto-generated when omitted. */
   idBase?: string;

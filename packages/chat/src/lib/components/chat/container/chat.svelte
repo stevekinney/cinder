@@ -462,7 +462,7 @@
       firstUnreadId: unreadState.firstUnreadId,
       showTypingIndicator,
       ungroupedToolCallIds:
-        row || messageActions || messageStatus || searchState.isOpen
+        row || messageActions || messageStatus || searchState.isOpen || rollbackMessageId
           ? new Set(
               messages.flatMap((message) => (message.toolCall?.id ? [message.toolCall.id] : [])),
             )

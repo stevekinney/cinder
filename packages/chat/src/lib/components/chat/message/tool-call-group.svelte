@@ -80,7 +80,7 @@
     labelClass="tool-call-name"
     onToggle={() => handleToggle()}
   >
-    <div id={detailsId} class="tool-call-details" role="region" aria-label="Tool details">
+    <div class="tool-call-details">
       <div class="tool-call-section">
         <h4 class="tool-call-section-title">Arguments</h4>
         <ToolPayloadCode code={formattedArguments} />
@@ -111,21 +111,18 @@
     inline-size: max-content;
     min-inline-size: min(18rem, 100%);
     max-inline-size: 100%;
-    border-radius: var(--cinder-radius-md);
-    border: 1px solid var(--cinder-border-muted);
-    overflow: hidden;
   }
 
   .tool-call-group[data-status='error'] {
-    border-color: var(--cinder-status-danger-solid);
+    --_chat-entry-frame-border-color: var(--cinder-status-danger-solid);
   }
 
   .tool-call-group[data-status='success'] {
-    border-color: var(--cinder-status-success-solid);
+    --_chat-entry-frame-border-color: var(--cinder-status-success-solid);
   }
 
   .tool-call-group[data-status='action-required'] {
-    border-color: var(--cinder-status-warning-solid);
+    --_chat-entry-frame-border-color: var(--cinder-status-warning-solid);
   }
 
   :global(.tool-call-header:focus-visible) {
@@ -141,8 +138,6 @@
   }
 
   .tool-call-details {
-    padding: var(--cinder-space-3);
-    border-top: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface-inset);
     display: flex;
     flex-direction: column;

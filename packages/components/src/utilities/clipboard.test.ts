@@ -83,6 +83,45 @@ describe('copyToClipboard', () => {
     expect(writeText).toHaveBeenCalledWith('Fallback');
   });
 
+  test('keeps rich HTML when an optional image cannot be fetched', async () => {
+    const write = mock(async (_items: ClipboardItem[]) => undefined);
+    const writeText = mock(async () => undefined);
+    const originalFetch = globalThis.fetch;
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob>) {}
+    }
+    globalThis.fetch = mock(async () => Promise.reject(new Error('cors')));
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: 'https://example.test/cross-origin.png',
+        }),
+      ).toBe(true);
+      const [writtenItems] = write.mock.calls[0]!;
+      const item = writtenItems[0] as unknown as TestClipboardItem;
+      expect(await item.values['text/html']?.text()).toBe('<strong>Hello</strong>');
+      expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
+      expect(writeText).not.toHaveBeenCalled();
+    } finally {
+      globalThis.fetch = originalFetch;
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('marks the legacy fallback textarea as hidden from assistive technology', async () => {
     const appendedTextareas: HTMLTextAreaElement[] = [];
     const appendChild = document.body.appendChild.bind(document.body);

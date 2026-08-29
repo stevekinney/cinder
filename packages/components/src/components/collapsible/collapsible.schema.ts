@@ -30,7 +30,8 @@ const schema = {
     },
     animated: {
       type: 'boolean',
-      description: 'Whether opening and closing uses the slide transition. Default `true`.',
+      description: 'Whether opening and closing uses the slide transition.',
+      default: true,
     },
     idBase: {
       type: 'string',

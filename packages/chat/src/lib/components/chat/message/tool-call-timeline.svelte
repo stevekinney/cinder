@@ -6,8 +6,8 @@
 
   const steps = $derived(
     pairs.map(
-      (pair): RunStep => ({
-        id: pair.call.id,
+      (pair, index): RunStep => ({
+        id: `${index}:${pair.call.id}`,
         label: pair.call.name,
         status:
           pair.result?.outcome === 'error'
@@ -19,16 +19,19 @@
                 : 'running',
         details: [
           {
-            id: `${pair.call.id}-arguments`,
+            id: `${index}:${pair.call.id}-arguments`,
             label: 'Arguments',
             content: JSON.stringify(pair.call.arguments, null, 2),
           },
           ...(pair.result
             ? [
                 {
-                  id: `${pair.call.id}-result`,
+                  id: `${index}:${pair.call.id}-result`,
                   label: 'Result',
-                  content: JSON.stringify(pair.result.content, null, 2),
+                  content:
+                    pair.result.outcome === 'error' && pair.result.error?.message
+                      ? pair.result.error.message
+                      : JSON.stringify(pair.result.content, null, 2),
                 },
               ]
             : []),

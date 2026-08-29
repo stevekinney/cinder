@@ -32,7 +32,7 @@
     id={`${id}-header`}
     type="button"
     class={`chat-entry-frame__trigger${triggerClass ? ` ${triggerClass}` : ''}`}
-    aria-label={`${open ? 'Collapse' : 'Expand'} ${label}`}
+    aria-label={`${open ? 'Collapse' : 'Expand'} ${label}${status ? `, ${status}` : busy ? ', In progress' : ''}`}
     aria-expanded={open}
     aria-controls={open ? `${id}-panel` : undefined}
     {disabled}
@@ -58,3 +58,69 @@
     </div>
   {/if}
 </div>
+
+<style>
+  .chat-entry-frame {
+    inline-size: 100%;
+    overflow: hidden;
+    border: 1px solid var(--_chat-entry-frame-border-color, var(--cinder-border-muted));
+    border-radius: var(--cinder-radius-md);
+    background: var(--cinder-surface);
+  }
+
+  .chat-entry-frame__trigger {
+    display: flex;
+    align-items: center;
+    inline-size: 100%;
+    min-block-size: var(--cinder-touch-target-min);
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    border: 0;
+    background: transparent;
+    color: inherit;
+    text-align: start;
+    cursor: pointer;
+  }
+
+  .chat-entry-frame__label {
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .chat-entry-frame__status {
+    margin-inline-start: auto;
+    color: var(--cinder-text-subtle);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
+  }
+
+  .chat-entry-frame__busy {
+    display: inline-block;
+    flex: 0 0 auto;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    margin-inline-end: var(--cinder-space-2);
+    border-radius: 50%;
+    background: var(--cinder-border);
+  }
+
+  .chat-entry-frame__chevron {
+    inline-size: 1rem;
+    block-size: 1rem;
+    margin-inline-start: var(--cinder-space-2);
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-out);
+  }
+
+  .chat-entry-frame[data-cinder-expanded] .chat-entry-frame__chevron {
+    transform: rotate(180deg);
+  }
+
+  .chat-entry-frame__panel-inner {
+    max-block-size: 16rem;
+    overflow: auto;
+    padding: var(--cinder-space-3);
+    border-block-start: 1px solid var(--cinder-border-muted);
+  }
+</style>

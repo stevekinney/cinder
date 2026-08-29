@@ -11,6 +11,8 @@ export interface ChatAttachment {
   textContent?: string;
   /** Original pasted text restored to the composer when this promoted attachment is removed. */
   restoreText?: string;
+  /** Original selection replaced when a promoted paste is restored. */
+  restoreRange?: { start: number; end: number };
   status: FileUploadStatus;
   error?: string;
 }

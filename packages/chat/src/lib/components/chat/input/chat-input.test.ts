@@ -116,6 +116,30 @@ describe('ChatInput', () => {
     expect(container.querySelector('[aria-label="Attached files"]')).toBeNull();
   });
 
+  test('restores a promoted paste at its original selection', async () => {
+    const { container } = render(ChatInput, {
+      id: 'selected-large-paste-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'replacement text' : ''),
+      },
+    });
+    await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
+    await tick();
+
+    expect(composer.value).toBe('before replacement text after');
+    expect(composer.selectionStart).toBe(23);
+    expect(composer.selectionEnd).toBe(23);
+  });
+
   test('shows an instructional copy-drop overlay with copy semantics', async () => {
     const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
     const form = container.querySelector('form')!;

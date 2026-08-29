@@ -41,7 +41,7 @@
     detectTrigger as detectCommandTrigger,
   } from '@lostgradient/cinder/command-menu';
   import CommandItem from '@lostgradient/cinder/command-item';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
   import { filterFuzzySubsequence } from './chat-composer-popover-filter.ts';
   import type {
     ChatComposerPopoverComposerProps,
@@ -109,24 +109,34 @@
     sourceGroups = [];
     void Promise.all(
       sources.map(async (source: ChatComposerPopoverSource<TItem>) => {
-        const candidates = await source.load({ query: match.query, trigger: match.trigger });
-        const filtered = filter(candidates, match.query, match.trigger);
-        const limit = Math.max(0, Math.floor(source.limit ?? filtered.length));
-        return { id: source.id, label: source.label, items: filtered.slice(0, limit) };
+        try {
+          const candidates = await source.load({ query: match.query, trigger: match.trigger });
+          const filtered = filter(candidates, match.query, match.trigger);
+          const limit = Math.max(0, Math.floor(source.limit ?? filtered.length));
+          return { id: source.id, label: source.label, items: filtered.slice(0, limit) };
+        } catch {
+          return null;
+        }
       }),
-    ).then(
-      (groups) => {
-        if (requestId !== sourceRequestId) return;
-        sourceGroups = groups;
-        loadingSources = false;
-        sourceGeneration += 1;
-      },
-      () => {
-        if (requestId !== sourceRequestId) return;
-        sourceGroups = [];
-        loadingSources = false;
-      },
-    );
+    ).then(async (groups) => {
+      if (requestId !== sourceRequestId) return;
+      const activeOptionLabel =
+        typeof document === 'undefined' || !activeItemId
+          ? null
+          : document.getElementById(activeItemId)?.getAttribute('aria-label');
+      sourceGroups = groups.filter(
+        (group): group is NonNullable<(typeof groups)[number]> => group !== null,
+      );
+      loadingSources = false;
+      sourceGeneration += 1;
+      if (activeOptionLabel) {
+        await tick();
+        const option = Array.from(
+          document.querySelectorAll<HTMLElement>(`#${listboxId} [role="option"]`),
+        ).find((candidate) => candidate.getAttribute('aria-label') === activeOptionLabel);
+        option?.dispatchEvent(new Event('pointerenter'));
+      }
+    });
   });
 
   const composerProps = $derived({

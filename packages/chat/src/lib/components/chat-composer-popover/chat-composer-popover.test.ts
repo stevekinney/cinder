@@ -128,6 +128,47 @@ describe('ChatComposerPopover', () => {
     expect(document.body.textContent).not.toContain('package.json');
   });
 
+  test('keeps healthy async source groups when another source rejects', async () => {
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'healthy',
+          label: 'Healthy',
+          load: async () => [{ value: 'readme', label: 'README.md' }],
+        },
+        {
+          id: 'failed',
+          label: 'Failed',
+          load: async () => Promise.reject(new Error('offline')),
+        },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    expect(document.body.textContent).not.toContain('Loading suggestions');
+  });
+
+  test('preserves the active static suggestion when an async source resolves', async () => {
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    render(ChatComposerPopoverFixture, {
+      sources: [{ id: 'files', label: 'Files', load: () => pending }],
+    });
+
+    const composer = await typeComposer('/');
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    const activeBefore = composer.getAttribute('aria-activedescendant');
+    expect(activeBefore).toBeTruthy();
+
+    resolveItems?.([{ value: 'readme', label: 'README.md' }]);
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    await waitFor(() => expect(composer.getAttribute('aria-activedescendant')).toBe(activeBefore));
+  });
+
   test('passes combobox ARIA through to the ChatInput composer while open', async () => {
     render(ChatComposerPopoverFixture);
     const composer = await typeComposer('/h');

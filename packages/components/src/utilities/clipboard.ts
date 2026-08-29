@@ -37,10 +37,7 @@ export async function copyToClipboard(
         representations['text/html'] = new Blob([rich.html], { type: 'text/html' });
       }
       if (rich.image !== undefined) {
-        const imageBlob =
-          typeof rich.image === 'string'
-            ? await fetch(rich.image).then((response) => response.blob())
-            : rich.image;
+        const imageBlob = await resolveOptionalImage(rich.image);
         if (imageBlob.type.startsWith('image/')) representations[imageBlob.type] = imageBlob;
       }
       await navigator.clipboard.write([new ClipboardItem(representations)]);
@@ -58,6 +55,17 @@ export async function copyToClipboard(
     }
   }
   return legacyCopy(text);
+}
+
+async function resolveOptionalImage(image: Blob | string): Promise<Blob> {
+  if (image instanceof Blob) return image;
+  try {
+    const response = await fetch(image);
+    if (!response.ok) return new Blob();
+    return await response.blob();
+  } catch {
+    return new Blob();
+  }
 }
 
 function legacyCopy(text: string): boolean {
