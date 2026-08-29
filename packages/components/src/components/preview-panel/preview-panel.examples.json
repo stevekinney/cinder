@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "preview-panel",
+  "import": "@lostgradient/cinder/preview-panel",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Preview panel",
+      "description": "A bounded preview with status and footer content.",
+      "code": "<script lang=\"ts\">\n  import { PreviewPanel } from '@lostgradient/cinder/preview-panel';\n</script>\n<PreviewPanel title=\"Artifact preview\" status=\"ready\">\n  <p>Preview content is ready.</p>\n  {#snippet footer()}\n    <small>Updated just now</small>\n  {/snippet}\n</PreviewPanel>\n"
+    }
+  ]
+}

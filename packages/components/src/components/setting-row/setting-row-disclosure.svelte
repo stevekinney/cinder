@@ -1,13 +1,13 @@
 <script lang="ts">
   import Button from '../button/button.svelte';
-  import type { Snippet } from 'svelte';
-  let {
-    expanded = false,
-    controls,
-    children,
-  }: { expanded?: boolean; controls: string; children: Snippet } = $props();
+  import type { SettingRowDisclosureProps } from './setting-row.types.ts';
+  let { expanded = $bindable(false), controls, children }: SettingRowDisclosureProps = $props();
+
+  function toggle() {
+    expanded = !expanded;
+  }
 </script>
 
-<Button variant="ghost" aria-expanded={expanded} aria-controls={controls}
+<Button variant="ghost" aria-expanded={expanded} aria-controls={controls} onclick={toggle}
   >{@render children()}</Button
 >
