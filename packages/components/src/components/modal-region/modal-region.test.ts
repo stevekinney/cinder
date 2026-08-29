@@ -43,4 +43,10 @@ describe('ModalRegion', () => {
 
     await expect(api!.confirm({ title: 'Confirm action' })).resolves.toBe(false);
   });
+
+  test('exposes dedicated title and scoped custom-content controls', () => {
+    const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('title: options.title');
+    expect(source).toContain('modal={{');
+  });
 });

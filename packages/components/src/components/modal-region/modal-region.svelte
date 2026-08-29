@@ -21,6 +21,7 @@
     type ModalEntry,
     type ModalApi,
     type ModalComponent,
+    type OpenModalOptions,
   } from '../../_internal/modal-context.ts';
   import type { ModalRegionProps } from './modal-region.types.ts';
 
@@ -32,7 +33,8 @@
   const api: ModalApi = {
     openModal<T extends Record<string, unknown>>(
       component: Component<T>,
-      props = {} as T & { id?: string },
+      props: Omit<T, 'modal'> & { id?: string },
+      options: OpenModalOptions,
     ) {
       if (destroyed) return Promise.resolve(undefined);
       const typedProps = props as Record<string, unknown> & { id?: string };
@@ -49,6 +51,7 @@
           id,
           component: component as ModalComponent,
           props: { ...typedProps },
+          title: options.title,
           resolve: resolver,
           promise,
         },
@@ -58,14 +61,18 @@
     confirm(options) {
       if (destroyed) return Promise.resolve(false);
       const id = options.id ?? `cinder-confirm-${++sequence}`;
-      const promise = api.openModal(ConfirmDialog, {
-        ...options,
-        id,
-        open: true,
-        confirmLabel: options.confirmLabel ?? 'Confirm',
-        onConfirm: () => finish(id, true),
-        onCancel: () => finish(id, false),
-      }) as Promise<boolean>;
+      const promise = api.openModal(
+        ConfirmDialog,
+        {
+          ...options,
+          id,
+          open: true,
+          confirmLabel: options.confirmLabel ?? 'Confirm',
+          onConfirm: () => finish(id, true),
+          onCancel: () => finish(id, false),
+        },
+        { title: options.title },
+      ) as Promise<boolean>;
       const entry = entries.find((candidate) => candidate.id === id);
       if (entry) {
         entry.ownsModal = true;
@@ -109,11 +116,18 @@
   {:else}
     <Modal
       open={!entry.settled}
-      title={typeof entry.props['title'] === 'string' ? entry.props['title'] : 'Dialog'}
+      title={entry.title}
       onDismiss={() => finish(entry.id, false)}
       onExitComplete={() => remove(entry.id)}
     >
-      <Component {...entry.props} open={!entry.settled} />
+      <Component
+        {...entry.props}
+        open={!entry.settled}
+        modal={{
+          resolve: (value: unknown) => finish(entry.id, value),
+          close: () => finish(entry.id, undefined),
+        }}
+      />
     </Modal>
   {/if}
 {/each}

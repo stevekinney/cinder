@@ -1,6 +1,6 @@
 # KeyValueEditor
 
-`KeyValueEditor` edits repeatable string key/value pairs. Pass `secret(key)` to route sensitive values through `SecretValueField` instead of a plain input.
+`KeyValueEditor` edits repeatable string key/value pairs. Pass `secret(key)` to render sensitive values in an editable password `Input`.
 
 ```svelte
 <KeyValueEditor bind:entries secret={(key) => key.toLowerCase().includes('token')} />

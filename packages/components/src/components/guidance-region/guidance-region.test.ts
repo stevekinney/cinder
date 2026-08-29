@@ -2,7 +2,11 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { createModalSlot, isRelevant } from '../../_internal/guidance-context.ts';
+import {
+  createModalSlot,
+  isRelevant,
+  type GuidanceClaim,
+} from '../../_internal/guidance-context.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -16,10 +20,11 @@ describe('GuidanceRegion', () => {
   test('applies inclusive version windows', () => {
     const claim = {
       id: 'tour',
+      anchor: 'search',
       content: 'Try search',
       relevantFrom: '1.2.0',
       relevantUntil: '2.0.0',
-    };
+    } satisfies GuidanceClaim;
 
     expect(isRelevant(claim, '1.2.0')).toBe(true);
     expect(isRelevant(claim, '2.0.0')).toBe(true);
@@ -42,11 +47,27 @@ describe('GuidanceRegion', () => {
   test('renders application children without owning persistent storage', () => {
     const children = createRawSnippet(() => ({ render: () => '<main>Application</main>' }));
     const { container } = render(GuidanceRegion, {
-      claims: [{ id: 'tour', content: 'Try search' }],
+      claims: [{ id: 'tour', anchor: 'search', content: 'Try search' }],
       version: '1.0.0',
       children,
     });
 
     expect(container.querySelector('main')?.textContent).toBe('Application');
+  });
+
+  test('requires anchored claims to name their anchor', () => {
+    const anchoredClaim = {
+      id: 'tour',
+      anchor: 'search',
+      content: 'Try search',
+    } satisfies GuidanceClaim;
+    const modalClaim = {
+      id: 'upgrade',
+      kind: 'modal',
+      content: 'Upgrade now',
+    } satisfies GuidanceClaim;
+
+    expect(anchoredClaim.anchor).toBe('search');
+    expect(modalClaim.kind).toBe('modal');
   });
 });

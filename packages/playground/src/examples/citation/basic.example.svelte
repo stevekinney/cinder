@@ -7,8 +7,4 @@
   import { Citation } from '@lostgradient/cinder/citation';
 </script>
 
-<p>
-  Cinder components publish machine-readable metadata.
-  <Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]}>[1]</Citation
-  >
-</p>
+<Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]} />

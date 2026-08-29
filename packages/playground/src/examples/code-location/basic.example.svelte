@@ -7,4 +7,4 @@
   import { CodeLocation } from '@lostgradient/cinder/code-location';
 </script>
 
-<CodeLocation file="src/routes/+page.svelte" line={42} column={7} />
+<CodeLocation file="src/routes/+page.svelte" />

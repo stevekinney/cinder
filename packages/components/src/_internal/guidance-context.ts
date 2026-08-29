@@ -1,13 +1,13 @@
 import { createContext } from 'svelte';
 
-export type GuidanceClaim = {
+type GuidanceClaimBase = {
   id: string;
-  anchor?: string;
   content: string;
-  kind?: 'anchored' | 'modal';
   relevantFrom?: string;
   relevantUntil?: string;
 };
+export type GuidanceClaim = GuidanceClaimBase &
+  ({ kind?: 'anchored'; anchor: string } | { kind: 'modal'; anchor?: never });
 export type GuidanceStorage = {
   get: (key: string) => boolean;
   set: (key: string, value: boolean) => void;

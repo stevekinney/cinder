@@ -1102,7 +1102,12 @@ export { default as KeyValueEditor } from './components/key-value-editor/index.t
 export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
 
 export { default as ModalRegion, useModal } from './components/modal-region/index.ts';
-export type { ModalApi, ModalRegionProps } from './components/modal-region/index.ts';
+export type {
+  ModalApi,
+  ModalContentControls,
+  ModalRegionProps,
+  OpenModalOptions,
+} from './components/modal-region/index.ts';
 
 export { default as QuotaMeter } from './components/quota-meter/index.ts';
 export type { QuotaMeterProps } from './components/quota-meter/index.ts';

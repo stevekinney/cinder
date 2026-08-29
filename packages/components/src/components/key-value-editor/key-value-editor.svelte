@@ -15,6 +15,7 @@
 <script lang="ts">
   import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
+  import Button from '../button/button.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { KeyValueEditorProps, KeyValueEntry } from './key-value-editor.types.ts';
   let {
@@ -69,14 +70,19 @@
           value={row.value}
           onValueChange={(next) => update(index, 'value', next)}
         />
-        <button
-          type="button"
+        <Button
+          size="sm"
+          variant="ghost"
           aria-label={removeLabel(row.key)}
-          onclick={() => commit(rows.filter((_, i) => i !== index))}>Remove</button
+          onclick={() => commit(rows.filter((_, i) => i !== index))}>Remove</Button
         >
       </div>
     {/each}
   </Grid>
-  <button type="button" onclick={() => commit([...rows, { key: '', value: '' }])}>{addLabel}</button
+  <Button
+    type="button"
+    variant="secondary"
+    size="sm"
+    onclick={() => commit([...rows, { key: '', value: '' }])}>{addLabel}</Button
   >
 </div>

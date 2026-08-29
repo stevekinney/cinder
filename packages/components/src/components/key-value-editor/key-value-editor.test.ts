@@ -52,9 +52,20 @@ describe('KeyValueEditor', () => {
     expect(container.querySelector('input[type="password"]')).not.toBeNull();
   });
 
+  test('composes add and remove actions from Button', () => {
+    const { container } = render(KeyValueEditor, {
+      entries: [{ key: 'Host', value: 'localhost' }],
+    });
+    expect(container.querySelectorAll('.cinder-button')).toHaveLength(2);
+    expect(container.querySelector('[aria-label="Remove Host"]')?.classList).toContain(
+      'cinder-button',
+    );
+  });
+
   test('entry point imports only styles used by the rendered composition', () => {
     const entry = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
     expect(entry).toContain("import '../input/input.css';");
+    expect(entry).toContain("import '../button/button.css';");
     expect(entry).not.toContain('secret-value-field.css');
   });
 });

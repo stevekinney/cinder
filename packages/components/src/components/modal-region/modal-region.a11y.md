@@ -6,7 +6,7 @@
 - Review outcome: Approved for implementation review.
 - Nearest neighbours: Modal, ConfirmDialog, ToastRegion.
 - Why this component exists: It gives descendants an imperative, promise-based entry point while keeping modal state scoped to the mounted region.
-- Findings and resolutions: `openModal` renders the supplied component inside the existing `Modal`; stable ids deduplicate concurrent requests; `confirm` resolves to a boolean. Declarative `Modal` remains preferred when a trigger owns local state.
+- Findings and resolutions: `openModal` renders the supplied component inside the existing `Modal` with dedicated title metadata, stable ids deduplicate concurrent requests, and custom content receives scoped `modal.resolve(value)` / `modal.close()` controls. `confirm` resolves to a boolean. Declarative `Modal` remains preferred when a trigger owns local state.
 
 ## Novel interaction accessibility review
 

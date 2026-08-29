@@ -6,6 +6,7 @@ export type ModalEntry = {
   id: string;
   component: ModalComponent;
   props: Record<string, unknown>;
+  title: string;
   resolve: (value: unknown) => void;
   promise?: Promise<unknown>;
   ownsModal?: boolean;
@@ -13,10 +14,17 @@ export type ModalEntry = {
   confirmation?: boolean;
 };
 
+export type ModalContentControls<Result = unknown> = {
+  resolve: (value: Result) => void;
+  close: () => void;
+};
+export type OpenModalOptions = { title: string };
+
 export type ModalApi = {
   openModal: <T extends Record<string, unknown> = Record<string, unknown>>(
     component: Component<T>,
-    props?: T & { id?: string },
+    props: Omit<T, 'modal'> & { id?: string },
+    options: OpenModalOptions,
   ) => Promise<unknown>;
   confirm: (options: {
     title: string;

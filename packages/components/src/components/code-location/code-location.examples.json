@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "CodeLocation",
       "description": "Render a compact file, line, and column reference.",
-      "code": "<script lang=\"ts\">\n  import { CodeLocation } from '@lostgradient/cinder/code-location';\n</script>\n\n<CodeLocation file=\"src/routes/+page.svelte\" line={42} column={7} />\n"
+      "code": "<script lang=\"ts\">\n  import { CodeLocation } from '@lostgradient/cinder/code-location';\n</script>\n\n<CodeLocation file=\"src/routes/+page.svelte\" />\n"
     }
   ]
 }

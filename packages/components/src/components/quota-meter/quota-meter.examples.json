@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "QuotaMeter",
       "description": "Show finite quota consumption with an accessible value summary.",
-      "code": "<script lang=\"ts\">\n  import { QuotaMeter } from '@lostgradient/cinder/quota-meter';\n</script>\n\n<QuotaMeter label=\"Build minutes\" used={72} limit={100} />\n"
+      "code": "<script lang=\"ts\">\n  import { QuotaMeter } from '@lostgradient/cinder/quota-meter';\n</script>\n\n<QuotaMeter used={72} />\n"
     }
   ]
 }

@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { parseTerminalOutput } from './terminal-output-parser.ts';
+import { parseTerminalOutput, TerminalOutputParser } from './terminal-output-parser.ts';
 describe('parseTerminalOutput', () => {
   test('parses SGR colors and reset', () =>
     expect(parseTerminalOutput('\u001b[31mred\u001b[0m plain')).toEqual([
@@ -11,7 +11,7 @@ describe('parseTerminalOutput', () => {
   test('rewrites carriage-return lines', () =>
     expect(parseTerminalOutput('old\rnew')).toEqual([[{ text: 'new', bold: false }]]));
   test('erases the current line', () =>
-    expect(parseTerminalOutput('old\u001b[2Knew')).toEqual([[{ text: 'new', bold: false }]]));
+    expect(parseTerminalOutput('old\u001b[2Knew')).toEqual([[{ text: '   new', bold: false }]]));
   test('erase to end preserves text before the cursor', () =>
     expect(parseTerminalOutput('old\u001b[0Knew')).toEqual([[{ text: 'oldnew', bold: false }]]));
   test('CSI sequences stop at their final byte and preserve later text', () =>
@@ -30,4 +30,24 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('before\u001b]8;;https://example.com')).toEqual([
       [{ text: 'before', bold: false }],
     ]));
+  test('consumes extended 256-color and truecolor SGR parameters as one command', () =>
+    expect(
+      parseTerminalOutput('\u001b[31mred\u001b[38;5;196m still red \u001b[48;2;1;2;3m!'),
+    ).toEqual([[{ text: 'red still red !', foreground: 1, bold: false }]]));
+  test('erase-in-line 2 preserves the cursor column with blank cells', () =>
+    expect(parseTerminalOutput('old\u001b[2Knew')).toEqual([[{ text: '   new', bold: false }]]));
+
+  test('preserves incomplete control sequences across appended chunks', () => {
+    const parser = new TerminalOutputParser();
+    parser.append('before\u001b]8;;https://example.com');
+    parser.append('\u0007linked\u001b[');
+    parser.append('31m red');
+
+    expect(parser.lines()).toEqual([
+      [
+        { text: 'beforelinked', bold: false },
+        { text: ' red', foreground: 1, bold: false },
+      ],
+    ]);
+  });
 });

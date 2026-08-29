@@ -23,7 +23,7 @@
   import { tick } from 'svelte';
   import type { TerminalOutputProps } from './terminal-output.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { parseTerminalOutput } from './terminal-output-parser.ts';
+  import { TerminalOutputParser } from './terminal-output-parser.ts';
   let {
     class: className,
     value = '',
@@ -31,7 +31,17 @@
     children,
     ...rest
   }: TerminalOutputProps = $props();
-  const lines = $derived(parseTerminalOutput(value));
+  const parser = new TerminalOutputParser();
+  let parsedPrefix = '';
+  const lines = $derived.by(() => {
+    if (!value.startsWith(parsedPrefix)) {
+      parser.reset();
+      parsedPrefix = '';
+    }
+    parser.append(value.slice(parsedPrefix.length));
+    parsedPrefix = value;
+    return parser.lines();
+  });
 
   let viewport: HTMLDivElement;
   let content: HTMLDivElement;

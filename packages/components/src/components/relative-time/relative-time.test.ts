@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -8,13 +8,15 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render } = await import('@testing-library/svelte');
+const { cleanup, render } = await import('@testing-library/svelte');
 const { default: RelativeTime } = await import('./relative-time.svelte');
 // createRawSnippet must be imported dynamically so Bun's svelte plugin (which patches
 // the svelte package to resolve to the client build) applies before this import resolves.
 // A top-level static import of 'svelte' resolves to svelte/index-server.js in Bun's
 // non-browser environment, making `mount()` throw "not available on the server".
 const { createRawSnippet } = await import('svelte');
+
+afterEach(cleanup);
 
 /** Creates a Svelte 5 Snippet that renders text content. */
 function textSnippet(text: string) {
@@ -68,5 +70,33 @@ describe('RelativeTime', () => {
     const element = container.querySelector('time');
     expect(element?.textContent).toBe('Invalid date');
     expect(element?.hasAttribute('datetime')).toBe(false);
+  });
+
+  test('shares one ticking clock across mounted instances', () => {
+    const originalSetInterval = window.setInterval;
+    const originalClearInterval = window.clearInterval;
+    let intervalCount = 0;
+    let clearCount = 0;
+    window.setInterval = ((callback: TimerHandler, delay?: number) => {
+      intervalCount += 1;
+      return originalSetInterval(callback, delay);
+    }) as typeof window.setInterval;
+    window.clearInterval = ((timer?: number) => {
+      clearCount += 1;
+      return originalClearInterval(timer);
+    }) as typeof window.clearInterval;
+
+    try {
+      const first = render(RelativeTime, { date: Date.now() });
+      const second = render(RelativeTime, { date: Date.now() });
+      expect(intervalCount).toBe(1);
+      first.unmount();
+      expect(clearCount).toBe(0);
+      second.unmount();
+      expect(clearCount).toBe(1);
+    } finally {
+      window.setInterval = originalSetInterval;
+      window.clearInterval = originalClearInterval;
+    }
   });
 });

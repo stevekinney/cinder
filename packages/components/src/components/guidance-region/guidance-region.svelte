@@ -97,6 +97,17 @@
   let openedModalId: string | null = null;
   $effect(() => {
     const claim = activeClaim;
+    if (!claim || activeClaims.some((candidate) => candidate.id === claim.id)) return;
+    anchoredOpen = false;
+    activeClaim = null;
+    if (claim.kind === 'modal') {
+      openedModalId = null;
+      modalSlot.reset();
+    }
+  });
+
+  $effect(() => {
+    const claim = activeClaim;
     if (!claim || claim.kind !== 'modal' || openedModalId === claim.id) return;
     openedModalId = claim.id;
     void modalApi

@@ -11,6 +11,26 @@
    * @rationale Nearest alternative: time element — RelativeTime owns localized relative phrasing and ticking.
    */
   export type { RelativeTimeProps } from './relative-time.types.ts';
+
+  const clockSubscribers = new Set<(now: number) => void>();
+  let clockTimer: number | undefined;
+
+  function subscribeToClock(subscriber: (now: number) => void): () => void {
+    clockSubscribers.add(subscriber);
+    if (clockTimer === undefined) {
+      clockTimer = window.setInterval(() => {
+        const now = Date.now();
+        for (const notify of clockSubscribers) notify(now);
+      }, 30_000);
+    }
+    return () => {
+      clockSubscribers.delete(subscriber);
+      if (clockSubscribers.size === 0 && clockTimer !== undefined) {
+        window.clearInterval(clockTimer);
+        clockTimer = undefined;
+      }
+    };
+  }
 </script>
 
 <script lang="ts">
@@ -55,8 +75,7 @@
   });
   $effect(() => {
     if (!tick || typeof window === 'undefined') return;
-    const timer = window.setInterval(() => (now = Date.now()), 30_000);
-    return () => window.clearInterval(timer);
+    return subscribeToClock((nextNow) => (now = nextNow));
   });
 </script>
 

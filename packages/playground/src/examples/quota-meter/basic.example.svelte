@@ -7,4 +7,4 @@
   import { QuotaMeter } from '@lostgradient/cinder/quota-meter';
 </script>
 
-<QuotaMeter label="Build minutes" used={72} limit={100} />
+<QuotaMeter used={72} />
