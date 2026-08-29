@@ -16,10 +16,7 @@ afterEach(() => cleanup());
 describe('ParameterField', () => {
   test('renders the inherited value and unit without override state', () => {
     const { container, getByText } = render(ParameterField, {
-      id: 'temperature',
-      label: 'Temperature',
-      base: 0.7,
-      unit: 'K',
+      props: { id: 'temperature', label: 'Temperature', base: 0.7, unit: 'K' },
     });
 
     expect(getByText('Temperature')).toBeVisible();
@@ -34,12 +31,14 @@ describe('ParameterField', () => {
   test('marks an override and resets it to the documented default', async () => {
     const changes: Array<number | undefined> = [];
     const { container, getByRole } = render(ParameterField, {
-      id: 'temperature',
-      label: 'Temperature',
-      base: 0.7,
-      override: 1.2,
-      unit: 'K',
-      onOverrideChange: (value: number | undefined) => changes.push(value),
+      props: {
+        id: 'temperature',
+        label: 'Temperature',
+        base: 0.7,
+        override: 1.2,
+        unit: 'K',
+        onOverrideChange: (value: number | undefined) => changes.push(value),
+      },
     });
 
     expect(container.querySelector('.cinder-parameter-field')).toHaveAttribute('data-overridden');
@@ -60,14 +59,30 @@ describe('ParameterField', () => {
 
   test('renders unsaved and experimental badges as textual status', () => {
     const { getByText } = render(ParameterField, {
-      id: 'temperature',
-      label: 'Temperature',
-      base: 0.7,
-      unsaved: true,
-      experimental: true,
+      props: {
+        id: 'temperature',
+        label: 'Temperature',
+        base: 0.7,
+        unsaved: true,
+        experimental: true,
+      },
     });
 
     expect(getByText('Unsaved')).toBeVisible();
     expect(getByText('Experimental')).toBeVisible();
+  });
+
+  test('publishes the visible label to the editor region', () => {
+    const { container } = render(ParameterField, {
+      props: {
+        id: 'temperature',
+        label: 'Temperature',
+        base: 0.7,
+      },
+    });
+
+    expect(
+      container.querySelector('.cinder-parameter-field__editor')?.getAttribute('aria-labelledby'),
+    ).toBe('temperature-label');
   });
 });
