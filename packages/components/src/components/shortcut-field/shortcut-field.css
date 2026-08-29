@@ -26,7 +26,7 @@
     color: var(--cinder-text-muted);
   }
   .cinder-shortcut-field__error {
-    color: var(--cinder-danger-text);
+    color: var(--cinder-status-danger-text);
     font-size: var(--cinder-text-sm);
   }
 

@@ -759,8 +759,8 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover/index.ts';
 
-export { default as SettingRow, SettingRowDisclosure } from './components/setting-row/index.ts';
-export type { SettingRowDisclosureProps, SettingRowProps } from './components/setting-row/index.ts';
+export { default as SettingRow } from './components/setting-row/index.ts';
+export type { SettingRowProps } from './components/setting-row/index.ts';
 
 export { default as ShareCard } from './components/share-card/index.ts';
 export type { ShareCardAction, ShareCardProps } from './components/share-card/index.ts';

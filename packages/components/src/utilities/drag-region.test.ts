@@ -17,8 +17,8 @@ describe('drag region utilities', () => {
     expect(noDragProps('macos')).toEqual({ class: noDragClass });
   });
   test('safe header defaults are token-fed', () => {
-    expect(safeHeaderDragStyle).toContain('--spacing-token-safe-header-left, 0px');
-    expect(safeHeaderDragStyle).toContain('--spacing-token-safe-header-right, 0px');
+    expect(safeHeaderDragStyle).toContain('--_cinder-safe-header-left, 0px');
+    expect(safeHeaderDragStyle).toContain('--_cinder-safe-header-right, 0px');
   });
 
   test('shared CSS covers both drag properties and interactive descendants', async () => {

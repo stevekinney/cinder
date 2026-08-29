@@ -1,10 +1,5 @@
 import type { Snippet } from 'svelte';
 import type { FormFieldManaged } from '../form-field/form-field.types.ts';
-export type SettingRowDisclosureProps = {
-  expanded?: boolean;
-  controls: string;
-  children: Snippet;
-};
 export type SettingRowProps = {
   id: string;
   label: string;

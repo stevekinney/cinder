@@ -38,8 +38,8 @@
 <div
   class={classNames('cinder-host-provider')}
   data-cinder-host-platform={platform}
-  style:--spacing-token-safe-header-left={safeHeaderLeft}
-  style:--spacing-token-safe-header-right={safeHeaderRight}
+  style:--_cinder-safe-header-left={safeHeaderLeft}
+  style:--_cinder-safe-header-right={safeHeaderRight}
 >
   {@render children?.()}
 </div>
