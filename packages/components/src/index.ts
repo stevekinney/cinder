@@ -826,7 +826,12 @@ export type {
 } from './components/stacked-list-item/index.ts';
 
 export { default as Stack } from './components/stack/index.ts';
-export type { StackProps } from './components/stack/index.ts';
+export type {
+  StackAlign,
+  StackDirection,
+  StackJustify,
+  StackProps,
+} from './components/stack/index.ts';
 
 export { default as Spectrogram } from './components/spectrogram/index.ts';
 export type {

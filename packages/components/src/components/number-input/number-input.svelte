@@ -554,7 +554,7 @@
 
 {#snippet trailingContent()}
   {#if adornment}<span class="cinder-number-input__adornment"
-      >{#if typeof adornment === 'string'}{adornment}{:else}{adornment()}{/if}</span
+      >{#if typeof adornment === 'string'}{adornment}{:else}{@render adornment()}{/if}</span
     >{/if}
   {@render steppers()}
 {/snippet}

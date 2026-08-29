@@ -25,7 +25,9 @@
 
 <span {...rest} class={classNames('cinder-policy-lock', className)}>
   <Tooltip text={description}>
-    <span aria-hidden="true"><Lock size={14} /></span>
+    <button type="button" class="cinder-policy-lock__explanation" aria-label={description}>
+      <Lock size={14} aria-hidden="true" />
+    </button>
   </Tooltip>
   <span {id} class="cinder-sr-only">{description}</span>
   {#if scope}<Badge variant="neutral" size="xs">{scope}</Badge>{/if}

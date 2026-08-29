@@ -16,17 +16,12 @@ const schema = {
     scope: {
       type: 'string',
     },
+    class: {
+      type: 'string',
+    },
   },
   additionalProperties: false,
   required: ['id', 'reason'],
-  metadata: {
-    unsupportedProps: [
-      {
-        name: 'class',
-        reason: 'unknown-shape',
-      },
-    ],
-  },
 } satisfies ComponentSchema;
 
 export default schema as ComponentSchema;

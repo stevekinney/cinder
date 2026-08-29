@@ -1,9 +1,24 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../tooltip/tooltip.css';
 
 @layer cinder.components {
   .cinder-policy-lock {
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1);
+  }
+  .cinder-policy-lock__explanation {
+    display: inline-flex;
+    padding: 0;
+    color: inherit;
+    background: transparent;
+    border: 0;
+    border-radius: var(--cinder-radius-sm);
+    cursor: help;
+  }
+  .cinder-policy-lock__explanation:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
   }
 }

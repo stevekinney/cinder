@@ -1,15 +1,16 @@
-import { getContext, setContext } from 'svelte';
+import { createContext } from 'svelte';
 
 import type { HostPlatform } from '../components/host-provider/host-provider.types.ts';
+import { optionalContext } from './optional-context.ts';
 
 export type { HostPlatform } from '../components/host-provider/host-provider.types.ts';
 export type HostContext = { platform: HostPlatform; isDesktop: boolean };
 
-const HOST_CONTEXT = Symbol('cinder-host');
+const [getHostContextStrict, setHostContextRaw] = createContext<HostContext>();
 export function setHostContext(value: HostContext): void {
-  setContext(HOST_CONTEXT, value);
+  setHostContextRaw(value);
 }
 
 export function getHostContext(): HostContext {
-  return getContext<HostContext>(HOST_CONTEXT) ?? { platform: 'web', isDesktop: false };
+  return optionalContext(getHostContextStrict)() ?? { platform: 'web', isDesktop: false };
 }

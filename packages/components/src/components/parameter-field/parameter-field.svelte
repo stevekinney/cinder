@@ -36,6 +36,7 @@
 
   const overridden = $derived(override !== undefined);
   const value = $derived(override ?? base);
+  const labelId = $derived(`${id}-label`);
   const formattedBase = $derived(`${String(base)}${unit ? ` ${unit}` : ''}`);
 
   function setOverride(next: number): void {
@@ -56,7 +57,7 @@
   data-unsaved={unsaved || undefined}
 >
   <div class="cinder-parameter-field__header">
-    <span id={`${id}-label`} class="cinder-parameter-field__label">{label}</span>
+    <span id={labelId} class="cinder-parameter-field__label">{label}</span>
     <span class="cinder-parameter-field__badges">
       {#if unsaved}
         <Badge size="xs" variant="warning">Unsaved</Badge>
@@ -73,12 +74,12 @@
     class="cinder-parameter-field__body"
   >
     <span class="cinder-parameter-field__rail" aria-hidden="true"></span>
-    <div class="cinder-parameter-field__editor" aria-labelledby={`${id}-label`}>
+    <div class="cinder-parameter-field__editor" aria-labelledby={labelId}>
       {#if children}
-        {@render children({ value, overridden, setOverride })}
+        {@render children({ labelledBy: labelId, value, overridden, setOverride })}
       {:else}
         <output id={`${id}-value`} class="cinder-parameter-field__value">
-          {value}{#if unit}<span class="cinder-parameter-field__unit"> {unit}</span>{/if}
+          {value}{#if unit}<span class="cinder-parameter-field__unit">{' '}{unit}</span>{/if}
         </output>
       {/if}
     </div>

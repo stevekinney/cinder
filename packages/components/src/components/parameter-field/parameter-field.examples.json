@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Parameter override",
       "description": "Show an inherited value with a local override.",
-      "code": "<script lang=\"ts\">\n  import { ParameterField } from '@lostgradient/cinder/parameter-field';\n</script>\n<ParameterField id=\"timeout\" label=\"Timeout\" base={30} unit=\"seconds\" />\n"
+      "code": "<script lang=\"ts\">\n  import { ParameterField } from '@lostgradient/cinder/parameter-field';\n</script>\n\n<ParameterField id=\"timeout\" label=\"Timeout\" base={30} unit=\"seconds\" />\n"
     }
   ]
 }

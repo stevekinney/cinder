@@ -526,6 +526,36 @@ describe('DateRangeField', () => {
         { start: '2026-06-01T09:30', end: '2026-06-01T17:45' },
       ]);
     });
+    test('retains an invalid manual draft and exposes native validity', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        value: { start: '2026-02-20', end: undefined },
+        onValueChange: (next: DateRangeValue) => changes.push(next),
+      });
+      const input = getStartInput(container);
+      await fireEvent.change(input, { target: { value: '2026-02-30' } });
+      expect(input.value).toBe('2026-02-30');
+      expect(input.getAttribute('aria-invalid')).toBe('true');
+      expect(input.validationMessage).not.toBe('');
+      expect(changes).toEqual([]);
+    });
+    test('preserves endpoint times and renders time controls during calendar selection', async () => {
+      const changes: DateRangeValue[] = [];
+      const { container } = render(DateRangeField, {
+        id: 'drf',
+        granularity: 'minute',
+        value: { start: '2026-06-10T09:30', end: '2026-06-12T17:45' },
+        onValueChange: (next: DateRangeValue) => changes.push(next),
+      });
+      await fireEvent.click(container.querySelector('.cinder-date-range-field__calendar-trigger')!);
+      expect(
+        document.querySelectorAll('.cinder-date-range-field__time-controls input'),
+      ).toHaveLength(2);
+      await fireEvent.click(document.querySelector('[id$="-day-2026-06-15"]')!);
+      await fireEvent.click(document.querySelector('[id$="-day-2026-06-18"]')!);
+      expect(changes.at(-1)).toEqual({ start: '2026-06-15T09:30', end: '2026-06-18T17:45' });
+    });
 
     test('manual datetime input truncates to hour granularity', async () => {
       const changes: DateRangeValue[] = [];

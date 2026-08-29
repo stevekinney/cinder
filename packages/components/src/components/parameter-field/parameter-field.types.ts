@@ -1,6 +1,8 @@
 import type { Snippet } from 'svelte';
 
 export type ParameterFieldEditorState = {
+  /** Id of the visible label. Apply it to the nested control with `aria-labelledby`. */
+  labelledBy: string;
   /** Effective value after applying the optional override. */
   value: number;
   /** Whether the effective value comes from an override. */

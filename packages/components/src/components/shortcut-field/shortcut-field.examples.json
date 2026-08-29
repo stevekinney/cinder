@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Shortcut field",
       "description": "Capture a keyboard shortcut in an accessible field.",
-      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder/shortcut-field';\n</script>\n<ShortcutField label=\"Open command palette\" value={['Meta', 'K']} />\n"
+      "code": "<script lang=\"ts\">\n  import { ShortcutField } from '@lostgradient/cinder/shortcut-field';\n</script>\n\n<ShortcutField label=\"Open command palette\" value={['Meta', 'K']} />\n"
     }
   ]
 }

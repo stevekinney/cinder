@@ -3,17 +3,18 @@ import type { ComponentSchema } from '../../schema-types';
 const schema = {
   $schema: 'https://json-schema.org/draft/2020-12/schema',
   type: 'object',
-  properties: {},
+  properties: {
+    class: {
+      type: 'string',
+      description: 'Additional class merged with `.cinder-form`.',
+    },
+  },
   additionalProperties: false,
   metadata: {
     unsupportedProps: [
       {
         name: 'children',
         reason: 'function-or-snippet',
-      },
-      {
-        name: 'class',
-        reason: 'unknown-shape',
       },
       {
         name: 'onSubmit',

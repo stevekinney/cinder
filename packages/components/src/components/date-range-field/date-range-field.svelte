@@ -112,6 +112,9 @@
   } | null>(null);
   let calendarOpen = $state(false);
   let calendarTrigger = $state<HTMLButtonElement | null>(null);
+  let startInputInvalid = $state(false);
+  let endInputInvalid = $state(false);
+  let calendarTimeSnapshot = $state({ start: '', end: '' });
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -273,6 +276,35 @@
     if (granularity === 'second') return 'T00:00:00';
     return 'T00:00';
   }
+  function openCalendar(): void {
+    if (disabled) return;
+    calendarTimeSnapshot = { start: timeSuffix(value.start), end: timeSuffix(value.end) };
+    calendarOpen = true;
+  }
+  function handleInputDraft(event: Event, endpoint: 'start' | 'end'): void {
+    const input = event.currentTarget as HTMLInputElement;
+    const draft = input.value;
+    const normalized = normalizeDateValue(draft || undefined, granularity);
+    const invalid = draft.length > 0 && !normalized;
+    input.setCustomValidity(invalid ? `Enter a valid ${inputPlaceholder}.` : '');
+    if (endpoint === 'start') startInputInvalid = invalid;
+    else endInputInvalid = invalid;
+    if (invalid) return;
+    if (endpoint === 'start') handleStartChange(normalized);
+    else handleEndChange(normalized);
+  }
+  function handleCalendarTimeChange(endpoint: 'start' | 'end', time: string): void {
+    const date = normalizedValue[endpoint]?.slice(0, 10);
+    if (!date) return;
+    const suffix = time ? `T${time}` : timeSuffix(undefined);
+    if (endpoint === 'start') {
+      calendarTimeSnapshot.start = suffix;
+      handleStartChange(`${date}${suffix}`);
+    } else {
+      calendarTimeSnapshot.end = suffix;
+      handleEndChange(`${date}${suffix}`);
+    }
+  }
 
   function handleCalendarRangeChange(next: {
     start: string | undefined;
@@ -281,8 +313,10 @@
     if (!next.start) return;
     const nextValue = normalizeDateRangeValue(
       {
-        start: `${next.start}${timeSuffix(value.start)}`,
-        end: next.end ? `${next.end}${timeSuffix(value.end)}` : undefined,
+        start: `${next.start}${calendarTimeSnapshot.start || timeSuffix(value.start)}`,
+        end: next.end
+          ? `${next.end}${calendarTimeSnapshot.end || timeSuffix(value.end)}`
+          : undefined,
       },
       granularity,
     );
@@ -364,12 +398,9 @@
       max={normalizedValue.end ?? undefined}
       step={inputStep}
       {disabled}
-      aria-invalid={hasError ? 'true' : undefined}
+      aria-invalid={hasError || startInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}
-      onchange={(event) => {
-        const next = (event.currentTarget as HTMLInputElement).value;
-        handleStartChange(normalizeDateValue(next || undefined, granularity));
-      }}
+      onchange={(event) => handleInputDraft(event, 'start')}
     />
 
     <span class="cinder-date-range-field__separator" aria-hidden="true">–</span>
@@ -384,12 +415,9 @@
       min={normalizedValue.start ?? undefined}
       step={inputStep}
       {disabled}
-      aria-invalid={hasError ? 'true' : undefined}
+      aria-invalid={hasError || endInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}
-      onchange={(event) => {
-        const next = (event.currentTarget as HTMLInputElement).value;
-        handleEndChange(normalizeDateValue(next || undefined, granularity));
-      }}
+      onchange={(event) => handleInputDraft(event, 'end')}
     />
 
     <button
@@ -398,9 +426,7 @@
       class="cinder-date-picker__trigger cinder-date-range-field__calendar-trigger"
       aria-label="Open date range calendar"
       {disabled}
-      onclick={() => {
-        if (!disabled) calendarOpen = true;
-      }}
+      onclick={openCalendar}
     >
       <CalendarDays class="cinder-icon-sm" aria-hidden="true" />
     </button>
@@ -424,6 +450,32 @@
       onRangeChange={handleCalendarRangeChange}
       {disabled}
     />
+    {#if granularity !== 'day'}
+      <div class="cinder-date-range-field__time-controls" role="group" aria-label="Range times">
+        <label>
+          <span>{resolvedStartLabel}</span>
+          <input
+            type="time"
+            step={inputStep}
+            value={normalizedValue.start?.slice(11) ?? ''}
+            {disabled}
+            onchange={(event) =>
+              handleCalendarTimeChange('start', (event.currentTarget as HTMLInputElement).value)}
+          />
+        </label>
+        <label>
+          <span>{resolvedEndLabel}</span>
+          <input
+            type="time"
+            step={inputStep}
+            value={normalizedValue.end?.slice(11) ?? ''}
+            disabled={disabled || !normalizedValue.end}
+            onchange={(event) =>
+              handleCalendarTimeChange('end', (event.currentTarget as HTMLInputElement).value)}
+          />
+        </label>
+      </div>
+    {/if}
   </Popover>
 
   {#if description}

@@ -140,12 +140,16 @@
   function resolveAnchorIso(
     valueProp: string | undefined,
     monthProp: string | undefined,
+    rangeStartProp: string | undefined,
+    rangeEndProp: string | undefined,
     fallbackIso: string,
   ): string {
-    if (valueProp && parseISODate(valueProp)) {
-      if (min && valueProp < min) return min;
-      if (max && valueProp > max) return max;
-      return valueProp;
+    const selectedValue =
+      valueProp ?? (selectionMode === 'range' ? (rangeStartProp ?? rangeEndProp) : undefined);
+    if (selectedValue && parseISODate(selectedValue)) {
+      if (min && selectedValue < min) return min;
+      if (max && selectedValue > max) return max;
+      return selectedValue;
     }
     if (monthProp && parseISODate(monthProp)) return monthProp;
     if (min && parseISODate(min) && fallbackIso < min) return min;
@@ -154,7 +158,9 @@
   }
 
   const initialTodayIso = localTodayIso();
-  const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
+  const initialAnchorIso = untrack(() =>
+    resolveAnchorIso(value, month, rangeStart, rangeEnd, initialTodayIso),
+  );
   const initialFocusedIso = untrack(() => initialAnchorIso);
   let todayIso = $state(localTodayIso());
 
@@ -182,6 +188,8 @@
     resolveAnchorIso(
       value,
       month,
+      rangeStart,
+      rangeEnd,
       untrack(() => todayIso),
     ),
   );
@@ -460,15 +468,23 @@
     class="cinder-calendar__grid"
     role="grid"
     aria-labelledby={titleId}
+    aria-multiselectable={selectionMode === 'range' ? 'true' : undefined}
     tabindex="-1"
     onkeydown={handleKeydown}
+    onmouseleave={() => {
+      hoverIso = undefined;
+    }}
   >
     {#each rows as row, rowIndex (row[0]?.iso || rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
         {#each row as cell, cellIndex (cell.iso || cellIndex)}
           <div
             role="gridcell"
-            aria-selected={cell.selected || undefined}
+            aria-selected={cell.selected ||
+              cell.rangeStart ||
+              cell.rangeEnd ||
+              cell.inRange ||
+              undefined}
             class="cinder-calendar__gridcell"
           >
             <button

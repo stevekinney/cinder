@@ -43,7 +43,7 @@ describe('ParameterField', () => {
     });
 
     expect(container.querySelector('.cinder-parameter-field')).toHaveAttribute('data-overridden');
-    expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('1.2K');
+    expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('1.2 K');
 
     const reset = getByRole('button', { name: 'Reset to default' });
     expect(reset.getAttribute('aria-describedby')).not.toBeNull();
@@ -51,7 +51,7 @@ describe('ParameterField', () => {
 
     await waitFor(() => {
       expect(changes).toEqual([undefined]);
-      expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('0.7K');
+      expect(container.querySelector('.cinder-parameter-field__value')).toHaveTextContent('0.7 K');
       expect(container.querySelector('.cinder-parameter-field')).not.toHaveAttribute(
         'data-overridden',
       );

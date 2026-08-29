@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Settings row",
       "description": "Compose a labelled setting control with guidance.",
-      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n  import { SettingRow } from '@lostgradient/cinder/setting-row';\n</script>\n<SettingRow id=\"display-name\" label=\"Display name\" description=\"Shown to collaborators.\">\n  {#snippet control()}\n    <Input id=\"display-name\" value=\"\" placeholder=\"Ada Lovelace\">\n      {#snippet leading()}{/snippet}\n      {#snippet trailing()}{/snippet}\n    </Input>\n  {/snippet}\n</SettingRow>\n"
+      "code": "<script lang=\"ts\">\n  import { Input } from '@lostgradient/cinder/input';\n  import { SettingRow } from '@lostgradient/cinder/setting-row';\n</script>\n\n<SettingRow id=\"display-name\" label=\"Display name\" description=\"Shown to collaborators.\">\n  {#snippet control()}\n    <Input id=\"display-name\" value=\"\" placeholder=\"Ada Lovelace\">\n      {#snippet leading()}{/snippet}\n      {#snippet trailing()}{/snippet}\n    </Input>\n  {/snippet}\n</SettingRow>\n"
     }
   ]
 }

@@ -1,4 +1,7 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../grid/grid.css';
+@import '../tooltip/tooltip.css';
 
 @layer cinder.components {
   .cinder-parameter-field {

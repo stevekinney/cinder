@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "Basic stack",
       "description": "Arrange related content along one axis.",
-      "code": "<script lang=\"ts\">\n  import { Stack } from '@lostgradient/cinder/stack';\n</script>\n<Stack gap=\"var(--cinder-space-3)\">\n  <strong>Account settings</strong>\n  <span>Manage your profile and preferences.</span>\n</Stack>\n"
+      "code": "<script lang=\"ts\">\n  import { Stack } from '@lostgradient/cinder/stack';\n</script>\n\n<Stack gap=\"var(--cinder-space-3)\">\n  <strong>Account settings</strong>\n  <span>Manage your profile and preferences.</span>\n</Stack>\n"
     }
   ]
 }

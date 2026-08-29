@@ -94,6 +94,34 @@ describe('Calendar', () => {
     });
     expect(preview.container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
   });
+  test('anchors a standalone range and clears pointer preview on leave', async () => {
+    const { container } = render(Calendar, {
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+    });
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('June 2026');
+    expect(container.querySelector('[role="grid"]')?.getAttribute('aria-multiselectable')).toBe(
+      'true',
+    );
+    await fireEvent.mouseEnter(container.querySelector('[id$="-day-2026-06-13"]')!);
+    expect(container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
+    await fireEvent.mouseLeave(container.querySelector('[role="grid"]')!);
+    expect(container.querySelectorAll('[data-range-preview]')).toHaveLength(0);
+  });
+  test('marks each committed range date selected', () => {
+    const { container } = render(Calendar, {
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+      rangeEnd: '2026-06-12',
+    });
+    for (const iso of ['2026-06-10', '2026-06-11', '2026-06-12']) {
+      expect(
+        container
+          .querySelector(`[id$="-day-${iso}"]`)
+          ?.parentElement?.getAttribute('aria-selected'),
+      ).toBe('true');
+    }
+  });
 
   test('restarts at a new start after a completed range', async () => {
     const ranges: Array<{ start: string | undefined; end: string | undefined }> = [];
