@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "meter"
+    "capability-gate",
+    "form-field"
   ],
-  "renderedSourceSha": "02213e63571501a7690f28995c4a6bf1f4b3dcd4",
+  "renderedSourceSha": "31bc7599520ac71071b0e16f3f8fcd40058c67ba",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
