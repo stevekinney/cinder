@@ -1,27 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "citation",
-    "code-location",
-    "confirm-dialog",
-    "data-table",
-    "donut-chart",
-    "find-bar",
-    "guidance-region",
-    "inline-confirm",
-    "key-value-editor",
-    "modal-region",
-    "quota-meter",
-    "relative-time",
-    "review-editor",
-    "table",
-    "terminal-frame",
-    "terminal-output",
-    "zoom-pan-viewer"
-  ],
-  "renderedSourceSha": "8e106bf8da13c345182c7de9459bb6e9845de054",
+  "componentScope": ["guidance-region", "key-value-editor"],
+  "renderedSourceSha": "0b41e2f9c1710bed1093f0c998e10b109aaddd24",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "x64",
+  "architecture": "arm64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }
