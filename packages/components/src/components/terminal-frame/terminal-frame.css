@@ -1,0 +1,78 @@
+.cinder-terminal-frame {
+  display: grid;
+  min-block-size: 0;
+  overflow: hidden;
+  color: var(--cinder-terminal-foreground, var(--cinder-text));
+  background: var(--cinder-terminal-background, var(--cinder-surface));
+  border: 1px solid var(--cinder-border);
+  border-radius: var(--cinder-radius-lg);
+  grid-template-rows: auto auto minmax(0, 1fr);
+}
+
+.cinder-terminal-frame__chrome {
+  display: grid;
+  min-block-size: 2.25rem;
+  padding-inline: var(--cinder-spacing-3);
+  align-items: center;
+  border-block-end: 1px solid var(--cinder-border);
+  grid-template-columns: 1fr auto 1fr;
+}
+
+.cinder-terminal-frame__traffic-lights {
+  display: flex;
+  gap: var(--cinder-spacing-1);
+}
+
+.cinder-terminal-frame__traffic-lights span {
+  inline-size: 0.625rem;
+  block-size: 0.625rem;
+  background: var(--cinder-muted);
+  border-radius: 50%;
+}
+
+.cinder-terminal-frame__title {
+  margin: 0;
+  font: var(--cinder-font-label-sm);
+}
+
+.cinder-terminal-frame__status {
+  justify-self: end;
+  color: var(--cinder-text-muted);
+  font: var(--cinder-font-label-xs);
+}
+
+.cinder-terminal-frame__error {
+  display: flex;
+  padding: var(--cinder-spacing-2) var(--cinder-spacing-3);
+  align-items: center;
+  justify-content: space-between;
+  color: var(--cinder-critical-foreground, var(--cinder-danger-foreground));
+  background: var(--cinder-critical-subtle, var(--cinder-danger-subtle));
+  gap: var(--cinder-spacing-3);
+}
+
+.cinder-terminal-frame__reload {
+  padding: var(--cinder-spacing-1) var(--cinder-spacing-2);
+  color: inherit;
+  background: transparent;
+  border: 1px solid currentColor;
+  border-radius: var(--cinder-radius-sm);
+  cursor: pointer;
+}
+
+.cinder-terminal-frame__reload:focus-visible {
+  outline: var(--cinder-ring-width) solid transparent;
+  outline-offset: 2px;
+  box-shadow: var(--_cinder-focus-ring-shadow);
+}
+
+.cinder-terminal-frame__viewport {
+  min-block-size: 0;
+  overflow: hidden;
+}
+
+@media (forced-colors: active) {
+  .cinder-terminal-frame__reload:focus-visible {
+    outline-color: Highlight;
+  }
+}
