@@ -10,7 +10,7 @@
    * @useWhen Arranging related controls, form rows, or panel sections along one axis.
    * @useWhen You need lightweight spacing and alignment without two-dimensional grid placement.
    * @avoidWhen You need explicit rows and columns — use grid.
-   * @related grid, cluster
+   * @related grid
    */
   export type { StackAlign, StackDirection, StackJustify, StackProps } from './stack.types.ts';
 </script>

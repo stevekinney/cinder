@@ -648,11 +648,11 @@ export type { PricingCardProps } from './components/pricing-card/index.ts';
 export { default as PreviewPanel } from './components/preview-panel/index.ts';
 export type { PreviewPanelProps, PreviewPanelStatus } from './components/preview-panel/index.ts';
 
-export { default as ParameterField } from './components/parameter-field/parameter-field.svelte';
+export { default as ParameterField } from './components/parameter-field/index.ts';
 export type {
   ParameterFieldEditorState,
   ParameterFieldProps,
-} from './components/parameter-field/parameter-field.types.ts';
+} from './components/parameter-field/index.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
