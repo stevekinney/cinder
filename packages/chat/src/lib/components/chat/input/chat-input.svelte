@@ -404,7 +404,7 @@
     isDragOver = false;
     dragEnterDepth = 0;
 
-    if (!allowAttachments) return;
+    if (!allowAttachments || !isFileDrag(event)) return;
 
     // Prevent default (browser opening/downloading the file) and stop propagation
     // only when attachments are enabled and we are actually handling the drop.
@@ -421,14 +421,14 @@
   }
 
   function handleDragOver(event: DragEvent): void {
-    if (!allowAttachments) return;
+    if (!allowAttachments || !isFileDrag(event)) return;
     event.preventDefault();
     if (event.dataTransfer) event.dataTransfer.dropEffect = 'copy';
     isDragOver = true;
   }
 
   function handleDragEnter(event: DragEvent): void {
-    if (!allowAttachments) return;
+    if (!allowAttachments || !isFileDrag(event)) return;
     event.preventDefault();
     dragEnterDepth += 1;
     isDragOver = true;
@@ -441,6 +441,11 @@
       dragEnterDepth = 0;
       isDragOver = false;
     }
+  }
+
+  function isFileDrag(event: DragEvent): boolean {
+    const transfer = event.dataTransfer;
+    return Boolean(transfer?.types.includes('Files') || transfer?.files.length);
   }
 
   // =========================================================================
@@ -844,6 +849,9 @@
           Response is streaming. Use the stop button to stop generation.
         {:else if submitOn === 'modifier-enter'}
           Press Command+Enter or Control+Enter to send. Press Enter for a newline.
+        {:else if submitOn === 'enter-if-single-line' && value.includes('\n')}
+          This message has multiple lines. Use the send button to send it. Press Enter for a
+          newline.
         {:else if submitOn === 'enter-if-single-line'}
           Press Enter to send a single-line message. Press Shift+Enter for a newline.
         {:else}
@@ -854,6 +862,8 @@
         <span id={hintId} class="chat-input-hint" aria-hidden="true">
           {#if submitOn === 'modifier-enter'}
             <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
+          {:else if submitOn === 'enter-if-single-line' && value.includes('\n')}
+            Use the send button to send this multiline message
           {:else}
             <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
           {/if}

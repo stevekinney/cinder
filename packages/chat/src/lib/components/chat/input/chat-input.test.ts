@@ -388,7 +388,7 @@ describe('ChatInput', () => {
   test('shows an instructional copy-drop overlay with copy semantics', async () => {
     const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
     const form = container.querySelector('form')!;
-    const dataTransfer = { dropEffect: 'none' };
+    const dataTransfer = { dropEffect: 'none', types: ['Files'], files: [] };
     const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
     Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
 
@@ -398,6 +398,24 @@ describe('ChatInput', () => {
     expect(container.querySelector('.chat-input-drop-overlay')?.textContent).toContain(
       'Drop files to attach',
     );
+  });
+
+  test('does not show the file overlay for non-file drags', async () => {
+    const { container } = render(ChatInput, { id: 'non-file-drop-overlay-composer' });
+    const form = container.querySelector('form')!;
+    const dataTransfer = { dropEffect: 'none', types: ['text/plain'], files: [] };
+    const dragEnter = new Event('dragenter', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragEnter, 'dataTransfer', { value: dataTransfer });
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+
+    form.dispatchEvent(dragEnter);
+    form.dispatchEvent(dragOver);
+
+    expect(dragEnter.defaultPrevented).toBe(false);
+    expect(dragOver.defaultPrevented).toBe(false);
+    expect(dataTransfer.dropEffect).toBe('none');
+    expect(container.querySelector('.chat-input-drop-overlay')).toBeNull();
   });
 
   describe('getValue()', () => {
@@ -673,6 +691,9 @@ describe('ChatInput', () => {
       });
       const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
       await fireEvent.input(composer, { target: { value: 'first\nsecond' } });
+      expect(target.querySelector('.chat-input-hint')?.textContent).toContain(
+        'Use the send button to send this multiline message',
+      );
       await fireEvent.keyDown(composer, { key: 'Enter' });
       expect(submitCount).toBe(0);
       await fireEvent.input(composer, { target: { value: 'single line' } });
