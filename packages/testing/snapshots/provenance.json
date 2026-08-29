@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "spinner"
+    "meter"
   ],
-  "renderedSourceSha": "3637020d835f6d9887faa789787e4ec91378c313",
+  "renderedSourceSha": "02213e63571501a7690f28995c4a6bf1f4b3dcd4",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
