@@ -118,7 +118,11 @@ describe('ChatMessage — tool-call rendering', () => {
     });
 
     const steps = container.querySelectorAll('.cinder-run-step-timeline__item');
+    const timeline = container.querySelector('section');
+    const heading = container.querySelector('h3');
     expect(steps).toHaveLength(2);
+    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    expect(heading?.textContent).toContain('Called 2 tools');
     expect(new Set(Array.from(steps, (step) => step.getAttribute('data-cinder-path'))).size).toBe(
       2,
     );

@@ -5,6 +5,7 @@
 
   let { pairs, messageId }: { pairs: ToolCallPair[]; messageId?: string } = $props();
   const navigationMessageId = $derived(messageId ?? pairs[0]?.call.id ?? 'tool-call-group');
+  const headingId = $derived(`message-${navigationMessageId}-tool-call-summary`);
 
   function formatPayload(value: unknown): string {
     return value === null ? 'null' : stringify(value);
@@ -52,9 +53,12 @@
   id={`message-${navigationMessageId}`}
   class="chat-tool-call-timeline chat-navigation-row"
   data-cinder-tool-call-count={pairs.length}
+  aria-labelledby={headingId}
   tabindex="-1"
 >
-  <h3>Called {pairs.length} tools{completedCount ? `, ${completedCount} complete` : ''}</h3>
+  <h3 id={headingId}>
+    Called {pairs.length} tools{completedCount ? `, ${completedCount} complete` : ''}
+  </h3>
   <RunStepTimeline {steps} label={`${pairs.length} consecutive tool calls`} />
 </section>
 
