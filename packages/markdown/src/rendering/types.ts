@@ -38,6 +38,13 @@ export interface RenderOptions {
    * @default false
    */
   stripLinks?: boolean;
+
+  /**
+   * Wrap top-level code blocks and tables in stable node placeholders for
+   * component-level rendering overrides.
+   * @default false
+   */
+  nodePlaceholders?: boolean;
 }
 
 /**

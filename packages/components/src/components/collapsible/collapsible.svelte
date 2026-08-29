@@ -31,6 +31,7 @@
     disabled = false,
     triggerAriaLabel,
     triggerClass,
+    labelClass,
     animated = true,
     idBase,
     class: className,
@@ -83,7 +84,7 @@
     {disabled}
     onclick={handleClick}
   >
-    <span class="cinder-collapsible__label cinder-_label-text">
+    <span class={classNames('cinder-collapsible__label cinder-_label-text', labelClass)}>
       {#if typeof trigger === 'string'}
         <span id={labelId}>{trigger}</span>
       {:else}

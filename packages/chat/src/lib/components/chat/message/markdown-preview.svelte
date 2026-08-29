@@ -119,7 +119,7 @@
           if (!pipeline || cancelled) return;
           const { renderMarkdownWithMath } = pipeline;
           try {
-            const result = await renderMarkdownWithMath(snapshot);
+            const result = await renderMarkdownWithMath(snapshot, { nodePlaceholders: true });
             // Re-check cancelled and verify the snapshot still matches
             // the live content. The latter handles a subtle race: if
             // content updates AFTER cancelled was set but BEFORE this

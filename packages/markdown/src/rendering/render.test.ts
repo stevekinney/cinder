@@ -61,11 +61,20 @@ describe('renderMarkdown', () => {
 
   describe('GFM essentials', () => {
     it('preserves stable override placeholders through sanitization', () => {
-      const result = renderMarkdown('| A | B |\n|---|---|\n| 1 | 2 |\n\n```js\nconst x = 1;\n```');
+      const result = renderMarkdown('| A | B |\n|---|---|\n| 1 | 2 |\n\n```js\nconst x = 1;\n```', {
+        nodePlaceholders: true,
+      });
       expect(result.html).toContain('data-cinder-markdown-kind="table"');
       expect(result.html).toContain('data-cinder-markdown-kind="code-block"');
       expect(result.html).toContain('data-cinder-markdown-index="0"');
       expect(result.html).toContain('data-language="js"');
+    });
+
+    it('keeps node placeholders opt-in for existing renderer consumers', () => {
+      const result = renderMarkdown('| A | B |\n|---|---|\n| 1 | 2 |\n\n```js\nconst x = 1;\n```');
+      expect(result.html).not.toContain('cinder-markdown-node');
+      expect(result.html).toContain('<table>');
+      expect(result.html).toContain('<pre');
     });
 
     it('renders strikethrough', () => {

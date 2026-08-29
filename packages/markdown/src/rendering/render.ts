@@ -440,7 +440,7 @@ function renderFromMdast(
           : code
             ? 'code-block'
             : null;
-    if (!kind) return;
+    if (!kind || !options.nodePlaceholders) return;
 
     const placeholder: HastElement = {
       type: 'element',

@@ -34,6 +34,8 @@ export type CollapsibleProps = Omit<
   triggerAriaLabel?: string | ((state: CollapsibleTriggerState) => string);
   /** Additional class names applied to the disclosure trigger button. */
   triggerClass?: string;
+  /** Additional class names applied to the trigger label wrapper. */
+  labelClass?: string;
   /**
    * Whether opening and closing uses the slide transition.
    * @default true
@@ -77,6 +79,8 @@ export interface CollapsibleSchemaProps {
   triggerAriaLabel?: string;
   /** Additional class names applied to the disclosure trigger button. */
   triggerClass?: string;
+  /** Additional class names applied to the trigger label wrapper. */
+  labelClass?: string;
   /**
    * Whether opening and closing uses the slide transition.
    * @default true

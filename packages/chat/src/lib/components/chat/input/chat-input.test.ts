@@ -5,6 +5,7 @@ import { mount, tick, unmount } from 'svelte';
 import { compile } from 'svelte/compiler';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
+import type { MessageInput } from '../conversation-model.ts';
 
 setupHappyDom();
 
@@ -114,6 +115,26 @@ describe('ChatInput', () => {
 
     expect(paste.defaultPrevented).toBe(false);
     expect(container.querySelector('[aria-label="Attached files"]')).toBeNull();
+  });
+
+  test('submits a ready promoted paste without requiring unrelated composer text', async () => {
+    const submitted: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'submitted-large-paste-composer',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submitted.push(message),
+    });
+    const form = container.querySelector('form')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: {
+        items: [],
+        getData: (type: string) => (type === 'text/plain' ? 'sixteen characters' : ''),
+      },
+    });
+    await fireEvent.submit(form);
+
+    expect(submitted).toEqual([{ content: 'sixteen characters', role: 'user' }]);
   });
 
   test('restores a promoted paste at its original selection', async () => {

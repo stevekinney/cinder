@@ -1,6 +1,6 @@
 <script lang="ts">
   import type { Snippet } from 'svelte';
-  import { ChevronDown } from 'lucide-svelte';
+  import Collapsible from '@lostgradient/cinder/collapsible';
 
   let {
     id,
@@ -27,40 +27,32 @@
   } = $props();
 </script>
 
-<div class="chat-entry-frame" data-cinder-expanded={open ? '' : undefined}>
-  <button
-    id={`${id}-header`}
-    type="button"
-    class={`chat-entry-frame__trigger${triggerClass ? ` ${triggerClass}` : ''}`}
-    aria-label={`${open ? 'Collapse' : 'Expand'} ${label}${status ? `, ${status}` : busy ? ', In progress' : ''}`}
-    aria-expanded={open}
-    aria-controls={open ? `${id}-panel` : undefined}
+<div class="chat-entry-frame-shell">
+  <Collapsible
+    bind:open
+    trigger={label}
+    idBase={id}
+    class="chat-entry-frame"
+    animated={false}
+    triggerClass={`chat-entry-frame__trigger${triggerClass ? ` ${triggerClass}` : ''}`}
+    labelClass={labelClass ?? ''}
+    triggerAriaLabel={({ open: currentOpen }) =>
+      `${currentOpen ? 'Collapse' : 'Expand'} ${label}${status ? `, ${status}` : busy ? ', In progress' : ''}`}
     {disabled}
-    onclick={() => {
-      const nextOpen = !open;
-      open = nextOpen;
-      onToggle?.(nextOpen);
-    }}
+    onToggle={(nextOpen) => onToggle?.(nextOpen)}
   >
-    {#if busy}<span class="chat-entry-frame__busy" aria-hidden="true"></span>{/if}
-    <span class={`chat-entry-frame__label${labelClass ? ` ${labelClass}` : ''}`}>{label}</span>
-    {#if status}<span class="chat-entry-frame__status">{status}</span>{/if}
-    <ChevronDown class="chat-entry-frame__chevron" aria-hidden="true" />
-  </button>
-  {#if open}
-    <div
-      id={`${id}-panel`}
-      role="region"
-      aria-labelledby={`${id}-header`}
-      class="chat-entry-frame__panel"
-    >
-      <div class="chat-entry-frame__panel-inner">{@render children()}</div>
-    </div>
-  {/if}
+    {@render children()}
+  </Collapsible>
+  {#if busy}<span class="chat-entry-frame__busy" aria-hidden="true"></span>{/if}
+  {#if status}<span class="chat-entry-frame__status" aria-hidden="true">{status}</span>{/if}
 </div>
 
 <style>
-  .chat-entry-frame {
+  .chat-entry-frame-shell {
+    position: relative;
+  }
+
+  .chat-entry-frame-shell :global(.chat-entry-frame) {
     inline-size: 100%;
     overflow: hidden;
     border: 1px solid var(--_chat-entry-frame-border-color, var(--cinder-border-muted));
@@ -68,7 +60,7 @@
     background: var(--cinder-surface);
   }
 
-  .chat-entry-frame__trigger {
+  .chat-entry-frame-shell :global(.chat-entry-frame__trigger) {
     display: flex;
     align-items: center;
     inline-size: 100%;
@@ -81,7 +73,7 @@
     cursor: pointer;
   }
 
-  .chat-entry-frame__label {
+  .chat-entry-frame-shell :global(.cinder-collapsible__label) {
     min-inline-size: 0;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -91,33 +83,44 @@
   }
 
   .chat-entry-frame__status {
-    margin-inline-start: auto;
+    position: absolute;
+    inset-block-start: calc(var(--cinder-touch-target-min) / 2);
+    inset-inline-end: 2.5rem;
+    transform: translateY(-50%);
     color: var(--cinder-text-subtle);
     font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
+    pointer-events: none;
   }
 
   .chat-entry-frame__busy {
+    position: absolute;
+    inset-block-start: calc(var(--cinder-touch-target-min) / 2);
+    inset-inline-start: var(--cinder-space-3);
+    transform: translateY(-50%);
     display: inline-block;
-    flex: 0 0 auto;
     inline-size: 0.5rem;
     block-size: 0.5rem;
-    margin-inline-end: var(--cinder-space-2);
     border-radius: 50%;
     background: var(--cinder-border);
+    pointer-events: none;
   }
 
-  .chat-entry-frame__chevron {
+  .chat-entry-frame-shell:has(.chat-entry-frame__busy) :global(.chat-entry-frame__trigger) {
+    padding-inline-start: calc(var(--cinder-space-3) + 1rem);
+  }
+
+  .chat-entry-frame-shell:has(.chat-entry-frame__status) :global(.cinder-collapsible__label) {
+    padding-inline-end: 6rem;
+  }
+
+  .chat-entry-frame-shell :global(.cinder-collapsible__chevron) {
     inline-size: 1rem;
     block-size: 1rem;
     margin-inline-start: var(--cinder-space-2);
     transition: transform var(--cinder-duration-fast) var(--cinder-ease-out);
   }
 
-  .chat-entry-frame[data-cinder-expanded] .chat-entry-frame__chevron {
-    transform: rotate(180deg);
-  }
-
-  .chat-entry-frame__panel-inner {
+  .chat-entry-frame-shell :global(.cinder-collapsible__panel-inner) {
     max-block-size: 16rem;
     overflow: auto;
     padding: var(--cinder-space-3);

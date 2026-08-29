@@ -201,9 +201,14 @@
   const hasPendingAttachments = $derived(
     attachments.some((a) => a.status === 'pending' || a.status === 'uploading'),
   );
+  const hasReadyPromotedPaste = $derived(
+    attachments.some((attachment) => attachment.status === 'ready' && attachment.restoreText),
+  );
   // Allow submit when text is present, even if some attachments errored.
   // Only block on pending/uploading attachments (they're not yet ready to send).
-  const canSubmit = $derived(!isWhitespaceOnly && !disabled && !sending && !hasPendingAttachments);
+  const canSubmit = $derived(
+    (!isWhitespaceOnly || hasReadyPromotedPaste) && !disabled && !sending && !hasPendingAttachments,
+  );
 
   // Determine if we're in form action mode
   const isFormActionMode = $derived(!!action);
@@ -426,17 +431,17 @@
     const trimmedContent = latestContent.trim();
 
     // Re-check for whitespace-only after getting latest content
-    if (trimmedContent.length === 0) {
+    const readyAttachments = attachments.filter((a) => a.status === 'ready');
+    const promotedPaste = readyAttachments.find((attachment) => attachment.restoreText);
+    if (trimmedContent.length === 0 && !promotedPaste) {
       event.preventDefault();
       return;
     }
 
     const message: MessageInput = {
       role: 'user',
-      content: trimmedContent,
+      content: trimmedContent || promotedPaste?.restoreText || '',
     };
-
-    const readyAttachments = attachments.filter((a) => a.status === 'ready');
 
     // Call onsubmit callback
     onsubmit?.(message, readyAttachments);

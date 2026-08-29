@@ -28,6 +28,10 @@ const schema = {
       type: 'string',
       description: 'Additional class names applied to the disclosure trigger button.',
     },
+    labelClass: {
+      type: 'string',
+      description: 'Additional class names applied to the trigger label wrapper.',
+    },
     animated: {
       type: 'boolean',
       description: 'Whether opening and closing uses the slide transition.',
