@@ -1,9 +1,12 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "spinner"
+    "setting-row",
+    "shortcut-field",
+    "slider",
+    "stack"
   ],
-  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
+  "renderedSourceSha": "1ea0ca2c11c9b6be7f8de9be60c2b0997a2c5481",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
