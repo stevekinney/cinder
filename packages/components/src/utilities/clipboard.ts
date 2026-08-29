@@ -122,7 +122,11 @@ function imageTypeFromUrl(url: URL): string | undefined {
   if (extension === 'png') return 'image/png';
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
   if (extension === 'webp') return 'image/webp';
-  return undefined;
+  // ClipboardItem needs its representation key before the asynchronous fetch
+  // resolves. Extensionless same-origin attachment routes conventionally serve
+  // PNG clipboard payloads; the deferred representation still verifies the
+  // response MIME type and falls back to text/HTML when that contract is false.
+  return url.origin === location.origin ? 'image/png' : undefined;
 }
 
 function legacyCopy(text: string): boolean {

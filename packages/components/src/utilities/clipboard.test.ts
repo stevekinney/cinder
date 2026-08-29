@@ -207,6 +207,58 @@ describe('copyToClipboard', () => {
     }
   });
 
+  test('includes PNG responses from extensionless same-origin image routes', async () => {
+    const originalFetch = globalThis.fetch;
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    const originalLocation = globalThis.location;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob | Promise<Blob>>) {}
+    }
+    const write = mock(async (items: ClipboardItem[]) => {
+      const item = items[0] as unknown as TestClipboardItem;
+      const image = await item.values['image/png'];
+      expect(image?.type).toBe('image/png');
+    });
+    Object.defineProperty(globalThis, 'location', {
+      configurable: true,
+      value: new URL('https://chat.example.test/conversation'),
+    });
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: mock(async () =>
+        Promise.resolve(new Response(new Blob(['png'], { type: 'image/png' }), { status: 200 })),
+      ),
+    });
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText: mock(async () => undefined) },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: 'https://chat.example.test/api/attachments/123',
+        }),
+      ).toBe(true);
+      expect(write).toHaveBeenCalledTimes(1);
+    } finally {
+      Object.defineProperty(globalThis, 'location', {
+        configurable: true,
+        value: originalLocation,
+      });
+      Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('retries rich HTML without an image when the image representation rejects', async () => {
     const originalFetch = globalThis.fetch;
     const OriginalClipboardItem = globalThis.ClipboardItem;
