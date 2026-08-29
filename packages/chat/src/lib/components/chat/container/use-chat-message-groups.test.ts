@@ -201,6 +201,21 @@ describe('chat render rows', () => {
     expect(rows.map((row) => row.type)).toEqual(['date', 'message', 'tool-call-group']);
   });
 
+  test('keeps tool calls with structured transcript entries as individual message rows', () => {
+    const structuredCall = message({
+      id: 'structured-call',
+      role: 'tool-call',
+      metadata: {
+        'cinder:entries': [{ type: 'reasoning', content: 'Inspect the repository' }],
+      },
+      toolCall: { id: 'structured', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([structuredCall], new Set()));
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message']);
+  });
+
   test('encodes tool-group message ids without delimiter collisions', () => {
     const firstKey = chatRenderRowKey({
       type: 'tool-call-group',

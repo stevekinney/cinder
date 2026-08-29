@@ -480,6 +480,8 @@
         messagePart ||
         messageActions ||
         messageStatus ||
+        messageReasoning ||
+        messageSteps ||
         searchState.isOpen ||
         rollbackMessageId
           ? new Set(

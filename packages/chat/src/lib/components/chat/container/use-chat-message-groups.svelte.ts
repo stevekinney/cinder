@@ -64,6 +64,11 @@ function messageHasImageContent(message: Message): boolean {
   );
 }
 
+function messageHasStructuredEntries(message: Message): boolean {
+  const entries = message.metadata?.['cinder:entries'];
+  return Array.isArray(entries) && entries.length > 0;
+}
+
 /** Options for the message groups helper */
 export interface UseChatMessageGroupsOptions {
   /** Function that returns the current messages array */
@@ -173,6 +178,7 @@ export function buildChatRenderRows(
         toolCallId &&
         !item.message.hidden &&
         !messageHasImageContent(item.message) &&
+        !messageHasStructuredEntries(item.message) &&
         !options?.ungroupedToolCallIds?.has(toolCallId)
       ) {
         toolCallRun.push(item.message);

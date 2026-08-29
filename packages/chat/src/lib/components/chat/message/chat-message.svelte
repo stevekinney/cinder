@@ -297,8 +297,7 @@
     textContent || imageParts.map((part) => part.image.text || 'Image attachment').join('\n'),
   );
   const copyImage = $derived.by(() => {
-    const url = imageParts[0]?.image.url;
-    return url?.startsWith('blob:') || url?.startsWith('data:') ? url : undefined;
+    return imageParts[0]?.image.url;
   });
 
   // Content truncation threshold (characters)

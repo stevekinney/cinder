@@ -150,6 +150,25 @@ describe('ChatComposerPopover', () => {
     expect(document.body.textContent).not.toContain('Loading suggestions');
   });
 
+  test('shows resolved source groups while another source is still pending', async () => {
+    const neverSettles = new Promise<TestComposerCommand[]>(() => {});
+    render(ChatComposerPopoverFixture, {
+      commands: [],
+      sources: [
+        {
+          id: 'healthy',
+          label: 'Healthy',
+          load: async () => [{ value: 'readme', label: 'README.md' }],
+        },
+        { id: 'pending', label: 'Pending', load: () => neverSettles },
+      ],
+    });
+
+    await typeComposer('@');
+    await waitFor(() => expect(document.body.textContent).toContain('README.md'));
+    expect(document.body.textContent).not.toContain('Pending');
+  });
+
   test('selects the correct occurrence when source items share a value', async () => {
     const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
     render(ChatComposerPopoverFixture, {

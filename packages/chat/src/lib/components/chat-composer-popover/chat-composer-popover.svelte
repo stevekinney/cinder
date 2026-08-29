@@ -48,7 +48,6 @@
     ChatComposerPopoverItem,
     ChatComposerPopoverProps,
     ChatComposerPopoverSelection,
-    ChatComposerPopoverSource,
     ChatComposerPopoverTriggerMatch,
   } from './chat-composer-popover.types.ts';
 
@@ -114,37 +113,50 @@
 
     loadingSources = true;
     sourceGroups = [];
-    void Promise.all(
-      sources.map(async (source: ChatComposerPopoverSource<TItem>) => {
+    const resolvedGroups = new Map<
+      string,
+      { id: string; label: string; items: readonly TItem[] }
+    >();
+    let pendingSourceCount = sources.length;
+
+    for (const source of sources) {
+      void (async () => {
         try {
           const candidates = await source.load({ query: match.query, trigger: match.trigger });
           const filtered = filter(candidates, match.query, match.trigger);
           const limit = Math.max(0, Math.floor(source.limit ?? filtered.length));
-          return { id: source.id, label: source.label, items: filtered.slice(0, limit) };
+          resolvedGroups.set(source.id, {
+            id: source.id,
+            label: source.label,
+            items: filtered.slice(0, limit),
+          });
         } catch {
-          return null;
+          resolvedGroups.delete(source.id);
+        } finally {
+          if (requestId !== sourceRequestId) return;
+          const preservedSelectionValue = activeSelectionValue;
+          sourceGroups = sources.flatMap((candidate) => {
+            const group = resolvedGroups.get(candidate.id);
+            return group ? [group] : [];
+          });
+          pendingSourceCount -= 1;
+          loadingSources = pendingSourceCount > 0;
+          sourceGeneration += 1;
+          if (preservedSelectionValue) {
+            await tick();
+            const optionIndex = filteredItems.findIndex(
+              (candidate) => candidate.selectionValue === preservedSelectionValue,
+            );
+            const option = Array.from(
+              document
+                .getElementById(listboxId)
+                ?.querySelectorAll<HTMLElement>('[role="option"]') ?? [],
+            )[optionIndex];
+            option?.dispatchEvent(new Event('pointerenter'));
+          }
         }
-      }),
-    ).then(async (groups) => {
-      if (requestId !== sourceRequestId) return;
-      const preservedSelectionValue = activeSelectionValue;
-      sourceGroups = groups.filter(
-        (group): group is NonNullable<(typeof groups)[number]> => group !== null,
-      );
-      loadingSources = false;
-      sourceGeneration += 1;
-      if (preservedSelectionValue) {
-        await tick();
-        const optionIndex = filteredItems.findIndex(
-          (candidate) => candidate.selectionValue === preservedSelectionValue,
-        );
-        const option = Array.from(
-          document.getElementById(listboxId)?.querySelectorAll<HTMLElement>('[role="option"]') ??
-            [],
-        )[optionIndex];
-        option?.dispatchEvent(new Event('pointerenter'));
-      }
-    });
+      })();
+    }
   });
 
   const composerProps = $derived({
