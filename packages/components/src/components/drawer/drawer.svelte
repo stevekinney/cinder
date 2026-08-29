@@ -18,12 +18,13 @@
 
 <script lang="ts">
   import type { DrawerPlacement, DrawerProps } from './drawer.types.ts';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, untrack } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
 
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { overflowFade } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
+  import { restoreFocusTo } from '../../utilities/focus.ts';
   import { createFocusTrap } from '../focus-trap/index.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import {
@@ -53,6 +54,9 @@
   let dialogElement: HTMLDialogElement | undefined = $state();
   let bodyElement: HTMLDivElement | undefined = $state();
   let panelElement: HTMLDivElement | undefined = $state();
+  let nonModalReturnFocusTarget: HTMLElement | null = null;
+  let wasNonModalOpen = false;
+  let wasModal = $state(untrack(() => modal));
   /**
    * The placement that was active when the current open/close cycle began.
    * Snapshotted at open time so that a placement-prop change while the drawer
@@ -72,6 +76,9 @@
     getPanelElement: () => panelElement,
     getReducedMotion: () => reducedMotion.current,
     getTriggerRef: () => triggerRef,
+    onClosed: () => {
+      activePlacement = undefined;
+    },
     // Host-managed initial focus (the Modal policy, via the trap's
     // `manageInitialFocus: false` opt-out): focus the body container unless a
     // child is autofocused, so opening never lands focus on the close button.
@@ -90,6 +97,14 @@
   $effect.pre(() => {
     if (!modal || !open || activePlacement) return;
     activePlacement = placement;
+  });
+
+  $effect(() => {
+    if (wasModal && !modal) {
+      activePlacement = undefined;
+      dialogState.releaseModalState();
+    }
+    wasModal = modal;
   });
 
   $effect(() => {
@@ -118,6 +133,31 @@
       event.preventDefault();
       open = false;
     });
+  });
+
+  $effect(() => {
+    if (modal || !dialogState.hydrated) {
+      wasNonModalOpen = false;
+      nonModalReturnFocusTarget = null;
+      return;
+    }
+
+    if (open && !wasNonModalOpen) {
+      const activeElement =
+        document.activeElement instanceof HTMLElement ? document.activeElement : null;
+      nonModalReturnFocusTarget =
+        triggerRef ?? (dialogElement?.contains(activeElement) ? null : activeElement);
+      wasNonModalOpen = true;
+      return;
+    }
+
+    if (!open && wasNonModalOpen) {
+      wasNonModalOpen = false;
+      const returnTarget = triggerRef ?? nonModalReturnFocusTarget;
+      nonModalReturnFocusTarget = null;
+      restoreFocusTo(returnTarget);
+      activePlacement = undefined;
+    }
   });
 
   onDestroy(() => {

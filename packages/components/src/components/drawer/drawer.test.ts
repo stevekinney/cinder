@@ -721,6 +721,79 @@ describe('Drawer', () => {
     expect(container.querySelector('aside.cinder-drawer')).toBeNull();
   });
 
+  test('modal=false close restores focus to triggerRef', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open inspector';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    await tick();
+
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    closeButton.focus();
+    await fireEvent.click(closeButton);
+    await rerender(props());
+    await tick();
+
+    expect(openValue).toBe(false);
+    expect(container.querySelector('aside.cinder-drawer')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    document.body.removeChild(trigger);
+  });
+
+  test('switching an open drawer from modal to non-modal releases modal coordination state', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open inspector';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    let openValue = true;
+    let modalValue = true;
+    const props = () => ({
+      get modal() {
+        return modalValue;
+      },
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    modalValue = false;
+    await rerender(props());
+    await tick();
+
+    expect(openValue).toBe(true);
+    expect(document.body.style.overflow).toBe('');
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('aside.cinder-drawer')).not.toBeNull();
+
+    document.body.removeChild(trigger);
+  });
+
   test('modal=false uses the escape stack while open', async () => {
     let openValue = true;
     let siblingEscapeCount = 0;

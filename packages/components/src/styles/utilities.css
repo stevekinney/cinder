@@ -81,7 +81,7 @@
     select,
     summary,
     textarea,
-    [contenteditable='true'],
+    [contenteditable]:not([contenteditable='false' i]),
     [role='button'],
     [role='link'],
     [tabindex]:not([tabindex='-1'])

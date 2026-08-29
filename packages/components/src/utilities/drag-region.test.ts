@@ -27,5 +27,7 @@ describe('drag region utilities', () => {
     expect(css).toContain('app-region: drag');
     expect(css).toContain("[role='button']");
     expect(css).toContain("[tabindex]:not([tabindex='-1'])");
+    expect(css).toContain("[contenteditable]:not([contenteditable='false' i])");
+    expect(css).not.toContain("[contenteditable='true']");
   });
 });

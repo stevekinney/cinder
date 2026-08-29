@@ -301,7 +301,10 @@
           manageInitialFocus: false,
         })}
       >
-        {#if host.isDesktop}<div class="cinder-modal__drag-strip" aria-hidden="true"></div>{/if}
+        {#if host.isDesktop && !isChromeless}<div
+            class="cinder-modal__drag-strip"
+            aria-hidden="true"
+          ></div>{/if}
         {#if !isChromeless}
           <div class="cinder-modal__header">
             <h2 id={titleId} class="cinder-modal__title">{title}</h2>
