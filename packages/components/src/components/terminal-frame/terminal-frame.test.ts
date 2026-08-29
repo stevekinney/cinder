@@ -31,6 +31,7 @@ describe('TerminalFrame', () => {
       'Build shell',
     );
     expect(container.querySelector('.cinder-terminal-frame__status')?.textContent).toBe('error');
+    expect(getByRole('status').getAttribute('aria-atomic')).toBe('true');
     expect(container.querySelector('[data-cinder-status="error"]')).not.toBeNull();
     expect(container.querySelector('[data-status]')).toBeNull();
     expect(container.querySelector('[data-testid="pty"]')).not.toBeNull();

@@ -14,6 +14,7 @@ setupHappyDom();
 
 const { cleanup, render } = await import('@testing-library/svelte');
 const { default: GuidanceRegion } = await import('./guidance-region.svelte');
+const { default: GuidanceRegionHost } = await import('./guidance-region-host.test.svelte');
 
 afterEach(cleanup);
 
@@ -79,5 +80,23 @@ describe('GuidanceRegion', () => {
     expect(source).toContain('storage?.set(key, false)');
     expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${claim.id}`)');
     expect(source).toContain('anchor.isConnected');
+  });
+
+  test('does not let reset settle a stale modal claim into a new claim', async () => {
+    let api: import('../../_internal/guidance-context.ts').GuidanceApi | undefined;
+    render(GuidanceRegionHost, {
+      onReady: (value: import('../../_internal/guidance-context.ts').GuidanceApi) => {
+        api = value;
+      },
+    });
+
+    await Promise.resolve();
+    expect(api?.claim('upgrade')).toBe(true);
+    api?.resetAll();
+    expect(api?.claim('upgrade')).toBe(true);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(api?.claims()).toHaveLength(1);
   });
 });

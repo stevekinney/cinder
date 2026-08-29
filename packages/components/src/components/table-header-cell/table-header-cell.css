@@ -16,4 +16,12 @@
     align-items: center;
     flex: 0 0 auto;
   }
+
+  .cinder-table__header-cell[data-cinder-align='center'] .cinder-table__header-content {
+    justify-content: center;
+  }
+
+  .cinder-table__header-cell[data-cinder-align='right'] .cinder-table__header-content {
+    justify-content: flex-end;
+  }
 }

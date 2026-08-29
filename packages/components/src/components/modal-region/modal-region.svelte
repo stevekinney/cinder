@@ -72,13 +72,15 @@
           id,
           open: true,
           confirmLabel: options.confirmLabel ?? 'Confirm',
-          onConfirm: () => finish(id, true),
-          onCancel: () => finish(id, false),
+          onConfirm: () => {},
+          onCancel: () => {},
         },
         { title: options.title },
       ) as Promise<boolean>;
       const entry = entries.find((candidate) => candidate.id === id);
       if (entry) {
+        entry.props['onConfirm'] = () => finishEntry(entry.key, true);
+        entry.props['onCancel'] = () => finishEntry(entry.key, false);
         entry.ownsModal = true;
         entry.confirmation = true;
         entries = [...entries];
@@ -92,6 +94,12 @@
       (candidate) => candidate.id === (id ?? entries.at(-1)?.id) && !candidate.settled,
     );
     if (!entry || entry.settled) return;
+    finishEntry(entry.key, value);
+  }
+
+  function finishEntry(key: number, value: unknown): void {
+    const entry = entries.find((candidate) => candidate.key === key && !candidate.settled);
+    if (!entry) return;
     entry.settled = true;
     entry.resolve(value);
     entries = [...entries];
@@ -116,22 +124,22 @@
     <Component
       {...entry.props}
       open={!entry.settled}
-      onDismiss={() => finish(entry.id, false)}
+      onDismiss={() => finishEntry(entry.key, false)}
       onExitComplete={() => remove(entry.key)}
     />
   {:else}
     <Modal
       open={!entry.settled}
       title={entry.title}
-      onDismiss={() => finish(entry.id, false)}
+      onDismiss={() => finishEntry(entry.key, false)}
       onExitComplete={() => remove(entry.key)}
     >
       <Component
         {...entry.props}
         open={!entry.settled}
         modal={{
-          resolve: (value: unknown) => finish(entry.id, value),
-          close: () => finish(entry.id, undefined),
+          resolve: (value: unknown) => finishEntry(entry.key, value),
+          close: () => finishEntry(entry.key, undefined),
         }}
       />
     </Modal>

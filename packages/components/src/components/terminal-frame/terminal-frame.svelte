@@ -90,7 +90,7 @@
       <span></span><span></span><span></span>
     </span>
     <h2 id={titleId} class="cinder-terminal-frame__title">{title}</h2>
-    <span class="cinder-terminal-frame__status">{status}</span>
+    <span class="cinder-terminal-frame__status" role="status" aria-atomic="true">{status}</span>
   </Grid>
 
   {#if error}

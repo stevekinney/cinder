@@ -11,7 +11,7 @@
   import RelativeTime from '@lostgradient/cinder/relative-time';
 </script>
 
-<RelativeTime>Content</RelativeTime>
+<RelativeTime date="2026-08-28T18:00:00Z" />
 ```
 
 ## Props

@@ -82,7 +82,7 @@
 <span
   class={classNames('cinder-badge', customClassName)}
   data-cinder-variant={subscriptionStateConfiguration?.variant ?? severityVariant ?? variant}
-  data-cinder-severity={severity}
+  data-cinder-severity={subscriptionState === 'active' ? undefined : severity}
   data-cinder-size={size}
   data-cinder-monospace={monospace ? '' : undefined}
   data-cinder-subscription-state={subscriptionState}

@@ -38,6 +38,16 @@ describe('TableHeaderCell', () => {
     expect(headerCell?.querySelector('.cinder-table__sort-button')).not.toBeNull();
   });
 
+  test('keeps non-sortable center and right headers aligned with their cells', () => {
+    const componentCss = readFileSync(new URL('./table-header-cell.css', import.meta.url), 'utf8');
+    expect(componentCss).toMatch(
+      /data-cinder-align='center'[^}]*header-content[\s\S]*justify-content:\s*center/,
+    );
+    expect(componentCss).toMatch(
+      /data-cinder-align='right'[^}]*header-content[\s\S]*justify-content:\s*flex-end/,
+    );
+  });
+
   test('forwards native th attributes (colspan, id, data-*) to the rendered <th>', () => {
     const { container } = render(Fixture, {
       headerCellProps: { colspan: 2, id: 'header-1', 'data-testid': 'my-header' },

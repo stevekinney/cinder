@@ -6,8 +6,8 @@
     {
       "id": "basic",
       "title": "RelativeTime",
-      "description": "TODO: describe what this relative-time example demonstrates.",
-      "code": "<script lang=\"ts\">\n  import { RelativeTime } from '@lostgradient/cinder/relative-time';\n</script>\n\n<RelativeTime>Content</RelativeTime>\n"
+      "description": "Displays a localized label for a timestamp relative to the current time.",
+      "code": "<script lang=\"ts\">\n  import { RelativeTime } from '@lostgradient/cinder/relative-time';\n</script>\n\n<RelativeTime date=\"2026-08-28T18:00:00Z\" />\n"
     }
   ]
 }

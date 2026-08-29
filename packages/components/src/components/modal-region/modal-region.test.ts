@@ -57,5 +57,7 @@ describe('ModalRegion', () => {
     expect(source).toContain('{#each entries as entry (entry.key)}');
     expect(source).toContain('entries.filter((entry) => entry.key !== key)');
     expect(source).toContain('onExitComplete={() => remove(entry.key)}');
+    expect(source).toContain('resolve: (value: unknown) => finishEntry(entry.key, value)');
+    expect(source).toContain('close: () => finishEntry(entry.key, undefined)');
   });
 });

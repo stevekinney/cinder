@@ -93,6 +93,7 @@
       activeClaim = null;
       anchoredOpen = false;
       openedModalId = null;
+      modalClaimGeneration += 1;
       if (modalApi) {
         for (const claim of initialClaims) {
           if (claim.kind === 'modal') modalApi.dismiss(`cinder-guidance-${claim.id}`);
@@ -105,6 +106,7 @@
   setGuidanceContext(api);
 
   let openedModalId: string | null = null;
+  let modalClaimGeneration = 0;
   $effect(() => {
     const claim = activeClaim;
     if (!claim) return;
@@ -125,6 +127,7 @@
     const claim = activeClaim;
     if (!claim || claim.kind !== 'modal' || openedModalId === claim.id) return;
     openedModalId = claim.id;
+    const generation = ++modalClaimGeneration;
     void modalApi
       ?.confirm({
         id: `cinder-guidance-${claim.id}`,
@@ -134,6 +137,7 @@
         cancelLabel: 'Dismiss',
       })
       .then(() => {
+        if (generation !== modalClaimGeneration || activeClaim !== claim) return;
         api.dismiss(claim.id);
         openedModalId = null;
         modalSlot.reset();

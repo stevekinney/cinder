@@ -157,6 +157,20 @@ describe('Badge — subscription state preset', () => {
     );
   });
 
+  test('active subscription suppresses the severity CSS hook', () => {
+    const { container } = render(Badge, {
+      subscriptionState: 'active',
+      severity: 'critical',
+    });
+    const badge = container.querySelector('.cinder-badge');
+
+    expect(badge?.getAttribute('data-cinder-variant')).toBe('success');
+    expect(badge?.hasAttribute('data-cinder-severity')).toBe(false);
+    expect(cssRule(".cinder-badge[data-cinder-severity='critical']")).toContain(
+      'var(--cinder-severity-critical-background',
+    );
+  });
+
   test('subscriptionState children override the preset label', async () => {
     const { container } = render(Badge, {
       subscriptionState: 'active',
