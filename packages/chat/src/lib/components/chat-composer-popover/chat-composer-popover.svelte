@@ -138,7 +138,8 @@
       if (activeOptionLabel) {
         await tick();
         const option = Array.from(
-          document.querySelectorAll<HTMLElement>(`#${listboxId} [role="option"]`),
+          document.getElementById(listboxId)?.querySelectorAll<HTMLElement>('[role="option"]') ??
+            [],
         ).find((candidate) => candidate.getAttribute('aria-label') === activeOptionLabel);
         option?.dispatchEvent(new Event('pointerenter'));
       }

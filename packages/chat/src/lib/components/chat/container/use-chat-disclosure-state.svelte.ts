@@ -11,6 +11,8 @@
 
 /** Options for the disclosure state helper. */
 export type UseChatDisclosureStateOptions = {
+  /** Whether disclosures start expanded instead of collapsed. */
+  defaultExpanded?: boolean | undefined;
   /**
    * Optional callback to trigger a virtualizer remeasure for a specific message
    * row after the disclosure state changes. If the virtualizer is not wired
@@ -61,14 +63,14 @@ export type UseChatDisclosureStateReturn = {
 export function useChatDisclosureState(
   options: UseChatDisclosureStateOptions,
 ): UseChatDisclosureStateReturn {
-  const { onRemeasureRow } = options;
+  const { onRemeasureRow, defaultExpanded = false } = options;
 
   // Set of message ids whose disclosures are currently expanded.
   // Collapsed by default (disclosures start closed).
   let expandedIds = $state(new Set<string>());
 
   function isExpanded(messageId: string): boolean {
-    return expandedIds.has(messageId);
+    return defaultExpanded ? !expandedIds.has(messageId) : expandedIds.has(messageId);
   }
 
   function toggle(messageId: string): void {

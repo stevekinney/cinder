@@ -12,6 +12,17 @@
      _internal/row-item.md. */
     padding: var(--cinder-space-1-5) var(--cinder-space-2);
     border-radius: var(--cinder-radius-sm);
+    position: relative;
+  }
+
+  .cinder-_row-item::after,
+  .cinder-_option-row::after {
+    content: '';
+    position: absolute;
+    inset-inline: var(--cinder-space-2);
+    inset-block-end: 0;
+    block-size: 1px;
+    background: var(--cinder-border-muted);
   }
 
   /*
@@ -35,10 +46,10 @@
   /* A divider owned by the preceding row must disappear when either adjacent
    * row is hovered. Otherwise the one-pixel rule cuts through the shared
    * raised-hover surface and makes the active row look visually detached. */
-  .cinder-_row-item:hover .cinder-_row-item__divider,
-  .cinder-_row-item:has(+ .cinder-_row-item:hover) .cinder-_row-item__divider,
-  .cinder-_option-row:hover .cinder-_row-item__divider,
-  .cinder-_option-row:has(+ .cinder-_option-row:hover) .cinder-_row-item__divider {
+  .cinder-_row-item:hover::after,
+  .cinder-_row-item:has(+ .cinder-_row-item:hover)::after,
+  .cinder-_option-row:hover::after,
+  .cinder-_option-row:has(+ .cinder-_option-row:hover)::after {
     visibility: hidden;
   }
 

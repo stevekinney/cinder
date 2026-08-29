@@ -238,7 +238,10 @@
   }
   const reasoningState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
   const toolCallState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
-  const stepsState = useChatDisclosureState({ onRemeasureRow: remeasureRow });
+  const stepsState = useChatDisclosureState({
+    onRemeasureRow: remeasureRow,
+    defaultExpanded: true,
+  });
 
   // Content-driven streams do not call beginStreaming, so warm the renderer
   // when streaming starts or when Chat mounts during an already-active stream.
@@ -377,6 +380,7 @@
   // message, not on every historical message that still carries the metadata.
   const lastMessageId = $derived(messages.at(-1)?.id);
   let rollbackMessageId = $state<string | null>(null);
+  let rollbackConversationIdentity: string | undefined;
   const rollbackBoundaryIndex = $derived(
     rollbackMessageId ? messages.findIndex((message) => message.id === rollbackMessageId) : -1,
   );
@@ -384,6 +388,11 @@
     new Map(messages.map((message, index) => [message.id, index] as const)),
   );
   $effect(() => {
+    if (rollbackConversationIdentity !== conversationId) {
+      rollbackMessageId = null;
+      rollbackConversationIdentity = conversationId;
+      return;
+    }
     if (rollbackMessageId && rollbackBoundaryIndex < 0) rollbackMessageId = null;
   });
 
@@ -2650,7 +2659,7 @@
         suggestions={derivedSuggestions}
         reasoningExpanded={reasoningState.isExpanded(message.id)}
         onreasoning={() => reasoningState.toggle(message.id)}
-        stepsExpanded={!stepsState.isExpanded(message.id)}
+        stepsExpanded={stepsState.isExpanded(message.id)}
         onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
