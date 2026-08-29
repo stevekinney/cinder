@@ -4,10 +4,12 @@
     "citation",
     "code-location",
     "data-table",
+    "donut-chart",
     "guidance-region",
-    "key-value-editor"
+    "key-value-editor",
+    "terminal-frame"
   ],
-  "renderedSourceSha": "0b1b52746c3cf98034ff1146f54a443847e20a3d",
+  "renderedSourceSha": "08da8548c0c88652ef883be38f582ca9b75bca6b",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "arm64",

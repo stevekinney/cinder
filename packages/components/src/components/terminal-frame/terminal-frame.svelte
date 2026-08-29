@@ -58,6 +58,7 @@
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
       if (!entry) return;
+      if (entry.contentRect.width <= 0 || entry.contentRect.height <= 0) return;
       const columns = Math.max(1, Math.floor(entry.contentRect.width / columnWidth));
       const rows = Math.max(1, Math.floor(entry.contentRect.height / rowHeight));
       if (columns === previousColumns && rows === previousRows) return;

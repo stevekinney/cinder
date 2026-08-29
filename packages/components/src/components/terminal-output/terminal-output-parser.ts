@@ -1,6 +1,7 @@
 import type { TerminalForeground, TerminalLine, TerminalTextRun } from './terminal-output.types.ts';
 
 type Cell = { character: string; foreground?: TerminalForeground; bold: boolean };
+const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const colors = new Map<number, TerminalForeground>([
   [30, 0],
   [31, 1],
@@ -120,9 +121,11 @@ export class TerminalOutputParser {
         this.#column = 0;
         continue;
       }
+      const grapheme = graphemeSegmenter.segment(input.slice(index)).containing(0)?.segment;
+      if (grapheme) index += grapheme.length - 1;
       const line = this.#lines[this.#line] ?? (this.#lines[this.#line] = []);
       line[this.#column++] = {
-        character,
+        character: grapheme ?? character,
         ...(this.#foreground === undefined ? {} : { foreground: this.#foreground }),
         bold: this.#bold,
       };

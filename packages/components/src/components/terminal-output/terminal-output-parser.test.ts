@@ -10,6 +10,10 @@ describe('parseTerminalOutput', () => {
     ]));
   test('rewrites carriage-return lines', () =>
     expect(parseTerminalOutput('old\rnew')).toEqual([[{ text: 'new', bold: false }]]));
+  test('rewrites carriage-return lines by grapheme cell', () => {
+    expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X', bold: false }]]);
+    expect(parseTerminalOutput('e\u0301\rX')).toEqual([[{ text: 'X', bold: false }]]);
+  });
   test('erase to end preserves text before the cursor', () =>
     expect(parseTerminalOutput('old\u001b[0Knew')).toEqual([[{ text: 'oldnew', bold: false }]]));
   test('CSI sequences stop at their final byte and preserve later text', () =>

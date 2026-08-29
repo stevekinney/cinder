@@ -152,6 +152,19 @@ describe('DataTable — column resizing', () => {
       getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
     ).toBe('120');
   });
+
+  test('clamps the initial rendered column width to its bounds', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 40, minWidth: 80, maxWidth: 120 }],
+      rows,
+      resizable: true,
+    });
+    const header = container.querySelector('thead th');
+    expect(header?.getAttribute('style')).toContain('width: 80px');
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('80');
+  });
 });
 
 describe('DataTable — column headers', () => {

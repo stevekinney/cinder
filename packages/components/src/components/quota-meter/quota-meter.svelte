@@ -32,10 +32,12 @@
     ...rest
   }: QuotaMeterProps = $props();
   const localeContext = getLocaleContext();
+  let hasMounted = $state(false);
+  $effect(() => {
+    hasMounted = true;
+  });
   const resolvedLocale = $derived(
-    locale ??
-      localeContext?.locale ??
-      (typeof navigator !== 'undefined' ? navigator.language : 'en-US'),
+    locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
   const parsedResetDate = $derived(resetsAt ? new Date(resetsAt) : undefined);
   const resetDate = $derived(

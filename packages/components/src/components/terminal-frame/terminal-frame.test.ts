@@ -95,4 +95,34 @@ describe('TerminalFrame', () => {
       globalThis.ResizeObserver = originalResizeObserver;
     }
   });
+
+  test('ignores zero-sized observer entries', () => {
+    const originalResizeObserver = globalThis.ResizeObserver;
+    let callback: ResizeObserverCallback | undefined;
+    globalThis.ResizeObserver = class {
+      constructor(nextCallback: ResizeObserverCallback) {
+        callback = nextCallback;
+      }
+      observe() {}
+      disconnect() {}
+      unobserve() {}
+    } as unknown as typeof ResizeObserver;
+    try {
+      const dimensions: TerminalFrameDimensions[] = [];
+      render(TerminalFrame, {
+        props: {
+          title: 'Shell',
+          onDimensionsChange: (value: TerminalFrameDimensions) => dimensions.push(value),
+          children,
+        },
+      });
+      callback?.(
+        [{ contentRect: { width: 0, height: 0 } } as ResizeObserverEntry],
+        {} as ResizeObserver,
+      );
+      expect(dimensions).toEqual([]);
+    } finally {
+      globalThis.ResizeObserver = originalResizeObserver;
+    }
+  });
 });

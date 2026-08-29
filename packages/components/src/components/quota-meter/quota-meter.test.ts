@@ -60,6 +60,26 @@ describe('QuotaMeter', () => {
     expect(meter?.getAttribute('aria-valuetext')).toContain('resets Sep 1, 2026');
   });
 
+  test('uses the browser locale after mount when formatting a reset date', () => {
+    const originalLanguage = navigator.language;
+    Object.defineProperty(navigator, 'language', { configurable: true, value: 'de-DE' });
+    try {
+      const { container } = render(QuotaMeter, {
+        used: 24,
+        resetsAt: '2026-09-01T00:00:00Z',
+        timeZone: 'UTC',
+      });
+      expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toContain(
+        '01.09.2026',
+      );
+    } finally {
+      Object.defineProperty(navigator, 'language', {
+        configurable: true,
+        value: originalLanguage,
+      });
+    }
+  });
+
   test('announces unlimited quotas without inventing a finite limit', () => {
     const { container } = render(QuotaMeter, { used: 24, unlimited: true });
     expect(container.querySelector('[role="status"]')?.getAttribute('aria-label')).toContain(

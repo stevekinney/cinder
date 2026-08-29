@@ -88,8 +88,16 @@
           >{centerLabel}</text
         >{/if}
     </svg>{#if valueLabels}<ul class="cinder-donut-chart__legend">
-        {#each normalizedData as datum}<li>
-            <span>{datum.label}</span><span>{datum.value}</span>
+        {#each normalizedData as datum, index}<li>
+            <span class="cinder-donut-chart__legend-label">
+              <span
+                class="cinder-donut-chart__legend-swatch"
+                aria-hidden="true"
+                style="background-color: {seriesColor(datum.color, index)}"
+              ></span>
+              <span>{datum.label}</span>
+            </span>
+            <span>{datum.value}</span>
           </li>{/each}
       </ul>{/if}
     {#if !valueLabels}<ul class="cinder-sr-only" aria-label="{label} values">

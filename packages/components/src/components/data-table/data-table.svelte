@@ -149,14 +149,18 @@
     return undefined;
   }
 
-  function columnWidth(column: DataTableColumn<Row>): number | undefined {
+  function rawColumnWidth(column: DataTableColumn<Row>): number | undefined {
     return columnWidths[column.key] ?? column.width;
   }
   function boundedColumnWidth(
     column: DataTableColumn<Row>,
-    width = columnWidth(column) ?? 150,
+    width = rawColumnWidth(column) ?? 150,
   ): number {
     return Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+  }
+  function columnWidth(column: DataTableColumn<Row>): number | undefined {
+    const width = rawColumnWidth(column);
+    return width === undefined ? undefined : boundedColumnWidth(column, width);
   }
   function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
     const nextWidth = boundedColumnWidth(column, width);

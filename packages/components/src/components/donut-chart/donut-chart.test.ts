@@ -38,6 +38,22 @@ describe('DonutChart', () => {
     container.querySelector('g')?.dispatchEvent(new MouseEvent('click', { bubbles: true }));
     expect(clicked).toBe(0);
   });
+
+  test('renders each value label with the matching series color swatch', () => {
+    const { container } = render(DonutChart, {
+      label: 'Traffic',
+      data: [
+        { label: 'Direct', value: 3, color: '#ef4444' },
+        { label: 'Search', value: 2, color: '#3b82f6' },
+      ],
+      valueLabels: true,
+    });
+    const swatches = container.querySelectorAll('.cinder-donut-chart__legend-swatch');
+
+    expect(swatches).toHaveLength(2);
+    expect(swatches[0]?.getAttribute('style')).toContain('background-color: #ef4444');
+    expect(swatches[1]?.getAttribute('style')).toContain('background-color: #3b82f6');
+  });
   test('activates interactive series from the keyboard', async () => {
     let clicked = -1;
     const { container } = render(DonutChart, {

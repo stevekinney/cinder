@@ -1,3 +1,4 @@
+import '../grid/grid.css';
 import './terminal-frame.css';
 import TerminalFrame from './terminal-frame.svelte';
 

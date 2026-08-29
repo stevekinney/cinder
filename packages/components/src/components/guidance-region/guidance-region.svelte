@@ -83,7 +83,11 @@
       }
     },
     resetAll() {
-      for (const claim of initialClaims) storage?.remove?.(`${storageKey}:${claim.id}`);
+      for (const claim of initialClaims) {
+        const key = `${storageKey}:${claim.id}`;
+        if (storage?.remove) storage.remove(key);
+        else storage?.set(key, false);
+      }
       dismissed = new Set();
       claimed = new Set();
       activeClaim = null;

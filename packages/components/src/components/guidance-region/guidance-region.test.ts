@@ -76,5 +76,6 @@ describe('GuidanceRegion', () => {
     const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
     expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${id}`)');
     expect(source).toContain('modalApi.dismiss(`cinder-guidance-${claim.id}`)');
+    expect(source).toContain('storage?.set(key, false)');
   });
 });
