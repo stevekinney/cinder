@@ -186,9 +186,13 @@
     const changedKeys = Array.from(externalColumnWidths.keys()).filter(
       (key) => previousExternalColumnWidths.get(key) !== externalColumnWidths.get(key),
     );
-    if (previousExternalColumnWidths.size > 0 && changedKeys.length > 0) {
+    const removedKeys = Array.from(previousExternalColumnWidths.keys()).filter(
+      (key) => !externalColumnWidths.has(key),
+    );
+    const resetKeys = [...changedKeys, ...removedKeys];
+    if (previousExternalColumnWidths.size > 0 && resetKeys.length > 0) {
       const nextColumnWidths = untrack(() => ({ ...columnWidths }));
-      for (const key of changedKeys) delete nextColumnWidths[key];
+      for (const key of resetKeys) delete nextColumnWidths[key];
       columnWidths = Object.assign(Object.create(null), nextColumnWidths);
     }
     previousExternalColumnWidths = externalColumnWidths;

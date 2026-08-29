@@ -91,8 +91,10 @@
   function handleKeydown(event: KeyboardEvent) {
     if (event.key === 'Enter') {
       if (value.trim().length < minQueryLength || !matchCount) return;
+      const navigationHandler = event.shiftKey ? onPrevious : onNext;
+      if (!navigationHandler) return;
       event.preventDefault();
-      (event.shiftKey ? onPrevious : onNext)?.();
+      navigationHandler();
     }
   }
   function handleInputFocus() {

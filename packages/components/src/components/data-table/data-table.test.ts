@@ -266,6 +266,14 @@ describe('DataTable — column resizing', () => {
     );
   });
 
+  test('clears cached resize values when a column disappears', () => {
+    const source = readFileSync(new URL('./data-table.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('const removedKeys = Array.from(previousExternalColumnWidths.keys())');
+    expect(source).toContain('(key) => !externalColumnWidths.has(key)');
+    expect(source).toContain('const resetKeys = [...changedKeys, ...removedKeys]');
+    expect(source).toContain('for (const key of resetKeys) delete nextColumnWidths[key]');
+  });
+
   test('uses fixed table layout so resize values describe rendered widths', () => {
     const css = readFileSync(new URL('./data-table.css', import.meta.url), 'utf8');
     const { container } = render(DataTable, {

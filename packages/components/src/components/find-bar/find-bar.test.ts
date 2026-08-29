@@ -109,6 +109,60 @@ describe('FindBar', () => {
     expect(onPrevious).toHaveBeenCalledTimes(1);
   });
 
+  test('preserves native Enter behavior when no navigation callback is available', () => {
+    const { container } = render(FindBar, { value: 'query', matchCount: 2 });
+    const input = container.querySelector('input') as HTMLInputElement;
+    const event = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+
+    input.dispatchEvent(event);
+
+    expect(event.defaultPrevented).toBe(false);
+  });
+
+  test('only prevents Enter when the selected navigation callback exists', async () => {
+    const onNext = mock(() => {});
+    const onPrevious = mock(() => {});
+    const { container } = render(FindBar, {
+      value: 'query',
+      matchCount: 2,
+      onNext,
+    });
+    const input = container.querySelector('input') as HTMLInputElement;
+    const shiftEnter = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+      shiftKey: true,
+    });
+
+    input.dispatchEvent(shiftEnter);
+
+    expect(shiftEnter.defaultPrevented).toBe(false);
+    expect(onNext).not.toHaveBeenCalled();
+
+    cleanup();
+    const secondRender = render(FindBar, {
+      value: 'query',
+      matchCount: 2,
+      onPrevious,
+    });
+    const secondInput = secondRender.container.querySelector('input') as HTMLInputElement;
+    const plainEnter = new KeyboardEvent('keydown', {
+      bubbles: true,
+      cancelable: true,
+      key: 'Enter',
+    });
+
+    secondInput.dispatchEvent(plainEnter);
+
+    expect(plainEnter.defaultPrevented).toBe(false);
+    expect(onPrevious).not.toHaveBeenCalled();
+  });
+
   test('does not navigate when the query is ineligible', async () => {
     const onNext = mock(() => {});
     const { container } = render(FindBar, { onNext, minQueryLength: 3, matchCount: 2 });

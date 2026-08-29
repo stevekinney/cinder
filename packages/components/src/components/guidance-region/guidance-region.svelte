@@ -25,6 +25,7 @@
   import { useModal } from '../../utilities/use-modal.ts';
   import Button from '@lostgradient/cinder/button';
   import Popover from '@lostgradient/cinder/popover';
+  const regionId = $props.id();
   let {
     claims: initialClaims = [],
     version,
@@ -43,6 +44,9 @@
     modalApi = useModal();
   } catch {
     modalApi = undefined;
+  }
+  function modalEntryId(claimId: string): string {
+    return `cinder-guidance-${regionId}-${claimId}`;
   }
   function isDismissed(claim: GuidanceClaim): boolean {
     return dismissed.has(claim.id) || storage?.get(`${storageKey}:${claim.id}`) === true;
@@ -83,7 +87,7 @@
           !wasModal && activeClaim.anchor !== undefined && anchorResolver
             ? anchorResolver(activeClaim.anchor)
             : null;
-        if (wasModal) modalApi?.dismiss(`cinder-guidance-${id}`);
+        if (wasModal) modalApi?.dismiss(modalEntryId(id));
         if (anchor?.isConnected) anchor.focus();
         anchoredOpen = false;
         activeClaim = null;
@@ -110,7 +114,7 @@
       modalClaimGeneration += 1;
       if (modalApi) {
         for (const claim of initialClaims) {
-          if (claim.kind === 'modal') modalApi.dismiss(`cinder-guidance-${claim.id}`);
+          if (claim.kind === 'modal') modalApi.dismiss(modalEntryId(claim.id));
         }
       }
       modalSlot.reset();
@@ -129,7 +133,7 @@
     const anchorConnected = claim.kind === 'modal' || (anchor !== null && anchor.isConnected);
     if (remainsEligible && anchorConnected) return;
     if (claim.kind === 'modal') {
-      modalApi?.dismiss(`cinder-guidance-${claim.id}`);
+      modalApi?.dismiss(modalEntryId(claim.id));
       openedModalId = null;
       modalSlot.reset();
     } else if (anchor?.isConnected) {
@@ -146,7 +150,7 @@
     const generation = ++modalClaimGeneration;
     void modalApi
       ?.confirm({
-        id: `cinder-guidance-${claim.id}`,
+        id: modalEntryId(claim.id),
         title: 'Guidance',
         description: claim.content,
         confirmLabel: 'Got it',

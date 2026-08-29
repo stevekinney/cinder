@@ -20,18 +20,22 @@ describe('parseTerminalOutput', () => {
   test('advances tabs to default stops before carriage-return rewrites', () =>
     expect(parseTerminalOutput('a\tb\rnew')).toEqual([[{ text: 'new     b', bold: false }]]));
   test('rewrites carriage-return lines by grapheme cell', () => {
-    expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X', bold: false }]]);
+    expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X ', bold: false }]]);
     expect(parseTerminalOutput('e\u0301\rX')).toEqual([[{ text: 'X', bold: false }]]);
   });
   test('tracks wide CJK and emoji display cells during carriage-return rewrites', () => {
     expect(parseTerminalOutput('界b\rX')).toEqual([[{ text: 'X b', bold: false }]]);
     expect(parseTerminalOutput('😀b\rX')).toEqual([[{ text: 'X b', bold: false }]]);
   });
+  test('omits paired wide-glyph continuations but preserves orphaned continuations', () => {
+    expect(parseTerminalOutput('界b')).toEqual([[{ text: '界b', bold: false }]]);
+    expect(parseTerminalOutput('界\rX')).toEqual([[{ text: 'X ', bold: false }]]);
+  });
   test('preserves split surrogate pairs and combining marks across appended chunks', () => {
     const surrogateParser = new TerminalOutputParser();
     surrogateParser.append('\ud83d');
     surrogateParser.append('\ude00\rX');
-    expect(surrogateParser.lines()).toEqual([[{ text: 'X', bold: false }]]);
+    expect(surrogateParser.lines()).toEqual([[{ text: 'X ', bold: false }]]);
 
     const combiningParser = new TerminalOutputParser();
     combiningParser.append('e');

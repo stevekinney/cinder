@@ -76,12 +76,19 @@ describe('GuidanceRegion', () => {
 
   test('settles an active modal claim when dismissed or reset', () => {
     const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
-    expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${id}`)');
-    expect(source).toContain('modalApi.dismiss(`cinder-guidance-${claim.id}`)');
+    expect(source).toContain('modalApi?.dismiss(modalEntryId(id))');
+    expect(source).toContain('modalApi.dismiss(modalEntryId(claim.id))');
     expect(source).toContain('storage?.set(key, false)');
-    expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${claim.id}`)');
+    expect(source).toContain('modalApi?.dismiss(modalEntryId(claim.id))');
     expect(source).toContain('anchor.isConnected');
     expect(source).toContain('anchor.focus()');
+  });
+
+  test('namespaces modal entry ids to the guidance region instance', () => {
+    const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('const regionId = $props.id()');
+    expect(source).toContain('return `cinder-guidance-${regionId}-${claimId}`');
+    expect(source).toContain('id: modalEntryId(claim.id)');
   });
 
   test('wires the consumer-owned anchor to the guidance popover lifecycle', () => {

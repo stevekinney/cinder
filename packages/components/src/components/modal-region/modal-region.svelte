@@ -60,7 +60,7 @@
       return promise;
     },
     dismiss(id) {
-      finish(id, false);
+      finish(id, undefined);
     },
     confirm(options) {
       if (destroyed) return Promise.resolve(false);
@@ -129,14 +129,14 @@
     <Component
       {...entry.props}
       open={!entry.settled}
-      onDismiss={() => finishEntry(entry.key, false)}
+      onDismiss={() => finishEntry(entry.key, entry.confirmation ? false : undefined)}
       onExitComplete={() => remove(entry.key)}
     />
   {:else}
     <Modal
       open={!entry.settled}
       title={entry.title}
-      onDismiss={() => finishEntry(entry.key, false)}
+      onDismiss={() => finishEntry(entry.key, undefined)}
       onExitComplete={() => remove(entry.key)}
     >
       <Component

@@ -50,12 +50,7 @@ function toLines(lines: Cell[][]): TerminalLine[] {
   return lines.map((cells) => {
     const runs: TerminalTextRun[] = [];
     for (const [index, cell] of cells.entries()) {
-      if (
-        cell.continuation &&
-        !cells.slice(index + 1).some((following) => !following.continuation)
-      ) {
-        continue;
-      }
+      if (cell.continuation && cells[index - 1]?.wide) continue;
       const character = cell.continuation ? ' ' : cell.character;
       const previous = runs.at(-1);
       if (previous && previous.foreground === cell.foreground && previous.bold === cell.bold)
