@@ -1,15 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "citation",
-    "code-location",
-    "data-table",
-    "donut-chart",
-    "guidance-region",
-    "key-value-editor",
-    "terminal-frame"
-  ],
-  "renderedSourceSha": "08da8548c0c88652ef883be38f582ca9b75bca6b",
+  "componentScope": ["relative-time"],
+  "renderedSourceSha": "4b01e0f2d4f59ae359722875acd63956a9df92c7",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "arm64",

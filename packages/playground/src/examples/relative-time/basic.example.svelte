@@ -6,6 +6,8 @@
 
 <script lang="ts">
   import { RelativeTime } from '@lostgradient/cinder/relative-time';
+
+  const yesterday = new Date(Date.now() - 86_400_000);
 </script>
 
-<RelativeTime date="2026-08-28T18:00:00Z" />
+<RelativeTime date={yesterday} tick={false} />

@@ -7,7 +7,7 @@
       "id": "basic",
       "title": "RelativeTime",
       "description": "Displays a localized label for a timestamp relative to the current time.",
-      "code": "<script lang=\"ts\">\n  import { RelativeTime } from '@lostgradient/cinder/relative-time';\n</script>\n\n<RelativeTime date=\"2026-08-28T18:00:00Z\" />\n"
+      "code": "<script lang=\"ts\">\n  import { RelativeTime } from '@lostgradient/cinder/relative-time';\n\n  const yesterday = new Date(Date.now() - 86_400_000);\n</script>\n\n<RelativeTime date={yesterday} tick={false} />\n"
     }
   ]
 }
