@@ -157,6 +157,27 @@ const INTENTIONALLY_UNREGISTERED_COLOR_TOKENS = new Set([
   '--cinder-table-of-contents-link-color',
   '--cinder-table-of-contents-link-active-color',
   '--cinder-tree-drop-line-color',
+  // Component-specific semantic and ANSI palettes. These are public styling
+  // contracts for Badge/CodeLocation and TerminalOutput, not global theme roles
+  // that belong in the playground's general-purpose color override panel.
+  '--cinder-severity-critical',
+  '--cinder-severity-critical-background',
+  '--cinder-terminal-ansi-black',
+  '--cinder-terminal-ansi-red',
+  '--cinder-terminal-ansi-green',
+  '--cinder-terminal-ansi-yellow',
+  '--cinder-terminal-ansi-blue',
+  '--cinder-terminal-ansi-magenta',
+  '--cinder-terminal-ansi-cyan',
+  '--cinder-terminal-ansi-white',
+  '--cinder-terminal-ansi-bright-black',
+  '--cinder-terminal-ansi-bright-red',
+  '--cinder-terminal-ansi-bright-green',
+  '--cinder-terminal-ansi-bright-yellow',
+  '--cinder-terminal-ansi-bright-blue',
+  '--cinder-terminal-ansi-bright-magenta',
+  '--cinder-terminal-ansi-bright-cyan',
+  '--cinder-terminal-ansi-bright-white',
 ]);
 
 const TOKENS_BASE_PATH = join(
