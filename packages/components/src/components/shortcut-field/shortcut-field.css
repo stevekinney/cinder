@@ -44,8 +44,10 @@
     color: var(--cinder-text);
     cursor: pointer;
   }
-  .cinder-shortcut-field__clear:hover {
-    background: var(--cinder-surface-inset);
+  @media (hover: hover) {
+    .cinder-shortcut-field__clear:hover {
+      background: var(--cinder-surface-inset);
+    }
   }
   .cinder-shortcut-field__clear:focus-visible {
     outline: var(--cinder-ring-width) solid transparent;
@@ -53,7 +55,8 @@
   }
 
   @media (forced-colors: active) {
-    .cinder-shortcut-field__control:focus-visible {
+    .cinder-shortcut-field__control:focus-visible,
+    .cinder-shortcut-field__clear:focus-visible {
       outline-color: Highlight;
     }
   }

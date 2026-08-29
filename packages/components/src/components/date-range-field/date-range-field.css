@@ -190,6 +190,13 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  @media (forced-colors: active) {
+    .cinder-date-range-field__calendar-trigger:focus-visible {
+      outline-color: ButtonText;
+      outline-offset: 2px;
+    }
+  }
+
   .cinder-date-range-field__calendar-trigger:disabled {
     color: var(--cinder-text-disabled);
     border-color: var(--cinder-border-muted);
