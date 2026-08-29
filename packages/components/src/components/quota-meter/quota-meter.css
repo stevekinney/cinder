@@ -1,0 +1,6 @@
+@layer cinder.components {
+  .cinder-quota-meter {
+    display: block;
+    width: 100%;
+  }
+}

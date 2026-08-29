@@ -1148,3 +1148,30 @@ describe('--cinder-type-tab-size (declaration, value, usage)', () => {
     }
   });
 });
+
+describe('terminal ANSI foreground ramp', () => {
+  const names = [
+    'black',
+    'red',
+    'green',
+    'yellow',
+    'blue',
+    'magenta',
+    'cyan',
+    'white',
+    'bright-black',
+    'bright-red',
+    'bright-green',
+    'bright-yellow',
+    'bright-blue',
+    'bright-magenta',
+    'bright-cyan',
+    'bright-white',
+  ];
+  it('declares all 16 theme-aware foreground slots', () => {
+    for (const name of names) {
+      const value = readTokenValue(css, `--cinder-terminal-ansi-${name}`);
+      expect(value).toContain('light-dark');
+    }
+  });
+});

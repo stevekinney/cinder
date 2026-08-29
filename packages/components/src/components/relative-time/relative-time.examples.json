@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "relative-time",
+  "import": "@lostgradient/cinder/relative-time",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "RelativeTime",
+      "description": "TODO: describe what this relative-time example demonstrates.",
+      "code": "<script lang=\"ts\">\n  import { RelativeTime } from '@lostgradient/cinder/relative-time';\n</script>\n\n<RelativeTime>Content</RelativeTime>\n"
+    }
+  ]
+}

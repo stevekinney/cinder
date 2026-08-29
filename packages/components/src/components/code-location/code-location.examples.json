@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "code-location",
+  "import": "@lostgradient/cinder/code-location",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "CodeLocation",
+      "description": "TODO: describe what this code-location example demonstrates.",
+      "code": "<script lang=\"ts\">\n  import { CodeLocation } from '@lostgradient/cinder/code-location';\n</script>\n\n<CodeLocation>Content</CodeLocation>\n"
+    }
+  ]
+}

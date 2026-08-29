@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "class": {
+      "type": "string",
+      "description": "Custom class merged with `.cinder-code-location`."
+    },
+    "file": {
+      "type": "string"
+    },
+    "line": {
+      "type": "number"
+    },
+    "column": {
+      "type": "number"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["file"],
+  "metadata": {
+    "unsupportedProps": [
+      {
+        "name": "children",
+        "reason": "function-or-snippet"
+      }
+    ]
+  }
+}

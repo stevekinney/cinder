@@ -1,5 +1,7 @@
 # Design tokens
 
+| `--cinder-severity-critical` | Dedicated Badge critical-severity foreground. | `light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25))` |
+| `--cinder-severity-critical-background` | Dedicated Badge critical-severity surface. | `light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25))` |
 cinder ships its design tokens as plain CSS custom properties on `:root`. Every token has a `--cinder-*` prefix; that prefix is the public surface, and you can override any of them at `:root` (globally) or on any ancestor selector (scoped) to reskin the system. Internal-only custom properties use `--_cinder-*`; those are not part of the contract and may change without notice.
 
 **Exception:** most [component-owned tokens](#component-tokens) do not yet honor this. Each component's own CSS still redeclares its `--cinder-<component>-*` custom properties directly on the component's root class (the pre-corpus, hand-authored pattern) rather than consuming the `:root` value the corpus now also emits — an element-level declaration always wins over an inherited one, so an ancestor or `:root` override of one of these has no effect today. `Button` and `Toggle` are the exceptions: both were already consume-only (their component CSS never redeclares these tokens, only references them via `var()`), so `--cinder-button-*` and `--cinder-toggle-track-*` overrides do work as described above. Migrating the rest is tracked separately; until then, treat each `## Component tokens` section as documenting that component's _default_, not a working override point.
@@ -822,3 +824,13 @@ Component-owned custom-property theming surfaces, one section per component (bes
 | `--cinder-virtual-list-height` | `20rem` | Default scroll-viewport height. |
 
 <!-- END GENERATED TOKEN TABLE -->
+
+### Terminal ANSI foreground ramp
+
+The 16-slot ANSI foreground ramp is intended for read-only terminal output. It
+keeps the familiar ANSI ordering while providing explicit light/dark values
+that are contrast-tested against the terminal inset surface.
+
+| Token                                                                        | Purpose                    |
+| ---------------------------------------------------------------------------- | -------------------------- |
+| `--cinder-terminal-ansi-black` through `--cinder-terminal-ansi-bright-white` | ANSI 0–15 foreground slots |

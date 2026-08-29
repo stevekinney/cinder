@@ -73,10 +73,19 @@ export type {
 export { default as Badge } from './components/badge/index.ts';
 export type {
   BadgeProps,
+  BadgeSeverity,
   BadgeSize,
   BadgeSubscriptionState,
   BadgeVariant,
 } from './components/badge/index.ts';
+export { default as Citation } from './components/citation/index.ts';
+export type { CitationProps, CitationSource } from './components/citation/index.ts';
+export { default as CodeLocation } from './components/code-location/index.ts';
+export type { CodeLocationProps } from './components/code-location/index.ts';
+export { default as QuotaMeter } from './components/quota-meter/index.ts';
+export type { QuotaMeterProps } from './components/quota-meter/index.ts';
+export { default as RelativeTime } from './components/relative-time/index.ts';
+export type { RelativeTimeProps } from './components/relative-time/index.ts';
 
 export { default as Backdrop } from './components/backdrop/index.ts';
 export type { BackdropProps } from './components/backdrop/index.ts';
@@ -278,6 +287,12 @@ export type {
   DataTableSelectionMode,
 } from './components/data-table/index.ts';
 
+export { default as DonutChart } from './components/donut-chart/index.ts';
+export type { DonutChartDatum, DonutChartProps } from './components/donut-chart/index.ts';
+
+export { default as KeyValueEditor } from './components/key-value-editor/index.ts';
+export type { KeyValueEditorProps, KeyValueEntry } from './components/key-value-editor/index.ts';
+
 export { default as DatePicker } from './components/date-picker/index.ts';
 export type { DatePickerGranularity, DatePickerProps } from './components/date-picker/index.ts';
 
@@ -370,6 +385,19 @@ export type {
   FeedProps,
 } from './components/feed/index.ts';
 
+export { default as TerminalFrame } from './components/terminal-frame/index.ts';
+export type { TerminalFrameProps } from './components/terminal-frame/index.ts';
+export {
+  default as TerminalOutput,
+  parseTerminalOutput,
+} from './components/terminal-output/index.ts';
+export type {
+  TerminalForeground,
+  TerminalLine,
+  TerminalOutputProps,
+  TerminalTextRun,
+} from './components/terminal-output/index.ts';
+
 export { default as FloatingAction } from './components/floating-action/index.ts';
 export type {
   FloatingActionProps,
@@ -395,6 +423,12 @@ export type { FormProps, FormSubmitContext } from './components/form/index.ts';
 
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
+
+export { default as FindBar } from './components/find-bar/index.ts';
+export type { FindBarProps } from './components/find-bar/index.ts';
+
+export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
+export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';
 
 export { default as FormSection } from './components/form-section/index.ts';
 export type { FormSectionHeadingLevel, FormSectionProps } from './components/form-section/index.ts';

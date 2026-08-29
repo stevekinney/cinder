@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "citation",
+  "import": "@lostgradient/cinder/citation",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Citation",
+      "description": "TODO: describe what this citation example demonstrates.",
+      "code": "<script lang=\"ts\">\n  import { Citation } from '@lostgradient/cinder/citation';\n</script>\n\n<Citation>Content</Citation>\n"
+    }
+  ]
+}

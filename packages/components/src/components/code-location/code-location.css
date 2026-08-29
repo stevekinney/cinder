@@ -1,0 +1,14 @@
+@layer cinder.components {
+  .cinder-code-location {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--cinder-space-1);
+    border-radius: var(--cinder-radius-sm);
+    background: var(--cinder-surface-inset);
+    color: var(--cinder-text-default);
+    font-size: var(--cinder-text-xs);
+  }
+  .cinder-code-location code {
+    font-family: var(--cinder-font-mono);
+  }
+}

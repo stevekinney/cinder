@@ -1,0 +1,5 @@
+@layer cinder.components {
+  .cinder-relative-time {
+    white-space: nowrap;
+  }
+}
