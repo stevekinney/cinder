@@ -47,9 +47,12 @@
     ...rest
   }: MeterProps = $props();
 
+  const generatedId = $props.id();
+
   const hasVerdict = $derived(verdict !== undefined);
   const isUnknownVerdict = $derived(verdict?.level === 'unknown');
   const verdictLabel = $derived(verdict?.label.trim() || undefined);
+  const verdictLabelId = $derived(verdictLabel ? `${generatedId}-verdict` : undefined);
 
   const hasValidRange = $derived(Number.isFinite(min) && Number.isFinite(max) && max > min);
   const effectiveMin = $derived(hasValidRange ? min : DEFAULT_MIN);
@@ -110,9 +113,14 @@
       : undefined;
   });
   const accessibleLabel = $derived(
-    isUnknownVerdict && verdictLabel
+    isUnknownVerdict && verdictLabel && !normalizedAriaLabelledby
       ? [normalizedAriaLabel, verdictLabel].filter(Boolean).join(': ')
       : normalizedAriaLabel,
+  );
+  const accessibleLabelledby = $derived(
+    isUnknownVerdict && normalizedAriaLabelledby && verdictLabelId
+      ? `${normalizedAriaLabelledby} ${verdictLabelId}`
+      : normalizedAriaLabelledby,
   );
 
   const meterState = $derived.by<MeterState | undefined>(() => {
@@ -189,7 +197,7 @@
   class={classNames('cinder-meter', className)}
   role={isUnknownVerdict ? 'status' : 'meter'}
   aria-label={accessibleLabel}
-  aria-labelledby={isUnknownVerdict ? undefined : normalizedAriaLabelledby}
+  aria-labelledby={accessibleLabelledby}
   aria-valuemin={isUnknownVerdict ? undefined : effectiveMin}
   aria-valuemax={isUnknownVerdict ? undefined : effectiveMax}
   aria-valuenow={isUnknownVerdict ? undefined : clampedValue}
@@ -201,7 +209,7 @@
   data-max={isUnknownVerdict ? undefined : effectiveMax}
 >
   {#if hasVerdict && verdictLabel}
-    <span class="cinder-meter__label">{verdictLabel}</span>
+    <span id={verdictLabelId} class="cinder-meter__label">{verdictLabel}</span>
   {/if}
   <div class="cinder-meter__track">
     {#if hasThresholds}
@@ -233,10 +241,7 @@
       </div>
     {/if}
     {#if !isUnknownVerdict}
-      <div
-        class="cinder-meter__fill"
-        style:--_cinder-meter-progress={hasVerdict ? 1 : progressScale}
-      ></div>
+      <div class="cinder-meter__fill" style:--_cinder-meter-progress={progressScale}></div>
     {/if}
   </div>
 </div>

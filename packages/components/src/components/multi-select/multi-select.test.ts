@@ -558,6 +558,24 @@ describe('MultiSelect', () => {
     expect(listbox?.getAttribute('aria-labelledby')).toBe('fruits-field-label');
   });
 
+  test('local and FormField warnings have unique ids and preserve rendered order', () => {
+    const { container } = render(FormFieldMultiSelectFixture, {
+      fieldId: 'fruits-field',
+      fieldLabel: 'Fruits',
+      fieldWarning: 'Organization policy applies.',
+      warning: 'Keep at least one selection.',
+      items,
+      selectedIds: [],
+    });
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits-field');
+
+    expect(container.querySelectorAll('#fruits-field-warning')).toHaveLength(1);
+    expect(container.querySelectorAll('#fruits-field-multi-select-warning')).toHaveLength(1);
+    expect(trigger?.getAttribute('aria-describedby')).toBe(
+      'fruits-field-multi-select-warning fruits-field-warning',
+    );
+  });
+
   // Regression test for the clipped-listbox defect: the panel used to be
   // `position: absolute` inside `.cinder-multi-select__control`, so any
   // ancestor with `overflow: hidden` (or a new containing block) clipped it

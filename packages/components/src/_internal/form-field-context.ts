@@ -15,7 +15,7 @@ export type FormFieldContext = {
   readonly controlId: string;
   /** Id of the `<label>` element. Used by `aria-labelledby` for grouped controls. */
   readonly labelId: string | undefined;
-  /** Composed `aria-describedby` value (description + warning + error), or undefined. */
+  /** Composed `aria-describedby` value (description + warning + managed + error), or undefined. */
   readonly describedBy: string | undefined;
   /** Id of the description `<p>`, or undefined. */
   readonly descriptionId: string | undefined;

@@ -11,8 +11,10 @@ const { default: Meter } = await import('./meter.svelte');
 describe('Meter', () => {
   test('renders an unknown verdict as a named status without fabricating numeric value attributes', () => {
     const { container } = render(Meter, {
-      verdict: { level: 'unknown', label: 'Awaiting data' },
-      ariaLabel: 'Service health',
+      props: {
+        verdict: { level: 'unknown', label: 'Awaiting data' },
+        ariaLabel: 'Service health',
+      },
     });
     const el = container.querySelector('[role="status"]');
 
@@ -32,15 +34,37 @@ describe('Meter', () => {
 
   test('uses the verdict label as both the visible label and aria-valuetext', () => {
     const { container } = render(Meter, {
-      verdict: { level: 'low', label: 'Degraded' },
-      ariaLabel: 'Service health',
+      props: {
+        value: 20,
+        verdict: { level: 'low', label: 'Degraded' },
+        ariaLabel: 'Service health',
+      },
     });
     const el = container.querySelector('[role="meter"]');
 
     expect(el?.querySelector('.cinder-meter__label')?.textContent).toBe('Degraded');
     expect(el?.getAttribute('aria-valuetext')).toBe('Degraded');
     expect(el?.getAttribute('data-cinder-state')).toBe('low');
-    expect(el?.getAttribute('aria-valuenow')).toBe('0');
+    expect(el?.getAttribute('aria-valuenow')).toBe('20');
+    expect(el?.querySelector('.cinder-meter__fill')?.getAttribute('style')).toContain(
+      '--_cinder-meter-progress: 0.2',
+    );
+  });
+
+  test('preserves an external label and includes the unknown verdict in aria-labelledby', () => {
+    const { container } = render(Meter, {
+      props: {
+        verdict: { level: 'unknown', label: 'Awaiting data' },
+        ariaLabelledby: 'service-health-label',
+      },
+    });
+    const element = container.querySelector('[role="status"]');
+    const verdictElement = element?.querySelector('.cinder-meter__label');
+
+    expect(element?.getAttribute('aria-label')).toBeNull();
+    expect(element?.getAttribute('aria-labelledby')).toBe(
+      `service-health-label ${verdictElement?.id}`,
+    );
   });
 
   test('renders role=meter with default bounds and value', () => {

@@ -134,11 +134,9 @@ export function resolveFieldControl(input: ResolveFieldControlInput): ResolvedFi
     descriptionId,
     errorId: resolvedErrorId,
     describedBy: composeDescribedBy(
-      descriptionId,
-      input.context?.warningId,
-      input.context?.managedId,
+      ownDescriptionId,
       ...(input.additionalDescribedBy ?? []),
-      resolvedErrorId,
+      ownErrorId,
       input.context?.describedBy,
       input.consumerDescribedBy,
     ),

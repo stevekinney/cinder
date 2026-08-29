@@ -9,6 +9,8 @@ setupHappyDom();
 
 const { render } = await import('@testing-library/svelte');
 const { default: FormField } = await import('./form-field.svelte');
+const { default: FormFieldSupportingTextControlsFixture } =
+  await import('../../test/fixtures/form-field-supporting-text-controls-fixture.svelte');
 const { default: FormFieldProbe } = await import('../../test/fixtures/form-field-probe.svelte');
 const { default: FormFieldContextProbe } =
   await import('../../test/fixtures/form-field-context-probe.svelte');
@@ -19,6 +21,15 @@ const emptySnippet = createRawSnippet(() => ({
 }));
 
 describe('FormField rendering', () => {
+  test('all context-aware grouped controls consume warning and managed supporting text', () => {
+    const { container } = render(FormFieldSupportingTextControlsFixture);
+
+    for (const id of ['supporting-pin', 'supporting-phone', 'supporting-rating']) {
+      const expected = `${id}-warning ${id}-managed`;
+      const controls = container.querySelectorAll(`[aria-describedby="${expected}"]`);
+      expect(controls.length).toBeGreaterThan(0);
+    }
+  });
   test('the error live region is mounted before any error is set (CIN-315: FormFieldFrame defaults to errorMountedOnDemand=false)', () => {
     const { container } = render(FormField, {
       props: { id: 'no-error-yet', label: 'Username', children: emptySnippet },

@@ -58,7 +58,12 @@
   }: MultiSelectProps<T> = $props();
 
   const context = getFormFieldContext();
-  const warningId = $derived(warning ? `${id}-warning` : undefined);
+  const defaultWarningId = $derived(warning ? `${id}-warning` : undefined);
+  const warningId = $derived(
+    warning && defaultWarningId === context?.warningId
+      ? `${id}-multi-select-warning`
+      : defaultWarningId,
+  );
   const field = $derived(
     resolveFieldControl({
       id,
