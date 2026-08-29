@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { fireEvent, render } = await import('@testing-library/svelte');
@@ -8,6 +9,16 @@ const { createRawSnippet } = await import('svelte');
 const textSnippet = (text: string) =>
   createRawSnippet(() => ({ render: () => `<span>${text}</span>` }));
 describe('ZoomPanViewer', () => {
+  test('standalone sidecar imports Button styles', () => {
+    const css = readFileSync(new URL('./zoom-pan-viewer.css', import.meta.url), 'utf8');
+    expect(
+      css.startsWith(
+        '@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;',
+      ),
+    ).toBe(true);
+    expect(css).toContain("@import '../button/button.css';");
+  });
+
   test('renders content and named controls', () => {
     const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
     expect(container.textContent).toContain('diagram');
@@ -53,5 +64,30 @@ describe('ZoomPanViewer', () => {
     expect(
       container.querySelector('.cinder-zoom-pan-viewer__viewport')?.getAttribute('style'),
     ).toContain('translate(0px');
+  });
+
+  test('anchors pinch zoom at the gesture midpoint', async () => {
+    const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
+    const viewer = container.querySelector('[role="region"]') as HTMLDivElement;
+    const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport') as HTMLElement;
+    viewer.getBoundingClientRect = () => ({
+      x: 0,
+      y: 0,
+      left: 0,
+      top: 0,
+      right: 100,
+      bottom: 100,
+      width: 100,
+      height: 100,
+      toJSON: () => ({}),
+    });
+
+    await fireEvent.pointerDown(viewer, { pointerId: 1, clientX: 10, clientY: 10 });
+    await fireEvent.pointerDown(viewer, { pointerId: 2, clientX: 30, clientY: 30 });
+    await fireEvent.pointerMove(viewer, { pointerId: 1, clientX: 5, clientY: 5 });
+    await fireEvent.pointerMove(viewer, { pointerId: 2, clientX: 35, clientY: 35 });
+
+    expect(viewport.getAttribute('style')).not.toContain('translate(0px, 0px)');
+    expect(viewport.getAttribute('style')).toContain('scale(1.5)');
   });
 });

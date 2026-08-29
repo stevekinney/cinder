@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -14,6 +15,11 @@ type ModalApi = import('../../_internal/modal-context.ts').ModalApi;
 afterEach(cleanup);
 
 describe('ModalRegion', () => {
+  test('standalone entrypoint imports Button styles for confirmations', () => {
+    const source = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+    expect(source).toContain("import '../button/button.css';");
+  });
+
   test('renders its context-scoped application children without adding wrapper markup', () => {
     const children = createRawSnippet(() => ({
       render: () => '<button data-testid="application">Open modal</button>',

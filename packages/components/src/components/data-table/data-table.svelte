@@ -77,7 +77,7 @@
   let hasObservedRowCount = false;
   let shouldStickAfterAppend = false;
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
-  let columnWidths = $state<Record<string, number>>({});
+  let columnWidths = $state<Record<string, number>>(Object.create(null));
   const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
   /**
@@ -152,10 +152,16 @@
   function columnWidth(column: DataTableColumn<Row>): number | undefined {
     return columnWidths[column.key] ?? column.width;
   }
+  function boundedColumnWidth(
+    column: DataTableColumn<Row>,
+    width = columnWidth(column) ?? 150,
+  ): number {
+    return Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+  }
   function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
-    const nextWidth = Math.min(column.maxWidth ?? Infinity, Math.max(column.minWidth ?? 60, width));
+    const nextWidth = boundedColumnWidth(column, width);
     if (nextWidth === columnWidth(column)) return;
-    columnWidths = { ...columnWidths, [column.key]: nextWidth };
+    columnWidths = Object.assign(Object.create(null), columnWidths, { [column.key]: nextWidth });
     onColumnResize?.(column.key, nextWidth);
   }
   function measuredColumnWidth(event: Event, column: DataTableColumn<Row>): number {
@@ -522,7 +528,7 @@
                   aria-label={`Resize ${column.label} column`}
                   aria-valuemin={column.minWidth ?? 60}
                   aria-valuemax={column.maxWidth}
-                  aria-valuenow={columnWidth(column) ?? 150}
+                  aria-valuenow={boundedColumnWidth(column)}
                   tabindex="0"
                   onkeydown={(event) => handleResizeKey(event, column)}
                   onpointerdown={(event) => handleResizePointer(event, column)}

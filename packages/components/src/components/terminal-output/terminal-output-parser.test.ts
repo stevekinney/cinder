@@ -18,4 +18,16 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('\u001b[31;foo m text')).toEqual([
       [{ text: 'oo m text', bold: false }],
     ]));
+  test('consumes OSC-8 hyperlinks terminated by BEL or ST', () =>
+    expect(
+      parseTerminalOutput('before\u001b]8;;https://example.com\u0007linked\u001b]8;;\u001b\\after'),
+    ).toEqual([[{ text: 'beforelinkedafter', bold: false }]]));
+  test('consumes terminal-title OSC sequences terminated by BEL or ST', () =>
+    expect(
+      parseTerminalOutput('before\u001b]0;title\u0007middle\u001b]2;title\u001b\\after'),
+    ).toEqual([[{ text: 'beforemiddleafter', bold: false }]]));
+  test('consumes an unterminated OSC payload through the end of the input', () =>
+    expect(parseTerminalOutput('before\u001b]8;;https://example.com')).toEqual([
+      [{ text: 'before', bold: false }],
+    ]));
 });

@@ -1,4 +1,5 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../button/button.css';
 @layer cinder.components {
   .cinder-inline-confirm {
     display: flex;

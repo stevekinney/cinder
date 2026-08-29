@@ -1,3 +1,4 @@
+import '../button/button.css';
 import '../confirm-dialog/confirm-dialog.css';
 import '../modal/modal.css';
 import ModalRegion from './modal-region.svelte';

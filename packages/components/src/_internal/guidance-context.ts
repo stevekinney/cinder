@@ -23,14 +23,18 @@ export type GuidanceApi = {
 };
 const [getGuidanceContext, setGuidanceContext] = createContext<GuidanceApi>();
 export { getGuidanceContext, setGuidanceContext };
-let modalSlotClaimed = false;
-export function claimModalSlot(): boolean {
-  if (modalSlotClaimed) return false;
-  modalSlotClaimed = true;
-  return true;
-}
-export function resetModalSlot(): void {
-  modalSlotClaimed = false;
+export function createModalSlot() {
+  let claimed = false;
+  return {
+    claim(): boolean {
+      if (claimed) return false;
+      claimed = true;
+      return true;
+    },
+    reset(): void {
+      claimed = false;
+    },
+  };
 }
 
 type ParsedVersion = {

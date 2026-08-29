@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { KeyValueEntry } from './key-value-editor.types.ts';
 setupHappyDom();
@@ -49,5 +50,11 @@ describe('KeyValueEditor', () => {
       secret: (key: string) => key === 'TOKEN',
     });
     expect(container.querySelector('input[type="password"]')).not.toBeNull();
+  });
+
+  test('entry point imports only styles used by the rendered composition', () => {
+    const entry = readFileSync(new URL('./index.ts', import.meta.url), 'utf8');
+    expect(entry).toContain("import '../input/input.css';");
+    expect(entry).not.toContain('secret-value-field.css');
   });
 });

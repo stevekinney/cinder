@@ -16,8 +16,7 @@
   import {
     setGuidanceContext,
     isRelevant,
-    claimModalSlot,
-    resetModalSlot,
+    createModalSlot,
     type GuidanceApi,
   } from '../../_internal/guidance-context.ts';
   import type { GuidanceRegionProps } from './guidance-region.types.ts';
@@ -37,6 +36,7 @@
   let dismissed = $state(new Set<string>());
   let claimed = $state(new Set<string>());
   let activeClaim = $state<GuidanceClaim | null>(null);
+  const modalSlot = createModalSlot();
   let anchoredOpen = $state(false);
   let modalApi: ModalApi | undefined;
   try {
@@ -59,7 +59,7 @@
         claimed.has(claim.id) ||
         storage?.get(`${storageKey}:${claim.id}`) ||
         (claim.kind !== 'modal' && (!anchor || !anchor.isConnected)) ||
-        (claim.kind === 'modal' && (!modalApi || !claimModalSlot()))
+        (claim.kind === 'modal' && (!modalApi || !modalSlot.claim()))
       )
         return false;
       claimed = new Set(claimed).add(claim.id);
@@ -78,7 +78,7 @@
         const wasModal = activeClaim.kind === 'modal';
         anchoredOpen = false;
         activeClaim = null;
-        if (wasModal) resetModalSlot();
+        if (wasModal) modalSlot.reset();
       }
     },
     resetAll() {
@@ -88,7 +88,7 @@
       activeClaim = null;
       anchoredOpen = false;
       openedModalId = null;
-      resetModalSlot();
+      modalSlot.reset();
     },
     claims: () => activeClaims,
   };
@@ -110,7 +110,7 @@
       .then(() => {
         api.dismiss(claim.id);
         openedModalId = null;
-        resetModalSlot();
+        modalSlot.reset();
       });
   });
 

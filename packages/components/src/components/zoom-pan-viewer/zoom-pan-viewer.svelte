@@ -49,11 +49,9 @@
     y = nextY;
     onTransformChange?.({ scale, x, y });
   }
-  function zoomAt(factor: number, event?: WheelEvent) {
-    const node = event?.currentTarget as HTMLElement | undefined;
-    const rect = node?.getBoundingClientRect();
-    const px = rect && event ? event.clientX - rect.left - rect.width / 2 : 0;
-    const py = rect && event ? event.clientY - rect.top - rect.height / 2 : 0;
+  function zoomAt(factor: number, anchor?: { x: number; y: number }) {
+    const px = anchor?.x ?? 0;
+    const py = anchor?.y ?? 0;
     const next = clampScale(normalizedScale * factor);
     const ratio = next / normalizedScale;
     update(next, px - (px - x) * ratio, py - (py - y) * ratio);
@@ -131,7 +129,13 @@
         return;
       }
       const distance = Math.hypot(first.x - second.x, first.y - second.y);
-      if (pinchDistance) zoomAt(distance / pinchDistance);
+      if (pinchDistance) {
+        const rect = event.currentTarget.getBoundingClientRect();
+        zoomAt(distance / pinchDistance, {
+          x: (first.x + second.x) / 2 - rect.left - rect.width / 2,
+          y: (first.y + second.y) / 2 - rect.top - rect.height / 2,
+        });
+      }
       pinchDistance = distance;
     } else if (dragging)
       update(normalizedScale, originX + event.clientX - startX, originY + event.clientY - startY);
@@ -158,7 +162,11 @@
   onkeydown={keydown}
   onwheel={(event) => {
     event.preventDefault();
-    zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, event);
+    const rect = event.currentTarget.getBoundingClientRect();
+    zoomAt(event.deltaY < 0 ? 1.1 : 1 / 1.1, {
+      x: event.clientX - rect.left - rect.width / 2,
+      y: event.clientY - rect.top - rect.height / 2,
+    });
     consumerOnwheel?.(event);
   }}
   onpointerdown={pointerdown}

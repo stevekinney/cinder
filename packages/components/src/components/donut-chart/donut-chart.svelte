@@ -25,11 +25,14 @@
     class: className,
     ...rest
   }: DonutChartProps = $props();
-  const total = $derived(data.reduce((sum, datum) => sum + Math.max(0, datum.value), 0));
+  const normalizedData = $derived(
+    data.map((datum) => ({ ...datum, value: Math.max(0, datum.value) })),
+  );
+  const total = $derived(normalizedData.reduce((sum, datum) => sum + datum.value, 0));
   const arcs = $derived.by(() => {
     let offset = 0;
-    return data.map((datum, index) => {
-      const value = Math.max(0, datum.value);
+    return normalizedData.map((datum, index) => {
+      const value = datum.value;
       const start = offset;
       offset += total ? value / total : 0;
       return { datum, index, start, end: offset };
@@ -85,10 +88,12 @@
           >{centerLabel}</text
         >{/if}
     </svg>{#if valueLabels}<ul class="cinder-donut-chart__legend">
-        {#each data as datum}<li><span>{datum.label}</span><span>{datum.value}</span></li>{/each}
+        {#each normalizedData as datum}<li>
+            <span>{datum.label}</span><span>{datum.value}</span>
+          </li>{/each}
       </ul>{/if}
     {#if !valueLabels}<ul class="cinder-sr-only" aria-label="{label} values">
-        {#each data as datum}<li>{datum.label}: {datum.value}</li>{/each}
+        {#each normalizedData as datum}<li>{datum.label}: {datum.value}</li>{/each}
       </ul>{/if}
   </figure>
 </div>

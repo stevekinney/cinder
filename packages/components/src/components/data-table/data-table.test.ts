@@ -129,6 +129,29 @@ describe('DataTable — column resizing', () => {
     expect(separator.getAttribute('aria-valuenow')).toBe('155');
     expect(resized.at(-1)).toEqual(['name', 155]);
   });
+
+  test('handles prototype-named column keys without width collisions', async () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'constructor', label: 'Constructor', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Constructor column' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('100');
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+  });
+
+  test('clamps the initial separator value when width is omitted', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', minWidth: 80, maxWidth: 120 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('120');
+  });
 });
 
 describe('DataTable — column headers', () => {

@@ -58,4 +58,19 @@ describe('DonutChart', () => {
     });
     expect(container.querySelector('.cinder-sr-only')?.textContent).toContain('Direct: 3');
   });
+
+  test('normalizes negative values consistently across the chart and summaries', () => {
+    const { container } = render(DonutChart, {
+      label: 'Traffic',
+      data: [
+        { label: 'Direct', value: -3 },
+        { label: 'Search', value: 2 },
+      ],
+      valueLabels: true,
+    });
+    expect(container.textContent).toContain('2');
+    expect(container.textContent).not.toContain('-3');
+    expect(container.querySelector('.cinder-donut-chart__total')?.textContent).toBe('2');
+    expect(container.querySelectorAll('path')[0]?.getAttribute('d')).not.toContain('NaN');
+  });
 });

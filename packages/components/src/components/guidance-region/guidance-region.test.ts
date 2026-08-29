@@ -2,7 +2,7 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
-import { claimModalSlot, isRelevant, resetModalSlot } from '../../_internal/guidance-context.ts';
+import { createModalSlot, isRelevant } from '../../_internal/guidance-context.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
@@ -29,12 +29,14 @@ describe('GuidanceRegion', () => {
     expect(isRelevant(claim, '1.2.0-beta.1')).toBe(false);
   });
 
-  test('allows only one modal claim across regions during a boot', () => {
-    resetModalSlot();
-    expect(claimModalSlot()).toBe(true);
-    expect(claimModalSlot()).toBe(false);
-    resetModalSlot();
-    expect(claimModalSlot()).toBe(true);
+  test('scopes modal claim arbitration to each region instance', () => {
+    const firstRegion = createModalSlot();
+    const secondRegion = createModalSlot();
+    expect(firstRegion.claim()).toBe(true);
+    expect(firstRegion.claim()).toBe(false);
+    expect(secondRegion.claim()).toBe(true);
+    firstRegion.reset();
+    expect(firstRegion.claim()).toBe(true);
   });
 
   test('renders application children without owning persistent storage', () => {

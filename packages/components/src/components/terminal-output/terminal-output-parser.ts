@@ -26,6 +26,27 @@ export function parseTerminalOutput(value: string): TerminalLine[] {
   let bold = false;
   for (let i = 0; i < value.length; i++) {
     const c = value[i]!;
+    if ((c === '\u001b' && value[i + 1] === ']') || c === '\u009d') {
+      const payloadStart = c === '\u009d' ? i + 1 : i + 2;
+      let terminator = -1;
+      let terminatorLength = 0;
+      for (let candidate = payloadStart; candidate < value.length; candidate++) {
+        if (value[candidate] === '\u0007') {
+          terminator = candidate;
+          terminatorLength = 1;
+          break;
+        }
+        if (value[candidate] === '\u001b' && value[candidate + 1] === '\\') {
+          terminator = candidate;
+          terminatorLength = 2;
+          break;
+        }
+      }
+      // Unsupported OSC payloads (for example hyperlinks and terminal titles)
+      // are inert. An incomplete sequence consumes the remainder as payload.
+      i = terminator >= 0 ? terminator + terminatorLength - 1 : value.length;
+      continue;
+    }
     if (c === '\u001b' && value[i + 1] === '[') {
       let end = -1;
       for (let candidate = i + 2; candidate < value.length; candidate++) {
