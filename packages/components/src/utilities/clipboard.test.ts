@@ -129,6 +129,39 @@ describe('copyToClipboard', () => {
     }
   });
 
+  test('keeps rich HTML when an optional image URL is invalid', async () => {
+    const write = mock(async (_items: ClipboardItem[]) => undefined);
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob | Promise<Blob>>) {}
+    }
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText: mock(async () => undefined) },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: 'http://[invalid',
+        }),
+      ).toBe(true);
+      const [writtenItems] = write.mock.calls[0]!;
+      const item = writtenItems[0] as unknown as TestClipboardItem;
+      expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
+    } finally {
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('starts a rich clipboard write before a same-origin image fetch resolves', async () => {
     let resolveFetch: ((response: Response) => void) | undefined;
     const pendingFetch = new Promise<Response>((resolve) => {

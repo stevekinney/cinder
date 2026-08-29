@@ -74,7 +74,12 @@ function optionalImageRepresentation(
   if (!image.trim() || typeof document === 'undefined' || typeof location === 'undefined') {
     return undefined;
   }
-  const resolvedUrl = new URL(image, document.baseURI);
+  let resolvedUrl: URL;
+  try {
+    resolvedUrl = new URL(image, document.baseURI);
+  } catch {
+    return undefined;
+  }
   const isLocallyResolvable =
     resolvedUrl.protocol === 'blob:' ||
     resolvedUrl.protocol === 'data:' ||
