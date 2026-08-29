@@ -30,20 +30,31 @@ export async function copyToClipboard(
     (rich.html !== undefined || rich.image !== undefined)
   ) {
     try {
-      const representations: Record<string, Blob | Promise<Blob>> = {
+      const baseRepresentations: Record<string, Blob | Promise<Blob>> = {
         'text/plain': new Blob([text], { type: 'text/plain' }),
       };
       if (rich.html !== undefined) {
-        representations['text/html'] = new Blob([rich.html], { type: 'text/html' });
+        baseRepresentations['text/html'] = new Blob([rich.html], { type: 'text/html' });
       }
+      const representations = { ...baseRepresentations };
+      let includedImage = false;
       if (rich.image !== undefined) {
         const imageRepresentation = optionalImageRepresentation(rich.image);
         if (imageRepresentation) {
           representations[imageRepresentation.type] = imageRepresentation.value;
+          includedImage = true;
         }
       }
-      await navigator.clipboard.write([new ClipboardItem(representations)]);
-      return true;
+      try {
+        await navigator.clipboard.write([new ClipboardItem(representations)]);
+        return true;
+      } catch {
+        if (includedImage && rich.html !== undefined) {
+          await navigator.clipboard.write([new ClipboardItem(baseRepresentations)]);
+          return true;
+        }
+        throw new Error('Rich clipboard write failed');
+      }
     } catch {
       // Fall through to writeText and finally the legacy selection path.
     }
@@ -106,7 +117,7 @@ function imageTypeFromUrl(url: URL): string | undefined {
   if (url.protocol === 'data:') {
     return /^data:(image\/[a-z0-9.+-]+)[;,]/iu.exec(url.href)?.[1]?.toLowerCase();
   }
-  if (url.protocol === 'blob:') return 'image/png';
+  if (url.protocol === 'blob:') return undefined;
   const extension = /\.([a-z0-9]+)$/iu.exec(url.pathname)?.[1]?.toLowerCase();
   if (extension === 'png') return 'image/png';
   if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';

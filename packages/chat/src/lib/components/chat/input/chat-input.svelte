@@ -518,6 +518,8 @@
       // This fixes debounce lag and ensures consistent data.
       flushSync(() => {
         value = submittedContent;
+        for (const attachment of promotedPastes) URL.revokeObjectURL(attachment.previewUrl);
+        attachments = attachments.filter((attachment) => attachment.restoreText === undefined);
       });
       previousComposerValue = submittedContent;
     }
@@ -572,56 +574,64 @@
   let previousComposerValue = value;
   let pendingInputRange: { start: number; end: number } | null = null;
 
+  function translatePromotedPasteRanges(
+    previousValue: string,
+    nextValue: string,
+    replacementRange?: { start: number; end: number } | null,
+  ): void {
+    let prefixLength = replacementRange?.start ?? 0;
+    let replacedEnd = replacementRange?.end ?? 0;
+    if (!replacementRange) {
+      while (
+        prefixLength < previousValue.length &&
+        prefixLength < nextValue.length &&
+        previousValue[prefixLength] === nextValue[prefixLength]
+      ) {
+        prefixLength += 1;
+      }
+      let suffixLength = 0;
+      while (
+        suffixLength < previousValue.length - prefixLength &&
+        suffixLength < nextValue.length - prefixLength &&
+        previousValue[previousValue.length - 1 - suffixLength] ===
+          nextValue[nextValue.length - 1 - suffixLength]
+      ) {
+        suffixLength += 1;
+      }
+      replacedEnd = previousValue.length - suffixLength;
+    }
+    const insertedLength = nextValue.length - (previousValue.length - (replacedEnd - prefixLength));
+    const translatePosition = (position: number): number => {
+      if (position <= prefixLength) return position;
+      if (position >= replacedEnd) {
+        return position + insertedLength - (replacedEnd - prefixLength);
+      }
+      return prefixLength + insertedLength;
+    };
+    attachments = attachments.map((attachment) =>
+      attachment.restoreRange
+        ? {
+            ...attachment,
+            restoreRange: {
+              start: translatePosition(attachment.restoreRange.start),
+              end: translatePosition(attachment.restoreRange.end),
+            },
+          }
+        : attachment,
+    );
+  }
+
   $effect(() => {
     const synchronizedValue = value;
     if (editorElement?.value === synchronizedValue && synchronizedValue !== previousComposerValue) {
+      translatePromotedPasteRanges(previousComposerValue, synchronizedValue);
       previousComposerValue = synchronizedValue;
     }
   });
 
   function handleInput(event: Event): void {
     if (value !== previousComposerValue) {
-      let prefixLength = pendingInputRange?.start ?? 0;
-      let replacedEnd = pendingInputRange?.end ?? 0;
-      if (!pendingInputRange) {
-        while (
-          prefixLength < previousComposerValue.length &&
-          prefixLength < value.length &&
-          previousComposerValue[prefixLength] === value[prefixLength]
-        ) {
-          prefixLength += 1;
-        }
-        let suffixLength = 0;
-        while (
-          suffixLength < previousComposerValue.length - prefixLength &&
-          suffixLength < value.length - prefixLength &&
-          previousComposerValue[previousComposerValue.length - 1 - suffixLength] ===
-            value[value.length - 1 - suffixLength]
-        ) {
-          suffixLength += 1;
-        }
-        replacedEnd = previousComposerValue.length - suffixLength;
-      }
-      const insertedLength =
-        value.length - (previousComposerValue.length - (replacedEnd - prefixLength));
-      const translatePosition = (position: number): number => {
-        if (position <= prefixLength) return position;
-        if (position >= replacedEnd) {
-          return position + insertedLength - (replacedEnd - prefixLength);
-        }
-        return prefixLength + insertedLength;
-      };
-      attachments = attachments.map((attachment) =>
-        attachment.restoreRange
-          ? {
-              ...attachment,
-              restoreRange: {
-                start: translatePosition(attachment.restoreRange.start),
-                end: translatePosition(attachment.restoreRange.end),
-              },
-            }
-          : attachment,
-      );
+      translatePromotedPasteRanges(previousComposerValue, value, pendingInputRange);
       previousComposerValue = value;
     }
     pendingInputRange = null;

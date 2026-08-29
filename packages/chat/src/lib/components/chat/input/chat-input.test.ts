@@ -327,6 +327,64 @@ describe('ChatInput', () => {
     expect(submissions).toEqual([{ role: 'user', content: 'AabB' }]);
   });
 
+  test('clears promoted-paste state after an enhanced form-action submission', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'form-action-promoted-paste',
+      action: '/messages',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    form.addEventListener('submit', (event) => event.preventDefault());
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'source document' },
+    });
+
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(composer.value).toBe('summarize: source document');
+
+    form.dispatchEvent(new SubmitEvent('submit', { bubbles: true, cancelable: true }));
+    await tick();
+    expect(submissions).toEqual([
+      { role: 'user', content: 'summarize: source document' },
+      { role: 'user', content: 'summarize: source document' },
+    ]);
+  });
+
+  test('rebases promoted-paste ranges when the bound value changes externally', async () => {
+    const submissions: MessageInput[] = [];
+    const rendered = render(ChatInput, {
+      id: 'external-value-promoted-paste',
+      value: 'summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = rendered.container.querySelector('form')!;
+    const composer = rendered.container.querySelector<HTMLTextAreaElement>(
+      'textarea.chat-input-editor',
+    )!;
+    composer.setSelectionRange(composer.value.length, composer.value.length);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'source document' },
+    });
+
+    await rendered.rerender({
+      id: 'external-value-promoted-paste',
+      value: 'Please summarize: ',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    await tick();
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'Please summarize: source document' }]);
+  });
+
   test('shows an instructional copy-drop overlay with copy semantics', async () => {
     const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
     const form = container.querySelector('form')!;

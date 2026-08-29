@@ -207,6 +207,89 @@ describe('copyToClipboard', () => {
     }
   });
 
+  test('retries rich HTML without an image when the image representation rejects', async () => {
+    const originalFetch = globalThis.fetch;
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob | Promise<Blob>>) {}
+    }
+    const write = mock(async (items: ClipboardItem[]) => {
+      const item = items[0] as unknown as TestClipboardItem;
+      if (item.values['image/png']) await item.values['image/png'];
+    });
+    const writeText = mock(async () => undefined);
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: mock(async () => Promise.reject(new Error('offline'))),
+    });
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: 'data:image/png;base64,cG5n',
+        }),
+      ).toBe(true);
+      expect(write).toHaveBeenCalledTimes(2);
+      const fallbackItem = write.mock.calls[1]?.[0]?.[0] as unknown as TestClipboardItem;
+      expect(Object.keys(fallbackItem.values)).toEqual(['text/plain', 'text/html']);
+      expect(writeText).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
+  test('skips blob URLs whose MIME type cannot be inferred synchronously', async () => {
+    const write = mock(async (_items: ClipboardItem[]) => undefined);
+    const originalFetch = globalThis.fetch;
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob | Promise<Blob>>) {}
+    }
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: mock(async () => Promise.reject(new Error('must not fetch'))),
+    });
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText: mock(async () => undefined) },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: 'blob:https://example.test/attachment',
+        }),
+      ).toBe(true);
+      const item = write.mock.calls[0]?.[0]?.[0] as unknown as TestClipboardItem;
+      expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
+      expect(globalThis.fetch).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('keeps rich HTML when an optional image format is unsupported', async () => {
     const write = mock(async (_items: ClipboardItem[]) => undefined);
     const writeText = mock(async () => undefined);
