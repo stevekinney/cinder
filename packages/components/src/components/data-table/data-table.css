@@ -97,4 +97,11 @@
     outline: var(--cinder-ring-width) solid transparent;
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
+  @media (forced-colors: active) {
+    .cinder-data-table__column-resizer:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 1px;
+      box-shadow: none;
+    }
+  }
 }

@@ -15,7 +15,7 @@
   .cinder-find-bar__status {
     min-inline-size: 5rem;
     color: var(--cinder-text-muted);
-    font-size: var(--cinder-font-size-sm);
+    font-size: var(--cinder-text-sm);
     text-align: center;
   }
   .cinder-find-bar__actions {

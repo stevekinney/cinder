@@ -10,8 +10,15 @@
     white-space: pre;
   }
   .cinder-terminal-output:focus-visible {
-    outline: var(--cinder-ring-width) solid var(--cinder-ring-color);
-    outline-offset: calc(var(--cinder-ring-width) * -1);
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .cinder-terminal-output:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
   }
   .cinder-terminal-output__line {
     min-block-size: 1lh;

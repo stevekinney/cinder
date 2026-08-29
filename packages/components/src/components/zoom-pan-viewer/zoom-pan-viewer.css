@@ -9,8 +9,15 @@
     touch-action: none;
   }
   .cinder-zoom-pan-viewer:focus-visible {
-    outline: 2px solid var(--cinder-focus-ring);
-    outline-offset: -2px;
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .cinder-zoom-pan-viewer:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
   }
   .cinder-zoom-pan-viewer__viewport {
     transform-origin: center;
