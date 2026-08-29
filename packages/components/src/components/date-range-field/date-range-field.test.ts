@@ -433,7 +433,7 @@ describe('DateRangeField', () => {
         startLabel: 'From',
         endLabel: 'To',
       });
-      const labels = container.querySelectorAll('.cinder-date-picker__label');
+      const labels = container.querySelectorAll('label[for="drf-start"], label[for="drf-end"]');
       const labelTexts = Array.from(labels).map((l) => l.textContent?.trim());
       expect(labelTexts).toContain('From');
       expect(labelTexts).toContain('To');
@@ -445,9 +445,9 @@ describe('DateRangeField', () => {
         id: 'drf',
         granularity: 'minute',
       });
-      const labelTexts = Array.from(container.querySelectorAll('.cinder-date-picker__label')).map(
-        (labelElement) => labelElement.textContent?.trim(),
-      );
+      const labelTexts = Array.from(
+        container.querySelectorAll('label[for="drf-start"], label[for="drf-end"]'),
+      ).map((labelElement) => labelElement.textContent?.trim());
 
       expect(labelTexts).toEqual(['Start date and time', 'End date and time']);
     });

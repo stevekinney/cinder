@@ -25,9 +25,6 @@
   }
 
   .cinder-parameter-field__body {
-    display: grid;
-    grid-template-columns: 0.1875rem minmax(0, 1fr);
-    gap: var(--cinder-space-2);
     align-items: stretch;
   }
 

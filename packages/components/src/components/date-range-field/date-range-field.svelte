@@ -32,6 +32,7 @@
   import { classNames } from '../../utilities/class-names.ts';
   import { normalizeDateValue } from '../../_internal/date-value.ts';
   import Calendar from '../calendar/calendar.svelte';
+  import Input from '../input/input.svelte';
   import Popover from '../popover/popover.svelte';
   import {
     composeDescribedBy,
@@ -265,13 +266,6 @@
     onValueChange?.(next);
   }
 
-  function handleInputChange(boundary: 'start' | 'end', event: Event): void {
-    const target = event.currentTarget as HTMLInputElement;
-    const next = normalizeDateValue(target.value || undefined, granularity);
-    if (boundary === 'start') handleStartChange(next);
-    else handleEndChange(next);
-  }
-
   function timeSuffix(endpoint: string | undefined): string {
     if (granularity === 'day') return '';
     const existing = endpoint?.slice(10);
@@ -360,41 +354,43 @@
   {/if}
 
   <div class="cinder-date-range-field__inputs">
-    <div class="cinder-date-range-field__input-group">
-      <label for={startId} class="cinder-date-picker__label">{resolvedStartLabel}</label>
-      <input
-        id={startId}
-        class="cinder-date-picker__input cinder-date-range-field__date-input"
-        type="text"
-        value={normalizedValue.start ?? ''}
-        placeholder={inputPlaceholder}
-        max={normalizedValue.end ?? undefined}
-        step={inputStep}
-        {disabled}
-        aria-invalid={hasError ? 'true' : undefined}
-        aria-describedby={describedBy}
-        onchange={(event) => handleInputChange('start', event)}
-      />
-    </div>
+    <Input
+      id={startId}
+      class="cinder-date-picker__input cinder-date-range-field__date-input"
+      type="text"
+      label={resolvedStartLabel}
+      value={normalizedValue.start ?? ''}
+      placeholder={inputPlaceholder}
+      max={normalizedValue.end ?? undefined}
+      step={inputStep}
+      {disabled}
+      aria-invalid={hasError ? 'true' : undefined}
+      aria-describedby={describedBy}
+      onchange={(event) => {
+        const next = (event.currentTarget as HTMLInputElement).value;
+        handleStartChange(normalizeDateValue(next || undefined, granularity));
+      }}
+    />
 
     <span class="cinder-date-range-field__separator" aria-hidden="true">–</span>
 
-    <div class="cinder-date-range-field__input-group">
-      <label for={endId} class="cinder-date-picker__label">{resolvedEndLabel}</label>
-      <input
-        id={endId}
-        class="cinder-date-picker__input cinder-date-range-field__date-input"
-        type="text"
-        value={normalizedValue.end ?? ''}
-        placeholder={inputPlaceholder}
-        min={normalizedValue.start ?? undefined}
-        step={inputStep}
-        {disabled}
-        aria-invalid={hasError ? 'true' : undefined}
-        aria-describedby={describedBy}
-        onchange={(event) => handleInputChange('end', event)}
-      />
-    </div>
+    <Input
+      id={endId}
+      class="cinder-date-picker__input cinder-date-range-field__date-input"
+      type="text"
+      label={resolvedEndLabel}
+      value={normalizedValue.end ?? ''}
+      placeholder={inputPlaceholder}
+      min={normalizedValue.start ?? undefined}
+      step={inputStep}
+      {disabled}
+      aria-invalid={hasError ? 'true' : undefined}
+      aria-describedby={describedBy}
+      onchange={(event) => {
+        const next = (event.currentTarget as HTMLInputElement).value;
+        handleEndChange(normalizeDateValue(next || undefined, granularity));
+      }}
+    />
 
     <button
       bind:this={calendarTrigger}

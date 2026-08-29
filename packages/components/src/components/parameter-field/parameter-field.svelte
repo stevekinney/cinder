@@ -16,6 +16,7 @@
 
 <script lang="ts">
   import Badge from '../badge/badge.svelte';
+  import Grid from '../grid/grid.svelte';
   import Tooltip from '../tooltip/tooltip.svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import type { ParameterFieldProps } from './parameter-field.types.ts';
@@ -66,7 +67,11 @@
     </span>
   </div>
 
-  <div class="cinder-parameter-field__body">
+  <Grid
+    columns="0.1875rem minmax(0, 1fr)"
+    gap="var(--cinder-space-2)"
+    class="cinder-parameter-field__body"
+  >
     <span class="cinder-parameter-field__rail" aria-hidden="true"></span>
     <div class="cinder-parameter-field__editor" aria-labelledby={`${id}-label`}>
       {#if children}
@@ -77,7 +82,7 @@
         </output>
       {/if}
     </div>
-  </div>
+  </Grid>
 
   {#if overridden}
     <Tooltip text={`Reset to default (${formattedBase})`}>
