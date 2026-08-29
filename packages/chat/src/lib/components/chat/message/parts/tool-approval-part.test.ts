@@ -292,19 +292,22 @@ describe('ToolApprovalPart — resolved states', () => {
 });
 
 describe('ToolApprovalPart — collapsible args', () => {
-  test('renders a details/summary when action.schema is present', () => {
+  test('renders the shared collapsible frame when action.schema is present', async () => {
     const part = pendingPart({
       action: { type: 'approval', message: 'Proceed?', schema: { env: 'production' } },
     });
     const { container } = render(ToolApprovalPart, { props: { part } });
-    const details = container.querySelector('details');
-    expect(details).not.toBeNull();
+    const trigger = Array.from(container.querySelectorAll('button')).find((button) =>
+      button.textContent?.includes('Parameters'),
+    );
+    expect(trigger).not.toBeNull();
+    trigger && (await fireEvent.click(trigger));
     const pre = container.querySelector('pre');
     expect(pre?.textContent).toContain('production');
   });
 
-  test('does not render details/summary when action.schema is absent', () => {
+  test('does not render a parameters disclosure when action.schema is absent', () => {
     const { container } = render(ToolApprovalPart, { props: { part: pendingPart() } });
-    expect(container.querySelector('details')).toBeNull();
+    expect(container.textContent).not.toContain('Parameters');
   });
 });

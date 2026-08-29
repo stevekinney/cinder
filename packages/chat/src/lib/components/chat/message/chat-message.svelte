@@ -2,7 +2,7 @@
   import type { Snippet } from 'svelte';
   import type { HTMLAttributes } from 'svelte/elements';
   import type { Message, ToolCallPair } from '../conversation-model.ts';
-  import type { MessagePartOverride } from './chat-message-parts.ts';
+  import type { MarkdownNodeOverride, MessagePartOverride } from './chat-message-parts.ts';
   import type { StepInfo } from '../utilities/types.ts';
 
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
@@ -26,6 +26,8 @@
      * to the built-ins (inversion of control — see the renderer).
      */
     messagePart?: MessagePartOverride | undefined;
+    /** Per-node override for code blocks, tables, and Mermaid blocks inside markdown. */
+    markdownNode?: MarkdownNodeOverride | undefined;
     /** Show built-in copy button alongside custom actions (default: true) */
     showDefaultActions?: boolean;
     /** Whether this message is currently streaming */
@@ -40,6 +42,10 @@
     onedit?: ((event: { messageId: string; content: string }) => void) | undefined;
     /** Called when this message enters or leaves edit mode. */
     oneditingchange?: ((editing: boolean) => void) | undefined;
+    /** Requests a previewed, confirmed rollback from this user message. */
+    onrollback?: ((messageId: string) => void) | undefined;
+    /** Visually marks this row as content that a pending rollback will discard. */
+    rollbackDiscarded?: boolean;
     /** The set of approved tool call IDs for deriving approval state. */
     approvedToolCallIds?: ReadonlySet<string> | undefined;
     /** The set of denied tool call IDs for deriving denial state. */
@@ -52,7 +58,9 @@
      * Reasoning text to surface as a collapsible block before the body.
      * When present and non-empty, a `reasoning` part is prepended to the derived parts.
      */
-    reasoning?: string | undefined;
+    reasoning?: import('../utilities/types.ts').ReasoningInfo | string | undefined;
+    /** Structured transcript event rows sourced from namespaced message metadata. */
+    entries?: import('../utilities/types.ts').TranscriptEntryInfo[] | undefined;
     /**
      * Step list to surface as a stepper before the body.
      * Each entry maps to one `step` part in the derived parts.
@@ -62,6 +70,10 @@
     reasoningExpanded?: boolean | undefined;
     /** Called when the reasoning disclosure toggle is activated. */
     onreasoning?: (() => void) | undefined;
+    /** Whether the grouped steps disclosure is expanded. */
+    stepsExpanded?: boolean | undefined;
+    /** Called when the grouped steps disclosure is toggled. */
+    onsteps?: (() => void) | undefined;
     /**
      * Whether the tool-call card disclosure is expanded. Collapsed by default —
      * kept separate from `expanded` (which drives markdown "Show more/less"),
@@ -95,6 +107,7 @@
   import { Pencil, RotateCcw } from '@lostgradient/cinder/icons';
   import CopyButton from '@lostgradient/cinder/copy-button';
   import ChatMessagePartsRenderer from './chat-message-parts-renderer.svelte';
+  import { escapeClipboardHtmlAttribute } from '../../../utilities/clipboard.ts';
 
   let {
     message,
@@ -105,6 +118,7 @@
     actions,
     status,
     messagePart,
+    markdownNode,
     showDefaultActions = true,
     streaming = false,
     overrideContent,
@@ -112,15 +126,20 @@
     onretry,
     onedit,
     oneditingchange,
+    onrollback,
+    rollbackDiscarded = false,
     approvedToolCallIds,
     deniedToolCallIds,
     onapprove,
     ondeny,
     reasoning,
+    entries,
     steps,
     suggestions,
     reasoningExpanded = false,
     onreasoning,
+    stepsExpanded = true,
+    onsteps,
     toolCallExpanded = $bindable(false),
     ontoolcalltoggle,
     onSuggestionSelect,
@@ -245,6 +264,7 @@
       // C4: reasoning and steps are UI-only overlays derived from metadata or
       // explicit per-message props; never written back to the transcript.
       reasoning,
+      entries,
       steps,
       // C5: suggestions are UI-only overlays; never written back to the transcript.
       suggestions,
@@ -261,6 +281,24 @@
   // so the flex layout and spacing are unchanged.
   const bodyParts = $derived(messageParts.filter((part) => part.type !== 'image'));
   const imageParts = $derived(messageParts.filter((part) => part.type === 'image'));
+  const copyHtml = $derived.by(() => {
+    const escapeHtml = (value: string): string =>
+      value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    const body = `<div data-cinder-chat-message style="white-space: pre-wrap">${escapeHtml(textContent)}</div>`;
+    const attachmentChips = imageParts
+      .map(
+        (part, index) =>
+          `<span data-cinder-chat-attachment data-url="${escapeClipboardHtmlAttribute(part.image.url)}">${escapeHtml(part.image.text || `Image attachment ${index + 1}`)}</span>`,
+      )
+      .join('');
+    return `${body}${attachmentChips}`;
+  });
+  const copyValue = $derived(
+    textContent || imageParts.map((part) => part.image.text || 'Image attachment').join('\n'),
+  );
+  const copyImage = $derived.by(() => {
+    return imageParts[0]?.image.url;
+  });
 
   // Content truncation threshold (characters)
   const TRUNCATE_THRESHOLD = 500;
@@ -297,12 +335,13 @@
   data-failed={isFailed || undefined}
   data-search-match={searchMatch || undefined}
   data-tool-pair={isToolCall && toolPair ? '' : undefined}
+  data-cinder-rollback-discarded={rollbackDiscarded || undefined}
   {...rest}
 >
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <article
     id={messageId}
-    class="chat-message"
+    class="chat-message chat-navigation-row"
     aria-labelledby={isToolCall && toolPair ? undefined : roleId}
     aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}
@@ -349,12 +388,15 @@
         <ChatMessagePartsRenderer
           parts={bodyParts}
           {messagePart}
+          {markdownNode}
           expanded={toolCallExpanded}
           onToggle={toggleToolCallExpanded}
           {onapprove}
           {ondeny}
           {reasoningExpanded}
           {onreasoning}
+          {stepsExpanded}
+          {onsteps}
           {onSuggestionSelect}
         />
 
@@ -383,15 +425,17 @@
     {/if}
   </article>
 
-  {#if actions || (showDefaultActions && textContent) || canEdit}
+  {#if actions || (showDefaultActions && copyValue) || canEdit || (message.role === 'user' && onrollback)}
     <footer class="chat-message-footer" role="none">
       <div class="chat-message-actions" role="group" aria-label="Message actions">
         {#if actions}
           {@render actions()}
         {/if}
-        {#if showDefaultActions && textContent}
+        {#if showDefaultActions && copyValue}
           <CopyButton
-            value={textContent}
+            value={copyValue}
+            html={copyHtml}
+            {...copyImage ? { image: copyImage } : {}}
             label="Copy message"
             copiedLabel="Copied!"
             iconOnly
@@ -414,6 +458,16 @@
             <Pencil class="cinder-icon-xs" />
           </button>
         {/if}
+        {#if message.role === 'user' && onrollback}
+          <button
+            type="button"
+            class="chat-message-action-button chat-message-rollback-button"
+            onclick={() => onrollback?.(message.id)}
+            aria-label="Rollback conversation to this message"
+          >
+            <RotateCcw class="cinder-icon-xs" />
+          </button>
+        {/if}
       </div>
     </footer>
   {/if}
@@ -429,6 +483,15 @@
     width: fit-content;
     /* Cap at 80% of container OR 48rem (768px) for readability on wide screens */
     max-width: min(80%, 48rem);
+  }
+
+  .chat-message-wrapper[data-cinder-rollback-discarded] {
+    opacity: 0.32;
+    filter: saturate(0.35);
+    pointer-events: none;
+    transition:
+      opacity var(--cinder-duration-fast) var(--cinder-ease-standard),
+      filter var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   /* Bubble — visual container for the message content */
@@ -540,7 +603,7 @@
   .chat-message-wrapper[data-role='tool-result'] .chat-message {
     background: var(--cinder-surface-inset);
     font-family: var(--cinder-font-mono);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
   }
 
   /* When a tool-call has a paired result, ToolCallGroup is the canonical card.
@@ -596,7 +659,7 @@
   .chat-message-wrapper[data-hidden] .chat-message::before {
     content: 'Hidden';
     display: inline-block;
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
     padding: var(--cinder-space-0-5) var(--cinder-space-1);
@@ -615,7 +678,7 @@
   }
 
   .chat-message-role {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-semibold);
     text-transform: uppercase;
     letter-spacing: 0.05em;
@@ -670,7 +733,7 @@
     display: flex;
     flex-direction: column;
     gap: var(--cinder-space-3);
-    font-size: var(--cinder-text-base);
+    font-size: var(--_cinder-chat-text-base, var(--cinder-text-base));
     line-height: 1.6;
   }
 
@@ -687,7 +750,7 @@
     gap: var(--cinder-space-0-5);
     padding: var(--cinder-space-0-5) var(--cinder-space-1);
     min-height: var(--cinder-touch-target-min);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-text);
     background: transparent;
@@ -718,7 +781,7 @@
   }
 
   .chat-message-failed-label {
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-status-danger-solid);
     font-weight: var(--cinder-font-medium);
   }
@@ -729,7 +792,7 @@
     gap: var(--cinder-space-1);
     padding: var(--cinder-space-0-5) var(--cinder-space-2);
     min-height: var(--cinder-touch-target-min);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-status-danger-solid);
     background: transparent;
@@ -978,7 +1041,7 @@
     width: 100%;
     padding: var(--cinder-space-2);
     font-family: inherit;
-    font-size: var(--cinder-text-base);
+    font-size: var(--_cinder-chat-text-base, var(--cinder-text-base));
     line-height: 1.6;
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);
@@ -1003,7 +1066,7 @@
   .chat-message-edit-save {
     padding: var(--cinder-space-1) var(--cinder-space-3);
     min-height: var(--cinder-touch-target-min);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-accent-contrast);
     background: var(--cinder-accent-solid);
@@ -1027,7 +1090,7 @@
   .chat-message-edit-cancel {
     padding: var(--cinder-space-1) var(--cinder-space-3);
     min-height: var(--cinder-touch-target-min);
-    font-size: var(--cinder-text-xs);
+    font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-muted);
     background: transparent;

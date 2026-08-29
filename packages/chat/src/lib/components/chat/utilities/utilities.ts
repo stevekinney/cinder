@@ -11,13 +11,16 @@ import type {
   ChatMessagePart,
   ImageMessagePart,
   MessagePartDerivationContext,
+  ReasoningInfo,
   StepInfo,
   StepStatus,
   ToolApprovalMessagePart,
+  TranscriptEntryInfo,
 } from './types.ts';
 
 /** Namespaced metadata keys the overlay parts read (ignorable by plain rendering). */
 export const CINDER_REASONING_METADATA_KEY = 'cinder:reasoning';
+export const CINDER_ENTRIES_METADATA_KEY = 'cinder:entries';
 export const CINDER_STEPS_METADATA_KEY = 'cinder:steps';
 export const CINDER_SUGGESTIONS_METADATA_KEY = 'cinder:suggestions';
 export const CINDER_ARTIFACT_METADATA_KEY = 'cinder:artifact';
@@ -35,6 +38,34 @@ const STEP_STATUSES: ReadonlySet<string> = new Set<StepStatus>([
   'done',
   'error',
 ]);
+const TRANSCRIPT_ENTRY_KINDS = new Set([
+  'interrupted',
+  'redirect',
+  'stateChange',
+  'slashCommand',
+  'turnSummary',
+]);
+
+function isReasoningInfo(value: unknown): value is ReasoningInfo {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) return false;
+  if (!('content' in value) || typeof value.content !== 'string') return false;
+  if (!('summary' in value) || value.summary === undefined) return true;
+  return Array.isArray(value.summary) && value.summary.every((item) => typeof item === 'string');
+}
+
+function isTranscriptEntryInfo(value: unknown): value is TranscriptEntryInfo {
+  return (
+    value !== null &&
+    typeof value === 'object' &&
+    !Array.isArray(value) &&
+    'kind' in value &&
+    typeof value.kind === 'string' &&
+    TRANSCRIPT_ENTRY_KINDS.has(value.kind) &&
+    'content' in value &&
+    typeof value.content === 'string' &&
+    value.content.trim().length > 0
+  );
+}
 
 /**
  * Narrows an unknown value to a valid {@link StepInfo}. Uses `in`-operator
@@ -100,14 +131,25 @@ function runOverlayCallback<T>(
  */
 export function resolveMessageReasoning(
   message: Message,
-  fromProp?: (message: Message) => string | undefined,
-): string | undefined {
+  fromProp?: (message: Message) => string | ReasoningInfo | undefined,
+): string | ReasoningInfo | undefined {
   const fromCallback = runOverlayCallback(message, fromProp);
   if (fromCallback.handled && fromCallback.value === '') return '';
   const candidate: unknown = fromCallback.handled
     ? fromCallback.value
     : message.metadata[CINDER_REASONING_METADATA_KEY];
-  return typeof candidate === 'string' && candidate.length > 0 ? candidate : undefined;
+  if (typeof candidate === 'string') return candidate.length > 0 ? candidate : undefined;
+  return isReasoningInfo(candidate) && candidate.content.length > 0 ? candidate : undefined;
+}
+
+/** Resolves validated structured transcript entries from namespaced metadata. */
+export function resolveMessageTranscriptEntries(
+  message: Message,
+): TranscriptEntryInfo[] | undefined {
+  const candidate: unknown = message.metadata[CINDER_ENTRIES_METADATA_KEY];
+  if (!Array.isArray(candidate)) return undefined;
+  const entries = candidate.filter(isTranscriptEntryInfo);
+  return entries.length > 0 ? entries : undefined;
 }
 
 /**
@@ -352,6 +394,12 @@ export function deriveMessageParts(
   // Images render below the body for every role (the historical attachment view
   // was unconditional), so each branch appends them after its body part.
   const imageParts = deriveImageParts(message);
+  const entryParts: ChatMessagePart[] = (context.entries ?? []).map((entry, index) => ({
+    type: 'transcript-entry',
+    key: `${message.id}:entry:${index}`,
+    kind: entry.kind,
+    content: entry.content,
+  }));
 
   // Tool-call body: emit a tool-call part only when the container resolved a
   // pair for this message (mirrors the original `isToolCall && toolPair`
@@ -371,6 +419,7 @@ export function deriveMessageParts(
         ? deriveToolApprovalPart(message.id, result, context)
         : undefined;
     return [
+      ...entryParts,
       {
         type: 'tool-call',
         key: `${message.id}:tool-call:${message.toolCall.id}`,
@@ -392,9 +441,10 @@ export function deriveMessageParts(
   if (message.role === 'tool-result' && message.toolResult) {
     const result = message.toolResult;
     if (result.outcome === 'action_required' && result.action) {
-      return [deriveToolApprovalPart(message.id, result, context), ...imageParts];
+      return [...entryParts, deriveToolApprovalPart(message.id, result, context), ...imageParts];
     }
     return [
+      ...entryParts,
       {
         type: 'tool-result',
         key: `${message.id}:tool-result:${result.callId}`,
@@ -414,7 +464,7 @@ export function deriveMessageParts(
   // the final answer. When neither is present the branch is identical to today.
   const content = context.overrideContent ?? getMessageText(message);
 
-  const bodyParts: ChatMessagePart[] = [];
+  const bodyParts: ChatMessagePart[] = [...entryParts];
 
   // C4: Step parts — one per entry in context.steps[], in order.
   if (context.steps && context.steps.length > 0) {
@@ -432,12 +482,17 @@ export function deriveMessageParts(
   }
 
   // C4: Reasoning part — emitted before the markdown body when present.
-  const reasoningContent = deriveReasoningContent(message, context.reasoning);
+  const reasoning = context.reasoning;
+  const reasoningContent = deriveReasoningContent(
+    message,
+    typeof reasoning === 'string' ? reasoning : reasoning?.content,
+  );
   if (reasoningContent) {
     bodyParts.push({
       type: 'reasoning',
       key: `${message.id}:reasoning`,
       content: reasoningContent,
+      summary: typeof reasoning === 'object' ? reasoning.summary : undefined,
       streaming: context.streaming ?? false,
     });
   }

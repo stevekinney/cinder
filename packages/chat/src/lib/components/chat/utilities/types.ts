@@ -132,8 +132,32 @@ export type ReasoningMessagePart = {
   /** Stable identity, derived from the message id. */
   key: string;
   content: string;
+  /** Optional concise reasoning checkpoints rendered ahead of the full body. */
+  summary?: string[] | undefined;
   /** Whether this reasoning block is currently streaming. */
   streaming: boolean;
+};
+
+export type ReasoningInfo = {
+  content: string;
+  summary?: string[] | undefined;
+};
+
+export type TranscriptEntryKind =
+  | 'interrupted'
+  | 'redirect'
+  | 'stateChange'
+  | 'slashCommand'
+  | 'turnSummary';
+
+export type TranscriptEntryInfo = {
+  kind: TranscriptEntryKind;
+  content: string;
+};
+
+export type TranscriptEntryMessagePart = TranscriptEntryInfo & {
+  type: 'transcript-entry';
+  key: string;
 };
 
 /**
@@ -203,6 +227,7 @@ export type ChatMessagePart =
   | ImageMessagePart
   | ToolApprovalMessagePart
   | ReasoningMessagePart
+  | TranscriptEntryMessagePart
   | StepMessagePart
   | SuggestionMessagePart;
 
@@ -258,7 +283,9 @@ export type MessagePartDerivationContext = {
    * transcript field — absent from a plain transcript, this is `undefined` and
    * zero visual change results.
    */
-  reasoning?: string | undefined;
+  reasoning?: string | ReasoningInfo | undefined;
+  /** Additional structured transcript rows emitted before reasoning and body content. */
+  entries?: ReadonlyArray<TranscriptEntryInfo> | undefined;
   /**
    * Ordered plan/step list. When present and non-empty, one `step` part
    * per entry is emitted before the reasoning and markdown body parts.

@@ -69,7 +69,9 @@ export interface UseChatKeyboardNavReturn {
  */
 function canNavigateMessagesFrom(viewport: HTMLElement): boolean {
   const active = document.activeElement;
-  return active === viewport || (active?.classList.contains('chat-message') ?? false);
+  return (
+    active === viewport || (active?.matches('.chat-message, .chat-tool-call-timeline') ?? false)
+  );
 }
 
 // ==========================================================================
@@ -116,7 +118,9 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
    * Scrolls the focused message into view.
    */
   function navigateMessages(viewport: HTMLElement, direction: 'next' | 'previous'): void {
-    const allMessages = viewport.querySelectorAll<HTMLElement>('.chat-message');
+    const allMessages = viewport.querySelectorAll<HTMLElement>(
+      '.chat-message, .chat-tool-call-timeline',
+    );
     if (allMessages.length === 0) return;
 
     const currentIndex = Array.from(allMessages).findIndex((msg) => msg === document.activeElement);
@@ -202,7 +206,9 @@ export function useChatKeyboardNav(options: UseChatKeyboardNavOptions): UseChatK
             if (getIsVirtualized?.() ?? false) {
               viewport.focus({ preventScroll: true });
             } else {
-              const firstMessage = viewport.querySelector<HTMLElement>('.chat-message');
+              const firstMessage = viewport.querySelector<HTMLElement>(
+                '.chat-message, .chat-tool-call-timeline',
+              );
               if (firstMessage) firstMessage.focus();
               else viewport.focus({ preventScroll: true });
             }

@@ -46,6 +46,19 @@ describe('detectTrigger', () => {
     ).toMatchObject({ query: 'help' });
   });
 
+  test('accepts a trigger after an opening delimiter', () => {
+    for (const text of ['(/file', '[/file', '{/file']) {
+      expect(
+        detectTrigger({ text, selectionStart: text.length, selectionEnd: text.length }),
+      ).toEqual({
+        active: true,
+        query: 'file',
+        start: 1,
+        end: text.length,
+      });
+    }
+  });
+
   test('rejects invalid trigger characters and non-collapsed selections', () => {
     expect(
       detectTrigger({ text: '/a', selectionStart: 2, selectionEnd: 2, triggerChar: '' }),

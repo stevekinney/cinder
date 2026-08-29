@@ -166,6 +166,12 @@ const schema = {
         reason: 'function-or-snippet',
       },
       {
+        name: 'markdownNode',
+        reason: 'function-or-snippet',
+        description:
+          'Per-node override for fenced code blocks, tables, and Mermaid blocks inside markdown messages.',
+      },
+      {
         name: 'messageActions',
         reason: 'function-or-snippet',
         description:
@@ -181,7 +187,7 @@ const schema = {
         name: 'messageReasoning',
         reason: 'function-or-snippet',
         description:
-          "Override or supplement the reasoning text for a message. Called per-message;\nreturn a non-empty string to show a reasoning block, `undefined` to fall back\nto `message.metadata['cinder:reasoning']`, empty string to suppress reasoning.",
+          "Override or supplement the reasoning text for a message. Called per-message;\nreturn a non-empty string or `{ content, summary? }` to show one reasoning\nbody, `undefined` to fall back to `message.metadata['cinder:reasoning']`,\nor an empty string to suppress reasoning.",
       },
       {
         name: 'messageStatus',
@@ -287,6 +293,12 @@ const schema = {
       {
         name: 'onretry',
         reason: 'function-or-snippet',
+      },
+      {
+        name: 'onrollback',
+        reason: 'function-or-snippet',
+        description:
+          'Commits a confirmed transcript rollback to immediately before the selected user message.',
       },
       {
         name: 'onscrollstatechange',

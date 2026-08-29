@@ -37,10 +37,37 @@ export type TypingItem = {
   type: 'typing';
 };
 
-export type ChatRenderRow = MessageWithDateItem | UnreadDividerItem | TypingItem;
+export type ToolCallGroupItem = {
+  type: 'tool-call-group';
+  messages: Message[];
+};
+
+export type ChatRenderRow =
+  | MessageWithDateItem
+  | UnreadDividerItem
+  | TypingItem
+  | ToolCallGroupItem;
 
 // Re-export ToolCallPair type for convenience.
 export type { ToolCallPair } from '../conversation-model.ts';
+
+function messageHasImageContent(message: Message): boolean {
+  return (
+    Array.isArray(message.content) &&
+    message.content.some(
+      (segment) =>
+        typeof segment === 'object' &&
+        segment !== null &&
+        'type' in segment &&
+        segment.type === 'image',
+    )
+  );
+}
+
+function messageHasStructuredEntries(message: Message): boolean {
+  const entries = message.metadata?.['cinder:entries'];
+  return Array.isArray(entries) && entries.length > 0;
+}
 
 /** Options for the message groups helper */
 export interface UseChatMessageGroupsOptions {
@@ -125,21 +152,44 @@ export function buildChatRenderRows(
   options?: {
     firstUnreadId?: string | null;
     showTypingIndicator?: boolean;
+    ungroupedToolCallIds?: ReadonlySet<string>;
   },
 ): ChatRenderRow[] {
   const rows: ChatRenderRow[] = [];
   const firstUnreadId = options?.firstUnreadId ?? null;
   let previousMessageId: string | null = null;
+  let toolCallRun: Message[] = [];
+
+  const flushToolCallRun = (): void => {
+    if (toolCallRun.length > 0) rows.push({ type: 'tool-call-group', messages: toolCallRun });
+    toolCallRun = [];
+  };
 
   for (const item of items) {
     if (item.type === 'message') {
       if (item.message.id === firstUnreadId) {
+        flushToolCallRun();
         rows.push({ type: 'unread-divider', afterMessageId: previousMessageId });
       }
       previousMessageId = item.message.id;
+      const toolCallId = item.message.toolCall?.id;
+      if (
+        item.message.role === 'tool-call' &&
+        toolCallId &&
+        !item.message.hidden &&
+        item.message.metadata?.['_deliveryStatus'] !== 'failed' &&
+        !messageHasImageContent(item.message) &&
+        !messageHasStructuredEntries(item.message) &&
+        !options?.ungroupedToolCallIds?.has(toolCallId)
+      ) {
+        toolCallRun.push(item.message);
+        continue;
+      }
     }
+    flushToolCallRun();
     rows.push(item);
   }
+  flushToolCallRun();
 
   if (options?.showTypingIndicator) {
     rows.push({ type: 'typing' });
@@ -158,6 +208,8 @@ export function chatRenderRowKey(row: ChatRenderRow): string {
       return `unread-${row.afterMessageId ?? 'start'}`;
     case 'typing':
       return 'typing';
+    case 'tool-call-group':
+      return `tool-group-${row.messages[0]?.id ?? 'empty'}`;
   }
 }
 
@@ -165,7 +217,13 @@ export function findRenderRowIndexByMessageId(
   rows: readonly ChatRenderRow[],
   messageId: string,
 ): number {
-  return rows.findIndex((row) => row.type === 'message' && row.message.id === messageId);
+  return rows.findIndex((row) =>
+    row.type === 'message'
+      ? row.message.id === messageId
+      : row.type === 'tool-call-group'
+        ? row.messages.some((message) => message.id === messageId)
+        : false,
+  );
 }
 
 /**
@@ -213,12 +271,22 @@ export function useChatMessageGroups(
 
   const pairedToolResultIds = $derived.by(() => findPairedToolResultIds(getMessages()));
 
+  const actionRequiredToolCallIds = $derived.by(() => {
+    const ids = new Set<string>();
+    for (const [callId, pairs] of toolCallPairsByCallId) {
+      if (pairs.some((pair) => pair.result?.outcome === 'action_required')) ids.add(callId);
+    }
+    return ids;
+  });
+
   // Group messages by date for date separators
   const messagesWithDates = $derived.by(() => {
     return buildMessagesWithDateSeparators(getMessages(), pairedToolResultIds);
   });
 
-  const renderRows = $derived.by(() => buildChatRenderRows(messagesWithDates));
+  const renderRows = $derived.by(() =>
+    buildChatRenderRows(messagesWithDates, { ungroupedToolCallIds: actionRequiredToolCallIds }),
+  );
 
   return {
     get messagesWithDates() {

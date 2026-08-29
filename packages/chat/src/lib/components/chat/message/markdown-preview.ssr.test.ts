@@ -33,14 +33,39 @@
  */
 
 import { describe, expect, test } from 'bun:test';
+import { Window } from 'happy-dom';
 
 import { renderThenHydrate } from '../../../test/hydrate.ts';
 
-const { default: MarkdownPreview } = await import('./markdown-preview.svelte');
+type TestMarkdownSegment =
+  | { kind: 'html'; html: string }
+  | { kind: 'node'; node: unknown }
+  | { kind: 'element'; tag: string; children: TestMarkdownSegment[] };
+
+const markdownPreviewModule = (await import('./markdown-preview.svelte')) as unknown as {
+  default: typeof import('./markdown-preview.svelte').default;
+  segmentRenderedMarkdown: (html: string, ownerDocument: Document) => TestMarkdownSegment[];
+};
+const { default: MarkdownPreview, segmentRenderedMarkdown } = markdownPreviewModule;
 
 const sourcePath = new URL('./markdown-preview.svelte', import.meta.url).pathname;
 
 describe('Chat markdown-preview SSR contract', () => {
+  test('preserves ancestors while extracting nested override placeholders', () => {
+    const window = new Window();
+    const segments = segmentRenderedMarkdown(
+      '<blockquote><p>Before</p><cinder-markdown-node data-cinder-markdown-kind="table" data-cinder-markdown-index="4"><table><tbody><tr><td>Cell</td></tr></tbody></table></cinder-markdown-node></blockquote>',
+      window.document as unknown as Document,
+    );
+
+    expect(segments).toHaveLength(1);
+    expect(segments[0]?.kind).toBe('element');
+    if (segments[0]?.kind !== 'element') throw new Error('Expected a preserved blockquote');
+    expect(segments[0].tag).toBe('blockquote');
+    expect(segments[0].children.some((child) => child.kind === 'node')).toBe(true);
+    expect(JSON.stringify(segments)).not.toContain('<cinder-markdown-node');
+  });
+
   test('server-renders the raw-text fallback for the message content', async () => {
     // The `$effect` that populates `renderedHtml` never runs on the server, so
     // `renderedHtml` stays '' and the `{:else}` branch emits the raw content as

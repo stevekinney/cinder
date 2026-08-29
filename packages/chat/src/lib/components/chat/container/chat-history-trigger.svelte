@@ -67,7 +67,7 @@
     justify-content: center;
     min-height: 2.25rem;
     padding: var(--cinder-space-1-5) var(--cinder-space-3);
-    font-size: var(--cinder-text-sm);
+    font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
     font-weight: var(--cinder-font-medium);
     color: var(--cinder-text-default);
     background: var(--cinder-surface-raised);

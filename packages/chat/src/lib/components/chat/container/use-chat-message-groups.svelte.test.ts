@@ -47,7 +47,7 @@ function toolUseMessage(id: string, callId: string, name = 'exports_check'): Mes
 function toolResultMessage(
   id: string,
   callId: string,
-  outcome: 'success' | 'error' = 'success',
+  outcome: 'success' | 'error' | 'action_required' = 'success',
 ): Message {
   const message: Message = {
     id,
@@ -61,6 +61,14 @@ function toolResultMessage(
       callId,
       outcome,
       content: { ok: true },
+      ...(outcome === 'action_required'
+        ? {
+            action: {
+              type: 'approval' as const,
+              message: 'Approve this action?',
+            },
+          }
+        : {}),
     },
   };
   return message;
@@ -137,6 +145,23 @@ describe('useChatMessageGroups paired tool-result filtering', () => {
 
     expect(groups.toolCallPairsByCallId.get('shared-call')).toHaveLength(2);
     expect(groups.pairedToolResultIds.has('result')).toBe(true);
+    expect(groups.renderRows.map((row) => row.type)).toEqual(['date', 'tool-call-group']);
+    expect(groups.renderRows[1]).toMatchObject({
+      type: 'tool-call-group',
+      messages: [{ id: 'call-a' }, { id: 'call-b' }],
+    });
+  });
+
+  test('action-required tool calls remain individual so approval controls stay interactive', () => {
+    const conversation = [
+      toolUseMessage('call-a', 'call-a'),
+      toolResultMessage('result-a', 'call-a', 'action_required'),
+      toolUseMessage('call-b', 'call-b'),
+      toolResultMessage('result-b', 'call-b', 'action_required'),
+    ];
+
+    const groups = useChatMessageGroups({ getMessages: () => conversation });
+
     expect(groups.renderRows.map((row) => row.type)).toEqual(['date', 'message', 'message']);
   });
 
