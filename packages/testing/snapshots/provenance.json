@@ -1,7 +1,6 @@
 {
   "schemaVersion": 1,
-  "componentScope": "all",
-  "shard": "5/8",
+  "componentScope": ["modal-region"],
   "renderedSourceSha": "58bf4830800555170af5d13c206f69706d773c37",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
