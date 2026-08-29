@@ -394,6 +394,7 @@
           editorElement.setRangeText('', restoreRange.start, restoreRange.end, 'start');
           value = editorElement.value;
           previousComposerValue = value;
+          oncomposerinput?.(value, event);
         }
       }
     }

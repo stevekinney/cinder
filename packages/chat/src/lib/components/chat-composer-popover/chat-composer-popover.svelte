@@ -144,6 +144,7 @@
           sourceGeneration += 1;
           if (preservedSelectionValue) {
             await tick();
+            if (requestId !== sourceRequestId) return;
             const optionIndex = filteredItems.findIndex(
               (candidate) => candidate.selectionValue === preservedSelectionValue,
             );
@@ -186,14 +187,11 @@
   ): ChatComposerPopoverTriggerMatch | null {
     if (detectTrigger) return detectTrigger(text, selectionStart, selectionEnd);
 
-    for (const triggerChar of triggers) {
+    return triggers.reduce<ChatComposerPopoverTriggerMatch | null>((nearest, triggerChar) => {
       const match = detectCommandTrigger({ text, selectionStart, selectionEnd, triggerChar });
-      if (match) {
-        return { ...match, trigger: triggerChar };
-      }
-    }
-
-    return null;
+      if (!match || (nearest && nearest.start >= match.start)) return nearest;
+      return { ...match, trigger: triggerChar };
+    }, null);
   }
 
   function updateFromComposer(
@@ -357,6 +355,7 @@
   }
 
   onDestroy(() => {
+    sourceRequestId += 1;
     clearComposerSyncTimer();
   });
 

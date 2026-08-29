@@ -555,11 +555,13 @@
   });
 
   function pinHistoryAnchorVirtualItem(row: ChatRenderRow, virtualItem: VirtualItem): VirtualItem {
-    if (
-      historyAnchorViewportOffset === null ||
-      row.type !== 'message' ||
-      row.message.id !== historyAnchorMessageId
-    ) {
+    const rowAnchorMessageId =
+      row.type === 'message'
+        ? row.message.id
+        : row.type === 'tool-call-group'
+          ? row.messages[0]?.id
+          : undefined;
+    if (historyAnchorViewportOffset === null || rowAnchorMessageId !== historyAnchorMessageId) {
       return virtualItem;
     }
 

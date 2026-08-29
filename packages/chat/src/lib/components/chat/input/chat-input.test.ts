@@ -99,6 +99,26 @@ describe('ChatInput', () => {
     expect(composer.value).toBe('sixteen characters');
   });
 
+  test('notifies composer listeners after promoting a large paste', async () => {
+    const values: string[] = [];
+    const { container } = render(ChatInput, {
+      id: 'large-paste-callback-composer',
+      value: 'keep SELECT',
+      largePasteThreshold: 5,
+      oncomposerinput: (nextValue: string) => values.push(nextValue),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(5, 11);
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'promoted content' },
+    });
+
+    expect(composer.value).toBe('keep ');
+    expect(values).toEqual(['keep ']);
+  });
+
   test('does not consume a large paste when attachment validation rejects it', () => {
     const { container } = render(ChatInput, {
       id: 'rejected-large-paste-composer',

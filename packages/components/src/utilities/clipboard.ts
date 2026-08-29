@@ -30,16 +30,16 @@ export async function copyToClipboard(
     (rich.html !== undefined || rich.image !== undefined)
   ) {
     try {
-      const representations: Record<string, Blob> = {
+      const representations: Record<string, Blob | Promise<Blob>> = {
         'text/plain': new Blob([text], { type: 'text/plain' }),
       };
       if (rich.html !== undefined) {
         representations['text/html'] = new Blob([rich.html], { type: 'text/html' });
       }
       if (rich.image !== undefined) {
-        const imageBlob = await resolveOptionalImage(rich.image);
-        if (imageBlob && supportsClipboardType(imageBlob.type)) {
-          representations[imageBlob.type] = imageBlob;
+        const imageRepresentation = optionalImageRepresentation(rich.image);
+        if (imageRepresentation) {
+          representations[imageRepresentation.type] = imageRepresentation.value;
         }
       }
       await navigator.clipboard.write([new ClipboardItem(representations)]);
@@ -65,8 +65,12 @@ function supportsClipboardType(type: string): boolean {
   return typeof ClipboardItem.supports === 'function' && ClipboardItem.supports(type);
 }
 
-async function resolveOptionalImage(image: Blob | string): Promise<Blob | undefined> {
-  if (image instanceof Blob) return image;
+function optionalImageRepresentation(
+  image: Blob | string,
+): { type: string; value: Blob | Promise<Blob> } | undefined {
+  if (image instanceof Blob) {
+    return supportsClipboardType(image.type) ? { type: image.type, value: image } : undefined;
+  }
   if (!image.trim() || typeof document === 'undefined' || typeof location === 'undefined') {
     return undefined;
   }
@@ -76,13 +80,33 @@ async function resolveOptionalImage(image: Blob | string): Promise<Blob | undefi
     resolvedUrl.protocol === 'data:' ||
     resolvedUrl.origin === location.origin;
   if (!isLocallyResolvable) return undefined;
-  try {
-    const response = await fetch(resolvedUrl);
-    if (!response.ok) return undefined;
-    return await response.blob();
-  } catch {
-    return undefined;
+
+  const type = imageTypeFromUrl(resolvedUrl);
+  if (!type || !supportsClipboardType(type)) return undefined;
+
+  return {
+    type,
+    value: fetch(resolvedUrl).then(async (response) => {
+      if (!response.ok) throw new Error(`Unable to fetch clipboard image: ${response.status}`);
+      const blob = await response.blob();
+      if (blob.type && blob.type !== type) {
+        throw new Error(`Clipboard image type mismatch: expected ${type}, received ${blob.type}`);
+      }
+      return blob.type ? blob : new Blob([blob], { type });
+    }),
+  };
+}
+
+function imageTypeFromUrl(url: URL): string | undefined {
+  if (url.protocol === 'data:') {
+    return /^data:(image\/[a-z0-9.+-]+)[;,]/iu.exec(url.href)?.[1]?.toLowerCase();
   }
+  if (url.protocol === 'blob:') return 'image/png';
+  const extension = /\.([a-z0-9]+)$/iu.exec(url.pathname)?.[1]?.toLowerCase();
+  if (extension === 'png') return 'image/png';
+  if (extension === 'jpg' || extension === 'jpeg') return 'image/jpeg';
+  if (extension === 'webp') return 'image/webp';
+  return undefined;
 }
 
 function legacyCopy(text: string): boolean {

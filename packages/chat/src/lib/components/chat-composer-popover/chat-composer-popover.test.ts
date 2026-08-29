@@ -562,4 +562,16 @@ describe('ChatComposerPopover', () => {
     const options = Array.from(document.body.querySelectorAll('[role="option"]'));
     expect(options.map((option) => option.textContent?.trim())).toEqual(['Steve Kinney']);
   });
+
+  test('uses the nearest configured trigger after an opening delimiter', async () => {
+    render(ChatComposerPopoverFixture, {
+      commands: [{ value: 'alice', label: 'Alice' }],
+    });
+    await typeComposer('/(@ali');
+
+    await waitFor(() => expect(queryListbox()).not.toBeNull());
+    expect(Array.from(document.body.querySelectorAll('[role="option"]'))[0]?.textContent).toContain(
+      'Alice',
+    );
+  });
 });

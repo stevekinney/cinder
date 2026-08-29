@@ -129,6 +129,51 @@ describe('copyToClipboard', () => {
     }
   });
 
+  test('starts a rich clipboard write before a same-origin image fetch resolves', async () => {
+    let resolveFetch: ((response: Response) => void) | undefined;
+    const pendingFetch = new Promise<Response>((resolve) => {
+      resolveFetch = resolve;
+    });
+    const originalFetch = globalThis.fetch;
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      constructor(readonly values: Record<string, Blob | Promise<Blob>>) {}
+    }
+    const write = mock(async (items: ClipboardItem[]) => {
+      const item = items[0] as unknown as TestClipboardItem;
+      await item.values['image/png'];
+    });
+    Object.defineProperty(globalThis, 'fetch', {
+      configurable: true,
+      value: mock(() => pendingFetch),
+    });
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText: mock(async () => undefined) },
+    });
+
+    try {
+      const copy = copyToClipboard('Hello', {
+        html: '<strong>Hello</strong>',
+        image: 'data:image/png;base64,cG5n',
+      });
+      await Promise.resolve();
+      expect(write).toHaveBeenCalledTimes(1);
+      resolveFetch?.(new Response(new Blob(['png'], { type: 'image/png' }), { status: 200 }));
+      expect(await copy).toBe(true);
+    } finally {
+      Object.defineProperty(globalThis, 'fetch', { configurable: true, value: originalFetch });
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('keeps rich HTML when an optional image format is unsupported', async () => {
     const write = mock(async (_items: ClipboardItem[]) => undefined);
     const writeText = mock(async () => undefined);

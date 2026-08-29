@@ -137,7 +137,8 @@
     word-break: break-word;
   }
 
-  .message-content-streaming :where(.message-content-preview, .message-content-tail) {
+  .message-content-streaming :global(.message-content-preview),
+  .message-content-streaming .message-content-tail {
     color: transparent;
     background: linear-gradient(
       100deg,
@@ -153,7 +154,8 @@
   }
 
   @media (hover: hover) {
-    .message-content-streaming:hover :where(.message-content-preview, .message-content-tail) {
+    .message-content-streaming:hover :global(.message-content-preview),
+    .message-content-streaming:hover .message-content-tail {
       color: var(--cinder-text-default);
       background: none;
       animation: none;
@@ -188,7 +190,8 @@
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .message-content-streaming :where(.message-content-preview, .message-content-tail) {
+    .message-content-streaming :global(.message-content-preview),
+    .message-content-streaming .message-content-tail {
       color: var(--cinder-text-default);
       background: none;
       animation: none;
@@ -201,7 +204,8 @@
   }
 
   @media (forced-colors: active) {
-    .message-content-streaming :where(.message-content-preview, .message-content-tail) {
+    .message-content-streaming :global(.message-content-preview),
+    .message-content-streaming .message-content-tail {
       color: CanvasText;
       background: none;
       animation: none;
