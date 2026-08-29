@@ -1,11 +1,12 @@
 /// <reference lib="dom" />
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { KeyValueEntry } from './key-value-editor.types.ts';
 setupHappyDom();
-const { fireEvent, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KeyValueEditor } = await import('./key-value-editor.svelte');
+afterEach(cleanup);
 describe('KeyValueEditor', () => {
   test('renders editable rows with unique per-instance input ids', () => {
     const first = render(KeyValueEditor, { entries: [{ key: 'Host', value: 'localhost' }] });
