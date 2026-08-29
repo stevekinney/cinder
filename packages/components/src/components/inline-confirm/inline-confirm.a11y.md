@@ -1,6 +1,6 @@
 # InlineConfirm design and accessibility review
 
-## Design review
+## Design review (required)
 
 - Reviewer: Cinder maintainers
 - Review outcome: Approved for implementation review.
