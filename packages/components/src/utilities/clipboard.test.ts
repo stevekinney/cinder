@@ -129,6 +129,43 @@ describe('copyToClipboard', () => {
     }
   });
 
+  test('keeps rich HTML when an optional image format is unsupported', async () => {
+    const write = mock(async (_items: ClipboardItem[]) => undefined);
+    const writeText = mock(async () => undefined);
+    const OriginalClipboardItem = globalThis.ClipboardItem;
+    class TestClipboardItem {
+      static supports = mock((_type: string) => false);
+      constructor(readonly values: Record<string, Blob>) {}
+    }
+    Object.defineProperty(globalThis, 'ClipboardItem', {
+      configurable: true,
+      value: TestClipboardItem,
+    });
+    Object.defineProperty(globalThis.navigator, 'clipboard', {
+      configurable: true,
+      value: { write, writeText },
+    });
+
+    try {
+      expect(
+        await copyToClipboard('Hello', {
+          html: '<strong>Hello</strong>',
+          image: new Blob(['jpeg'], { type: 'image/jpeg' }),
+        }),
+      ).toBe(true);
+      const [writtenItems] = write.mock.calls[0]!;
+      const item = writtenItems[0] as unknown as TestClipboardItem;
+      expect(Object.keys(item.values)).toEqual(['text/plain', 'text/html']);
+      expect(await item.values['text/html']?.text()).toBe('<strong>Hello</strong>');
+      expect(writeText).not.toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(globalThis, 'ClipboardItem', {
+        configurable: true,
+        value: OriginalClipboardItem,
+      });
+    }
+  });
+
   test('marks the legacy fallback textarea as hidden from assistive technology', async () => {
     const appendedTextareas: HTMLTextAreaElement[] = [];
     const appendChild = document.body.appendChild.bind(document.body);

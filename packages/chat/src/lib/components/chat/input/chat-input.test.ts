@@ -211,6 +211,31 @@ describe('ChatInput', () => {
     expect(composer.selectionEnd).toBe(23);
   });
 
+  test('preserves instructions typed after promoting a paste over a selection', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'selected-paste-follow-up-composer',
+      value: 'before SELECT after',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(7, 13);
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'replacement text' },
+    });
+    expect(composer.selectionStart).toBe(7);
+    expect(composer.selectionEnd).toBe(7);
+    await fireEvent.input(composer, { target: { value: 'before summarize  after' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([
+      { role: 'user', content: 'before replacement textsummarize  after' },
+    ]);
+  });
+
   test('tracks the promoted paste restoration range through composer edits', async () => {
     const { container } = render(ChatInput, {
       id: 'edited-large-paste-composer',
@@ -224,7 +249,7 @@ describe('ChatInput', () => {
       clipboardData: { items: [], getData: () => 'replacement text' },
     });
 
-    await fireEvent.input(composer, { target: { value: 'prefix before SELECT after' } });
+    await fireEvent.input(composer, { target: { value: 'prefix before  after' } });
     await fireEvent.click(container.querySelector('button[aria-label="Remove pasted-text.txt"]')!);
     await tick();
 

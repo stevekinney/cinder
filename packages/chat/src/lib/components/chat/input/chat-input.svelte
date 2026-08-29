@@ -388,7 +388,14 @@
         start: editorElement?.selectionStart ?? value.length,
         end: editorElement?.selectionEnd ?? value.length,
       };
-      if (addAttachment(file, pastedText, restoreRange)) event.preventDefault();
+      if (addAttachment(file, pastedText, { start: restoreRange.start, end: restoreRange.start })) {
+        event.preventDefault();
+        if (editorElement) {
+          editorElement.setRangeText('', restoreRange.start, restoreRange.end, 'start');
+          value = editorElement.value;
+          previousComposerValue = value;
+        }
+      }
     }
   }
 

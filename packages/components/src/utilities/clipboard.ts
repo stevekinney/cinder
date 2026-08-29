@@ -38,7 +38,9 @@ export async function copyToClipboard(
       }
       if (rich.image !== undefined) {
         const imageBlob = await resolveOptionalImage(rich.image);
-        if (imageBlob?.type.startsWith('image/')) representations[imageBlob.type] = imageBlob;
+        if (imageBlob && supportsClipboardType(imageBlob.type)) {
+          representations[imageBlob.type] = imageBlob;
+        }
       }
       await navigator.clipboard.write([new ClipboardItem(representations)]);
       return true;
@@ -55,6 +57,12 @@ export async function copyToClipboard(
     }
   }
   return legacyCopy(text);
+}
+
+function supportsClipboardType(type: string): boolean {
+  if (!type.startsWith('image/')) return false;
+  if (type === 'image/png') return true;
+  return typeof ClipboardItem.supports === 'function' && ClipboardItem.supports(type);
 }
 
 async function resolveOptionalImage(image: Blob | string): Promise<Blob | undefined> {
