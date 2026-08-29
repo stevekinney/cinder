@@ -289,12 +289,16 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('tabindex')).toBe('-1');
   });
 
-  test('disabled visible value uses the stronger text token before root opacity is applied', () => {
+  test('disabled state preserves text contrast and dims only the track', () => {
     const styles = readFileSync(new URL('./slider.css', import.meta.url), 'utf8');
 
     expect(styles).toMatch(
       /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__value\s*\{[^}]*color:\s*var\(--cinder-text\);/,
     );
+    expect(styles).toMatch(
+      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__track\s*\{[^}]*opacity:\s*0\.55;/,
+    );
+    expect(styles).not.toMatch(/\.cinder-slider\[data-cinder-disabled\]\s*\{[^}]*opacity:/);
   });
 
   test('renders a hidden input with name for form submission', () => {
