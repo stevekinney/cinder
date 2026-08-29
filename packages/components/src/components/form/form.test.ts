@@ -51,4 +51,11 @@ describe('Form', () => {
     release();
     await pending;
   });
+
+  test('preserves native submission when no handler is provided', () => {
+    const { container } = render(Form, { props: { children: content } });
+    const event = new Event('submit', { bubbles: true, cancelable: true });
+    container.querySelector('form')!.dispatchEvent(event);
+    expect(event.defaultPrevented).toBe(false);
+  });
 });

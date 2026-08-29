@@ -14,16 +14,16 @@ describe('ShortcutField', () => {
     await fireEvent.keyDown(field, { key: 's', metaKey: true, shiftKey: true });
     expect(container.querySelector('kbd')?.textContent).toBe('Meta');
     expect(container.textContent).toContain('Shift');
+    expect(container.textContent).toContain('S');
   });
   test('Escape exits capture and validation rejects reserved combinations', async () => {
-    let invalid = false;
     const { container } = render(ShortcutField, { validate: () => 'Reserved shortcut' });
     const field = container.querySelector('[role="textbox"]')!;
     await fireEvent.focus(field);
     await fireEvent.keyDown(field, { key: 'k', ctrlKey: true });
     expect(container.textContent).toContain('Reserved shortcut');
+    expect(field.getAttribute('aria-invalid')).toBe('true');
     await fireEvent.keyDown(field, { key: 'Escape' });
-    expect(invalid).toBe(false);
   });
   test('clear action is available for an existing value', async () => {
     const { container } = render(ShortcutField, { value: ['Control', 'K'] });
@@ -39,11 +39,13 @@ describe('ShortcutField', () => {
     expect(tab.defaultPrevented).toBe(false);
     const modifier = new KeyboardEvent('keydown', {
       key: 'Control',
+      ctrlKey: true,
       bubbles: true,
       cancelable: true,
     });
     field.dispatchEvent(modifier);
     expect(modifier.defaultPrevented).toBe(false);
+    expect(container.querySelector('kbd')).toBeNull();
     await fireEvent.blur(field);
     await fireEvent.keyDown(field, { key: 'x', ctrlKey: true });
     expect(container.textContent).not.toContain('Control');

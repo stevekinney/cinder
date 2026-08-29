@@ -25,6 +25,10 @@
   .cinder-shortcut-field__placeholder {
     color: var(--cinder-text-muted);
   }
+  .cinder-shortcut-field__error {
+    color: var(--cinder-danger-text);
+    font-size: var(--cinder-text-sm);
+  }
 
   @media (forced-colors: active) {
     .cinder-shortcut-field__control:focus-visible {

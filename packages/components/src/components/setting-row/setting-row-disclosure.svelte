@@ -8,6 +8,9 @@
   }
 </script>
 
-<Button variant="ghost" aria-expanded={expanded} aria-controls={controls} onclick={toggle}
-  >{@render children()}</Button
+<Button
+  variant="ghost"
+  aria-expanded={expanded}
+  aria-controls={expanded ? controls : undefined}
+  onclick={toggle}>{@render children()}</Button
 >

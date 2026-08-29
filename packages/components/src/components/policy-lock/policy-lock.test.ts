@@ -13,10 +13,15 @@ test('renders reason, source, scope badge, and tooltip association', () => {
     },
   });
   expect(container.querySelector('#lock-reason')?.textContent).toContain('Managed by policy');
-  expect(container.querySelector('#lock-reason')?.textContent).toContain('Workspace administrator');
+  expect(container.querySelector('#lock-reason-description')?.textContent).toContain(
+    'Workspace administrator',
+  );
   expect(container.textContent).toContain('workspace');
   expect(container.querySelector('[aria-describedby]')).not.toBeNull();
   expect(container.querySelector<HTMLButtonElement>('.cinder-policy-lock__explanation')?.type).toBe(
     'button',
   );
+  expect(
+    container.querySelector('.cinder-policy-lock__explanation')?.getAttribute('aria-label'),
+  ).toBe('Policy details');
 });

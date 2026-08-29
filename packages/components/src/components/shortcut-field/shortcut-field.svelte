@@ -28,6 +28,7 @@
   }: ShortcutFieldProps = $props();
   let armed = $state(false);
   let message = $state('');
+  let validationError = $state('');
   const modifierNames = new Set(['Meta', 'Control', 'Alt', 'Shift']);
   function normalize(event: KeyboardEvent): string[] {
     const modifiers = [
@@ -36,7 +37,12 @@
       event.altKey ? 'Alt' : '',
       event.shiftKey ? 'Shift' : '',
     ].filter(Boolean);
-    const key = modifierNames.has(event.key) ? '' : event.key === ' ' ? 'Space' : event.key;
+    const rawKey = event.key === ' ' ? 'Space' : event.key;
+    const key = modifierNames.has(rawKey)
+      ? ''
+      : rawKey.length === 1 && /[a-z]/i.test(rawKey)
+        ? rawKey.toUpperCase()
+        : rawKey;
     return [...modifiers, ...(key ? [key] : [])];
   }
   function handleKeydown(event: KeyboardEvent): void {
@@ -49,6 +55,7 @@
       message = 'Shortcut capture cancelled';
       return;
     }
+    if (modifierNames.has(event.key)) return;
     const next = normalize(event);
     if (next.length === 0) return;
     event.preventDefault();
@@ -56,8 +63,10 @@
     const error = validate?.(next);
     if (error) {
       message = error;
+      validationError = error;
       return;
     }
+    validationError = '';
     value = next;
     onValueChange?.(next);
     message = `Captured ${next.join(' plus ')}`;
@@ -68,6 +77,11 @@
     value = [];
     onValueChange?.([]);
     message = 'Shortcut cleared';
+    validationError = '';
+  }
+
+  function arm(): void {
+    if (!disabled) armed = true;
   }
 </script>
 
@@ -78,9 +92,11 @@
     aria-readonly="true"
     aria-label={label}
     aria-disabled={disabled ? 'true' : undefined}
+    aria-invalid={validationError ? 'true' : undefined}
+    aria-describedby={validationError ? `${rest.id ?? 'shortcut-field'}-error` : undefined}
     class="cinder-shortcut-field__control"
-    onfocus={() => (armed = true)}
-    onclick={() => (armed = true)}
+    onfocus={arm}
+    onclick={arm}
     onkeydown={handleKeydown}
     onblur={() => (armed = false)}
   >
@@ -95,5 +111,11 @@
       aria-label="Clear shortcut"
       onclick={clear}>Clear</button
     >{/if}
+  {#if validationError}<div
+      id={`${rest.id ?? 'shortcut-field'}-error`}
+      class="cinder-shortcut-field__error"
+    >
+      {validationError}
+    </div>{/if}
   <div class="cinder-sr-only" aria-live="polite">{message}</div>
 </div>
