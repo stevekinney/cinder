@@ -236,6 +236,31 @@ describe('ChatInput', () => {
     ]);
   });
 
+  test('tracks promoted paste anchors through ambiguous repeated-character edits', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'repeated-character-paste-composer',
+      value: 'aaaa',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+    composer.setSelectionRange(2, 2);
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => 'PASTE' },
+    });
+
+    composer.setSelectionRange(0, 0);
+    composer.dispatchEvent(
+      new InputEvent('beforeinput', { bubbles: true, inputType: 'insertText', data: 'a' }),
+    );
+    await fireEvent.input(composer, { target: { value: 'aaaaa' } });
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'aaaPASTEaa' }]);
+  });
+
   test('tracks the promoted paste restoration range through composer edits', async () => {
     const { container } = render(ChatInput, {
       id: 'edited-large-paste-composer',

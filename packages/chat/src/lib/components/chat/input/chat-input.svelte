@@ -569,6 +569,7 @@
   // (Svelte merges the binding's own input listener with this handler on the
   // same event), so `value` here is always current — never one keystroke stale.
   let previousComposerValue = value;
+  let pendingInputRange: { start: number; end: number } | null = null;
 
   $effect(() => {
     const synchronizedValue = value;
@@ -579,25 +580,29 @@
 
   function handleInput(event: Event): void {
     if (value !== previousComposerValue) {
-      let prefixLength = 0;
-      while (
-        prefixLength < previousComposerValue.length &&
-        prefixLength < value.length &&
-        previousComposerValue[prefixLength] === value[prefixLength]
-      ) {
-        prefixLength += 1;
+      let prefixLength = pendingInputRange?.start ?? 0;
+      let replacedEnd = pendingInputRange?.end ?? 0;
+      if (!pendingInputRange) {
+        while (
+          prefixLength < previousComposerValue.length &&
+          prefixLength < value.length &&
+          previousComposerValue[prefixLength] === value[prefixLength]
+        ) {
+          prefixLength += 1;
+        }
+        let suffixLength = 0;
+        while (
+          suffixLength < previousComposerValue.length - prefixLength &&
+          suffixLength < value.length - prefixLength &&
+          previousComposerValue[previousComposerValue.length - 1 - suffixLength] ===
+            value[value.length - 1 - suffixLength]
+        ) {
+          suffixLength += 1;
+        }
+        replacedEnd = previousComposerValue.length - suffixLength;
       }
-      let suffixLength = 0;
-      while (
-        suffixLength < previousComposerValue.length - prefixLength &&
-        suffixLength < value.length - prefixLength &&
-        previousComposerValue[previousComposerValue.length - 1 - suffixLength] ===
-          value[value.length - 1 - suffixLength]
-      ) {
-        suffixLength += 1;
-      }
-      const replacedEnd = previousComposerValue.length - suffixLength;
-      const insertedLength = value.length - prefixLength - suffixLength;
+      const insertedLength =
+        value.length - (previousComposerValue.length - (replacedEnd - prefixLength));
       const translatePosition = (position: number): number => {
         if (position <= prefixLength) return position;
         if (position >= replacedEnd) {
@@ -618,7 +623,20 @@
       );
       previousComposerValue = value;
     }
+    pendingInputRange = null;
     oncomposerinput?.(value, event);
+  }
+
+  function handleBeforeInput(event: InputEvent): void {
+    if (!editorElement) return;
+    let start = editorElement.selectionStart;
+    let end = editorElement.selectionEnd;
+    if (start === end && event.inputType === 'deleteContentBackward')
+      start = Math.max(0, start - 1);
+    if (start === end && event.inputType === 'deleteContentForward') {
+      end = Math.min(previousComposerValue.length, end + 1);
+    }
+    pendingInputRange = { start, end };
   }
 
   /** Apply the Web IDL unsigned-long coercion used by textarea range methods. */
@@ -762,6 +780,7 @@
       id={`${id}-editor`}
       bind:value
       onkeydown={handleKeyDown}
+      onbeforeinput={handleBeforeInput}
       oninput={handleInput}
       onpointerup={oncomposerselectionchange}
       onselect={oncomposerselectionchange}

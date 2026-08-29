@@ -216,6 +216,19 @@ describe('chat render rows', () => {
     expect(rows.map((row) => row.type)).toEqual(['date', 'message']);
   });
 
+  test('keeps failed-delivery tool calls as individual message rows', () => {
+    const failedCall = message({
+      id: 'failed-call',
+      role: 'tool-call',
+      metadata: { _deliveryStatus: 'failed' },
+      toolCall: { id: 'failed', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([failedCall], new Set()));
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message']);
+  });
+
   test('encodes tool-group message ids without delimiter collisions', () => {
     const firstKey = chatRenderRowKey({
       type: 'tool-call-group',

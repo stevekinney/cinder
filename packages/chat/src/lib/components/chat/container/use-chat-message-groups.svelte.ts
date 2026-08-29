@@ -177,6 +177,7 @@ export function buildChatRenderRows(
         item.message.role === 'tool-call' &&
         toolCallId &&
         !item.message.hidden &&
+        item.message.metadata?.['_deliveryStatus'] !== 'failed' &&
         !messageHasImageContent(item.message) &&
         !messageHasStructuredEntries(item.message) &&
         !options?.ungroupedToolCallIds?.has(toolCallId)

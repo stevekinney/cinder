@@ -721,15 +721,22 @@
   $effect(() => {
     const currentConversationId = conversationId;
     const currentToolStatuses = new Map<string, { name: string; status: string }>();
+    const callOccurrenceKeys = new Map<string, string[]>();
     for (const message of messages) {
       if (message.role === 'tool-call' && message.toolCall) {
-        currentToolStatuses.set(message.toolCall.id, {
+        const occurrenceKey = message.id;
+        const occurrenceKeys = callOccurrenceKeys.get(message.toolCall.id) ?? [];
+        occurrenceKeys.push(occurrenceKey);
+        callOccurrenceKeys.set(message.toolCall.id, occurrenceKeys);
+        currentToolStatuses.set(occurrenceKey, {
           name: message.toolCall.name,
           status: 'pending',
         });
       } else if (message.role === 'tool-result' && message.toolResult) {
-        const previous = currentToolStatuses.get(message.toolResult.callId);
-        currentToolStatuses.set(message.toolResult.callId, {
+        const occurrenceKey = callOccurrenceKeys.get(message.toolResult.callId)?.at(-1);
+        if (!occurrenceKey) continue;
+        const previous = currentToolStatuses.get(occurrenceKey);
+        currentToolStatuses.set(occurrenceKey, {
           name: previous?.name ?? 'Tool call',
           status: message.toolResult.outcome,
         });
