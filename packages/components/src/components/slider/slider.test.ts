@@ -293,7 +293,7 @@ describe('Slider (single)', () => {
     const styles = readFileSync(new URL('./slider.css', import.meta.url), 'utf8');
 
     expect(styles).toMatch(
-      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__value\s*\{[^}]*color:\s*var\(--cinder-text\);/,
+      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__value\s*\{[^}]*color:\s*var\(--cinder-text-default\);/,
     );
     expect(styles).toMatch(
       /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__track\s*\{[^}]*opacity:\s*0\.55;/,

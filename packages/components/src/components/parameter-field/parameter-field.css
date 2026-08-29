@@ -14,7 +14,7 @@
   }
 
   .cinder-parameter-field__label {
-    color: var(--cinder-text-primary);
+    color: var(--cinder-text-default);
     font-size: var(--cinder-text-sm);
     font-weight: var(--cinder-font-medium);
   }
@@ -34,7 +34,7 @@
   }
 
   .cinder-parameter-field[data-overridden] .cinder-parameter-field__rail {
-    background: var(--cinder-accent-emphasis);
+    background: var(--cinder-accent-solid);
   }
 
   .cinder-parameter-field__editor {
@@ -44,7 +44,7 @@
   }
 
   .cinder-parameter-field__value {
-    color: var(--cinder-text-primary);
+    color: var(--cinder-text-default);
     font-family: var(--cinder-font-mono);
   }
 
@@ -57,7 +57,7 @@
     border: 0;
     padding: 0;
     background: transparent;
-    color: var(--cinder-text-link);
+    color: var(--cinder-accent-text);
     cursor: pointer;
     font: inherit;
     font-size: var(--cinder-text-sm);
