@@ -421,8 +421,12 @@ export type { FocusTrapOptions, FocusTrapProps } from './components/focus-trap/i
 export { default as Form } from './components/form/index.ts';
 export type { FormProps, FormSubmitContext } from './components/form/index.ts';
 
+export { default as FindBar } from './components/find-bar/index.ts';
+export type { FindBarProps } from './components/find-bar/index.ts';
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
+export { default as ZoomPanViewer } from './components/zoom-pan-viewer/index.ts';
+export type { ZoomPanViewerProps } from './components/zoom-pan-viewer/index.ts';
 
 export { default as FindBar } from './components/find-bar/index.ts';
 export type { FindBarProps } from './components/find-bar/index.ts';
