@@ -1,10 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "capability-gate",
-    "form-field"
+    "spinner"
   ],
-  "renderedSourceSha": "31bc7599520ac71071b0e16f3f8fcd40058c67ba",
+  "renderedSourceSha": "60c5fed33d8066d9e6791af376796e8720e28a69",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
