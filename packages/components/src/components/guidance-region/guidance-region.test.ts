@@ -12,9 +12,10 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { cleanup, render } = await import('@testing-library/svelte');
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: GuidanceRegion } = await import('./guidance-region.svelte');
 const { default: GuidanceRegionHost } = await import('./guidance-region-host.test.svelte');
+const { default: GuidanceAnchorHost } = await import('./guidance-anchor-host.test.svelte');
 
 afterEach(cleanup);
 
@@ -87,6 +88,23 @@ describe('GuidanceRegion', () => {
     const source = readFileSync(new URL('./guidance-region.svelte', import.meta.url), 'utf8');
     expect(source).toContain('wireTriggerAria');
     expect(source).not.toContain('wireTriggerAria={false}');
+  });
+
+  test('resetAll restores focus to the active connected anchor before cleanup', async () => {
+    let api: import('../../_internal/guidance-context.ts').GuidanceApi | undefined;
+    const { container } = render(GuidanceAnchorHost, {
+      onReady: (value: import('../../_internal/guidance-context.ts').GuidanceApi) => {
+        api = value;
+      },
+    });
+    const anchor = container.querySelector('button') as HTMLButtonElement;
+
+    await fireEvent.click(anchor);
+    expect(api?.claims()).toHaveLength(1);
+    api?.resetAll();
+
+    expect(document.activeElement).toBe(anchor);
+    expect(api?.claims()).toHaveLength(1);
   });
 
   test('does not let reset settle a stale modal claim into a new claim', async () => {

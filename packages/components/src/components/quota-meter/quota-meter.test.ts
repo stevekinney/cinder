@@ -124,6 +124,16 @@ describe('QuotaMeter', () => {
     );
   });
 
+  test('clamps finite negative usage for value, track, and accessible text', () => {
+    const { container } = render(QuotaMeter, { used: -24, limit: 100 });
+    const meter = container.querySelector('[role="meter"]');
+    const fill = container.querySelector('.cinder-meter__fill');
+
+    expect(meter?.getAttribute('aria-valuenow')).toBe('0');
+    expect(meter?.getAttribute('aria-valuetext')).toBe('0 of 100 used');
+    expect(fill?.getAttribute('style')).toContain('--_cinder-meter-progress: 0');
+  });
+
   test('documents required props in component usage examples', async () => {
     const [quotaReadme, codeLocationReadme, citationReadme] = await Promise.all([
       Bun.file(new URL('../quota-meter/README.md', import.meta.url)).text(),

@@ -554,15 +554,15 @@
           </th>
         {/if}
         {#each columns as column (column.key)}
-          <TableHeaderCell
-            {...column.sortable ? { column: column.key } : {}}
-            sortable={column.sortable ?? false}
-            align={mapAlign(column.align) ?? 'left'}
-            style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
-          >
-            {column.label}
-            {#snippet actions()}
-              {#if resizable}
+          {#if resizable}
+            <TableHeaderCell
+              {...column.sortable ? { column: column.key } : {}}
+              sortable={column.sortable ?? false}
+              align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
+            >
+              {column.label}
+              {#snippet actions()}
                 <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
                 <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
                 <div
@@ -577,9 +577,18 @@
                   onkeydown={(event) => handleResizeKey(event, column)}
                   onpointerdown={(event) => handleResizePointer(event, column)}
                 ></div>
-              {/if}
-            {/snippet}
-          </TableHeaderCell>
+              {/snippet}
+            </TableHeaderCell>
+          {:else}
+            <TableHeaderCell
+              {...column.sortable ? { column: column.key } : {}}
+              sortable={column.sortable ?? false}
+              align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
+            >
+              {column.label}
+            </TableHeaderCell>
+          {/if}
         {/each}
       </TableRow>
     </TableHeader>

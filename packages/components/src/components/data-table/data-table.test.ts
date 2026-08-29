@@ -91,6 +91,13 @@ describe('DataTable — table structure', () => {
     const { container } = render(DataTable, { columns, rows });
     expect(container.querySelectorAll('tbody tr').length).toBe(rows.length);
   });
+
+  test('omits header actions when columns are not resizable', () => {
+    const { container } = render(DataTable, { columns, rows, resizable: false });
+
+    expect(container.querySelector('.cinder-table__header-actions')).toBeNull();
+    expect(container.querySelector('[role="separator"]')).toBeNull();
+  });
 });
 
 describe('DataTable — column resizing', () => {

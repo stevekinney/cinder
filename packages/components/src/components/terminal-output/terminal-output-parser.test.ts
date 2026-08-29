@@ -23,6 +23,10 @@ describe('parseTerminalOutput', () => {
     expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X', bold: false }]]);
     expect(parseTerminalOutput('e\u0301\rX')).toEqual([[{ text: 'X', bold: false }]]);
   });
+  test('tracks wide CJK and emoji display cells during carriage-return rewrites', () => {
+    expect(parseTerminalOutput('界b\rX')).toEqual([[{ text: 'X b', bold: false }]]);
+    expect(parseTerminalOutput('😀b\rX')).toEqual([[{ text: 'X b', bold: false }]]);
+  });
   test('preserves split surrogate pairs and combining marks across appended chunks', () => {
     const surrogateParser = new TerminalOutputParser();
     surrogateParser.append('\ud83d');

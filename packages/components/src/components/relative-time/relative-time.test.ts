@@ -67,15 +67,16 @@ describe('RelativeTime', () => {
     }
   });
 
-  test('seeds the initial clock from the current time before mounting', () => {
+  test('defers the clock-derived label until after mounting', () => {
     const source = readFileSync(new URL('./relative-time.svelte', import.meta.url), 'utf8');
 
-    expect(source).toContain('let now = $state(Date.now());');
-    expect(source).not.toContain('let now = $state(initialTimestamp);');
-    expect(source).toContain('now = Date.now();');
+    expect(source).toContain('const initialNow = Date.now();');
+    expect(source).toContain('let now = $state(initialNow);');
+    expect(source).toContain('hasMounted = true;');
+    expect(source).toContain("{hasMounted ? relative : ''}");
   });
 
-  test('server-renders dates relative to the current time', async () => {
+  test('server-renders a stable semantic time before the relative label mounts', async () => {
     const realNow = Date.now;
     Date.now = () => Date.UTC(2026, 0, 2, 12);
     try {
@@ -88,7 +89,8 @@ describe('RelativeTime', () => {
         locale: 'en',
         tick: false,
       });
-      expect(html).toContain('>yesterday');
+      expect(html).toContain('datetime="2026-01-01T12:00:00.000Z"');
+      expect(html).not.toContain('>yesterday');
       expect(html).not.toContain('>now');
     } finally {
       Date.now = realNow;
@@ -123,11 +125,55 @@ describe('RelativeTime', () => {
       const first = render(RelativeTime, { date: oldDate });
       const second = render(RelativeTime, { date: oldDate });
       expect(scheduleCount).toBe(2);
-      expect(scheduledDelays.at(-1)).toBeGreaterThan(3_599_000);
+      expect(scheduledDelays.at(-1)).toBeGreaterThan(1_799_000);
       first.unmount();
       expect(clearCount).toBe(2);
       second.unmount();
       expect(clearCount).toBe(3);
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      window.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  test('resubscribes when a bound timestamp changes its cadence', async () => {
+    const originalSetTimeout = window.setTimeout;
+    const originalClearTimeout = window.clearTimeout;
+    const scheduledDelays: number[] = [];
+    window.setTimeout = ((callback: TimerHandler, delay?: number) => {
+      scheduledDelays.push(delay ?? 0);
+      return originalSetTimeout(callback, delay);
+    }) as typeof window.setTimeout;
+    window.clearTimeout = ((timer?: number) =>
+      originalClearTimeout(timer)) as typeof window.clearTimeout;
+
+    try {
+      const view = render(RelativeTime, { date: Date.now() - 2 * 60 * 60 * 1_000 });
+      await view.rerender({ date: Date.now() });
+      expect(scheduledDelays.at(-1)).toBeLessThan(60_000);
+      view.unmount();
+    } finally {
+      window.setTimeout = originalSetTimeout;
+      window.clearTimeout = originalClearTimeout;
+    }
+  });
+
+  test('schedules at the next rounded display boundary', () => {
+    const originalSetTimeout = window.setTimeout;
+    const originalClearTimeout = window.clearTimeout;
+    const scheduledDelays: number[] = [];
+    window.setTimeout = ((callback: TimerHandler, delay?: number) => {
+      scheduledDelays.push(delay ?? 0);
+      return originalSetTimeout(callback, delay);
+    }) as typeof window.setTimeout;
+    window.clearTimeout = ((timer?: number) =>
+      originalClearTimeout(timer)) as typeof window.clearTimeout;
+
+    try {
+      const view = render(RelativeTime, { date: Date.now() - 10_000 });
+      expect(scheduledDelays.at(-1)).toBeGreaterThan(400);
+      expect(scheduledDelays.at(-1)).toBeLessThan(700);
+      view.unmount();
     } finally {
       window.setTimeout = originalSetTimeout;
       window.clearTimeout = originalClearTimeout;

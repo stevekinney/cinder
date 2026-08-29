@@ -20,6 +20,28 @@
   const clockSubscribers = new Set<ClockSubscriber>();
   let clockTimer: number | undefined;
 
+  function nextDisplayedValueDelay(timestamp: number, now: number): number {
+    if (!Number.isFinite(timestamp)) return 86_400_000;
+    const delta = timestamp - now;
+    const absolute = Math.abs(delta);
+    const unitMs =
+      absolute < 60_000
+        ? 1_000
+        : absolute < 3_600_000
+          ? 60_000
+          : absolute < 86_400_000
+            ? 3_600_000
+            : 86_400_000;
+    const roundedValue = Math.round(delta / unitMs);
+    const roundingBoundary = (roundedValue - 0.5) * unitMs;
+    const roundingDelay = timestamp - roundingBoundary - now;
+    const unitBoundary = absolute < 60_000 ? 60_000 : absolute < 3_600_000 ? 3_600_000 : 86_400_000;
+    const unitBoundaryDelay =
+      (delta >= 0 ? timestamp - unitBoundary : timestamp + unitBoundary) - now;
+    const candidates = [roundingDelay, unitBoundaryDelay].filter((delay) => delay > 0);
+    return Math.max(1, Math.min(...candidates));
+  }
+
   function scheduleClock() {
     if (clockTimer !== undefined) window.clearTimeout(clockTimer);
     if (clockSubscribers.size === 0) {
@@ -40,7 +62,7 @@
         }
         scheduleClock();
       },
-      Math.max(1_000, nextAt - now),
+      Math.max(1, nextAt - now),
     );
   }
 
@@ -61,8 +83,9 @@
 
   import type { RelativeTimeProps } from './relative-time.types.ts';
 
+  const initialNow = Date.now();
   let {
-    date = Date.now(),
+    date = initialNow,
     locale,
     tick = true,
     class: customClassName,
@@ -70,27 +93,16 @@
     ...rest
   }: RelativeTimeProps = $props();
   const localeContext = getLocaleContext();
-  let now = $state(Date.now());
+  let now = $state(initialNow);
   let hasMounted = $state(false);
   $effect(() => {
     hasMounted = true;
-    now = Date.now();
   });
   const resolvedLocale = $derived(
     locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
   const timestamp = $derived(date instanceof Date ? date.getTime() : new Date(date).getTime());
   const validTimestamp = $derived(Number.isFinite(timestamp));
-  const clockDelay = $derived.by(() => {
-    const absolute = Math.abs(timestamp - now);
-    return absolute < 60_000
-      ? 1_000
-      : absolute < 3_600_000
-        ? 60_000
-        : absolute < 86_400_000
-          ? 3_600_000
-          : 86_400_000;
-  });
   const relative = $derived.by(() => {
     if (!validTimestamp) return 'Invalid date';
     const delta = timestamp - now;
@@ -110,9 +122,10 @@
   });
   $effect(() => {
     if (!tick || typeof window === 'undefined') return;
+    const currentTimestamp = timestamp;
     return subscribeToClock({
       notify: (nextNow) => (now = nextNow),
-      getDelay: () => clockDelay,
+      getDelay: (nextNow) => nextDisplayedValueDelay(currentTimestamp, nextNow),
       nextAt: 0,
     });
   });
@@ -122,5 +135,5 @@
   class={classNames('cinder-relative-time', customClassName)}
   datetime={validTimestamp ? new Date(timestamp).toISOString() : undefined}
   {...rest}
-  >{relative}{#if children}{@render children()}{/if}</time
+  >{hasMounted ? relative : ''}{#if children}{@render children()}{/if}</time
 >

@@ -39,7 +39,7 @@
   const resolvedLocale = $derived(
     locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
-  const effectiveUsed = $derived(Number.isFinite(used) ? used : 0);
+  const effectiveUsed = $derived(Number.isFinite(used) ? Math.max(0, used) : 0);
   const parsedResetDate = $derived(resetsAt === undefined ? undefined : new Date(resetsAt));
   const effectiveLimit = $derived(Number.isFinite(limit) && limit > 0 ? limit : 100);
   const resetDate = $derived(

@@ -91,6 +91,12 @@
       }
     },
     resetAll() {
+      const claim = activeClaim;
+      const anchor =
+        claim?.kind !== 'modal' && claim?.anchor !== undefined && anchorResolver
+          ? anchorResolver(claim.anchor)
+          : null;
+      if (anchor?.isConnected) anchor.focus();
       for (const claim of initialClaims) {
         const key = `${storageKey}:${claim.id}`;
         if (storage?.remove) storage.remove(key);

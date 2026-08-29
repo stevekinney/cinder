@@ -1,6 +1,12 @@
 import type { TerminalForeground, TerminalLine, TerminalTextRun } from './terminal-output.types.ts';
 
-type Cell = { character: string; foreground?: TerminalForeground; bold: boolean };
+type Cell = {
+  character: string;
+  foreground?: TerminalForeground;
+  bold: boolean;
+  continuation?: boolean;
+  wide?: boolean;
+};
 const graphemeSegmenter = new Intl.Segmenter(undefined, { granularity: 'grapheme' });
 const colors = new Map<number, TerminalForeground>([
   [30, 0],
@@ -21,16 +27,42 @@ const colors = new Map<number, TerminalForeground>([
   [97, 15],
 ]);
 
+function graphemeWidth(grapheme: string): 1 | 2 {
+  for (const character of grapheme) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (
+      (codePoint >= 0x1100 && codePoint <= 0x115f) ||
+      (codePoint >= 0x2329 && codePoint <= 0x232a) ||
+      (codePoint >= 0x2e80 && codePoint <= 0xa4cf) ||
+      (codePoint >= 0xac00 && codePoint <= 0xd7a3) ||
+      (codePoint >= 0xf900 && codePoint <= 0xfaff) ||
+      (codePoint >= 0xfe10 && codePoint <= 0xfe6f) ||
+      (codePoint >= 0xff01 && codePoint <= 0xff60) ||
+      (codePoint >= 0xffe0 && codePoint <= 0xffe6) ||
+      (codePoint >= 0x1f300 && codePoint <= 0x1faff)
+    )
+      return 2;
+  }
+  return 1;
+}
+
 function toLines(lines: Cell[][]): TerminalLine[] {
   return lines.map((cells) => {
     const runs: TerminalTextRun[] = [];
-    for (const cell of cells) {
+    for (const [index, cell] of cells.entries()) {
+      if (
+        cell.continuation &&
+        !cells.slice(index + 1).some((following) => !following.continuation)
+      ) {
+        continue;
+      }
+      const character = cell.continuation ? ' ' : cell.character;
       const previous = runs.at(-1);
       if (previous && previous.foreground === cell.foreground && previous.bold === cell.bold)
-        previous.text += cell.character;
+        previous.text += character;
       else
         runs.push({
-          text: cell.character,
+          text: character,
           ...(cell.foreground === undefined ? {} : { foreground: cell.foreground }),
           bold: cell.bold,
         });
@@ -165,11 +197,16 @@ export class TerminalOutputParser {
         }
       }
       const line = this.#lines[this.#line] ?? (this.#lines[this.#line] = []);
+      const width = graphemeWidth(grapheme ?? character);
       line[this.#column++] = {
         character: grapheme ?? character,
         ...(this.#foreground === undefined ? {} : { foreground: this.#foreground }),
         bold: this.#bold,
+        ...(width === 2 ? { wide: true } : {}),
       };
+      if (width === 2) {
+        line[this.#column++] = { character: '', continuation: true, bold: this.#bold };
+      }
     }
   }
 
@@ -177,7 +214,13 @@ export class TerminalOutputParser {
     if (!this.#pendingGrapheme) return toLines(this.#lines);
     const snapshot = this.#lines.map((line) => line.slice());
     const line = snapshot[this.#line] ?? (snapshot[this.#line] = []);
-    line[this.#column] = this.cell(this.#pendingGrapheme);
+    line[this.#column] = {
+      ...this.cell(this.#pendingGrapheme),
+      ...(graphemeWidth(this.#pendingGrapheme) === 2 ? { wide: true } : {}),
+    };
+    if (graphemeWidth(this.#pendingGrapheme) === 2) {
+      line[this.#column + 1] = { character: '', continuation: true, bold: this.#bold };
+    }
     return toLines(snapshot);
   }
 

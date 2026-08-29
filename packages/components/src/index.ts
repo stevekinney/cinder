@@ -73,6 +73,7 @@ export type {
 export { default as Badge } from './components/badge/index.ts';
 export type {
   BadgeProps,
+  BadgeSeverity,
   BadgeSize,
   BadgeSubscriptionState,
   BadgeVariant,
