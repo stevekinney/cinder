@@ -89,5 +89,6 @@ describe('ParameterField', () => {
     expect(
       container.querySelector('.cinder-parameter-field__editor')?.getAttribute('aria-labelledby'),
     ).toBe('temperature-label');
+    expect(container.querySelector('output')).toHaveAccessibleName('Temperature');
   });
 });

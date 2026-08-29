@@ -368,6 +368,7 @@
   }
 
   function rangeContainsDisabledDate(start: string, end: string): boolean {
+    if (!disabledDate) return false;
     const first = parseISODate(start);
     const last = parseISODate(end);
     if (!first || !last) return true;

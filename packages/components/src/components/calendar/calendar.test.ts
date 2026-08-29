@@ -126,6 +126,14 @@ describe('Calendar', () => {
     expect(container.querySelector('[data-range-end]')).toBeNull();
   });
 
+  test('does not scan intervening days when no disabled-date predicate exists', async () => {
+    const source = await Bun.file(new URL('./calendar.svelte', import.meta.url)).text();
+
+    expect(source).toMatch(
+      /function rangeContainsDisabledDate\([^)]*\): boolean \{\s*if \(!disabledDate\) return false;/,
+    );
+  });
+
   test('renders inclusive committed range and hover preview', async () => {
     const { container } = render(Calendar, {
       month: '2026-06-01',

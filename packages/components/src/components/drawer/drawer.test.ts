@@ -737,6 +737,7 @@ describe('Drawer', () => {
 
     expect(aside.dataset['cinderPortalOwner']).toBe(scope.id);
     expect(drawerCss).toMatch(/\.cinder-drawer__portal-scope\s*\{[^}]*display:\s*contents;/s);
+    expect(drawerCss).toMatch(/\.cinder-drawer__portal-scope\s*\{[^}]*pointer-events:\s*auto;/s);
     expect(findNearestOpenTopLayer(trigger)).toBe(scope);
   });
 

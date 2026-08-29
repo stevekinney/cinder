@@ -78,7 +78,7 @@
       {#if children}
         {@render children({ labelledBy: labelId, value, overridden, setOverride })}
       {:else}
-        <output id={`${id}-value`} class="cinder-parameter-field__value">
+        <output id={`${id}-value`} class="cinder-parameter-field__value" aria-labelledby={labelId}>
           {value}{#if unit}<span class="cinder-parameter-field__unit">{' '}{unit}</span>{/if}
         </output>
       {/if}
