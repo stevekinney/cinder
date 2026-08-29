@@ -197,6 +197,31 @@ describe('ChatComposerPopover', () => {
     await waitFor(() => expect(composer.getAttribute('aria-activedescendant')).toBe(activeBefore));
   });
 
+  test('preserves the active suggestion identity when labels are duplicated', async () => {
+    let resolveItems: ((items: TestComposerCommand[]) => void) | undefined;
+    const pending = new Promise<TestComposerCommand[]>((resolve) => {
+      resolveItems = resolve;
+    });
+    const selected: ChatComposerPopoverSelection<TestComposerCommand>[] = [];
+    render(ChatComposerPopoverFixture, {
+      commands: [
+        { value: 'first', label: 'Duplicate' },
+        { value: 'second', label: 'Duplicate' },
+      ],
+      sources: [{ id: 'files', label: 'Files', load: () => pending }],
+      onSelected: (selection: ChatComposerPopoverSelection<TestComposerCommand>) =>
+        selected.push(selection),
+    });
+
+    const composer = await typeComposer('/');
+    await fireEvent.keyDown(composer, { key: 'ArrowDown' });
+    resolveItems?.([{ value: 'source', label: 'Source result' }]);
+    await waitFor(() => expect(document.body.textContent).toContain('Source result'));
+    await fireEvent.keyDown(composer, { key: 'Enter' });
+
+    expect(selected[0]?.item.value).toBe('second');
+  });
+
   test('passes combobox ARIA through to the ChatInput composer while open', async () => {
     render(ChatComposerPopoverFixture);
     const composer = await typeComposer('/h');

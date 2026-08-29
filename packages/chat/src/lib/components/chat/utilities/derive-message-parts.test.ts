@@ -252,6 +252,19 @@ describe('deriveMessageParts — context parts', () => {
     );
   });
 
+  it('prepends structured transcript entries to tool-role parts', () => {
+    const toolMessage = message({
+      id: 'tool-entry',
+      role: 'tool-result',
+      toolResult: { callId: 'call', outcome: 'success', content: { ok: true } },
+    });
+    const parts = deriveMessageParts(toolMessage, {
+      entries: [{ kind: 'stateChange', content: 'Tool mode enabled' }],
+    });
+
+    expect(parts.map((part) => part.type)).toEqual(['transcript-entry', 'tool-result']);
+  });
+
   it('emits suggestions after the markdown body and before images', () => {
     const content: MultiModalContent[] = [
       { type: 'text', text: 'choose one' },

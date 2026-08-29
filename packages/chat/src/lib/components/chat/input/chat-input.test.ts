@@ -142,6 +142,23 @@ describe('ChatInput', () => {
     expect(submittedAttachments).toEqual([[]]);
   });
 
+  test('rejects a whitespace-only promoted paste', async () => {
+    const submitted: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'whitespace-large-paste-composer',
+      largePasteThreshold: 5,
+      onsubmit: (message: MessageInput) => submitted.push(message),
+    });
+    const form = container.querySelector('form')!;
+
+    await fireEvent.paste(form, {
+      clipboardData: { items: [], getData: () => '          ' },
+    });
+    await fireEvent.submit(form);
+
+    expect(submitted).toEqual([]);
+  });
+
   test('reconstructs composer text with every promoted paste and excludes their attachments', async () => {
     const submissions: Array<{ message: MessageInput; attachments: unknown[] }> = [];
     const { container } = render(ChatInput, {
@@ -212,6 +229,32 @@ describe('ChatInput', () => {
     await tick();
 
     expect(composer.value).toBe('prefix before replacement text after');
+  });
+
+  test('translates remaining promoted-paste ranges when an earlier paste is restored', async () => {
+    const submissions: MessageInput[] = [];
+    const { container } = render(ChatInput, {
+      id: 'translated-promoted-pastes',
+      value: 'ab',
+      largePasteThreshold: 1,
+      onsubmit: (message: MessageInput) => submissions.push(message),
+    });
+    const form = container.querySelector('form')!;
+    const composer = container.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+
+    composer.setSelectionRange(0, 0);
+    await fireEvent.paste(form, { clipboardData: { items: [], getData: () => 'A' } });
+    composer.setSelectionRange(2, 2);
+    await fireEvent.paste(form, { clipboardData: { items: [], getData: () => 'B' } });
+
+    const removeButtons = container.querySelectorAll<HTMLButtonElement>(
+      'button[aria-label="Remove pasted-text.txt"]',
+    );
+    await fireEvent.click(removeButtons[0]!);
+    await tick();
+    await fireEvent.submit(form);
+
+    expect(submissions).toEqual([{ role: 'user', content: 'AabB' }]);
   });
 
   test('shows an instructional copy-drop overlay with copy semantics', async () => {

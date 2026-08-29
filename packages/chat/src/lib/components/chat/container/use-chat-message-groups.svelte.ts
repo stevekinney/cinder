@@ -51,6 +51,19 @@ export type ChatRenderRow =
 // Re-export ToolCallPair type for convenience.
 export type { ToolCallPair } from '../conversation-model.ts';
 
+function messageHasImageContent(message: Message): boolean {
+  return (
+    Array.isArray(message.content) &&
+    message.content.some(
+      (segment) =>
+        typeof segment === 'object' &&
+        segment !== null &&
+        'type' in segment &&
+        segment.type === 'image',
+    )
+  );
+}
+
 /** Options for the message groups helper */
 export interface UseChatMessageGroupsOptions {
   /** Function that returns the current messages array */
@@ -143,8 +156,7 @@ export function buildChatRenderRows(
   let toolCallRun: Message[] = [];
 
   const flushToolCallRun = (): void => {
-    if (toolCallRun.length === 1) rows.push({ type: 'message', message: toolCallRun[0]! });
-    else if (toolCallRun.length > 1) rows.push({ type: 'tool-call-group', messages: toolCallRun });
+    if (toolCallRun.length > 0) rows.push({ type: 'tool-call-group', messages: toolCallRun });
     toolCallRun = [];
   };
 
@@ -160,6 +172,7 @@ export function buildChatRenderRows(
         item.message.role === 'tool-call' &&
         toolCallId &&
         !item.message.hidden &&
+        !messageHasImageContent(item.message) &&
         !options?.ungroupedToolCallIds?.has(toolCallId)
       ) {
         toolCallRun.push(item.message);
@@ -189,7 +202,7 @@ export function chatRenderRowKey(row: ChatRenderRow): string {
     case 'typing':
       return 'typing';
     case 'tool-call-group':
-      return `tool-group-${JSON.stringify(row.messages.map((message) => message.id))}`;
+      return `tool-group-${row.messages[0]?.id ?? 'empty'}`;
   }
 }
 

@@ -342,7 +342,7 @@
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
   <article
     id={messageId}
-    class="chat-message"
+    class="chat-message chat-navigation-row"
     aria-labelledby={isToolCall && toolPair ? undefined : roleId}
     aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}

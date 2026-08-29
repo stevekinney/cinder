@@ -23,6 +23,7 @@ export type {
   ReadReceipt,
   TypingParticipant,
 } from './chat.types.ts';
+export type { ChatMarkdownNode, MarkdownNodeOverride } from './message/chat-message-parts.ts';
 export { Chat, CURRENT_SCHEMA_VERSION };
 
 // Adapter seam — the optional event/transport boundary around <Chat>. Type-only.

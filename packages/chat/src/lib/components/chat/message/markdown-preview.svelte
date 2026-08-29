@@ -93,10 +93,8 @@
     // while the async pipeline produces the formatted version. Without
     // this reset, a streaming or reused message briefly shows the
     // previous content's rendered HTML during the re-render gap.
-    if (!markdownNode) {
-      renderedHtml = '';
-      segments = [];
-    }
+    renderedHtml = '';
+    segments = [];
 
     let cancelled = false;
 

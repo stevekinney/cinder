@@ -75,6 +75,7 @@
   let caretIndex = $state(0);
   const listboxId = $derived(`${id}-listbox`);
   let activeItemId = $state<string | null>(null);
+  let activeSelectionValue: string | null = null;
   let activeMatch = $state<ChatComposerPopoverTriggerMatch | null>(null);
   let composerSyncTimer: ReturnType<typeof setTimeout> | null = null;
   let lastSyncedValue = $state(value);
@@ -126,21 +127,21 @@
       }),
     ).then(async (groups) => {
       if (requestId !== sourceRequestId) return;
-      const activeOptionLabel =
-        typeof document === 'undefined' || !activeItemId
-          ? null
-          : document.getElementById(activeItemId)?.getAttribute('aria-label');
+      const preservedSelectionValue = activeSelectionValue;
       sourceGroups = groups.filter(
         (group): group is NonNullable<(typeof groups)[number]> => group !== null,
       );
       loadingSources = false;
       sourceGeneration += 1;
-      if (activeOptionLabel) {
+      if (preservedSelectionValue) {
         await tick();
+        const optionIndex = filteredItems.findIndex(
+          (candidate) => candidate.selectionValue === preservedSelectionValue,
+        );
         const option = Array.from(
           document.getElementById(listboxId)?.querySelectorAll<HTMLElement>('[role="option"]') ??
             [],
-        ).find((candidate) => candidate.getAttribute('aria-label') === activeOptionLabel);
+        )[optionIndex];
         option?.dispatchEvent(new Event('pointerenter'));
       }
     });
@@ -199,6 +200,7 @@
     open = activeMatch !== null && anchor !== null;
     if (!open) {
       activeItemId = null;
+      activeSelectionValue = null;
       if (wasOpen) onDismiss?.();
     }
   }
@@ -219,6 +221,7 @@
     clearComposerSyncTimer();
     open = false;
     activeItemId = null;
+    activeSelectionValue = null;
     activeMatch = null;
     if (restoreFocus) anchor?.focus();
     onDismiss?.();
@@ -357,6 +360,14 @@
 
   function handleStateChange(state: { activeItemId: string | null }): void {
     activeItemId = state.activeItemId;
+    if (!state.activeItemId || typeof document === 'undefined') return;
+    const activeOption = document.getElementById(state.activeItemId);
+    const optionIndex = activeOption
+      ? Array.from(activeOption.parentElement?.querySelectorAll('[role="option"]') ?? []).indexOf(
+          activeOption,
+        )
+      : -1;
+    activeSelectionValue = filteredItems[optionIndex]?.selectionValue ?? null;
   }
 
   function handleSelect(selection: { value: string; query: string }): void {
@@ -379,6 +390,7 @@
 
     open = false;
     activeItemId = null;
+    activeSelectionValue = null;
     activeMatch = null;
     anchor?.focus();
     suppressNextValueSync = true;

@@ -394,6 +394,12 @@ export function deriveMessageParts(
   // Images render below the body for every role (the historical attachment view
   // was unconditional), so each branch appends them after its body part.
   const imageParts = deriveImageParts(message);
+  const entryParts: ChatMessagePart[] = (context.entries ?? []).map((entry, index) => ({
+    type: 'transcript-entry',
+    key: `${message.id}:entry:${index}`,
+    kind: entry.kind,
+    content: entry.content,
+  }));
 
   // Tool-call body: emit a tool-call part only when the container resolved a
   // pair for this message (mirrors the original `isToolCall && toolPair`
@@ -413,6 +419,7 @@ export function deriveMessageParts(
         ? deriveToolApprovalPart(message.id, result, context)
         : undefined;
     return [
+      ...entryParts,
       {
         type: 'tool-call',
         key: `${message.id}:tool-call:${message.toolCall.id}`,
@@ -434,9 +441,10 @@ export function deriveMessageParts(
   if (message.role === 'tool-result' && message.toolResult) {
     const result = message.toolResult;
     if (result.outcome === 'action_required' && result.action) {
-      return [deriveToolApprovalPart(message.id, result, context), ...imageParts];
+      return [...entryParts, deriveToolApprovalPart(message.id, result, context), ...imageParts];
     }
     return [
+      ...entryParts,
       {
         type: 'tool-result',
         key: `${message.id}:tool-result:${result.callId}`,
@@ -456,7 +464,7 @@ export function deriveMessageParts(
   // the final answer. When neither is present the branch is identical to today.
   const content = context.overrideContent ?? getMessageText(message);
 
-  const bodyParts: ChatMessagePart[] = [];
+  const bodyParts: ChatMessagePart[] = [...entryParts];
 
   // C4: Step parts — one per entry in context.steps[], in order.
   if (context.steps && context.steps.length > 0) {
@@ -474,18 +482,6 @@ export function deriveMessageParts(
   }
 
   // C4: Reasoning part — emitted before the markdown body when present.
-  if (context.entries) {
-    for (let index = 0; index < context.entries.length; index++) {
-      const entry = context.entries[index]!;
-      bodyParts.push({
-        type: 'transcript-entry',
-        key: `${message.id}:entry:${index}`,
-        kind: entry.kind,
-        content: entry.content,
-      });
-    }
-  }
-
   const reasoning = context.reasoning;
   const reasoningContent = deriveReasoningContent(
     message,

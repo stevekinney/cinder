@@ -314,6 +314,24 @@
       if (attachment.restoreText) {
         const start = Math.min(attachment.restoreRange?.start ?? value.length, value.length);
         const end = Math.min(attachment.restoreRange?.end ?? value.length, value.length);
+        const insertedLength = attachment.restoreText.length;
+        const replacedLength = end - start;
+        const translatePosition = (position: number): number => {
+          if (position <= start) return position;
+          if (position >= end) return position + insertedLength - replacedLength;
+          return start + insertedLength;
+        };
+        attachments = attachments.map((remainingAttachment) =>
+          remainingAttachment.restoreRange
+            ? {
+                ...remainingAttachment,
+                restoreRange: {
+                  start: translatePosition(remainingAttachment.restoreRange.start),
+                  end: translatePosition(remainingAttachment.restoreRange.end),
+                },
+              }
+            : remainingAttachment,
+        );
         value = `${value.slice(0, start)}${attachment.restoreText}${value.slice(end)}`;
         oncomposerinput?.(value);
         const caretIndex = start + attachment.restoreText.length;
@@ -456,6 +474,10 @@
         return `${content.slice(0, start)}${attachment.restoreText ?? ''}${content.slice(end)}`;
       }, latestContent)
       .trim();
+    if (submittedContent.length === 0) {
+      event.preventDefault();
+      return;
+    }
     const message: MessageInput = {
       role: 'user',
       content: submittedContent,
@@ -474,6 +496,7 @@
       if (clearOnSubmit) {
         // Clear state
         value = '';
+        previousComposerValue = '';
         attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
         attachments = [];
       }
@@ -488,6 +511,7 @@
       flushSync(() => {
         value = submittedContent;
       });
+      previousComposerValue = submittedContent;
     }
   }
 
@@ -538,6 +562,13 @@
   // (Svelte merges the binding's own input listener with this handler on the
   // same event), so `value` here is always current — never one keystroke stale.
   let previousComposerValue = value;
+
+  $effect(() => {
+    const synchronizedValue = value;
+    if (editorElement?.value === synchronizedValue && synchronizedValue !== previousComposerValue) {
+      previousComposerValue = synchronizedValue;
+    }
+  });
 
   function handleInput(event: Event): void {
     if (value !== previousComposerValue) {
@@ -598,6 +629,7 @@
 
   export function clear(): void {
     value = '';
+    previousComposerValue = '';
     attachments.forEach((a) => URL.revokeObjectURL(a.previewUrl));
     attachments = [];
   }

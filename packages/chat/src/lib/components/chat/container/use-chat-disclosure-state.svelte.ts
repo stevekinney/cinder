@@ -65,29 +65,30 @@ export function useChatDisclosureState(
 ): UseChatDisclosureStateReturn {
   const { onRemeasureRow, defaultExpanded = false } = options;
 
-  // Set of message ids whose disclosures are currently expanded.
-  // Collapsed by default (disclosures start closed).
-  let expandedIds = $state(new Set<string>());
+  // Set of message ids whose state differs from the configured default. With
+  // `defaultExpanded: false` these ids are expanded; with `true` they are
+  // collapsed.
+  let toggledIds = $state(new Set<string>());
 
   function isExpanded(messageId: string): boolean {
-    return defaultExpanded ? !expandedIds.has(messageId) : expandedIds.has(messageId);
+    return defaultExpanded ? !toggledIds.has(messageId) : toggledIds.has(messageId);
   }
 
   function toggle(messageId: string): void {
-    const next = new Set(expandedIds);
+    const next = new Set(toggledIds);
     if (next.has(messageId)) {
       next.delete(messageId);
     } else {
       next.add(messageId);
     }
-    expandedIds = next;
+    toggledIds = next;
     // Notify the virtualizer so it can remeasure the row after the DOM
     // transitions to its new open/closed height. No-op when not wired.
     onRemeasureRow?.(messageId);
   }
 
   function reset(): void {
-    expandedIds = new Set();
+    toggledIds = new Set();
   }
 
   return {

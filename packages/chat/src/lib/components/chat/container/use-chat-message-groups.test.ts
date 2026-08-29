@@ -173,7 +173,32 @@ describe('chat render rows', () => {
       firstUnreadId: 'second',
     });
 
-    expect(rows.map((row) => row.type)).toEqual(['date', 'message', 'unread-divider', 'message']);
+    expect(rows.map((row) => row.type)).toEqual([
+      'date',
+      'tool-call-group',
+      'unread-divider',
+      'tool-call-group',
+    ]);
+  });
+
+  test('keeps image-bearing tool calls as individual message rows', () => {
+    const imageCall = message({
+      id: 'image-call',
+      role: 'tool-call',
+      content: [{ type: 'image', url: 'https://example.test/result.png' }],
+      toolCall: { id: 'image', name: 'screenshot', arguments: {} },
+    });
+    const textCall = message({
+      id: 'text-call',
+      role: 'tool-call',
+      toolCall: { id: 'text', name: 'inspect', arguments: {} },
+    });
+
+    const rows = buildChatRenderRows(
+      buildMessagesWithDateSeparators([imageCall, textCall], new Set()),
+    );
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message', 'tool-call-group']);
   });
 
   test('encodes tool-group message ids without delimiter collisions', () => {

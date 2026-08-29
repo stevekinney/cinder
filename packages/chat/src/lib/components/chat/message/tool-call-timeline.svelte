@@ -3,7 +3,8 @@
   import { stringify } from '../../../utilities/stringify.ts';
   import type { ToolCallPair } from '../conversation-model.ts';
 
-  let { pairs }: { pairs: ToolCallPair[] } = $props();
+  let { pairs, messageId }: { pairs: ToolCallPair[]; messageId?: string } = $props();
+  const navigationMessageId = $derived(messageId ?? pairs[0]?.call.id ?? 'tool-call-group');
 
   function formatPayload(value: unknown): string {
     return value === null ? 'null' : stringify(value);
@@ -47,7 +48,12 @@
   const completedCount = $derived(steps.filter((step) => step.status === 'succeeded').length);
 </script>
 
-<section class="chat-tool-call-timeline" data-cinder-tool-call-count={pairs.length}>
+<section
+  id={`message-${navigationMessageId}`}
+  class="chat-tool-call-timeline chat-navigation-row"
+  data-cinder-tool-call-count={pairs.length}
+  tabindex="-1"
+>
   <h3>Called {pairs.length} tools{completedCount ? `, ${completedCount} complete` : ''}</h3>
   <RunStepTimeline {steps} label={`${pairs.length} consecutive tool calls`} />
 </section>

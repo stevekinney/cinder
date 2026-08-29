@@ -738,6 +738,7 @@
       observedToolStatusConversationId = currentConversationId;
     }
     if (hasObservedToolStatuses) {
+      const statusAnnouncements: string[] = [];
       for (const [callId, current] of currentToolStatuses) {
         const previous = previousToolStatuses.get(callId);
         if (!previous || previous.status === current.status) continue;
@@ -748,7 +749,10 @@
             : current.status === 'error'
               ? 'failed'
               : current.status;
-        setConsumerPoliteAnnouncement(`${current.name} ${statusLabel}`);
+        statusAnnouncements.push(`${current.name} ${statusLabel}`);
+      }
+      if (statusAnnouncements.length > 0) {
+        setConsumerPoliteAnnouncement(statusAnnouncements.join('. '));
       }
     }
     previousToolStatuses = currentToolStatuses;
@@ -2172,7 +2176,9 @@
     if (!viewport) return null;
 
     const viewportRect = viewport.getBoundingClientRect();
-    for (const message of viewport.querySelectorAll<HTMLElement>('.chat-message')) {
+    for (const message of viewport.querySelectorAll<HTMLElement>(
+      '.chat-message, .chat-tool-call-timeline',
+    )) {
       const messageId = messageIdFromElement(message);
       if (!messageId) continue;
 
@@ -2213,7 +2219,7 @@
     if (!isVirtualized || !viewport) return false;
     const activeElement =
       document.activeElement instanceof HTMLElement ? document.activeElement : null;
-    if (!activeElement?.classList.contains('chat-message')) return false;
+    if (!activeElement?.matches('.chat-message, .chat-tool-call-timeline')) return false;
 
     const currentMessageId = messageIdFromElement(activeElement);
     if (!currentMessageId) return false;
@@ -2228,9 +2234,11 @@
       targetIndex += step
     ) {
       const targetRow = renderRows[targetIndex];
-      if (targetRow?.type !== 'message') continue;
-
-      void focusVirtualMessage(targetRow.message.id);
+      if (targetRow?.type !== 'message' && targetRow?.type !== 'tool-call-group') continue;
+      const targetMessageId =
+        targetRow.type === 'message' ? targetRow.message.id : targetRow.messages[0]?.id;
+      if (!targetMessageId) continue;
+      void focusVirtualMessage(targetMessageId);
       return true;
     }
 
@@ -2700,6 +2708,7 @@
       {@render renderTypingIndicator()}
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
+        messageId={renderRow.messages[0]!.id}
         pairs={renderRow.messages.flatMap((message) => {
           if (!message.toolCall?.id) return [];
           const pairs = toolCallPairsByCallId.get(message.toolCall.id) ?? [];
