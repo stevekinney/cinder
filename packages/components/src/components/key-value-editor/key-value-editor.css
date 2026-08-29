@@ -1,0 +1,10 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-key-value-editor {
+    display: grid;
+    gap: var(--cinder-space-3);
+  }
+  .cinder-key-value-editor__rows {
+    align-items: center;
+  }
+}

@@ -1,0 +1,80 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-terminal-frame {
+    display: flex;
+    flex-direction: column;
+    min-block-size: 0;
+    overflow: hidden;
+    color: var(--cinder-text-default);
+    background: var(--cinder-surface-inset);
+    border: 1px solid var(--cinder-border);
+    border-radius: var(--cinder-radius-lg);
+  }
+
+  .cinder-terminal-frame__chrome {
+    min-block-size: 2.25rem;
+    padding-inline: var(--cinder-space-3);
+    align-items: center;
+    border-block-end: 1px solid var(--cinder-border);
+  }
+
+  .cinder-terminal-frame__traffic-lights {
+    display: flex;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-terminal-frame__traffic-lights span {
+    inline-size: 0.625rem;
+    block-size: 0.625rem;
+    background: var(--cinder-text-muted);
+    border-radius: 50%;
+  }
+
+  .cinder-terminal-frame__title {
+    margin: 0;
+    font: var(--cinder-font-medium) var(--cinder-text-sm) / 1.4 var(--cinder-font-sans);
+  }
+
+  .cinder-terminal-frame__status {
+    justify-self: end;
+    color: var(--cinder-text-muted);
+    font: var(--cinder-font-medium) var(--cinder-text-xs) / 1.4 var(--cinder-font-sans);
+  }
+
+  .cinder-terminal-frame__error {
+    display: flex;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+    align-items: center;
+    justify-content: space-between;
+    color: var(--cinder-status-danger-text);
+    background: var(--cinder-status-danger-background);
+    gap: var(--cinder-space-3);
+  }
+
+  .cinder-terminal-frame__reload {
+    padding: var(--cinder-space-1) var(--cinder-space-2);
+    color: inherit;
+    background: transparent;
+    border: 1px solid currentColor;
+    border-radius: var(--cinder-radius-sm);
+    cursor: pointer;
+  }
+
+  .cinder-terminal-frame__reload:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    outline-offset: 2px;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+
+  .cinder-terminal-frame__viewport {
+    flex: 1;
+    min-block-size: 0;
+    overflow: hidden;
+  }
+
+  @media (forced-colors: active) {
+    .cinder-terminal-frame__reload:focus-visible {
+      outline-color: Highlight;
+    }
+  }
+}

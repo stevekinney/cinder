@@ -21,7 +21,7 @@
 </script>
 
 <script lang="ts" generics="Row extends DataTableRow">
-  import { tick, untrack } from 'svelte';
+  import { onDestroy, tick, untrack } from 'svelte';
 
   import Checkbox from '../checkbox/checkbox.svelte';
   import TableBody from '../table-body/table-body.svelte';
@@ -55,6 +55,8 @@
     stickyHeader = false,
     density = 'comfortable',
     scrollable = false,
+    resizable = false,
+    onColumnResize,
     virtualized = false,
     rowHeight = 44,
     overscan = 5,
@@ -75,6 +77,9 @@
   let hasObservedRowCount = false;
   let shouldStickAfterAppend = false;
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
+  let columnWidths = $state<Record<string, number>>(Object.create(null));
+  let previousExternalColumnWidths = new Map<string, number | undefined>();
+  let activeResizeCleanup: (() => void) | undefined;
   const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
   /**
@@ -87,6 +92,11 @@
   );
   const selectionEnabled = $derived(selectable !== 'none');
   const selectedRowIdSet = $derived(new Set(selectedRowIds));
+  const resizableTableWidth = $derived(
+    resizable
+      ? columns.reduce((total, column) => total + boundedColumnWidth(column), 0)
+      : undefined,
+  );
   const selectableRowIds = $derived(
     rows
       .map((row, index) => ({
@@ -145,6 +155,104 @@
     if (align === 'center') return 'center';
     return undefined;
   }
+
+  function rawColumnWidth(column: DataTableColumn<Row>): number | undefined {
+    return columnWidths[column.key] ?? column.width;
+  }
+  function columnWidthBounds(column: DataTableColumn<Row>): { min: number; max: number } {
+    const first = Number.isFinite(column.minWidth) ? Math.max(0, column.minWidth!) : 60;
+    const second = Number.isFinite(column.maxWidth) ? Math.max(0, column.maxWidth!) : Infinity;
+    return { min: Math.min(first, second), max: Math.max(first, second) };
+  }
+  function boundedColumnWidth(
+    column: DataTableColumn<Row>,
+    width = rawColumnWidth(column) ?? 150,
+  ): number {
+    const { min, max } = columnWidthBounds(column);
+    const finiteWidth = Number.isFinite(width) ? width : 150;
+    return Math.min(max, Math.max(min, finiteWidth));
+  }
+  function columnAriaMax(column: DataTableColumn<Row>): number {
+    const { max } = columnWidthBounds(column);
+    return Number.isFinite(max) ? max : Number.MAX_SAFE_INTEGER;
+  }
+  function columnAriaMin(column: DataTableColumn<Row>): number {
+    return columnWidthBounds(column).min;
+  }
+  function columnWidth(column: DataTableColumn<Row>): number | undefined {
+    const width = rawColumnWidth(column);
+    // Resizable columns need a concrete starting width so the separator's
+    // aria-valuenow describes the width that is actually rendered. Columns
+    // without resize handles retain the table's automatic layout behavior.
+    return width === undefined && !resizable ? undefined : boundedColumnWidth(column, width ?? 150);
+  }
+
+  $effect(() => {
+    const externalColumnWidths = new Map(
+      columns.map((column) => [column.key, column.width] as const),
+    );
+    const changedKeys = Array.from(externalColumnWidths.keys()).filter(
+      (key) => previousExternalColumnWidths.get(key) !== externalColumnWidths.get(key),
+    );
+    const removedKeys = Array.from(previousExternalColumnWidths.keys()).filter(
+      (key) => !externalColumnWidths.has(key),
+    );
+    const resetKeys = [...changedKeys, ...removedKeys];
+    if (previousExternalColumnWidths.size > 0 && resetKeys.length > 0) {
+      const nextColumnWidths = untrack(() => ({ ...columnWidths }));
+      for (const key of resetKeys) delete nextColumnWidths[key];
+      columnWidths = Object.assign(Object.create(null), nextColumnWidths);
+    }
+    previousExternalColumnWidths = externalColumnWidths;
+  });
+  function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
+    const nextWidth = boundedColumnWidth(column, width);
+    if (nextWidth === columnWidth(column)) return;
+    columnWidths = Object.assign(Object.create(null), columnWidths, { [column.key]: nextWidth });
+    onColumnResize?.(column.key, nextWidth);
+  }
+  function measuredColumnWidth(event: Event, column: DataTableColumn<Row>): number {
+    const separator = event.currentTarget as HTMLElement;
+    const measuredWidth = separator.closest('th')?.getBoundingClientRect().width;
+    return measuredWidth && measuredWidth > 0 ? measuredWidth : (columnWidth(column) ?? 150);
+  }
+  function handleResizeKey(event: KeyboardEvent, column: DataTableColumn<Row>): void {
+    if (!resizable || (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight')) return;
+    event.preventDefault();
+    const current = measuredColumnWidth(event, column);
+    setColumnWidth(column, current + (event.key === 'ArrowRight' ? 10 : -10));
+  }
+  function handleResizePointer(event: PointerEvent, column: DataTableColumn<Row>): void {
+    if (!resizable || event.button !== 0) return;
+    activeResizeCleanup?.();
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = measuredColumnWidth(event, column);
+    const handle = event.currentTarget as HTMLElement;
+    const isRtl = getComputedStyle(handle).direction === 'rtl';
+    handle.setPointerCapture?.(event.pointerId);
+
+    const move = (moveEvent: PointerEvent) => {
+      if (moveEvent.pointerId !== event.pointerId) return;
+      const delta = moveEvent.clientX - startX;
+      setColumnWidth(column, startWidth + (isRtl ? -delta : delta));
+    };
+    const end = (endEvent: PointerEvent) => {
+      if (endEvent.pointerId !== event.pointerId) return;
+      activeResizeCleanup?.();
+      activeResizeCleanup = undefined;
+    };
+    activeResizeCleanup = () => {
+      document.removeEventListener('pointermove', move);
+      document.removeEventListener('pointerup', end);
+      document.removeEventListener('pointercancel', end);
+    };
+    document.addEventListener('pointermove', move);
+    document.addEventListener('pointerup', end);
+    document.addEventListener('pointercancel', end);
+  }
+
+  onDestroy(() => activeResizeCleanup?.());
 
   function resolveRowId(row: Row, index: number): string {
     if (getRowId) return getRowId(row, index);
@@ -458,13 +566,41 @@
           </th>
         {/if}
         {#each columns as column (column.key)}
-          <TableHeaderCell
-            {...column.sortable ? { column: column.key } : {}}
-            sortable={column.sortable ?? false}
-            align={mapAlign(column.align) ?? 'left'}
-          >
-            {column.label}
-          </TableHeaderCell>
+          {#if resizable}
+            <TableHeaderCell
+              {...column.sortable ? { column: column.key } : {}}
+              sortable={column.sortable ?? false}
+              align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
+            >
+              {column.label}
+              {#snippet actions()}
+                <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                <!-- svelte-ignore a11y_no_noninteractive_element_interactions -->
+                <div
+                  class="cinder-data-table__column-resizer"
+                  role="separator"
+                  aria-orientation="vertical"
+                  aria-label={`Resize ${column.label} column`}
+                  aria-valuemin={columnAriaMin(column)}
+                  aria-valuemax={columnAriaMax(column)}
+                  aria-valuenow={boundedColumnWidth(column)}
+                  tabindex="0"
+                  onkeydown={(event) => handleResizeKey(event, column)}
+                  onpointerdown={(event) => handleResizePointer(event, column)}
+                ></div>
+              {/snippet}
+            </TableHeaderCell>
+          {:else}
+            <TableHeaderCell
+              {...column.sortable ? { column: column.key } : {}}
+              sortable={column.sortable ?? false}
+              align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
+            >
+              {column.label}
+            </TableHeaderCell>
+          {/if}
         {/each}
       </TableRow>
     </TableHeader>
@@ -520,6 +656,7 @@
             <TableCell
               as={column.key === rowHeaderKey ? 'th' : 'td'}
               align={mapAlign(column.align) ?? 'left'}
+              style={columnWidth(column) ? `width: ${columnWidth(column)}px` : undefined}
             >
               {virtualRow.row[column.key]}
             </TableCell>
@@ -549,8 +686,10 @@
     className,
   )}
   data-cinder-virtualized={shouldVirtualizeRows ? 'true' : undefined}
+  data-cinder-resizable={resizable || undefined}
   data-cinder-selectable={selectionEnabled || undefined}
   style:--cinder-data-table-height={shouldVirtualizeRows ? height : undefined}
+  style:--_cinder-data-table-width={resizableTableWidth ? `${resizableTableWidth}px` : undefined}
   style:--_cinder-data-table-row-height={shouldVirtualizeRows
     ? `${resolvedRowHeight}px`
     : undefined}

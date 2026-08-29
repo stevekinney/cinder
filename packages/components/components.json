@@ -42,6 +42,7 @@
       "ring",
       "scrollbar",
       "selectable-row",
+      "severity",
       "shadow",
       "side-navigation",
       "space",
@@ -52,6 +53,7 @@
       "status-dot",
       "surface",
       "table-of-contents",
+      "terminal",
       "text",
       "toggle",
       "touch",
@@ -1017,6 +1019,30 @@
       }
     },
     {
+      "name": "Citation",
+      "id": "citation",
+      "import": "@lostgradient/cinder/citation",
+      "exportName": "Citation",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Inline citation marker opening a paginated preview of source references.",
+      "tags": ["citation"],
+      "useWhen": ["Attaching sources to an inline claim or generated answer."],
+      "avoidWhen": [
+        {
+          "reason": "Building a full bibliography page."
+        }
+      ],
+      "related": ["popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/citation/schema",
+        "variables": "@lostgradient/cinder/citation/variables",
+        "examples": "@lostgradient/cinder/citation/examples"
+      }
+    },
+    {
       "name": "ClickAwayListener",
       "id": "click-away-listener",
       "import": "@lostgradient/cinder/click-away-listener",
@@ -1070,6 +1096,30 @@
         "schema": "@lostgradient/cinder/code-block/schema",
         "variables": "@lostgradient/cinder/code-block/variables",
         "examples": "@lostgradient/cinder/code-block/examples"
+      }
+    },
+    {
+      "name": "CodeLocation",
+      "id": "code-location",
+      "import": "@lostgradient/cinder/code-location",
+      "exportName": "CodeLocation",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Compact chip that identifies a source file and optional line and column.",
+      "tags": ["code-location"],
+      "useWhen": ["Showing a source location beside an error, review comment, or code reference."],
+      "avoidWhen": [
+        {
+          "reason": "Displaying editable source code."
+        }
+      ],
+      "related": [],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/code-location/schema",
+        "variables": "@lostgradient/cinder/code-location/variables",
+        "examples": "@lostgradient/cinder/code-location/examples"
       }
     },
     {
@@ -1730,6 +1780,30 @@
       }
     },
     {
+      "name": "DonutChart",
+      "id": "donut-chart",
+      "import": "@lostgradient/cinder/donut-chart",
+      "exportName": "DonutChart",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Displays categorical proportions as an accessible donut with an optional center total.",
+      "tags": ["chart"],
+      "useWhen": ["Showing a small number of parts-of-whole categories."],
+      "avoidWhen": [
+        {
+          "reason": "Comparing many categories or precise values; use BarChart."
+        }
+      ],
+      "related": ["bar-chart"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/donut-chart/schema",
+        "variables": "@lostgradient/cinder/donut-chart/variables",
+        "examples": "@lostgradient/cinder/donut-chart/examples"
+      }
+    },
+    {
       "name": "Drawer",
       "id": "drawer",
       "import": "@lostgradient/cinder/drawer",
@@ -2153,6 +2227,30 @@
       }
     },
     {
+      "name": "FindBar",
+      "id": "find-bar",
+      "import": "@lostgradient/cinder/find-bar",
+      "exportName": "FindBar",
+      "category": "navigation",
+      "status": "beta",
+      "purpose": "Docked, backend-agnostic find controls with debounced query notifications and match navigation.",
+      "tags": ["find-bar"],
+      "useWhen": ["Providing find-in-document controls backed by a host search implementation."],
+      "avoidWhen": [
+        {
+          "reason": "Building a general search field with suggestions — use SearchField or Combobox."
+        }
+      ],
+      "related": ["input", "form-field", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/find-bar/schema",
+        "variables": "@lostgradient/cinder/find-bar/variables",
+        "examples": "@lostgradient/cinder/find-bar/examples"
+      }
+    },
+    {
       "name": "FloatingAction",
       "id": "floating-action",
       "import": "@lostgradient/cinder/floating-action",
@@ -2428,6 +2526,32 @@
       }
     },
     {
+      "name": "GuidanceRegion",
+      "id": "guidance-region",
+      "import": "@lostgradient/cinder/guidance-region",
+      "exportName": "GuidanceRegion",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Context-scoped registry for versioned, dismissible product guidance claims.",
+      "tags": [],
+      "useWhen": [
+        "Coordinating coachmarks that must respect product versions and reversible dismissal."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing an isolated anchored explanation without registry lifecycle; use Popover."
+        }
+      ],
+      "related": ["popover"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/guidance-region/schema",
+        "variables": "@lostgradient/cinder/guidance-region/variables",
+        "examples": "@lostgradient/cinder/guidance-region/examples"
+      }
+    },
+    {
       "name": "HostProvider",
       "id": "host-provider",
       "import": "@lostgradient/cinder/host-provider",
@@ -2511,6 +2635,30 @@
         "schema": "@lostgradient/cinder/image/schema",
         "variables": "@lostgradient/cinder/image/variables",
         "examples": "@lostgradient/cinder/image/examples"
+      }
+    },
+    {
+      "name": "InlineConfirm",
+      "id": "inline-confirm",
+      "import": "@lostgradient/cinder/inline-confirm",
+      "exportName": "InlineConfirm",
+      "category": "feedback",
+      "status": "stable",
+      "purpose": "In-flow confirmation for reversible actions without modal interruption.",
+      "tags": [],
+      "useWhen": ["Confirming a reversible action in the same flow as its trigger."],
+      "avoidWhen": [
+        {
+          "reason": "The action requires modal interruption or extensive consequences; use ConfirmDialog."
+        }
+      ],
+      "related": ["confirm-dialog"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/inline-confirm/schema",
+        "variables": "@lostgradient/cinder/inline-confirm/variables",
+        "examples": "@lostgradient/cinder/inline-confirm/examples"
       }
     },
     {
@@ -2756,6 +2904,30 @@
         "schema": "@lostgradient/cinder/kbd/schema",
         "variables": "@lostgradient/cinder/kbd/variables",
         "examples": "@lostgradient/cinder/kbd/examples"
+      }
+    },
+    {
+      "name": "KeyValueEditor",
+      "id": "key-value-editor",
+      "import": "@lostgradient/cinder/key-value-editor",
+      "exportName": "KeyValueEditor",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Edits string key/value pairs and masks values selected as secrets.",
+      "tags": ["key-value-editor"],
+      "useWhen": ["Editing headers, environment variables, or configuration fields."],
+      "avoidWhen": [
+        {
+          "reason": "Values need rich structured content; use Table."
+        }
+      ],
+      "related": ["secret-value-field", "table"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/key-value-editor/schema",
+        "variables": "@lostgradient/cinder/key-value-editor/variables",
+        "examples": "@lostgradient/cinder/key-value-editor/examples"
       }
     },
     {
@@ -3209,6 +3381,32 @@
         "variables": "@lostgradient/cinder/modal/variables",
         "examples": "@lostgradient/cinder/modal/examples",
         "constraints": "@lostgradient/cinder/modal/constraints"
+      }
+    },
+    {
+      "name": "ModalRegion",
+      "id": "modal-region",
+      "import": "@lostgradient/cinder/modal-region",
+      "exportName": "ModalRegion",
+      "category": "overlay",
+      "status": "beta",
+      "purpose": "Context-scoped host for imperative Modal registration and promise-returning confirmations.",
+      "tags": [],
+      "useWhen": [
+        "Application code must open deduplicated modals or await a confirmation result imperatively."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "A single declarative modal is sufficient; use Modal directly."
+        }
+      ],
+      "related": ["modal", "confirm-dialog"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/modal-region/schema",
+        "variables": "@lostgradient/cinder/modal-region/variables",
+        "examples": "@lostgradient/cinder/modal-region/examples"
       }
     },
     {
@@ -3746,6 +3944,30 @@
       }
     },
     {
+      "name": "QuotaMeter",
+      "id": "quota-meter",
+      "import": "@lostgradient/cinder/quota-meter",
+      "exportName": "QuotaMeter",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Meter composition for quota usage with reset and unlimited states.",
+      "tags": ["quota-meter"],
+      "useWhen": ["Showing usage against a plan or account limit."],
+      "avoidWhen": [
+        {
+          "reason": "Showing task completion."
+        }
+      ],
+      "related": [],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/quota-meter/schema",
+        "variables": "@lostgradient/cinder/quota-meter/variables",
+        "examples": "@lostgradient/cinder/quota-meter/examples"
+      }
+    },
+    {
       "name": "RadioGroup",
       "id": "radio-group",
       "import": "@lostgradient/cinder/radio-group",
@@ -3800,6 +4022,30 @@
         "schema": "@lostgradient/cinder/rating/schema",
         "variables": "@lostgradient/cinder/rating/variables",
         "examples": "@lostgradient/cinder/rating/examples"
+      }
+    },
+    {
+      "name": "RelativeTime",
+      "id": "relative-time",
+      "import": "@lostgradient/cinder/relative-time",
+      "exportName": "RelativeTime",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Localized, live-updating relative date label for timestamps.",
+      "tags": ["relative-time"],
+      "useWhen": ["Showing when a message, issue, or event happened."],
+      "avoidWhen": [
+        {
+          "reason": "An exact calendar date is required."
+        }
+      ],
+      "related": ["date-picker"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/relative-time/schema",
+        "variables": "@lostgradient/cinder/relative-time/variables",
+        "examples": "@lostgradient/cinder/relative-time/examples"
       }
     },
     {
@@ -5371,6 +5617,58 @@
       }
     },
     {
+      "name": "TerminalFrame",
+      "id": "terminal-frame",
+      "import": "@lostgradient/cinder/terminal-frame",
+      "exportName": "TerminalFrame",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Frame a consumer-owned real PTY with terminal chrome, connection status, reload handling, and character-cell resize reporting.",
+      "tags": ["terminal", "pty", "shell"],
+      "useWhen": [
+        "Hosting a real interactive terminal implementation that needs consistent chrome and resize dimensions."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Rendering a read-only stream — use TerminalOutput."
+        }
+      ],
+      "related": ["terminal-output", "preview-panel"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/terminal-frame/schema",
+        "variables": "@lostgradient/cinder/terminal-frame/variables",
+        "examples": "@lostgradient/cinder/terminal-frame/examples"
+      }
+    },
+    {
+      "name": "TerminalOutput",
+      "id": "terminal-output",
+      "import": "@lostgradient/cinder/terminal-output",
+      "exportName": "TerminalOutput",
+      "category": "feedback",
+      "status": "alpha",
+      "purpose": "Render a read-only terminal stream with a bounded subset of ANSI SGR color and line-rewrite behavior.",
+      "tags": ["terminal", "ansi", "output"],
+      "useWhen": [
+        "Showing command output or logs that include basic ANSI styling and carriage-return progress updates."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Hosting an interactive real PTY — use terminal-frame."
+        }
+      ],
+      "related": ["terminal-frame", "code-block"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/terminal-output/schema",
+        "variables": "@lostgradient/cinder/terminal-output/variables",
+        "examples": "@lostgradient/cinder/terminal-output/examples"
+      }
+    },
+    {
       "name": "Textarea",
       "id": "textarea",
       "import": "@lostgradient/cinder/textarea",
@@ -5755,6 +6053,32 @@
         "schema": "@lostgradient/cinder/waveform/schema",
         "variables": "@lostgradient/cinder/waveform/variables",
         "examples": "@lostgradient/cinder/waveform/examples"
+      }
+    },
+    {
+      "name": "ZoomPanViewer",
+      "id": "zoom-pan-viewer",
+      "import": "@lostgradient/cinder/zoom-pan-viewer",
+      "exportName": "ZoomPanViewer",
+      "category": "data-display",
+      "status": "beta",
+      "purpose": "Interactive viewport for zooming and panning images, diagrams, and rendered Mermaid content.",
+      "tags": ["zoom-pan-viewer"],
+      "useWhen": [
+        "Viewing large images or SVG diagrams that need pointer and keyboard navigation."
+      ],
+      "avoidWhen": [
+        {
+          "reason": "Showing ordinary responsive media that does not need a viewport transform."
+        }
+      ],
+      "related": ["image", "button"],
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/cinder/zoom-pan-viewer/schema",
+        "variables": "@lostgradient/cinder/zoom-pan-viewer/variables",
+        "examples": "@lostgradient/cinder/zoom-pan-viewer/examples"
       }
     }
   ]

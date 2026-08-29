@@ -157,6 +157,8 @@
     color: inherit;
     cursor: pointer;
     display: inline-flex;
+    flex: 1 1 auto;
+    min-width: 0;
     align-items: center;
     gap: var(--cinder-space-1);
     width: 100%;

@@ -83,6 +83,12 @@
     border-color: var(--cinder-accent-border);
   }
 
+  .cinder-badge[data-cinder-severity='critical'] {
+    background: var(--cinder-severity-critical-background, var(--cinder-status-danger-background));
+    color: var(--cinder-severity-critical, var(--cinder-status-danger-text));
+    border-color: var(--cinder-severity-critical, var(--cinder-status-danger-border));
+  }
+
   /* ----------------------------------------
  * Monospace affordance
  * ---------------------------------------- */

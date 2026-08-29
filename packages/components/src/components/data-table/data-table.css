@@ -72,6 +72,12 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  .cinder-data-table[data-cinder-resizable] .cinder-table {
+    table-layout: fixed;
+    inline-size: var(--_cinder-data-table-width);
+    min-inline-size: var(--_cinder-data-table-width);
+  }
+
   @media (forced-colors: active) {
     .cinder-data-table[data-cinder-virtualized]
       .cinder-table__row[data-cinder-virtual-row]:focus-visible {
@@ -84,5 +90,24 @@
   .cinder-data-table__virtual-spacer-cell {
     padding: 0;
     border: 0;
+  }
+  .cinder-data-table__column-resizer {
+    display: inline-block;
+    inline-size: 0.75rem;
+    block-size: 1.5rem;
+    cursor: col-resize;
+    touch-action: none;
+    vertical-align: middle;
+  }
+  .cinder-data-table__column-resizer:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .cinder-data-table__column-resizer:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: 1px;
+      box-shadow: none;
+    }
   }
 }

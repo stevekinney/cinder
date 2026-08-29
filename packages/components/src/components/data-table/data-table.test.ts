@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import type { DataTableSelectionMode as RootDataTableSelectionMode } from '../../index.ts';
 import { setupHappyDom } from '../../test/happy-dom.ts';
@@ -89,6 +90,219 @@ describe('DataTable — table structure', () => {
   test('renders one <tr> in the body per row', () => {
     const { container } = render(DataTable, { columns, rows });
     expect(container.querySelectorAll('tbody tr').length).toBe(rows.length);
+  });
+
+  test('omits header actions when columns are not resizable', () => {
+    const { container } = render(DataTable, { columns, rows, resizable: false });
+
+    expect(container.querySelector('.cinder-table__header-actions')).toBeNull();
+    expect(container.querySelector('[role="separator"]')).toBeNull();
+  });
+});
+
+describe('DataTable — column resizing', () => {
+  test('retains cleanup for active document resize listeners', () => {
+    const source = readFileSync(new URL('./data-table.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('let activeResizeCleanup');
+    expect(source).toContain('onDestroy(() => activeResizeCleanup?.())');
+  });
+  test('renders keyboard-accessible separators and clamps arrow-key resizing', async () => {
+    const resized: Array<[string, number]> = [];
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100, minWidth: 90, maxWidth: 110 }],
+      rows,
+      resizable: true,
+      onColumnResize: (key: string, width: number) => resized.push([key, width]),
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('100');
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+    expect(resized).toEqual([['name', 110]]);
+  });
+
+  test('resizes from pointer movement and reports the resulting width', async () => {
+    const resized: Array<[string, number]> = [];
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 120 }],
+      rows,
+      resizable: true,
+      onColumnResize: (key: string, width: number) => resized.push([key, width]),
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    Object.defineProperty(separator, 'setPointerCapture', { value: () => {} });
+
+    await fireEvent.pointerDown(separator, { button: 0, clientX: 100, pointerId: 7 });
+    await fireEvent.pointerMove(document, { clientX: 135, pointerId: 7 });
+    await fireEvent.pointerUp(document, { clientX: 135, pointerId: 7 });
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('155');
+    expect(resized.at(-1)).toEqual(['name', 155]);
+  });
+
+  test('reverses pointer resizing direction in RTL', async () => {
+    const resized: number[] = [];
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 120 }],
+      rows,
+      resizable: true,
+      onColumnResize: (_key: string, width: number) => resized.push(width),
+    });
+    container.style.direction = 'rtl';
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    Object.defineProperty(separator, 'setPointerCapture', { value: () => {} });
+
+    await fireEvent.pointerDown(separator, { button: 0, clientX: 100, pointerId: 8 });
+    await fireEvent.pointerMove(document, { clientX: 135, pointerId: 8 });
+    await fireEvent.pointerUp(document, { clientX: 135, pointerId: 8 });
+
+    expect(resized.at(-1)).toBe(85);
+    expect(separator.getAttribute('aria-valuenow')).toBe('85');
+  });
+
+  test('handles prototype-named column keys without width collisions', async () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'constructor', label: 'Constructor', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Constructor column' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('100');
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+  });
+
+  test('clamps the initial separator value when width is omitted', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', minWidth: 80, maxWidth: 120 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('120');
+  });
+
+  test('renders the default width represented by an omitted column width', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name' }],
+      rows,
+      resizable: true,
+    });
+    expect(container.querySelector('thead th')?.getAttribute('style')).toContain('width: 150px');
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('150');
+  });
+
+  test('provides a finite aria-valuemax when maxWidth is omitted', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuemax'),
+    ).toBe(String(Number.MAX_SAFE_INTEGER));
+  });
+
+  test('normalizes non-finite width bounds and values', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [
+        {
+          key: 'name',
+          label: 'Name',
+          width: Number.NaN,
+          minWidth: Number.NaN,
+          maxWidth: Number.POSITIVE_INFINITY,
+        },
+      ],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('150');
+    expect(separator.getAttribute('aria-valuemin')).toBe('60');
+    expect(separator.getAttribute('aria-valuemax')).toBe(String(Number.MAX_SAFE_INTEGER));
+    expect(container.querySelector('thead th')?.getAttribute('style')).toContain('width: 150px');
+  });
+
+  test('normalizes contradictory finite width bounds for sizing and ARIA', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 150, minWidth: 200, maxWidth: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = getByRole('separator', { name: 'Resize Name column' });
+    expect(separator.getAttribute('aria-valuemin')).toBe('100');
+    expect(separator.getAttribute('aria-valuemax')).toBe('200');
+    expect(separator.getAttribute('aria-valuenow')).toBe('150');
+  });
+
+  test('clamps the initial rendered column width to its bounds', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 40, minWidth: 80, maxWidth: 120 }],
+      rows,
+      resizable: true,
+    });
+    const header = container.querySelector('thead th');
+    expect(header?.getAttribute('style')).toContain('width: 80px');
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('80');
+  });
+
+  test('treats external column width changes as authoritative after resizing', async () => {
+    const view = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = view.getByRole('separator', { name: 'Resize Name column' });
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+
+    await view.rerender({
+      columns: [{ key: 'name', label: 'Name', width: 180 }],
+      rows,
+      resizable: true,
+    });
+    await tick();
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('180');
+    expect(view.container.querySelector('thead th')?.getAttribute('style')).toContain(
+      'width: 180px',
+    );
+  });
+
+  test('clears cached resize values when a column disappears', () => {
+    const source = readFileSync(new URL('./data-table.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('const removedKeys = Array.from(previousExternalColumnWidths.keys())');
+    expect(source).toContain('(key) => !externalColumnWidths.has(key)');
+    expect(source).toContain('const resetKeys = [...changedKeys, ...removedKeys]');
+    expect(source).toContain('for (const key of resetKeys) delete nextColumnWidths[key]');
+  });
+
+  test('uses fixed table layout so resize values describe rendered widths', () => {
+    const css = readFileSync(new URL('./data-table.css', import.meta.url), 'utf8');
+    const { container } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      container.querySelector('.cinder-data-table')?.hasAttribute('data-cinder-resizable'),
+    ).toBe(true);
+    expect(css).toContain('.cinder-data-table[data-cinder-resizable] .cinder-table');
+    expect(css).toContain('table-layout: fixed;');
+    expect(css).toContain('inline-size: var(--_cinder-data-table-width);');
+    expect(css).toContain('min-inline-size: var(--_cinder-data-table-width);');
+    expect(container.querySelector('.cinder-data-table')?.getAttribute('style')).toContain(
+      '--_cinder-data-table-width: 100px',
+    );
   });
 });
 

@@ -1,0 +1,8 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../meter/meter.css';
+@layer cinder.components {
+  .cinder-quota-meter {
+    display: block;
+    width: 100%;
+  }
+}

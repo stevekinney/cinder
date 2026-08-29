@@ -22,6 +22,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import { classNames } from '../../utilities/class-names.ts';
   import { truncate } from '../../utilities/truncate.ts';
   import {
@@ -35,6 +36,7 @@
 
   import { getVisibleComments, isDocumentAnchor } from '../../comments/index.ts';
   import Button from '@lostgradient/cinder/button';
+  import InlineConfirm from '@lostgradient/cinder/inline-confirm';
   import Dropdown from '@lostgradient/cinder/dropdown';
   import DropdownTrigger from '@lostgradient/cinder/dropdown-trigger';
   import DropdownMenu from '@lostgradient/cinder/dropdown-menu';
@@ -53,6 +55,8 @@
   }: CommentSidebarProps = $props();
 
   let showConfirmClear = $state(false);
+  const actionsTriggerId = $derived(`${id}-actions-trigger`);
+  const documentCommentTriggerId = $derived(`${id}-add-comment`);
 
   /** Whether the user is composing a new document-level comment */
   let composingDocumentComment = $state(false);
@@ -108,13 +112,25 @@
     showConfirmClear = true;
   }
 
+  async function restoreActionsFocus(): Promise<void> {
+    await tick();
+    const actionsTrigger = document.getElementById(actionsTriggerId) as HTMLButtonElement | null;
+    if (actionsTrigger && !actionsTrigger.disabled) {
+      actionsTrigger.focus();
+      return;
+    }
+    document.getElementById(documentCommentTriggerId)?.focus();
+  }
+
   function handleConfirmClear() {
     onclearall?.();
     showConfirmClear = false;
+    void restoreActionsFocus();
   }
 
   function handleCancelClear() {
     showConfirmClear = false;
+    void restoreActionsFocus();
   }
 </script>
 
@@ -126,6 +142,7 @@
 
     {#if !readonly}
       <Button
+        id={documentCommentTriggerId}
         variant="ghost"
         size="xs"
         aria-label={composingDocumentComment ? 'Cancel document comment' : 'Add document comment'}
@@ -144,33 +161,42 @@
       </Button>
     {/if}
 
-    {#if !readonly && visibleThreads.length > 0}
-      <Dropdown id="{id}-actions">
-        <DropdownTrigger class="actions-trigger" aria-label="Comment actions" caretVisible={false}>
-          <MoreHorizontal class="cinder-icon-sm" />
-        </DropdownTrigger>
-        <DropdownMenu>
-          <DropdownItem variant="danger" onclick={handleClearAllClick}>
-            <Trash2 class="cinder-icon-sm" />
-            Clear all comments
-          </DropdownItem>
-        </DropdownMenu>
-      </Dropdown>
+    {#if !readonly}
+      {#key visibleThreads.length > 0}
+        <Dropdown id="{id}-actions">
+          <DropdownTrigger
+            id={actionsTriggerId}
+            class="actions-trigger"
+            aria-label="Comment actions"
+            caretVisible={false}
+            disabled={visibleThreads.length === 0}
+          >
+            <MoreHorizontal class="cinder-icon-sm" />
+          </DropdownTrigger>
+          <DropdownMenu>
+            <DropdownItem
+              variant="danger"
+              onclick={handleClearAllClick}
+              disabled={visibleThreads.length === 0}
+            >
+              <Trash2 class="cinder-icon-sm" />
+              Clear all comments
+            </DropdownItem>
+          </DropdownMenu>
+        </Dropdown>
+      {/key}
     {/if}
   </div>
 
   <!-- Confirmation banner for clear all -->
-  {#if showConfirmClear}
-    <div class="confirm-clear" role="alertdialog" aria-labelledby="{id}-confirm-title">
-      <p id="{id}-confirm-title" class="confirm-message">
-        Delete all {visibleThreads.length} comment threads?
-      </p>
-      <div class="confirm-actions">
-        <Button variant="secondary" size="xs" onclick={handleCancelClear}>Cancel</Button>
-        <Button variant="danger" size="xs" onclick={handleConfirmClear}>Delete All</Button>
-      </div>
-    </div>
-  {/if}
+  <InlineConfirm
+    prompt="Delete all {visibleThreads.length} comment threads?"
+    confirmLabel="Delete All"
+    destructive
+    bind:open={showConfirmClear}
+    onConfirm={handleConfirmClear}
+    onCancel={handleCancelClear}
+  />
 
   <!-- Document comment composer -->
   {#if composingDocumentComment}
@@ -318,29 +344,6 @@
       outline: var(--cinder-ring-width) solid ButtonText;
       outline-offset: 3px;
     }
-  }
-
-  /* Confirmation banner */
-  .confirm-clear {
-    display: flex;
-    flex-direction: column;
-    gap: var(--cinder-space-2);
-    padding: var(--cinder-space-3);
-    background: var(--cinder-status-danger-background);
-    border-bottom: 1px solid var(--cinder-status-danger-border);
-  }
-
-  .confirm-message {
-    font-size: var(--cinder-text-sm);
-    font-weight: var(--cinder-font-medium);
-    color: var(--cinder-status-danger-text);
-    margin: 0;
-  }
-
-  .confirm-actions {
-    display: flex;
-    gap: var(--cinder-space-2);
-    justify-content: flex-end;
   }
 
   /* Document comment composer */

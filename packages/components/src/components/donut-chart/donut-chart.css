@@ -1,0 +1,94 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-donut-chart {
+    min-inline-size: 12rem;
+  }
+  .cinder-donut-chart--scrollable {
+    min-inline-size: 0;
+    overflow-x: auto;
+  }
+  .cinder-donut-chart--scrollable figure {
+    min-inline-size: 12rem;
+  }
+  .cinder-donut-chart figure {
+    display: flex;
+    align-items: center;
+    gap: var(--cinder-space-4);
+    margin: 0;
+  }
+  .cinder-donut-chart svg {
+    inline-size: 12rem;
+    block-size: 12rem;
+    flex: 0 0 auto;
+  }
+  .cinder-donut-chart__arc {
+    fill: none;
+    stroke-width: 24;
+    stroke: var(--cinder-accent-solid);
+  }
+  .cinder-donut-chart__focus-ring-layer {
+    display: none;
+    pointer-events: none;
+  }
+  .cinder-donut-chart g[role='button']:focus-visible .cinder-donut-chart__focus-ring-layer {
+    display: block;
+  }
+  .cinder-donut-chart__focus-ring,
+  .cinder-donut-chart__focus-ring-halo {
+    fill: none;
+    pointer-events: none;
+    vector-effect: non-scaling-stroke;
+  }
+  .cinder-donut-chart__focus-ring {
+    stroke: var(--cinder-ring-color);
+    stroke-width: var(--cinder-ring-width);
+  }
+  .cinder-donut-chart__focus-ring-halo {
+    stroke: var(--cinder-ring-offset-color);
+    stroke-width: calc(
+      var(--cinder-ring-width) + var(--cinder-ring-offset) + var(--cinder-ring-offset)
+    );
+  }
+  @media (forced-colors: active) {
+    .cinder-donut-chart__focus-ring-halo {
+      display: none;
+    }
+    .cinder-donut-chart__focus-ring {
+      stroke: ButtonText;
+      stroke-width: var(--cinder-ring-width);
+    }
+  }
+  .cinder-donut-chart__total {
+    font-size: var(--cinder-text-xl);
+    font-weight: var(--cinder-font-semibold);
+    fill: currentColor;
+  }
+  .cinder-donut-chart__label {
+    font-size: var(--cinder-text-xs);
+    fill: var(--cinder-text-muted);
+  }
+  .cinder-donut-chart__legend {
+    display: grid;
+    gap: var(--cinder-space-2);
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .cinder-donut-chart__legend li {
+    display: flex;
+    justify-content: space-between;
+    gap: var(--cinder-space-4);
+  }
+  .cinder-donut-chart__legend-label {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--cinder-space-2);
+  }
+  .cinder-donut-chart__legend-swatch {
+    display: inline-block;
+    inline-size: 0.75rem;
+    block-size: 0.75rem;
+    flex: 0 0 auto;
+    border-radius: var(--cinder-radius-full);
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "citation",
+  "import": "@lostgradient/cinder/citation",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Citation",
+      "description": "Attach a compact source marker to a claim and expose its sources.",
+      "code": "<script lang=\"ts\">\n  import { Citation } from '@lostgradient/cinder/citation';\n</script>\n\n<Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]} />\n"
+    }
+  ]
+}

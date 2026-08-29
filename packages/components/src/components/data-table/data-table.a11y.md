@@ -22,6 +22,22 @@ Native table reading order is the keyboard contract. Sort controls, when present
 
 Keep focus indicators visible. If you wrap or restyle DataTable, verify the focused element remains visually apparent in default and forced-colors modes.
 
+When `resizable` is enabled, each column separator is a focusable `role="separator"` with `aria-orientation="vertical"`, an accessible label, and `aria-valuemin`, `aria-valuemax`, and `aria-valuenow` describing the rendered column width. The table uses fixed layout while resizing so the announced value and visible width remain aligned.
+
+### Keyboard matrix
+
+| Focus target     | Key                    | Result                                                                  |
+| ---------------- | ---------------------- | ----------------------------------------------------------------------- |
+| Sort button      | Enter or Space         | Applies the next sort state and updates `aria-sort` on its header cell. |
+| Column separator | ArrowLeft / ArrowRight | Decreases or increases the column width by 10 pixels within its bounds. |
+| Column separator | Other keys             | No resize action; focus remains on the separator.                       |
+| Virtualized row  | ArrowUp / ArrowDown    | Moves roving focus to the previous or next rendered row.                |
+| Virtualized row  | Home / End             | Moves roving focus to the first or last row.                            |
+
+### Assistive technology and review outcome
+
+The native table, header-cell sort state, row headers, selection checkbox labels, and resize separator values were reviewed against the rendered DOM and keyboard interaction model. Focus remains on the active sort control, resize separator, or virtualized row while its state changes; no operation depends on color or pointer input. Forced-colors focus indicators remain visible through the component and table sidecars. Review outcome: the documented focus and keyboard model is approved for the current alpha component, with callers responsible for preserving the wrapper's focus styles when applying custom table chrome.
+
 ## Sortable headers
 
 Sortable columns render a native button inside the header cell. `aria-sort` stays on the `<th>` so assistive technology announces the current state with the column label, and the button exposes an `aria-description` that names the next action: "Activate to sort ascending" or "Activate to sort descending".

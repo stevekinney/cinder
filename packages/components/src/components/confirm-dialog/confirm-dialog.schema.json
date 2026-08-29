@@ -56,6 +56,11 @@
         "description": "Fired when the user activates the confirm button. Required. Component closes itself after."
       },
       {
+        "name": "onExitComplete",
+        "reason": "function-or-snippet",
+        "description": "Fired once the underlying modal's exit transition has completed."
+      },
+      {
         "name": "triggerRef",
         "reason": "unknown-shape",
         "description": "Forwarded to <Modal>; focus is restored here on close."

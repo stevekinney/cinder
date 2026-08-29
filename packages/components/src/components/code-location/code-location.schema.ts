@@ -1,0 +1,34 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-code-location`.',
+    },
+    file: {
+      type: 'string',
+    },
+    line: {
+      type: 'number',
+    },
+    column: {
+      type: 'number',
+      description: 'Rendered only when `line` is also provided.',
+    },
+  },
+  additionalProperties: false,
+  required: ['file'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

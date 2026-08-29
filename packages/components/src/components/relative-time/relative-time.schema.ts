@@ -1,0 +1,44 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    class: {
+      type: 'string',
+      description: 'Custom class merged with `.cinder-relative-time`.',
+    },
+    locale: {
+      anyOf: [
+        {
+          type: 'string',
+        },
+        {
+          type: 'array',
+          items: {
+            type: 'string',
+          },
+        },
+      ],
+    },
+    tick: {
+      type: 'boolean',
+      description: 'Recalculate the label on an interval. Set false to disable ticking.',
+    },
+  },
+  additionalProperties: false,
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'date',
+        reason: 'unknown-shape',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

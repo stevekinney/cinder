@@ -31,6 +31,10 @@ const schema = {
       description:
         'When true, wraps the table in a `.cinder-table-scroll` container that\nenables horizontal overflow scrolling on small viewports.',
     },
+    resizable: {
+      type: 'boolean',
+      description: 'Enables pointer and keyboard resizing handles in column headers.',
+    },
     virtualized: {
       type: 'boolean',
       description:
@@ -81,6 +85,12 @@ const schema = {
         name: 'isRowSelectionDisabled',
         reason: 'function-or-snippet',
         description: 'Returns true when a row should render a disabled selection checkbox.',
+      },
+      {
+        name: 'onColumnResize',
+        reason: 'function-or-snippet',
+        description:
+          'Called after a column width changes through a pointer or keyboard resize handle.',
       },
       {
         name: 'rows',

@@ -1163,3 +1163,52 @@ describe('--cinder-type-tab-size (declaration, value, usage)', () => {
     }
   });
 });
+
+describe('terminal ANSI foreground ramp', () => {
+  const names = [
+    'black',
+    'red',
+    'green',
+    'yellow',
+    'blue',
+    'magenta',
+    'cyan',
+    'white',
+    'bright-black',
+    'bright-red',
+    'bright-green',
+    'bright-yellow',
+    'bright-blue',
+    'bright-magenta',
+    'bright-cyan',
+    'bright-white',
+  ];
+  it('declares all 16 theme-aware foreground slots', () => {
+    for (const name of names) {
+      const value = readTokenValue(css, `--cinder-terminal-ansi-${name}`);
+      expect(value).toContain('light-dark');
+    }
+  });
+
+  it('keeps every ANSI foreground readable against the terminal surface in both arms', () => {
+    const surface = readOklchToken('--cinder-surface-inset');
+    for (const name of names) {
+      const foreground = readOklchToken(`--cinder-terminal-ansi-${name}`);
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(surface[arm])),
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  });
+
+  it('keeps critical severity foreground readable against its background in both arms', () => {
+    const foreground = readOklchToken('--cinder-severity-critical');
+    const background = readOklchToken('--cinder-severity-critical-background');
+    for (const arm of ['light', 'dark'] as const) {
+      expect(
+        contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(background[arm])),
+      ).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
+});

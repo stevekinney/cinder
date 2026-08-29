@@ -2,6 +2,7 @@ import { expect, test } from 'bun:test';
 import type { ComponentProps, Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
+import type { BadgeSeverity as RootBadgeSeverity } from '../../index.ts';
 import Badge from './badge.svelte';
 import type { BadgeProps, BadgeSize, BadgeSubscriptionState, BadgeVariant } from './badge.types.ts';
 
@@ -33,4 +34,10 @@ test('Badge public prop surface unchanged after migration', () => {
   expect(aliasAssignableForward).toBe(true);
   expect(aliasAssignableBackward).toBe(true);
   expect(componentAcceptsSnapshot).toBe(true);
+});
+
+test('BadgeSeverity is available from the public root barrel', () => {
+  const severity: RootBadgeSeverity = 'critical';
+
+  expect(severity).toBe('critical');
 });

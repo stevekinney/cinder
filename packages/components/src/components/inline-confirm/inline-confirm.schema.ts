@@ -1,0 +1,46 @@
+import type { ComponentSchema } from '../../schema-types';
+
+const schema = {
+  $schema: 'https://json-schema.org/draft/2020-12/schema',
+  type: 'object',
+  properties: {
+    prompt: {
+      type: 'string',
+    },
+    confirmLabel: {
+      type: 'string',
+    },
+    cancelLabel: {
+      type: 'string',
+    },
+    destructive: {
+      type: 'boolean',
+    },
+    open: {
+      type: 'boolean',
+    },
+    class: {
+      type: 'string',
+    },
+  },
+  additionalProperties: false,
+  required: ['confirmLabel', 'prompt'],
+  metadata: {
+    unsupportedProps: [
+      {
+        name: 'children',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onCancel',
+        reason: 'function-or-snippet',
+      },
+      {
+        name: 'onConfirm',
+        reason: 'function-or-snippet',
+      },
+    ],
+  },
+} satisfies ComponentSchema;
+
+export default schema as ComponentSchema;

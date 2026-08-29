@@ -6,6 +6,7 @@ export type BadgeVariant = 'neutral' | 'success' | 'warning' | 'danger' | 'info'
 
 /** Size of the badge. */
 export type BadgeSize = 'xs' | 'sm' | 'md';
+export type BadgeSeverity = 'info' | 'low' | 'medium' | 'high' | 'critical';
 
 /** Billing lifecycle states that Badge can render as an opinionated preset. */
 export type BadgeSubscriptionState =
@@ -26,6 +27,7 @@ export type BadgeProps =
       class?: string;
       /** Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label. */
       subscriptionState: BadgeSubscriptionState;
+      severity?: BadgeSeverity;
       /** Required badge content unless subscriptionState is provided; optional content override for the subscription preset label. */
       children?: Snippet;
     })
@@ -36,6 +38,7 @@ export type BadgeProps =
       monospace?: boolean;
       class?: string;
       subscriptionState?: undefined;
+      severity?: BadgeSeverity;
       /**
        * Badge content — intentionally required. A badge without content is
        * semantically meaningless.
@@ -62,6 +65,8 @@ export interface BadgeSchemaProps {
   monospace?: boolean;
   /** Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label. */
   subscriptionState?: BadgeSubscriptionState;
+  /** Ordered severity preset; critical uses the dedicated critical token. */
+  severity?: BadgeSeverity;
   /** Custom class merged with `.cinder-badge`. */
   class?: string;
 }

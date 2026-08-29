@@ -1,0 +1,48 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../button/button.css';
+@layer cinder.components {
+  .cinder-zoom-pan-viewer {
+    position: relative;
+    overflow: hidden;
+    min-block-size: 12rem;
+    outline: none;
+    background: var(--cinder-surface);
+    touch-action: none;
+  }
+  .cinder-zoom-pan-viewer
+    :where(
+      button,
+      a,
+      input,
+      textarea,
+      select,
+      [contenteditable='true'],
+      [role='button'],
+      [role='link']
+    ) {
+    touch-action: auto;
+  }
+  .cinder-zoom-pan-viewer:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: var(--_cinder-focus-ring-shadow);
+  }
+  @media (forced-colors: active) {
+    .cinder-zoom-pan-viewer:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(-1 * var(--cinder-ring-width));
+      box-shadow: none;
+    }
+  }
+  .cinder-zoom-pan-viewer__viewport {
+    transform-origin: center;
+    will-change: transform;
+    user-select: none;
+  }
+  .cinder-zoom-pan-viewer__controls {
+    position: absolute;
+    inset-block-start: var(--cinder-space-2);
+    inset-inline-end: var(--cinder-space-2);
+    display: flex;
+    gap: var(--cinder-space-1);
+  }
+}

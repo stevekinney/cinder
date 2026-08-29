@@ -941,6 +941,88 @@
       }
     }
   },
+  "severity": {
+    "critical": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.95, 0.04, 25]
+      }
+    },
+    "critical-background": {
+      "$type": "color",
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.24, 0.11, 25]
+      }
+    }
+  },
+  "terminal": {
+    "ansi-black": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.82, 0, 0] }
+    },
+    "ansi-red": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.72, 0.14, 25] }
+    },
+    "ansi-green": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.72, 0.13, 145] }
+    },
+    "ansi-yellow": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.82, 0.13, 85] }
+    },
+    "ansi-blue": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.72, 0.15, 260] }
+    },
+    "ansi-magenta": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.75, 0.14, 325] }
+    },
+    "ansi-cyan": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.75, 0.12, 205] }
+    },
+    "ansi-white": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.94, 0, 0] }
+    },
+    "ansi-bright-black": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.68, 0, 0] }
+    },
+    "ansi-bright-red": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.78, 0.15, 25] }
+    },
+    "ansi-bright-green": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.8, 0.14, 145] }
+    },
+    "ansi-bright-yellow": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.88, 0.14, 85] }
+    },
+    "ansi-bright-blue": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.8, 0.16, 260] }
+    },
+    "ansi-bright-magenta": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.82, 0.15, 325] }
+    },
+    "ansi-bright-cyan": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.82, 0.13, 205] }
+    },
+    "ansi-bright-white": {
+      "$type": "color",
+      "$value": { "colorSpace": "oklch", "components": [0.98, 0, 0] }
+    }
+  },
   "checker": {
     "base": {
       "$type": "color",

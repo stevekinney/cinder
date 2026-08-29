@@ -57,6 +57,8 @@ export type ConfirmDialogProps = Omit<DialogCancelProps, 'cancelLabel'> & {
   typeToConfirmLabel?: string;
   /** Fired when the user activates the confirm button. Required. Component closes itself after. */
   onConfirm: () => void;
+  /** Fired once the underlying modal's exit transition has completed. */
+  onExitComplete?: () => void;
   /** Forwarded to <Modal>; focus is restored here on close. */
   triggerRef?: HTMLElement | null;
   /** Optional extra class on the underlying <Modal>. Destructured as `class: className` per repo convention. */

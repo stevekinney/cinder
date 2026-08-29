@@ -16,7 +16,7 @@
    * @avoidWhen Showing only a colored dot for presence — use status-dot instead.
    * @related chip, status-dot
    */
-  export type { BadgeProps, BadgeSize, BadgeVariant } from './badge.types.ts';
+  export type { BadgeProps, BadgeSeverity, BadgeSize, BadgeVariant } from './badge.types.ts';
 </script>
 
 <script lang="ts">
@@ -53,6 +53,7 @@
     size = 'md',
     monospace = false,
     subscriptionState,
+    severity,
     class: customClassName,
     children,
     ...rest
@@ -63,12 +64,25 @@
       ? undefined
       : subscriptionStateConfigurations[subscriptionState],
   );
-  const resolvedVariant = $derived(subscriptionStateConfiguration?.variant ?? variant);
+  const severityVariant = $derived<BadgeVariant | undefined>(
+    severity === 'critical'
+      ? undefined
+      : severity === 'info'
+        ? 'info'
+        : severity === 'low'
+          ? 'success'
+          : severity === 'medium'
+            ? 'warning'
+            : severity === 'high'
+              ? 'danger'
+              : undefined,
+  );
 </script>
 
 <span
   class={classNames('cinder-badge', customClassName)}
-  data-cinder-variant={resolvedVariant}
+  data-cinder-variant={subscriptionStateConfiguration?.variant ?? severityVariant ?? variant}
+  data-cinder-severity={subscriptionState === undefined ? severity : undefined}
   data-cinder-size={size}
   data-cinder-monospace={monospace ? '' : undefined}
   data-cinder-subscription-state={subscriptionState}

@@ -21,6 +21,7 @@ const here = (file: string) => new URL(`./${file}`, import.meta.url).pathname;
 const implementationSource = await Bun.file(here('review-editor-impl.svelte')).text();
 const wrapperSource = await Bun.file(here('review-editor.svelte')).text();
 const controlsSource = await Bun.file(here('review-editor-controls.svelte')).text();
+const commentSidebarSource = await Bun.file(here('comment-sidebar.svelte')).text();
 const liveRegionSource = await Bun.file(here('live-region.svelte')).text();
 const anchorDecorationsSource = await Bun.file(
   new URL('../../anchor-decorations.ts', import.meta.url).pathname,
@@ -33,6 +34,11 @@ const exampleSet = (await Bun.file(here('review-editor.examples.json')).json()) 
 };
 
 describe('seeded threads no longer highlight the whole document', () => {
+  test('closes the actions menu when all visible threads disappear', () => {
+    expect(commentSidebarSource).toContain('{#key visibleThreads.length > 0}');
+    expect(commentSidebarSource).toContain('{/key}');
+    expect(commentSidebarSource).toContain('<Dropdown id="{id}-actions">');
+  });
   /**
    * The bug: Milkdown sets the initial document with a single step spanning the
    * entire old doc. Anchors present at that moment were mapped through it —
@@ -355,4 +361,16 @@ describe('the shipped examples seed anchors in the documented coordinate space',
       }
     });
   }
+});
+
+describe('comment sidebar clear-all focus', () => {
+  test('falls back to the enabled add-comment control when clear-all disables actions', () => {
+    expect(commentSidebarSource).toContain(
+      'const documentCommentTriggerId = $derived(`${id}-add-comment`)',
+    );
+    expect(commentSidebarSource).toMatch(
+      /if \(actionsTrigger && !actionsTrigger\.disabled\)[\s\S]*?actionsTrigger\.focus\(\);[\s\S]*?document\.getElementById\(documentCommentTriggerId\)\?\.focus\(\);/,
+    );
+    expect(commentSidebarSource).toContain('id={documentCommentTriggerId}');
+  });
 });

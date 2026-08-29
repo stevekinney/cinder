@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "modal-region",
+  "import": "@lostgradient/cinder/modal-region",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic modal region",
+      "description": "Mount application content inside the modal coordination region.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n  import { ModalRegion, useModal } from '@lostgradient/cinder/modal-region';\n</script>\n\n<ModalRegion>\n  {#snippet children()}\n    {@const modal = useModal()}\n    <Button onclick={() => modal.confirm({ title: 'Confirm action' })}>Open confirmation</Button>\n  {/snippet}\n</ModalRegion>\n"
+    }
+  ]
+}

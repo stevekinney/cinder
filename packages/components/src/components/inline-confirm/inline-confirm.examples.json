@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "inline-confirm",
+  "import": "@lostgradient/cinder/inline-confirm",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Basic inline confirmation",
+      "description": "Confirm a destructive action without leaving the current flow.",
+      "code": "<script lang=\"ts\">\n  import { InlineConfirm } from '@lostgradient/cinder/inline-confirm';\n</script>\n\n<InlineConfirm prompt=\"Remove this workspace?\" confirmLabel=\"Remove workspace\" open destructive />\n"
+    }
+  ]
+}

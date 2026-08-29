@@ -34,6 +34,11 @@ const schema = {
   metadata: {
     unsupportedProps: [
       {
+        name: 'actions',
+        reason: 'function-or-snippet',
+        description: 'Optional controls rendered beside, but outside, the sortable button.',
+      },
+      {
         name: 'children',
         reason: 'function-or-snippet',
         required: true,

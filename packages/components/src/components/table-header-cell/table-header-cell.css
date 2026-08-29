@@ -4,4 +4,24 @@
  * TABLE HEADER CELL
  * Visual treatment lives in table.css. Empty registry entry.
  * ======================================== */
+  .cinder-table__header-content {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-table__header-actions {
+    display: inline-flex;
+    align-items: center;
+    flex: 0 0 auto;
+  }
+
+  .cinder-table__header-cell[data-cinder-align='center'] .cinder-table__header-content {
+    justify-content: center;
+  }
+
+  .cinder-table__header-cell[data-cinder-align='right'] .cinder-table__header-content {
+    justify-content: flex-end;
+  }
 }

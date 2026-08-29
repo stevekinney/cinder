@@ -25,6 +25,10 @@ const schema = {
       description:
         'Render a standardized subscription lifecycle badge without hand-wiring tone, icon, and label.',
     },
+    severity: {
+      enum: ['info', 'low', 'medium', 'high', 'critical'],
+      description: 'Ordered severity preset; critical uses the dedicated critical token.',
+    },
     class: {
       type: 'string',
       description: 'Custom class merged with `.cinder-badge`.',
