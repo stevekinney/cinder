@@ -22,7 +22,7 @@ describe('TerminalFrame', () => {
         title: 'Build shell',
         status: 'error',
         error: 'Connection lost',
-        onreload: () => reloads++,
+        onReloadRequest: () => reloads++,
         children,
       },
     });
@@ -56,7 +56,7 @@ describe('TerminalFrame', () => {
           title: 'Shell',
           columnWidth: 10,
           rowHeight: 20,
-          onresize: (value: TerminalFrameDimensions) => {
+          onDimensionsChange: (value: TerminalFrameDimensions) => {
             dimensions.push(value);
           },
           children,

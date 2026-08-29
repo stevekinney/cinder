@@ -1,10 +1,14 @@
 <script lang="ts" module>
   export const title = 'Citation';
-  export const description = 'TODO: describe what this citation example demonstrates.';
+  export const description = 'Attach a compact source marker to a claim and expose its sources.';
 </script>
 
 <script lang="ts">
   import { Citation } from '@lostgradient/cinder/citation';
 </script>
 
-<Citation>Content</Citation>
+<p>
+  Cinder components publish machine-readable metadata.
+  <Citation sources={[{ label: 'Component metadata guide', url: '/docs/components' }]}>[1]</Citation
+  >
+</p>

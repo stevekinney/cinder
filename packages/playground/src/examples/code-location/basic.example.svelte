@@ -1,10 +1,10 @@
 <script lang="ts" module>
   export const title = 'CodeLocation';
-  export const description = 'TODO: describe what this code-location example demonstrates.';
+  export const description = 'Render a compact file, line, and column reference.';
 </script>
 
 <script lang="ts">
   import { CodeLocation } from '@lostgradient/cinder/code-location';
 </script>
 
-<CodeLocation>Content</CodeLocation>
+<CodeLocation file="src/routes/+page.svelte" line={42} column={7} />

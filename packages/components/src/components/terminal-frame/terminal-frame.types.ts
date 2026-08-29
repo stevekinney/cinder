@@ -8,15 +8,12 @@ export type TerminalFrameDimensions = {
   rows: number;
 };
 
-export type TerminalFrameProps = Omit<
-  HTMLAttributes<HTMLDivElement>,
-  'class' | 'title' | 'onresize'
-> & {
+export type TerminalFrameProps = Omit<HTMLAttributes<HTMLDivElement>, 'class' | 'title'> & {
   title: string;
   status?: TerminalFrameStatus;
   error?: string;
-  onreload?: () => void;
-  onresize?: (dimensions: TerminalFrameDimensions) => void;
+  onReloadRequest?: () => void;
+  onDimensionsChange?: (dimensions: TerminalFrameDimensions) => void;
   columnWidth?: number;
   rowHeight?: number;
   children: Snippet;

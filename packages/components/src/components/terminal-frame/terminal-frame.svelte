@@ -26,8 +26,8 @@
     title,
     status = 'connecting',
     error,
-    onreload,
-    onresize,
+    onReloadRequest,
+    onDimensionsChange,
     columnWidth = 8,
     rowHeight = 18,
     children,
@@ -41,7 +41,7 @@
   const titleId = $props.id();
 
   $effect(() => {
-    if (!viewport || !onresize || typeof ResizeObserver === 'undefined') return;
+    if (!viewport || !onDimensionsChange || typeof ResizeObserver === 'undefined') return;
 
     const observer = new ResizeObserver((entries) => {
       const entry = entries[0];
@@ -51,7 +51,7 @@
       if (columns === previousColumns && rows === previousRows) return;
       previousColumns = columns;
       previousRows = rows;
-      onresize({ cols: columns, rows });
+      onDimensionsChange({ cols: columns, rows });
     });
     observer.observe(viewport);
     return () => observer.disconnect();
@@ -75,8 +75,8 @@
   {#if error}
     <div class="cinder-terminal-frame__error" role="alert">
       <span>{error}</span>
-      {#if onreload}
-        <button type="button" class="cinder-terminal-frame__reload" onclick={onreload}
+      {#if onReloadRequest}
+        <button type="button" class="cinder-terminal-frame__reload" onclick={onReloadRequest}
           >Reload</button
         >
       {/if}

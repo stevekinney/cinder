@@ -33,11 +33,11 @@ const schema = {
         required: true,
       },
       {
-        name: 'onreload',
+        name: 'onDimensionsChange',
         reason: 'function-or-snippet',
       },
       {
-        name: 'onresize',
+        name: 'onReloadRequest',
         reason: 'function-or-snippet',
       },
     ],

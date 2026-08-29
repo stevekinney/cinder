@@ -6,8 +6,8 @@
     {
       "id": "basic",
       "title": "QuotaMeter",
-      "description": "TODO: describe what this quota-meter example demonstrates.",
-      "code": "<script lang=\"ts\">\n  import { QuotaMeter } from '@lostgradient/cinder/quota-meter';\n</script>\n\n<QuotaMeter>Content</QuotaMeter>\n"
+      "description": "Show finite quota consumption with an accessible value summary.",
+      "code": "<script lang=\"ts\">\n  import { QuotaMeter } from '@lostgradient/cinder/quota-meter';\n</script>\n\n<QuotaMeter label=\"Build minutes\" used={72} limit={100} />\n"
     }
   ]
 }
