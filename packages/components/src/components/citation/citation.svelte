@@ -54,8 +54,11 @@
     {#snippet trigger()}<button
         type="button"
         class="cinder-citation__marker"
-        onclick={() => (open = !open)}
-        aria-label={`${label} (${sources.length})`}
+        disabled={sources.length === 0}
+        onclick={() => {
+          if (sources.length > 0) open = !open;
+        }}
+        aria-label={sources.length > 0 ? `${label} (${sources.length})` : `${label} (no sources)`}
         >{#if children}{@render children()}{:else}[{sources.length}]{/if}</button
       >{/snippet}
     <section aria-label={label}>

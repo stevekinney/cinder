@@ -161,7 +161,10 @@
   }
   function columnWidth(column: DataTableColumn<Row>): number | undefined {
     const width = rawColumnWidth(column);
-    return width === undefined ? undefined : boundedColumnWidth(column, width);
+    // Resizable columns need a concrete starting width so the separator's
+    // aria-valuenow describes the width that is actually rendered. Columns
+    // without resize handles retain the table's automatic layout behavior.
+    return width === undefined && !resizable ? undefined : boundedColumnWidth(column, width ?? 150);
   }
   function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
     const nextWidth = boundedColumnWidth(column, width);

@@ -55,6 +55,19 @@ describe('ZoomPanViewer', () => {
     expect(received).toBe(true);
   });
 
+  test('ignores keyboard shortcuts bubbled from interactive descendants', async () => {
+    const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
+    const viewer = container.querySelector('[role="region"]')!;
+    const zoomIn = container.querySelector('[aria-label="Zoom in"]')!;
+    const viewport = container.querySelector('.cinder-zoom-pan-viewer__viewport')!;
+
+    await fireEvent.keyDown(zoomIn, { key: '+' });
+    expect(viewport.getAttribute('style')).toContain('scale(1)');
+
+    await fireEvent.keyDown(viewer, { key: '+' });
+    expect(viewport.getAttribute('style')).toContain('scale(1.2)');
+  });
+
   test('does not capture pointer gestures from interactive descendants', async () => {
     const { container } = render(ZoomPanViewer, {
       children: textSnippet('<button type="button">Interactive</button>'),

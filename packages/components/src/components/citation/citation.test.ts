@@ -57,6 +57,15 @@ describe('Citation', () => {
     expect(marker?.textContent).toBe('[2]');
   });
 
+  test('disables the marker when there are no sources', async () => {
+    const { container } = render(Citation, { sources: [] });
+    const marker = container.querySelector('.cinder-citation__marker') as HTMLButtonElement;
+    expect(marker.disabled).toBe(true);
+    expect(marker.getAttribute('aria-label')).toBe('Sources (no sources)');
+    await fireEvent.click(marker);
+    expect(document.querySelector('section')).toBeNull();
+  });
+
   test('renders only safe HTTP or relative source links', async () => {
     const { container, rerender } = render(Citation, {
       sources: [{ label: 'Unsafe source', url: 'javascript:alert(1)' }],

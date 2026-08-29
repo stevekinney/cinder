@@ -34,7 +34,6 @@
 </script>
 
 <script lang="ts">
-  import { untrack } from 'svelte';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
@@ -49,10 +48,7 @@
     ...rest
   }: RelativeTimeProps = $props();
   const localeContext = getLocaleContext();
-  const initialTimestamp = untrack(() =>
-    date instanceof Date ? date.getTime() : new Date(date).getTime(),
-  );
-  let now = $state(initialTimestamp);
+  let now = $state(Date.now());
   let hasMounted = $state(false);
   $effect(() => {
     hasMounted = true;

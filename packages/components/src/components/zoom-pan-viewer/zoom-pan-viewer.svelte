@@ -57,6 +57,10 @@
     update(next, px - (px - x) * ratio, py - (py - y) * ratio);
   }
   function keydown(event: KeyboardEvent & { currentTarget: HTMLDivElement }) {
+    if (event.target !== event.currentTarget) {
+      consumerOnkeydown?.(event);
+      return;
+    }
     if (event.key === '+' || event.key === '=') {
       event.preventDefault();
       zoomAt(1.2);

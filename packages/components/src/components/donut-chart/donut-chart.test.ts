@@ -67,6 +67,27 @@ describe('DonutChart', () => {
     expect(container.querySelector('svg')?.getAttribute('role')).toBeNull();
   });
 
+  test('does not expose zero-area series as interactive controls', async () => {
+    const clicked: number[] = [];
+    const { container } = render(DonutChart, {
+      label: 'Traffic',
+      data: [
+        { label: 'Empty', value: 0 },
+        { label: 'Direct', value: 3 },
+        { label: 'Invalid', value: -1 },
+      ],
+      onSeriesClick: (_datum: DonutChartDatum, index: number) => clicked.push(index),
+    });
+    const series = container.querySelectorAll('[role="button"]');
+
+    expect(series).toHaveLength(1);
+    expect(series[0]?.getAttribute('aria-label')).toBe('Direct: 3');
+    expect(container.querySelectorAll('[tabindex="0"]')).toHaveLength(1);
+
+    await fireEvent.click(container.querySelectorAll('g')[0]!);
+    expect(clicked).toEqual([]);
+  });
+
   test('provides an accessible series summary when the legend is hidden', () => {
     const { container } = render(DonutChart, {
       label: 'Traffic',

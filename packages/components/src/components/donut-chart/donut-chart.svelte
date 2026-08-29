@@ -70,12 +70,14 @@
 >
   <figure aria-label={label}>
     <svg viewBox="0 0 200 200" role={onSeriesClick ? undefined : 'img'} aria-label={label}>
-      {#each arcs as arc}<!-- svelte-ignore a11y_no_noninteractive_tabindex --><g
-          role={onSeriesClick ? 'button' : undefined}
-          tabindex={onSeriesClick ? 0 : undefined}
-          aria-label={onSeriesClick ? `${arc.datum.label}: ${arc.datum.value}` : undefined}
-          onclick={() => onSeriesClick?.(arc.datum, arc.index)}
-          onkeydown={(event) => handleSeriesKeydown(event, arc.index)}
+      {#each arcs as arc}{@const interactive =
+          onSeriesClick &&
+          arc.end > arc.start}<!-- svelte-ignore a11y_no_noninteractive_tabindex --><g
+          role={interactive ? 'button' : undefined}
+          tabindex={interactive ? 0 : undefined}
+          aria-label={interactive ? `${arc.datum.label}: ${arc.datum.value}` : undefined}
+          onclick={interactive ? () => onSeriesClick?.(arc.datum, arc.index) : undefined}
+          onkeydown={interactive ? (event) => handleSeriesKeydown(event, arc.index) : undefined}
           ><path
             class="cinder-donut-chart__arc"
             d={arcPath(arc.start, arc.end)}

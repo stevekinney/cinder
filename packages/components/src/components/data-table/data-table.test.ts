@@ -159,6 +159,18 @@ describe('DataTable — column resizing', () => {
     ).toBe('120');
   });
 
+  test('renders the default width represented by an omitted column width', () => {
+    const { container, getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name' }],
+      rows,
+      resizable: true,
+    });
+    expect(container.querySelector('thead th')?.getAttribute('style')).toContain('width: 150px');
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
+    ).toBe('150');
+  });
+
   test('provides a finite aria-valuemax when maxWidth is omitted', () => {
     const { getByRole } = render(DataTable, {
       columns: [{ key: 'name', label: 'Name', width: 100 }],

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
+import { renderToServerHtml } from '../../test/server-render.ts';
 
 // setupHappyDom() MUST run before any `@testing-library/svelte` import. testing-library
 // reads `globalThis.document` / `window` at module-init (top-level, not inside test bodies),
@@ -66,11 +67,32 @@ describe('RelativeTime', () => {
     }
   });
 
-  test('seeds the initial clock from the timestamp before mounting', () => {
+  test('seeds the initial clock from the current time before mounting', () => {
     const source = readFileSync(new URL('./relative-time.svelte', import.meta.url), 'utf8');
 
-    expect(source).toContain('let now = $state(initialTimestamp);');
+    expect(source).toContain('let now = $state(Date.now());');
+    expect(source).not.toContain('let now = $state(initialTimestamp);');
     expect(source).toContain('now = Date.now();');
+  });
+
+  test('server-renders dates relative to the current time', async () => {
+    const realNow = Date.now;
+    Date.now = () => Date.UTC(2026, 0, 2, 12);
+    try {
+      const html = await renderToServerHtml<{
+        date: number;
+        locale: string;
+        tick: boolean;
+      }>(new URL('./relative-time.svelte', import.meta.url).pathname, {
+        date: Date.UTC(2026, 0, 1, 12),
+        locale: 'en',
+        tick: false,
+      });
+      expect(html).toContain('>yesterday');
+      expect(html).not.toContain('>now');
+    } finally {
+      Date.now = realNow;
+    }
   });
 
   test.each([new Date('invalid'), 'not-a-date'])('renders invalid dates safely: %s', (date) => {
