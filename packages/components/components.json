@@ -4826,7 +4826,7 @@
           "reason": "You need explicit rows and columns — use grid."
         }
       ],
-      "related": ["grid", "cluster"],
+      "related": ["grid"],
       "hasConstraints": false,
       "hasExamples": false,
       "artifacts": {
