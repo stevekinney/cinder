@@ -1,0 +1,68 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@import '../badge/badge.css';
+@import '../grid/grid.css';
+@import '../tooltip/tooltip.css';
+
+@layer cinder.components {
+  .cinder-parameter-field {
+    display: grid;
+    gap: var(--cinder-space-2);
+  }
+
+  .cinder-parameter-field__header {
+    display: flex;
+    gap: var(--cinder-space-2);
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  .cinder-parameter-field__label {
+    color: var(--cinder-text-default);
+    font-size: var(--cinder-text-sm);
+    font-weight: var(--cinder-font-medium);
+  }
+
+  .cinder-parameter-field__badges {
+    display: inline-flex;
+    gap: var(--cinder-space-1);
+  }
+
+  .cinder-parameter-field__body {
+    align-items: stretch;
+  }
+
+  .cinder-parameter-field__rail {
+    border-radius: var(--cinder-radius-full);
+    background: var(--cinder-border-muted);
+  }
+
+  .cinder-parameter-field[data-cinder-overridden] .cinder-parameter-field__rail {
+    background: var(--cinder-accent-solid);
+  }
+
+  .cinder-parameter-field__editor {
+    display: flex;
+    min-width: 0;
+    align-items: center;
+  }
+
+  .cinder-parameter-field__value {
+    color: var(--cinder-text-default);
+    font-family: var(--cinder-font-mono);
+  }
+
+  .cinder-parameter-field__unit {
+    color: var(--cinder-text-muted);
+  }
+
+  .cinder-parameter-field__reset {
+    justify-self: start;
+    border: 0;
+    padding: 0;
+    background: transparent;
+    color: var(--cinder-accent-text);
+    cursor: pointer;
+    font: inherit;
+    font-size: var(--cinder-text-sm);
+  }
+}

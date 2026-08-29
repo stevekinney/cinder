@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "host-provider",
+  "import": "@lostgradient/cinder/host-provider",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Desktop host",
+      "description": "Provide host platform information to descendants.",
+      "code": "<script lang=\"ts\">\n  import { HostProvider } from '@lostgradient/cinder/host-provider';\n</script>\n\n<HostProvider platform=\"macos\" safeHeaderLeft=\"4rem\" safeHeaderRight=\"1rem\">\n  <p>Desktop-aware application surface</p>\n</HostProvider>\n"
+    }
+  ]
+}

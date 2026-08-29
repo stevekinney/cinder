@@ -189,6 +189,14 @@
     background: var(--cinder-surface);
     flex-shrink: 0;
   }
+  .cinder-modal__drag-strip {
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: var(--_cinder-safe-header-left, 0px) var(--_cinder-safe-header-right, 0px);
+    block-size: var(--cinder-space-2);
+    -webkit-app-region: drag;
+    app-region: drag;
+  }
 
   .cinder-modal__title {
     margin: 0;

@@ -1,16 +1,11 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "dropdown",
-    "menu-bar",
-    "navigation-bar",
-    "navigation-item",
-    "side-navigation",
-    "sidebar"
+    "date-range-field"
   ],
-  "renderedSourceSha": "4edfe522c5ef1d93cb97302140db6167bad7c29c",
+  "renderedSourceSha": "12fb5cb953cc622096ca4a03881d711c8a65373e",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "arm64",
+  "architecture": "x64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }

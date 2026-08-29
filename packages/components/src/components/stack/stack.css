@@ -1,0 +1,63 @@
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+@layer cinder.components {
+  .cinder-stack {
+    display: flex;
+    flex-direction: column;
+    gap: var(--_cinder-stack-gap, var(--cinder-space-4));
+    align-items: stretch;
+    justify-content: flex-start;
+    min-width: 0;
+  }
+
+  .cinder-stack[data-cinder-direction='row'] {
+    flex-direction: row;
+  }
+
+  .cinder-stack[data-cinder-direction='row-reverse'] {
+    flex-direction: row-reverse;
+  }
+
+  .cinder-stack[data-cinder-direction='column-reverse'] {
+    flex-direction: column-reverse;
+  }
+
+  .cinder-stack[data-cinder-wrap] {
+    flex-wrap: wrap;
+  }
+
+  .cinder-stack[data-cinder-align='start'] {
+    align-items: flex-start;
+  }
+
+  .cinder-stack[data-cinder-align='center'] {
+    align-items: center;
+  }
+
+  .cinder-stack[data-cinder-align='end'] {
+    align-items: flex-end;
+  }
+
+  .cinder-stack[data-cinder-align='baseline'] {
+    align-items: baseline;
+  }
+
+  .cinder-stack[data-cinder-justify='center'] {
+    justify-content: center;
+  }
+
+  .cinder-stack[data-cinder-justify='end'] {
+    justify-content: flex-end;
+  }
+
+  .cinder-stack[data-cinder-justify='between'] {
+    justify-content: space-between;
+  }
+
+  .cinder-stack[data-cinder-justify='around'] {
+    justify-content: space-around;
+  }
+
+  .cinder-stack[data-cinder-justify='evenly'] {
+    justify-content: space-evenly;
+  }
+}

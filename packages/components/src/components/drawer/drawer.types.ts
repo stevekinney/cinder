@@ -18,6 +18,13 @@ export type DrawerProps = {
    */
   size?: DrawerSize;
   /**
+   * Whether the drawer is modal. Modal drawers use the native dialog top layer,
+   * backdrop, body scroll lock, and focus trap. Non-modal drawers render as an
+   * aside and leave the page interactive.
+   * @default true
+   */
+  modal?: boolean;
+  /**
    * Accessible name for the drawer. Required for screen-reader labelling.
    * Rendered as a visible `<h2>` in the default header. When a custom
    * `header` snippet is provided without `ariaLabelledby`, this text is

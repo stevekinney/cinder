@@ -20,6 +20,7 @@ const DRAWER_SOURCE = join(import.meta.dir, 'drawer.svelte');
 type HasKey<T, K extends PropertyKey> = K extends keyof T ? true : false;
 const excludesLowercaseNativeCloseHandler: HasKey<DrawerProps, 'onclose'> = false;
 const excludesLowercaseNativeCancelHandler: HasKey<DrawerProps, 'oncancel'> = false;
+const includesModalProp: HasKey<DrawerProps, 'modal'> = true;
 
 setupHappyDom();
 
@@ -58,6 +59,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
 
 const { cleanup, render, fireEvent } = await import('@testing-library/svelte');
 const { default: Drawer } = await import('./drawer.svelte');
+const { findNearestOpenTopLayer } = await import('../portal/portal.utilities.svelte.ts');
 // One shared read for every CSS-contract test below — drawer.css is asserted
 // against nine times; re-reading it per test is pure waste.
 const drawerCss = await Bun.file(new URL('./drawer.css', import.meta.url)).text();
@@ -115,6 +117,7 @@ describe('Drawer', () => {
   test('omits native dialog handlers owned internally', () => {
     expect(excludesLowercaseNativeCloseHandler).toBe(false);
     expect(excludesLowercaseNativeCancelHandler).toBe(false);
+    expect(includesModalProp).toBe(true);
   });
 
   // ---- 1. Renders open dialog when open=true after hydration ----
@@ -676,6 +679,230 @@ describe('Drawer', () => {
     expect(container.querySelector('dialog')?.getAttribute('aria-modal')).toBe('true');
   });
 
+  test('modal=false renders an aside instead of a dialog', () => {
+    const { container } = render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: emptySnippet },
+    });
+
+    expect(container.querySelector('dialog')).toBeNull();
+    const aside = container.querySelector('aside.cinder-drawer');
+    expect(aside).not.toBeNull();
+    expect(aside?.getAttribute('aria-modal')).toBeNull();
+    expect(aside?.getAttribute('aria-labelledby')).toBeTruthy();
+    expect(aside?.querySelector('.cinder-drawer__panel')).not.toBeNull();
+  });
+
+  test('modal=false does not lock body scroll', () => {
+    render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: emptySnippet },
+    });
+
+    expect(document.body.style.overflow).toBe('');
+  });
+
+  test('modal=false close button closes immediately', async () => {
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+
+    await fireEvent.click(container.querySelector('.cinder-drawer__close') as HTMLButtonElement);
+    expect(openValue).toBe(false);
+    await rerender(props());
+    await tick();
+    expect(container.querySelector('aside.cinder-drawer')).toBeNull();
+  });
+
+  test('modal=false exposes a portal boundary outside the panel overflow context', () => {
+    const child = createRawSnippet(() => ({
+      render: () => '<button data-testid="nested-trigger">Nested trigger</button>',
+      setup: () => {},
+    }));
+    const { container } = render(Drawer, {
+      props: { modal: false, open: true, title: 'Inspector', children: child },
+    });
+
+    const aside = container.querySelector('aside.cinder-drawer') as HTMLElement;
+    const scope = aside.querySelector('.cinder-drawer__portal-scope') as HTMLElement;
+    const trigger = aside.querySelector('[data-testid="nested-trigger"]') as HTMLElement;
+
+    expect(aside.dataset['cinderPortalOwner']).toBe(scope.id);
+    expect(drawerCss).toMatch(/\.cinder-drawer__portal-scope\s*\{[^}]*display:\s*contents;/s);
+    expect(drawerCss).toMatch(/\.cinder-drawer__portal-scope\s*\{[^}]*pointer-events:\s*auto;/s);
+    expect(findNearestOpenTopLayer(trigger)).toBe(scope);
+  });
+
+  test('modal=false close restores focus to triggerRef', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open inspector';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    await tick();
+
+    const closeButton = container.querySelector('.cinder-drawer__close') as HTMLButtonElement;
+    closeButton.focus();
+    await fireEvent.click(closeButton);
+    await rerender(props());
+    await tick();
+
+    expect(openValue).toBe(false);
+    expect(container.querySelector('aside.cinder-drawer')).toBeNull();
+    expect(document.activeElement).toBe(trigger);
+
+    document.body.removeChild(trigger);
+  });
+
+  test('modal=false does not steal focus from a different surface on close', async () => {
+    const trigger = document.createElement('button');
+    const outside = document.createElement('button');
+    document.body.append(trigger, outside);
+    trigger.focus();
+
+    let openValue = true;
+    const props = () => ({
+      modal: false,
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    outside.focus();
+    openValue = false;
+    await rerender(props());
+    await tick();
+
+    expect(document.activeElement).toBe(outside);
+    expect(container.querySelector('aside')).toBeNull();
+    trigger.remove();
+    outside.remove();
+  });
+
+  test('modal=false restores focus to the trigger when unmounted while open', async () => {
+    const trigger = document.createElement('button');
+    document.body.appendChild(trigger);
+    trigger.focus();
+    const { unmount } = render(Drawer, {
+      props: {
+        modal: false,
+        open: true,
+        triggerRef: trigger,
+        title: 'Inspector',
+        children: emptySnippet,
+      },
+    });
+
+    const panel = document.querySelector('.cinder-drawer__panel') as HTMLElement;
+    (panel.querySelector('.cinder-drawer__close') as HTMLElement).focus();
+    unmount();
+
+    expect(document.activeElement).toBe(trigger);
+    trigger.remove();
+  });
+
+  test('switching an open drawer from modal to non-modal releases modal coordination state', async () => {
+    const trigger = document.createElement('button');
+    trigger.textContent = 'Open inspector';
+    document.body.appendChild(trigger);
+    trigger.focus();
+
+    let openValue = true;
+    let modalValue = true;
+    const props = () => ({
+      get modal() {
+        return modalValue;
+      },
+      triggerRef: trigger,
+      get open() {
+        return openValue;
+      },
+      set open(value: boolean) {
+        openValue = value;
+      },
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    const { container, rerender } = render(Drawer, { props: props() });
+    expect(container.querySelector('dialog')).not.toBeNull();
+    expect(document.body.style.overflow).toBe('hidden');
+
+    modalValue = false;
+    await rerender(props());
+    await tick();
+
+    expect(openValue).toBe(true);
+    expect(document.body.style.overflow).toBe('');
+    expect(container.querySelector('dialog')).toBeNull();
+    expect(container.querySelector('aside.cinder-drawer')).not.toBeNull();
+
+    document.body.removeChild(trigger);
+  });
+
+  test('modal=false uses the escape stack while open', async () => {
+    let openValue = true;
+    let siblingEscapeCount = 0;
+    const releaseSiblingEscape = pushEscapeHandler(() => {
+      siblingEscapeCount += 1;
+    });
+
+    const { rerender } = render(Drawer, {
+      props: {
+        modal: false,
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        title: 'Inspector',
+        children: emptySnippet,
+      },
+    });
+
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(openValue).toBe(false);
+    expect(siblingEscapeCount).toBe(0);
+
+    await rerender({
+      modal: false,
+      open: false,
+      title: 'Inspector',
+      children: emptySnippet,
+    });
+    await fireEvent.keyDown(window, { key: 'Escape', code: 'Escape' });
+    expect(siblingEscapeCount).toBe(1);
+    releaseSiblingEscape();
+  });
+
   // ---- Additional: footer renders when provided ----
   test('footer renders when provided', () => {
     const { container } = render(Drawer, {
@@ -1145,7 +1372,7 @@ describe('Drawer slide direction lifecycle', () => {
 describe('Drawer SSR contract', () => {
   test('gates the dialog behind the hydrated state that is set only from an effect', async () => {
     const source = await Bun.file(DRAWER_SOURCE).text();
-    const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated}');
+    const hydratedGateIndex = source.indexOf('{#if dialogState.hydrated || (!modal && open)}');
     const dialogIndex = source.indexOf('<dialog', hydratedGateIndex);
 
     expect(source).toMatch(/\$effect\(\(\) => \{\s*dialogState\.markHydrated\(\);\s*\}\);/);
@@ -1158,6 +1385,15 @@ describe('Drawer SSR contract', () => {
 
     expect(html).not.toContain('<dialog');
     expect(html).not.toContain('Server Drawer');
+  });
+
+  test('server output includes an open non-modal drawer', async () => {
+    const source = await Bun.file(DRAWER_SOURCE).text();
+    const renderGate = source.indexOf('{#if dialogState.hydrated || (!modal && open)}');
+    const nonModalBranch = source.indexOf('{:else if open}', renderGate);
+
+    expect(renderGate).toBeGreaterThan(-1);
+    expect(nonModalBranch).toBeGreaterThan(renderGate);
   });
 });
 

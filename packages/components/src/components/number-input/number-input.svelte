@@ -44,6 +44,7 @@
     error,
     inputAttachment,
     class: className,
+    adornment,
     onValueChange,
     onblur: consumerBlur,
     'aria-describedby': consumerDescribedBy,
@@ -551,6 +552,13 @@
   </button>
 {/snippet}
 
+{#snippet trailingContent()}
+  {#if adornment}<span class="cinder-number-input__adornment"
+      >{#if typeof adornment === 'string'}{adornment}{:else}{@render adornment()}{/if}</span
+    >{/if}
+  {@render steppers()}
+{/snippet}
+
 <div class={classNames('cinder-input-field', className)} data-cinder-full-width>
   <Input
     {id}
@@ -567,7 +575,7 @@
     role="spinbutton"
     inputmode="decimal"
     inputAttachment={attachInput}
-    trailing={steppers}
+    trailing={trailingContent}
     trailingInteractive
     aria-invalid={resolvedAriaInvalid}
     aria-describedby={[consumerDescribedBy, internalErrorId].filter(Boolean).join(' ') || undefined}

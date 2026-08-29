@@ -19,6 +19,12 @@ const schema = {
         'Drawer width token for `left`/`right` placements.\nIgnored for `placement="bottom"`, which always spans the full viewport\nwidth and caps its height at 90dvh.',
       default: 'md',
     },
+    modal: {
+      type: 'boolean',
+      description:
+        'Whether the drawer is modal. Modal drawers use the native dialog top layer,\nbackdrop, body scroll lock, and focus trap. Non-modal drawers render as an\naside and leave the page interactive.',
+      default: true,
+    },
     title: {
       type: 'string',
       description:

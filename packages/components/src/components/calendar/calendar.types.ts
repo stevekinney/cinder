@@ -4,6 +4,16 @@ export type CalendarProps = Omit<
   HTMLAttributes<HTMLDivElement>,
   'class' | 'children' | 'onchange'
 > & {
+  /** Selection model. Defaults to `single`. */
+  selectionMode?: 'single' | 'range';
+  /** Start endpoint for range selection. */
+  rangeStart?: string | undefined;
+  /** End endpoint for range selection. */
+  rangeEnd?: string | undefined;
+  /** Called when a range endpoint is selected. */
+  onRangeChange?: (range: { start: string | undefined; end: string | undefined }) => void;
+  /** Preview endpoint while hovering a range. */
+  rangeHover?: string | undefined;
   /** Optional root id. */
   id?: string;
   /** Selected ISO date (`YYYY-MM-DD`). Bindable. */

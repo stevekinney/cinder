@@ -77,6 +77,8 @@ export type DateRangeFieldProps = Omit<
   error?: string;
   /** Disables the entire field including presets and date inputs. */
   disabled?: boolean;
+  /** Return true to disable a specific day in the calendar. */
+  disabledDate?: (value: string) => boolean;
   /** Additional CSS classes applied to the root element. */
   class?: string;
   /** Called when the user changes the date range (preset or manual input). */

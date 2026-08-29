@@ -38,6 +38,14 @@ function getDecrement(container: Element): HTMLButtonElement {
   return container.querySelector('.cinder-number-input__stepper--decrement') as HTMLButtonElement;
 }
 
+test('renders a custom adornment before the steppers', () => {
+  const { container } = render(NumberInput, {
+    props: { id: 'amount', value: 12, adornment: 'USD' },
+  });
+
+  expect(container.querySelector('.cinder-number-input__adornment')?.textContent).toBe('USD');
+});
+
 async function type(input: HTMLInputElement, text: string) {
   input.value = text;
   await fireEvent.input(input, { target: { value: text } });

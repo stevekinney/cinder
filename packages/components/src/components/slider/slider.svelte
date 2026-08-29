@@ -39,6 +39,7 @@
     pageStep,
     label,
     valueText,
+    unit,
     ticks,
     disabled: disabledProp = false,
     name,
@@ -403,6 +404,15 @@
     return formFieldLabelId ? undefined : accessibleNameFor(thumb);
   }
 
+  function formattedAriaValue(nextValue: number): string {
+    const formatted = valueText ? valueText(nextValue) : String(nextValue);
+    return unit ? `${formatted} ${unit}` : formatted;
+  }
+
+  function visibleValue(nextValue: number): string {
+    return unit ? `${nextValue} ${unit}` : String(nextValue);
+  }
+
   // Render tick mark positions.
   const tickMarks = $derived.by<number[]>(() => {
     if (tickList) return tickList;
@@ -429,6 +439,12 @@
   data-cinder-disabled={disabled || undefined}
   {...rootDirection ? { dir: rootDirection } : {}}
 >
+  <div class="cinder-slider__header">
+    {#if !formFieldLabelId}<span class="cinder-slider__label">{label}</span>{/if}
+    <span class="cinder-slider__value">
+      {visibleValue(lowValue)}{#if isRange}–{visibleValue(highValue)}{/if}
+    </span>
+  </div>
   {#if isRange}
     <span id={lowQualifierId} class="cinder-sr-only">
       {qualifierFor('low')}
@@ -473,7 +489,7 @@
         aria-valuemin={min}
         aria-valuemax={highValue}
         aria-valuenow={lowValue}
-        aria-valuetext={valueText ? valueText(lowValue) : undefined}
+        aria-valuetext={valueText || unit ? formattedAriaValue(lowValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(lowValue)}%"
@@ -493,7 +509,7 @@
         aria-valuemin={lowValue}
         aria-valuemax={max}
         aria-valuenow={highValue}
-        aria-valuetext={valueText ? valueText(highValue) : undefined}
+        aria-valuetext={valueText || unit ? formattedAriaValue(highValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(highValue)}%"
@@ -513,7 +529,7 @@
         aria-valuemin={min}
         aria-valuemax={max}
         aria-valuenow={lowValue}
-        aria-valuetext={valueText ? valueText(lowValue) : undefined}
+        aria-valuetext={valueText || unit ? formattedAriaValue(lowValue) : undefined}
         aria-disabled={disabled || undefined}
         aria-orientation="horizontal"
         style:--_cinder-slider-pos="{percentOf(lowValue)}%"

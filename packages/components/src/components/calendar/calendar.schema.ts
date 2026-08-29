@@ -8,6 +8,22 @@ const schema = {
       type: 'string',
       description: 'Optional root id.',
     },
+    selectionMode: {
+      enum: ['single', 'range'],
+      description: 'Selection model. Defaults to `single`.',
+    },
+    rangeStart: {
+      type: 'string',
+      description: 'Start endpoint for range selection.',
+    },
+    rangeEnd: {
+      type: 'string',
+      description: 'End endpoint for range selection.',
+    },
+    rangeHover: {
+      type: 'string',
+      description: 'Preview endpoint while hovering a range.',
+    },
     value: {
       type: 'string',
       description: 'Selected ISO date (`YYYY-MM-DD`). Bindable.',
@@ -56,6 +72,11 @@ const schema = {
         name: 'disabledDate',
         reason: 'function-or-snippet',
         description: 'Return true to disable a specific day.',
+      },
+      {
+        name: 'onRangeChange',
+        reason: 'function-or-snippet',
+        description: 'Called when a range endpoint is selected.',
       },
       {
         name: 'onValueChange',

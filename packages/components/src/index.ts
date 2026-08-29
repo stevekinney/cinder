@@ -390,6 +390,9 @@ export type {
 export { default as FocusTrap, createFocusTrap } from './components/focus-trap/index.ts';
 export type { FocusTrapOptions, FocusTrapProps } from './components/focus-trap/index.ts';
 
+export { default as Form } from './components/form/index.ts';
+export type { FormProps, FormSubmitContext } from './components/form/index.ts';
+
 export { default as FormField } from './components/form-field/index.ts';
 export type { FormFieldManaged, FormFieldProps } from './components/form-field/index.ts';
 
@@ -415,6 +418,9 @@ export type { GridListItemProps } from './components/grid-list-item/index.ts';
 
 export { default as HoverCard } from './components/hover-card/index.ts';
 export type { HoverCardPlacement, HoverCardProps } from './components/hover-card/index.ts';
+
+export { default as HostProvider } from './components/host-provider/index.ts';
+export type { HostPlatform, HostProviderProps } from './components/host-provider/index.ts';
 
 export { default as Image } from './components/image/index.ts';
 export type { ImageProps } from './components/image/index.ts';
@@ -624,6 +630,9 @@ export type {
 export { default as PinInput } from './components/pin-input/index.ts';
 export type { PinInputMode, PinInputProps } from './components/pin-input/index.ts';
 
+export { default as PolicyLock } from './components/policy-lock/index.ts';
+export type { PolicyLockProps } from './components/policy-lock/index.ts';
+
 export { default as Popover } from './components/popover/index.ts';
 export type {
   PopoverFocusManagement,
@@ -635,6 +644,15 @@ export type {
 
 export { default as PricingCard } from './components/pricing-card/index.ts';
 export type { PricingCardProps } from './components/pricing-card/index.ts';
+
+export { default as PreviewPanel } from './components/preview-panel/index.ts';
+export type { PreviewPanelProps, PreviewPanelStatus } from './components/preview-panel/index.ts';
+
+export { default as ParameterField } from './components/parameter-field/index.ts';
+export type {
+  ParameterFieldEditorState,
+  ParameterFieldProps,
+} from './components/parameter-field/index.ts';
 
 export { default as Progress } from './components/progress/index.ts';
 export type { ProgressProps, ProgressSize, ProgressVariant } from './components/progress/index.ts';
@@ -741,11 +759,17 @@ export type {
   SelectionPopoverProps,
 } from './components/selection-popover/index.ts';
 
+export { default as SettingRow } from './components/setting-row/index.ts';
+export type { SettingRowProps } from './components/setting-row/index.ts';
+
 export { default as ShareCard } from './components/share-card/index.ts';
 export type { ShareCardAction, ShareCardProps } from './components/share-card/index.ts';
 
 export { default as ShortcutHint } from './components/shortcut-hint/index.ts';
 export type { ShortcutHintProps } from './components/shortcut-hint/index.ts';
+
+export { default as ShortcutField } from './components/shortcut-field/index.ts';
+export type { ShortcutFieldProps } from './components/shortcut-field/index.ts';
 
 export { default as SideNavigation } from './components/side-navigation/index.ts';
 export type { SideNavigationProps } from './components/side-navigation/index.ts';
@@ -800,6 +824,14 @@ export type {
   StackedListItemDensity,
   StackedListItemProps,
 } from './components/stacked-list-item/index.ts';
+
+export { default as Stack } from './components/stack/index.ts';
+export type {
+  StackAlign,
+  StackDirection,
+  StackJustify,
+  StackProps,
+} from './components/stack/index.ts';
 
 export { default as Spectrogram } from './components/spectrogram/index.ts';
 export type {
@@ -970,6 +1002,16 @@ export type {
 export { useResizeObserver } from './utilities/use-resize-observer.svelte.ts';
 
 export { useToast } from './utilities/use-toast.ts';
+
+export {
+  dragRegionClass,
+  dragRegionProps,
+  noDragClass,
+  noDragProps,
+  safeHeaderDragStyle,
+} from './utilities/drag-region.ts';
+export { createFormDirtyGuard } from './utilities/form-dirty-guard.ts';
+export type { FormDirtyGuard } from './utilities/form-dirty-guard.ts';
 
 export type { Highlighter } from './utilities/highlighter.ts';
 

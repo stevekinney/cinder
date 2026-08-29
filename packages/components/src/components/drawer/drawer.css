@@ -38,6 +38,14 @@
     backdrop-filter: blur(0);
   }
 
+  .cinder-drawer[data-cinder-modal='false'] {
+    pointer-events: none;
+  }
+
+  .cinder-drawer[data-cinder-modal='false'] .cinder-drawer__panel {
+    pointer-events: auto;
+  }
+
   /* Without this, the backdrop had no FROM state to transition from on open —
    it fades out on close (via the rule above) but snapped to full opacity
    instantly on open, which read as an asymmetric "eases out, pops in". */
@@ -60,6 +68,11 @@
     transition:
       translate var(--cinder-duration-normal) var(--cinder-ease-spring),
       opacity var(--cinder-duration-normal) var(--cinder-ease-standard);
+  }
+
+  .cinder-drawer__portal-scope {
+    display: contents;
+    pointer-events: auto;
   }
 
   /* Each placement block owns its slide vector via --_cinder-drawer-slide;

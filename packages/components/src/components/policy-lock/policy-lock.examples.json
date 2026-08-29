@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "policy-lock",
+  "import": "@lostgradient/cinder/policy-lock",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Managed setting",
+      "description": "Explain why a setting is controlled by policy.",
+      "code": "<script lang=\"ts\">\n  import { PolicyLock } from '@lostgradient/cinder/policy-lock';\n</script>\n\n<PolicyLock id=\"retention-policy\" reason=\"Managed by your organization\" source=\"Security policy\" />\n"
+    }
+  ]
+}

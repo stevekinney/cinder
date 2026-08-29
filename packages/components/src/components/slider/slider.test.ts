@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -34,6 +35,16 @@ function textForLabelledBy(container: Element, labelledBy: string): string {
 }
 
 describe('Slider (single)', () => {
+  test('renders a visible value and unit alongside its label', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Latency', value: 42, unit: 'ms' },
+    });
+
+    expect(container.querySelector('.cinder-slider__label')?.textContent).toBe('Latency');
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('42 ms');
+    expect(getThumbs(container)[0]?.getAttribute('aria-valuetext')).toBe('42 ms');
+  });
+
   test('renders one role=slider with min/max/now and accessible name', () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', value: 30 },
@@ -278,6 +289,18 @@ describe('Slider (single)', () => {
     expect(thumb.getAttribute('tabindex')).toBe('-1');
   });
 
+  test('disabled state preserves text contrast and dims only the track', () => {
+    const styles = readFileSync(new URL('./slider.css', import.meta.url), 'utf8');
+
+    expect(styles).toMatch(
+      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__value\s*\{[^}]*color:\s*var\(--cinder-text-default\);/,
+    );
+    expect(styles).toMatch(
+      /\.cinder-slider\[data-cinder-disabled\] \.cinder-slider__track\s*\{[^}]*opacity:\s*0\.55;/,
+    );
+    expect(styles).not.toMatch(/\.cinder-slider\[data-cinder-disabled\]\s*\{[^}]*opacity:/);
+  });
+
   test('renders a hidden input with name for form submission', () => {
     const { container } = render(Slider, {
       props: { label: 'Volume', value: 42, name: 'volume' },
@@ -368,6 +391,17 @@ describe('Slider (single)', () => {
 });
 
 describe('Slider (range)', () => {
+  test('renders both range bounds and includes units in accessible values', () => {
+    const { container } = render(Slider, {
+      props: { label: 'Latency window', mode: 'range', value: [20, 80], unit: 'ms' },
+    });
+
+    expect(container.querySelector('.cinder-slider__value')?.textContent).toBe('20 ms–80 ms');
+    const thumbs = getThumbs(container);
+    expect(thumbs[0]?.getAttribute('aria-valuetext')).toBe('20 ms');
+    expect(thumbs[1]?.getAttribute('aria-valuetext')).toBe('80 ms');
+  });
+
   test('renders two thumbs with labels for min and max', () => {
     const { container } = render(Slider, {
       props: {

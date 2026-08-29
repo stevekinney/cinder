@@ -1816,6 +1816,13 @@ describe('Modal chromeless mode (chrome="none")', () => {
       /\.cinder-modal__footer\[data-cinder-chrome='none'\]\s*\{[^}]*border-block-start:\s*none;/s,
     );
   });
+
+  test('desktop drag strip is omitted for chromeless content', () => {
+    const source = readFileSync(new URL('./modal.svelte', import.meta.url), 'utf8');
+
+    expect(source).toContain('host.isDesktop && !isChromeless');
+    expect(source).not.toContain('host.isDesktop}<div class="cinder-modal__drag-strip"');
+  });
 });
 
 describe('Modal nameless-dialog dev warning', () => {

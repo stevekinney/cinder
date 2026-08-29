@@ -20,6 +20,11 @@
   import type { CalendarProps } from './calendar.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
+  type CalendarRangeValue = {
+    start: string | undefined;
+    end: string | undefined;
+  };
+
   type CalendarCell = {
     iso: string;
     day: number;
@@ -27,6 +32,10 @@
     disabled: boolean;
     focused: boolean;
     selected: boolean;
+    rangeStart: boolean;
+    rangeEnd: boolean;
+    inRange: boolean;
+    rangePreview: boolean;
     ariaLabel: string;
   };
 
@@ -43,6 +52,11 @@
 
   let {
     id,
+    selectionMode = 'single',
+    rangeStart,
+    rangeEnd,
+    onRangeChange,
+    rangeHover,
     value = $bindable<string | undefined>(undefined),
     month,
     min,
@@ -131,12 +145,16 @@
   function resolveAnchorIso(
     valueProp: string | undefined,
     monthProp: string | undefined,
+    rangeStartProp: string | undefined,
+    rangeEndProp: string | undefined,
     fallbackIso: string,
   ): string {
-    if (valueProp && parseISODate(valueProp)) {
-      if (min && valueProp < min) return min;
-      if (max && valueProp > max) return max;
-      return valueProp;
+    const selectedValue =
+      valueProp ?? (selectionMode === 'range' ? (rangeEndProp ?? rangeStartProp) : undefined);
+    if (selectedValue && parseISODate(selectedValue)) {
+      if (min && selectedValue < min) return min;
+      if (max && selectedValue > max) return max;
+      return selectedValue;
     }
     if (monthProp && parseISODate(monthProp)) return monthProp;
     if (min && parseISODate(min) && fallbackIso < min) return min;
@@ -145,7 +163,9 @@
   }
 
   const initialTodayIso = localTodayIso();
-  const initialAnchorIso = untrack(() => resolveAnchorIso(value, month, initialTodayIso));
+  const initialAnchorIso = untrack(() =>
+    resolveAnchorIso(value, month, rangeStart, rangeEnd, initialTodayIso),
+  );
   const initialFocusedIso = untrack(() => initialAnchorIso);
   let todayIso = $state(localTodayIso());
 
@@ -173,6 +193,8 @@
     resolveAnchorIso(
       value,
       month,
+      rangeStart,
+      rangeEnd,
       untrack(() => todayIso),
     ),
   );
@@ -181,8 +203,25 @@
     startOfMonth(parseISODate(initialAnchorIso) ?? parseISODate(initialTodayIso)!),
   );
   let focusedIso = $state(initialFocusedIso);
+  let hoverIso = $state<string | undefined>(undefined);
+  let uncontrolledRange = $state<CalendarRangeValue>({
+    start: undefined,
+    end: undefined,
+  });
+  let wasRangeControlled = $state(false);
   let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
+  const selectedRangeStart = $derived(rangeStart ?? uncontrolledRange.start);
+  const selectedRangeEnd = $derived(rangeEnd ?? uncontrolledRange.end);
+
+  // Keep the internal range mirror in step with controlled callers, including
+  // the transition from an endpoint to `undefined`. Without the remembered
+  // controlled mode, clearing both props would reveal the last clicked range.
+  $effect(() => {
+    if (!wasRangeControlled && rangeStart === undefined && rangeEnd === undefined) return;
+    uncontrolledRange = { start: rangeStart, end: rangeEnd };
+    wasRangeControlled = true;
+  });
 
   $effect(() => {
     if (anchorIso === lastSyncedAnchorIso) return;
@@ -212,6 +251,23 @@
     const first = startOfMonth(visibleMonthDate);
     const gridStart = startOfWeek(first, firstDayOfWeek);
     const selectedIso = value;
+    const start =
+      selectedRangeStart && parseISODate(selectedRangeStart) ? selectedRangeStart : undefined;
+    const end = selectedRangeEnd && parseISODate(selectedRangeEnd) ? selectedRangeEnd : undefined;
+    const preview = hoverIso ?? rangeHover;
+    const previewEnd = preview && parseISODate(preview) ? preview : undefined;
+    const rangeLow =
+      start && (end ?? previewEnd)
+        ? start < (end ?? previewEnd!)
+          ? start
+          : (end ?? previewEnd!)
+        : undefined;
+    const rangeHigh =
+      start && (end ?? previewEnd)
+        ? start > (end ?? previewEnd!)
+          ? start
+          : (end ?? previewEnd!)
+        : undefined;
     const focused = focusedIso;
     const dayLabelFmt = new Intl.DateTimeFormat(locale, {
       weekday: 'long',
@@ -240,6 +296,24 @@
         disabled: disabled || !supported || isDateDisabled(iso),
         focused: iso === focused,
         selected: iso === selectedIso,
+        rangeStart: selectionMode === 'range' && iso === start,
+        rangeEnd: selectionMode === 'range' && iso === end,
+        inRange:
+          selectionMode === 'range' &&
+          !!end &&
+          !!rangeLow &&
+          !!rangeHigh &&
+          iso > rangeLow &&
+          iso < rangeHigh,
+        rangePreview:
+          selectionMode === 'range' &&
+          !end &&
+          !!previewEnd &&
+          !!rangeLow &&
+          !!rangeHigh &&
+          iso !== start &&
+          iso >= rangeLow &&
+          iso <= rangeHigh,
         ariaLabel:
           date.getUTCFullYear() <= 0 ? dayLabelWithEraFmt.format(date) : dayLabelFmt.format(date),
       });
@@ -272,9 +346,36 @@
 
   function commitDate(iso: string) {
     if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
+    if (selectionMode === 'range') {
+      const start = selectedRangeStart;
+      const end = selectedRangeEnd;
+      const next =
+        !start || end
+          ? { start: iso, end: undefined }
+          : iso < start
+            ? { start: iso, end: start }
+            : { start, end: iso };
+      if (next.end && rangeContainsDisabledDate(next.start, next.end)) return;
+      uncontrolledRange = next;
+      onRangeChange?.(next);
+      value = next.end ?? next.start;
+      focusedIso = iso;
+      return;
+    }
     value = iso;
     focusedIso = iso;
     onValueChange?.(iso);
+  }
+
+  function rangeContainsDisabledDate(start: string, end: string): boolean {
+    if (!disabledDate) return false;
+    const first = parseISODate(start);
+    const last = parseISODate(end);
+    if (!first || !last) return true;
+    for (let date = addDays(first, 1); toISODate(date) < end; date = addDays(date, 1)) {
+      if (isDateDisabled(toISODate(date))) return true;
+    }
+    return false;
   }
 
   async function moveFocusedByDays(delta: number) {
@@ -406,15 +507,23 @@
     class="cinder-calendar__grid"
     role="grid"
     aria-labelledby={titleId}
+    aria-multiselectable={selectionMode === 'range' ? 'true' : undefined}
     tabindex="-1"
     onkeydown={handleKeydown}
+    onmouseleave={() => {
+      hoverIso = undefined;
+    }}
   >
     {#each rows as row, rowIndex (row[0]?.iso || rowIndex)}
       <div role="row" class="cinder-calendar__grid-row">
         {#each row as cell, cellIndex (cell.iso || cellIndex)}
           <div
             role="gridcell"
-            aria-selected={cell.selected || undefined}
+            aria-selected={cell.selected ||
+              cell.rangeStart ||
+              cell.rangeEnd ||
+              cell.inRange ||
+              undefined}
             class="cinder-calendar__gridcell"
           >
             <button
@@ -423,6 +532,10 @@
               class="cinder-calendar__day"
               data-outside={cell.inMonth ? undefined : ''}
               data-selected={cell.selected ? '' : undefined}
+              data-range-start={cell.rangeStart ? '' : undefined}
+              data-range-end={cell.rangeEnd ? '' : undefined}
+              data-in-range={cell.inRange ? '' : undefined}
+              data-range-preview={cell.rangePreview ? '' : undefined}
               data-focused={cell.focused ? '' : undefined}
               aria-current={cell.iso === todayIso ? 'date' : undefined}
               aria-label={cell.ariaLabel}
@@ -433,6 +546,14 @@
               }}
               onfocus={() => {
                 if (cell.iso) focusedIso = cell.iso;
+              }}
+              onmouseenter={() => {
+                if (selectionMode === 'range' && selectedRangeStart && !selectedRangeEnd) {
+                  hoverIso = cell.iso;
+                }
+              }}
+              onmouseleave={() => {
+                hoverIso = undefined;
               }}
             >
               {cell.day}
