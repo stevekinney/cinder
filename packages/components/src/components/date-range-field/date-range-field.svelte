@@ -23,6 +23,7 @@
 
 <script lang="ts">
   import CalendarDays from 'lucide-svelte/icons/calendar-days';
+  import type { Attachment } from 'svelte/attachments';
   import type {
     DateRangeDatePreset,
     DateRangeFieldProps,
@@ -116,6 +117,8 @@
   let startInputInvalid = $state(false);
   let endInputInvalid = $state(false);
   let calendarTimeSnapshot = $state({ start: '', end: '' });
+  let startInputElement = $state<HTMLInputElement | null>(null);
+  let endInputElement = $state<HTMLInputElement | null>(null);
 
   // ──────────────────────────────────────────────────────────────────────────
   // Accessible IDs
@@ -277,6 +280,36 @@
     if (granularity === 'second') return 'T00:00:00';
     return 'T00:00';
   }
+
+  function attachInputElement(endpoint: 'start' | 'end'): Attachment<HTMLInputElement> {
+    return (element) => {
+      if (endpoint === 'start') startInputElement = element;
+      else endInputElement = element;
+
+      return () => {
+        if (endpoint === 'start' && startInputElement === element) startInputElement = null;
+        if (endpoint === 'end' && endInputElement === element) endInputElement = null;
+      };
+    };
+  }
+
+  const startInputAttachment = attachInputElement('start');
+  const endInputAttachment = attachInputElement('end');
+
+  function clearDraftValidity(): void {
+    startInputInvalid = false;
+    endInputInvalid = false;
+    startInputElement?.setCustomValidity('');
+    endInputElement?.setCustomValidity('');
+  }
+
+  function clampSameDayEndTime(next: DateRangeValue): DateRangeValue {
+    if (granularity === 'day' || !next.start || !next.end) return next;
+    if (next.start.slice(0, 10) !== next.end.slice(0, 10)) return next;
+    if (next.end >= next.start) return next;
+    return { start: next.start, end: next.start };
+  }
+
   function openCalendar(): void {
     if (disabled) return;
     calendarTimeSnapshot = { start: timeSuffix(value.start), end: timeSuffix(value.end) };
@@ -312,19 +345,22 @@
     end: string | undefined;
   }): void {
     if (!next.start) return;
-    const nextValue = normalizeDateRangeValue(
-      {
-        start: `${next.start}${calendarTimeSnapshot.start || timeSuffix(value.start)}`,
-        end: next.end
-          ? `${next.end}${calendarTimeSnapshot.end || timeSuffix(value.end)}`
-          : undefined,
-      },
-      granularity,
+    const nextValue = clampSameDayEndTime(
+      normalizeDateRangeValue(
+        {
+          start: `${next.start}${calendarTimeSnapshot.start || timeSuffix(value.start)}`,
+          end: next.end
+            ? `${next.end}${calendarTimeSnapshot.end || timeSuffix(value.end)}`
+            : undefined,
+        },
+        granularity,
+      ),
     );
     selectedPresetSnapshot = null;
+    clearDraftValidity();
     value = nextValue;
     onValueChange?.(nextValue);
-    if (next.end) calendarOpen = false;
+    if (next.end && granularity === 'day') calendarOpen = false;
   }
 
   function focusCalendarDay(panel: HTMLElement): HTMLElement | null {
@@ -398,6 +434,7 @@
       placeholder={inputPlaceholder}
       max={normalizedValue.end ?? undefined}
       step={inputStep}
+      inputAttachment={startInputAttachment}
       {disabled}
       aria-invalid={hasError || startInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}
@@ -415,6 +452,7 @@
       placeholder={inputPlaceholder}
       min={normalizedValue.start ?? undefined}
       step={inputStep}
+      inputAttachment={endInputAttachment}
       {disabled}
       aria-invalid={hasError || endInputInvalid ? 'true' : undefined}
       aria-describedby={describedBy}

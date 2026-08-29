@@ -68,6 +68,27 @@ describe('Calendar', () => {
     expect(ranges.at(-1)).toEqual({ start: '2026-06-10', end: '2026-06-15' });
   });
 
+  test('range selection keeps uncontrolled endpoint state between clicks', async () => {
+    const ranges: Array<{ start: string | undefined; end: string | undefined }> = [];
+    const { container } = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      onRangeChange: (range: { start: string | undefined; end: string | undefined }) =>
+        ranges.push(range),
+    });
+    const day = (iso: string) => container.querySelector<HTMLButtonElement>(`[id$="-day-${iso}"]`)!;
+
+    await fireEvent.click(day('2026-06-10'));
+    await fireEvent.click(day('2026-06-15'));
+
+    expect(ranges).toEqual([
+      { start: '2026-06-10', end: undefined },
+      { start: '2026-06-10', end: '2026-06-15' },
+    ]);
+    expect(day('2026-06-10').hasAttribute('data-range-start')).toBe(true);
+    expect(day('2026-06-15').hasAttribute('data-range-end')).toBe(true);
+  });
+
   test('renders inclusive committed range and hover preview', async () => {
     const { container } = render(Calendar, {
       month: '2026-06-01',
@@ -94,6 +115,27 @@ describe('Calendar', () => {
     });
     expect(preview.container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
   });
+
+  test('keeps hover previews visually marked but not aria-selected', async () => {
+    const { container } = render(Calendar, {
+      month: '2026-06-01',
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+    });
+    const hoverEndpoint = container.querySelector('[id$="-day-2026-06-13"]')!;
+
+    await fireEvent.mouseEnter(hoverEndpoint);
+
+    expect(hoverEndpoint.hasAttribute('data-range-preview')).toBe(true);
+    expect(hoverEndpoint.hasAttribute('data-range-end')).toBe(false);
+    expect(hoverEndpoint.parentElement?.getAttribute('aria-selected')).toBeNull();
+    expect(
+      container
+        .querySelector('[id$="-day-2026-06-11"]')
+        ?.parentElement?.getAttribute('aria-selected'),
+    ).toBeNull();
+  });
+
   test('anchors a standalone range and clears pointer preview on leave', async () => {
     const { container } = render(Calendar, {
       selectionMode: 'range',
@@ -105,9 +147,24 @@ describe('Calendar', () => {
     );
     await fireEvent.mouseEnter(container.querySelector('[id$="-day-2026-06-13"]')!);
     expect(container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
+    await fireEvent.mouseLeave(container.querySelector('[id$="-day-2026-06-13"]')!);
+    expect(container.querySelectorAll('[data-range-preview]')).toHaveLength(0);
+    await fireEvent.mouseEnter(container.querySelector('[id$="-day-2026-06-13"]')!);
+    expect(container.querySelectorAll('[data-range-preview]').length).toBeGreaterThan(0);
     await fireEvent.mouseLeave(container.querySelector('[role="grid"]')!);
     expect(container.querySelectorAll('[data-range-preview]')).toHaveLength(0);
   });
+
+  test('anchors a completed standalone range to the end endpoint month', () => {
+    const { container } = render(Calendar, {
+      selectionMode: 'range',
+      rangeStart: '2026-06-10',
+      rangeEnd: '2026-07-12',
+    });
+
+    expect(container.querySelector('.cinder-calendar__title')?.textContent).toContain('July 2026');
+  });
+
   test('marks each committed range date selected', () => {
     const { container } = render(Calendar, {
       selectionMode: 'range',

@@ -20,6 +20,11 @@
   import type { CalendarProps } from './calendar.types.ts';
   import { classNames } from '../../utilities/class-names.ts';
 
+  type CalendarRangeValue = {
+    start: string | undefined;
+    end: string | undefined;
+  };
+
   type CalendarCell = {
     iso: string;
     day: number;
@@ -145,7 +150,7 @@
     fallbackIso: string,
   ): string {
     const selectedValue =
-      valueProp ?? (selectionMode === 'range' ? (rangeStartProp ?? rangeEndProp) : undefined);
+      valueProp ?? (selectionMode === 'range' ? (rangeEndProp ?? rangeStartProp) : undefined);
     if (selectedValue && parseISODate(selectedValue)) {
       if (min && selectedValue < min) return min;
       if (max && selectedValue > max) return max;
@@ -199,8 +204,14 @@
   );
   let focusedIso = $state(initialFocusedIso);
   let hoverIso = $state<string | undefined>(undefined);
+  let uncontrolledRange = $state<CalendarRangeValue>({
+    start: undefined,
+    end: undefined,
+  });
   let lastSyncedAnchorIso = $state<string | null>(initialAnchorIso);
   const focusedDayId = $derived(`${monthGridId}-day-${focusedIso}`);
+  const selectedRangeStart = $derived(rangeStart ?? uncontrolledRange.start);
+  const selectedRangeEnd = $derived(rangeEnd ?? uncontrolledRange.end);
 
   $effect(() => {
     if (anchorIso === lastSyncedAnchorIso) return;
@@ -230,8 +241,9 @@
     const first = startOfMonth(visibleMonthDate);
     const gridStart = startOfWeek(first, firstDayOfWeek);
     const selectedIso = value;
-    const start = rangeStart && parseISODate(rangeStart) ? rangeStart : undefined;
-    const end = rangeEnd && parseISODate(rangeEnd) ? rangeEnd : undefined;
+    const start =
+      selectedRangeStart && parseISODate(selectedRangeStart) ? selectedRangeStart : undefined;
+    const end = selectedRangeEnd && parseISODate(selectedRangeEnd) ? selectedRangeEnd : undefined;
     const preview = hoverIso ?? rangeHover;
     const previewEnd = preview && parseISODate(preview) ? preview : undefined;
     const rangeLow =
@@ -275,9 +287,10 @@
         focused: iso === focused,
         selected: iso === selectedIso,
         rangeStart: selectionMode === 'range' && iso === start,
-        rangeEnd: selectionMode === 'range' && iso === (end ?? previewEnd),
+        rangeEnd: selectionMode === 'range' && iso === end,
         inRange:
           selectionMode === 'range' &&
+          !!end &&
           !!rangeLow &&
           !!rangeHigh &&
           iso > rangeLow &&
@@ -288,8 +301,9 @@
           !!previewEnd &&
           !!rangeLow &&
           !!rangeHigh &&
-          iso > rangeLow &&
-          iso < rangeHigh,
+          iso !== start &&
+          iso >= rangeLow &&
+          iso <= rangeHigh,
         ariaLabel:
           date.getUTCFullYear() <= 0 ? dayLabelWithEraFmt.format(date) : dayLabelFmt.format(date),
       });
@@ -323,12 +337,15 @@
   function commitDate(iso: string) {
     if (disabled || !parseISODate(iso) || isDateDisabled(iso)) return;
     if (selectionMode === 'range') {
+      const start = selectedRangeStart;
+      const end = selectedRangeEnd;
       const next =
-        !rangeStart || rangeEnd
+        !start || end
           ? { start: iso, end: undefined }
-          : iso < rangeStart
-            ? { start: iso, end: rangeStart }
-            : { start: rangeStart, end: iso };
+          : iso < start
+            ? { start: iso, end: start }
+            : { start, end: iso };
+      uncontrolledRange = next;
       onRangeChange?.(next);
       value = next.end ?? next.start;
       focusedIso = iso;
@@ -509,7 +526,12 @@
                 if (cell.iso) focusedIso = cell.iso;
               }}
               onmouseenter={() => {
-                if (selectionMode === 'range' && rangeStart && !rangeEnd) hoverIso = cell.iso;
+                if (selectionMode === 'range' && selectedRangeStart && !selectedRangeEnd) {
+                  hoverIso = cell.iso;
+                }
+              }}
+              onmouseleave={() => {
+                hoverIso = undefined;
               }}
             >
               {cell.day}
