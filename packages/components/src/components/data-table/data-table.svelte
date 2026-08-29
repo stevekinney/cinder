@@ -531,7 +531,7 @@
                   aria-orientation="vertical"
                   aria-label={`Resize ${column.label} column`}
                   aria-valuemin={column.minWidth ?? 60}
-                  aria-valuemax={column.maxWidth}
+                  aria-valuemax={column.maxWidth ?? Number.MAX_SAFE_INTEGER}
                   aria-valuenow={boundedColumnWidth(column)}
                   tabindex="0"
                   onkeydown={(event) => handleResizeKey(event, column)}

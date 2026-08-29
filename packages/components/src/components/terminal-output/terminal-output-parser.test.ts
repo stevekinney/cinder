@@ -52,4 +52,9 @@ describe('parseTerminalOutput', () => {
       ],
     ]);
   });
+  test('consumes unsupported non-CSI escape sequences', () => {
+    expect(parseTerminalOutput('before\u001b7middle\u001b(0after')).toEqual([
+      [{ text: 'beforemiddleafter', bold: false }],
+    ]);
+  });
 });

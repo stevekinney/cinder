@@ -13,6 +13,7 @@
 </script>
 
 <script lang="ts">
+  import { tick } from 'svelte';
   import Grid from '../grid/grid.svelte';
   import Input from '../input/input.svelte';
   import Button from '../button/button.svelte';
@@ -29,6 +30,7 @@
   }: KeyValueEditorProps = $props();
   const instanceId = $props.id();
   let rows = $state<KeyValueEntry[]>(entries);
+  let editorElement = $state<HTMLDivElement>();
   let lastExternalEntries = entries;
   function commit(next: KeyValueEntry[]) {
     rows = next;
@@ -39,6 +41,13 @@
   function update(index: number, field: 'key' | 'value', value: string) {
     commit(rows.map((row, i) => (i === index ? { ...row, [field]: value } : row)));
   }
+  async function removeRow(index: number): Promise<void> {
+    commit(rows.filter((_, i) => i !== index));
+    if (rows.length === 0) {
+      await tick();
+      editorElement?.querySelector<HTMLButtonElement>('.cinder-button')?.focus();
+    }
+  }
   $effect(() => {
     if (entries === lastExternalEntries) return;
     rows = entries;
@@ -46,7 +55,7 @@
   });
 </script>
 
-<div {...rest} class={classNames('cinder-key-value-editor', className)}>
+<div bind:this={editorElement} {...rest} class={classNames('cinder-key-value-editor', className)}>
   <Grid
     columns="minmax(8rem, 1fr) minmax(12rem, 2fr) auto"
     gap="var(--cinder-space-2)"
@@ -74,7 +83,7 @@
           size="sm"
           variant="ghost"
           aria-label={removeLabel(row.key)}
-          onclick={() => commit(rows.filter((_, i) => i !== index))}>Remove</Button
+          onclick={() => removeRow(index)}>Remove</Button
         >
       </div>
     {/each}

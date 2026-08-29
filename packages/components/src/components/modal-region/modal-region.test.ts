@@ -55,5 +55,7 @@ describe('ModalRegion', () => {
     expect(source).toContain('entry.id === id && !entry.settled');
     expect(source).toContain('key: ++sequence');
     expect(source).toContain('{#each entries as entry (entry.key)}');
+    expect(source).toContain('entries.filter((entry) => entry.key !== key)');
+    expect(source).toContain('onExitComplete={() => remove(entry.key)}');
   });
 });

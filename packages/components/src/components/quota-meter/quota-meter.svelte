@@ -40,6 +40,7 @@
     locale ?? localeContext?.locale ?? (hasMounted ? navigator.language : 'en-US'),
   );
   const parsedResetDate = $derived(resetsAt ? new Date(resetsAt) : undefined);
+  const effectiveLimit = $derived(Number.isFinite(limit) && limit > 0 ? limit : 100);
   const resetDate = $derived(
     parsedResetDate && !Number.isNaN(parsedResetDate.getTime())
       ? new Intl.DateTimeFormat(resolvedLocale, { dateStyle: 'medium', timeZone }).format(
@@ -50,7 +51,7 @@
   const valueText = $derived(
     unlimited
       ? `${used} used, unlimited`
-      : `${used} of ${limit} used${resetDate ? `, resets ${resetDate}` : ''}`,
+      : `${used} of ${effectiveLimit} used${resetDate ? `, resets ${resetDate}` : ''}`,
   );
 </script>
 
@@ -58,7 +59,7 @@
   <Meter
     {...unlimited ? { verdict: { level: 'unknown' as const, label: valueText } } : {}}
     value={used}
-    max={limit}
+    max={effectiveLimit}
     ariaLabel={label}
     ariaValueText={valueText}
   />{#if children}{@render children()}{/if}

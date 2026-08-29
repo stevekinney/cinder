@@ -1,5 +1,6 @@
 /// <reference lib="dom" />
 import { afterEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -63,6 +64,13 @@ describe('RelativeTime', () => {
     } finally {
       Date.now = realNow;
     }
+  });
+
+  test('seeds the initial clock from the timestamp before mounting', () => {
+    const source = readFileSync(new URL('./relative-time.svelte', import.meta.url), 'utf8');
+
+    expect(source).toContain('let now = $state(initialTimestamp);');
+    expect(source).toContain('now = Date.now();');
   });
 
   test.each([new Date('invalid'), 'not-a-date'])('renders invalid dates safely: %s', (date) => {

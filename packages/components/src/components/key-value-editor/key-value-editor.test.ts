@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { KeyValueEntry } from './key-value-editor.types.ts';
 setupHappyDom();
-const { render } = await import('@testing-library/svelte');
+const { fireEvent, render } = await import('@testing-library/svelte');
 const { default: KeyValueEditor } = await import('./key-value-editor.svelte');
 describe('KeyValueEditor', () => {
   test('renders editable rows with unique per-instance input ids', () => {
@@ -60,6 +60,22 @@ describe('KeyValueEditor', () => {
     expect(container.querySelector('[aria-label="Remove Host"]')?.classList).toContain(
       'cinder-button',
     );
+  });
+
+  test('restores focus to Add pair after removing the final row', async () => {
+    const { container } = render(KeyValueEditor, {
+      entries: [{ key: 'Host', value: 'localhost' }],
+    });
+    const removeButton = container.querySelector<HTMLButtonElement>('[aria-label="Remove Host"]');
+    const addButton = Array.from(container.querySelectorAll<HTMLButtonElement>('button')).find(
+      (button) => button.textContent?.trim() === 'Add pair',
+    );
+
+    expect(removeButton).not.toBeNull();
+    expect(addButton).not.toBeNull();
+    await fireEvent.click(removeButton!);
+
+    expect(document.activeElement).toBe(addButton as HTMLButtonElement);
   });
 
   test('entry point imports only styles used by the rendered composition', () => {

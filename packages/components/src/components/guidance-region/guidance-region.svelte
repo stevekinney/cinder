@@ -107,13 +107,18 @@
   let openedModalId: string | null = null;
   $effect(() => {
     const claim = activeClaim;
-    if (!claim || activeClaims.some((candidate) => candidate.id === claim.id)) return;
-    anchoredOpen = false;
-    activeClaim = null;
+    if (!claim) return;
+    const remainsEligible = activeClaims.some((candidate) => candidate.id === claim.id);
+    const anchor = claim.kind === 'modal' || !anchorResolver ? null : anchorResolver(claim.anchor);
+    const anchorConnected = claim.kind === 'modal' || (anchor !== null && anchor.isConnected);
+    if (remainsEligible && anchorConnected) return;
     if (claim.kind === 'modal') {
+      modalApi?.dismiss(`cinder-guidance-${claim.id}`);
       openedModalId = null;
       modalSlot.reset();
     }
+    anchoredOpen = false;
+    activeClaim = null;
   });
 
   $effect(() => {

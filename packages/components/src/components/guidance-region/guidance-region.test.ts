@@ -77,5 +77,7 @@ describe('GuidanceRegion', () => {
     expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${id}`)');
     expect(source).toContain('modalApi.dismiss(`cinder-guidance-${claim.id}`)');
     expect(source).toContain('storage?.set(key, false)');
+    expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${claim.id}`)');
+    expect(source).toContain('anchor.isConnected');
   });
 });

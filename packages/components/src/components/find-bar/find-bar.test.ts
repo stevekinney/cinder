@@ -90,6 +90,19 @@ describe('FindBar', () => {
     expect(onQueryChange).toHaveBeenLastCalledWith('');
   });
 
+  test('reconciles eligibility when the minimum query length changes', async () => {
+    const onQueryChange = mock(() => {});
+    const { rerender } = render(FindBar, {
+      value: 'abcd',
+      minQueryLength: 3,
+      onQueryChange,
+    });
+
+    await rerender({ value: 'abcd', minQueryLength: 5, onQueryChange });
+
+    expect(onQueryChange).toHaveBeenLastCalledWith('');
+  });
+
   test('CSS sidecar imports composed primitive styles', () => {
     const css = readFileSync(new URL('./find-bar.css', import.meta.url), 'utf8');
 

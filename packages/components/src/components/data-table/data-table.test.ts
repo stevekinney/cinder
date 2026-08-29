@@ -153,6 +153,17 @@ describe('DataTable — column resizing', () => {
     ).toBe('120');
   });
 
+  test('provides a finite aria-valuemax when maxWidth is omitted', () => {
+    const { getByRole } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuemax'),
+    ).toBe(String(Number.MAX_SAFE_INTEGER));
+  });
+
   test('clamps the initial rendered column width to its bounds', () => {
     const { container, getByRole } = render(DataTable, {
       columns: [{ key: 'name', label: 'Name', width: 40, minWidth: 80, maxWidth: 120 }],

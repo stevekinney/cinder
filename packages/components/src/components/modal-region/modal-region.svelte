@@ -97,8 +97,8 @@
     entries = [...entries];
   }
 
-  function remove(id: string): void {
-    entries = entries.filter((entry) => entry.id !== id);
+  function remove(key: number): void {
+    entries = entries.filter((entry) => entry.key !== key);
   }
 
   setModalContext(api);
@@ -117,14 +117,14 @@
       {...entry.props}
       open={!entry.settled}
       onDismiss={() => finish(entry.id, false)}
-      onExitComplete={() => remove(entry.id)}
+      onExitComplete={() => remove(entry.key)}
     />
   {:else}
     <Modal
       open={!entry.settled}
       title={entry.title}
       onDismiss={() => finish(entry.id, false)}
-      onExitComplete={() => remove(entry.id)}
+      onExitComplete={() => remove(entry.key)}
     >
       <Component
         {...entry.props}

@@ -88,6 +88,13 @@ describe('QuotaMeter', () => {
     expect(container.querySelector('[role="meter"]')).toBeNull();
   });
 
+  test.each([0, -10])('uses Meter fallback wording for an invalid limit (%s)', (limit) => {
+    const { container } = render(QuotaMeter, { used: 24, limit });
+    expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toBe(
+      '24 of 100 used',
+    );
+  });
+
   test('ignores an invalid reset date instead of throwing during render', () => {
     const { container } = render(QuotaMeter, { used: 24, resetsAt: 'not-a-date' });
     expect(container.querySelector('[role="meter"]')?.getAttribute('aria-valuetext')).toBe(

@@ -107,6 +107,19 @@ export class TerminalOutputParser {
           continue;
         }
       }
+      if (character === '\u001b') {
+        let end = index + 1;
+        while (end < input.length && input.charCodeAt(end) >= 0x20 && input.charCodeAt(end) <= 0x2f)
+          end += 1;
+        if (end >= input.length) {
+          this.#pending = input.slice(index);
+          break;
+        }
+        if (input.charCodeAt(end) >= 0x30 && input.charCodeAt(end) <= 0x7e) {
+          index = end;
+          continue;
+        }
+      }
       if (character === '\u001b' && index === input.length - 1) {
         this.#pending = character;
         break;
