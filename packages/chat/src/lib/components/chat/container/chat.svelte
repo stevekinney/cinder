@@ -378,6 +378,9 @@
   const rollbackBoundaryIndex = $derived(
     rollbackMessageId ? messages.findIndex((message) => message.id === rollbackMessageId) : -1,
   );
+  const messageIndexById = $derived(
+    new Map(messages.map((message, index) => [message.id, index] as const)),
+  );
 
   function confirmRollback(): void {
     if (!rollbackMessageId) return;
@@ -458,7 +461,12 @@
     return buildChatRenderRows(messagesWithDates, {
       firstUnreadId: unreadState.firstUnreadId,
       showTypingIndicator,
-      ungroupedToolCallIds: actionRequiredToolCallIds,
+      ungroupedToolCallIds:
+        row || messageActions || messageStatus || searchState.isOpen
+          ? new Set(
+              messages.flatMap((message) => (message.toolCall?.id ? [message.toolCall.id] : [])),
+            )
+          : actionRequiredToolCallIds,
     });
   });
   let hasMounted = $state(false);
@@ -2574,7 +2582,7 @@
         oneditingchange={(editing) => handleEditingChange(message.id, editing)}
         onrollback={onrollback ? (messageId) => (rollbackMessageId = messageId) : undefined}
         rollbackDiscarded={rollbackBoundaryIndex >= 0 &&
-          messages.findIndex((candidate) => candidate.id === message.id) > rollbackBoundaryIndex}
+          (messageIndexById.get(message.id) ?? -1) > rollbackBoundaryIndex}
         showDefaultActions={allowCopy}
         {onExpandedChange}
         streaming={isStreamingMessage}
@@ -2630,9 +2638,12 @@
       {@render renderTypingIndicator()}
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
-        pairs={renderRow.messages.flatMap((message) =>
-          message.toolCall?.id ? (toolCallPairsByCallId.get(message.toolCall.id) ?? []) : [],
-        )}
+        pairs={renderRow.messages.flatMap((message) => {
+          if (!message.toolCall?.id) return [];
+          const pairs = toolCallPairsByCallId.get(message.toolCall.id) ?? [];
+          const pair = pairs.find((candidate) => candidate.call === message.toolCall) ?? pairs[0];
+          return pair ? [pair] : [];
+        })}
       />
     {:else}
       {@render renderMessageRow(renderRow)}

@@ -12,7 +12,7 @@
   };
 </script>
 
-<div class="chat-transcript-entry" data-kind={part.kind} role="status">
+<div class="chat-transcript-entry" data-kind={part.kind}>
   <span class="chat-transcript-entry__label">{labels[part.kind]}</span>
   <span>{part.content}</span>
 </div>

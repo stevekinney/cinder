@@ -151,6 +151,7 @@ export function buildChatRenderRows(
   for (const item of items) {
     if (item.type === 'message') {
       if (item.message.id === firstUnreadId) {
+        flushToolCallRun();
         rows.push({ type: 'unread-divider', afterMessageId: previousMessageId });
       }
       previousMessageId = item.message.id;
@@ -187,7 +188,7 @@ export function chatRenderRowKey(row: ChatRenderRow): string {
     case 'typing':
       return 'typing';
     case 'tool-call-group':
-      return `tool-group-${row.messages.map((message) => message.id).join('-')}`;
+      return `tool-group-${JSON.stringify(row.messages.map((message) => message.id))}`;
   }
 }
 

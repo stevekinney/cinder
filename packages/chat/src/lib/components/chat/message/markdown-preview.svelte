@@ -163,7 +163,11 @@
 
 {#snippet renderSegment(segment: MarkdownSegment)}
   {#if segment.kind === 'node'}
-    {@render markdownNode!(segment.node, renderDefaultNode)}
+    {#if markdownNode}
+      {@render markdownNode(segment.node, renderDefaultNode)}
+    {:else}
+      {@render renderDefaultNode(segment.node)}
+    {/if}
   {:else if segment.kind === 'element'}
     <svelte:element this={segment.tag} {...segment.attributes}>
       {#each segment.children as child}
@@ -177,13 +181,9 @@
 
 <div class={classNames('cinder-markdown-content message-content-preview', className)} {...rest}>
   {#if renderedHtml}
-    {#if markdownNode}
-      {#each segments as segment, index (`${segment.kind}:${index}`)}
-        {@render renderSegment(segment)}
-      {/each}
-    {:else}
-      {@html renderedHtml}
-    {/if}
+    {#each segments as segment, index (`${segment.kind}:${index}`)}
+      {@render renderSegment(segment)}
+    {/each}
   {:else}
     <p>{content}</p>
   {/if}

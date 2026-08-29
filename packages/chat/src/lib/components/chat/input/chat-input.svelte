@@ -346,12 +346,11 @@
 
     const pastedText = event.clipboardData?.getData('text/plain') ?? '';
     if (pastedText.length >= largePasteThreshold) {
-      event.preventDefault();
       const file = new File([pastedText], 'pasted-text.txt', {
         type: 'text/plain',
         lastModified: 0,
       });
-      addAttachment(file, pastedText);
+      if (addAttachment(file, pastedText)) event.preventDefault();
     }
   }
 
@@ -673,13 +672,21 @@
       <span id={shortcutDescriptionId} class="sr-only">
         {#if showStopButton}
           Response is streaming. Use the stop button to stop generation.
+        {:else if submitOn === 'modifier-enter'}
+          Press Command+Enter or Control+Enter to send. Press Enter for a newline.
+        {:else if submitOn === 'enter-if-single-line'}
+          Press Enter to send a single-line message. Press Shift+Enter for a newline.
         {:else}
-          Press Enter to send, Shift+Enter for newline
+          Press Enter to send. Press Shift+Enter for a newline.
         {/if}
       </span>
       {#if !showStopButton}
         <span id={hintId} class="chat-input-hint" aria-hidden="true">
-          <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
+          {#if submitOn === 'modifier-enter'}
+            <kbd>⌘</kbd>/<kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send
+          {:else}
+            <kbd>Enter</kbd> to send, <kbd>Shift</kbd>+<kbd>Enter</kbd> for newline
+          {/if}
         </span>
       {/if}
     </div>

@@ -98,6 +98,24 @@ describe('ChatInput', () => {
     expect(composer.value).toBe('sixteen characters');
   });
 
+  test('does not consume a large paste when attachment validation rejects it', () => {
+    const { container } = render(ChatInput, {
+      id: 'rejected-large-paste-composer',
+      largePasteThreshold: 5,
+      acceptedTypes: ['image/png'],
+    });
+    const form = container.querySelector('form')!;
+    const paste = new Event('paste', { bubbles: true, cancelable: true });
+    Object.defineProperty(paste, 'clipboardData', {
+      value: { items: [], getData: () => 'sixteen characters' },
+    });
+
+    form.dispatchEvent(paste);
+
+    expect(paste.defaultPrevented).toBe(false);
+    expect(container.querySelector('[aria-label="Attached files"]')).toBeNull();
+  });
+
   test('shows an instructional copy-drop overlay with copy semantics', async () => {
     const { container } = render(ChatInput, { id: 'drop-overlay-composer' });
     const form = container.querySelector('form')!;
@@ -355,6 +373,11 @@ describe('ChatInput', () => {
         },
       });
       const composer = target.querySelector<HTMLTextAreaElement>('textarea.chat-input-editor')!;
+      const shortcutDescription = target.querySelector(
+        `#${composer.getAttribute('aria-describedby')}`,
+      );
+      expect(shortcutDescription?.textContent).toContain('Command+Enter or Control+Enter to send');
+      expect(target.querySelector('.chat-input-hint')?.textContent).toContain('Ctrl');
       await fireEvent.input(composer, { target: { value: 'send this' } });
 
       await fireEvent.keyDown(composer, { key: 'Enter' });

@@ -106,6 +106,7 @@
     }
 
     loadingSources = true;
+    sourceGroups = [];
     void Promise.all(
       sources.map(async (source: ChatComposerPopoverSource<TItem>) => {
         const candidates = await source.load({ query: match.query, trigger: match.trigger });

@@ -157,4 +157,40 @@ describe('chat render rows', () => {
   test('keys a start unread divider when callers provide one explicitly', () => {
     expect(chatRenderRowKey({ type: 'unread-divider', afterMessageId: null })).toBe('unread-start');
   });
+
+  test('splits a grouped tool run at the unread boundary', () => {
+    const first = message({
+      id: 'first',
+      role: 'tool-call',
+      toolCall: { id: 'one', name: 'one', arguments: {} },
+    });
+    const second = message({
+      id: 'second',
+      role: 'tool-call',
+      toolCall: { id: 'two', name: 'two', arguments: {} },
+    });
+    const rows = buildChatRenderRows(buildMessagesWithDateSeparators([first, second], new Set()), {
+      firstUnreadId: 'second',
+    });
+
+    expect(rows.map((row) => row.type)).toEqual(['date', 'message', 'unread-divider', 'message']);
+  });
+
+  test('encodes tool-group message ids without delimiter collisions', () => {
+    const firstKey = chatRenderRowKey({
+      type: 'tool-call-group',
+      messages: [
+        message({ id: 'a-b', role: 'assistant' }),
+        message({ id: 'c', role: 'assistant' }),
+      ],
+    });
+    const secondKey = chatRenderRowKey({
+      type: 'tool-call-group',
+      messages: [
+        message({ id: 'a', role: 'assistant' }),
+        message({ id: 'b-c', role: 'assistant' }),
+      ],
+    });
+    expect(firstKey).not.toBe(secondKey);
+  });
 });
