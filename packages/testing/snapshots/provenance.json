@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "key-value-editor"
+    "data-table"
   ],
-  "renderedSourceSha": "f756329e047a800765f19db6b73a4fca23ec2145",
+  "renderedSourceSha": "27afd9a1874eea037e407f42b33f220afee70a68",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
