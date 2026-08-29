@@ -16,7 +16,11 @@ describe('FindBar', () => {
   });
 
   test('clears stale results immediately and dispatches eligible queries after the debounce', async () => {
-    const onQueryChange = mock(() => {});
+    let resolveQueryChange: (value: string) => void;
+    const queryChanged = new Promise<string>((resolve) => {
+      resolveQueryChange = resolve;
+    });
+    const onQueryChange = mock((query: string) => resolveQueryChange(query));
     const { container } = render(FindBar, {
       id: 'find',
       value: 'old query',
@@ -29,7 +33,7 @@ describe('FindBar', () => {
 
     await fireEvent.input(input, { target: { value: 'new query' } });
     expect(container.querySelector('[role="status"]')?.textContent).toBe('');
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    expect(await queryChanged).toBe('new query');
     expect(onQueryChange).toHaveBeenCalledWith('new query');
   });
 
