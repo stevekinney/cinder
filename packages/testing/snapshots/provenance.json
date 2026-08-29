@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["relative-time"],
-  "renderedSourceSha": "4b01e0f2d4f59ae359722875acd63956a9df92c7",
+  "componentScope": ["guidance-region"],
+  "renderedSourceSha": "3ee3ce4d3f523760d2430c573de2a901911d3cc5",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "arm64",
