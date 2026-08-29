@@ -15,7 +15,7 @@
 <script lang="ts">
   import { getLocaleContext } from '../../_internal/locale-context.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import Meter from '../meter/index.ts';
+  import Meter from '@lostgradient/cinder/meter';
 
   import type { QuotaMeterProps } from './quota-meter.types.ts';
 

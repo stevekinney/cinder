@@ -14,8 +14,8 @@
 
 <script lang="ts">
   import { onDestroy, type Component } from 'svelte';
-  import ConfirmDialog from '../confirm-dialog/confirm-dialog.svelte';
-  import Modal from '../modal/modal.svelte';
+  import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
+  import Modal from '@lostgradient/cinder/modal';
   import {
     setModalContext,
     type ModalEntry,
@@ -65,6 +65,9 @@
     confirm(options) {
       if (destroyed) return Promise.resolve(false);
       const id = options.id ?? `cinder-confirm-${++sequence}`;
+      const existing = entries.find((entry) => entry.id === id && !entry.settled);
+      if (existing && !existing.confirmation) return Promise.resolve(false);
+      if (existing?.promise) return existing.promise as Promise<boolean>;
       const promise = api.openModal(
         ConfirmDialog,
         {

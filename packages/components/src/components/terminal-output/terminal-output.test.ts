@@ -45,7 +45,17 @@ describe('TerminalOutput', () => {
     const { container } = render(TerminalOutput, { props: { value: 'ready' } });
     const output = container.querySelector('.cinder-terminal-output');
     expect(output?.getAttribute('role')).toBe('log');
+    expect(output?.getAttribute('aria-label')).toBe('Terminal output');
     expect(output?.getAttribute('tabindex')).toBe('0');
+  });
+
+  test('preserves a consumer-provided accessible name for the focusable log', () => {
+    const { container } = render(TerminalOutput, {
+      props: { value: 'ready', 'aria-label': 'Build output' },
+    });
+    expect(container.querySelector('.cinder-terminal-output')?.getAttribute('aria-label')).toBe(
+      'Build output',
+    );
   });
 
   test('renders fallback children without an empty parsed line', () => {

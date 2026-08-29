@@ -80,6 +80,7 @@ describe('GuidanceRegion', () => {
     expect(source).toContain('storage?.set(key, false)');
     expect(source).toContain('modalApi?.dismiss(`cinder-guidance-${claim.id}`)');
     expect(source).toContain('anchor.isConnected');
+    expect(source).toContain('anchor.focus()');
   });
 
   test('does not let reset settle a stale modal claim into a new claim', async () => {

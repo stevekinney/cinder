@@ -28,6 +28,7 @@
     class: className,
     value = '',
     followLatest = $bindable(true),
+    'aria-label': ariaLabel = 'Terminal output',
     children,
     ...rest
   }: TerminalOutputProps = $props();
@@ -94,6 +95,7 @@
   {...rest}
   class={classNames('cinder-terminal-output', className)}
   role="log"
+  aria-label={ariaLabel}
   aria-live="polite"
   tabindex="0"
   onscroll={handleScroll}

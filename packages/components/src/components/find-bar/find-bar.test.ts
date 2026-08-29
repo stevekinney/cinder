@@ -11,12 +11,25 @@ describe('FindBar', () => {
     cleanup();
   });
   test('renders accessible controls', () => {
-    const { container } = render(FindBar, { id: 'find' });
+    const { container } = render(FindBar, {
+      id: 'find',
+      onPrevious: () => {},
+      onNext: () => {},
+      onDismiss: () => {},
+    });
     expect(container.querySelector('input')).not.toBeNull();
     expect(container.querySelector('[role="status"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Previous match"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Next match"]')).not.toBeNull();
     expect(container.querySelector('[aria-label="Close find bar"]')).not.toBeNull();
+  });
+
+  test('omits actions without callbacks', () => {
+    const { container } = render(FindBar, { id: 'find' });
+
+    expect(container.querySelector('[aria-label="Previous match"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Next match"]')).toBeNull();
+    expect(container.querySelector('[aria-label="Close find bar"]')).toBeNull();
   });
 
   test('clears stale results immediately and dispatches eligible queries after the debounce', async () => {

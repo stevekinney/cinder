@@ -124,23 +124,31 @@
   <span id={`${inputId}-description`} class="cinder-sr-only"
     >Type at least {minQueryLength} characters to search.</span
   ><span class="cinder-find-bar__status" role="status" aria-live="polite">{status}</span>
-  <div class="cinder-find-bar__actions">
-    <Button
-      size="sm"
-      variant="ghost"
-      aria-label="Previous match"
-      disabled={!matchCount}
-      iconOnly
-      onclick={onPrevious}><ChevronLeft /></Button
-    ><Button
-      size="sm"
-      variant="ghost"
-      aria-label="Next match"
-      disabled={!matchCount}
-      iconOnly
-      onclick={onNext}><ChevronRight /></Button
-    ><Button size="sm" variant="ghost" iconOnly aria-label="Close find bar" onclick={onDismiss}
-      ><X /></Button
-    >
-  </div>
+  {#if onPrevious || onNext || onDismiss}
+    <div class="cinder-find-bar__actions">
+      {#if onPrevious}<Button
+          size="sm"
+          variant="ghost"
+          aria-label="Previous match"
+          disabled={!matchCount}
+          iconOnly
+          onclick={onPrevious}><ChevronLeft /></Button
+        >{/if}
+      {#if onNext}<Button
+          size="sm"
+          variant="ghost"
+          aria-label="Next match"
+          disabled={!matchCount}
+          iconOnly
+          onclick={onNext}><ChevronRight /></Button
+        >{/if}
+      {#if onDismiss}<Button
+          size="sm"
+          variant="ghost"
+          iconOnly
+          aria-label="Close find bar"
+          onclick={onDismiss}><X /></Button
+        >{/if}
+    </div>
+  {/if}
 </div>

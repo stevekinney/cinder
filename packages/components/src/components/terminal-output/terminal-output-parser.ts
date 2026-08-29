@@ -88,9 +88,10 @@ export class TerminalOutputParser {
         index = end - 1;
         continue;
       }
-      if (character === '\u001b' && input[index + 1] === '[') {
+      if ((character === '\u001b' && input[index + 1] === '[') || character === '\u009b') {
+        const sequenceStart = character === '\u009b' ? index + 1 : index + 2;
         let end = -1;
-        for (let candidate = index + 2; candidate < input.length; candidate += 1) {
+        for (let candidate = sequenceStart; candidate < input.length; candidate += 1) {
           const code = input.charCodeAt(candidate);
           if (code >= 0x40 && code <= 0x7e) {
             end = candidate;
@@ -102,7 +103,7 @@ export class TerminalOutputParser {
           break;
         }
         if (end >= 0) {
-          const command = input.slice(index + 2, end);
+          const command = input.slice(sequenceStart, end);
           if (input[end] === 'K' && (command === '' || command === '0' || command === '2')) {
             if (command === '2') {
               const length = Math.max(this.#column, this.#lines[this.#line]?.length ?? 0);
@@ -139,6 +140,12 @@ export class TerminalOutputParser {
         this.#line += 1;
         this.#lines[this.#line] = [];
         this.#column = 0;
+        continue;
+      }
+      if (character === '\t') {
+        const nextTabStop = this.#column + 8 - (this.#column % 8);
+        const line = this.#lines[this.#line] ?? (this.#lines[this.#line] = []);
+        while (this.#column < nextTabStop) line[this.#column++] ??= this.blankCell();
         continue;
       }
       const grapheme = graphemeSegmenter.segment(input.slice(index)).containing(0)?.segment;

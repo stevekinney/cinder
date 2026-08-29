@@ -194,6 +194,43 @@ describe('DataTable — column resizing', () => {
       getByRole('separator', { name: 'Resize Name column' }).getAttribute('aria-valuenow'),
     ).toBe('80');
   });
+
+  test('treats external column width changes as authoritative after resizing', async () => {
+    const view = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    const separator = view.getByRole('separator', { name: 'Resize Name column' });
+    await fireEvent.keyDown(separator, { key: 'ArrowRight' });
+    expect(separator.getAttribute('aria-valuenow')).toBe('110');
+
+    await view.rerender({
+      columns: [{ key: 'name', label: 'Name', width: 180 }],
+      rows,
+      resizable: true,
+    });
+    await tick();
+
+    expect(separator.getAttribute('aria-valuenow')).toBe('180');
+    expect(view.container.querySelector('thead th')?.getAttribute('style')).toContain(
+      'width: 180px',
+    );
+  });
+
+  test('uses fixed table layout so resize values describe rendered widths', () => {
+    const css = readFileSync(new URL('./data-table.css', import.meta.url), 'utf8');
+    const { container } = render(DataTable, {
+      columns: [{ key: 'name', label: 'Name', width: 100 }],
+      rows,
+      resizable: true,
+    });
+    expect(
+      container.querySelector('.cinder-data-table')?.hasAttribute('data-cinder-resizable'),
+    ).toBe(true);
+    expect(css).toContain('.cinder-data-table[data-cinder-resizable] .cinder-table');
+    expect(css).toContain('table-layout: fixed;');
+  });
 });
 
 describe('DataTable — column headers', () => {

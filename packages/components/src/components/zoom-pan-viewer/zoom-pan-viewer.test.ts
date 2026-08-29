@@ -68,6 +68,18 @@ describe('ZoomPanViewer', () => {
     ).toContain('scale(1)');
   });
 
+  test('ignores horizontal-only wheel gestures', async () => {
+    const { container } = render(ZoomPanViewer, { children: textSnippet('diagram') });
+    const wheel = new WheelEvent('wheel', {
+      bubbles: true,
+      cancelable: true,
+      deltaX: 100,
+      deltaY: 0,
+    });
+    container.querySelector('[role="region"]')!.dispatchEvent(wheel);
+    expect(wheel.defaultPrevented).toBe(false);
+  });
+
   test('preserves consumer event handlers while handling keyboard controls', async () => {
     let received = false;
     const { container } = render(ZoomPanViewer, {

@@ -8,10 +8,10 @@ model is wrong. Those judgments require human review.
 ## Design review (required)
 
 - Reviewer: Cinder maintainers
-- Review outcome: Approved for implementation review.
+- Review outcome: Final review complete—approved.
 - Nearest neighbours: Meter, Progress.
 - Why this component exists: It owns quota-specific used/limit/reset accessible wording.
-- Findings and resolutions: Delegates numeric semantics to Meter and uses status for unlimited quotas.
+- Findings and resolutions: Delegates numeric semantics to Meter, normalizes non-finite usage to zero, and uses status for unlimited quotas.
 
 ## Novel interaction accessibility review
 

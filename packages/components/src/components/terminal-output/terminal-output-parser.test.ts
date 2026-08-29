@@ -10,6 +10,15 @@ describe('parseTerminalOutput', () => {
     ]));
   test('rewrites carriage-return lines', () =>
     expect(parseTerminalOutput('old\rnew')).toEqual([[{ text: 'new', bold: false }]]));
+  test('parses C1 CSI sequences like their ESC-prefixed equivalents', () =>
+    expect(parseTerminalOutput('\u009b31mred\u009b0m plain')).toEqual([
+      [
+        { text: 'red', foreground: 1, bold: false },
+        { text: ' plain', bold: false },
+      ],
+    ]));
+  test('advances tabs to default stops before carriage-return rewrites', () =>
+    expect(parseTerminalOutput('a\tb\rnew')).toEqual([[{ text: 'new     b', bold: false }]]));
   test('rewrites carriage-return lines by grapheme cell', () => {
     expect(parseTerminalOutput('😀\rX')).toEqual([[{ text: 'X', bold: false }]]);
     expect(parseTerminalOutput('e\u0301\rX')).toEqual([[{ text: 'X', bold: false }]]);

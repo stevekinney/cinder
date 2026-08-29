@@ -54,4 +54,19 @@ describe('InlineConfirm', () => {
     expect(cancellations).toBe(1);
     expect(queryByRole('group')).toBeNull();
   });
+
+  test('uses neutral styling by default and explicit danger styling when destructive', async () => {
+    const { container, rerender } = render(InlineConfirm, {
+      prompt: 'Archive this item?',
+      confirmLabel: 'Archive',
+      open: true,
+    });
+    const root = container.querySelector('.cinder-inline-confirm');
+    expect(root?.hasAttribute('data-cinder-destructive')).toBe(false);
+    const css = readFileSync(new URL('./inline-confirm.css', import.meta.url), 'utf8');
+    expect(css).toContain('background: var(--cinder-status-neutral-background)');
+    await rerender({ destructive: true });
+    expect(root?.hasAttribute('data-cinder-destructive')).toBe(true);
+    expect(css).toContain('.cinder-inline-confirm[data-cinder-destructive]');
+  });
 });

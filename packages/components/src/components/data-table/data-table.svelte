@@ -78,6 +78,7 @@
   let shouldStickAfterAppend = false;
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
   let columnWidths = $state<Record<string, number>>(Object.create(null));
+  let previousExternalColumnWidths = new Map<string, number | undefined>();
   let activeResizeCleanup: (() => void) | undefined;
   const initialSelectedRowIds = untrack(() => new Set(selectedRowIds));
 
@@ -166,6 +167,21 @@
     // without resize handles retain the table's automatic layout behavior.
     return width === undefined && !resizable ? undefined : boundedColumnWidth(column, width ?? 150);
   }
+
+  $effect(() => {
+    const externalColumnWidths = new Map(
+      columns.map((column) => [column.key, column.width] as const),
+    );
+    const changedKeys = Array.from(externalColumnWidths.keys()).filter(
+      (key) => previousExternalColumnWidths.get(key) !== externalColumnWidths.get(key),
+    );
+    if (previousExternalColumnWidths.size > 0 && changedKeys.length > 0) {
+      const nextColumnWidths = untrack(() => ({ ...columnWidths }));
+      for (const key of changedKeys) delete nextColumnWidths[key];
+      columnWidths = Object.assign(Object.create(null), nextColumnWidths);
+    }
+    previousExternalColumnWidths = externalColumnWidths;
+  });
   function setColumnWidth(column: DataTableColumn<Row>, width: number): void {
     const nextWidth = boundedColumnWidth(column, width);
     if (nextWidth === columnWidth(column)) return;
@@ -636,6 +652,7 @@
     className,
   )}
   data-cinder-virtualized={shouldVirtualizeRows ? 'true' : undefined}
+  data-cinder-resizable={resizable || undefined}
   data-cinder-selectable={selectionEnabled || undefined}
   style:--cinder-data-table-height={shouldVirtualizeRows ? height : undefined}
   style:--_cinder-data-table-row-height={shouldVirtualizeRows

@@ -23,8 +23,8 @@
   import type { GuidanceClaim } from '../../_internal/guidance-context.ts';
   import type { ModalApi } from '../../_internal/modal-context.ts';
   import { useModal } from '../../utilities/use-modal.ts';
-  import Popover from '../popover/popover.svelte';
-  import Button from '../button/button.svelte';
+  import Button from '@lostgradient/cinder/button';
+  import Popover from '@lostgradient/cinder/popover';
   let {
     claims: initialClaims = [],
     version,
@@ -79,7 +79,12 @@
       storage?.set(`${storageKey}:${id}`, true);
       if (activeClaim?.id === id) {
         const wasModal = activeClaim.kind === 'modal';
+        const anchor =
+          !wasModal && activeClaim.anchor !== undefined && anchorResolver
+            ? anchorResolver(activeClaim.anchor)
+            : null;
         if (wasModal) modalApi?.dismiss(`cinder-guidance-${id}`);
+        if (anchor?.isConnected) anchor.focus();
         anchoredOpen = false;
         activeClaim = null;
         if (wasModal) modalSlot.reset();
@@ -121,6 +126,8 @@
       modalApi?.dismiss(`cinder-guidance-${claim.id}`);
       openedModalId = null;
       modalSlot.reset();
+    } else if (anchor?.isConnected) {
+      anchor.focus();
     }
     anchoredOpen = false;
     activeClaim = null;

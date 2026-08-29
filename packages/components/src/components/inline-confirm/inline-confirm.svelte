@@ -14,7 +14,7 @@
 
 <script lang="ts">
   import { onDestroy, tick } from 'svelte';
-  import Button from '../button/button.svelte';
+  import Button from '@lostgradient/cinder/button';
   import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import type { InlineConfirmProps } from './inline-confirm.types.ts';
@@ -76,6 +76,7 @@
   <div
     bind:this={root}
     class={classNames('cinder-inline-confirm', className)}
+    data-cinder-destructive={destructive ? '' : undefined}
     role="group"
     aria-label={prompt}
   >

@@ -3,10 +3,10 @@
 ## Design review (required)
 
 - Reviewer: Cinder maintainers
-- Review outcome: Approved for implementation review.
+- Review outcome: Final review complete—approved.
 - Nearest neighbours: Popover, ModalRegion, ToastRegion.
 - Why this component exists: It provides a region-scoped decision point for versioned product guidance without taking ownership of persistence.
-- Findings and resolutions: `relevantFrom` and `relevantUntil` filter claims; one claim wins per boot; dismissal and reset use only the supplied storage adapter. Anchored claims compose Popover and modal claims compose `useModal`.
+- Findings and resolutions: `relevantFrom` and `relevantUntil` filter claims; one claim wins per boot; in-memory and persisted dismissals are excluded; dismissal and reset use only the supplied storage adapter. Anchored claims compose Popover and modal claims compose `useModal`.
 
 ## Novel interaction accessibility review
 
@@ -35,4 +35,4 @@ The registry emits no live region and invents no accessible name. Consumers prov
 
 - Register a claim twice and verify only the first call wins.
 - Verify both version boundaries exclude claims outside their inclusive window.
-- Verify dismiss and reset call only the supplied adapter.
+- Verify dismiss and reset call only the supplied adapter, and verify a persisted dismissal remains excluded after region recreation.

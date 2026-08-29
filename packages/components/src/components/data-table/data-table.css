@@ -72,6 +72,10 @@
     box-shadow: var(--_cinder-focus-ring-shadow);
   }
 
+  .cinder-data-table[data-cinder-resizable] .cinder-table {
+    table-layout: fixed;
+  }
+
   @media (forced-colors: active) {
     .cinder-data-table[data-cinder-virtualized]
       .cinder-table__row[data-cinder-virtual-row]:focus-visible {

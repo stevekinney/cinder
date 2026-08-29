@@ -84,4 +84,11 @@ describe('ModalRegion', () => {
     expect(source).toContain("entry.props['onConfirm'] = () => finishEntry(entry.key, true)");
     expect(source).toContain("entry.props['onCancel'] = () => finishEntry(entry.key, false)");
   });
+
+  test('does not repurpose an active custom modal when confirming the same stable id', () => {
+    const source = readFileSync(new URL('./modal-region.svelte', import.meta.url), 'utf8');
+    expect(source).toContain(
+      'if (existing && !existing.confirmation) return Promise.resolve(false);',
+    );
+  });
 });

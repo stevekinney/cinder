@@ -12,7 +12,7 @@
 </script>
 
 <script lang="ts">
-  import Button from '../button/button.svelte';
+  import Button from '@lostgradient/cinder/button';
   import Plus from 'lucide-svelte/icons/plus';
   import Minus from 'lucide-svelte/icons/minus';
   import RotateCcw from 'lucide-svelte/icons/rotate-ccw';
@@ -178,6 +178,10 @@
   tabindex="0"
   onkeydown={keydown}
   onwheel={(event) => {
+    if (event.deltaY === 0) {
+      consumerOnwheel?.(event);
+      return;
+    }
     if (isInteractiveTarget(event.target)) {
       consumerOnwheel?.(event);
       return;

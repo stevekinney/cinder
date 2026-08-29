@@ -22,7 +22,7 @@
   import { untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
-  import Grid from '../grid/grid.svelte';
+  import Grid from '@lostgradient/cinder/grid';
   import type { TerminalFrameProps } from './terminal-frame.types.ts';
 
   let {

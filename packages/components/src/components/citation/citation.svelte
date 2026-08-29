@@ -15,7 +15,7 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import Popover from '../popover/index.ts';
+  import Popover from '@lostgradient/cinder/popover';
 
   import type { CitationProps } from './citation.types.ts';
 

@@ -8,10 +8,10 @@ model is wrong. Those judgments require human review.
 ## Design review (required)
 
 - Reviewer: Cinder maintainers
-- Review outcome: Approved for implementation review.
+- Review outcome: Final review complete—approved.
 - Nearest neighbours: TimeField, Tooltip.
 - Why this component exists: It owns Intl.RelativeTimeFormat semantics and live ticking.
-- Findings and resolutions: Uses a native time element and no interactive behavior.
+- Findings and resolutions: Uses a native time element, renders `Invalid date` safely for invalid inputs, and has no interactive behavior.
 
 ## Novel interaction accessibility review
 

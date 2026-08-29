@@ -3,10 +3,10 @@
 ## Design review (required)
 
 - Reviewer: Cinder maintainers
-- Review outcome: Approved for implementation review.
+- Review outcome: Final review complete—approved.
 - Nearest neighbours: ConfirmDialog, Alert, ButtonGroup.
 - Why this component exists: It keeps a short, reversible confirmation beside the action without interrupting the page with a top-layer dialog.
-- Findings and resolutions: It uses document flow and existing Button primitives. It intentionally has no scrim, `aria-modal`, focus trap, body scroll lock, or modal backdrop. The destructive variant changes the confirm button only; prompt and action labels remain visible text.
+- Findings and resolutions: It uses document flow and existing Button primitives. It intentionally has no scrim, `aria-modal`, focus trap, body scroll lock, or modal backdrop. The non-destructive surface is neutral; the destructive variant explicitly applies danger styling to the surface and confirm button while prompt and action labels remain visible text.
 
 ## Novel interaction accessibility review
 

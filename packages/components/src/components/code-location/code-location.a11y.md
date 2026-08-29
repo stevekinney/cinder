@@ -8,10 +8,10 @@ model is wrong. Those judgments require human review.
 ## Design review (required)
 
 - Reviewer: Cinder maintainers
-- Review outcome: Approved for implementation review.
+- Review outcome: Final review complete—approved.
 - Nearest neighbours: Chip, CodeBlock.
 - Why this component exists: It standardizes accessible file-coordinate formatting.
-- Findings and resolutions: Uses a code element inside a non-interactive chip.
+- Findings and resolutions: Uses a code element inside a non-interactive chip and renders only file coordinates with an explicit line before any column.
 
 ## Novel interaction accessibility review
 
