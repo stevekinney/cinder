@@ -32,8 +32,10 @@ describe('TerminalOutput', () => {
       'bright-white',
     ];
     tokens.forEach((token, index) => {
-      expect(css).toContain(
-        `data-foreground='${index}'] { color: var(--cinder-terminal-ansi-${token}); }`,
+      expect(css).toMatch(
+        new RegExp(
+          `data-foreground='${index}'\\]\\s*\\{\\s*color:\\s*var\\(--cinder-terminal-ansi-${token}\\);`,
+        ),
       );
     });
   });
