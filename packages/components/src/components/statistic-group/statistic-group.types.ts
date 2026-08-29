@@ -17,7 +17,9 @@ export type StatisticGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> 
   columns?: StatisticGroupColumns;
   /**
    * Visual variant; surfaced as `data-cinder-variant` for CSS styling.
-   * - `'default'` — plain grid, no borders or backgrounds.
+   * - `'default'` — a bordered resting surface, with dividers between stats when
+   *   `columns` is a fixed count. `columns='auto'` has no dividers: an auto-fit grid's
+   *   column count is unbounded, so CSS cannot tell which cells end a row.
    * - `'cards'` — each stat gets a card-style border and shadow.
    * - `'shared-borders'` — single outer border with 1px gap dividers between stats.
    * @default 'default'
@@ -43,7 +45,9 @@ export interface StatisticGroupSchemaProps {
   columns?: StatisticGroupColumns;
   /**
    * Visual variant; surfaced as `data-cinder-variant` for CSS styling.
-   * - `'default'` — plain grid, no borders or backgrounds.
+   * - `'default'` — a bordered resting surface, with dividers between stats when
+   *   `columns` is a fixed count. `columns='auto'` has no dividers: an auto-fit grid's
+   *   column count is unbounded, so CSS cannot tell which cells end a row.
    * - `'cards'` — each stat gets a card-style border and shadow.
    * - `'shared-borders'` — single outer border with 1px gap dividers between stats.
    * @default 'default'

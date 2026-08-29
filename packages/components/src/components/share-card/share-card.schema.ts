@@ -6,7 +6,8 @@ const schema = {
   properties: {
     value: {
       type: 'string',
-      description: 'The URL or text to share/copy.',
+      description:
+        'The URL or text to share/copy. Expected to be single-line; see\n`ShareCardProps.value` for the full multi-line-input contract.',
     },
     title: {
       type: 'string',

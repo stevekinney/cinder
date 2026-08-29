@@ -16,14 +16,19 @@ test.describe('Footer responsive layout', () => {
         <style>
           :root {
             --cinder-space-2: 0.5rem;
+            --cinder-space-3: 0.75rem;
             --cinder-space-4: 1rem;
             --cinder-space-6: 1.5rem;
+            /* This fixture inlines its own token values rather than loading
+               tokens-base.css, so every token footer.css consumes has to be
+               declared here or the declaration silently resolves to nothing. */
+            --cinder-space-8: 2rem;
             --cinder-border-muted: #d1d5db;
             --cinder-surface: #ffffff;
             --cinder-text-default: #111827;
             --cinder-text-muted: #4b5563;
-            --cinder-text-sm: 0.875rem;
-            --cinder-text-lg: 1.125rem;
+            --cinder-text-sm: 0.8125rem;
+            --cinder-text-lg: 1rem;
             --cinder-font-semibold: 600;
             --cinder-font-sans: sans-serif;
             --cinder-ring-width: 0.1875rem;
@@ -112,7 +117,11 @@ test.describe('Footer responsive layout', () => {
       expect(productBox).not.toBeNull();
       expect(companyBox).not.toBeNull();
       expect(spacing).toEqual({
-        outer: '24px',
+        // CIN-124: the outer (main-to-legal) gap is deliberately larger than the
+        // inner (brand-to-groups) gap. Both were 24px, which spent one spacing
+        // value on two different relationships and made the legal row read as a
+        // peer of the link groups rather than as a separate block.
+        outer: '32px',
         main: '24px',
         groups: '16px',
         list: '8px',
@@ -169,14 +178,16 @@ test.describe('Footer responsive layout', () => {
       <style>
         :root {
           --cinder-space-2: 0.5rem;
+          --cinder-space-3: 0.75rem;
           --cinder-space-4: 1rem;
           --cinder-space-6: 1.5rem;
+          --cinder-space-8: 2rem;
           --cinder-border-muted: #d1d5db;
           --cinder-surface: #ffffff;
           --cinder-text-default: #111827;
           --cinder-text-muted: #4b5563;
-          --cinder-text-sm: 0.875rem;
-          --cinder-text-lg: 1.125rem;
+          --cinder-text-sm: 0.8125rem;
+          --cinder-text-lg: 1rem;
           --cinder-font-semibold: 600;
           --cinder-font-sans: sans-serif;
           --cinder-ring-width: 0.1875rem;

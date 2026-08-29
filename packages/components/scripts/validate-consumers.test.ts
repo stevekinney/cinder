@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { getPackFileName } from './publish-release.ts';
 import { packageTarballPath } from './report-package-weight.ts';
 import {
+  assertALaCarteCssContract,
   assertSvelteKitHydrationRouteContent,
   boundedDiagnosticSnapshot,
   bumpPackageVersion,
@@ -30,10 +31,30 @@ import {
   SVELTEKIT_HYDRATION_ROUTES,
   unreclaimedTeardownFailures,
   wrapSvelteKitHydrationRouteFailure,
+  type CssArtifact,
   type SvelteKitChatHydrationDevServerOptions,
   type SvelteKitHydrationRouteDomObservation,
   type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
+
+describe('à la carte CSS contract', () => {
+  test('allows global component token declarations but rejects accordion selectors', () => {
+    const artifact: CssArtifact = {
+      filePath: 'styles.css',
+      selectors: [':root', '.cinder-button'],
+      declarations: [],
+      customProperties: ['--cinder-accordion-item-trigger-gap', '--cinder-button-radius'],
+    };
+    const artifacts = [artifact];
+
+    expect(() => assertALaCarteCssContract(artifacts)).not.toThrow();
+    expect(() =>
+      assertALaCarteCssContract([
+        { ...artifact, selectors: [...artifact.selectors, '.cinder-accordion'] },
+      ]),
+    ).toThrow('leaked .cinder-accordion selector');
+  });
+});
 
 describe('Vite Node runtime contract', () => {
   test("rejects Node 22 releases before Vite 8's supported floor", () => {

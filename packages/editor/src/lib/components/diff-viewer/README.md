@@ -26,6 +26,12 @@ This editor-owned `DiffViewer` is for Markdown review workflows; use Cinder's
 - Showing only a counts summary — use diff-statistics on its own for a lightweight presentation.
 - Diffing non-Markdown source code where syntax-aware highlighting matters more than prose-aware rendering.
 
+## Copying the diff
+
+The toolbar's "Copy diff" button (internally wired via `oncopydiff`, not a public prop) copies a real unified-diff document to the clipboard — `---`/`+++` file headers and `@@ ... @@` hunk markers, produced by `generateUnifiedDiff`/`formatComputedUnifiedDiff` in `../../export/unified-diff.ts`.
+
+The copy is always a full-document unified diff of the original vs. the current text, regardless of the toolbar's current `viewMode`. Switching between Unified/Final/Original only changes what's rendered on screen; it never scopes what gets copied. This is a deliberate decision (see the comment above `copyUnifiedDiff` in `diff-viewer.svelte`), not an oversight.
+
 ## Props
 
 <!-- generated:props:start -->

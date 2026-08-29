@@ -4,7 +4,21 @@
     container-type: inline-size;
     container-name: cinder-footer;
     display: grid;
-    gap: var(--cinder-space-6);
+    /*
+     * CIN-124: this is the boundary between .cinder-footer__main (brand +
+     * link groups, related content) and .cinder-footer__legal (unrelated
+     * legal/copyright row). It must read as MORE separated than any
+     * related-sibling gap inside .cinder-footer__main, so it can't reuse
+     * --cinder-space-6 -- that token is also .cinder-footer__main's own
+     * brand-to-groups gap (see below), which would make two different
+     * relationships (related vs. unrelated) look identical. space-8 keeps
+     * the hierarchy strictly increasing: list 0.5rem < groups 1rem <
+     * main 1.5rem < this gap 2rem, reinforced by the border-top + padding-top
+     * on `.cinder-footer__main + .cinder-footer__legal` -- scoped to that
+     * boundary rather than to the legal row itself, since a legal-only footer
+     * has no main region to be separated from.
+     */
+    gap: var(--cinder-space-8);
     padding: var(--cinder-space-6) var(--cinder-space-4);
     border-top: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface);
@@ -48,6 +62,31 @@
 
   .cinder-footer__groups > nav {
     flex: 1 1 10rem;
+    /*
+     * CIN-110: revisited empirically, not left unmeasured. Links render at
+     * --cinder-text-sm via cinder-_value-text (~0.8125rem / 13px), which at
+     * typical sans-serif advance widths (~0.5-0.55em/char) fits roughly
+     * 26-28 characters per line inside a 12rem (192px) column.
+     *
+     * Checked against every label actually shipped for this component
+     * (footer.examples.json, footer.test.ts, the playground example):
+     * "Features", "Pricing", "About", "Careers", "Docs", "Privacy",
+     * "Terms" -- all 4-8 characters, nowhere near the wrap threshold.
+     *
+     * Checked against realistic longer labels real footers use but this
+     * component's fixtures don't yet exercise: "Terms of Service" (16
+     * chars) and "Cookie Preferences" (18 chars) fit on one line;
+     * "Accessibility Statement" (23 chars) still fits on one line at the
+     * ~26-28 char/line budget. Longer multi-word labels beyond that wrap
+     * at a word boundary (normal CSS word-wrap behavior), not mid-word --
+     * only a single unbroken token longer than the column width forces a
+     * character-level break, and that's already covered by
+     * .cinder-footer__link's overflow-wrap: anywhere plus the dedicated
+     * long-label Playwright case in footer-layout.playwright.ts.
+     *
+     * Conclusion: 12rem does not force awkward mid-phrase wrapping for
+     * any representative or realistic label. Kept as-is.
+     */
     max-inline-size: 12rem;
   }
 
@@ -96,10 +135,25 @@
     justify-content: space-between;
     align-items: center;
     flex-wrap: wrap;
-    padding-top: var(--cinder-space-2);
-    border-top: 1px solid var(--cinder-border-muted);
     color: var(--cinder-text-muted);
     font-size: var(--cinder-text-sm);
+  }
+
+  /*
+   * The rule ABOVE the legal row marks the main-to-legal boundary, so it belongs to
+   * that boundary rather than to the legal row itself.
+   *
+   * `.cinder-footer__main` is now omitted entirely when a consumer supplies only
+   * `copyright`/`legalLinks` — a valid combination. Left on `.cinder-footer__legal`
+   * unconditionally, this border drew a divider above the ONLY content in that footer,
+   * doubling up with the root's own top border for no reason: a separator separating
+   * nothing.
+   *
+   * The adjacent-sibling selector ties it to the boundary it actually describes.
+   */
+  .cinder-footer__main + .cinder-footer__legal {
+    padding-top: var(--cinder-space-2);
+    border-top: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-footer__legal-links {
