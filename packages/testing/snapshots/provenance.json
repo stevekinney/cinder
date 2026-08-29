@@ -1,7 +1,21 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["date-range-field"],
-  "renderedSourceSha": "12fb5cb953cc622096ca4a03881d711c8a65373e",
+  "componentScope": [
+    "citation",
+    "code-location",
+    "donut-chart",
+    "find-bar",
+    "guidance-region",
+    "inline-confirm",
+    "key-value-editor",
+    "modal-region",
+    "quota-meter",
+    "relative-time",
+    "terminal-frame",
+    "terminal-output",
+    "zoom-pan-viewer"
+  ],
+  "renderedSourceSha": "d41202e7fba07a35eb6029aee53e0a2aca9de888",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
