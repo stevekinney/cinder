@@ -1,11 +1,14 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, mock, test } from 'bun:test';
+import { afterEach, describe, expect, jest, mock, test } from 'bun:test';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: FindBar } = await import('./find-bar.svelte');
 describe('FindBar', () => {
-  afterEach(cleanup);
+  afterEach(() => {
+    jest.useRealTimers();
+    cleanup();
+  });
   test('renders accessible controls', () => {
     const { container } = render(FindBar, { id: 'find' });
     expect(container.querySelector('input')).not.toBeNull();
@@ -64,11 +67,12 @@ describe('FindBar', () => {
   });
 
   test('notifies the host when a previously eligible query becomes ineligible', async () => {
+    jest.useFakeTimers();
     const onQueryChange = mock(() => {});
     const { container } = render(FindBar, { onQueryChange, minQueryLength: 3, debounceMs: 1 });
     const input = container.querySelector('input') as HTMLInputElement;
     await fireEvent.input(input, { target: { value: 'abcd' } });
-    await new Promise((resolve) => setTimeout(resolve, 5));
+    jest.advanceTimersByTime(1);
     await fireEvent.input(input, { target: { value: 'ab' } });
     expect(onQueryChange).toHaveBeenLastCalledWith('');
   });
