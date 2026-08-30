@@ -16,15 +16,15 @@ Navigate directly between user-authored turns in a long Chat transcript with key
 
 <!-- generated:props:start -->
 
-| Prop              | Type       | Required | Default | Description                                                                                                                                                 |
-| ----------------- | ---------- | -------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `label`           | `string`   | no       | —       |                                                                                                                                                             |
-| `messages`        | `(opaque)` | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                     |
-| `onNavigate`      | `(opaque)` | no       | —       | Scroll a message index; callers should delegate to ChatVirtualizer when present. Not expressible in JSON Schema; see the component types for the signature. |
-| `preview`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                  |
-| `scrollToIndex`   | `(opaque)` | no       | —       | Optional virtualizer bridge; implementations should use center alignment. Not expressible in JSON Schema; see the component types for the signature.        |
-| `scrollToMessage` | `(opaque)` | no       | —       | Preferred Chat bridge. Resolves message IDs through grouped and virtualized rows, then centers the target.                                                  |
-| `viewport`        | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                     |
+| Prop              | Type       | Required | Default | Description                                                                                                                                                   |
+| ----------------- | ---------- | -------- | ------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `label`           | `string`   | no       | —       |                                                                                                                                                               |
+| `messages`        | `(opaque)` | yes      | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                       |
+| `onNavigate`      | `(opaque)` | no       | —       | Scroll a message index; callers should delegate to ChatVirtualizer when present. Not expressible in JSON Schema; see the component types for the signature.   |
+| `preview`         | `(opaque)` | no       | —       | A function or snippet prop. Its shape is not captured by the JSON schema; see the component types for the exact signature.                                    |
+| `scrollToIndex`   | `(opaque)` | no       | —       | Optional virtualizer bridge; implementations should use center alignment. Not expressible in JSON Schema; see the component types for the signature.          |
+| `scrollToMessage` | `(opaque)` | no       | —       | Message-aware Chat bridge; resolves virtualized and grouped rows before centering. Not expressible in JSON Schema; see the component types for the signature. |
+| `viewport`        | `(opaque)` | no       | —       | A prop whose shape is not captured by the JSON schema; see the component types for the exact signature.                                                       |
 
 <!-- generated:props:end -->
 

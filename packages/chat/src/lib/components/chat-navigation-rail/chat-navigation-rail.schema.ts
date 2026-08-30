@@ -32,6 +32,12 @@ const schema = {
         description: 'Optional virtualizer bridge; implementations should use center alignment.',
       },
       {
+        name: 'scrollToMessage',
+        reason: 'function-or-snippet',
+        description:
+          'Message-aware Chat bridge; resolves virtualized and grouped rows before centering.',
+      },
+      {
         name: 'viewport',
         reason: 'unknown-shape',
       },
