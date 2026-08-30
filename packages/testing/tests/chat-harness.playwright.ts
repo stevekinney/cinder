@@ -963,7 +963,7 @@ test.describe('chat harness — scroll, unread, jump', () => {
       await expect(anchor).toBeVisible();
       const readAnchorOffset = () =>
         timeline.evaluate((timelineElement) => {
-          const anchorElement = [...timelineElement.querySelectorAll<HTMLElement>('*')].find(
+          const anchorElement = Array.from(timelineElement.querySelectorAll<HTMLElement>('*')).find(
             (element) => element.textContent?.trim() === 'Tell me about alpha.',
           );
           if (anchorElement === undefined) throw new Error('Anchor message not found');
