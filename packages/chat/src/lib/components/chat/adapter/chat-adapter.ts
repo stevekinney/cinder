@@ -21,6 +21,7 @@
 
 import type { Message, MessageInput, ToolCall, ToolResult } from '../conversation-model.ts';
 import type { ChatAttachment } from '../input/chat-attachment.ts';
+import type { ToolCallPresentation } from '../utilities/types.ts';
 
 /**
  * A read-receipt push event: a message was read at a point in time. The payload
@@ -99,6 +100,8 @@ export type ChatPushHandlers = {
  * here so the seam is complete; their UI wiring lands with those tasks.
  */
 export type ChatAdapter = {
+  /** Supplies connector-neutral activity prose and an icon category for tool calls. */
+  describeToolCall?: (toolCall: ToolCall, result?: ToolResult) => ToolCallPresentation | undefined;
   /** Send a composed message with its attachments. */
   sendMessage: (message: MessageInput, attachments: ChatAttachment[]) => Promise<void>;
   /** Retry a previously-failed message by id. */

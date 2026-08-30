@@ -10,7 +10,19 @@
 import { describe, expect, it } from 'bun:test';
 
 import type { Message, MultiModalContent, ToolCallPair } from '../conversation-model.ts';
-import { deriveMessageParts } from './utilities.ts';
+import { deriveMessageParts, formatToolCallProse } from './utilities.ts';
+
+describe('formatToolCallProse', () => {
+  it('formats running, completed, and failed activity with optional detail', () => {
+    expect(formatToolCallProse({ verb: 'search', tense: 'present', detail: 'the index' })).toBe(
+      'searching the index',
+    );
+    expect(formatToolCallProse({ verb: 'fetch', tense: 'past' })).toBe('fetched');
+    expect(formatToolCallProse({ verb: 'write', tense: 'failed', detail: 'the file' })).toBe(
+      'Failed to write the file',
+    );
+  });
+});
 
 function message(overrides: Partial<Message> & Pick<Message, 'role'>): Message {
   return {
@@ -308,6 +320,22 @@ describe('deriveMessageParts — tool-call body', () => {
       toolCallPair: pair,
     });
     expect(parts).toEqual([{ type: 'tool-call', key: 'tc:tool-call:call-1', pair }]);
+  });
+
+  it('carries prose presentation metadata into the tool-call part', () => {
+    const pair: ToolCallPair = { call: toolCall };
+    const presentation = {
+      kind: 'search' as const,
+      verb: 'search',
+      tense: 'present' as const,
+      detail: 'the component index',
+    };
+    const parts = deriveMessageParts(message({ id: 'tc', role: 'tool-call', toolCall }), {
+      toolCallPair: pair,
+      toolCallPresentation: presentation,
+    });
+
+    expect(parts).toEqual([{ type: 'tool-call', key: 'tc:tool-call:call-1', pair, presentation }]);
   });
 
   it('renders a still-pending call (pair present, result undefined) as a tool-call part', () => {

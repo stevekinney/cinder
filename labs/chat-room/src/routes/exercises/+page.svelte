@@ -30,7 +30,8 @@
 		| 'review-diff-performance'
 		| 'diff-viewer'
 		| 'markdown-editor'
-		| 'row-reconciliation';
+		| 'row-reconciliation'
+		| 'chat-transcript-navigation';
 
 	type Exercise = {
 		slug: ExerciseSlug;
@@ -241,6 +242,12 @@
 			href: resolve('/exercises/row-reconciliation'),
 			title: 'Row Reconciliation',
 			description: 'Insert, remove, and hide rows, and watch focus when the focused row unmounts.'
+		},
+		{
+			slug: 'chat-transcript-navigation',
+			href: resolve('/exercises/chat-transcript-navigation'),
+			title: 'Chat Transcript Navigation',
+			description: 'Exercise the nested live transcript and user-message navigation rail.'
 		}
 	];
 </script>

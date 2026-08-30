@@ -1,10 +1,12 @@
 <script lang="ts" module>
   import type { HTMLAttributes } from 'svelte/elements';
   import type { ToolCallPair } from '../conversation-model.ts';
+  import type { ToolCallPresentation } from '../utilities/types.ts';
 
   export type ToolCallGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** The tool call pair (call + optional result) */
     pair: ToolCallPair;
+    presentation?: ToolCallPresentation;
     /** Whether the details are expanded */
     expanded?: boolean;
     /** Called when toggle is clicked */
@@ -19,9 +21,12 @@
   import { stringify } from '../../../utilities/stringify.ts';
   import ToolPayloadCode from './tool-payload-code.svelte';
   import EntryFrame from './entry-frame.svelte';
+  import { Brain, CircleDot, Globe, Pencil, Search, Terminal } from '@lostgradient/cinder/icons';
+  import { formatToolCallProse } from '../utilities/utilities.ts';
 
   let {
     pair,
+    presentation,
     expanded = false,
     onToggle,
     class: className,
@@ -58,6 +63,8 @@
   // Return strings as-is to preserve formatting (e.g., file contents with newlines).
   // Only JSON-stringify objects/arrays since those need structure visualization.
   const formattedResult = $derived(pair.result ? stringify(pair.result.content) : '');
+  const activityProse = $derived(presentation ? formatToolCallProse(presentation) : undefined);
+  const activityKind = $derived(presentation?.kind ?? 'other');
 
   function handleToggle() {
     onToggle?.();
@@ -74,9 +81,24 @@
           ? 'Action required'
           : 'Pending'}
   </span>
+  {#if presentation}
+    <span
+      class="tool-call-activity-icon"
+      data-kind={activityKind}
+      data-active={!hasResult}
+      aria-hidden="true"
+    >
+      {#if activityKind === 'search'}<Search size={16} />
+      {:else if activityKind === 'fetch'}<Globe size={16} />
+      {:else if activityKind === 'write'}<Pencil size={16} />
+      {:else if activityKind === 'execute'}<Terminal size={16} />
+      {:else if activityKind === 'reason'}<Brain size={16} />
+      {:else}<CircleDot size={16} />{/if}
+    </span>
+  {/if}
   <EntryFrame
     id={detailsId}
-    label={pair.call.name}
+    label={activityProse ?? pair.call.name}
     status={isError
       ? 'Failed'
       : isSuccess
@@ -120,6 +142,30 @@
     inline-size: max-content;
     min-inline-size: min(18rem, 100%);
     max-inline-size: 100%;
+  }
+
+  .tool-call-activity-icon {
+    display: inline-flex;
+    vertical-align: middle;
+    margin-inline-end: var(--cinder-space-1);
+    color: var(--cinder-text-muted);
+  }
+
+  .tool-call-activity-icon[data-active] {
+    animation: tool-call-activity-pulse 1.2s ease-in-out infinite;
+  }
+
+  @keyframes tool-call-activity-pulse {
+    50% {
+      opacity: 0.45;
+      transform: scale(0.92);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .tool-call-activity-icon[data-active] {
+      animation: none;
+    }
   }
 
   .tool-call-group[data-status='error'] {

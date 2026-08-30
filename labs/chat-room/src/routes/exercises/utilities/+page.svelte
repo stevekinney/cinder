@@ -18,7 +18,8 @@
 		type ConversationHistory,
 		type Message,
 		type MessageInput,
-		type ToolCallPair
+		type ToolCallPair,
+		type ChatAdapter
 	} from '@lostgradient/chat';
 
 	// -------------------------------------------------------------------------
@@ -70,6 +71,15 @@
 
 	// --- Full Chat + imperative methods ---------------------------------------
 	let chat: ReturnType<typeof Chat> | undefined;
+	const chatAdapter: ChatAdapter = {
+		sendMessage: async () => {},
+		describeToolCall: (_toolCall, result) => ({
+			verb: 'check',
+			tense: result?.outcome === 'success' ? 'past' : 'present',
+			detail: 'the weather service',
+			kind: 'fetch'
+		})
+	};
 	let announceText = $state('');
 	let atBottom = $state(true);
 	let composerSnapshot = $state('');
@@ -215,7 +225,13 @@
 			data-testid="utilities-full-chat-wrapper"
 			style="height: 24rem; border: 1px solid var(--cinder-border);"
 		>
-			<Chat bind:this={chat} id="utilities-full-chat" {conversation} bind:atBottom />
+			<Chat
+				bind:this={chat}
+				id="utilities-full-chat"
+				{conversation}
+				adapter={chatAdapter}
+				bind:atBottom
+			/>
 		</div>
 	</section>
 

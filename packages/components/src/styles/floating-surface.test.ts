@@ -6,7 +6,7 @@ describe('floating surface shared recipe', () => {
 
     expect(css).toMatch(/\.cinder-_floating-surface\s*\{[\s\S]*?overflow:\s*visible;/);
     expect(css).toMatch(
-      /\.cinder-_floating-surface:where\(\[role='listbox'\], \[role='menu'\]\)\s*\{[\s\S]*?overflow:\s*auto;/,
+      /\.cinder-_floating-surface:where\(\[role='listbox'\], \[role='menu'\]\)\s*\{[\s\S]*?overflow:\s*auto;[\s\S]*?scrollbar-gutter:\s*stable;/,
     );
   });
 });

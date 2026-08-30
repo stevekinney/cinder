@@ -47,6 +47,8 @@
   const mode = $derived(props.mode ?? 'display');
   const label = $derived(props.label);
   const variant = $derived(props.variant ?? 'neutral');
+  const brandColor = $derived(props.brandColor);
+  const breakable = $derived(props.breakable ?? false);
   const size = $derived(props.size ?? 'md');
   const density = $derived(props.density);
   const customClassName = $derived(props.class);
@@ -91,6 +93,8 @@
     'mode',
     'label',
     'variant',
+    'brandColor',
+    'breakable',
     'size',
     'density',
     'leadingIcon',
@@ -131,6 +135,8 @@
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+    data-cinder-breakable={breakable || undefined}
+    style:--_cinder-chip-brand-color={brandColor}
     class={classNames('cinder-chip', customClassName)}
     aria-pressed={pressed}
     aria-label={ariaLabel}
@@ -157,8 +163,10 @@
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+    data-cinder-breakable={breakable || undefined}
     data-cinder-disabled={disabled || undefined}
     aria-disabled={disabled || undefined}
+    style:--_cinder-chip-brand-color={brandColor}
     class={classNames('cinder-chip', customClassName)}
   >
     {#if leadingIcon}
@@ -184,6 +192,8 @@
     data-cinder-variant={variant}
     data-cinder-size={size}
     data-cinder-density={density === 'toolbar' ? 'toolbar' : undefined}
+    data-cinder-breakable={breakable || undefined}
+    style:--_cinder-chip-brand-color={brandColor}
     class={classNames('cinder-chip', customClassName)}
   >
     {#if leadingIcon}

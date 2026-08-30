@@ -55,6 +55,14 @@ test('composer file attachment: add, preview, submit, and render via MessageAtta
 	// standalone MessageAttachments gallery as a real <img>.
 	const gallery = page.getByTestId('attachment-gallery');
 	await expect(gallery.locator('img')).toHaveCount(1);
+	const maximize = gallery.getByRole('button', { name: 'View image: tiny.png' });
+	await expect(maximize).toBeVisible();
+	await maximize.focus();
+	await expect(maximize).toBeFocused();
+	await expect(maximize.locator('.message-attachment-maximize')).toBeVisible();
+	await page.keyboard.press('Enter');
+	await expect(page.getByRole('dialog', { name: 'Image viewer' })).toBeVisible();
+	await page.keyboard.press('Escape');
 
 	// The composer's own attachment list is cleared after a successful submit.
 	await expect(attachmentList).toHaveCount(0);

@@ -51,6 +51,27 @@ describe('Chip', () => {
     expect(chip?.querySelector('button')).toBeNull();
   });
 
+  test('brandColor is exposed as a private custom property for the OKLCH tint recipe', () => {
+    const { container } = render(Chip, { label: 'Acme', brandColor: '#ff6600' });
+    const chip = container.querySelector('.cinder-chip') as HTMLElement;
+    expect(chip.style.getPropertyValue('--_cinder-chip-brand-color')).toBe('#ff6600');
+    expect(cssRuleBody(".cinder-chip[style*='--_cinder-chip-brand-color']")).toMatch(
+      /color-mix\(\s*in oklch[\s\S]*50%/,
+    );
+  });
+
+  test('breakable chips expose the URL wrapping and bidi layout contract', () => {
+    const { container } = render(Chip, {
+      label: 'https://example.com/a-very-long-url',
+      breakable: true,
+    });
+    const chip = container.querySelector('.cinder-chip');
+    expect(chip?.getAttribute('data-cinder-breakable')).toBe('true');
+    expect(chipCss).toMatch(/overflow-wrap:\s*anywhere/);
+    expect(chipCss).toMatch(/unicode-bidi:\s*isolate/);
+    expect(chipCss).toMatch(/flex:\s*0 0 auto/);
+  });
+
   test('toggle mode renders a button root with aria-pressed="false"', () => {
     const { container } = render(Chip, { mode: 'toggle', label: 'Filter', pressed: false });
     const chip = container.querySelector('.cinder-chip');

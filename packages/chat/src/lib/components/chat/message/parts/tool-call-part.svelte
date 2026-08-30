@@ -28,4 +28,9 @@
   state stays owned by the message (forwarded through `expanded`/`onToggle`) so
   the historical "Show more / less" coupling is preserved unchanged.
 -->
-<ToolCallGroup pair={part.pair} {expanded} onToggle={handleToggle} />
+<ToolCallGroup
+  pair={part.pair}
+  {...part.presentation ? { presentation: part.presentation } : {}}
+  {expanded}
+  onToggle={handleToggle}
+/>

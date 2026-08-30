@@ -24,6 +24,38 @@
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
+  /* Third-party colours are mixed halfway toward the readable foreground in
+   * OKLCH. This keeps branded entity chips legible without requiring each
+   * integration to ship its own contrast calculation. */
+  .cinder-chip[style*='--_cinder-chip-brand-color'] {
+    color: color-mix(in oklch, var(--_cinder-chip-brand-color) 50%, var(--cinder-text-default) 50%);
+    background: color-mix(
+      in oklch,
+      var(--_cinder-chip-brand-color) 12%,
+      var(--cinder-surface-raised) 88%
+    );
+    border-color: color-mix(
+      in oklch,
+      var(--_cinder-chip-brand-color) 50%,
+      var(--cinder-border) 50%
+    );
+  }
+
+  .cinder-chip[data-cinder-breakable] {
+    white-space: normal;
+  }
+
+  .cinder-chip[data-cinder-breakable] .cinder-chip__label {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    unicode-bidi: isolate;
+  }
+
+  .cinder-chip[data-cinder-breakable] .cinder-chip__icon {
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+
   /* Mode is expressed through internal affordances, never through a separate
  * chip-root surface. Display, resting toggle, and removable roots share this
  * same surface contract. */

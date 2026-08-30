@@ -1,4 +1,4 @@
-import { ANTHROPIC_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
@@ -16,8 +16,6 @@ const MAX_TOKENS = 4096;
 
 const requestSchema = z.object({ conversation: conversationSchema });
 
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
-
 export const POST: RequestHandler = async ({ request }) => {
 	let body: unknown;
 
@@ -32,6 +30,12 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!parsed.success) {
 		return json({ error: 'Invalid request body' }, { status: 400 });
 	}
+
+	if (!env.ANTHROPIC_API_KEY) {
+		return json({ error: 'ANTHROPIC_API_KEY is not configured' }, { status: 503 });
+	}
+
+	const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
 	// Mark the newest message as a prompt-cache boundary before conversion:
 	// conversationalist lowers it to a `cache_control` breakpoint on that

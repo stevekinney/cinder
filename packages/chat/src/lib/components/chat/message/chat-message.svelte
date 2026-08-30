@@ -54,6 +54,7 @@
     onapprove?: ((toolCallId: string) => void) | undefined;
     /** Called when the user denies an action-required tool call. */
     ondeny?: ((toolCallId: string) => void) | undefined;
+    toolCallPresentation?: import('../utilities/types.ts').ToolCallPresentation | undefined;
     /**
      * Reasoning text to surface as a collapsible block before the body.
      * When present and non-empty, a `reasoning` part is prepended to the derived parts.
@@ -132,6 +133,7 @@
     deniedToolCallIds,
     onapprove,
     ondeny,
+    toolCallPresentation,
     reasoning,
     entries,
     steps,
@@ -261,6 +263,7 @@
       expanded,
       approvedToolCallIds,
       deniedToolCallIds,
+      toolCallPresentation,
       // C4: reasoning and steps are UI-only overlays derived from metadata or
       // explicit per-message props; never written back to the transcript.
       reasoning,

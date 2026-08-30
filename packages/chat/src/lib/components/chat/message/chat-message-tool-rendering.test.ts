@@ -53,6 +53,12 @@ describe('ChatMessage — tool-call rendering', () => {
     );
   });
 
+  test('activity icons animate only while active and stop under reduced motion', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
+    expect(source).toMatch(/\.tool-call-activity-icon\[data-active\][\s\S]*?animation:/u);
+    expect(source).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*?animation:\s*none/u);
+  });
+
   test('renders the ToolCallGroup card when a resolved pair is supplied', () => {
     const message = toolCallMessage();
     const { container } = render(ChatMessage, {

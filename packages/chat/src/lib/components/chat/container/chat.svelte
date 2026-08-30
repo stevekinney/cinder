@@ -72,6 +72,7 @@
   import ToolCallTimeline from '../message/tool-call-timeline.svelte';
   import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
   import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
+  import { selectChatProgressState } from './select-chat-progress-state.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -432,7 +433,19 @@
   // does not tear down and reopen the real-time subscription each render.
   const conversationId = $derived(conversation.id);
 
-  const showTypingIndicator = $derived(streaming && !streamingMessageId);
+  const reasoningStreaming = $derived.by(() =>
+    messages.some((message) => {
+      const reasoning = resolveMessageReasoning(message, messageReasoning);
+      return Boolean(streamingMessageId === message.id && reasoning);
+    }),
+  );
+  const toolActivity = $derived.by(() =>
+    pairToolCallsWithResults(messages).some((pair) => !pair.result),
+  );
+  const progressState = $derived(
+    selectChatProgressState({ streaming, reasoningStreaming, toolActivity }),
+  );
+  const showTypingIndicator = $derived(progressState === 'streaming' && !streamingMessageId);
 
   // Expand capabilities object with per-feature defaults.
   const allowAttachments = $derived(capabilities?.attachments ?? true);
@@ -2623,6 +2636,10 @@
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
     {@const toolCallPair = pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0]}
+    {@const toolCallPresentation =
+      message.toolCall && adapter?.describeToolCall
+        ? adapter.describeToolCall(message.toolCall, toolCallPair?.result)
+        : undefined}
     {@const pairedResultMessage = toolCallPair?.result
       ? toolResultMessagesByResult.get(toolCallPair.result)
       : undefined}
@@ -2677,6 +2694,7 @@
         tabindex={-1}
         approvedToolCallIds={approvedToolCallIds.size > 0 ? approvedToolCallIds : undefined}
         deniedToolCallIds={deniedToolCallIds.size > 0 ? deniedToolCallIds : undefined}
+        {toolCallPresentation}
         onapprove={canApprove ? handleApprove : undefined}
         ondeny={canDeny ? handleDeny : undefined}
         reasoning={derivedReasoning}

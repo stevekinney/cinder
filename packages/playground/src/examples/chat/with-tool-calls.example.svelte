@@ -14,8 +14,19 @@
     createConversation,
     type ChatArtifact,
     type ChatRowContext,
+    type ChatAdapter,
   } from '@lostgradient/chat';
   import { Button } from '@lostgradient/cinder/button';
+
+  const adapter: ChatAdapter = {
+    sendMessage: async () => {},
+    describeToolCall: (_toolCall, result) => ({
+      verb: 'check',
+      tense: result?.outcome === 'success' ? 'past' : 'present',
+      detail: 'the package exports',
+      kind: 'search',
+    }),
+  };
 
   let selectedArtifact = $state<ChatArtifact | undefined>();
 
@@ -66,7 +77,12 @@
     panelTitle={selectedArtifact?.title}
     onclose={() => (selectedArtifact = undefined)}
   >
-    <Chat id="playground-tool-call-chat" {conversation} capabilities={{ attachments: false }}>
+    <Chat
+      id="playground-tool-call-chat"
+      {conversation}
+      {adapter}
+      capabilities={{ attachments: false }}
+    >
       {#snippet messageActions(context: ChatRowContext)}
         {#if context.artifact}
           <Button size="xs" variant="ghost" onclick={() => (selectedArtifact = context.artifact)}>

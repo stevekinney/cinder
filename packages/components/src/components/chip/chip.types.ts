@@ -17,6 +17,10 @@ export type ChipDisplayProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> & 
   label: string;
   /** Color variant applied to the chip. Default `"neutral"`. */
   variant?: ChipVariant;
+  /** Optional third-party brand color mixed toward the foreground for legibility. */
+  brandColor?: string;
+  /** Allow long entity URLs to wrap at any character. */
+  breakable?: boolean;
   /** Size of the chip. Default `"md"`. */
   size?: ChipSize;
   /** When set to `"toolbar"`, opts the chip into compact toolbar sizing to align with sibling toolbar controls. */
@@ -47,6 +51,10 @@ export type ChipToggleProps = Omit<
   label: string;
   /** Color variant applied to the chip. Default `"neutral"`. */
   variant?: ChipVariant;
+  /** Optional third-party brand color mixed toward the foreground for legibility. */
+  brandColor?: string;
+  /** Allow long entity URLs to wrap at any character. */
+  breakable?: boolean;
   /** Size of the chip. Default `"md"`. */
   size?: ChipSize;
   /** When set to `"toolbar"`, opts the chip into compact toolbar sizing to align with sibling toolbar controls. */
@@ -70,6 +78,10 @@ export type ChipRemovableProps = Omit<HTMLAttributes<HTMLSpanElement>, 'class'> 
   label: string;
   /** Color variant applied to the chip. Default `"neutral"`. */
   variant?: ChipVariant;
+  /** Optional third-party brand color mixed toward the foreground for legibility. */
+  brandColor?: string;
+  /** Allow long entity URLs to wrap at any character. */
+  breakable?: boolean;
   /** Size of the chip. Default `"md"`. */
   size?: ChipSize;
   /** When set to `"toolbar"`, opts the chip into compact toolbar sizing to align with sibling toolbar controls. */
