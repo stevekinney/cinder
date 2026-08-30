@@ -255,6 +255,14 @@
 
   /** Whether the selection popover is in expanded form state (user clicked to add comment) */
   let selectionPopoverExpanded = $state(false);
+  let dismissedSelection:
+    | {
+        anchorNode: Node | null;
+        anchorOffset: number;
+        focusNode: Node | null;
+        focusOffset: number;
+      }
+    | undefined;
 
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
@@ -806,6 +814,17 @@
       if (selectionTimeoutId !== null) {
         clearTimeout(selectionTimeoutId);
         selectionTimeoutId = null;
+      }
+
+      const currentSelection = window.getSelection();
+      if (dismissedSelection) {
+        const isDismissedSelection =
+          currentSelection?.anchorNode === dismissedSelection.anchorNode &&
+          currentSelection.anchorOffset === dismissedSelection.anchorOffset &&
+          currentSelection.focusNode === dismissedSelection.focusNode &&
+          currentSelection.focusOffset === dismissedSelection.focusOffset;
+        if (isDismissedSelection) return;
+        dismissedSelection = undefined;
       }
 
       // Only process in edit mode
@@ -1535,6 +1554,19 @@
    * Close the selection popover.
    */
   function handleSelectionPopoverClose(): void {
+    if (selectionTimeoutId !== null) {
+      clearTimeout(selectionTimeoutId);
+      selectionTimeoutId = null;
+    }
+    const selection = window.getSelection();
+    dismissedSelection = selection
+      ? {
+          anchorNode: selection.anchorNode,
+          anchorOffset: selection.anchorOffset,
+          focusNode: selection.focusNode,
+          focusOffset: selection.focusOffset,
+        }
+      : undefined;
     selectionPopoverPosition = null;
     capturedSelectionForPopover = null;
     selectionPopoverExpanded = false;
