@@ -665,7 +665,9 @@ test.describe('review-ssr-and-a11y: live regions', () => {
 		// than a `window.confirm`, so it is drivable without a dialog handler.
 		await page.getByRole('button', { name: 'Comment actions' }).click();
 		await page.getByRole('menuitem', { name: 'Clear all comments' }).click();
-		await expect(page.getByRole('alertdialog')).toContainText('Delete all 1 comment threads?');
+		await expect(page.getByRole('group', { name: 'Delete all 1 comment threads?' })).toContainText(
+			'Delete all 1 comment threads?'
+		);
 		await page.getByRole('button', { name: 'Delete All' }).click();
 
 		await expect.poll(() => announcements(page)).toContain('All comments cleared');

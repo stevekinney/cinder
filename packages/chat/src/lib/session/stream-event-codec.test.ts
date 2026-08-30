@@ -16,6 +16,36 @@ describe('chat stream event codec', () => {
     expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
   });
 
+  test('preserves a JSON-safe signed pending approval extension', () => {
+    const event = {
+      type: 'tool_result' as const,
+      callId: 'call-approval',
+      outcome: 'action_required' as const,
+      content: 'Save this note?',
+      action: { type: 'approval' as const, message: 'Save this note?' },
+      pendingApproval: {
+        callId: 'call-approval',
+        toolName: 'remember_note',
+        arguments: { text: 'A note' },
+        approvalToken: 'a'.repeat(64),
+      },
+    };
+
+    expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+  });
+
+  test('rejects a non-JSON pending approval extension', () => {
+    expect(() =>
+      decodeChatStreamEvent({
+        type: 'tool_result',
+        callId: 'call-approval',
+        outcome: 'action_required',
+        content: null,
+        pendingApproval: { approvalToken: Symbol('invalid') },
+      }),
+    ).toThrow('Invalid chat stream event');
+  });
+
   test('decodes split newline-delimited chunks', async () => {
     async function* chunks(): AsyncGenerator<string> {
       yield '{"type":"text","text":"hel';

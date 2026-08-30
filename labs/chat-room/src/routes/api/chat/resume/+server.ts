@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 
-import { toolbox } from '$lib/toolbox';
+import { requestContext, toolbox } from '$lib/toolbox';
 
 import type { SignedPendingToolApproval } from 'armorer';
 import type { RequestHandler } from './$types';
@@ -14,25 +14,27 @@ const actionSchema = z.object({
 
 const policyPauseTierSchema = z.enum(['capability', 'registry', 'tool']);
 
-const approvalSchema = z.object({
-	callId: z.string(),
-	toolName: z.string(),
-	arguments: z.unknown(),
-	action: actionSchema,
-	reason: z.string().optional(),
-	metadata: z.unknown().optional(),
-	policyPauseTier: policyPauseTierSchema.optional(),
-	satisfiedPolicyPauses: z
-		.array(
-			z.object({
-				action: actionSchema,
-				reason: z.string().optional(),
-				tier: policyPauseTierSchema.optional()
-			})
-		)
-		.optional(),
-	approvalToken: z.string()
-});
+const approvalSchema = z
+	.object({
+		callId: z.string(),
+		toolName: z.string(),
+		arguments: z.unknown(),
+		action: actionSchema,
+		reason: z.string().optional(),
+		metadata: z.unknown().optional(),
+		policyPauseTier: policyPauseTierSchema.optional(),
+		satisfiedPolicyPauses: z
+			.array(
+				z.object({
+					action: actionSchema,
+					reason: z.string().optional(),
+					tier: policyPauseTierSchema.optional()
+				})
+			)
+			.optional(),
+		approvalToken: z.string()
+	})
+	.passthrough();
 
 const requestSchema = z.object({
 	approval: approvalSchema,
@@ -72,7 +74,9 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	// Validated by zod above; the JSONValue/unknown gap is the only reason for
 	// this cast — armorer verifies the signed approvalToken itself.
-	const result = await toolbox.resumeApproval(approval as SignedPendingToolApproval);
+	const result = await toolbox.resumeApproval(approval as SignedPendingToolApproval, {
+		requestContext
+	});
 
 	return json({
 		callId: result.callId,

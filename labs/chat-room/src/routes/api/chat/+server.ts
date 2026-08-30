@@ -6,7 +6,7 @@ import { toAnthropicMessagesForSdk } from 'conversationalist/adapters/anthropic'
 import { conversationSchema } from 'conversationalist/schemas';
 import { parseAnthropicToolCalls, toAnthropicTools } from 'armorer/adapters/anthropic';
 
-import { toolbox } from '$lib/toolbox';
+import { requestContext, toolbox } from '$lib/toolbox';
 
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 import type { RequestHandler } from './$types';
@@ -100,7 +100,7 @@ export const POST: RequestHandler = async ({ request }) => {
 						const toolCalls = parseAnthropicToolCalls(blocks);
 
 						if (toolCalls.length > 0) {
-							const results = await toolbox.execute(toolCalls);
+							const results = await toolbox.execute(toolCalls, { requestContext });
 
 							for (const result of results) {
 								enqueueEvent({

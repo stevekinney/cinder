@@ -31,7 +31,10 @@
 			return decodeChatStreamEvents(response.body);
 		},
 		hooks: {
-			onStreamingChange: (value) => (streaming = value),
+			onStreamingChange: (value) => {
+				streaming = value;
+				if (value) error = null;
+			},
 			onToolResult: (result) => {
 				const approval = (result as ToolResult & { pendingApproval?: SignedPendingToolApproval })
 					.pendingApproval;

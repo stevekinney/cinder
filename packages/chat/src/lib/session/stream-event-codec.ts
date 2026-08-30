@@ -6,7 +6,7 @@ import type { JSONValue } from '../components/chat/conversation-model.ts';
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
   | { type: 'tool_call'; id: string; name: string; arguments: JSONValue }
-  | ({ type: 'tool_result' } & ToolResult);
+  | ({ type: 'tool_result'; pendingApproval?: JSONValue } & ToolResult);
 
 /** Encodes one event as a newline-delimited JSON frame. */
 export function encodeChatStreamEvent(event: ChatStreamEvent): string {
@@ -39,8 +39,17 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
     };
   }
   if (eventType === 'tool_result') {
-    const { type: _type, ...candidate } = parsed;
-    if (isToolResult(candidate)) return { type: 'tool_result', ...candidate };
+    const { type: _type, pendingApproval, ...candidate } = parsed;
+    if (
+      isToolResult(candidate) &&
+      (pendingApproval === undefined || isJSONValue(pendingApproval))
+    ) {
+      return {
+        type: 'tool_result',
+        ...candidate,
+        ...(pendingApproval === undefined ? {} : { pendingApproval }),
+      };
+    }
   }
   throw new Error('Invalid chat stream event');
 }

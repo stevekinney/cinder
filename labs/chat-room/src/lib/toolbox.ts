@@ -1,8 +1,9 @@
-import { createTool, createToolbox } from 'armorer';
+import { createTool, createToolbox, type ToolRequestContext } from 'armorer';
 import { z } from 'zod';
 
 const rollDice = createTool({
 	name: 'roll_dice',
+	version: '1.0.0',
 	description: 'Roll one or more dice and return the individual results.',
 	input: z.object({
 		sides: z.number().int().min(2).max(1000),
@@ -16,6 +17,7 @@ const rollDice = createTool({
 
 const rememberNote = createTool({
 	name: 'remember_note',
+	version: '1.0.0',
 	description: 'Save a short note for later reference.',
 	input: z.object({ text: z.string() }),
 	policy: {
@@ -35,3 +37,16 @@ const rememberNote = createTool({
 export const toolbox = createToolbox([rollDice, rememberNote], {
 	approvalSecret: crypto.randomUUID()
 });
+
+export const requestContext: ToolRequestContext = {
+	authority: {
+		principalId: 'chat-room-user',
+		tenantId: 'chat-room',
+		ownerId: 'chat-room-session',
+		capabilities: [],
+		authorizationRevision: '1'
+	},
+	audience: 'tenant',
+	agentId: 'chat-room-assistant',
+	runId: 'chat-room-session'
+};
