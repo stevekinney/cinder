@@ -32,15 +32,19 @@ describe('chat navigation rail mechanics', () => {
       new URL('./chat-navigation-rail.svelte', import.meta.url),
       'utf8',
     );
+    const stylesheet = await readFile(
+      new URL('./chat-navigation-rail.css', import.meta.url),
+      'utf8',
+    );
     expect(source).toContain('data-scrub-target');
     expect(source).toContain('aria-describedby');
     expect(source).toContain("aria-current={activeMessageId === message.id ? 'true' : undefined}");
     expect(source).toContain('instanceId}-${message.id}-navigation-preview');
     expect(source).toContain('suppressNextClick');
     expect(source).toContain('data-scrub-target={targetIndex === index ?');
-    expect(source).toContain(':has(+ .chat-navigation-rail-row[data-scrub-target])');
-    expect(source).toContain(':has(~ .chat-navigation-rail-row[data-scrub-target])');
-    expect(source).toContain('prefers-reduced-motion');
+    expect(stylesheet).toContain(':has(+ .chat-navigation-rail-row[data-scrub-target])');
+    expect(stylesheet).toContain(':has(~ .chat-navigation-rail-row[data-scrub-target])');
+    expect(stylesheet).toContain('prefers-reduced-motion');
     expect(source).toContain('setPointerCapture');
     expect(source).toContain('if (index >= 0) navigate(index)');
     expect(source).toContain('new MutationObserver(reconcile)');

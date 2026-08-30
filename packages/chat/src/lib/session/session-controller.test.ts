@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { createConversationHistory } from '../components/chat/builders.ts';
+import {
+  appendAssistantMessage,
+  appendToolCall,
+  appendToolResult,
+  appendUserMessage,
+  createConversationHistory,
+} from '../components/chat/builders.ts';
 import type { ConversationHistory } from '../components/chat/conversation-model.ts';
 import { createChatSessionController } from './session-controller.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
@@ -230,6 +236,78 @@ describe('chat session controller', () => {
     expect(
       Object.values(conversation.messages).some((message) => message.content === 'approved'),
     ).toBe(true);
+  });
+
+  test('continues a persisted approval from its owning user turn', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendAssistantMessage(
+          appendUserMessage(createConversationHistory({ id: 'persisted-approval' }), 'write'),
+          'I need approval first.',
+        ),
+        { id: 'call', name: 'write', arguments: {} },
+      ),
+      { callId: 'call', outcome: 'action_required', content: null },
+    );
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return events([{ type: 'text', text: 'approved after reload' }]);
+      },
+      hooks: {
+        approveToolCall: async (toolCallId) => ({
+          callId: toolCallId,
+          outcome: 'success',
+          content: 'allowed',
+        }),
+      },
+    });
+
+    await controller.adapter.approveToolCall?.('call');
+
+    expect(calls).toBe(1);
+    expect(
+      Object.values(conversation.messages).some(
+        (message) => message.content === 'approved after reload',
+      ),
+    ).toBe(true);
+  });
+
+  test('resolves a persisted orphan approval without inventing a user owner', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendAssistantMessage(createConversationHistory({ id: 'orphan-approval' }), 'Working.'),
+        { id: 'call', name: 'write', arguments: {} },
+      ),
+      { callId: 'call', outcome: 'action_required', content: null },
+    );
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return events([{ type: 'text', text: 'unexpected' }]);
+      },
+      hooks: {
+        approveToolCall: async (toolCallId) => ({
+          callId: toolCallId,
+          outcome: 'success',
+          content: 'allowed',
+        }),
+      },
+    });
+
+    await controller.adapter.approveToolCall?.('call');
+
+    expect(calls).toBe(0);
   });
 
   test('does not continue when action_required is followed by success in one batch', async () => {

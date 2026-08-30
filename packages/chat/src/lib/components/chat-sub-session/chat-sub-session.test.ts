@@ -15,13 +15,14 @@ describe('chat sub-session data contract', () => {
 
   test('keeps the nested transcript reduced, bounded, and live-only animated', async () => {
     const source = await readFile(new URL('./chat-sub-session.svelte', import.meta.url), 'utf8');
-    expect(source).toContain('--cinder-chat-font-size: 0.8125rem');
-    expect(source).toContain('max-block-size: 7.75rem');
-    expect(source).not.toContain('mask-image');
-    expect(source).not.toContain('.chat-sub-session::after');
+    const stylesheet = await readFile(new URL('./chat-sub-session.css', import.meta.url), 'utf8');
+    expect(stylesheet).toContain('--cinder-chat-font-size: 0.8125rem');
+    expect(stylesheet).toContain('max-block-size: 7.75rem');
+    expect(stylesheet).not.toContain('mask-image');
+    expect(stylesheet).not.toContain('.chat-sub-session::after');
     expect(source).toContain('class:chat-sub-session-live={live}');
-    expect(source).toContain('.chat-sub-session-live :global(.chat-message)');
-    expect(source).toContain('prefers-reduced-motion');
+    expect(stylesheet).toContain('.chat-sub-session-live .chat-message');
+    expect(stylesheet).toContain('prefers-reduced-motion');
     expect(source).toContain('role="log"');
   });
 
