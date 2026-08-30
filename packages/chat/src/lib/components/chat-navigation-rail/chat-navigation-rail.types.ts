@@ -7,6 +7,8 @@ export type ChatNavigationRailProps = {
   onNavigate?: (index: number, message: Message) => void;
   /** Optional virtualizer bridge; implementations should use center alignment. */
   scrollToIndex?: (index: number) => void;
+  /** Message-aware Chat bridge; resolves virtualized and grouped rows before centering. */
+  scrollToMessage?: (messageId: string) => void;
   label?: string;
   preview?: (message: Message) => string;
 };

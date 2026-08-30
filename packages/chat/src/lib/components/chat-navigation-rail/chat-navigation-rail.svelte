@@ -22,6 +22,7 @@
     viewport = null,
     onNavigate,
     scrollToIndex,
+    scrollToMessage,
     label = 'User messages',
     preview = getMessageText,
   }: ChatNavigationRailProps = $props();
@@ -38,13 +39,21 @@
   let targetIndex = $state(-1);
   let activeMessageId = $state<string | undefined>(undefined);
   let suppressNextClick = $state(false);
+  let previewPosition = $state({ top: 0, left: 0 });
+
+  function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
+    targetIndex = index;
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    previewPosition = { top: rect.top + rect.height / 2, left: rect.right + 8 };
+  }
 
   function navigate(index: number): void {
     const clamped = clampNavigationIndex(index, userMessages.length);
     const target = userMessages[clamped];
     if (clamped >= 0 && target) {
       targetIndex = clamped;
-      scrollToIndex?.(target.index);
+      if (scrollToMessage) scrollToMessage(target.message.id);
+      else scrollToIndex?.(target.index);
       onNavigate?.(target.index, target.message);
     }
   }
@@ -165,13 +174,15 @@
       aria-current={activeMessageId === message.id ? 'true' : undefined}
       aria-describedby={`${instanceId}-${message.id}-navigation-preview`}
       onclick={() => activate(index)}
-      onpointerenter={() => (targetIndex = index)}
-      onfocus={() => (targetIndex = index)}
+      onpointerenter={(event) => updatePreviewPosition(event, index)}
+      onfocus={(event) => updatePreviewPosition(event, index)}
     >
       <span class="chat-navigation-rail-label">{index + 1}</span>
       <span
         id={`${instanceId}-${message.id}-navigation-preview`}
-        class="chat-navigation-rail-preview">{preview(message)}</span
+        class="chat-navigation-rail-preview"
+        style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
+        >{preview(message)}</span
       >
     </button>
   {/each}

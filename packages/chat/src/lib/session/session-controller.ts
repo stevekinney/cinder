@@ -82,6 +82,17 @@ export function createChatSessionController(
   const assertNotDisposed = (): void => {
     if (disposed) throw new Error('Chat session is disposed');
   };
+  const notifyStreaming = (value: boolean): void => {
+    try {
+      options.hooks?.onStreamingChange?.(value);
+    } catch (error) {
+      try {
+        options.hooks?.onError?.(error);
+      } catch {
+        /* observers cannot break lifecycle cleanup */
+      }
+    }
+  };
   const findOwningUser = (history: ConversationHistory, toolCallId: string): string => {
     const position = history.ids.indexOf(toolCallId);
     for (let index = position - 1; index >= 0; index -= 1) {
@@ -123,7 +134,7 @@ export function createChatSessionController(
     running = true;
     activeUserMessageId = userMessageId;
     let turn = 0;
-    options.hooks?.onStreamingChange?.(true);
+    notifyStreaming(true);
     try {
       while (++turn <= maxTurns) {
         const before = options.getConversation();
@@ -135,10 +146,11 @@ export function createChatSessionController(
         let text = '';
         let toolResultSeen = false;
         let approvalRequired = false;
+        let committed = before;
         try {
           const events = await decodeTransportResult(
             await options.transport({
-              conversation: options.getConversation(),
+              conversation: before,
               signal: controller.signal,
               turn,
               attachments,
@@ -158,12 +170,14 @@ export function createChatSessionController(
                 }),
               );
               toolOwners.set(event.id, userMessageId);
+              committed = options.getConversation();
             } else {
               toolResultSeen = true;
               approvalRequired ||= event.outcome === 'action_required';
               if (event.outcome === 'action_required') pendingApprovals.add(event.callId);
               else pendingApprovals.delete(event.callId);
               update(appendToolResult(options.getConversation(), event));
+              committed = options.getConversation();
               options.hooks?.onToolResult?.(event);
             }
           }
@@ -182,7 +196,9 @@ export function createChatSessionController(
             );
             return;
           }
-          update(markMessageDeliveryFailed(before, userMessageId));
+          update(
+            markMessageDeliveryFailed(cancelStreamingMessage(committed, messageId), userMessageId),
+          );
           options.hooks?.onError?.(error);
           throw error;
         } finally {
@@ -196,7 +212,7 @@ export function createChatSessionController(
       throw error;
     } finally {
       running = false;
-      options.hooks?.onStreamingChange?.(false);
+      notifyStreaming(false);
     }
   };
   const send = async (message: MessageInput, attachments: ChatAttachment[] = []): Promise<void> => {
@@ -213,6 +229,10 @@ export function createChatSessionController(
     sendMessage: async (message, attachments) => send(message, attachments),
     retryMessage: async (messageId) => {
       assertActive();
+      const history = options.getConversation();
+      const message = history.messages[messageId];
+      if (!message || message.role !== 'user' || history.ids.at(-1) !== messageId)
+        throw new Error('Only the latest failed user message can be retried');
       update(clearMessageDeliveryStatus(options.getConversation(), messageId));
       await run(messageId, messageAttachments.get(messageId) ?? []);
     },
@@ -224,7 +244,7 @@ export function createChatSessionController(
       );
       update(next);
       const id = next.ids.at(-1);
-      if (id) await run(id);
+      if (id) await run(id, messageAttachments.get(messageId) ?? []);
     },
     stopGenerating: async () => {
       assertNotDisposed();

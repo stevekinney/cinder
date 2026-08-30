@@ -6,7 +6,7 @@
   overflow-y: auto;
   align-content: start;
   overscroll-behavior: contain;
-  touch-action: none;
+  touch-action: pan-y;
 }
 .chat-navigation-rail-row {
   position: relative;
@@ -60,9 +60,9 @@
   font-size: var(--cinder-text-3xs);
 }
 .chat-navigation-rail-preview {
-  position: absolute;
-  inset-inline-start: calc(100% + var(--cinder-space-2));
-  inset-block-start: 50%;
+  position: fixed;
+  inset-inline-start: var(--chat-navigation-preview-left);
+  inset-block-start: var(--chat-navigation-preview-top);
   translate: 0 -50%;
   inline-size: max-content;
   max-inline-size: 18rem;
@@ -72,6 +72,7 @@
   box-shadow: var(--cinder-shadow-sm);
   opacity: 0;
   pointer-events: none;
+  overflow-wrap: anywhere;
 }
 .chat-navigation-rail-row:hover .chat-navigation-rail-preview,
 .chat-navigation-rail-row:focus-visible .chat-navigation-rail-preview {

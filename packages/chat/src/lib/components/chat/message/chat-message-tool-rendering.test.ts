@@ -14,7 +14,7 @@ import { join } from 'node:path';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
-import type { Message } from '../conversation-model.ts';
+import type { Message, ToolCallPair } from '../conversation-model.ts';
 
 setupHappyDom();
 
@@ -109,6 +109,12 @@ describe('ChatMessage — tool-call rendering', () => {
   test('grouped repeated call ids remain unique and preserve structured error details', async () => {
     const { container } = render(ToolCallTimeline, {
       props: {
+        describeToolCall: (pair: ToolCallPair) => ({
+          verb: 'Checking',
+          tense: 'present',
+          detail: pair.call.name,
+          kind: 'search',
+        }),
         pairs: [
           { call: { id: 'repeated', name: 'first', arguments: {} } },
           {
@@ -129,20 +135,17 @@ describe('ChatMessage — tool-call rendering', () => {
       },
     });
 
-    const steps = container.querySelectorAll('.cinder-run-step-timeline__item');
+    const steps = container.querySelectorAll('[role="listitem"]');
     const timeline = container.querySelector('section');
     const heading = container.querySelector('h3');
     expect(steps).toHaveLength(2);
-    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
-    expect(heading?.textContent).toContain('Called 2 tools');
-    expect(new Set(Array.from(steps, (step) => step.getAttribute('data-cinder-path'))).size).toBe(
+    const headers = container.querySelectorAll('.tool-call-header');
+    for (const header of headers) await fireEvent.click(header);
+    expect(new Set([...headers].map((header) => header.getAttribute('aria-controls'))).size).toBe(
       2,
     );
-    await fireEvent.click(
-      Array.from(container.querySelectorAll('button')).find((button) =>
-        button.textContent?.includes('Result'),
-      )!,
-    );
+    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    expect(heading?.textContent).toContain('Called 2 tools');
     expect(container.textContent).toContain('Network unavailable');
   });
 

@@ -6,6 +6,8 @@
   export type ToolCallGroupProps = Omit<HTMLAttributes<HTMLDivElement>, 'class'> & {
     /** The tool call pair (call + optional result) */
     pair: ToolCallPair;
+    /** Stable occurrence key used to namespace disclosure ids in grouped runs. */
+    occurrenceKey?: string | undefined;
     presentation?: ToolCallPresentation;
     /** Whether the details are expanded */
     expanded?: boolean;
@@ -26,6 +28,7 @@
 
   let {
     pair,
+    occurrenceKey,
     presentation,
     expanded = false,
     onToggle,
@@ -35,7 +38,7 @@
 
   // Stable ID for the disclosed region so the toggle can reference it via aria-controls.
   // Reactive so the ID tracks the current pair when the component instance is reused.
-  const detailsId = $derived(`tool-call-details-${pair.call.id}`);
+  const detailsId = $derived(`tool-call-details-${occurrenceKey ?? pair.call.id}`);
 
   // Determine result status
   const hasResult = $derived(!!pair.result);

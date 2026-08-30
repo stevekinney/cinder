@@ -2446,6 +2446,22 @@
     }
   }
 
+  /** Scroll a message-aware target, including grouped and virtualized rows. */
+  export function scrollToMessage(messageId: string): void {
+    const rendered = renderedMessageById(messageId);
+    if (rendered) {
+      rendered.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'center' });
+      return;
+    }
+    const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
+    if (targetIndex >= 0 && isVirtualized) {
+      chatVirtualizer.scrollToIndex(targetIndex, {
+        align: 'center',
+        behavior: scrollState.getScrollBehavior(),
+      });
+    }
+  }
+
   /**
    * Programmatically retry a failed message — the same guarded dispatch as the
    * UI Retry button. A call for a message id whose retry is still in flight is
