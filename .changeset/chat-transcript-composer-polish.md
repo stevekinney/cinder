@@ -9,3 +9,5 @@ Polish Chat transcript and composer interactions with shared disclosure frames, 
 Add nested sub-session transcripts, a user-message navigation rail with live scrubbing, one progress-arbitration selector, layout-stable image attachments with a keyboard-visible maximize affordance, and adapter-supplied tool activity prose, kind icons, and reduced-motion-safe animation.
 
 Extend Chip with brand-color and breakable URL presentation, and stabilize scrollbars in shared picker surfaces.
+
+Add the provider-neutral streaming session controller and NDJSON transport helpers, with matching playground and chat-room exemplar integrations.
