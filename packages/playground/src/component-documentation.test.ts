@@ -162,6 +162,8 @@ describe('buildComponentDocumentation', () => {
       'chat-composer-popover',
       'chat-conversation-header',
       'chat-conversation-list',
+      'chat-navigation-rail',
+      'chat-sub-session',
     ]);
     expect(failures).toEqual([]);
   });
