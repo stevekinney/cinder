@@ -38,13 +38,22 @@
   let pointerId = $state<number | null>(null);
   let targetIndex = $state(-1);
   let activeMessageId = $state<string | undefined>(undefined);
+  let previewMessageId = $state<string | undefined>(undefined);
   let suppressNextClick = $state(false);
   let previewPosition = $state({ top: 0, left: 0 });
+  let pointerType = $state<string | undefined>(undefined);
+  let touchStartY = $state(0);
+  let touchMoved = $state(false);
 
   function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
     targetIndex = index;
+    previewMessageId = userMessages[index]?.message.id;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     previewPosition = { top: rect.top + rect.height / 2, left: rect.right + 8 };
+  }
+
+  function clearPreview(): void {
+    previewMessageId = undefined;
   }
 
   function navigate(index: number): void {
@@ -77,18 +86,41 @@
     pointerId = event.pointerId;
     scrubbing = true;
     suppressNextClick = true;
+    pointerType = event.pointerType;
+    touchStartY = event.clientY;
+    touchMoved = false;
     rail.setPointerCapture(event.pointerId);
-    updateFromPointer(event);
+    if (event.pointerType !== 'touch') updateFromPointer(event);
   }
 
   function endScrub(event: PointerEvent): void {
     if (pointerId !== event.pointerId) return;
+    const shouldNavigateTouch = pointerType === 'touch' && !touchMoved;
+    if (shouldNavigateTouch) updateFromPointer(event);
+    finishScrub(event);
+  }
+
+  function cancelScrub(event: PointerEvent): void {
+    if (pointerId !== event.pointerId) return;
+    finishScrub(event);
+  }
+
+  function finishScrub(event: PointerEvent): void {
     scrubbing = false;
     pointerId = null;
     if (rail?.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
+    pointerType = undefined;
     queueMicrotask(() => {
       suppressNextClick = false;
     });
+  }
+
+  function handlePointerMove(event: PointerEvent): void {
+    if (pointerType === 'touch') {
+      if (Math.abs(event.clientY - touchStartY) > 8) touchMoved = true;
+      return;
+    }
+    updateFromPointer(event);
   }
 
   function activate(index: number): void {
@@ -160,9 +192,9 @@
   class:chat-navigation-rail-scrubbing={scrubbing}
   aria-label={label}
   onpointerdown={startScrub}
-  onpointermove={updateFromPointer}
+  onpointermove={handlePointerMove}
   onpointerup={endScrub}
-  onpointercancel={endScrub}
+  onpointercancel={cancelScrub}
 >
   {#each userMessages as target, index (target.message.id)}
     {@const message = target.message}
@@ -172,18 +204,30 @@
       data-message-id={message.id}
       type="button"
       aria-current={activeMessageId === message.id ? 'true' : undefined}
-      aria-describedby={`${instanceId}-${message.id}-navigation-preview`}
+      aria-describedby={previewMessageId === message.id
+        ? `${instanceId}-${message.id}-navigation-preview`
+        : undefined}
       onclick={() => activate(index)}
       onpointerenter={(event) => updatePreviewPosition(event, index)}
+      onpointerleave={clearPreview}
       onfocus={(event) => updatePreviewPosition(event, index)}
+      onblur={clearPreview}
     >
       <span class="chat-navigation-rail-label">{index + 1}</span>
-      <span
-        id={`${instanceId}-${message.id}-navigation-preview`}
-        class="chat-navigation-rail-preview"
-        style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
-        >{preview(message)}</span
-      >
     </button>
   {/each}
 </nav>
+
+{#if previewMessageId}
+  {@const activePreview = userMessages.find(
+    ({ message }) => message.id === previewMessageId,
+  )?.message}
+  {#if activePreview}
+    <span
+      id={`${instanceId}-${previewMessageId}-navigation-preview`}
+      class="chat-navigation-rail-preview"
+      style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
+      >{preview(activePreview)}</span
+    >
+  {/if}
+{/if}

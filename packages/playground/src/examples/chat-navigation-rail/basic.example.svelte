@@ -20,8 +20,27 @@
     conversation,
     'The staged rollout needs the closest watch.',
   );
+  const messages = getMessages(conversation);
+  let viewport: HTMLDivElement;
+
+  function scrollToMessage(messageId: string): void {
+    viewport
+      .querySelector<HTMLElement>(`[data-message-id="${CSS.escape(messageId)}"]`)
+      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  }
 </script>
 
-<div style="height: 16rem; display: flex; justify-content: flex-end;">
-  <ChatNavigationRail messages={getMessages(conversation)} />
+<div style="height: 16rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem;">
+  <div bind:this={viewport} style="overflow: auto; display: grid; gap: 1rem;">
+    {#each messages as message (message.id)}
+      <article
+        data-message-id={message.id}
+        style="min-height: 8rem; padding: 1rem; border: 1px solid var(--cinder-border-default); border-radius: var(--cinder-radius-md);"
+      >
+        <strong>{message.role === 'user' ? 'You' : 'Assistant'}</strong>
+        <p>{message.content}</p>
+      </article>
+    {/each}
+  </div>
+  <ChatNavigationRail {messages} {scrollToMessage} {viewport} />
 </div>

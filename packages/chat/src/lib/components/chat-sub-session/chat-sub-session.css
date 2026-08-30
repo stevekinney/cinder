@@ -1,34 +1,38 @@
-.chat-sub-session {
-  --cinder-chat-font-size: 0.8125rem;
-  max-block-size: 7.75rem;
-  overflow: hidden;
-  position: relative;
-  font-size: var(--_cinder-chat-text-base, 0.8125rem);
-  border-inline-start: 2px solid var(--cinder-border-muted);
-  background: var(--cinder-surface-inset);
-}
+@layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 
-.chat-sub-session-viewport {
-  max-block-size: inherit;
-  overflow: auto;
-  padding: var(--cinder-space-2) var(--cinder-space-3);
-}
+@layer cinder.components {
+  .chat-sub-session {
+    --cinder-chat-font-size: 0.8125rem;
+    max-block-size: 7.75rem;
+    overflow: hidden;
+    position: relative;
+    font-size: var(--_cinder-chat-text-base, 0.8125rem);
+    border-inline-start: 2px solid var(--cinder-border-muted);
+    background: var(--cinder-surface-inset);
+  }
 
-.chat-sub-session-live .chat-message {
-  animation: chat-sub-session-live 1.2s ease-in-out infinite alternate;
-}
+  .chat-sub-session-viewport {
+    max-block-size: inherit;
+    overflow: auto;
+    padding: var(--cinder-space-2) var(--cinder-space-3);
+  }
 
-@media (prefers-reduced-motion: reduce) {
   .chat-sub-session-live .chat-message {
-    animation: none;
+    animation: chat-sub-session-live 1.2s ease-in-out infinite alternate;
   }
-}
 
-@keyframes chat-sub-session-live {
-  from {
-    opacity: 0.8;
+  @media (prefers-reduced-motion: reduce) {
+    .chat-sub-session-live .chat-message {
+      animation: none;
+    }
   }
-  to {
-    opacity: 1;
+
+  @keyframes chat-sub-session-live {
+    from {
+      opacity: 0.8;
+    }
+    to {
+      opacity: 1;
+    }
   }
 }

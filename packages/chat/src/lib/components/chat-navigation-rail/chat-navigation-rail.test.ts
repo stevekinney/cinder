@@ -36,6 +36,13 @@ describe('chat navigation rail mechanics', () => {
       new URL('./chat-navigation-rail.css', import.meta.url),
       'utf8',
     );
+    const example = await readFile(
+      new URL(
+        '../../../../../playground/src/examples/chat-navigation-rail/basic.example.svelte',
+        import.meta.url,
+      ),
+      'utf8',
+    );
     expect(source).toContain('data-scrub-target');
     expect(source).toContain('aria-describedby');
     expect(source).toContain("aria-current={activeMessageId === message.id ? 'true' : undefined}");
@@ -53,6 +60,12 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('const observedViewport = viewport');
     expect(stylesheet).toContain('position: fixed');
     expect(stylesheet).toContain('touch-action: pan-y');
+    expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');
+    expect(source).toContain('onpointercancel={cancelScrub}');
+    expect(source).toContain('if (shouldNavigateTouch) updateFromPointer(event)');
+    expect(source.indexOf('</nav>')).toBeLessThan(source.indexOf('chat-navigation-rail-preview'));
+    expect(example).toContain('<ChatNavigationRail {messages} {scrollToMessage} {viewport} />');
+    expect(example).toContain('scrollIntoView');
   });
 });

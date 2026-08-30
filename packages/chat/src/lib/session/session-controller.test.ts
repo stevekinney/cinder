@@ -7,6 +7,7 @@ import {
   createConversationHistory,
 } from '../components/chat/builders.ts';
 import type { ConversationHistory } from '../components/chat/conversation-model.ts';
+import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import { createChatSessionController } from './session-controller.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
 
@@ -532,5 +533,72 @@ describe('chat session controller', () => {
     await expect(
       controller.adapter.sendMessage({ role: 'user', content: 'again' }, []),
     ).rejects.toThrow('disposed');
+  });
+
+  test('clears a stale delivery failure after approval recovery succeeds', async () => {
+    let conversation = createConversationHistory({ id: 'approval-recovery' });
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        calls++ === 0
+          ? events([
+              { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
+              { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+            ])
+          : events([{ type: 'text', text: 'recovered' }]),
+      hooks: {
+        approveToolCall: async (id) => ({ callId: id, outcome: 'success', content: 'allowed' }),
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
+    const userId = conversation.ids[0]!;
+    conversation = {
+      ...conversation,
+      messages: {
+        ...conversation.messages,
+        [userId]: {
+          ...conversation.messages[userId]!,
+          metadata: { ...conversation.messages[userId]!.metadata, _deliveryStatus: 'failed' },
+        },
+      },
+    };
+    await controller.adapter.approveToolCall?.('call');
+    expect(conversation.messages[userId]?.metadata['_deliveryStatus']).toBeUndefined();
+  });
+
+  test('stores attachments under an edited replacement id for retry', async () => {
+    let conversation = createConversationHistory({ id: 'edit-attachments' });
+    let calls = 0;
+    const attachment = {
+      id: 'attachment-1',
+      file: new File(['x'], 'note.txt', { type: 'text/plain' }),
+      previewUrl: 'blob:attachment-1',
+      kind: 'document',
+      status: 'ready',
+    } satisfies ChatAttachment;
+    const received: number[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ attachments }) => {
+        received.push(attachments.length);
+        if (calls++ === 1) throw new Error('failed edit');
+        return events([{ type: 'text', text: 'ok' }]);
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'old' }, [attachment]);
+    const originalId = conversation.ids[0]!;
+    await expect(
+      controller.adapter.editMessage?.({ messageId: originalId, content: 'edited' }),
+    ).rejects.toThrow('failed edit');
+    const replacementId = conversation.ids[0]!;
+    await controller.adapter.retryMessage?.(replacementId);
+    expect(received).toEqual([1, 1, 1]);
   });
 });

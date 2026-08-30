@@ -114,6 +114,7 @@
     <figure
       class="message-attachment"
       role="listitem"
+      data-cinder-image-placeholder={dimensions ? undefined : ''}
       style={dimensions ? `aspect-ratio: ${dimensions.width} / ${dimensions.height}` : undefined}
     >
       <button
@@ -173,6 +174,9 @@
     position: relative;
     margin: 0;
     min-block-size: 6rem;
+    /* Reserve a decode-time box for ordinary image content. `contain` on the
+     * image below preserves portrait/landscape proportions inside this box. */
+    aspect-ratio: 4 / 3;
     max-block-size: 400px;
     border-radius: var(--cinder-radius-md);
     overflow: hidden;

@@ -244,7 +244,11 @@ export function createChatSessionController(
       );
       update(next);
       const id = next.ids.at(-1);
-      if (id) await run(id, messageAttachments.get(messageId) ?? []);
+      if (id) {
+        const attachments = messageAttachments.get(messageId) ?? [];
+        messageAttachments.set(id, [...attachments]);
+        await run(id, attachments);
+      }
     },
     stopGenerating: async () => {
       assertNotDisposed();
@@ -270,8 +274,10 @@ export function createChatSessionController(
             if (result) {
               update(replaceToolResult(options.getConversation(), id, result));
               pendingApprovals.delete(id);
-              if (owner && pendingApprovals.size === 0)
+              if (owner && pendingApprovals.size === 0) {
                 await run(owner, messageAttachments.get(owner) ?? []);
+                update(clearMessageDeliveryStatus(options.getConversation(), owner));
+              }
             }
           },
         }
@@ -296,8 +302,10 @@ export function createChatSessionController(
             if (result) {
               update(replaceToolResult(options.getConversation(), id, result));
               pendingApprovals.delete(id);
-              if (owner && pendingApprovals.size === 0)
+              if (owner && pendingApprovals.size === 0) {
                 await run(owner, messageAttachments.get(owner) ?? []);
+                update(clearMessageDeliveryStatus(options.getConversation(), owner));
+              }
             }
           },
         }
