@@ -135,7 +135,53 @@
       "types": "./dist/components/chat-conversation-list/chat-conversation-list.css.d.ts",
       "default": "./dist/components/chat-conversation-list/chat-conversation-list.css"
     },
-    "./conversation-list/examples": "./dist/components/chat-conversation-list/chat-conversation-list.examples.json"
+    "./conversation-list/examples": "./dist/components/chat-conversation-list/chat-conversation-list.examples.json",
+    "./navigation-rail": {
+      "types": "./dist/components/chat-navigation-rail/index.d.ts",
+      "browser": "./src/lib/components/chat-navigation-rail/index.ts",
+      "svelte": "./src/lib/components/chat-navigation-rail/index.ts",
+      "node": "./dist/server/components/chat-navigation-rail/index.js",
+      "import": "./src/lib/components/chat-navigation-rail/index.ts",
+      "default": "./dist/components/chat-navigation-rail/index.js"
+    },
+    "./navigation-rail/schema": {
+      "types": "./dist/components/chat-navigation-rail/chat-navigation-rail.schema.d.ts",
+      "import": "./src/lib/components/chat-navigation-rail/chat-navigation-rail.schema.ts",
+      "default": "./dist/components/chat-navigation-rail/chat-navigation-rail.schema.js"
+    },
+    "./navigation-rail/variables": {
+      "types": "./dist/components/chat-navigation-rail/chat-navigation-rail.variables.d.ts",
+      "import": "./src/lib/components/chat-navigation-rail/chat-navigation-rail.variables.ts",
+      "default": "./dist/components/chat-navigation-rail/chat-navigation-rail.variables.js"
+    },
+    "./navigation-rail/styles": {
+      "types": "./dist/components/chat-navigation-rail/chat-navigation-rail.css.d.ts",
+      "default": "./dist/components/chat-navigation-rail/chat-navigation-rail.css"
+    },
+    "./navigation-rail/examples": "./dist/components/chat-navigation-rail/chat-navigation-rail.examples.json",
+    "./sub-session": {
+      "types": "./dist/components/chat-sub-session/index.d.ts",
+      "browser": "./src/lib/components/chat-sub-session/index.ts",
+      "svelte": "./src/lib/components/chat-sub-session/index.ts",
+      "node": "./dist/server/components/chat-sub-session/index.js",
+      "import": "./src/lib/components/chat-sub-session/index.ts",
+      "default": "./dist/components/chat-sub-session/index.js"
+    },
+    "./sub-session/schema": {
+      "types": "./dist/components/chat-sub-session/chat-sub-session.schema.d.ts",
+      "import": "./src/lib/components/chat-sub-session/chat-sub-session.schema.ts",
+      "default": "./dist/components/chat-sub-session/chat-sub-session.schema.js"
+    },
+    "./sub-session/variables": {
+      "types": "./dist/components/chat-sub-session/chat-sub-session.variables.d.ts",
+      "import": "./src/lib/components/chat-sub-session/chat-sub-session.variables.ts",
+      "default": "./dist/components/chat-sub-session/chat-sub-session.variables.js"
+    },
+    "./sub-session/styles": {
+      "types": "./dist/components/chat-sub-session/chat-sub-session.css.d.ts",
+      "default": "./dist/components/chat-sub-session/chat-sub-session.css"
+    },
+    "./sub-session/examples": "./dist/components/chat-sub-session/chat-sub-session.examples.json"
   },
   "svelte": "./dist/index.js",
   "files": [

@@ -12,6 +12,8 @@ const CHAT_IMPORT_PATHS: Readonly<Record<string, string>> = {
   'chat-composer-popover': '@lostgradient/chat/composer-popover',
   'chat-conversation-header': '@lostgradient/chat/conversation-header',
   'chat-conversation-list': '@lostgradient/chat/conversation-list',
+  'chat-navigation-rail': '@lostgradient/chat/navigation-rail',
+  'chat-sub-session': '@lostgradient/chat/sub-session',
 };
 export const CHAT_COMPONENT_NAMES = Object.keys(CHAT_IMPORT_PATHS).toSorted();
 

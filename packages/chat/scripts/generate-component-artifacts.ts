@@ -60,12 +60,12 @@ const componentDefinitions: readonly ComponentDefinition[] = [
   {
     id: 'chat-navigation-rail',
     exportName: 'ChatNavigationRail',
-    importSpecifier: '@lostgradient/chat',
+    importSpecifier: '@lostgradient/chat/navigation-rail',
   },
   {
     id: 'chat-sub-session',
     exportName: 'ChatSubSession',
-    importSpecifier: '@lostgradient/chat',
+    importSpecifier: '@lostgradient/chat/sub-session',
   },
   {
     id: 'chat-composer-popover',

@@ -1,13 +1,13 @@
 {
   "$schema": "../../schemas/examples.schema.json",
   "component": "chat-navigation-rail",
-  "import": "@lostgradient/chat",
+  "import": "@lostgradient/chat/navigation-rail",
   "examples": [
     {
       "id": "basic",
       "title": "Transcript navigation rail",
       "description": "Scrub or tab between user-authored turns in a longer conversation.",
-      "code": "<script lang=\"ts\">\n  import {\n    ChatNavigationRail,\n    appendAssistantMessage,\n    appendUserMessage,\n    createConversation,\n    getMessages,\n  } from '@lostgradient/chat';\n\n  let conversation = createConversation({ id: 'navigation-example' });\n  conversation = appendUserMessage(conversation, 'Summarize the launch plan.');\n  conversation = appendAssistantMessage(conversation, 'The launch has three phases.');\n  conversation = appendUserMessage(conversation, 'What is the riskiest phase?');\n  conversation = appendAssistantMessage(\n    conversation,\n    'The staged rollout needs the closest watch.',\n  );\n</script>\n\n<div style=\"height: 16rem; display: flex; justify-content: flex-end;\">\n  <ChatNavigationRail messages={getMessages(conversation)} />\n</div>\n"
+      "code": "<script lang=\"ts\">\n  import {\n    appendAssistantMessage,\n    appendUserMessage,\n    createConversation,\n    getMessages,\n  } from '@lostgradient/chat';\n  import { ChatNavigationRail } from '@lostgradient/chat/navigation-rail';\n\n  let conversation = createConversation({ id: 'navigation-example' });\n  conversation = appendUserMessage(conversation, 'Summarize the launch plan.');\n  conversation = appendAssistantMessage(conversation, 'The launch has three phases.');\n  conversation = appendUserMessage(conversation, 'What is the riskiest phase?');\n  conversation = appendAssistantMessage(\n    conversation,\n    'The staged rollout needs the closest watch.',\n  );\n</script>\n\n<div style=\"height: 16rem; display: flex; justify-content: flex-end;\">\n  <ChatNavigationRail messages={getMessages(conversation)} />\n</div>\n"
     }
   ]
 }
