@@ -1,9 +1,10 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "data-table"
+    "chat-navigation-rail",
+    "chat-sub-session"
   ],
-  "renderedSourceSha": "27afd9a1874eea037e407f42b33f220afee70a68",
+  "renderedSourceSha": "86d3162b9c389832080b8382500eb2dd1c801644",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
