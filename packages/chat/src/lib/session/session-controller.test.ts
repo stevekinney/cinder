@@ -121,6 +121,33 @@ describe('chat session controller', () => {
     expect(Object.values(conversation.messages).at(-1)?.content).toBe('partial');
   });
 
+  test('streaming observers cannot interrupt the session lifecycle', async () => {
+    let conversation = createConversationHistory({ id: 'observer-errors' });
+    const observedErrors: unknown[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'still completes' }]),
+      hooks: {
+        onStreamingChange: () => {
+          throw new Error('observer failed');
+        },
+        onError: (error) => {
+          observedErrors.push(error);
+          throw new Error('error observer failed');
+        },
+      },
+    });
+
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+
+    expect(observedErrors).toHaveLength(2);
+    expect(observedErrors.every((error) => error instanceof Error)).toBe(true);
+    expect(Object.values(conversation.messages).at(-1)?.content).toBe('still completes');
+  });
+
   test('preserves partial output when an aborted transport throws', async () => {
     let conversation = createConversationHistory({ id: 'abort-error' });
     const controller = createChatSessionController({
