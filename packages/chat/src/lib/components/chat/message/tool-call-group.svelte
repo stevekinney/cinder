@@ -82,7 +82,11 @@
           : 'Pending'}
   </span>
   {#snippet activityIcon()}
-    <span class="tool-call-activity-icon" data-kind={activityKind} data-active={!hasResult}>
+    <span
+      class="tool-call-activity-icon"
+      data-kind={activityKind}
+      data-active={!hasResult || undefined}
+    >
       {#if activityKind === 'search'}<Search size={16} />
       {:else if activityKind === 'fetch'}<Globe size={16} />
       {:else if activityKind === 'write'}<Pencil size={16} />

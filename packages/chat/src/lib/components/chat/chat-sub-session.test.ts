@@ -24,4 +24,11 @@ describe('chat sub-session data contract', () => {
     expect(source).toContain('prefers-reduced-motion');
     expect(source).toContain('role="log"');
   });
+
+  test('pairs tool calls with their results in the default nested transcript', async () => {
+    const source = await readFile(new URL('./chat-sub-session.svelte', import.meta.url), 'utf8');
+    expect(source).toContain('pairToolCallsWithResults(messages)');
+    expect(source).toContain('toolCallPairsByCallId.get(message.toolCall.id)');
+    expect(source).toContain('pairedToolResults.has(message.toolResult)');
+  });
 });

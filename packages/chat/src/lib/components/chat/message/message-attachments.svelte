@@ -173,6 +173,7 @@
     position: relative;
     margin: 0;
     min-block-size: 6rem;
+    max-block-size: 400px;
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
     background: var(--cinder-surface-inset);
@@ -182,6 +183,7 @@
   .message-attachment-button {
     display: block;
     width: 100%;
+    height: 100%;
     padding: 0;
     background: none;
     border: none;
@@ -209,7 +211,7 @@
   .message-attachment-image {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     max-height: 400px;
     border-radius: var(--cinder-radius-md);
     /* Use contain to preserve full image content and avoid cropping */

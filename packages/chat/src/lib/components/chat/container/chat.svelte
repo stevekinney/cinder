@@ -440,9 +440,20 @@
       return Boolean(streaming && activeMessageId === message.id && reasoning);
     }),
   );
-  const toolActivity = $derived.by(() =>
-    pairToolCallsWithResults(messages).some((pair) => !pair.result),
-  );
+  const toolActivity = $derived.by(() => {
+    if (!streaming) return false;
+
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    const activeMessageIndex = messages.findIndex((message) => message.id === activeMessageId);
+    if (activeMessageIndex < 0) return false;
+
+    let turnStartIndex = activeMessageIndex;
+    while (turnStartIndex > 0 && messages[turnStartIndex]?.role !== 'user') {
+      turnStartIndex -= 1;
+    }
+
+    return pairToolCallsWithResults(messages.slice(turnStartIndex)).some((pair) => !pair.result);
+  });
   const progressState = $derived(
     selectChatProgressState({ streaming, reasoningStreaming, toolActivity }),
   );

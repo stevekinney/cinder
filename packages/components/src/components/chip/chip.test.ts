@@ -58,6 +58,9 @@ describe('Chip', () => {
     expect(cssRuleBody(".cinder-chip[style*='--_cinder-chip-brand-color']")).toMatch(
       /color-mix\(\s*in oklch[\s\S]*50%/,
     );
+    expect(chipCss.indexOf(".cinder-chip[style*='--_cinder-chip-brand-color']")).toBeGreaterThan(
+      chipCss.indexOf(".cinder-chip[data-cinder-variant='accent']"),
+    );
   });
 
   test('breakable chips expose the URL wrapping and bidi layout contract', () => {

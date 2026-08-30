@@ -70,9 +70,16 @@ export function createChatSessionController(
   const maxTurns = options.maxContinuationTurns ?? 5;
   let active: AbortController | undefined;
   let disposed = false;
+  let running = false;
   let activeUserMessageId: string | undefined;
   const toolOwners = new Map<string, string>();
+  const messageAttachments = new Map<string, ChatAttachment[]>();
+  const pendingApprovals = new Set<string>();
   const assertActive = (): void => {
+    if (disposed) throw new Error('Chat session is disposed');
+    if (running) throw new Error('Chat session is already running');
+  };
+  const assertNotDisposed = (): void => {
     if (disposed) throw new Error('Chat session is disposed');
   };
 
@@ -89,6 +96,7 @@ export function createChatSessionController(
   };
   const run = async (userMessageId: string, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
+    running = true;
     activeUserMessageId = userMessageId;
     let turn = 0;
     options.hooks?.onStreamingChange?.(true);
@@ -129,6 +137,8 @@ export function createChatSessionController(
             } else {
               toolResultSeen = true;
               approvalRequired ||= event.outcome === 'action_required';
+              if (event.outcome === 'action_required') pendingApprovals.add(event.callId);
+              else pendingApprovals.delete(event.callId);
               update(appendToolResult(options.getConversation(), event));
               options.hooks?.onToolResult?.(event);
             }
@@ -161,6 +171,7 @@ export function createChatSessionController(
       options.hooks?.onError?.(error);
       throw error;
     } finally {
+      running = false;
       options.hooks?.onStreamingChange?.(false);
     }
   };
@@ -169,14 +180,17 @@ export function createChatSessionController(
     const next = appendMessages(options.getConversation(), message);
     update(next);
     const userMessageId = next.ids.at(-1);
-    if (userMessageId) await run(userMessageId, attachments);
+    if (userMessageId) {
+      messageAttachments.set(userMessageId, [...attachments]);
+      await run(userMessageId, attachments);
+    }
   };
   const adapter: ChatAdapter = {
     sendMessage: async (message, attachments) => send(message, attachments),
     retryMessage: async (messageId) => {
       assertActive();
       update(clearMessageDeliveryStatus(options.getConversation(), messageId));
-      await run(messageId);
+      await run(messageId, messageAttachments.get(messageId) ?? []);
     },
     editMessage: async ({ messageId, content }) => {
       assertActive();
@@ -189,41 +203,53 @@ export function createChatSessionController(
       if (id) await run(id);
     },
     stopGenerating: async () => {
-      assertActive();
+      assertNotDisposed();
       active?.abort();
     },
-    approveToolCall: async (id) => {
-      assertActive();
-      const owner = toolOwners.get(id) ?? activeUserMessageId;
-      let result: ToolResult | undefined;
-      try {
-        result = await options.hooks?.approveToolCall?.(id);
-      } catch (error) {
-        if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
-        options.hooks?.onError?.(error);
-        throw error;
-      }
-      if (result) {
-        update(replaceToolResult(options.getConversation(), id, result));
-        if (owner) await run(owner);
-      }
-    },
-    denyToolCall: async (id) => {
-      assertActive();
-      const owner = toolOwners.get(id) ?? activeUserMessageId;
-      let result: ToolResult | undefined;
-      try {
-        result = await options.hooks?.denyToolCall?.(id);
-      } catch (error) {
-        if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
-        options.hooks?.onError?.(error);
-        throw error;
-      }
-      if (result) {
-        update(replaceToolResult(options.getConversation(), id, result));
-        if (owner) await run(owner);
-      }
-    },
+    ...(options.hooks?.approveToolCall
+      ? {
+          approveToolCall: async (id: string) => {
+            assertActive();
+            const owner = toolOwners.get(id) ?? activeUserMessageId;
+            let result: ToolResult | undefined;
+            try {
+              result = await options.hooks?.approveToolCall?.(id);
+            } catch (error) {
+              if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
+              options.hooks?.onError?.(error);
+              throw error;
+            }
+            if (result) {
+              update(replaceToolResult(options.getConversation(), id, result));
+              pendingApprovals.delete(id);
+              if (owner && pendingApprovals.size === 0)
+                await run(owner, messageAttachments.get(owner) ?? []);
+            }
+          },
+        }
+      : {}),
+    ...(options.hooks?.denyToolCall
+      ? {
+          denyToolCall: async (id: string) => {
+            assertActive();
+            const owner = toolOwners.get(id) ?? activeUserMessageId;
+            let result: ToolResult | undefined;
+            try {
+              result = await options.hooks?.denyToolCall?.(id);
+            } catch (error) {
+              if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
+              options.hooks?.onError?.(error);
+              throw error;
+            }
+            if (result) {
+              update(replaceToolResult(options.getConversation(), id, result));
+              pendingApprovals.delete(id);
+              if (owner && pendingApprovals.size === 0)
+                await run(owner, messageAttachments.get(owner) ?? []);
+            }
+          },
+        }
+      : {}),
   };
   return {
     adapter,

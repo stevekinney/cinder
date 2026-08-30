@@ -11,6 +11,7 @@
     label = 'User messages',
     preview = getMessageText,
   }: ChatNavigationRailProps = $props();
+  const instanceId = $props.id();
   const userMessages = $derived(
     messages
       .map((message, index) => ({ message, index }))
@@ -21,6 +22,8 @@
   let scrubbing = $state(false);
   let pointerId = $state<number | null>(null);
   let targetIndex = $state(-1);
+  let activeMessageId = $state<string | undefined>(undefined);
+  let suppressNextClick = $state(false);
 
   function navigate(index: number): void {
     const clamped = clampNavigationIndex(index, userMessages.length);
@@ -50,6 +53,7 @@
     if (!event.isPrimary || event.button !== 0 || !rail) return;
     pointerId = event.pointerId;
     scrubbing = true;
+    suppressNextClick = true;
     rail.setPointerCapture(event.pointerId);
     updateFromPointer(event);
   }
@@ -59,6 +63,17 @@
     scrubbing = false;
     pointerId = null;
     if (rail?.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
+    queueMicrotask(() => {
+      suppressNextClick = false;
+    });
+  }
+
+  function activate(index: number): void {
+    if (suppressNextClick) {
+      suppressNextClick = false;
+      return;
+    }
+    navigate(index);
   }
 
   onMount(() => {
@@ -73,6 +88,10 @@
           else next.delete(id);
         }
         activeIds = next;
+        const currentEntry = entries.find((entry) => entry.isIntersecting);
+        activeMessageId = currentEntry
+          ? (currentEntry.target as HTMLElement).dataset['messageId']
+          : [...next][0];
       },
       { root: viewport, threshold: 0.5 },
     );
@@ -120,15 +139,16 @@
       data-scrub-target={targetIndex === index ? '' : undefined}
       data-message-id={message.id}
       type="button"
-      aria-current={activeIds.has(message.id) ? 'true' : undefined}
-      aria-describedby={`${message.id}-navigation-preview`}
-      onclick={() => navigate(index)}
+      aria-current={activeMessageId === message.id ? 'true' : undefined}
+      aria-describedby={`${instanceId}-${message.id}-navigation-preview`}
+      onclick={() => activate(index)}
       onpointerenter={() => (targetIndex = index)}
       onfocus={() => (targetIndex = index)}
     >
       <span class="chat-navigation-rail-label">{index + 1}</span>
-      <span id={`${message.id}-navigation-preview`} class="chat-navigation-rail-preview"
-        >{preview(message)}</span
+      <span
+        id={`${instanceId}-${message.id}-navigation-preview`}
+        class="chat-navigation-rail-preview">{preview(message)}</span
       >
     </button>
   {/each}

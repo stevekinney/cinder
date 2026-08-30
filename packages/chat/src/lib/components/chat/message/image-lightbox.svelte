@@ -200,14 +200,6 @@
       return images[initialSessionIndex] ?? null;
     }),
   );
-  let lightboxContent = $state<HTMLElement | null>(null);
-
-  // Modal owns the dialog lifecycle. Focus the keyboard navigation surface
-  // after it mounts so arrow-key navigation works without an HTML auto-focus attribute.
-  $effect(() => {
-    if (!open || !sessionImage) return;
-    void tick().then(() => lightboxContent?.focus());
-  });
   // Forces the `{#key mountGeneration}` block around <Modal> (below) to
   // fully destroy and recreate on every genuine remount cycle. `{#if}`
   // alone was not reliable here: when `hasOpenedOnce` flips false (exit
@@ -605,8 +597,8 @@
       onExitComplete={handleExitComplete}
     >
       <!--
-      This element is programmatically focused after Modal mounts so the
-      ArrowLeft/ArrowRight handler receives navigation keys immediately.
+      Modal's supported initial-focus mechanism focuses this keyboard
+      navigation surface before the dialog's body fallback can run.
     -->
       <!--
       No ARIA role fits this element semantically: it is the dialog's own
@@ -622,12 +614,13 @@
       the "non-interactive element with event listeners" warning instead.
     -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
+      <!-- svelte-ignore a11y_autofocus -->
       <div
-        bind:this={lightboxContent}
         class="lightbox-content"
         onclick={handleContentClick}
         onkeydown={handleKeyDown}
         tabindex="-1"
+        autofocus
       >
         <button
           type="button"

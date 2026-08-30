@@ -4,7 +4,7 @@
 </script>
 
 <script lang="ts">
-  import { getMessages } from './utilities/index.ts';
+  import { getMessages, pairToolCallsWithResults } from './utilities/index.ts';
   import ChatMessage from './message/chat-message.svelte';
 
   let {
@@ -14,6 +14,19 @@
     row,
   }: ChatSubSessionProps = $props();
   const messages = $derived(getMessages(conversation));
+  const toolCallPairs = $derived(pairToolCallsWithResults(messages));
+  const toolCallPairsByCallId = $derived.by(() => {
+    const pairsByCallId = new Map<string, typeof toolCallPairs>();
+    for (const pair of toolCallPairs) {
+      const pairs = pairsByCallId.get(pair.call.id);
+      if (pairs) pairs.push(pair);
+      else pairsByCallId.set(pair.call.id, [pair]);
+    }
+    return pairsByCallId;
+  });
+  const pairedToolResults = $derived(
+    new Set(toolCallPairs.flatMap((pair) => (pair.result ? [pair.result] : []))),
+  );
 </script>
 
 <section class="chat-sub-session" class:chat-sub-session-live={live}>
@@ -26,8 +39,15 @@
     {#each messages as message (message.id)}
       {#if row}
         {@render row(message)}
-      {:else}
-        <ChatMessage {message} showDefaultActions={false} tabindex={-1} />
+      {:else if message.role !== 'tool-result' || !message.toolResult || !pairedToolResults.has(message.toolResult)}
+        <ChatMessage
+          {message}
+          toolCallPairs={message.toolCall
+            ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
+            : []}
+          showDefaultActions={false}
+          tabindex={-1}
+        />
       {/if}
     {/each}
   </div>

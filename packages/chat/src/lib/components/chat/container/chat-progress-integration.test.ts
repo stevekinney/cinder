@@ -13,7 +13,8 @@ describe('Chat progress affordance integration contract', () => {
       'selectChatProgressState({ streaming, reasoningStreaming, toolActivity })',
     );
     expect(source).toContain("progressState === 'streaming'");
-    expect(source).toContain('pairToolCallsWithResults(messages).some((pair) => !pair.result)');
+    expect(source).toContain('pairToolCallsWithResults(messages.slice(turnStartIndex))');
+    expect(source).toContain('if (!streaming) return false');
   });
 
   test('keeps nested motion affordances available while global typing is suppressed', () => {
