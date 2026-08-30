@@ -149,6 +149,7 @@ describe('chat session controller', () => {
       },
       transport: async ({ signal }) => {
         async function* abortBeforeText(): AsyncGenerator<ChatStreamEvent> {
+          yield* [] as ChatStreamEvent[];
           await new Promise<void>((resolve) => {
             signal.addEventListener('abort', () => resolve(), { once: true });
           });
