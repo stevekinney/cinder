@@ -173,7 +173,6 @@
     position: relative;
     margin: 0;
     min-block-size: 6rem;
-    aspect-ratio: 16 / 9;
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
     background: var(--cinder-surface-inset);

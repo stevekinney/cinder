@@ -2,8 +2,20 @@
   import RunStepTimeline, { type RunStep } from '@lostgradient/cinder/run-step-timeline';
   import { stringify } from '../../../utilities/stringify.ts';
   import type { ToolCallPair } from '../conversation-model.ts';
+  import type { ToolCallPresentation } from '../utilities/types.ts';
+  import { formatToolCallProse } from '../utilities/utilities.ts';
+  import { SvelteSet } from 'svelte/reactivity';
+  import ToolCallGroup from './tool-call-group.svelte';
 
-  let { pairs, messageId }: { pairs: ToolCallPair[]; messageId?: string } = $props();
+  let {
+    pairs,
+    messageId,
+    describeToolCall,
+  }: {
+    pairs: ToolCallPair[];
+    messageId?: string;
+    describeToolCall?: ((pair: ToolCallPair) => ToolCallPresentation | undefined) | undefined;
+  } = $props();
   const navigationMessageId = $derived(messageId ?? pairs[0]?.call.id ?? 'tool-call-group');
   const headingId = $derived(`message-${navigationMessageId}-tool-call-summary`);
 
@@ -15,7 +27,10 @@
     pairs.map(
       (pair, index): RunStep => ({
         id: `${index}:${pair.call.id}`,
-        label: pair.call.name,
+        label: (() => {
+          const presentation = describeToolCall?.(pair);
+          return presentation ? formatToolCallProse(presentation) : pair.call.name;
+        })(),
         status:
           pair.result?.outcome === 'error'
             ? 'failed'
@@ -47,6 +62,14 @@
     ),
   );
   const completedCount = $derived(steps.filter((step) => step.status === 'succeeded').length);
+  const activityPresentations = $derived(pairs.map((pair) => describeToolCall?.(pair)));
+  const hasActivityPresentations = $derived(activityPresentations.some(Boolean));
+  const expandedCalls = new SvelteSet<string>();
+
+  function toggleCall(callId: string): void {
+    if (expandedCalls.has(callId)) expandedCalls.delete(callId);
+    else expandedCalls.add(callId);
+  }
 </script>
 
 <section
@@ -59,7 +82,26 @@
   <h3 id={headingId}>
     Called {pairs.length} tools{completedCount ? `, ${completedCount} complete` : ''}
   </h3>
-  <RunStepTimeline {steps} label={`${pairs.length} consecutive tool calls`} />
+  {#if hasActivityPresentations}
+    <div
+      class="presented-tool-calls"
+      role="list"
+      aria-label={`${pairs.length} consecutive tool calls`}
+    >
+      {#each pairs as pair, index (`${index}:${pair.call.id}`)}
+        <div role="listitem">
+          <ToolCallGroup
+            {pair}
+            {...activityPresentations[index] ? { presentation: activityPresentations[index] } : {}}
+            expanded={expandedCalls.has(pair.call.id)}
+            onToggle={() => toggleCall(pair.call.id)}
+          />
+        </div>
+      {/each}
+    </div>
+  {:else}
+    <RunStepTimeline {steps} label={`${pairs.length} consecutive tool calls`} />
+  {/if}
 </section>
 
 <style>
@@ -73,5 +115,9 @@
   h3 {
     margin: 0 0 var(--cinder-space-3);
     font-size: var(--_cinder-chat-text-sm, var(--cinder-text-sm));
+  }
+  .presented-tool-calls {
+    display: grid;
+    gap: var(--cinder-space-2);
   }
 </style>

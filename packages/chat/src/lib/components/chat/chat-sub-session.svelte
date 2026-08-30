@@ -42,18 +42,6 @@
     font-size: var(--_cinder-chat-text-base, 0.8125rem);
     border-inline-start: 2px solid var(--cinder-border-muted);
     background: var(--cinder-surface-inset);
-    -webkit-mask-image: linear-gradient(to bottom, #000 0 calc(100% - 2rem), transparent 100%);
-    mask-image: linear-gradient(to bottom, #000 0 calc(100% - 2rem), transparent 100%);
-  }
-
-  .chat-sub-session::after {
-    content: '';
-    position: absolute;
-    inset-inline: 0;
-    inset-block-end: 0;
-    block-size: 2rem;
-    pointer-events: none;
-    background: linear-gradient(to bottom, transparent, var(--cinder-surface-inset));
   }
 
   .chat-sub-session-viewport {

@@ -436,7 +436,8 @@
   const reasoningStreaming = $derived.by(() =>
     messages.some((message) => {
       const reasoning = resolveMessageReasoning(message, messageReasoning);
-      return Boolean(streamingMessageId === message.id && reasoning);
+      const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+      return Boolean(streaming && activeMessageId === message.id && reasoning);
     }),
   );
   const toolActivity = $derived.by(() =>
@@ -2745,6 +2746,9 @@
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
         messageId={renderRow.messages[0]!.id}
+        describeToolCall={adapter?.describeToolCall
+          ? (pair) => adapter!.describeToolCall!(pair.call, pair.result)
+          : undefined}
         pairs={renderRow.messages.flatMap((message) => {
           if (!message.toolCall?.id) return [];
           const pairs = toolCallPairsByCallId.get(message.toolCall.id) ?? [];

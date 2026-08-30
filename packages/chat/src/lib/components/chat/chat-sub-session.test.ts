@@ -17,7 +17,8 @@ describe('chat sub-session data contract', () => {
     const source = await readFile(new URL('./chat-sub-session.svelte', import.meta.url), 'utf8');
     expect(source).toContain('--cinder-chat-font-size: 0.8125rem');
     expect(source).toContain('max-block-size: 7.75rem');
-    expect(source).toContain('mask-image');
+    expect(source).not.toContain('mask-image');
+    expect(source).not.toContain('.chat-sub-session::after');
     expect(source).toContain('class:chat-sub-session-live={live}');
     expect(source).toContain('.chat-sub-session-live :global(.chat-message)');
     expect(source).toContain('prefers-reduced-motion');

@@ -20,6 +20,7 @@ import type {
   MessageInput,
   ToolResult,
 } from '../components/chat/conversation-model.ts';
+import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
 import { decodeChatStreamEvents } from './stream-event-codec.ts';
 
@@ -28,6 +29,7 @@ export type ChatSessionRequest = {
   conversation: ConversationHistory;
   signal: AbortSignal;
   turn: number;
+  attachments: ChatAttachment[];
 };
 /** A transport may return decoded events, an NDJSON body, or a Response. */
 export type ChatSessionTransportResult =
@@ -68,6 +70,11 @@ export function createChatSessionController(
   const maxTurns = options.maxContinuationTurns ?? 5;
   let active: AbortController | undefined;
   let disposed = false;
+  let activeUserMessageId: string | undefined;
+  const toolOwners = new Map<string, string>();
+  const assertActive = (): void => {
+    if (disposed) throw new Error('Chat session is disposed');
+  };
 
   const update = (conversation: ConversationHistory): void => options.setConversation(conversation);
   const decodeTransportResult = async (
@@ -80,7 +87,9 @@ export function createChatSessionController(
     if (result instanceof ReadableStream) return decodeChatStreamEvents(result);
     return result;
   };
-  const run = async (userMessageId: string): Promise<void> => {
+  const run = async (userMessageId: string, attachments: ChatAttachment[] = []): Promise<void> => {
+    assertActive();
+    activeUserMessageId = userMessageId;
     let turn = 0;
     options.hooks?.onStreamingChange?.(true);
     try {
@@ -100,6 +109,7 @@ export function createChatSessionController(
               conversation: options.getConversation(),
               signal: controller.signal,
               turn,
+              attachments,
             }),
           );
           for await (const event of events) {
@@ -115,9 +125,10 @@ export function createChatSessionController(
                   arguments: event.arguments,
                 }),
               );
+              toolOwners.set(event.id, userMessageId);
             } else {
               toolResultSeen = true;
-              approvalRequired = event.outcome === 'action_required';
+              approvalRequired ||= event.outcome === 'action_required';
               update(appendToolResult(options.getConversation(), event));
               options.hooks?.onToolResult?.(event);
             }
@@ -129,13 +140,15 @@ export function createChatSessionController(
           );
           if (controller.signal.aborted) return;
         } catch (error) {
-          update(
-            text
-              ? finalizeStreamingMessage(options.getConversation(), messageId)
-              : cancelStreamingMessage(options.getConversation(), messageId),
-          );
-          if (controller.signal.aborted) return;
-          update(markMessageDeliveryFailed(options.getConversation(), userMessageId));
+          if (controller.signal.aborted) {
+            update(
+              text
+                ? finalizeStreamingMessage(options.getConversation(), messageId)
+                : cancelStreamingMessage(options.getConversation(), messageId),
+            );
+            return;
+          }
+          update(markMessageDeliveryFailed(before, userMessageId));
           options.hooks?.onError?.(error);
           throw error;
         } finally {
@@ -151,20 +164,22 @@ export function createChatSessionController(
       options.hooks?.onStreamingChange?.(false);
     }
   };
-  const send = async (message: MessageInput): Promise<void> => {
-    if (disposed) throw new Error('Chat session is disposed');
+  const send = async (message: MessageInput, attachments: ChatAttachment[] = []): Promise<void> => {
+    assertActive();
     const next = appendMessages(options.getConversation(), message);
     update(next);
     const userMessageId = next.ids.at(-1);
-    if (userMessageId) await run(userMessageId);
+    if (userMessageId) await run(userMessageId, attachments);
   };
   const adapter: ChatAdapter = {
-    sendMessage: async (message) => send(message),
+    sendMessage: async (message, attachments) => send(message, attachments),
     retryMessage: async (messageId) => {
+      assertActive();
       update(clearMessageDeliveryStatus(options.getConversation(), messageId));
       await run(messageId);
     },
     editMessage: async ({ messageId, content }) => {
+      assertActive();
       const next = appendUserMessage(
         rewindBeforeMessage(options.getConversation(), messageId),
         content,
@@ -174,20 +189,39 @@ export function createChatSessionController(
       if (id) await run(id);
     },
     stopGenerating: async () => {
+      assertActive();
       active?.abort();
     },
     approveToolCall: async (id) => {
-      const result = await options.hooks?.approveToolCall?.(id);
+      assertActive();
+      const owner = toolOwners.get(id) ?? activeUserMessageId;
+      let result: ToolResult | undefined;
+      try {
+        result = await options.hooks?.approveToolCall?.(id);
+      } catch (error) {
+        if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
+        options.hooks?.onError?.(error);
+        throw error;
+      }
       if (result) {
         update(replaceToolResult(options.getConversation(), id, result));
-        await run(id);
+        if (owner) await run(owner);
       }
     },
     denyToolCall: async (id) => {
-      const result = await options.hooks?.denyToolCall?.(id);
+      assertActive();
+      const owner = toolOwners.get(id) ?? activeUserMessageId;
+      let result: ToolResult | undefined;
+      try {
+        result = await options.hooks?.denyToolCall?.(id);
+      } catch (error) {
+        if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
+        options.hooks?.onError?.(error);
+        throw error;
+      }
       if (result) {
         update(replaceToolResult(options.getConversation(), id, result));
-        await run(id);
+        if (owner) await run(owner);
       }
     },
   };

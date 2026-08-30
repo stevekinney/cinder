@@ -6,7 +6,6 @@ const source = readFileSync(resolve(import.meta.dir, 'message-attachments.svelte
 
 describe('MessageAttachments image layout contract', () => {
   test('reserves intrinsic image geometry and has a fallback placeholder ratio', () => {
-    expect(source).toContain('aspect-ratio: 16 / 9');
     expect(source).toContain('aspect-ratio: ${dimensions.width} / ${dimensions.height}');
     expect(source).toContain('width={dimensions?.width}');
     expect(source).toContain('height={dimensions?.height}');

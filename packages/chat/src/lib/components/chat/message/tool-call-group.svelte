@@ -81,13 +81,8 @@
           ? 'Action required'
           : 'Pending'}
   </span>
-  {#if presentation}
-    <span
-      class="tool-call-activity-icon"
-      data-kind={activityKind}
-      data-active={!hasResult}
-      aria-hidden="true"
-    >
+  {#snippet activityIcon()}
+    <span class="tool-call-activity-icon" data-kind={activityKind} data-active={!hasResult}>
       {#if activityKind === 'search'}<Search size={16} />
       {:else if activityKind === 'fetch'}<Globe size={16} />
       {:else if activityKind === 'write'}<Pencil size={16} />
@@ -95,7 +90,7 @@
       {:else if activityKind === 'reason'}<Brain size={16} />
       {:else}<CircleDot size={16} />{/if}
     </span>
-  {/if}
+  {/snippet}
   <EntryFrame
     id={detailsId}
     label={activityProse ?? pair.call.name}
@@ -109,6 +104,7 @@
     open={expanded}
     triggerClass="tool-call-header"
     labelClass="tool-call-name"
+    {...presentation ? { leadingIcon: activityIcon } : {}}
     onToggle={() => handleToggle()}
   >
     <div class="tool-call-details">

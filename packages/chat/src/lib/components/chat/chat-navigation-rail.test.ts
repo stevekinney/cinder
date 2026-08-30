@@ -40,5 +40,8 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain(':has(~ .chat-navigation-rail-row[data-scrub-target])');
     expect(source).toContain('prefers-reduced-motion');
     expect(source).toContain('setPointerCapture');
+    expect(source).toContain('if (index >= 0) navigate(index)');
+    expect(source).toContain('new MutationObserver(reconcile)');
+    expect(source).toContain('observer.unobserve(row)');
   });
 });

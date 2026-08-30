@@ -25,6 +25,7 @@
 
   let {
     trigger,
+    leadingIcon,
     children,
     open = $bindable(false),
     onToggle,
@@ -84,6 +85,9 @@
     {disabled}
     onclick={handleClick}
   >
+    {#if leadingIcon}<span class="cinder-collapsible__leading-icon" aria-hidden="true"
+        >{@render leadingIcon()}</span
+      >{/if}
     <span class={classNames('cinder-collapsible__label cinder-_label-text', labelClass)}>
       {#if typeof trigger === 'string'}
         <span id={labelId}>{trigger}</span>

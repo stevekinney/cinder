@@ -200,6 +200,14 @@
       return images[initialSessionIndex] ?? null;
     }),
   );
+  let lightboxContent = $state<HTMLElement | null>(null);
+
+  // Modal owns the dialog lifecycle. Focus the keyboard navigation surface
+  // after it mounts so arrow-key navigation works without an HTML auto-focus attribute.
+  $effect(() => {
+    if (!open || !sessionImage) return;
+    void tick().then(() => lightboxContent?.focus());
+  });
   // Forces the `{#key mountGeneration}` block around <Modal> (below) to
   // fully destroy and recreate on every genuine remount cycle. `{#if}`
   // alone was not reliable here: when `hasOpenedOnce` flips false (exit
@@ -597,15 +605,8 @@
       onExitComplete={handleExitComplete}
     >
       <!--
-      `autofocus` (plus `tabindex="-1"` so it's programmatically focusable)
-      makes this element Modal's initial-focus target: Modal's own initial-
-      focus policy (`focusDialogBodyUnlessAutofocused`) looks for an
-      `[autofocus]` descendant and focuses it directly via `.focus()`, falling
-      back to the body container only when none exists. Without this, focus
-      would land on Modal's own `.cinder-modal__body` wrapper — the PARENT of
-      this element — and the `onkeydown` handler below (which owns
-      ArrowLeft/ArrowRight navigation) would never see the keystroke until
-      focus moved somewhere inside this subtree.
+      This element is programmatically focused after Modal mounts so the
+      ArrowLeft/ArrowRight handler receives navigation keys immediately.
     -->
       <!--
       No ARIA role fits this element semantically: it is the dialog's own
@@ -614,19 +615,19 @@
       both a click
       handler (backdrop-style dismiss when clicking outside the image) and a
       keydown handler (ArrowLeft/ArrowRight navigation) while being a real
-      keyboard-focus target (autofocus + tabindex="-1", see the comment
-      above). role="presentation"/"none" would be actively wrong (a focus
+      keyboard-focus target (tabindex="-1", see the comment above).
+      role="presentation"/"none" would be actively wrong (a focus
       target cannot be presentational), and every other ARIA role either
       claims interactive semantics this element doesn't have or reintroduces
       the "non-interactive element with event listeners" warning instead.
     -->
       <!-- svelte-ignore a11y_no_static_element_interactions -->
       <div
+        bind:this={lightboxContent}
         class="lightbox-content"
         onclick={handleContentClick}
         onkeydown={handleKeyDown}
         tabindex="-1"
-        autofocus
       >
         <button
           type="button"

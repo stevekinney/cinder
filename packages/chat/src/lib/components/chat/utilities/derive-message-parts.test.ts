@@ -18,6 +18,8 @@ describe('formatToolCallProse', () => {
       'searching the index',
     );
     expect(formatToolCallProse({ verb: 'fetch', tense: 'past' })).toBe('fetched');
+    expect(formatToolCallProse({ verb: 'write', tense: 'present' })).toBe('writing');
+    expect(formatToolCallProse({ verb: 'create', tense: 'past' })).toBe('created');
     expect(formatToolCallProse({ verb: 'write', tense: 'failed', detail: 'the file' })).toBe(
       'Failed to write the file',
     );

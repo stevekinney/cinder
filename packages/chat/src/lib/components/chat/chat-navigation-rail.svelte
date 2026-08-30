@@ -40,7 +40,10 @@
         return { top: rect.top, bottom: rect.bottom };
       },
     );
-    navigate(navigationIndexFromPointer(event.clientY, bounds));
+    const index = navigationIndexFromPointer(event.clientY, bounds);
+    // A pointer in a gap is not a target. In particular, do not pass -1 to
+    // the clamping helper because that would intentionally select the first row.
+    if (index >= 0) navigate(index);
   }
 
   function startScrub(event: PointerEvent): void {
@@ -73,9 +76,30 @@
       },
       { root: viewport, threshold: 0.5 },
     );
-    const rows = viewport.querySelectorAll<HTMLElement>('[data-message-id]');
-    rows.forEach((row) => observer.observe(row));
-    return () => observer.disconnect();
+    const observed = new Set<HTMLElement>();
+    const reconcile = (): void => {
+      const rows = viewport.querySelectorAll<HTMLElement>('[data-message-id]');
+      const current = new Set(rows);
+      for (const row of observed) {
+        if (!current.has(row)) {
+          observer.unobserve(row);
+          observed.delete(row);
+        }
+      }
+      for (const row of rows) {
+        if (!observed.has(row)) {
+          observer.observe(row);
+          observed.add(row);
+        }
+      }
+    };
+    reconcile();
+    const mutationObserver = new MutationObserver(reconcile);
+    mutationObserver.observe(viewport, { childList: true, subtree: true });
+    return () => {
+      mutationObserver.disconnect();
+      observer.disconnect();
+    };
   });
 </script>
 

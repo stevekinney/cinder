@@ -115,6 +115,55 @@ describe('chat session controller', () => {
     expect(Object.values(conversation.messages).at(-1)?.content).toBe('partial');
   });
 
+  test('preserves partial output when an aborted transport throws', async () => {
+    let conversation = createConversationHistory({ id: 'abort-error' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ signal }) => {
+        async function* partialThenAbort(): AsyncGenerator<ChatStreamEvent> {
+          yield { type: 'text', text: 'partial' };
+          await new Promise<void>((resolve) => {
+            signal.addEventListener('abort', () => resolve(), { once: true });
+          });
+          throw new Error('transport aborted');
+        }
+        return partialThenAbort();
+      },
+    });
+    const pending = controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await controller.adapter.stopGenerating?.(conversation.ids[0]!);
+    await pending;
+    expect(Object.values(conversation.messages).at(-1)?.content).toBe('partial');
+  });
+
+  test('removes an empty assistant placeholder when an aborted transport throws', async () => {
+    let conversation = createConversationHistory({ id: 'abort-empty-error' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ signal }) => {
+        async function* abortBeforeText(): AsyncGenerator<ChatStreamEvent> {
+          await new Promise<void>((resolve) => {
+            signal.addEventListener('abort', () => resolve(), { once: true });
+          });
+          throw new Error('transport aborted');
+        }
+        return abortBeforeText();
+      },
+    });
+    const pending = controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await controller.adapter.stopGenerating?.(conversation.ids[0]!);
+    await pending;
+    expect(conversation.ids).toHaveLength(1);
+  });
+
   test('continues after a tool result and invokes approval hooks', async () => {
     let conversation = createConversationHistory({ id: 'tools' });
     let calls = 0;
@@ -180,6 +229,145 @@ describe('chat session controller', () => {
     expect(
       Object.values(conversation.messages).some((message) => message.content === 'approved'),
     ).toBe(true);
+  });
+
+  test('does not continue when action_required is followed by success in one batch', async () => {
+    let conversation = createConversationHistory({ id: 'mixed-batch' });
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return events([
+          { type: 'tool_call', id: 'a', name: 'write', arguments: {} },
+          { type: 'tool_result', callId: 'a', outcome: 'action_required', content: null },
+          { type: 'tool_call', id: 'b', name: 'read', arguments: {} },
+          { type: 'tool_result', callId: 'b', outcome: 'success', content: 'late' },
+        ]);
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
+    expect(calls).toBe(1);
+  });
+
+  test('rolls back partial output on a non-abort stream failure', async () => {
+    let conversation = createConversationHistory({ id: 'rollback' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async function* () {
+        yield { type: 'text', text: 'partial' } as const;
+        throw new Error('broken stream');
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('broken stream');
+    expect(Object.values(conversation.messages).map((message) => message.content)).toEqual(['hi']);
+    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
+  });
+
+  test('passes attachments to the transport', async () => {
+    let conversation = createConversationHistory({ id: 'attachments' });
+    let received = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ attachments }) => {
+        received = attachments.length;
+        return events([{ type: 'text', text: 'ok' }]);
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, [
+      {
+        id: 'attachment-1',
+        file: new File(['x'], 'x.txt', { type: 'text/plain' }),
+        previewUrl: 'blob:attachment-1',
+        kind: 'document',
+        status: 'ready',
+      },
+    ]);
+    expect(received).toBe(1);
+  });
+
+  test('marks the initiating user message when approval continuation fails', async () => {
+    let conversation = createConversationHistory({ id: 'approval-failure' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        events([
+          { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
+          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+        ]),
+      hooks: {
+        approveToolCall: async () => {
+          throw new Error('approval unavailable');
+        },
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
+    await expect(controller.adapter.approveToolCall?.('call')).rejects.toThrow(
+      'approval unavailable',
+    );
+    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
+  });
+
+  test('marks the initiating user message when denial continuation fails', async () => {
+    let conversation = createConversationHistory({ id: 'denial-failure' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        events([
+          { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
+          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+        ]),
+      hooks: {
+        denyToolCall: async () => {
+          throw new Error('denial unavailable');
+        },
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
+    await expect(controller.adapter.denyToolCall?.('call')).rejects.toThrow('denial unavailable');
+    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
+  });
+
+  test('rejects every mutating adapter command after disposal without changing history', async () => {
+    let conversation = createConversationHistory({ id: 'disposed' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'unexpected' }]),
+      hooks: { approveToolCall: async () => undefined, denyToolCall: async () => undefined },
+    });
+    const original = conversation;
+    controller.dispose();
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'x' }, []),
+    ).rejects.toThrow('disposed');
+    await expect(controller.adapter.retryMessage?.('missing')).rejects.toThrow('disposed');
+    await expect(
+      controller.adapter.editMessage?.({ messageId: 'missing', content: 'x' }),
+    ).rejects.toThrow('disposed');
+    await expect(controller.adapter.approveToolCall?.('missing')).rejects.toThrow('disposed');
+    await expect(controller.adapter.denyToolCall?.('missing')).rejects.toThrow('disposed');
+    await expect(controller.adapter.stopGenerating?.('missing')).rejects.toThrow('disposed');
+    expect(conversation).toBe(original);
   });
 
   test('decodes Response transports and resumes through denial hooks', async () => {
