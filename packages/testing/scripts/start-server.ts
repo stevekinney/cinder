@@ -449,11 +449,7 @@ export function playgroundServerArguments(): string[] {
   // source watchers. Bun's module watcher also observes rebuilt workspace
   // dist files, so enabling it here restarts the server during its own warmup
   // and prevents readiness from ever becoming stable.
-  // The full browser matrix incrementally compiles hundreds of component
-  // fixtures in one long-lived process. Prefer Bun's lower-memory runtime mode
-  // so the managed server collects that transient compiler state instead of
-  // being killed by the CI runner near the end of a shard.
-  return ['--smol', 'run', 'src/playground-server.ts'];
+  return ['run', 'src/playground-server.ts'];
 }
 
 export function playgroundServerWorkingDirectory(): string {

@@ -173,7 +173,7 @@ describe('playground server process', () => {
   test('leaves runtime edits to the managed source and dependency watchers', () => {
     const argumentsList = playgroundServerArguments();
 
-    expect(argumentsList).toEqual(['--smol', 'run', 'src/playground-server.ts']);
+    expect(argumentsList).toEqual(['run', 'src/playground-server.ts']);
     expect(argumentsList).not.toContain('dev');
     expect(argumentsList).not.toContain('--watch');
     expect(playgroundServerWorkingDirectory().endsWith(join('packages', 'playground'))).toBe(true);
