@@ -66,9 +66,9 @@
   const hasActivityPresentations = $derived(activityPresentations.some(Boolean));
   const expandedCalls = new SvelteSet<string>();
 
-  function toggleCall(callId: string): void {
-    if (expandedCalls.has(callId)) expandedCalls.delete(callId);
-    else expandedCalls.add(callId);
+  function toggleCall(occurrenceKey: string): void {
+    if (expandedCalls.has(occurrenceKey)) expandedCalls.delete(occurrenceKey);
+    else expandedCalls.add(occurrenceKey);
   }
 </script>
 
@@ -93,8 +93,8 @@
           <ToolCallGroup
             {pair}
             {...activityPresentations[index] ? { presentation: activityPresentations[index] } : {}}
-            expanded={expandedCalls.has(pair.call.id)}
-            onToggle={() => toggleCall(pair.call.id)}
+            expanded={expandedCalls.has(`${index}:${pair.call.id}`)}
+            onToggle={() => toggleCall(`${index}:${pair.call.id}`)}
           />
         </div>
       {/each}

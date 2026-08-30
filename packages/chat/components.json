@@ -144,6 +144,54 @@
       }
     },
     {
+      "id": "chat-navigation-rail",
+      "category": "navigation",
+      "status": "stable",
+      "purpose": "Navigates user-authored transcript turns with keyboard and pointer scrubbing.",
+      "tags": ["chat", "navigation"],
+      "useWhen": ["A long transcript needs direct navigation between user turns."],
+      "avoidWhen": [
+        {
+          "reason": "The transcript is short enough to scan without an auxiliary navigation surface."
+        }
+      ],
+      "related": ["chat"],
+      "name": "ChatNavigationRail",
+      "import": "@lostgradient/chat",
+      "exportName": "ChatNavigationRail",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/schema",
+        "variables": "@lostgradient/chat/variables",
+        "examples": "@lostgradient/chat/examples"
+      }
+    },
+    {
+      "id": "chat-sub-session",
+      "category": "data-display",
+      "status": "stable",
+      "purpose": "Renders a reduced nested conversation transcript inside a parent chat turn.",
+      "tags": ["chat", "transcript"],
+      "useWhen": ["A tool or delegated session needs to expose its child transcript inline."],
+      "avoidWhen": [
+        {
+          "reason": "The child conversation should be a separate full-size Chat surface."
+        }
+      ],
+      "related": ["chat"],
+      "name": "ChatSubSession",
+      "import": "@lostgradient/chat",
+      "exportName": "ChatSubSession",
+      "hasConstraints": false,
+      "hasExamples": true,
+      "artifacts": {
+        "schema": "@lostgradient/chat/schema",
+        "variables": "@lostgradient/chat/variables",
+        "examples": "@lostgradient/chat/examples"
+      }
+    },
+    {
       "id": "chat-composer-popover",
       "category": "overlay",
       "status": "beta",

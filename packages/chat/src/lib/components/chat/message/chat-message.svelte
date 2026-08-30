@@ -346,6 +346,7 @@
     id={messageId}
     class="chat-message chat-navigation-row"
     data-message-id={message.id}
+    data-message-role={message.role}
     aria-labelledby={isToolCall && toolPair ? undefined : roleId}
     aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}

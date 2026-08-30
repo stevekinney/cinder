@@ -35,6 +35,8 @@ for (const cssPath of [
   'dist/components/chat-composer-popover/chat-composer-popover.css',
   'dist/components/chat-conversation-header/chat-conversation-header.css',
   'dist/components/chat-conversation-list/chat-conversation-list.css',
+  'dist/components/chat-navigation-rail/chat-navigation-rail.css',
+  'dist/components/chat-sub-session/chat-sub-session.css',
 ]) {
   await Bun.write(join(PACKAGE_ROOT, `${cssPath}.d.ts`), 'export {};\n');
 }

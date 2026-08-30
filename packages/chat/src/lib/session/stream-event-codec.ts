@@ -77,15 +77,20 @@ export async function* decodeChatStreamEvents(
   };
   if (source instanceof ReadableStream) {
     const reader = source.getReader();
+    let completed = false;
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
         yield* appendChunk(value);
       }
+      if (buffer.trim()) yield decodeChatStreamEvent(buffer.trim());
+      completed = true;
     } finally {
+      if (!completed) await reader.cancel();
       reader.releaseLock();
     }
+    return;
   } else {
     for await (const chunk of source) yield* appendChunk(chunk);
   }

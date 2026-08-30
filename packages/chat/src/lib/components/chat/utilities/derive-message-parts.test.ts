@@ -14,14 +14,12 @@ import { deriveMessageParts, formatToolCallProse } from './utilities.ts';
 
 describe('formatToolCallProse', () => {
   it('formats running, completed, and failed activity with optional detail', () => {
-    expect(formatToolCallProse({ verb: 'search', tense: 'present', detail: 'the index' })).toBe(
-      'searching the index',
+    expect(formatToolCallProse({ verb: 'Searching', tense: 'present', detail: 'the index' })).toBe(
+      'Searching the index',
     );
-    expect(formatToolCallProse({ verb: 'fetch', tense: 'past' })).toBe('fetched');
-    expect(formatToolCallProse({ verb: 'write', tense: 'present' })).toBe('writing');
-    expect(formatToolCallProse({ verb: 'create', tense: 'past' })).toBe('created');
-    expect(formatToolCallProse({ verb: 'write', tense: 'failed', detail: 'the file' })).toBe(
-      'Failed to write the file',
+    expect(formatToolCallProse({ verb: 'Fetched', tense: 'past' })).toBe('Fetched');
+    expect(formatToolCallProse({ verb: 'Write', tense: 'failed', detail: 'the file' })).toBe(
+      'Failed to Write the file',
     );
   });
 });

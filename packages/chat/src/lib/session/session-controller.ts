@@ -82,6 +82,30 @@ export function createChatSessionController(
   const assertNotDisposed = (): void => {
     if (disposed) throw new Error('Chat session is disposed');
   };
+  const findOwningUser = (history: ConversationHistory, toolCallId: string): string => {
+    const position = history.ids.indexOf(toolCallId);
+    for (let index = position - 1; index >= 0; index -= 1) {
+      const message = history.messages[history.ids[index]!];
+      if (message?.role === 'user') return message.id;
+    }
+    return activeUserMessageId ?? '';
+  };
+  const rebuildApprovalState = (): void => {
+    toolOwners.clear();
+    pendingApprovals.clear();
+    const history = options.getConversation();
+    for (const id of history.ids) {
+      const message = history.messages[id];
+      if (!message) continue;
+      if (message.role === 'tool-call' && message.toolCall)
+        toolOwners.set(message.toolCall.id, findOwningUser(history, id));
+      if (message.role === 'tool-result' && message.toolResult) {
+        if (message.toolResult.outcome === 'action_required')
+          pendingApprovals.add(message.toolResult.callId);
+        else pendingApprovals.delete(message.toolResult.callId);
+      }
+    }
+  };
 
   const update = (conversation: ConversationHistory): void => options.setConversation(conversation);
   const decodeTransportResult = async (
@@ -210,7 +234,9 @@ export function createChatSessionController(
       ? {
           approveToolCall: async (id: string) => {
             assertActive();
+            rebuildApprovalState();
             const owner = toolOwners.get(id) ?? activeUserMessageId;
+            running = true;
             let result: ToolResult | undefined;
             try {
               result = await options.hooks?.approveToolCall?.(id);
@@ -218,6 +244,8 @@ export function createChatSessionController(
               if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
               options.hooks?.onError?.(error);
               throw error;
+            } finally {
+              running = false;
             }
             if (result) {
               update(replaceToolResult(options.getConversation(), id, result));
@@ -232,7 +260,9 @@ export function createChatSessionController(
       ? {
           denyToolCall: async (id: string) => {
             assertActive();
+            rebuildApprovalState();
             const owner = toolOwners.get(id) ?? activeUserMessageId;
+            running = true;
             let result: ToolResult | undefined;
             try {
               result = await options.hooks?.denyToolCall?.(id);
@@ -240,6 +270,8 @@ export function createChatSessionController(
               if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
               options.hooks?.onError?.(error);
               throw error;
+            } finally {
+              running = false;
             }
             if (result) {
               update(replaceToolResult(options.getConversation(), id, result));

@@ -21,7 +21,7 @@
   const adapter: ChatAdapter = {
     sendMessage: async () => {},
     describeToolCall: (_toolCall, result) => ({
-      verb: 'check',
+      verb: result?.outcome === 'success' ? 'Checked' : 'Checking',
       tense: result?.outcome === 'success' ? 'past' : 'present',
       detail: 'the package exports',
       kind: 'search',

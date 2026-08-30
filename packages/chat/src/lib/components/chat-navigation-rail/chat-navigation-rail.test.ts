@@ -45,5 +45,7 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('if (index >= 0) navigate(index)');
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');
+    expect(source).toContain('[data-message-role="user"]');
+    expect(source).toContain('const observedViewport = viewport');
   });
 });

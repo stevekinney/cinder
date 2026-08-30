@@ -59,6 +59,12 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(source).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*?animation:\s*none/u);
   });
 
+  test('keys repeated presented tool disclosure state by row occurrence', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-timeline.svelte'), 'utf8');
+    expect(source).toContain('expandedCalls.has(`${index}:${pair.call.id}`)');
+    expect(source).toContain('toggleCall(`${index}:${pair.call.id}`)');
+  });
+
   test('renders the ToolCallGroup card when a resolved pair is supplied', () => {
     const message = toolCallMessage();
     const { container } = render(ChatMessage, {

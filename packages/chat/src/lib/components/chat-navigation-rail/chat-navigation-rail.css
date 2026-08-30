@@ -1,0 +1,84 @@
+.chat-navigation-rail {
+  display: grid;
+  gap: 2px;
+  inline-size: 2rem;
+  max-block-size: 100%;
+  overflow-y: auto;
+  align-content: start;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+.chat-navigation-rail-row {
+  position: relative;
+  z-index: 0;
+  min-block-size: var(--cinder-touch-target-min);
+  border: 0;
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface-raised);
+  color: var(--cinder-text-muted);
+  cursor: pointer;
+  transition:
+    transform 120ms ease,
+    color 120ms ease;
+}
+.chat-navigation-rail-row:hover,
+.chat-navigation-rail-row:focus-visible,
+.chat-navigation-rail-row[aria-current='true'] {
+  color: var(--cinder-text-default);
+  transform: scaleX(1.35);
+  z-index: 1;
+}
+.chat-navigation-rail-row:has(+ .chat-navigation-rail-row[data-scrub-target]) {
+  opacity: 0.7;
+}
+.chat-navigation-rail-row:has(
+  + .chat-navigation-rail-row + .chat-navigation-rail-row[data-scrub-target]
+) {
+  opacity: 0.45;
+}
+.chat-navigation-rail-row[data-scrub-target] + .chat-navigation-rail-row,
+.chat-navigation-rail-row:has(+ .chat-navigation-rail-row[data-scrub-target]) {
+  opacity: 0.7;
+}
+.chat-navigation-rail-row[data-scrub-target]
+  + .chat-navigation-rail-row
+  + .chat-navigation-rail-row,
+.chat-navigation-rail-row:has(
+  + .chat-navigation-rail-row + .chat-navigation-rail-row[data-scrub-target]
+) {
+  opacity: 0.45;
+}
+.chat-navigation-rail-row:has(~ .chat-navigation-rail-row[data-scrub-target]) {
+  opacity: 0.7;
+}
+.chat-navigation-rail-row:has(
+  ~ .chat-navigation-rail-row:has(~ .chat-navigation-rail-row[data-scrub-target])
+) {
+  opacity: 0.45;
+}
+.chat-navigation-rail-label {
+  font-size: var(--cinder-text-3xs);
+}
+.chat-navigation-rail-preview {
+  position: absolute;
+  inset-inline-start: calc(100% + var(--cinder-space-2));
+  inset-block-start: 50%;
+  translate: 0 -50%;
+  inline-size: max-content;
+  max-inline-size: 18rem;
+  padding: var(--cinder-space-2);
+  border-radius: var(--cinder-radius-sm);
+  background: var(--cinder-surface-raised);
+  box-shadow: var(--cinder-shadow-sm);
+  opacity: 0;
+  pointer-events: none;
+}
+.chat-navigation-rail-row:hover .chat-navigation-rail-preview,
+.chat-navigation-rail-row:focus-visible .chat-navigation-rail-preview {
+  opacity: 1;
+}
+@media (prefers-reduced-motion: reduce) {
+  .chat-navigation-rail-row {
+    transition: none;
+  }
+}

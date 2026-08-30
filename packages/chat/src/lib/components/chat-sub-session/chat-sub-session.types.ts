@@ -1,5 +1,5 @@
 import type { Snippet } from 'svelte';
-import type { ConversationHistory, Message } from './conversation-model.ts';
+import type { ConversationHistory, Message } from '../chat/conversation-model.ts';
 
 export type ChatSubSessionProps = {
   conversation: ConversationHistory;

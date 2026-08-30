@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
-import { appendAssistantMessage, appendUserMessage, createConversation } from './builders.ts';
-import { getMessages } from './utilities/index.ts';
+import { appendAssistantMessage, appendUserMessage, createConversation } from '../chat/builders.ts';
+import { getMessages } from '../chat/utilities/index.ts';
 
 describe('chat sub-session data contract', () => {
   test('uses the existing ConversationHistory snapshot without metadata mutation', () => {

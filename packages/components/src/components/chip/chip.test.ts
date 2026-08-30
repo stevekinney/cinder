@@ -51,13 +51,14 @@ describe('Chip', () => {
     expect(chip?.querySelector('button')).toBeNull();
   });
 
-  test('brandColor is exposed as a private custom property for the OKLCH tint recipe', () => {
+  test('brandColor uses a semantic foreground with a restrained brand tint', () => {
     const { container } = render(Chip, { label: 'Acme', brandColor: '#ff6600' });
     const chip = container.querySelector('.cinder-chip') as HTMLElement;
     expect(chip.style.getPropertyValue('--_cinder-chip-brand-color')).toBe('#ff6600');
-    expect(cssRuleBody(".cinder-chip[style*='--_cinder-chip-brand-color']")).toMatch(
-      /color-mix\(\s*in oklch[\s\S]*50%/,
-    );
+    const rule = cssRuleBody(".cinder-chip[style*='--_cinder-chip-brand-color']");
+    expect(rule).toContain('color: var(--cinder-text-default);');
+    expect(rule).toContain('var(--_cinder-chip-brand-color) 8%');
+    expect(rule).not.toMatch(/(?:^|\n)\s*color:\s*color-mix/);
     expect(chipCss.indexOf(".cinder-chip[style*='--_cinder-chip-brand-color']")).toBeGreaterThan(
       chipCss.indexOf(".cinder-chip[data-cinder-variant='accent']"),
     );

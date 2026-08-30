@@ -14,10 +14,10 @@ import Chat from './chat.svelte';
 import { CURRENT_SCHEMA_VERSION } from './schema-version.ts';
 
 export default Chat;
-export { default as ChatNavigationRail } from './chat-navigation-rail.svelte';
-export type { ChatNavigationRailProps } from './chat-navigation-rail.types.ts';
-export { default as ChatSubSession } from './chat-sub-session.svelte';
-export type { ChatSubSessionProps } from './chat-sub-session.types.ts';
+export type { ChatNavigationRailProps } from '../chat-navigation-rail/chat-navigation-rail.types.ts';
+export { default as ChatNavigationRail } from '../chat-navigation-rail/index.ts';
+export type { ChatSubSessionProps } from '../chat-sub-session/chat-sub-session.types.ts';
+export { default as ChatSubSession } from '../chat-sub-session/index.ts';
 export type {
   ChatAnnounceLevel,
   ChatCapabilities,

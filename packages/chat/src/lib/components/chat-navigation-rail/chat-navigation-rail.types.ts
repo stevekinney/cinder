@@ -1,4 +1,4 @@
-import type { Message } from './conversation-model.ts';
+import type { Message } from '../chat/conversation-model.ts';
 
 export type ChatNavigationRailProps = {
   messages: ReadonlyArray<Message>;

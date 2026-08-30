@@ -1,11 +1,22 @@
 <script lang="ts" module>
+  /**
+   * @cinder
+   * @category data-display
+   * @status stable
+   * @purpose Renders a reduced nested conversation transcript inside a parent chat turn.
+   * @tag chat
+   * @tag transcript
+   * @useWhen A tool or delegated session needs to expose its child transcript inline.
+   * @avoidWhen The child conversation should be a separate full-size Chat surface.
+   * @related chat
+   */
   import type { ChatSubSessionProps } from './chat-sub-session.types.ts';
   export type { ChatSubSessionProps };
 </script>
 
 <script lang="ts">
-  import { getMessages, pairToolCallsWithResults } from './utilities/index.ts';
-  import ChatMessage from './message/chat-message.svelte';
+  import { getMessages, pairToolCallsWithResults } from '../chat/utilities/index.ts';
+  import ChatMessage from '../chat/message/chat-message.svelte';
 
   let {
     conversation,
@@ -14,6 +25,7 @@
     row,
   }: ChatSubSessionProps = $props();
   const messages = $derived(getMessages(conversation));
+  const instanceId = $props.id();
   const toolCallPairs = $derived(pairToolCallsWithResults(messages));
   const toolCallPairsByCallId = $derived.by(() => {
     const pairsByCallId = new Map<string, typeof toolCallPairs>();
@@ -36,12 +48,13 @@
     aria-label={label}
     aria-live={live ? 'polite' : 'off'}
   >
-    {#each messages as message (message.id)}
+    {#each messages as message (`${instanceId}:${message.id}`)}
       {#if row}
         {@render row(message)}
       {:else if message.role !== 'tool-result' || !message.toolResult || !pairedToolResults.has(message.toolResult)}
         <ChatMessage
           {message}
+          id={`${instanceId}-${message.id}`}
           toolCallPairs={message.toolCall
             ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
             : []}
@@ -52,40 +65,3 @@
     {/each}
   </div>
 </section>
-
-<style>
-  .chat-sub-session {
-    --cinder-chat-font-size: 0.8125rem;
-    max-block-size: 7.75rem;
-    overflow: hidden;
-    position: relative;
-    font-size: var(--_cinder-chat-text-base, 0.8125rem);
-    border-inline-start: 2px solid var(--cinder-border-muted);
-    background: var(--cinder-surface-inset);
-  }
-
-  .chat-sub-session-viewport {
-    max-block-size: inherit;
-    overflow: auto;
-    padding: var(--cinder-space-2) var(--cinder-space-3);
-  }
-
-  .chat-sub-session-live :global(.chat-message) {
-    animation: chat-sub-session-live 1.2s ease-in-out infinite alternate;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .chat-sub-session-live :global(.chat-message) {
-      animation: none;
-    }
-  }
-
-  @keyframes chat-sub-session-live {
-    from {
-      opacity: 0.8;
-    }
-    to {
-      opacity: 1;
-    }
-  }
-</style>

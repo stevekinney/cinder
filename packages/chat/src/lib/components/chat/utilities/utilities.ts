@@ -30,12 +30,9 @@ export const CINDER_ARTIFACT_METADATA_KEY = 'cinder:artifact';
 /** Formats adapter-supplied tool activity without knowing connector names. */
 export function formatToolCallProse(presentation: ToolCallPresentation): string {
   const verb = presentation.verb.trim();
-  const phrase =
-    presentation.tense === 'present'
-      ? `${verb.endsWith('e') ? verb.slice(0, -1) : verb}ing`
-      : presentation.tense === 'failed'
-        ? `Failed to ${verb}`
-        : `${verb}${verb.endsWith('e') ? 'd' : 'ed'}`;
+  // Adapters own grammar: verbs may be irregular, multi-word, or already
+  // inflected. Never guess English morphology in the shared package.
+  const phrase = presentation.tense === 'failed' ? `Failed to ${verb}` : verb;
   return presentation.detail ? `${phrase} ${presentation.detail}` : phrase;
 }
 

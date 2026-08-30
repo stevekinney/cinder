@@ -115,20 +115,20 @@
     border-color: var(--cinder-accent-border);
   }
 
-  /* Third-party colours are mixed halfway toward the readable foreground in
-   * OKLCH. Keep this recipe after the variant recipes so the explicit brand
-   * colour wins the resting-state cascade. */
+  /* Third-party colour is decorative only. Keep the semantic foreground on the
+   * semantic surface so arbitrary brand colours cannot reduce text contrast in
+   * either theme; use the brand solely for a restrained tint and border. */
   .cinder-chip[style*='--_cinder-chip-brand-color'] {
-    color: color-mix(in oklch, var(--_cinder-chip-brand-color) 50%, var(--cinder-text-default) 50%);
+    color: var(--cinder-text-default);
     background: color-mix(
       in oklch,
-      var(--_cinder-chip-brand-color) 12%,
-      var(--cinder-surface-raised) 88%
+      var(--_cinder-chip-brand-color) 8%,
+      var(--cinder-surface-raised) 92%
     );
     border-color: color-mix(
       in oklch,
-      var(--_cinder-chip-brand-color) 50%,
-      var(--cinder-border) 50%
+      var(--_cinder-chip-brand-color) 35%,
+      var(--cinder-border) 65%
     );
   }
 

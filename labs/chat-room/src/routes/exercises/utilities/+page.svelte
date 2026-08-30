@@ -74,7 +74,7 @@
 	const chatAdapter: ChatAdapter = {
 		sendMessage: async () => {},
 		describeToolCall: (_toolCall, result) => ({
-			verb: 'check',
+			verb: result?.outcome === 'success' ? 'Checked' : 'Checking',
 			tense: result?.outcome === 'success' ? 'past' : 'present',
 			detail: 'the weather service',
 			kind: 'fetch'
