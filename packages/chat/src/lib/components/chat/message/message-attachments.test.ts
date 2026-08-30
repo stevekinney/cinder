@@ -18,7 +18,7 @@ describe('MessageAttachments image layout contract', () => {
     const { container } = render(MessageAttachments, {
       props: { images: [{ type: 'image', url: 'portrait.png', text: 'Portrait' }] },
     });
-    const figure = container.querySelector('.message-attachment') as HTMLElement | null;
+    const figure = container.querySelector<HTMLElement>('.message-attachment');
     const button = container.querySelector('.message-attachment-button');
     const image = container.querySelector('.message-attachment-image');
 
