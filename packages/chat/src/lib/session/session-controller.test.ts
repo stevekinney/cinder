@@ -209,6 +209,7 @@ describe('chat session controller', () => {
           rejectStream = () =>
             resolve(
               (async function* () {
+                yield* [] as ChatStreamEvent[];
                 throw new Error('broken');
               })(),
             );
