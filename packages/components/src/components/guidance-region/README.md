@@ -16,15 +16,18 @@
   const claims = [
     { id: 'welcome', anchor: 'workspace-start', content: 'Start by exploring the workspace.' },
   ] satisfies GuidanceClaim[];
-  let anchor: HTMLElement;
 </script>
 
-<GuidanceRegion {claims} version="1.0.0" anchorResolver={() => anchor}>
+<GuidanceRegion
+  {claims}
+  version="1.0.0"
+  anchorResolver={() => document.getElementById('workspace-start')}
+>
   {#snippet children()}
     {@const guidance = useGuidance()}
-    <span bind:this={anchor}>
-      <Button onclick={() => guidance.claim('welcome')}>Show welcome guidance</Button>
-    </span>
+    <Button id="workspace-start" onclick={() => guidance.claim('welcome')}>
+      Show welcome guidance
+    </Button>
   {/snippet}
 </GuidanceRegion>
 ```

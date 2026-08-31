@@ -6,8 +6,22 @@
 
 ```svelte
 <script lang="ts">
+  import { Button } from '@lostgradient/cinder/button';
   import { InlineConfirm } from '@lostgradient/cinder/inline-confirm';
+
+  let open = $state(false);
+
+  function removeWorkspace() {
+    open = false;
+  }
 </script>
 
-<InlineConfirm prompt="Remove this workspace?" confirmLabel="Remove workspace" open destructive />
+<Button variant="danger" onclick={() => (open = true)}>Remove workspace</Button>
+<InlineConfirm
+  prompt="Remove this workspace?"
+  confirmLabel="Remove workspace"
+  bind:open
+  destructive
+  onConfirm={removeWorkspace}
+/>
 ```

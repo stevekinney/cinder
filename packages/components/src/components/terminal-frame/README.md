@@ -8,10 +8,21 @@ Use `TerminalOutput` for read-only ANSI streams. Use `TerminalFrame` when the ch
 
 ```svelte
 <script lang="ts">
-  import { TerminalFrame } from '@lostgradient/cinder/terminal-frame';
+  import { TerminalFrame, type TerminalFrameDimensions } from '@lostgradient/cinder/terminal-frame';
+
+  let dimensions = $state<TerminalFrameDimensions>({ cols: 80, rows: 24 });
 </script>
 
-<TerminalFrame title="Build shell" status="connected">
-  <div role="log" aria-label="Interactive shell">$ bun run dev</div>
+<TerminalFrame
+  title="Build shell"
+  status="connected"
+  onDimensionsChange={(nextDimensions) => (dimensions = nextDimensions)}
+>
+  <textarea
+    aria-label="Interactive shell"
+    rows={dimensions.rows}
+    cols={dimensions.cols}
+    value="$ bun run dev"
+  ></textarea>
 </TerminalFrame>
 ```
