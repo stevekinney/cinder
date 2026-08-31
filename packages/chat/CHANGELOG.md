@@ -1,5 +1,11 @@
 # @lostgradient/chat
 
+## 0.13.1
+
+### Patch Changes
+
+- [#1478](https://github.com/stevekinney/cinder/pull/1478) [`86f3756`](https://github.com/stevekinney/cinder/commit/86f37563a3dc4e07bc114509f48fde5be554534e) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep attachment restoration parameters parseable when packed Chat Svelte sources are dependency-optimized by Vite.
+
 ## 0.13.0
 
 ### Minor Changes
