@@ -39,6 +39,10 @@ import light from '@lostgradient/cinder/tokens/resolved/light' with { type: 'jso
 import dark from '@lostgradient/cinder/tokens/resolved/dark' with { type: 'json' };
 import lightReducedMotion from '@lostgradient/cinder/tokens/resolved/light-reduced-motion' with { type: 'json' };
 import darkReducedMotion from '@lostgradient/cinder/tokens/resolved/dark-reduced-motion' with { type: 'json' };
+import colorsSet from '@lostgradient/cinder/tokens/sets/colors' with { type: 'json' };
+import componentsSet from '@lostgradient/cinder/tokens/sets/components' with { type: 'json' };
+import foundationSet from '@lostgradient/cinder/tokens/sets/foundation' with { type: 'json' };
+import semanticSet from '@lostgradient/cinder/tokens/sets/semantic' with { type: 'json' };
 import { TOKEN_REGISTRY } from '@lostgradient/cinder/tokens/registry';
 
 const CINDER_NAMESPACE = 'com.lostgradient.cinder';
@@ -49,6 +53,51 @@ const RESOLVED_CONTEXTS = [
   ['light-reduced-motion', lightReducedMotion],
   ['dark-reduced-motion', darkReducedMotion],
 ];
+
+/**
+ * Tokens whose real CSS value has no DTCG representation -- `carousel.slide-size`
+ * (a bare percentage), `carousel.aspect-ratio` (a ratio), `code-block.height`
+ * (the `auto` keyword), `spinner.indicator` (`currentColor`). Each carries a
+ * nominal `$value` placeholder with `cssRecipe` governing emission, and the
+ * generator deliberately omits them from the resolved contexts so a generic
+ * consumer cannot apply the placeholder literally (see `generate.ts`, which
+ * skips any token whose extensions set `nonRepresentableValue`).
+ *
+ * They stay in the registry, because the registry advertises the custom
+ * property surface rather than resolved values. So the resolved contexts hold
+ * exactly the registry's tokens MINUS these -- asserted as a set below, not a
+ * count, so that both an unexpected omission and a stale exclusion fail.
+ */
+const NON_REPRESENTABLE_PATHS = collectNonRepresentablePaths([
+  colorsSet,
+  componentsSet,
+  foundationSet,
+  semanticSet,
+]);
+
+function collectNonRepresentablePaths(documents) {
+  const found = new Set();
+
+  const visit = (node, trail) => {
+    if (!node || typeof node !== 'object') return;
+
+    if ('$value' in node) {
+      if (node.$extensions?.[CINDER_NAMESPACE]?.nonRepresentableValue === true) {
+        found.add(trail.join('.'));
+      }
+      return;
+    }
+
+    for (const [key, child] of Object.entries(node)) {
+      if (key.startsWith('$')) continue;
+      visit(child, [...trail, key]);
+    }
+  };
+
+  for (const document of documents) visit(document, []);
+
+  return found;
+}
 
 /** The index describes the surface and agrees with what shipped. */
 assert.equal(tokenIndex.version, '2025.10', 'token index declares the DTCG version');
@@ -94,12 +143,29 @@ assert.equal(
  * carried neither `cssProperty` nor a description, because resolution replaced
  * overridden tokens wholesale.
  */
+assert.ok(
+  NON_REPRESENTABLE_PATHS.size > 0,
+  'the corpus still flags non-representable tokens (guards against a silently emptied exclusion set)',
+);
+
+for (const path of NON_REPRESENTABLE_PATHS) {
+  assert.ok(
+    TOKEN_REGISTRY.pathToCssProperty[path],
+    `non-representable token ${path} is still advertised by the registry`,
+  );
+}
+
+const EXPECTED_RESOLVED_PATHS = TOKEN_REGISTRY.entries
+  .map((entry) => entry.path)
+  .filter((path) => !NON_REPRESENTABLE_PATHS.has(path))
+  .sort();
+
 for (const [name, context] of RESOLVED_CONTEXTS) {
   const paths = Object.keys(context);
-  assert.equal(
-    paths.length,
-    TOKEN_REGISTRY.entries.length,
-    `${name} resolves every token in the registry`,
+  assert.deepEqual(
+    [...paths].sort(),
+    EXPECTED_RESOLVED_PATHS,
+    `${name} resolves every registry token except the non-representable ones`,
   );
 
   for (const path of paths) {
