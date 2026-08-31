@@ -99,9 +99,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					try {
 						const toolCalls = parseAnthropicToolCalls(blocks);
 
-						if (toolCalls.length > 0) {
+						// Cancellation/error may settle the response after `end` was
+						// queued but before this asynchronous handler runs. Never start
+						// tool execution for a response that is no longer consumable.
+						if (toolCalls.length > 0 && !settled) {
 							const results = await toolbox.execute(toolCalls, { requestContext });
 
+							if (settled) return;
 							for (const result of results) {
 								enqueueEvent({
 									type: 'tool_result',

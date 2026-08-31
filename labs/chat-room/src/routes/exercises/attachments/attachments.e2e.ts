@@ -58,8 +58,12 @@ test('composer file attachment: add, preview, submit, and render via MessageAtta
 	const maximize = gallery.getByRole('button', { name: 'View image: tiny.png' });
 	await expect(maximize).toBeVisible();
 	await maximize.focus();
+	await page.keyboard.press('Shift+Tab');
+	await page.keyboard.press('Tab');
 	await expect(maximize).toBeFocused();
-	await expect(maximize.locator('.message-attachment-maximize')).toBeVisible();
+	const maximizeAffordance = maximize.locator('.message-attachment-maximize');
+	await expect(maximizeAffordance).toBeVisible();
+	await expect(maximizeAffordance).toHaveCSS('opacity', '1');
 	await page.keyboard.press('Enter');
 	await expect(page.getByRole('dialog', { name: 'Image viewer' })).toBeVisible();
 	await page.keyboard.press('Escape');

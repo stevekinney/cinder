@@ -12,6 +12,7 @@ import {
   appendUserMessage,
   clearMessageDeliveryStatus,
   markMessageDeliveryFailed,
+  removeMessage,
   replaceToolResult,
   rewindBeforeMessage,
 } from '../components/chat/builders.ts';
@@ -298,6 +299,31 @@ export function createChatSessionController(
       await executeRun(userMessageId, attachments);
     }
   };
+  const cleanIncompleteToolRows = (
+    history: ConversationHistory,
+    userMessageId: string,
+  ): ConversationHistory => {
+    const start = history.ids.indexOf(userMessageId);
+    const suffix = history.ids.slice(start + 1);
+    const calls = new Set<string>();
+    const results = new Set<string>();
+    for (const id of suffix) {
+      const message = history.messages[id];
+      if (message?.role === 'tool-call' && message.toolCall) calls.add(message.toolCall.id);
+      if (message?.role === 'tool-result' && message.toolResult)
+        results.add(message.toolResult.callId);
+    }
+    const incomplete = suffix.filter((id) => {
+      const message = history.messages[id];
+      return (
+        (message?.role === 'tool-call' && message.toolCall && !results.has(message.toolCall.id)) ||
+        (message?.role === 'tool-result' &&
+          message.toolResult &&
+          !calls.has(message.toolResult.callId))
+      );
+    });
+    return incomplete.toReversed().reduce((current, id) => removeMessage(current, id), history);
+  };
   const adapter: ChatAdapter = {
     sendMessage: async (message, attachments) => send(message, attachments),
     retryMessage: async (messageId) => {
@@ -311,7 +337,12 @@ export function createChatSessionController(
         history.ids.slice(position + 1).some((id) => history.messages[id]?.role === 'user')
       )
         throw new Error('Only the latest owning user turn can be retried');
-      update(clearMessageDeliveryStatus(options.getConversation(), messageId));
+      update(
+        cleanIncompleteToolRows(
+          clearMessageDeliveryStatus(options.getConversation(), messageId),
+          messageId,
+        ),
+      );
       await executeRun(messageId, messageAttachments.get(messageId) ?? []);
     },
     editMessage: async ({ messageId, content }) => {

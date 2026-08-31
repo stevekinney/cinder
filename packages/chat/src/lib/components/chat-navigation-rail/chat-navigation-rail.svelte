@@ -121,10 +121,7 @@
   }
 
   function handlePointerMove(event: PointerEvent): void {
-    if (pointerType === 'touch') {
-      if (Math.abs(event.clientY - touchStartY) > 8) touchMoved = true;
-      return;
-    }
+    if (pointerType === 'touch' && Math.abs(event.clientY - touchStartY) > 8) touchMoved = true;
     updateFromPointer(event);
   }
 
@@ -216,9 +213,7 @@
       data-message-id={message.id}
       type="button"
       aria-current={activeMessageId === message.id ? 'true' : undefined}
-      aria-describedby={previewMessageId === message.id
-        ? `${instanceId}-${message.id}-navigation-preview`
-        : undefined}
+      aria-describedby={`${instanceId}-${message.id}-navigation-preview`}
       onclick={() => activate(index)}
       onpointerenter={(event) => updatePreviewPosition(event, index)}
       onpointerleave={clearPreview}

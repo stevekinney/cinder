@@ -721,6 +721,35 @@ describe('chat session controller', () => {
     expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
   });
 
+  test('retry removes incomplete tool rows from the failed owning turn', async () => {
+    let conversation = createConversationHistory({ id: 'retry-tools' });
+    let calls = 0;
+    let retriedHistory: ConversationHistory | undefined;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ conversation: history }) => {
+        calls += 1;
+        if (calls === 1)
+          return (async function* () {
+            yield { type: 'tool_call', id: 'dangling', name: 'write', arguments: {} } as const;
+            throw new Error('interrupted');
+          })();
+        retriedHistory = history;
+        return events([{ type: 'text', text: 'retried' }]);
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'write' }, []),
+    ).rejects.toThrow('interrupted');
+    await controller.adapter.retryMessage?.(conversation.ids[0]!);
+    expect(
+      retriedHistory?.ids.some((id) => retriedHistory?.messages[id]?.role === 'tool-call'),
+    ).toBe(false);
+  });
+
   test('passes attachments to the transport', async () => {
     let conversation = createConversationHistory({ id: 'attachments' });
     let received = 0;

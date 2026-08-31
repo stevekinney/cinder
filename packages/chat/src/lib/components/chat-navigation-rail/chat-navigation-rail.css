@@ -9,7 +9,7 @@
     overflow-y: auto;
     align-content: start;
     overscroll-behavior: contain;
-    touch-action: pan-y;
+    touch-action: none;
   }
   .chat-navigation-rail-row {
     position: relative;

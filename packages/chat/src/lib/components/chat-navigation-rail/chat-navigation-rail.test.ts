@@ -45,6 +45,8 @@ describe('chat navigation rail mechanics', () => {
     );
     expect(source).toContain('data-scrub-target');
     expect(source).toContain('aria-describedby');
+    expect(source).toContain('aria-describedby={`${instanceId}-${message.id}-navigation-preview`}');
+    expect(source).toContain('updateFromPointer(event);');
     expect(source).toContain("aria-current={activeMessageId === message.id ? 'true' : undefined}");
     expect(source).toContain('instanceId}-${message.id}-navigation-preview');
     expect(source).toContain('suppressNextClick');
@@ -67,7 +69,7 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain('position: fixed');
     expect(stylesheet).toContain('left: var(--chat-navigation-preview-left)');
     expect(stylesheet).not.toContain('inset-inline-start: var(--chat-navigation-preview-left)');
-    expect(stylesheet).toContain('touch-action: pan-y');
+    expect(stylesheet).toContain('touch-action: none');
     expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');
     expect(source).toContain('onpointercancel={cancelScrub}');
