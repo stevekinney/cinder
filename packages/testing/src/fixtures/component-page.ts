@@ -108,12 +108,12 @@ export const test = base.extend<Fixtures>({
             .__CINDER_SNAPSHOT_READY__;
           if (readiness !== undefined) await readiness;
         });
-        const markdownEditors = page.locator('.markdown-editor-wrapper');
+        const markdownEditors = page.locator('.markdown-editor-wrapper[data-mode="wysiwyg"]');
         if ((await markdownEditors.count()) > 0) {
           await page.waitForFunction(() =>
-            Array.from(document.querySelectorAll('.markdown-editor-wrapper')).every(
-              (editor) => editor.getAttribute('data-ready') === 'true',
-            ),
+            Array.from(
+              document.querySelectorAll('.markdown-editor-wrapper[data-mode="wysiwyg"]'),
+            ).every((editor) => editor.getAttribute('data-ready') === 'true'),
           );
         }
         // Blur any auto-focused element so focus rings don't appear in
