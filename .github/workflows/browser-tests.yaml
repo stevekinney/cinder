@@ -818,10 +818,10 @@ jobs:
 
       - name: Build Docker image and update baselines
         env:
-          # A Playwright shard identifies a partition of the full enforcement
-          # suite. Do not first filter that suite by component, or `N/8` would
-          # identify a different partition than the blocking matrix.
-          CINDER_TEST_COMPONENTS: ${{ github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
+          # Preserve the component filter before applying `N/8`: Playwright
+          # assigns shards from the selected test list, so reproducing a
+          # filtered enforcement shard must use the same selected list.
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_TEST_SHARD: ${{ github.event.inputs.shard || '' }}
           SHARD: ${{ github.event.inputs.shard || '' }}
         run: |

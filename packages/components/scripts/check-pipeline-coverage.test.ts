@@ -110,6 +110,12 @@ describe('Turbo input topology', () => {
     );
     expect(browserWorkflow).toContain('shard must use the form N/8 where N is 1 through 8');
     expect(browserWorkflow).toContain('test:browser:update:docker -- --shard="$SHARD"');
+    expect(browserWorkflow).toContain(
+      "CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}",
+    );
+    expect(browserWorkflow).not.toContain(
+      "github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered'",
+    );
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(
       'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
