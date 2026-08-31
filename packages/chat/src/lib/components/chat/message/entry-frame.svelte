@@ -120,7 +120,7 @@
     inline-size: 1rem;
     block-size: 1rem;
     margin-inline-start: var(--cinder-space-2);
-    transition: transform var(--cinder-duration-fast) var(--cinder-ease-out);
+    transition: transform var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
   .chat-entry-frame-shell :global(.cinder-collapsible__panel-inner) {
