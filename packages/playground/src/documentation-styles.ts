@@ -1,4 +1,4 @@
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 
@@ -57,12 +57,22 @@ export function resetPlaygroundStylesheetBuilds(): void {
   stylesheetPromiseByName.clear();
 }
 
+function stylesheetImportPath(path: string): string {
+  return relative(join(PLAYGROUND_ROOT, 'src'), path).replaceAll('\\', '/');
+}
+
 function stylesheetEntry(components: readonly string[]): string {
+  const cinderSourceRoot = join(PLAYGROUND_ROOT, '..', 'components', 'src');
   const imports = components
-    .map((componentName) => `@import '@lostgradient/cinder/${componentName}/styles';`)
+    .map(
+      (componentName) =>
+        `@import '${stylesheetImportPath(
+          join(cinderSourceRoot, 'components', componentName, `${componentName}.css`),
+        )}';`,
+    )
     .join('\n');
-  return `@import '@lostgradient/cinder/styles';
-@import '@lostgradient/cinder/styles/json-highlight';
+  return `@import '${stylesheetImportPath(join(cinderSourceRoot, 'styles', 'index.css'))}';
+@import '${stylesheetImportPath(join(cinderSourceRoot, 'styles', 'json-highlight.css'))}';
 ${imports}
 `;
 }

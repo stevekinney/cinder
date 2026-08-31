@@ -58,9 +58,26 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain(
       `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
     );
-    expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}');
     expect(browserWorkflow).toContain(
-      "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
+      'functional_matrix=\'{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}\'',
+    );
+    expect(browserWorkflow).toContain(
+      'filtered_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'',
+    );
+    expect(browserWorkflow).toContain('visual_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'');
+    expect(browserWorkflow).not.toContain('functional_matrix=\'{"shard":[1]}\'');
+    expect(
+      browserWorkflow.match(/--shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ matrix\.total \}\}/g),
+    ).toHaveLength(2);
+    expect(browserWorkflow).not.toContain('if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then');
+    expect(browserWorkflow).not.toContain(
+      'if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then',
+    );
+    expect(browserWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.functional_matrix",
+    );
+    expect(browserWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.visual_matrix",
     );
     expect(browserWorkflow).toContain('playwright-visual:');
     expect(browserWorkflow).toContain('baseline-coverage:');
@@ -93,6 +110,12 @@ describe('Turbo input topology', () => {
     );
     expect(browserWorkflow).toContain('shard must use the form N/8 where N is 1 through 8');
     expect(browserWorkflow).toContain('test:browser:update:docker -- --shard="$SHARD"');
+    expect(browserWorkflow).toContain(
+      "CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}",
+    );
+    expect(browserWorkflow).not.toContain(
+      "github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered'",
+    );
     expect(browserWorkflow).toContain('path: packages/testing/blob-report');
     expect(browserWorkflow).toContain(
       'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
