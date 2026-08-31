@@ -55,20 +55,25 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
   // pinning them exactly, matching this file's existing convention for
   // every other package.
   //
-  // Crossed again on 2026-08-31 by the same mechanism: 23 components landed
-  // since the measurement above (194 -> 200 published components), taking the
-  // 0.25.0 pack to 5.34 MB packed / 26.55 MB unpacked / 4,835 files and
-  // breaching the 26 MB unpacked cap alone — packed, fileCount, and
-  // largestEntrypoint all still sat well under budget, and the largest entries
-  // are all load-bearing output (the dist/index.js barrel, the 200-component
-  // exports map in package.json, and the components.json manifest that
-  // validate:consumer resolves against). ~176 KB and ~10 files per new
-  // component, in line with the per-component norm this comment already
-  // documents, so this is organic growth rather than bloat. Raised to 30 MB
-  // to restore roughly the same proportional headroom as the resets above.
+  // Appeared to be crossed again on 2026-08-31 at 5.34 MB packed / 26.55 MB
+  // unpacked / 4,835 files, which failed the release job's "Check validated
+  // Cinder package artifact budget" step and left 0.25.0 unpublished. That
+  // reading was NOT organic growth: the emitted artifacts carried padding
+  // whitespace, and trimming it in build.ts (#1480) took the same 0.25.0 pack
+  // to 4.94 MB packed / 22.68 MB unpacked, which published cleanly under this
+  // 26 MB cap. The cap was briefly raised to 30 MB (#1481) on the mistaken
+  // reading that 26.55 MB was legitimate component growth with nothing
+  // removable; #1480 disproved that by removing 3.87 MB. Restored to 26 MB,
+  // which keeps roughly the ~15% headroom over the measured pack that every
+  // other reset in this comment used.
+  //
+  // The lesson for the next breach: check whether the emitted bytes are
+  // padded before concluding the package legitimately outgrew its budget.
+  // A largest-files listing shows which files are big, not whether their
+  // contents are wasteful.
   '@lostgradient/cinder': {
     packedBytes: 6_000_000,
-    unpackedBytes: 30_000_000,
+    unpackedBytes: 26_000_000,
     fileCount: 5_200,
     largestEntrypointBytes: 2_500_000,
   },
