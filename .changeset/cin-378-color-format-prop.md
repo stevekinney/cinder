@@ -1,5 +1,0 @@
----
-'@lostgradient/cinder': minor
----
-
-Add a `format?: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch'` prop to `ColorField` and `ColorPicker` (default `'hex'`) that controls the emitted string's CSS Color 4 syntax; `value` stays a plain string. Alpha policy: each format decides "opaque" using its own quantization, not literally alpha `=== 1`. Hex quantizes alpha to a byte and omits the alpha suffix once it rounds to `0xff` (plain `#rrggbb` for any alpha `>= ~0.998`, e.g. `0.999`); every other format uses modern space-separated syntax with slash alpha (`oklch(l c h / a)`) and omits the `/ a` segment once alpha rounds to `1` at 4 decimal places (any alpha `>= 0.99995`, e.g. `0.99999`). Out-of-sRGB values are gamut-mapped via CSS Color 4 chroma reduction, powered by the new `culori` dependency. `ColorField`'s existing `formats` (input parsing) prop gains `'oklch'` as an accepted input syntax. `formats` and `format` are independent, but not mutually exclusive: the configured `format` is always an implicitly accepted input syntax too, regardless of what `formats` lists, so e.g. `formats={['hex']}` combined with `format="rgb"` still accepts user-entered `rgb()` values.

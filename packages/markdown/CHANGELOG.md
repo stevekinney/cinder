@@ -1,5 +1,19 @@
 # @lostgradient/markdown
 
+## 0.4.0
+
+### Minor Changes
+
+- [#1468](https://github.com/stevekinney/cinder/pull/1468) [`546f0a8`](https://github.com/stevekinney/cinder/commit/546f0a8780fd4c6dadda4ab8b66b9783eb1d500a) Thanks [@stevekinney](https://github.com/stevekinney)! - Polish Chat transcript and composer interactions with shared disclosure frames, grouped tool runs, rollback previews, rich clipboard output, markdown node overrides, wide-content breakout, scoped typography, streaming shimmer, and composer keyboard, drag, paste, and async-popover improvements.
+
+  Add nested sub-session transcripts, a user-message navigation rail with live scrubbing, one progress-arbitration selector, layout-stable image attachments with a keyboard-visible maximize affordance, and adapter-supplied tool activity prose, kind icons, and reduced-motion-safe animation.
+
+  Extend Chip with brand-color and breakable URL presentation, and stabilize scrollbars in shared picker surfaces.
+
+  Add the provider-neutral streaming session controller and NDJSON transport helpers, with matching playground and chat-room exemplar integrations.
+
+  Keep ReviewEditor selection-popover dismissal anchored to the authoritative browser selection so a delayed reactive snapshot cannot reopen the popover during the close flush.
+
 ## 0.3.1
 
 ### Patch Changes
