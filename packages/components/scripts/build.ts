@@ -427,7 +427,10 @@ const browserBuildResult = await Bun.build({
     asset: '[name]-[hash].[ext]',
   },
   sourcemap: 'external',
-  minify: false,
+  // Published browser artifacts do not need formatting whitespace. Keep
+  // identifiers and syntax intact for readable stack traces while avoiding
+  // duplicating source-formatting bytes alongside the retained Svelte source.
+  minify: { whitespace: true, identifiers: false, syntax: false },
   plugins: [
     cssImportPlugin({
       perComponentStyleSpecifiers,
@@ -513,7 +516,9 @@ const perComponentServerBuildResult = await Bun.build({
     asset: '[name]-[hash].[ext]',
   },
   sourcemap: 'external',
-  minify: false,
+  // Match the browser artifacts: trim formatting without mangling identifiers
+  // or rewriting syntax so server stack traces stay useful.
+  minify: { whitespace: true, identifiers: false, syntax: false },
   plugins: [serverCssNoopPlugin, sveltePlugin({ generate: 'server' })],
 });
 
