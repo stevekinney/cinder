@@ -108,6 +108,9 @@
   function cancelScrub(event: PointerEvent): void {
     if (pointerId !== event.pointerId) return;
     finishScrub(event);
+    // A cancelled gesture does not produce a meaningful activation. Clear the
+    // guard here so the next independent click is never swallowed.
+    suppressNextClick = false;
   }
 
   function finishScrub(event: PointerEvent): void {

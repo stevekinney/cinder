@@ -69,6 +69,13 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');
     expect(source).toContain('onpointercancel={cancelScrub}');
+    expect(source).toContain('suppressNextClick = false');
+    expect(stylesheet.indexOf('.chat-navigation-rail-preview-left')).toBeGreaterThan(
+      stylesheet.indexOf('@layer cinder.components'),
+    );
+    expect(stylesheet.lastIndexOf('}')).toBeGreaterThan(
+      stylesheet.indexOf('.chat-navigation-rail-preview-left'),
+    );
     expect(source).toContain('if (shouldNavigateTouch) updateFromPointer(event)');
     expect(source.indexOf('</nav>')).toBeLessThan(source.indexOf('chat-navigation-rail-preview'));
     expect(example).toContain('<ChatNavigationRail {messages} {scrollToMessage} {viewport} />');

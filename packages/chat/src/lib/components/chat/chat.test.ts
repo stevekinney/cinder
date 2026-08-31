@@ -1119,6 +1119,21 @@ describe('Chat — imperative API forwarding', () => {
     expect(source).toContain('previousStreaming = streaming;');
   });
 
+  test('message navigation suspends bottom sticking for earlier rendered and virtual rows', async () => {
+    const source = await Bun.file(new URL('./container/chat.svelte', import.meta.url)).text();
+
+    expect(source).toContain(
+      'const isEarlierMessage = targetIndex >= 0 && targetIndex < renderRows.length - 1;',
+    );
+    expect(source).toContain('scrollState.withUserScrollGuard(viewport, action);');
+    expect(source).toContain('scrollState.setAtBottom(false);');
+    expect(source).toContain('updateAtBottomBinding(false);');
+    expect(source.indexOf('navigate(() => {\n        rendered.scrollIntoView')).toBeGreaterThan(-1);
+    expect(
+      source.indexOf('navigate(() => {\n        chatVirtualizer.scrollToIndex'),
+    ).toBeGreaterThan(-1);
+  });
+
   test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {
     const target = document.createElement('div');
     document.body.append(target);

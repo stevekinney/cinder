@@ -74,6 +74,9 @@ describe('Chip', () => {
     expect(chipCss).toMatch(/overflow-wrap:\s*anywhere/);
     expect(chipCss).toMatch(/unicode-bidi:\s*isolate/);
     expect(chipCss).toMatch(/flex:\s*0 0 auto/);
+    expect(chipCss).toMatch(
+      /\.cinder-chip\[data-cinder-breakable\] \.cinder-chip__remove[\s\S]*?flex:\s*0 0 auto/,
+    );
   });
 
   test('toggle mode renders a button root with aria-pressed="false"', () => {

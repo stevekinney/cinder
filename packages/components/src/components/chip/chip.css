@@ -39,6 +39,10 @@
     align-self: flex-start;
   }
 
+  .cinder-chip[data-cinder-breakable] .cinder-chip__remove {
+    flex: 0 0 auto;
+  }
+
   /* Mode is expressed through internal affordances, never through a separate
  * chip-root surface. Display, resting toggle, and removable roots share this
  * same surface contract. */

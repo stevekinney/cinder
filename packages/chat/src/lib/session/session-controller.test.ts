@@ -344,6 +344,31 @@ describe('chat session controller', () => {
     expect(Object.values(conversation.messages).at(-1)?.content).toBe('partial');
   });
 
+  test('awaiting stop waits for the active run before allowing the next send', async () => {
+    let conversation = createConversationHistory({ id: 'stop-settlement' });
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ signal }) => {
+        calls += 1;
+        if (calls === 1)
+          return new Promise<AsyncIterable<ChatStreamEvent>>((resolve) =>
+            signal.addEventListener('abort', () => resolve(events([])), { once: true }),
+          );
+        return events([{ type: 'text', text: 'next' }]);
+      },
+    });
+    const first = controller.adapter.sendMessage({ role: 'user', content: 'first' }, []);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await controller.adapter.stopGenerating?.('in-flight-assistant');
+    await first;
+    await controller.adapter.sendMessage({ role: 'user', content: 'second' }, []);
+    expect(calls).toBe(2);
+  });
+
   test('streaming observers cannot interrupt the session lifecycle', async () => {
     let conversation = createConversationHistory({ id: 'observer-errors' });
     const observedErrors: unknown[] = [];

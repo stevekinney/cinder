@@ -23,12 +23,14 @@
     return value === null ? 'null' : stringify(value);
   }
 
+  const activityPresentations = $derived(pairs.map((pair) => describeToolCall?.(pair)));
+
   const steps = $derived(
     pairs.map(
       (pair, index): RunStep => ({
         id: `${index}:${pair.call.id}`,
         label: (() => {
-          const presentation = describeToolCall?.(pair);
+          const presentation = activityPresentations[index];
           return presentation ? formatToolCallProse(presentation) : pair.call.name;
         })(),
         status:
@@ -62,7 +64,6 @@
     ),
   );
   const completedCount = $derived(steps.filter((step) => step.status === 'succeeded').length);
-  const activityPresentations = $derived(pairs.map((pair) => describeToolCall?.(pair)));
   const hasActivityPresentations = $derived(activityPresentations.some(Boolean));
   const expandedCalls = new SvelteSet<string>();
 

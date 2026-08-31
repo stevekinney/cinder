@@ -71,6 +71,7 @@ export function createChatSessionController(
   let active: AbortController | undefined;
   let disposed = false;
   let running = false;
+  let activeRun: Promise<void> | undefined;
   let activeUserMessageId: string | undefined;
   const toolOwners = new Map<string, string>();
   const messageAttachments = new Map<string, ChatAttachment[]>();
@@ -249,6 +250,24 @@ export function createChatSessionController(
       notifyStreaming(false);
     }
   };
+  const executeRun = async (
+    userMessageId: string,
+    attachments: ChatAttachment[] = [],
+  ): Promise<void> => {
+    const promise = run(userMessageId, attachments);
+    activeRun = promise;
+    try {
+      await promise;
+    } finally {
+      if (activeRun === promise) activeRun = undefined;
+    }
+  };
+  const stopActiveRun = async (): Promise<void> => {
+    active?.abort();
+    // The initiating send/retry owns any run rejection. Stop only promises
+    // that the run has settled and released the controller for its next turn.
+    await activeRun?.catch(() => undefined);
+  };
   const send = async (message: MessageInput, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
     const next = appendMessages(options.getConversation(), message);
@@ -256,7 +275,7 @@ export function createChatSessionController(
     const userMessageId = next.ids.at(-1);
     if (userMessageId) {
       messageAttachments.set(userMessageId, [...attachments]);
-      await run(userMessageId, attachments);
+      await executeRun(userMessageId, attachments);
     }
   };
   const adapter: ChatAdapter = {
@@ -273,7 +292,7 @@ export function createChatSessionController(
       )
         throw new Error('Only the latest owning user turn can be retried');
       update(clearMessageDeliveryStatus(options.getConversation(), messageId));
-      await run(messageId, messageAttachments.get(messageId) ?? []);
+      await executeRun(messageId, messageAttachments.get(messageId) ?? []);
     },
     editMessage: async ({ messageId, content }) => {
       assertActive();
@@ -286,12 +305,12 @@ export function createChatSessionController(
       if (id) {
         const attachments = messageAttachments.get(messageId) ?? [];
         messageAttachments.set(id, [...attachments]);
-        await run(id, attachments);
+        await executeRun(id, attachments);
       }
     },
     stopGenerating: async () => {
       assertNotDisposed();
-      active?.abort();
+      await stopActiveRun();
     },
     subscribe: (conversationId, handlers) => {
       if (conversationId !== options.getConversation().id) return () => undefined;
@@ -323,7 +342,7 @@ export function createChatSessionController(
             else pendingApprovals.delete(id);
             if (result.outcome !== 'action_required') {
               if (owner && pendingApprovals.size === 0) {
-                await run(owner, messageAttachments.get(owner) ?? []);
+                await executeRun(owner, messageAttachments.get(owner) ?? []);
                 update(clearMessageDeliveryStatus(options.getConversation(), owner));
               }
             }
@@ -353,7 +372,7 @@ export function createChatSessionController(
             else pendingApprovals.delete(id);
             if (result.outcome !== 'action_required') {
               if (owner && pendingApprovals.size === 0) {
-                await run(owner, messageAttachments.get(owner) ?? []);
+                await executeRun(owner, messageAttachments.get(owner) ?? []);
                 update(clearMessageDeliveryStatus(options.getConversation(), owner));
               }
             }
@@ -363,7 +382,7 @@ export function createChatSessionController(
   };
   return {
     adapter,
-    stop: async () => active?.abort(),
+    stop: stopActiveRun,
     dispose: () => {
       disposed = true;
       active?.abort();

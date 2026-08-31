@@ -2459,16 +2459,35 @@
 
   /** Scroll a message-aware target, including grouped and virtualized rows. */
   export function scrollToMessage(messageId: string): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    invalidatePendingHistoryRestoration();
+    const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
+    const isEarlierMessage = targetIndex >= 0 && targetIndex < renderRows.length - 1;
+    const navigate = (action: () => void): void => {
+      if (isEarlierMessage && viewport) {
+        const canLeaveBottom = viewport.scrollHeight > viewport.clientHeight;
+        if (canLeaveBottom) {
+          scrollState.setAtBottom(false);
+          updateAtBottomBinding(false);
+        }
+        scrollState.withUserScrollGuard(viewport, action);
+        return;
+      }
+      action();
+    };
     const rendered = renderedMessageById(messageId);
     if (rendered) {
-      rendered.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'center' });
+      navigate(() => {
+        rendered.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'center' });
+      });
       return;
     }
-    const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
     if (targetIndex >= 0 && isVirtualized) {
-      chatVirtualizer.scrollToIndex(targetIndex, {
-        align: 'center',
-        behavior: scrollState.getScrollBehavior(),
+      navigate(() => {
+        chatVirtualizer.scrollToIndex(targetIndex, {
+          align: 'center',
+          behavior: scrollState.getScrollBehavior(),
+        });
       });
     }
   }
