@@ -1,3 +1,4 @@
+import getReleasePlan from '@changesets/get-release-plan';
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
@@ -20,6 +21,10 @@ const markdownManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'markdown', 'package.json')).text(),
 ) as PackageManifest;
 const chatReadme = await Bun.file(join(packageRoot, 'README.md')).text();
+const releasePlan = await getReleasePlan(workspaceRoot);
+const plannedCinderVersion =
+  releasePlan.releases.find((release) => release.name === '@lostgradient/cinder')?.newVersion ??
+  cinderManifest.version;
 
 const dependencyFields = ['dependencies', 'peerDependencies', 'optionalDependencies'] as const;
 
@@ -97,7 +102,7 @@ describe('Chat package ownership boundary', () => {
     ]);
   });
 
-  test('keeps Chat’s Cinder peer range covering the current Cinder version', () => {
+  test('keeps Chat’s Cinder peer range covering the planned Cinder release', () => {
     const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(
       cinderPeerRange,
@@ -107,8 +112,8 @@ describe('Chat package ownership boundary', () => {
 
     expect(cinderPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
     expect(
-      Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
-      'Chat’s Cinder peer range must cover the current Cinder version.',
+      Bun.semver.satisfies(plannedCinderVersion, cinderPeerRange),
+      'Chat’s Cinder peer range must cover the planned Cinder release.',
     ).toBe(true);
   });
 
