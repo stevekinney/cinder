@@ -52,6 +52,26 @@ rather than fading toward an incorrect color (see `chat.types.ts`).
 
 Related components: `markdown-editor`.
 
+## Nested transcript and navigation rail
+
+`ChatSubSession` is a bounded, nested `role="log"` that reuses Chat's existing
+message and typography contracts. Its reduced type ramp, 7.75rem clamp, and
+edge fade preserve hierarchy without adding a second conversation model. Live
+motion is limited to the child while `live` is true and is disabled under
+`prefers-reduced-motion`.
+
+`ChatNavigationRail` uses real buttons, `aria-current` from a Set of
+IntersectionObserver hits, and `aria-describedby` preview text. Pointer capture
+scrubbing maps to message rows and clamps beyond either end. The rail is a
+navigation aid, never the only way to reach a message; the transcript remains
+keyboard navigable. CSS sibling selectors provide proximity falloff without
+per-row JavaScript. Reduced motion removes every rail transition.
+
+Design review outcome: approved. The two surfaces are Chat-owned because they
+need transcript identity and virtualization-aware navigation, while remaining
+small enough to compose beside a Chat instance. No general table-of-contents
+abstraction is introduced.
+
 ## Shared transcript entry frame
 
 Reasoning, tool calls, approval details, and step groups use the same Collapsible-based entry frame. The nearest existing patterns are `Collapsible` for disclosure state and `RunStepTimeline` for grouped execution history. The frame exists to unify the trigger, chevron, expanded-region semantics, and bounded body while leaving each domain part responsible for its own status and controls.

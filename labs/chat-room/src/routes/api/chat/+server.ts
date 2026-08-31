@@ -1,4 +1,4 @@
-import { ANTHROPIC_API_KEY } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import Anthropic from '@anthropic-ai/sdk';
 import { z } from 'zod';
@@ -6,7 +6,7 @@ import { toAnthropicMessagesForSdk } from 'conversationalist/adapters/anthropic'
 import { conversationSchema } from 'conversationalist/schemas';
 import { parseAnthropicToolCalls, toAnthropicTools } from 'armorer/adapters/anthropic';
 
-import { toolbox } from '$lib/toolbox';
+import { requestContext, toolbox } from '$lib/toolbox';
 
 import type { ContentBlock } from '@anthropic-ai/sdk/resources/messages';
 import type { RequestHandler } from './$types';
@@ -15,8 +15,6 @@ const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 4096;
 
 const requestSchema = z.object({ conversation: conversationSchema });
-
-const anthropic = new Anthropic({ apiKey: ANTHROPIC_API_KEY });
 
 export const POST: RequestHandler = async ({ request }) => {
 	let body: unknown;
@@ -32,6 +30,12 @@ export const POST: RequestHandler = async ({ request }) => {
 	if (!parsed.success) {
 		return json({ error: 'Invalid request body' }, { status: 400 });
 	}
+
+	if (!env.ANTHROPIC_API_KEY) {
+		return json({ error: 'ANTHROPIC_API_KEY is not configured' }, { status: 503 });
+	}
+
+	const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
 
 	// Mark the newest message as a prompt-cache boundary before conversion:
 	// conversationalist lowers it to a `cache_control` breakpoint on that
@@ -95,9 +99,13 @@ export const POST: RequestHandler = async ({ request }) => {
 					try {
 						const toolCalls = parseAnthropicToolCalls(blocks);
 
-						if (toolCalls.length > 0) {
-							const results = await toolbox.execute(toolCalls);
+						// Cancellation/error may settle the response after `end` was
+						// queued but before this asynchronous handler runs. Never start
+						// tool execution for a response that is no longer consumable.
+						if (toolCalls.length > 0 && !settled) {
+							const results = await toolbox.execute(toolCalls, { requestContext });
 
+							if (settled) return;
 							for (const result of results) {
 								enqueueEvent({
 									type: 'tool_result',

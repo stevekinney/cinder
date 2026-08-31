@@ -60,6 +60,7 @@
     chatRenderRowKey,
     findPairedToolResultIds,
     findRenderRowIndexByMessageId,
+    getActiveTurnMessageIds,
     type ChatRenderRow,
   } from './use-chat-message-groups.svelte.ts';
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
@@ -72,6 +73,7 @@
   import ToolCallTimeline from '../message/tool-call-timeline.svelte';
   import { preloadMarkdownPipeline } from '../message/markdown-pipeline.ts';
   import ConfirmDialog from '@lostgradient/cinder/confirm-dialog';
+  import { selectChatProgressState } from './select-chat-progress-state.ts';
 
   const noopAttachment: Attachment<HTMLElement> = () => {};
   const CONSUMER_ANNOUNCEMENT_CLEAR_DELAY_MS = 1000;
@@ -432,7 +434,36 @@
   // does not tear down and reopen the real-time subscription each render.
   const conversationId = $derived(conversation.id);
 
-  const showTypingIndicator = $derived(streaming && !streamingMessageId);
+  const reasoningStreaming = $derived.by(() => {
+    if (!streaming) return false;
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    const activeMessage = messages.find((message) => message.id === activeMessageId);
+    if (!activeMessage) return false;
+    // With no imperative id, only a message explicitly marked as streaming is
+    // an active reasoning row. A completed historical reasoning block on the
+    // last assistant message must not hide the global typing affordance.
+    if (streamingMessageId === null && activeMessage.metadata['streaming'] !== true) return false;
+    return Boolean(resolveMessageReasoning(activeMessage, messageReasoning));
+  });
+  const toolActivity = $derived.by(() => {
+    if (!streaming) return false;
+
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    const activeTurnIds = getActiveTurnMessageIds(messages, activeMessageId);
+    return pairToolCallsWithResults(
+      messages.filter((message) => activeTurnIds.has(message.id)),
+    ).some((pair) => !pair.result);
+  });
+  const activeTurnMessageIds = $derived.by(() => {
+    if (!streaming) return new Set<string>();
+
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    return getActiveTurnMessageIds(messages, activeMessageId);
+  });
+  const progressState = $derived(
+    selectChatProgressState({ streaming, reasoningStreaming, toolActivity }),
+  );
+  const showTypingIndicator = $derived(progressState === 'streaming' && !streamingMessageId);
 
   // Expand capabilities object with per-feature defaults.
   const allowAttachments = $derived(capabilities?.attachments ?? true);
@@ -501,6 +532,17 @@
     `${conversationId}:${isVirtualized ? 'virtualized' : 'full'}`,
   );
   const staticRowsResetIdentity = $derived(messages[0]?.id ?? '');
+
+  function describeToolCallSafely(
+    call: import('../conversation-model.ts').ToolCall,
+    result: import('../conversation-model.ts').ToolResult | undefined,
+  ) {
+    try {
+      return adapter?.describeToolCall?.(call, result);
+    } catch {
+      return undefined;
+    }
+  }
 
   const chatVirtualizer = new ChatVirtualizer({
     getScrollElement: () => viewport,
@@ -2048,7 +2090,7 @@
     canHandle: boolean,
     commit: (id: string) => void,
     rollback: (id: string) => void,
-    runAdapter: (adapter: ChatAdapter) => Promise<void> | undefined,
+    runAdapter: (adapter: ChatAdapter) => Promise<void | 'resolved' | 'pending'> | undefined,
     callback: (() => void) | undefined,
   ): void {
     if (!canHandle) return;
@@ -2056,7 +2098,7 @@
     commit(toolCallId);
 
     if (adapter) {
-      let run: Promise<void> | undefined;
+      let run: Promise<void | 'resolved' | 'pending'> | undefined;
       try {
         run = runAdapter(adapter);
       } catch (error) {
@@ -2066,7 +2108,13 @@
       }
       if (run !== undefined) {
         void run.then(
-          () => callback?.(),
+          (resolution) => {
+            if (resolution === 'pending') {
+              rollback(toolCallId);
+              return;
+            }
+            callback?.();
+          },
           (error: unknown) => {
             rollback(toolCallId);
             onadaptererror?.({ command, error });
@@ -2421,6 +2469,58 @@
     }
   }
 
+  /** Scroll a message-aware target, including grouped and virtualized rows. */
+  export function scrollToMessage(messageId: string): void {
+    cancelNonVirtualHistoryAnchorStabilization();
+    invalidatePendingHistoryRestoration();
+    const targetIndex = findRenderRowIndexByMessageId(renderRows, messageId);
+    const isEarlierMessage = targetIndex >= 0 && targetIndex < renderRows.length - 1;
+    const navigate = (action: () => void): void => {
+      if (isEarlierMessage && viewport) {
+        const canLeaveBottom = viewport.scrollHeight > viewport.clientHeight;
+        if (canLeaveBottom) {
+          scrollState.setAtBottom(false);
+          updateAtBottomBinding(false);
+        }
+        scrollState.withUserScrollGuard(viewport, action);
+        return;
+      }
+      action();
+    };
+    const rendered = renderedMessageById(messageId);
+    if (rendered) {
+      navigate(() => {
+        rendered.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'center' });
+      });
+      return;
+    }
+    // Grouped tool-call rows expose the first call's id as their DOM anchor.
+    // Resolve later calls to that same rendered group in the non-virtual path.
+    if (targetIndex >= 0 && !isVirtualized) {
+      const row = renderRows[targetIndex];
+      if (row?.type === 'tool-call-group') {
+        const groupAnchor = renderedMessageById(row.messages[0]?.id ?? '');
+        if (groupAnchor) {
+          navigate(() => {
+            groupAnchor.scrollIntoView({
+              behavior: scrollState.getScrollBehavior(),
+              block: 'center',
+            });
+          });
+        }
+      }
+      return;
+    }
+    if (targetIndex >= 0 && isVirtualized) {
+      navigate(() => {
+        chatVirtualizer.scrollToIndex(targetIndex, {
+          align: 'center',
+          behavior: scrollState.getScrollBehavior(),
+        });
+      });
+    }
+  }
+
   /**
    * Programmatically retry a failed message — the same guarded dispatch as the
    * UI Retry button. A call for a message id whose retry is still in flight is
@@ -2623,6 +2723,9 @@
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
     {@const toolCallPair = pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0]}
+    {@const toolCallPresentation = message.toolCall
+      ? describeToolCallSafely(message.toolCall, toolCallPair?.result)
+      : undefined}
     {@const pairedResultMessage = toolCallPair?.result
       ? toolResultMessagesByResult.get(toolCallPair.result)
       : undefined}
@@ -2677,6 +2780,7 @@
         tabindex={-1}
         approvedToolCallIds={approvedToolCallIds.size > 0 ? approvedToolCallIds : undefined}
         deniedToolCallIds={deniedToolCallIds.size > 0 ? deniedToolCallIds : undefined}
+        {toolCallPresentation}
         onapprove={canApprove ? handleApprove : undefined}
         ondeny={canDeny ? handleDeny : undefined}
         reasoning={derivedReasoning}
@@ -2689,6 +2793,7 @@
         onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
+        toolActivityActive={progressState === 'tool' && activeTurnMessageIds.has(message.id)}
         onSuggestionSelect={handleSuggestionSelect}
       >
         {#snippet actions()}
@@ -2727,6 +2832,11 @@
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
         messageId={renderRow.messages[0]!.id}
+        activityActive={progressState === 'tool' &&
+          renderRow.messages.some((message) => activeTurnMessageIds.has(message.id))}
+        describeToolCall={adapter?.describeToolCall
+          ? (pair) => describeToolCallSafely(pair.call, pair.result)
+          : undefined}
         pairs={renderRow.messages.flatMap((message) => {
           if (!message.toolCall?.id) return [];
           const pairs = toolCallPairsByCallId.get(message.toolCall.id) ?? [];
@@ -2976,6 +3086,22 @@
     gap: var(--cinder-chat-message-gap);
   }
 
+  /* The inner implementation is also rendered directly by package fixtures.
+     Keep the clipped-scroll-region focus recipe at this rendering boundary so
+     it is present before an asynchronously loaded public-wrapper stylesheet. */
+  .chat-timeline:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-chat-timeline-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .chat-timeline:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+  }
+
   .chat-timeline[data-cinder-history-restoring] {
     /* Chat owns prepend restoration while this marker is present. Native
        anchoring would otherwise apply a second offset as measurements settle. */
@@ -3016,21 +3142,6 @@
    * also gated off entirely in that mode (see timelineScrollFadeAttachment). */
   .chat-container[data-surface-mode='default'] .chat-timeline.cinder-_scroll-fade {
     --_cinder-scroll-fade-color: var(--cinder-surface-inset);
-  }
-
-  /* The timeline is a scrollable region; an outset ring is clipped by its own
-     overflow, so paint an INSET ring (Strategy B-inset). */
-  .chat-timeline:focus-visible {
-    outline: var(--cinder-ring-width) solid transparent;
-    box-shadow: inset 0 0 0 var(--cinder-ring-width)
-      var(--_cinder-chat-timeline-ring, var(--cinder-ring-color));
-  }
-
-  @media (forced-colors: active) {
-    .chat-timeline:focus-visible {
-      outline: var(--cinder-ring-width) solid ButtonText;
-      outline-offset: calc(var(--cinder-ring-width) * -1);
-    }
   }
 
   /* Prevent non-last messages from being scroll anchors */

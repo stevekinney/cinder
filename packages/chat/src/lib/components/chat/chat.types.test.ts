@@ -22,6 +22,8 @@ import type {
   ChatAttachment,
   ChatProps,
   ChatSubmitEvent,
+  ChatToolApprovalResolution,
+  ChatToolResult,
   ConversationHistory,
 } from './index.ts';
 
@@ -129,4 +131,17 @@ test('ChatAnnounceLevel is directly importable from the public chat barrel', () 
 
   expect(polite).toBe('polite');
   expect(assertive).toBe('assertive');
+});
+
+test('Chat approval types are directly importable from the public chat barrel', () => {
+  const resolution: ChatToolApprovalResolution = 'pending';
+  const result: ChatToolResult = {
+    callId: 'call-1',
+    outcome: 'action_required',
+    content: null,
+    pendingApproval: { approvalToken: 'token' },
+  };
+
+  expect(resolution).toBe('pending');
+  expect(result.pendingApproval).toEqual({ approvalToken: 'token' });
 });

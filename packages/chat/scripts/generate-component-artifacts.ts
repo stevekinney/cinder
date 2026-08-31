@@ -58,6 +58,16 @@ const MANIFEST_SCHEMA_PATH = join(PACKAGE_ROOT, 'src', 'lib', 'schemas', 'manife
 const componentDefinitions: readonly ComponentDefinition[] = [
   { id: 'chat', exportName: 'Chat', importSpecifier: '@lostgradient/chat' },
   {
+    id: 'chat-navigation-rail',
+    exportName: 'ChatNavigationRail',
+    importSpecifier: '@lostgradient/chat/navigation-rail',
+  },
+  {
+    id: 'chat-sub-session',
+    exportName: 'ChatSubSession',
+    importSpecifier: '@lostgradient/chat/sub-session',
+  },
+  {
     id: 'chat-composer-popover',
     exportName: 'ChatComposerPopover',
     importSpecifier: '@lostgradient/chat/composer-popover',

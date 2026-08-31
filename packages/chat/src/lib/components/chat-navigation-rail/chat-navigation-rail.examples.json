@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat-navigation-rail",
+  "import": "@lostgradient/chat/navigation-rail",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Transcript navigation rail",
+      "description": "Scrub or tab between user-authored turns in a longer conversation.",
+      "code": "<script lang=\"ts\">\n  import {\n    appendAssistantMessage,\n    appendUserMessage,\n    createConversation,\n    getMessages,\n  } from '@lostgradient/chat';\n  import { ChatNavigationRail } from '@lostgradient/chat/navigation-rail';\n\n  let conversation = createConversation({ id: 'navigation-example' });\n  conversation = appendUserMessage(conversation, 'Summarize the launch plan.');\n  conversation = appendAssistantMessage(conversation, 'The launch has three phases.');\n  conversation = appendUserMessage(conversation, 'What is the riskiest phase?');\n  conversation = appendAssistantMessage(\n    conversation,\n    'The staged rollout needs the closest watch.',\n  );\n  const messages = getMessages(conversation);\n  let viewport: HTMLDivElement;\n\n  function scrollToMessage(messageId: string): void {\n    viewport\n      .querySelector<HTMLElement>(`[data-message-id=\"${CSS.escape(messageId)}\"]`)\n      ?.scrollIntoView({ block: 'center', behavior: 'smooth' });\n  }\n</script>\n\n<div style=\"height: 16rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem;\">\n  <div\n    bind:this={viewport}\n    tabindex=\"0\"\n    role=\"region\"\n    aria-label=\"Conversation transcript\"\n    style=\"overflow: auto; display: grid; gap: 1rem;\"\n  >\n    {#each messages as message (message.id)}\n      <article\n        data-message-id={message.id}\n        style=\"min-height: 8rem; padding: 1rem; border: 1px solid var(--cinder-border-default); border-radius: var(--cinder-radius-md);\"\n      >\n        <strong>{message.role === 'user' ? 'You' : 'Assistant'}</strong>\n        <p>{message.content}</p>\n      </article>\n    {/each}\n  </div>\n  <ChatNavigationRail {messages} {scrollToMessage} {viewport} />\n</div>\n"
+    }
+  ]
+}

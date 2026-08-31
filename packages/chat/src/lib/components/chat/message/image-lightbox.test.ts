@@ -95,14 +95,15 @@ describe('image-lightbox source contract — Modal composition', () => {
     expect(source).toContain("case 'ArrowRight'");
   });
 
-  test('marks .lightbox-content as the initial-focus target so arrow keys work immediately', () => {
+  test('uses Modal initial-focus behavior so arrow keys work immediately', () => {
     // Regression: Modal's own initial-focus policy otherwise lands focus on
     // its `.cinder-modal__body` wrapper — the PARENT of `.lightbox-content` —
     // and the keydown handler on `.lightbox-content` (a descendant) would
     // never see the keystroke until focus moved somewhere inside it.
     // `autofocus` makes Modal's `focusDialogBodyUnlessAutofocused` policy
     // focus this element directly instead of falling back to the body.
-    expect(source).toMatch(/class="lightbox-content"[\s\S]*?autofocus/);
+    expect(source).toContain('svelte-ignore a11y_autofocus');
+    expect(source).toContain('autofocus');
     expect(source).toMatch(/class="lightbox-content"[\s\S]*?tabindex="-1"/);
   });
 

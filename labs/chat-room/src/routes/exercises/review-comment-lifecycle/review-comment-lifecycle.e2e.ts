@@ -722,19 +722,13 @@ test.describe('review comment lifecycle: clear all', () => {
 		const menu = page.locator('#lifecycle-editor-sidebar-actions-menu');
 		await menu.getByRole('menuitem', { name: 'Clear all comments' }).click();
 
-		const confirm = sidebar(page).locator('.confirm-clear');
-		await expect(confirm).toHaveAttribute('role', 'alertdialog');
-		await expect(confirm).toHaveAttribute(
-			'aria-labelledby',
-			'lifecycle-editor-sidebar-confirm-title'
-		);
+		const confirm = sidebar(page).getByRole('group', {
+			name: 'Delete all 3 comment threads?'
+		});
+		await expect(confirm).toHaveAttribute('role', 'group');
+		await expect(confirm).toHaveAttribute('aria-label', 'Delete all 3 comment threads?');
 		// The banner interpolates the VISIBLE thread count — it says three.
-		await expect(confirm.locator('.confirm-message')).toHaveText('Delete all 3 comment threads?');
-		await expect(confirm.locator('.confirm-message')).toHaveAttribute(
-			'id',
-			'lifecycle-editor-sidebar-confirm-title'
-		);
-
+		await expect(confirm).toContainText('Delete all 3 comment threads?');
 		await confirm.getByRole('button', { name: 'Delete All' }).click();
 
 		// …and then emits FOUR. `clearAllThreads` iterates `threads`, not the
@@ -753,8 +747,8 @@ test.describe('review comment lifecycle: clear all', () => {
 		await expect(page.getByTestId('thread-count')).toHaveText('threads: 0');
 		await expect(page.locator('span.comment-anchor')).toHaveCount(0);
 		await expect(sidebar(page).locator('.empty-message')).toHaveText('No comments yet');
-		// With nothing left to act on, the actions trigger withdraws itself.
-		await expect(sidebar(page).getByRole('button', { name: 'Comment actions' })).toHaveCount(0);
+		// With nothing left to act on, the stable actions trigger is disabled.
+		await expect(sidebar(page).getByRole('button', { name: 'Comment actions' })).toBeDisabled();
 	});
 });
 

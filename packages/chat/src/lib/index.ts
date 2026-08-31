@@ -10,3 +10,23 @@ export {
   type ChatComposerMentionRange,
 } from './components/chat-composer-popover/chat-composer-mention.ts';
 export * from './components/chat/index.ts';
+export {
+  createChatSession,
+  createChatSessionController,
+  createSessionController,
+  type ChatSessionController,
+  type ChatSessionControllerOptions,
+  type ChatSessionHooks,
+  type ChatSessionRequest,
+  type ChatSessionTransport,
+  type ChatSessionTransportResult,
+} from './session/session-controller.ts';
+export {
+  decodeChatStreamEvent,
+  decodeChatStreamEvents,
+  decodeStreamEvent,
+  decodeStreamEvents,
+  encodeChatStreamEvent,
+  encodeStreamEvent,
+  type ChatStreamEvent,
+} from './session/stream-event-codec.ts';

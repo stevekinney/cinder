@@ -280,7 +280,7 @@ describe('findToolResultMessage', () => {
     expect(findToolResultMessage(conversation, 'call-1', { includeHidden: true })?.id).toBe('m1');
   });
 
-  it('returns the latest result when a call has more than one, matching pairToolCallsWithResults', () => {
+  it('returns the latest result when a call has more than one', () => {
     const earlier: ToolResult = { callId: 'call-1', outcome: 'error', content: null };
     const later: ToolResult = { callId: 'call-1', outcome: 'success', content: null };
     const conversation = history([
@@ -336,7 +336,7 @@ describe('pairToolCallsWithResults', () => {
     expect(pairs[0]?.result).toBeUndefined();
   });
 
-  it('uses the last result when two share a callId', () => {
+  it('pairs repeated call IDs with results by occurrence', () => {
     const earlier: ToolResult = { callId: 'call-1', outcome: 'error', content: null };
     const messages = [
       message({
@@ -347,7 +347,34 @@ describe('pairToolCallsWithResults', () => {
       message({ id: 'm2', role: 'tool-result', toolResult: earlier }),
       message({ id: 'm3', role: 'tool-result', toolResult: success }),
     ];
-    expect(pairToolCallsWithResults(messages)[0]?.result).toBe(success);
+    const pairs = pairToolCallsWithResults(messages);
+    expect(pairs).toHaveLength(1);
+    expect(pairs[0]?.result).toBe(earlier);
+  });
+
+  it('does not orphan an early result or reuse a later result across calls', () => {
+    const first: ToolResult = { callId: 'call-1', outcome: 'success', content: 'first' };
+    const second: ToolResult = { callId: 'call-1', outcome: 'success', content: 'second' };
+    const firstCall = message({
+      id: 'call-1',
+      role: 'tool-call',
+      toolCall: { id: 'call-1', name: 'first', arguments: {} },
+    });
+    const secondCall = message({
+      id: 'call-2',
+      role: 'tool-call',
+      toolCall: { id: 'call-1', name: 'second', arguments: {} },
+    });
+    const pairs = pairToolCallsWithResults([
+      message({ id: 'result-1', role: 'tool-result', toolResult: first }),
+      firstCall,
+      message({ id: 'result-2', role: 'tool-result', toolResult: second }),
+      secondCall,
+    ]);
+
+    expect(pairs).toHaveLength(2);
+    expect(pairs[0]).toEqual({ call: firstCall.toolCall!, result: first });
+    expect(pairs[1]).toEqual({ call: secondCall.toolCall!, result: second });
   });
 
   it('never pairs a message absent from the ordered array', () => {

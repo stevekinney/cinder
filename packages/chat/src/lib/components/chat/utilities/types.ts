@@ -64,6 +64,16 @@ export type ToolCallMessagePart = {
   /** Stable identity, derived from the message id + the tool call id. */
   key: string;
   pair: ToolCallPair;
+  presentation?: ToolCallPresentation;
+};
+
+export type ToolCallKind = 'search' | 'fetch' | 'write' | 'execute' | 'reason' | 'other';
+export type ToolCallTense = 'present' | 'past' | 'failed';
+export type ToolCallPresentation = {
+  verb: string;
+  tense: ToolCallTense;
+  detail?: string;
+  kind?: ToolCallKind;
 };
 
 /**
@@ -242,6 +252,8 @@ export type ChatMessagePart =
  * reactive-staleness trap of mutating a shared map in place.
  */
 export type MessagePartDerivationContext = {
+  /** Adapter-provided human-readable activity copy and semantic icon kind. */
+  toolCallPresentation?: ToolCallPresentation | undefined;
   /**
    * The resolved tool-call pair for this message's `toolCall`, if the container
    * found one. A tool-call message renders as a card only when this is present

@@ -19,8 +19,15 @@
  * @module
  */
 
-import type { Message, MessageInput, ToolCall, ToolResult } from '../conversation-model.ts';
+import type {
+  JSONValue,
+  Message,
+  MessageInput,
+  ToolCall,
+  ToolResult,
+} from '../conversation-model.ts';
 import type { ChatAttachment } from '../input/chat-attachment.ts';
+import type { ToolCallPresentation } from '../utilities/types.ts';
 
 /**
  * A read-receipt push event: a message was read at a point in time. The payload
@@ -37,6 +44,11 @@ export type ChatReadReceiptEvent = {
    * will show "Read by Alice, Bob" in its accessible label.
    */
   readBy?: string[];
+};
+
+/** A tool result plus an optional JSON-safe provider extension for approval state. */
+export type ChatToolResult = ToolResult & {
+  pendingApproval?: JSONValue;
 };
 
 /**
@@ -85,6 +97,9 @@ export type ChatPushHandlers = {
   onStreamEnd: () => void;
 };
 
+/** Result of an adapter-owned tool approval command. */
+export type ChatToolApprovalResolution = 'resolved' | 'pending';
+
 /**
  * Optional command/transport boundary around `<Chat conversation={…}>`.
  *
@@ -99,6 +114,8 @@ export type ChatPushHandlers = {
  * here so the seam is complete; their UI wiring lands with those tasks.
  */
 export type ChatAdapter = {
+  /** Supplies connector-neutral activity prose and an icon category for tool calls. */
+  describeToolCall?: (toolCall: ToolCall, result?: ToolResult) => ToolCallPresentation | undefined;
   /** Send a composed message with its attachments. */
   sendMessage: (message: MessageInput, attachments: ChatAttachment[]) => Promise<void>;
   /** Retry a previously-failed message by id. */
@@ -160,9 +177,9 @@ export type ChatAdapter = {
    */
   subscribe?: (conversationId: string, handlers: ChatPushHandlers) => () => void;
   /** Approve an action-required tool call by id. (UI wired by the tool-approval task.) */
-  approveToolCall?: (toolCallId: string) => Promise<void>;
+  approveToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
   /** Reject an action-required tool call by id. (UI wired by the tool-approval task.) */
-  denyToolCall?: (toolCallId: string) => Promise<void>;
+  denyToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
 };
 
 /**

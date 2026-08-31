@@ -10,6 +10,8 @@ export type CollapsibleProps = Omit<
 > & {
   /** Trigger label: a plain string, or a snippet receiving `{ open, disabled }`. */
   trigger: string | Snippet<[CollapsibleTriggerState]>;
+  /** Optional decorative icon rendered inside the disclosure trigger. */
+  leadingIcon?: Snippet | undefined;
   /** Panel content shown when open. */
   children: Snippet;
   /**

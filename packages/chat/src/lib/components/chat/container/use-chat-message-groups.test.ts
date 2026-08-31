@@ -7,6 +7,7 @@ import {
   chatRenderRowKey,
   findPairedToolResultIds,
   findRenderRowIndexByMessageId,
+  getActiveTurnMessageIds,
 } from './use-chat-message-groups.svelte.ts';
 
 function message(overrides: Partial<Message> & Pick<Message, 'id' | 'role'>): Message {
@@ -21,6 +22,29 @@ function message(overrides: Partial<Message> & Pick<Message, 'id' | 'role'>): Me
 }
 
 describe('chat message grouping', () => {
+  test('scopes activity ownership to the active turn', () => {
+    const messages = [
+      message({ id: 'old-user', role: 'user' }),
+      message({
+        id: 'old-call',
+        role: 'tool-call',
+        toolCall: { id: 'old-call-id', name: 'old_tool', arguments: {} },
+      }),
+      message({ id: 'new-user', role: 'user' }),
+      message({ id: 'new-assistant', role: 'assistant' }),
+      message({
+        id: 'new-call',
+        role: 'tool-call',
+        toolCall: { id: 'new-call-id', name: 'new_tool', arguments: {} },
+      }),
+    ];
+
+    const activeIds = getActiveTurnMessageIds(messages, 'new-assistant');
+
+    expect(activeIds.has('old-call')).toBe(false);
+    expect(activeIds.has('new-call')).toBe(true);
+  });
+
   test('hides paired tool results while keeping unpaired results visible', () => {
     const messages = [
       message({

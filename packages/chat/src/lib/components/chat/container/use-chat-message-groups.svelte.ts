@@ -226,6 +226,22 @@ export function findRenderRowIndexByMessageId(
   );
 }
 
+/** Return message IDs belonging to the turn containing the active stream message. */
+export function getActiveTurnMessageIds(
+  messages: readonly Message[],
+  activeMessageId: string | undefined,
+): Set<string> {
+  if (!activeMessageId) return new Set<string>();
+  const activeMessageIndex = messages.findIndex((message) => message.id === activeMessageId);
+  if (activeMessageIndex < 0) return new Set<string>();
+
+  let turnStartIndex = activeMessageIndex;
+  while (turnStartIndex > 0 && messages[turnStartIndex]?.role !== 'user') {
+    turnStartIndex -= 1;
+  }
+  return new Set(messages.slice(turnStartIndex).map((message) => message.id));
+}
+
 /**
  * Creates reactive derived values for message grouping and tool call pairing.
  *

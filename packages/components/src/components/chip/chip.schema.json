@@ -14,6 +14,14 @@
       "enum": ["neutral", "success", "warning", "danger", "info", "accent"],
       "description": "Color variant applied to the chip. Default `\"neutral\"`."
     },
+    "brandColor": {
+      "type": "string",
+      "description": "Optional third-party brand color mixed toward the foreground for legibility."
+    },
+    "breakable": {
+      "type": "boolean",
+      "description": "Allow long entity URLs to wrap at any character."
+    },
     "size": {
       "enum": ["sm", "md"],
       "description": "Size of the chip. Default `\"md\"`."

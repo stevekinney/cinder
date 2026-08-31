@@ -14,6 +14,10 @@ import Chat from './chat.svelte';
 import { CURRENT_SCHEMA_VERSION } from './schema-version.ts';
 
 export default Chat;
+export type { ChatNavigationRailProps } from '../chat-navigation-rail/chat-navigation-rail.types.ts';
+export { default as ChatNavigationRail } from '../chat-navigation-rail/index.ts';
+export type { ChatSubSessionProps } from '../chat-sub-session/chat-sub-session.types.ts';
+export { default as ChatSubSession } from '../chat-sub-session/index.ts';
 export type {
   ChatAnnounceLevel,
   ChatCapabilities,
@@ -33,6 +37,8 @@ export type {
   ChatCommand,
   ChatPushHandlers,
   ChatReadReceiptEvent,
+  ChatToolApprovalResolution,
+  ChatToolResult,
 } from './adapter/index.ts';
 
 // Conversation builders — an ergonomic, immutable way to construct the
@@ -129,6 +135,7 @@ export {
   CINDER_ARTIFACT_METADATA_KEY,
   findToolResultMessage,
   formatMessageAsMarkdown,
+  formatToolCallProse,
   getMessageRoleLabel,
   getMessages,
   getMessageText,
@@ -144,6 +151,9 @@ export {
 export type {
   ReasoningInfo,
   StepInfo,
+  ToolCallKind,
+  ToolCallPresentation,
+  ToolCallTense,
   TranscriptEntryInfo,
   TranscriptEntryKind,
 } from './utilities/types.ts';

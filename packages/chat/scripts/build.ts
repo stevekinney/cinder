@@ -35,6 +35,8 @@ for (const cssPath of [
   'dist/components/chat-composer-popover/chat-composer-popover.css',
   'dist/components/chat-conversation-header/chat-conversation-header.css',
   'dist/components/chat-conversation-list/chat-conversation-list.css',
+  'dist/components/chat-navigation-rail/chat-navigation-rail.css',
+  'dist/components/chat-sub-session/chat-sub-session.css',
 ]) {
   await Bun.write(join(PACKAGE_ROOT, `${cssPath}.d.ts`), 'export {};\n');
 }
@@ -46,6 +48,8 @@ const serverEntrypoints = [
   join(sourceRoot, 'components', 'chat-composer-popover', 'index.ts'),
   join(sourceRoot, 'components', 'chat-conversation-header', 'index.ts'),
   join(sourceRoot, 'components', 'chat-conversation-list', 'index.ts'),
+  join(sourceRoot, 'components', 'chat-navigation-rail', 'index.ts'),
+  join(sourceRoot, 'components', 'chat-sub-session', 'index.ts'),
 ];
 const serverCssNoopPlugin: BunPlugin = {
   name: 'chat-server-css-noop',
@@ -96,6 +100,8 @@ for (const expectedPath of [
   join(serverOutputRoot, 'components', 'chat-composer-popover', 'index.js'),
   join(serverOutputRoot, 'components', 'chat-conversation-header', 'index.js'),
   join(serverOutputRoot, 'components', 'chat-conversation-list', 'index.js'),
+  join(serverOutputRoot, 'components', 'chat-navigation-rail', 'index.js'),
+  join(serverOutputRoot, 'components', 'chat-sub-session', 'index.js'),
 ]) {
   if (!existsSync(expectedPath)) throw new Error(`server build is missing ${expectedPath}`);
   const serverSource = await Bun.file(expectedPath).text();
@@ -103,4 +109,4 @@ for (const expectedPath of [
     throw new Error(`server build retained a CSS or Svelte import in ${expectedPath}`);
   }
 }
-process.stdout.write('build — emitted plain-Node server entries for 4 public exports\n');
+process.stdout.write('build — emitted plain-Node server entries for 6 public exports\n');
