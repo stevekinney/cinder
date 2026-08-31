@@ -77,7 +77,7 @@ describe('chat sub-session data contract', () => {
 
     expect(pairsByCall.get(firstCall)?.call).toBe(firstCall);
     expect(pairsByCall.get(secondCall)?.call).toBe(secondCall);
-    expect(pairsByCall.get(firstCall)?.result?.content).toBe('second result');
+    expect(pairsByCall.get(firstCall)?.result?.content).toBe('first result');
     expect(pairsByCall.get(secondCall)?.result?.content).toBe('second result');
   });
 });
