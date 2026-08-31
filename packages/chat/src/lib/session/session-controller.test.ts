@@ -744,6 +744,78 @@ describe('chat session controller', () => {
     ).toEqual({ type: 'approval', message: 'Request an exception?' });
   });
 
+  test('continues when an approval hook returns an action-less approval result', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendUserMessage(createConversationHistory({ id: 'action-less-approval' }), 'deploy'),
+        { id: 'call', name: 'deploy', arguments: {} },
+      ),
+      {
+        callId: 'call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval' },
+      },
+    );
+    let continuations = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        continuations += 1;
+        return events([{ type: 'text', text: 'continued' }]);
+      },
+      hooks: {
+        approveToolCall: async (callId) => ({
+          callId,
+          outcome: 'action_required',
+          content: null,
+        }),
+      },
+    });
+
+    await expect(controller.adapter.approveToolCall?.('call')).resolves.toBe('resolved');
+    expect(continuations).toBe(1);
+  });
+
+  test('continues when a denial hook returns an action-less approval result', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendUserMessage(createConversationHistory({ id: 'action-less-denial' }), 'deploy'),
+        { id: 'call', name: 'deploy', arguments: {} },
+      ),
+      {
+        callId: 'call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval' },
+      },
+    );
+    let continuations = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        continuations += 1;
+        return events([{ type: 'text', text: 'continued' }]);
+      },
+      hooks: {
+        denyToolCall: async (callId) => ({
+          callId,
+          outcome: 'action_required',
+          content: null,
+        }),
+      },
+    });
+
+    await expect(controller.adapter.denyToolCall?.('call')).resolves.toBe('resolved');
+    expect(continuations).toBe(1);
+  });
+
   test('continues the latest owning turn when cross-turn approvals resolve out of order', async () => {
     let conversation = appendToolResult(
       appendToolCall(
@@ -1020,6 +1092,39 @@ describe('chat session controller', () => {
       },
     ]);
     expect(received).toBe(1);
+  });
+
+  test('retains attachments after a tool result resolves', async () => {
+    let conversation = createConversationHistory({ id: 'tool-result-attachments' });
+    const received: number[] = [];
+    let transportCall = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ attachments }) => {
+        received.push(attachments.length);
+        transportCall += 1;
+        return transportCall === 1
+          ? events([
+              { type: 'tool_call', id: 'call', name: 'inspect', arguments: {} },
+              { type: 'tool_result', callId: 'call', outcome: 'success', content: 'done' },
+            ])
+          : events([{ type: 'text', text: 'continued' }]);
+      },
+    });
+    const attachment: ChatAttachment = {
+      id: 'attachment-1',
+      file: new File(['x'], 'x.txt', { type: 'text/plain' }),
+      previewUrl: 'blob:attachment-1',
+      kind: 'document',
+      status: 'ready',
+    };
+
+    await controller.adapter.sendMessage({ role: 'user', content: 'inspect this' }, [attachment]);
+
+    expect(received).toEqual([1, 1]);
   });
 
   test('preserves attachments when editing the latest retryable turn', async () => {

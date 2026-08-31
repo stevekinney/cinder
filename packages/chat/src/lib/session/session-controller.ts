@@ -181,8 +181,6 @@ export function createChatSessionController(
           owner
         ) {
           retainedOwners.add(owner);
-        } else if (owner) {
-          retainedOwners.delete(owner);
         }
       }
     }
@@ -447,7 +445,7 @@ export function createChatSessionController(
             }
             assertNotDisposed();
             if (!result) throw new Error('Approval hook must return a tool result');
-            if (result.outcome === 'action_required') {
+            if (result.outcome === 'action_required' && result.action) {
               pendingApprovals.add(id);
               update(replaceToolResult(options.getConversation(), id, result));
               return 'pending';
@@ -489,7 +487,7 @@ export function createChatSessionController(
             }
             assertNotDisposed();
             if (!result) throw new Error('Denial hook must return a tool result');
-            if (result.outcome === 'action_required') {
+            if (result.outcome === 'action_required' && result.action) {
               pendingApprovals.add(id);
               update(replaceToolResult(options.getConversation(), id, result));
               return 'pending';
