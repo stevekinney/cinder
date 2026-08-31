@@ -25,6 +25,7 @@ import {
   runHookCommand,
   signalHookProcessGroup,
   withLocalValidationGateLock,
+  type HookCommandResult,
 } from './husky/utilities.ts';
 import {
   containsUpstreamSpecifier,
@@ -135,6 +136,99 @@ class ValidationError extends Error {
 
 function fail(message: string): never {
   throw new ValidationError(message);
+}
+
+/**
+ * Package names whose fixture dependency edges must always resolve to the
+ * locally packed tarball rather than to whatever the registry happens to hold.
+ */
+const FIRST_PARTY_FIXTURE_PACKAGE_NAMES = ['@lostgradient/cinder', '@lostgradient/chat'] as const;
+
+/**
+ * Pins first-party packages in `overrides` as well as in `dependencies`.
+ *
+ * A direct `file:` dependency constrains only the top-level edge. It does NOT
+ * constrain a transitive *peer* range: `@lostgradient/chat` declares a peer on
+ * `@lostgradient/cinder`, so the moment a version satisfying that range exists
+ * on the registry, `bun install` resolves the peer from the network instead of
+ * the tarball under test. That is wrong on its own terms — the fixture would be
+ * validating published bytes rather than the staged ones this run just packed —
+ * and in CI it hung, consuming release.yaml's entire 45-minute job budget (see
+ * CIN-504; onset matched the 0.25.0 publish to the second, because `^0.25.0`
+ * had no published match until that moment).
+ *
+ * The neighbouring chat-peer loop already guards the mirror-image case, where
+ * the peer range names a version that does not exist *yet* during a same-train
+ * release. This closes the opposite case: the version now existing.
+ *
+ * Only `file:` specifiers are pinned, so a fixture that intentionally resolves
+ * a first-party package from the registry is left alone.
+ */
+export function pinFirstPartyFixtureOverrides(
+  dependencies: Record<string, unknown>,
+  overrides: Record<string, unknown>,
+): void {
+  for (const packageName of FIRST_PARTY_FIXTURE_PACKAGE_NAMES) {
+    const specifier = dependencies[packageName];
+    if (typeof specifier === 'string' && specifier.startsWith('file:')) {
+      overrides[packageName] = specifier;
+    }
+  }
+}
+
+/**
+ * Upper bound for a single fixture `bun install`.
+ *
+ * This is a diagnostic bound, not a tuning knob. A healthy fixture install
+ * finishes in seconds, so anything approaching this limit is a hang to
+ * investigate rather than a slow install to wait longer for — do not raise it
+ * to get a run green. It exists because `bun install` reaches the network and
+ * can stall indefinitely; before this bound, such a stall ran out the whole
+ * 45-minute job and surfaced as a bare "cancelled" with no output at all,
+ * because the streams are piped and never printed when the job is killed.
+ */
+const FIXTURE_INSTALL_TIMEOUT_MILLISECONDS = 10 * 60 * 1_000;
+
+/** `runHookCommand` reports an aborted (timed-out) child with this exit code. */
+const FIXTURE_INSTALL_ABORTED_EXIT_CODE = 130;
+
+/**
+ * Runs one fixture `bun install` under {@link FIXTURE_INSTALL_TIMEOUT_MILLISECONDS}.
+ *
+ * Callers keep their own non-zero-exit handling; this owns only the timeout,
+ * which it reports with whatever output the child managed to produce so a hang
+ * leaves evidence behind instead of a silent job kill.
+ */
+async function runFixtureInstall(
+  fixtureLabel: string,
+  fixtureDirectory: string,
+  options: { extraArguments?: readonly string[]; streamOutput?: boolean } = {},
+): Promise<HookCommandResult> {
+  const streamOutput = options.streamOutput ?? false;
+  const result = await runHookCommand(
+    'bun',
+    ['install', '--no-save', ...(options.extraArguments ?? [])],
+    {
+      cwd: fixtureDirectory,
+      signal: AbortSignal.timeout(FIXTURE_INSTALL_TIMEOUT_MILLISECONDS),
+      ...(streamOutput ? {} : { stdout: 'pipe' as const, stderr: 'pipe' as const }),
+    },
+  );
+
+  if (result.exitCode === FIXTURE_INSTALL_ABORTED_EXIT_CODE) {
+    fail(
+      `${fixtureLabel} bun install did not finish within ` +
+        `${FIXTURE_INSTALL_TIMEOUT_MILLISECONDS / 60_000} minutes and was terminated. ` +
+        'A healthy fixture install completes in seconds, so this is a hang rather than a slow ' +
+        'install — the usual cause is dependency resolution escaping to the registry.' +
+        (streamOutput
+          ? ''
+          : `
+stdout:\n${result.stdout}\nstderr:\n${result.stderr}`),
+    );
+  }
+
+  return result;
 }
 
 export function removeFixtureEntries(fixtureDirectory: string, entries: readonly string[]): void {
@@ -966,6 +1060,7 @@ function injectTarballIntoFixture(
       dependencies[dependencyName] = version;
     }
   }
+  pinFirstPartyFixtureOverrides(dependencies, overrides);
   writeFileSync(manifestPath, JSON.stringify(parsed, null, 2) + '\n');
   return () => writeFileSync(manifestPath, originalContent);
 }
@@ -987,11 +1082,7 @@ async function runStylesConsumerFixture(): Promise<void> {
 
   try {
     removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall('styles-consumer', fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(`styles-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
     }
@@ -1114,11 +1205,7 @@ async function runSveltePeerCompatibilityFixture(
 
   try {
     removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall(`typescript-consumer ${label}`, fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(
         `typescript-consumer ${label} bun install failed for svelte@${svelteVersion}:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -1145,11 +1232,7 @@ async function runTypescriptCompatibilityFixture(
 
   try {
     removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall(`typescript-consumer ${label}`, fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(
         `typescript-consumer ${label} bun install failed for typescript@${typescriptVersion}:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -1795,15 +1878,9 @@ async function runSveltekitFixture(label = 'workspace', svelteVersion?: string):
     // These tarballs are rebuilt repeatedly at the same path and version during
     // local validation. Bypass Bun's package cache so hydration always exercises
     // the bytes produced by this run rather than a stale earlier pack.
-    const installResult = await runHookCommand(
-      'bun',
-      ['install', '--no-save', '--force', '--no-cache'],
-      {
-        cwd: fixtureDirectory,
-        stdout: 'pipe',
-        stderr: 'pipe',
-      },
-    );
+    const installResult = await runFixtureInstall(`sveltekit-consumer ${label}`, fixtureDirectory, {
+      extraArguments: ['--force', '--no-cache'],
+    });
     if (installResult.exitCode !== 0) {
       fail(
         `sveltekit-consumer ${label} bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -3187,11 +3264,7 @@ async function runNodeFixture(): Promise<void> {
 
   try {
     removeFixtureEntries(fixtureDirectory, ['node_modules', 'dist']);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall('node-consumer', fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(`node-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
     }
@@ -3268,11 +3341,7 @@ async function runManifestConsumerFixture(): Promise<void> {
 
   try {
     await rm(join(fixtureDirectory, 'node_modules'), { recursive: true, force: true });
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall('manifest-consumer', fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(
         `manifest-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -3316,11 +3385,7 @@ async function runTokensConsumerFixture(): Promise<void> {
 
   try {
     await rm(join(fixtureDirectory, 'node_modules'), { recursive: true, force: true });
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall('tokens-consumer', fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(`tokens-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`);
     }
@@ -3369,11 +3434,7 @@ async function runTypescriptConsumerFixture(): Promise<void> {
 
   try {
     removeFixtureEntries(fixtureDirectory, ['node_modules', 'src/generated']);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
-      stdout: 'pipe',
-      stderr: 'pipe',
-    });
+    const installResult = await runFixtureInstall('typescript-consumer', fixtureDirectory);
     if (installResult.exitCode !== 0) {
       fail(
         `typescript-consumer bun install failed:\n${installResult.stdout}\n${installResult.stderr}`,
@@ -3417,8 +3478,8 @@ async function runExamplesConsumerFixture(): Promise<void> {
       'src/generated',
       'src/routes/+page.svelte',
     ]);
-    const installResult = await runHookCommand('bun', ['install', '--no-save'], {
-      cwd: fixtureDirectory,
+    const installResult = await runFixtureInstall('examples-consumer', fixtureDirectory, {
+      streamOutput: true,
     });
     if (installResult.exitCode !== 0) {
       fail(`examples-consumer bun install failed with exit ${installResult.exitCode}`);
