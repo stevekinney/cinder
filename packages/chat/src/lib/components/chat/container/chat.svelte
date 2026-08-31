@@ -3083,6 +3083,22 @@
     gap: var(--cinder-chat-message-gap);
   }
 
+  /* The inner implementation is also rendered directly by package fixtures.
+     Keep the clipped-scroll-region focus recipe at this rendering boundary so
+     it is present before an asynchronously loaded public-wrapper stylesheet. */
+  .chat-timeline:focus-visible {
+    outline: var(--cinder-ring-width) solid transparent;
+    box-shadow: inset 0 0 0 var(--cinder-ring-width)
+      var(--_cinder-chat-timeline-ring, var(--cinder-ring-color));
+  }
+
+  @media (forced-colors: active) {
+    .chat-timeline:focus-visible {
+      outline: var(--cinder-ring-width) solid ButtonText;
+      outline-offset: calc(var(--cinder-ring-width) * -1);
+    }
+  }
+
   .chat-timeline[data-cinder-history-restoring] {
     /* Chat owns prepend restoration while this marker is present. Native
        anchoring would otherwise apply a second offset as measurements settle. */

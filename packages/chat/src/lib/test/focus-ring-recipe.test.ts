@@ -88,12 +88,14 @@ const styles = {
   messageAttachments: loadSvelteStyle('../components/chat/message/message-attachments.svelte'),
   searchBar: loadSvelteStyle('../components/chat/container/chat-search-bar.svelte'),
   toolCallGroup: loadSvelteStyle('../components/chat/message/tool-call-group.svelte'),
+  chatImplementation: loadSvelteStyle('../components/chat/container/chat.svelte'),
 };
 
 describe('Chat focus-ring recipes', () => {
   const insetCases = [
     ['artifact-panel close', styles.artifactPanel, '.artifact-panel-close:focus-visible'],
     ['chat timeline', styles.chat, '.cinder-chat .chat-timeline:focus-visible'],
+    ['chat timeline implementation', styles.chatImplementation, '.chat-timeline:focus-visible'],
     [
       'message attachment button',
       styles.messageAttachments,
