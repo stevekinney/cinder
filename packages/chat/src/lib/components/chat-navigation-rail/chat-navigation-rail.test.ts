@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, mock, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 import { setupHappyDom } from '../../test/happy-dom.ts';
 import type { Message } from '../chat/conversation-model.ts';
@@ -86,6 +86,34 @@ describe('chat navigation rail mechanics', () => {
     expect(navigationScrollFromPointer(200, 100, 0, 600)).toBe(0);
   });
 
+  test('captures the pointer on pointerdown while preserving the semantic button click', async () => {
+    const onNavigate = mock(() => {});
+    const { container } = render(ChatNavigationRail, {
+      props: { messages: [userMessage('one', 'First message')], onNavigate },
+    });
+    const rail = container.querySelector<HTMLElement>('.chat-navigation-rail')!;
+    const row = container.querySelector<HTMLButtonElement>('.chat-navigation-rail-row')!;
+    let capturedPointerId: number | undefined;
+    Object.defineProperty(rail, 'setPointerCapture', {
+      configurable: true,
+      value: (pointerId: number) => {
+        capturedPointerId = pointerId;
+      },
+    });
+
+    await fireEvent.pointerDown(row, {
+      pointerId: 7,
+      clientX: 10,
+      clientY: 10,
+      button: 0,
+      isPrimary: true,
+    });
+    await fireEvent.click(row);
+
+    expect(capturedPointerId).toBe(7);
+    expect(onNavigate).toHaveBeenCalledTimes(1);
+  });
+
   test('keeps the visual contracts in CSS and markup', async () => {
     const source = await readFile(
       new URL('./chat-navigation-rail.svelte', import.meta.url),
@@ -120,6 +148,9 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain('font-size: var(--cinder-text-2xs)');
     expect(stylesheet).not.toContain('--cinder-text-3xs');
     expect(source).toContain('setPointerCapture');
+    expect(source).toContain(
+      'pointerId = event.pointerId;\n    rail.setPointerCapture(event.pointerId);',
+    );
     expect(source).toContain('if (index >= 0 && index !== lastScrubIndex)');
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');

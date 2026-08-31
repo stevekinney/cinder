@@ -137,6 +137,7 @@
   function startScrub(event: PointerEvent): void {
     if (!event.isPrimary || event.button !== 0 || !rail) return;
     pointerId = event.pointerId;
+    rail.setPointerCapture(event.pointerId);
     scrubbing = true;
     suppressNextClick = false;
     pointerType = event.pointerType;
