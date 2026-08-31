@@ -65,6 +65,8 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('[data-message-role="user"]');
     expect(source).toContain('const observedViewport = viewport');
     expect(stylesheet).toContain('position: fixed');
+    expect(stylesheet).toContain('left: var(--chat-navigation-preview-left)');
+    expect(stylesheet).not.toContain('inset-inline-start: var(--chat-navigation-preview-left)');
     expect(stylesheet).toContain('touch-action: pan-y');
     expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');

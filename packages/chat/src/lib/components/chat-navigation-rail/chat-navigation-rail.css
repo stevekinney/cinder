@@ -64,7 +64,7 @@
   }
   .chat-navigation-rail-preview {
     position: fixed;
-    inset-inline-start: var(--chat-navigation-preview-left);
+    left: var(--chat-navigation-preview-left);
     inset-block-start: var(--chat-navigation-preview-top);
     translate: 0 -50%;
     inline-size: max-content;

@@ -673,7 +673,7 @@ describe('chat session controller', () => {
     await expect(controller.adapter.approveToolCall?.('call')).rejects.toThrow(
       'approval unavailable',
     );
-    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
+    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBeUndefined();
   });
 
   test('marks the initiating user message when denial continuation fails', async () => {
@@ -696,7 +696,7 @@ describe('chat session controller', () => {
     });
     await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
     await expect(controller.adapter.denyToolCall?.('call')).rejects.toThrow('denial unavailable');
-    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBe('failed');
+    expect(Object.values(conversation.messages)[0]?.metadata['_deliveryStatus']).toBeUndefined();
   });
 
   test('rejects every mutating adapter command after disposal without changing history', async () => {

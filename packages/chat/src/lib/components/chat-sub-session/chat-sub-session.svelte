@@ -42,9 +42,11 @@
 </script>
 
 <section class="chat-sub-session" class:chat-sub-session-live={live}>
+  <!-- svelte-ignore a11y_no_noninteractive_tabindex (the labelled overflow region must be keyboard-scrollable) -->
   <div
     class="chat-sub-session-viewport"
-    role="log"
+    role="region"
+    tabindex="0"
     aria-label={label}
     aria-live={live ? 'polite' : 'off'}
   >
@@ -60,7 +62,6 @@
             ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
             : []}
           showDefaultActions={false}
-          tabindex={0}
         />
       {/if}
     {/each}

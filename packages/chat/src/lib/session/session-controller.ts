@@ -83,7 +83,7 @@ export function createChatSessionController(
         callback(handlers);
       } catch (error) {
         try {
-          options.hooks?.onError?.(error);
+          reportError(error);
         } catch {
           /* observers are isolated */
         }
@@ -106,6 +106,13 @@ export function createChatSessionController(
       } catch {
         /* observers cannot break lifecycle cleanup */
       }
+    }
+  };
+  const reportError = (error: unknown): void => {
+    try {
+      options.hooks?.onError?.(error);
+    } catch {
+      /* error observers cannot replace the operation failure */
     }
   };
   const findOwningUser = (history: ConversationHistory, toolCallId: string): string => {
@@ -202,11 +209,7 @@ export function createChatSessionController(
               try {
                 options.hooks?.onToolResult?.(event);
               } catch (observerError) {
-                try {
-                  options.hooks?.onError?.(observerError);
-                } catch {
-                  /* observer errors are isolated */
-                }
+                reportError(observerError);
               }
             }
           }
@@ -228,7 +231,7 @@ export function createChatSessionController(
           update(
             markMessageDeliveryFailed(cancelStreamingMessage(committed, messageId), userMessageId),
           );
-          options.hooks?.onError?.(error);
+          reportError(error);
           throw error;
         } finally {
           emit((handlers) => handlers.onStreamEnd());
@@ -243,7 +246,7 @@ export function createChatSessionController(
       }
       const error = new Error(`Reached the tool-call continuation limit (${maxTurns}).`);
       update(markMessageDeliveryFailed(options.getConversation(), userMessageId));
-      options.hooks?.onError?.(error);
+      reportError(error);
       throw error;
     } finally {
       running = false;
@@ -334,8 +337,7 @@ export function createChatSessionController(
             try {
               result = await options.hooks?.approveToolCall?.(id);
             } catch (error) {
-              if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
-              options.hooks?.onError?.(error);
+              reportError(error);
               throw error;
             } finally {
               running = false;
@@ -364,8 +366,7 @@ export function createChatSessionController(
             try {
               result = await options.hooks?.denyToolCall?.(id);
             } catch (error) {
-              if (owner) update(markMessageDeliveryFailed(options.getConversation(), owner));
-              options.hooks?.onError?.(error);
+              reportError(error);
               throw error;
             } finally {
               running = false;

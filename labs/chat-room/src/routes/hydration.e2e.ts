@@ -51,6 +51,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/artifacts',
 	'/exercises/assistant-metadata',
 	'/exercises/attachments',
+	'/exercises/chat-transcript-navigation',
 	'/exercises/composer-popover',
 	'/exercises/contracts',
 	'/exercises/conversation-list',

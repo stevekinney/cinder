@@ -23,8 +23,11 @@ describe('chat sub-session data contract', () => {
     expect(source).toContain('class:chat-sub-session-live={live}');
     expect(stylesheet).toContain('.chat-sub-session-live .chat-message');
     expect(stylesheet).toContain('prefers-reduced-motion');
-    expect(source).toContain('role="log"');
-    expect(source).toContain('tabindex={0}');
+    expect(source).toContain('role="region"');
+    expect(source).toContain('class="chat-sub-session-viewport"');
+    expect(source).toContain('the labelled overflow region must be keyboard-scrollable');
+    expect(source).toContain('tabindex="0"');
+    expect(source).not.toContain('tabindex={0}');
     expect(source).toContain('idPrefix={`${instanceId}-${message.id}`}');
   });
 
