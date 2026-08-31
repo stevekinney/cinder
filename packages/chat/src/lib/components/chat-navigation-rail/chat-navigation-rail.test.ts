@@ -93,10 +93,18 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('previewPosition');
     expect(source).toContain('lastScrubIndex');
     expect(source).toContain('index !== lastScrubIndex');
+    expect(source).toContain('if (!pointerMoved)');
+    expect(source).toContain('Math.hypot(');
+    expect(source).toContain('pointerMoved = true;\n    suppressNextClick = true;');
+    expect(source).toContain('if (rail && !rail.hasPointerCapture(event.pointerId))');
+    expect(source).not.toContain("if (event.pointerType !== 'touch') updateFromPointer(event)");
     expect(source).toContain('visualViewport?.width');
     expect(source).toContain('previewElement?.offsetWidth');
     expect(source).toContain('element.offsetHeight / 2');
     expect(source).toContain('visualViewport?.height');
+    expect(source).toContain('const currentPosition = untrack(() => previewPosition)');
+    expect(source).toContain('if (nextTop === currentPosition.top) return;');
+    expect(source).not.toContain('...previewPosition,');
     expect(source).toContain('setTimeout(() =>');
     expect(source).not.toContain('queueMicrotask(() =>');
     expect(source).toContain('bind:this={previewElement}');
@@ -108,7 +116,8 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet.lastIndexOf('}')).toBeGreaterThan(
       stylesheet.indexOf('.chat-navigation-rail-preview-left'),
     );
-    expect(source).toContain('if (shouldNavigateTouch) updateFromPointer(event)');
+    expect(source).toContain('if (!pointerMoved)');
+    expect(source).toContain('suppressNextClick = false;');
     expect(source.indexOf('</nav>')).toBeLessThan(source.indexOf('chat-navigation-rail-preview'));
     expect(example).toContain('<ChatNavigationRail {messages} {scrollToMessage} {viewport} />');
     expect(example).toContain('scrollIntoView');

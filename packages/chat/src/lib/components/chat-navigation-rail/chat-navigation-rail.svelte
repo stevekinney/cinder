@@ -46,8 +46,9 @@
   let suppressNextClick = $state(false);
   let previewPosition = $state({ top: 0, left: 0 });
   let pointerType = $state<string | undefined>(undefined);
+  let pointerStartX = $state(0);
   let touchStartY = $state(0);
-  let touchMoved = $state(false);
+  let pointerMoved = $state(false);
   let previewSide = $state<'right' | 'left'>('right');
   let lastScrubIndex = $state(-1);
   let previewElement = $state<HTMLElement | null>(null);
@@ -75,10 +76,15 @@
     if (!element) return;
     const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const halfHeight = element.offsetHeight / 2;
-    const currentTop = untrack(() => previewPosition.top);
+    const currentPosition = untrack(() => previewPosition);
+    const nextTop = Math.max(
+      8 + halfHeight,
+      Math.min(currentPosition.top, viewportHeight - 8 - halfHeight),
+    );
+    if (nextTop === currentPosition.top) return;
     previewPosition = {
-      ...previewPosition,
-      top: Math.max(8 + halfHeight, Math.min(currentTop, viewportHeight - 8 - halfHeight)),
+      ...currentPosition,
+      top: nextTop,
     };
   });
 
@@ -127,20 +133,23 @@
     if (!event.isPrimary || event.button !== 0 || !rail) return;
     pointerId = event.pointerId;
     scrubbing = true;
-    suppressNextClick = true;
+    suppressNextClick = false;
     pointerType = event.pointerType;
+    pointerStartX = event.clientX;
     touchStartY = event.clientY;
-    touchMoved = false;
+    pointerMoved = false;
     lastScrubIndex = -1;
-    rail.setPointerCapture(event.pointerId);
-    if (event.pointerType !== 'touch') updateFromPointer(event);
   }
 
   function endScrub(event: PointerEvent): void {
     if (pointerId !== event.pointerId) return;
-    const shouldNavigateTouch = pointerType === 'touch' && !touchMoved;
-    if (shouldNavigateTouch) updateFromPointer(event);
     finishScrub(event);
+    if (!pointerMoved) {
+      // A tap/click belongs to the semantic button. Let its click handler own
+      // the single navigation instead of substituting pointer geometry.
+      suppressNextClick = false;
+      return;
+    }
     // Keep the guard through the browser's synthesized click, including when
     // pointer capture retargets that click to the rail itself.
     setTimeout(() => {
@@ -164,7 +173,11 @@
   }
 
   function handlePointerMove(event: PointerEvent): void {
-    if (pointerType === 'touch' && Math.abs(event.clientY - touchStartY) > 8) touchMoved = true;
+    const movement = Math.hypot(event.clientX - pointerStartX, event.clientY - touchStartY);
+    if (movement <= (pointerType === 'touch' ? 8 : 2)) return;
+    pointerMoved = true;
+    suppressNextClick = true;
+    if (rail && !rail.hasPointerCapture(event.pointerId)) rail.setPointerCapture(event.pointerId);
     updateFromPointer(event);
   }
 
