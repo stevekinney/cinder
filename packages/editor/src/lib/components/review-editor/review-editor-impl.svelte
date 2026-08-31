@@ -255,6 +255,14 @@
 
   /** Whether the selection popover is in expanded form state (user clicked to add comment) */
   let selectionPopoverExpanded = $state(false);
+  let dismissedSelection:
+    | {
+        anchorNode: Node | null;
+        anchorOffset: number;
+        focusNode: Node | null;
+        focusOffset: number;
+      }
+    | undefined;
 
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
@@ -808,6 +816,17 @@
         selectionTimeoutId = null;
       }
 
+      const browserSelection = window.getSelection();
+      if (dismissedSelection) {
+        const isDismissedSelection =
+          browserSelection?.anchorNode === dismissedSelection.anchorNode &&
+          browserSelection.anchorOffset === dismissedSelection.anchorOffset &&
+          browserSelection.focusNode === dismissedSelection.focusNode &&
+          browserSelection.focusOffset === dismissedSelection.focusOffset;
+        if (isDismissedSelection) return;
+        dismissedSelection = undefined;
+      }
+
       // Only process in edit mode
       if (mode !== 'edit') {
         selectionPopoverPosition = null;
@@ -827,8 +846,6 @@
       if (selectionPopoverExpanded) {
         return;
       }
-
-      const browserSelection = window.getSelection();
 
       // If selection is collapsed, hide popover immediately and reset all popover state
       if (!browserSelection || browserSelection.isCollapsed) {
@@ -1535,6 +1552,19 @@
    * Close the selection popover.
    */
   function handleSelectionPopoverClose(): void {
+    if (selectionTimeoutId !== null) {
+      clearTimeout(selectionTimeoutId);
+      selectionTimeoutId = null;
+    }
+    const selection = window.getSelection();
+    dismissedSelection = selection
+      ? {
+          anchorNode: selection.anchorNode,
+          anchorOffset: selection.anchorOffset,
+          focusNode: selection.focusNode,
+          focusOffset: selection.focusOffset,
+        }
+      : undefined;
     selectionPopoverPosition = null;
     capturedSelectionForPopover = null;
     selectionPopoverExpanded = false;

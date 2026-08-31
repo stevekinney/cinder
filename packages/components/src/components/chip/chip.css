@@ -24,6 +24,25 @@
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
+  .cinder-chip[data-cinder-breakable] {
+    white-space: normal;
+  }
+
+  .cinder-chip[data-cinder-breakable] .cinder-chip__label {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+    unicode-bidi: isolate;
+  }
+
+  .cinder-chip[data-cinder-breakable] .cinder-chip__icon {
+    flex: 0 0 auto;
+    align-self: flex-start;
+  }
+
+  .cinder-chip[data-cinder-breakable] .cinder-chip__remove {
+    flex: 0 0 auto;
+  }
+
   /* Mode is expressed through internal affordances, never through a separate
  * chip-root surface. Display, resting toggle, and removable roots share this
  * same surface contract. */
@@ -98,6 +117,25 @@
     background: var(--cinder-accent-background);
     color: var(--cinder-accent-text);
     border-color: var(--cinder-accent-border);
+  }
+
+  /* Third-party colour is decorative only. Keep the semantic foreground on the
+   * semantic surface so arbitrary brand colours cannot reduce text contrast in
+   * either theme; use the brand solely for a restrained tint and border. */
+  .cinder-chip[data-cinder-variant='neutral']:not(:disabled):not([data-cinder-disabled]):not(
+      :focus-visible
+    )[style*='--_cinder-chip-brand-color'] {
+    color: var(--cinder-text-default);
+    background: color-mix(
+      in oklch,
+      var(--_cinder-chip-brand-color) 8%,
+      var(--cinder-surface-raised) 92%
+    );
+    border-color: color-mix(
+      in oklch,
+      var(--_cinder-chip-brand-color) 35%,
+      var(--cinder-border) 65%
+    );
   }
 
   /* ----------------------------------------

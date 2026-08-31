@@ -58,6 +58,11 @@ const schema = {
         description: 'Panel content shown when open.',
       },
       {
+        name: 'leadingIcon',
+        reason: 'function-or-snippet',
+        description: 'Optional decorative icon rendered inside the disclosure trigger.',
+      },
+      {
         name: 'onToggle',
         reason: 'function-or-snippet',
         description:

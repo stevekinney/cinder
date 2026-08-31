@@ -80,12 +80,16 @@ describe('discoverComponents', () => {
       'chat-composer-popover',
       'chat-conversation-header',
       'chat-conversation-list',
+      'chat-navigation-rail',
+      'chat-sub-session',
     ]);
     expect(chatDefinitions.map((entry) => entry.importPath)).toEqual([
       '@lostgradient/chat',
       '@lostgradient/chat/composer-popover',
       '@lostgradient/chat/conversation-header',
       '@lostgradient/chat/conversation-list',
+      '@lostgradient/chat/navigation-rail',
+      '@lostgradient/chat/sub-session',
     ]);
   });
 });
@@ -201,6 +205,8 @@ const SIDEBAR_BASELINE = [
   'chat-composer-popover',
   'chat-conversation-header',
   'chat-conversation-list',
+  'chat-navigation-rail',
+  'chat-sub-session',
   'checkbox',
   'checkbox-group',
   'chip',

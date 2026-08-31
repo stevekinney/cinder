@@ -126,6 +126,11 @@
     impl?.scrollToTop();
   }
 
+  /** Scroll a message into the center of the transcript, resolving virtualized rows. */
+  export function scrollToMessage(messageId: string): void {
+    impl?.scrollToMessage(messageId);
+  }
+
   /** Focus the composer input. No-op until mounted. */
   export function focusInput(): void {
     impl?.focusInput();

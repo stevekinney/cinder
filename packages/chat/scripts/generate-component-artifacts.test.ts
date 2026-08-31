@@ -37,6 +37,16 @@ describe('Chat example artifacts', () => {
         ],
       },
       {
+        component: 'chat-navigation-rail',
+        import: '@lostgradient/chat/navigation-rail',
+        examples: ['basic'],
+      },
+      {
+        component: 'chat-sub-session',
+        import: '@lostgradient/chat/sub-session',
+        examples: ['basic'],
+      },
+      {
         component: 'chat-composer-popover',
         import: '@lostgradient/chat/composer-popover',
         examples: ['slash-commands'],

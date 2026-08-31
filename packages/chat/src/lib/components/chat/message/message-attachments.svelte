@@ -18,6 +18,7 @@
 
 <script lang="ts">
   import { classNames } from '../../../utilities/class-names.ts';
+  import { Maximize2 } from '@lostgradient/cinder/icons';
   import ImageLightbox from './image-lightbox.svelte';
 
   let {
@@ -37,6 +38,7 @@
       .map((image) => ({
         image,
         url: getImageUrlFromContent(image),
+        dimensions: getImageDimensions(image),
       }))
       .filter((item) => item.url !== ''),
   );
@@ -72,6 +74,19 @@
     return `Image attachment ${displayIndex}`;
   }
 
+  type ImageDimensions = { width: number; height: number } | undefined;
+
+  function getImageDimensions(image: MultiModalContent): ImageDimensions {
+    if (image.type !== 'image') return undefined;
+    const candidate = image as MultiModalContent & { width?: unknown; height?: unknown };
+    return typeof candidate.width === 'number' &&
+      candidate.width > 0 &&
+      typeof candidate.height === 'number' &&
+      candidate.height > 0
+      ? { width: candidate.width, height: candidate.height }
+      : undefined;
+  }
+
   function handleLoad(index: number) {
     onimageload?.(index);
   }
@@ -93,14 +108,20 @@
   data-count={validImages.length}
   {...rest}
 >
-  {#each validImages as { image, url }, loopIndex (url + '-' + loopIndex)}
+  {#each validImages as { image, url, dimensions }, loopIndex (url + '-' + loopIndex)}
     {@const displayIndex = loopIndex + 1}
     {@const alt = getAltText(image, displayIndex)}
-    <figure class="message-attachment" role="listitem">
+    <figure
+      class="message-attachment"
+      role="listitem"
+      data-cinder-image-placeholder={dimensions ? undefined : ''}
+      style={dimensions ? `aspect-ratio: ${dimensions.width} / ${dimensions.height}` : undefined}
+    >
       <button
         type="button"
         class="message-attachment-button"
         aria-label={`View image: ${alt}`}
+        title="Maximize image"
         onclick={() => openLightbox(loopIndex)}
       >
         <img
@@ -109,9 +130,14 @@
           {loading}
           decoding="async"
           class="message-attachment-image"
+          width={dimensions?.width}
+          height={dimensions?.height}
           onload={() => handleLoad(loopIndex)}
           onerror={(event) => handleError(loopIndex, event)}
         />
+        <span class="message-attachment-maximize" aria-hidden="true">
+          <Maximize2 class="cinder-icon-sm" />
+        </span>
       </button>
       {#if alt && alt !== `Image attachment ${displayIndex}`}
         <figcaption class="sr-only">{alt}</figcaption>
@@ -147,14 +173,21 @@
   .message-attachment {
     position: relative;
     margin: 0;
+    min-block-size: 6rem;
+    /* Reserve a decode-time box for ordinary image content. `contain` on the
+     * image below preserves portrait/landscape proportions inside this box. */
+    aspect-ratio: 4 / 3;
+    max-block-size: 400px;
     border-radius: var(--cinder-radius-md);
     overflow: hidden;
+    background: var(--cinder-surface-inset);
   }
 
   /* Button wrapper: removes chrome but keeps keyboard-operable behavior */
   .message-attachment-button {
     display: block;
     width: 100%;
+    height: 100%;
     padding: 0;
     background: none;
     border: none;
@@ -182,12 +215,41 @@
   .message-attachment-image {
     display: block;
     width: 100%;
-    height: auto;
+    height: 100%;
     max-height: 400px;
     border-radius: var(--cinder-radius-md);
     /* Use contain to preserve full image content and avoid cropping */
     object-fit: contain;
     transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .message-attachment-maximize {
+    position: absolute;
+    inset-block-start: var(--cinder-space-2);
+    inset-inline-end: var(--cinder-space-2);
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    inline-size: var(--cinder-touch-target-min);
+    block-size: var(--cinder-touch-target-min);
+    color: var(--cinder-text-default);
+    background: color-mix(in oklch, var(--cinder-surface), transparent 12%);
+    border-radius: var(--cinder-radius-full);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--cinder-duration-fast) var(--cinder-ease-standard);
+  }
+
+  .message-attachment-button:hover .message-attachment-maximize,
+  .message-attachment-button:focus-visible .message-attachment-maximize {
+    opacity: 1;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .message-attachment-image,
+    .message-attachment-maximize {
+      transition: none;
+    }
   }
 
   .message-attachment-button:hover .message-attachment-image {

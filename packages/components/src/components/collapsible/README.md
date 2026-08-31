@@ -62,6 +62,7 @@ For multiple coordinated sections where opening one may close others, use [`Acco
 | `triggerAriaLabel` | `string`   | no       | —       | Accessible name override for the trigger button. The runtime prop also accepts a state-aware function (`{ open, disabled } => string`), but JSON Schema can only model the string variant. |
 | `triggerClass`     | `string`   | no       | —       | Additional class names applied to the disclosure trigger button.                                                                                                                           |
 | `children`         | `(opaque)` | yes      | —       | Panel content shown when open. Not expressible in JSON Schema; see the component types for the signature.                                                                                  |
+| `leadingIcon`      | `(opaque)` | no       | —       | Optional decorative icon rendered inside the disclosure trigger. Not expressible in JSON Schema; see the component types for the signature.                                                |
 | `onToggle`         | `(opaque)` | no       | —       | Fired on every successful toggle with the next open state. Not called while disabled. Not expressible in JSON Schema; see the component types for the signature.                           |
 
 <!-- generated:props:end -->

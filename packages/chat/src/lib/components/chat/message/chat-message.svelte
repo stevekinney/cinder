@@ -8,6 +8,7 @@
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
     /** The message to render */
     message: Message;
+    idPrefix?: string | undefined;
     /** Paired tool calls (from pairToolCallsWithResults) - used for tool-call messages */
     toolCallPairs?: ToolCallPair[];
     /** Whether long content is expanded */
@@ -32,6 +33,8 @@
     showDefaultActions?: boolean;
     /** Whether this message is currently streaming */
     streaming?: boolean;
+    /** Whether tool activity belongs to the currently active stream. */
+    toolActivityActive?: boolean;
     /** Override content for streaming (partial token buffer) */
     overrideContent?: string | undefined;
     /** Called when expanded state changes */
@@ -54,6 +57,7 @@
     onapprove?: ((toolCallId: string) => void) | undefined;
     /** Called when the user denies an action-required tool call. */
     ondeny?: ((toolCallId: string) => void) | undefined;
+    toolCallPresentation?: import('../utilities/types.ts').ToolCallPresentation | undefined;
     /**
      * Reasoning text to surface as a collapsible block before the body.
      * When present and non-empty, a `reasoning` part is prepended to the derived parts.
@@ -111,6 +115,7 @@
 
   let {
     message,
+    idPrefix,
     toolCallPairs = [],
     expanded = $bindable(true),
     class: className,
@@ -121,6 +126,7 @@
     markdownNode,
     showDefaultActions = true,
     streaming = false,
+    toolActivityActive = true,
     overrideContent,
     onExpandedChange,
     onretry,
@@ -132,6 +138,7 @@
     deniedToolCallIds,
     onapprove,
     ondeny,
+    toolCallPresentation,
     reasoning,
     entries,
     steps,
@@ -261,6 +268,7 @@
       expanded,
       approvedToolCallIds,
       deniedToolCallIds,
+      toolCallPresentation,
       // C4: reasoning and steps are UI-only overlays derived from metadata or
       // explicit per-message props; never written back to the transcript.
       reasoning,
@@ -304,7 +312,7 @@
   const TRUNCATE_THRESHOLD = 500;
 
   // Accessibility IDs
-  const messageId = $derived(`message-${message.id}`);
+  const messageId = $derived(idPrefix ? `${idPrefix}-message` : `message-${message.id}`);
   const roleId = $derived(`${messageId}-role`);
 
   function toggleExpanded() {
@@ -342,6 +350,8 @@
   <article
     id={messageId}
     class="chat-message chat-navigation-row"
+    data-message-id={message.id}
+    data-message-role={message.role}
     aria-labelledby={isToolCall && toolPair ? undefined : roleId}
     aria-label={isToolCall && toolPair ? `Tool call: ${toolPair.call.name}` : undefined}
     {tabindex}
@@ -398,6 +408,7 @@
           {stepsExpanded}
           {onsteps}
           {onSuggestionSelect}
+          {toolActivityActive}
         />
 
         {#if hasMarkdownBody && textContent.length > TRUNCATE_THRESHOLD}

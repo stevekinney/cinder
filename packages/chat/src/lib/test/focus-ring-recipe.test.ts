@@ -79,7 +79,7 @@ function assertOuterRecipe(css: string, selector: string): void {
 
 const styles = {
   artifactPanel: loadSvelteStyle('../components/chat/artifact/artifact-panel.svelte'),
-  chat: loadSvelteStyle('../components/chat/container/chat.svelte'),
+  chat: load('../components/chat/chat.css'),
   exportActions: loadSvelteStyle('../components/chat/export/conversation-export-actions.svelte'),
   input: loadSvelteStyle('../components/chat/input/chat-input.svelte'),
   jumpControls: loadSvelteStyle('../components/chat/container/chat-jump-controls.svelte'),
@@ -88,12 +88,14 @@ const styles = {
   messageAttachments: loadSvelteStyle('../components/chat/message/message-attachments.svelte'),
   searchBar: loadSvelteStyle('../components/chat/container/chat-search-bar.svelte'),
   toolCallGroup: loadSvelteStyle('../components/chat/message/tool-call-group.svelte'),
+  chatImplementation: loadSvelteStyle('../components/chat/container/chat.svelte'),
 };
 
 describe('Chat focus-ring recipes', () => {
   const insetCases = [
     ['artifact-panel close', styles.artifactPanel, '.artifact-panel-close:focus-visible'],
-    ['chat timeline', styles.chat, '.chat-timeline:focus-visible'],
+    ['chat timeline', styles.chat, '.cinder-chat .chat-timeline:focus-visible'],
+    ['chat timeline implementation', styles.chatImplementation, '.chat-timeline:focus-visible'],
     [
       'message attachment button',
       styles.messageAttachments,
@@ -112,7 +114,11 @@ describe('Chat focus-ring recipes', () => {
       styles.exportActions,
       '.conversation-export-actions :global(.export-trigger:focus-visible)',
     ],
-    ['chat empty prompt', styles.chat, '.chat-empty-prompt:focus-visible'],
+    [
+      'chat empty prompt',
+      loadSvelteStyle('../components/chat/container/chat.svelte'),
+      '.chat-empty-prompt:focus-visible',
+    ],
     ['chat search navigation', styles.searchBar, '.chat-search-nav-button:focus-visible'],
     ['chat jump button', styles.jumpControls, '.chat-jump-button:focus-visible'],
     ['chat new indicator', styles.jumpControls, '.chat-new-indicator:focus-visible'],

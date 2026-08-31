@@ -15,10 +15,10 @@
 		"preview": "vite preview",
 		"test": "bun run test:unit",
 		"test:playwright": "playwright install && playwright test",
-		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts"
+		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts ./src/routes/api/chat/chat-server.test.ts"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.112.1",
+		"@anthropic-ai/sdk": "^0.116.0",
 		"@lasercat/homogenaize": "^1.2.41",
 		"@lostgradient/chat": "workspace:*",
 		"@lostgradient/cinder": "workspace:*",
@@ -27,8 +27,8 @@
 		"@milkdown/ctx": "^7.17.3",
 		"@milkdown/kit": "^7.17.3",
 		"@milkdown/prose": "^7.17.3",
-		"armorer": "^0.14.0",
-		"conversationalist": "^0.6.1",
+		"armorer": "^2.0.0",
+		"conversationalist": "^1.0.0",
 		"lucide-svelte": "0.577.0",
 		"prosemirror-inputrules": "^1.5.1",
 		"prosemirror-model": "^1.25.4",

@@ -30,6 +30,12 @@ function bodySnippet(text = 'panel body') {
   }));
 }
 
+function iconSnippet(label = 'Brand mark') {
+  return createRawSnippet(() => ({
+    render: () => `<svg data-testid="leading-icon"><title>${label}</title></svg>`,
+  }));
+}
+
 function trigger(container: HTMLElement): HTMLButtonElement {
   return container.querySelector('.cinder-collapsible__trigger') as HTMLButtonElement;
 }
@@ -55,6 +61,26 @@ test('applies a custom class to the trigger label wrapper', () => {
   expect(container.querySelector('.cinder-collapsible__label.custom-label')?.textContent).toBe(
     'Toggle me',
   );
+});
+
+test('renders a decorative leadingIcon in the resting trigger layout', () => {
+  const { container } = render(Collapsible, {
+    trigger: 'Details',
+    triggerClass: 'custom-trigger',
+    leadingIcon: iconSnippet(),
+    children: bodySnippet(),
+  });
+
+  const root = container.querySelector('.cinder-collapsible');
+  const button = trigger(container);
+  const icon = container.querySelector('.cinder-collapsible__leading-icon');
+
+  expect(root?.classList.contains('cinder-collapsible')).toBe(true);
+  expect(button.classList.contains('custom-trigger')).toBe(true);
+  expect(icon?.getAttribute('aria-hidden')).toBe('true');
+  expect(icon?.querySelector('[data-testid="leading-icon"] title')?.textContent).toBe('Brand mark');
+  expect(container.querySelector('.cinder-collapsible__label')?.textContent).toContain('Details');
+  expect(container.querySelector('[data-cinder-expanded]')).toBeNull();
 });
 
 test('rounded panel preserves overflow from public children', async () => {

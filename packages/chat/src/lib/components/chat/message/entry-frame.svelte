@@ -13,6 +13,7 @@
     disabled = false,
     onToggle,
     children,
+    leadingIcon,
   }: {
     id: string;
     label: string;
@@ -24,6 +25,7 @@
     disabled?: boolean;
     onToggle?: ((open: boolean) => void) | undefined;
     children: Snippet;
+    leadingIcon?: Snippet | undefined;
   } = $props();
 </script>
 
@@ -31,6 +33,7 @@
   <Collapsible
     bind:open
     trigger={label}
+    {leadingIcon}
     idBase={id}
     class="chat-entry-frame"
     animated={false}

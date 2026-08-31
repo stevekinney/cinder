@@ -81,6 +81,8 @@
 	// Ids for which `stopGenerating` has been requested. Checked by the
 	// token-reveal loops between tokens.
 	const stopRequestedIds = new SvelteSet<string>();
+	let holdRetryAfterFirstToken = $state(false);
+	let releaseHeldRetry: (() => void) | undefined;
 
 	function requestStop(messageId: string): void {
 		stopRequestedIds.add(messageId);
@@ -88,6 +90,17 @@
 
 	function clearStopRequest(messageId: string): void {
 		stopRequestedIds.delete(messageId);
+	}
+
+	function waitForHeldRetryRelease(): Promise<void> {
+		return new Promise((resolve) => {
+			releaseHeldRetry = resolve;
+		});
+	}
+
+	function releaseRetry(): void {
+		releaseHeldRetry?.();
+		releaseHeldRetry = undefined;
 	}
 
 	function snapshot(): ConversationHistory {
@@ -153,13 +166,14 @@
 
 			try {
 				let buffer = '';
-				for (const token of RETRY_TOKENS) {
+				for (const [index, token] of RETRY_TOKENS.entries()) {
 					if (stopRequestedIds.has(messageId)) break;
 					await sleep(TOKEN_DELAY_MS);
 					if (stopRequestedIds.has(messageId)) break;
 
 					buffer += token;
 					conversation = replaceMessage(conversation, messageId, { content: buffer });
+					if (holdRetryAfterFirstToken && index === 0) await waitForHeldRetryRelease();
 				}
 				if (stopRequestedIds.has(messageId) && buffer !== RETRY_TOKENS.join('')) {
 					conversation = markMessageDeliveryFailed(conversation, messageId);
@@ -173,6 +187,7 @@
 		stopGenerating: async (messageId) => {
 			log = [...log, `stopGenerating:${messageId}`];
 			requestStop(messageId);
+			releaseRetry();
 		}
 	};
 
@@ -214,6 +229,10 @@
 			/>
 		</div>
 		<div style="flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem;">
+			<label>
+				<input type="checkbox" bind:checked={holdRetryAfterFirstToken} />
+				Hold retry after its first token
+			</label>
 			<button type="button" data-testid="force-retry-again" onclick={forceRetryAgain}>
 				Force retry again (bypasses the UI's Retry button)
 			</button>

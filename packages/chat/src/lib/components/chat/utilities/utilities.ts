@@ -15,6 +15,8 @@ import type {
   StepInfo,
   StepStatus,
   ToolApprovalMessagePart,
+  ToolCallMessagePart,
+  ToolCallPresentation,
   TranscriptEntryInfo,
 } from './types.ts';
 
@@ -24,6 +26,15 @@ export const CINDER_ENTRIES_METADATA_KEY = 'cinder:entries';
 export const CINDER_STEPS_METADATA_KEY = 'cinder:steps';
 export const CINDER_SUGGESTIONS_METADATA_KEY = 'cinder:suggestions';
 export const CINDER_ARTIFACT_METADATA_KEY = 'cinder:artifact';
+
+/** Formats adapter-supplied tool activity without knowing connector names. */
+export function formatToolCallProse(presentation: ToolCallPresentation): string {
+  const verb = presentation.verb.trim();
+  // Adapters own grammar: verbs may be irregular, multi-word, or already
+  // inflected. Never guess English morphology in the shared package.
+  const phrase = presentation.tense === 'failed' ? `Failed to ${verb}` : verb;
+  return presentation.detail ? `${phrase} ${presentation.detail}` : phrase;
+}
 
 const ARTIFACT_CONTENT_TYPES: ReadonlySet<string> = new Set<ChatArtifact['type']>([
   'html',
@@ -418,16 +429,19 @@ export function deriveMessageParts(
       result && result.outcome === 'action_required' && result.action
         ? deriveToolApprovalPart(message.id, result, context)
         : undefined;
-    return [
-      ...entryParts,
-      {
-        type: 'tool-call',
-        key: `${message.id}:tool-call:${message.toolCall.id}`,
-        pair: context.toolCallPair,
-      },
-      ...(approvalPart ? [approvalPart] : []),
-      ...imageParts,
-    ];
+    const toolCallPart: ToolCallMessagePart = context.toolCallPresentation
+      ? {
+          type: 'tool-call',
+          key: `${message.id}:tool-call:${message.toolCall.id}`,
+          pair: context.toolCallPair,
+          presentation: context.toolCallPresentation,
+        }
+      : {
+          type: 'tool-call',
+          key: `${message.id}:tool-call:${message.toolCall.id}`,
+          pair: context.toolCallPair,
+        };
+    return [...entryParts, toolCallPart, ...(approvalPart ? [approvalPart] : []), ...imageParts];
   }
 
   // Tool-result body: when the outcome is `action_required` and an action is

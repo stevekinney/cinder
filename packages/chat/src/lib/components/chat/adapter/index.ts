@@ -12,4 +12,6 @@ export type {
   ChatCommand,
   ChatPushHandlers,
   ChatReadReceiptEvent,
+  ChatToolApprovalResolution,
+  ChatToolResult,
 } from './chat-adapter.ts';

@@ -1,0 +1,13 @@
+{
+  "$schema": "../../schemas/examples.schema.json",
+  "component": "chat-sub-session",
+  "import": "@lostgradient/chat/sub-session",
+  "examples": [
+    {
+      "id": "basic",
+      "title": "Nested session transcript",
+      "description": "A reduced child conversation rendered inside its parent workflow.",
+      "code": "<script lang=\"ts\">\n  import {\n    appendAssistantMessage,\n    appendUserMessage,\n    createConversation,\n  } from '@lostgradient/chat';\n  import { ChatSubSession } from '@lostgradient/chat/sub-session';\n\n  let conversation = createConversation({ id: 'nested-example' });\n  conversation = appendUserMessage(conversation, 'Inspect the deployment logs.');\n  conversation = appendAssistantMessage(conversation, 'The deployment completed without errors.');\n</script>\n\n<ChatSubSession {conversation} />\n"
+    }
+  ]
+}

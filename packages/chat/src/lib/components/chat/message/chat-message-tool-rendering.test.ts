@@ -14,7 +14,8 @@ import { join } from 'node:path';
 import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
-import type { Message } from '../conversation-model.ts';
+import type { Message, ToolCallPair } from '../conversation-model.ts';
+import type { ToolCallPresentation } from '../utilities/types.ts';
 
 setupHappyDom();
 
@@ -51,6 +52,39 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(source).toMatch(
       /\.tool-call-action\s*\{[\s\S]*?color:\s*var\(--cinder-status-warning-text\);/u,
     );
+  });
+
+  test('activity icons animate only while active and stop under reduced motion', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
+    expect(source).toMatch(/\.tool-call-activity-icon\[data-active\][\s\S]*?animation:/u);
+    expect(source).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*?animation:\s*none/u);
+  });
+
+  test('activity icons require the owning stream to remain active', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
+    expect(source).toContain('activityActive?: boolean');
+    expect(source).toContain("activityActive && presentation?.tense === 'present'");
+  });
+
+  test('threads owning stream activity through message tool rendering', () => {
+    const messageSource = readFileSync(join(import.meta.dir, 'chat-message.svelte'), 'utf8');
+    const rendererSource = readFileSync(
+      join(import.meta.dir, 'chat-message-parts-renderer.svelte'),
+      'utf8',
+    );
+    const partSource = readFileSync(join(import.meta.dir, 'parts/tool-call-part.svelte'), 'utf8');
+
+    expect(messageSource).toContain('toolActivityActive?: boolean');
+    expect(messageSource).toContain('{toolActivityActive}');
+    expect(rendererSource).toContain('activityActive={toolActivityActive}');
+    expect(partSource).toContain('{activityActive}');
+  });
+
+  test('keys repeated presented tool disclosure state by row occurrence', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-timeline.svelte'), 'utf8');
+    expect(source).toContain('expandedCalls.has(`${index}:${pair.call.id}`)');
+    expect(source).toContain('toggleCall(`${index}:${pair.call.id}`)');
+    expect(source).toContain('occurrenceKey={`${navigationMessageId}-${index}-${pair.call.id}`}');
   });
 
   test('renders the ToolCallGroup card when a resolved pair is supplied', () => {
@@ -97,6 +131,12 @@ describe('ChatMessage — tool-call rendering', () => {
   test('grouped repeated call ids remain unique and preserve structured error details', async () => {
     const { container } = render(ToolCallTimeline, {
       props: {
+        describeToolCall: (pair: ToolCallPair) => ({
+          verb: 'Checking',
+          tense: 'present',
+          detail: pair.call.name,
+          kind: 'search',
+        }),
         pairs: [
           { call: { id: 'repeated', name: 'first', arguments: {} } },
           {
@@ -117,21 +157,43 @@ describe('ChatMessage — tool-call rendering', () => {
       },
     });
 
-    const steps = container.querySelectorAll('.cinder-run-step-timeline__item');
+    const steps = container.querySelectorAll('[role="listitem"]');
     const timeline = container.querySelector('section');
     const heading = container.querySelector('h3');
     expect(steps).toHaveLength(2);
-    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
-    expect(heading?.textContent).toContain('Called 2 tools');
-    expect(new Set(Array.from(steps, (step) => step.getAttribute('data-cinder-path'))).size).toBe(
+    const headers = container.querySelectorAll('.tool-call-header');
+    for (const header of headers) await fireEvent.click(header);
+    expect(new Set([...headers].map((header) => header.getAttribute('aria-controls'))).size).toBe(
       2,
     );
-    await fireEvent.click(
-      Array.from(container.querySelectorAll('button')).find((button) =>
-        button.textContent?.includes('Result'),
-      )!,
-    );
+    expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
+    expect(heading?.textContent).toContain('Called 2 tools');
     expect(container.textContent).toContain('Network unavailable');
+  });
+
+  test('namespaces grouped disclosure ids across separate timelines', async () => {
+    const pair: ToolCallPair = { call: { id: 'reused', name: 'lookup', arguments: {} } };
+    const describeToolCall = (): ToolCallPresentation => ({
+      verb: 'Checking',
+      tense: 'present',
+      detail: 'records',
+      kind: 'search',
+    });
+    const first = render(ToolCallTimeline, {
+      props: { pairs: [pair], messageId: 'timeline-one', describeToolCall },
+    });
+    const second = render(ToolCallTimeline, {
+      props: { pairs: [pair], messageId: 'timeline-two', describeToolCall },
+    });
+    const firstHeader = first.container.querySelector<HTMLElement>('.tool-call-header')!;
+    const secondHeader = second.container.querySelector<HTMLElement>('.tool-call-header')!;
+    await fireEvent.click(firstHeader);
+    await fireEvent.click(secondHeader);
+    const firstControls = firstHeader.getAttribute('aria-controls');
+    const secondControls = secondHeader.getAttribute('aria-controls');
+    expect(firstControls).toBe('tool-call-details-timeline-one-0-reused-panel');
+    expect(secondControls).toBe('tool-call-details-timeline-two-0-reused-panel');
+    expect(firstControls).not.toBe(secondControls);
   });
 
   test('grouped action-required results render null payloads explicitly', async () => {

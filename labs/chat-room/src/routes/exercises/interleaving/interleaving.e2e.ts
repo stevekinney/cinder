@@ -130,8 +130,9 @@ test.describe('interleaving: stop mid-retry, then a fresh retry recovers', () =>
 		const log = page.getByTestId('interleaving-log');
 		const messagesLog = chat.getByRole('log', { name: 'Messages' });
 
+		await page.getByRole('checkbox', { name: 'Hold retry after its first token' }).check();
 		await chat.getByRole('button', { name: 'Retry' }).click();
-		await expect(messagesLog).toContainText('Retried reply:');
+		await expect(messagesLog).toContainText('Retried ');
 		await expect(messagesLog).not.toContainText(FULL_RETRY_TEXT);
 
 		await chat.getByRole('button', { name: 'Stop generating' }).click();

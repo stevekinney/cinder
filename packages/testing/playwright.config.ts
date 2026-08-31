@@ -36,10 +36,12 @@ export default defineConfig({
   // In block mode, retries would create spurious baseline-update prompts;
   // disable them so failures surface cleanly and immediately.
   ...(process.env['CINDER_VISUAL_DIFF'] === 'block' ? { retries: 0 } : {}),
-  // CI uses 2 workers (the chunk-[hash].js fix in #39 resolved the
-  // "Multiple files share the same output path" race that previously forced
-  // workers=1). Local stays parallel (default = cores).
-  ...(process.env['CI'] ? { workers: 2 } : {}),
+  // CI already runs eight shards concurrently. Keep one browser worker per
+  // shard so the long-lived, compiler-backed playground server and Chromium
+  // do not overcommit the runner: under two workers the server can disappear
+  // mid-shard after the first resource-sensitive test, turning every remaining
+  // test into a connection refusal. Local development stays parallel.
+  ...(process.env['CI'] ? { workers: 1 } : {}),
   reporter: [
     ['html', { outputFolder: './playwright-report', open: 'never' }],
     ['list'],

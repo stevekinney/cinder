@@ -273,11 +273,13 @@ test('standalone building blocks render and behave correctly without the Chat sh
 	const toolCallGroup = page.getByTestId('utilities-tool-call-group');
 	await expect(toolCallGroup).toContainText('lookup_order');
 	const toggle = toolCallGroup.getByRole('button', {
-		name: 'Toggle tool call details for lookup_order'
+		name: 'Expand lookup_order, Complete'
 	});
 	await expect(toggle).toHaveAttribute('aria-expanded', 'false');
 	await toggle.click();
-	await expect(toggle).toHaveAttribute('aria-expanded', 'true');
+	await expect(
+		toolCallGroup.getByRole('button', { name: 'Collapse lookup_order, Complete' })
+	).toHaveAttribute('aria-expanded', 'true');
 	await expect(toolCallGroup).toContainText('shipped');
 
 	// ChatInput works as a freestanding composer with its own onsubmit callback.

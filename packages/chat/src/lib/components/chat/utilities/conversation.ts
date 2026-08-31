@@ -9,6 +9,7 @@ import type {
   ConversationHistory,
   Message,
   ToolAction,
+  ToolCall,
   ToolCallPair,
   ToolResult,
 } from '../conversation-model.ts';
@@ -42,10 +43,9 @@ function hasPendingAction(result: ToolResult): result is ToolResult & { action: 
 
 /**
  * Finds the latest `tool-result` message for each tool-call id, over the
- * COMPLETE ordered transcript (hidden messages included)—matching
- * {@link pairToolCallsWithResults}'s last-result-wins semantics, so a
- * superseded `action_required` result is never mistaken for the current one,
- * and a hidden resolving result still supersedes an earlier visible one.
+ * COMPLETE ordered transcript (hidden messages included). This helper uses
+ * last-result-wins semantics for APIs that address a call by ID, while
+ * `pairToolCallsWithResults` pairs repeated occurrences independently.
  * Iteration order follows each call's latest occurrence: `Map#set` does not
  * reorder an existing key, so an existing entry is deleted before being
  * re-set.
@@ -90,10 +90,9 @@ export function getUnresolvedToolApprovals(
 
 /**
  * Finds the current `tool-result` message for a tool-call id—the latest one
- * if the transcript carries more than one, matching
- * {@link pairToolCallsWithResults}'s last-result-wins semantics. By default a
- * hidden latest result is treated as not found, matching `getMessages`; pass
- * `includeHidden: true` to return it.
+ * if the transcript carries more than one. By default a hidden latest result
+ * is treated as not found, matching `getMessages`; pass `includeHidden: true`
+ * to return it.
  */
 export function findToolResultMessage(
   conversation: ConversationHistory,
@@ -105,23 +104,37 @@ export function findToolResultMessage(
   return message;
 }
 
-/** Pairs tool calls with role-valid tool results from an already-ordered message array. */
+/**
+ * Pairs tool calls with role-valid tool results from an already-ordered message
+ * array. Repeated IDs are paired by occurrence, rather than by ID alone, so a
+ * result can only satisfy one call occurrence.
+ */
 export function pairToolCallsWithResults(messages: ReadonlyArray<Message>): ToolCallPair[] {
-  const resultsByCallId = new Map<string, ToolResult>();
+  const callsById = new Map<string, ToolCall[]>();
+  const resultsByCallId = new Map<string, ToolResult[]>();
+
   for (const message of messages) {
+    if (message.role === 'tool-call' && message.toolCall !== undefined) {
+      const calls = callsById.get(message.toolCall.id);
+      if (calls) calls.push(message.toolCall);
+      else callsById.set(message.toolCall.id, [message.toolCall]);
+    }
     if (message.role === 'tool-result' && message.toolResult !== undefined) {
-      resultsByCallId.set(message.toolResult.callId, message.toolResult);
+      const results = resultsByCallId.get(message.toolResult.callId);
+      if (results) results.push(message.toolResult);
+      else resultsByCallId.set(message.toolResult.callId, [message.toolResult]);
     }
   }
 
+  const callOccurrences = new Map<string, number>();
   const pairs: ToolCallPair[] = [];
   for (const message of messages) {
-    if (message.role === 'tool-call' && message.toolCall !== undefined) {
-      pairs.push({
-        call: message.toolCall,
-        result: resultsByCallId.get(message.toolCall.id),
-      });
-    }
+    if (message.role !== 'tool-call' || message.toolCall === undefined) continue;
+    const occurrence = callOccurrences.get(message.toolCall.id) ?? 0;
+    const results = resultsByCallId.get(message.toolCall.id) ?? [];
+    pairs.push({ call: message.toolCall, result: results[occurrence] });
+    callOccurrences.set(message.toolCall.id, occurrence + 1);
   }
+
   return pairs;
 }

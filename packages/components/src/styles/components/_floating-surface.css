@@ -17,6 +17,7 @@
 
   .cinder-_floating-surface:where([role='listbox'], [role='menu']) {
     overflow: auto;
+    scrollbar-gutter: stable;
   }
 
   .cinder-_floating-surface[data-cinder-position-ready='false'] {
