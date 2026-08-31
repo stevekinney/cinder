@@ -54,9 +54,21 @@ const budgetsByPackage: Record<string, PackageWeightBudgets> = {
   // numbers at roughly the same ratio as the Phase 5 reset rather than
   // pinning them exactly, matching this file's existing convention for
   // every other package.
+  //
+  // Crossed again on 2026-08-31 by the same mechanism: 23 components landed
+  // since the measurement above (194 -> 200 published components), taking the
+  // 0.25.0 pack to 5.34 MB packed / 26.55 MB unpacked / 4,835 files and
+  // breaching the 26 MB unpacked cap alone — packed, fileCount, and
+  // largestEntrypoint all still sat well under budget, and the largest entries
+  // are all load-bearing output (the dist/index.js barrel, the 200-component
+  // exports map in package.json, and the components.json manifest that
+  // validate:consumer resolves against). ~176 KB and ~10 files per new
+  // component, in line with the per-component norm this comment already
+  // documents, so this is organic growth rather than bloat. Raised to 30 MB
+  // to restore roughly the same proportional headroom as the resets above.
   '@lostgradient/cinder': {
     packedBytes: 6_000_000,
-    unpackedBytes: 26_000_000,
+    unpackedBytes: 30_000_000,
     fileCount: 5_200,
     largestEntrypointBytes: 2_500_000,
   },
