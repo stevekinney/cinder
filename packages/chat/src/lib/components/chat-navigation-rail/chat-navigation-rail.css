@@ -69,6 +69,8 @@
     translate: 0 -50%;
     inline-size: max-content;
     max-inline-size: 18rem;
+    max-block-size: calc(100dvh - 1rem);
+    overflow: auto;
     padding: var(--cinder-space-2);
     border-radius: var(--cinder-radius-sm);
     background: var(--cinder-surface-raised);
@@ -81,4 +83,7 @@
       transition: none;
     }
   }
+}
+.chat-navigation-rail-preview-left {
+  translate: -100% -50%;
 }

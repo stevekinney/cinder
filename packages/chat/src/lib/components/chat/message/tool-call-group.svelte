@@ -88,7 +88,7 @@
     <span
       class="tool-call-activity-icon"
       data-kind={activityKind}
-      data-active={!hasResult || undefined}
+      data-active={presentation?.tense === 'present' && !hasResult ? true : undefined}
     >
       {#if activityKind === 'search'}<Search size={16} />
       {:else if activityKind === 'fetch'}<Globe size={16} />

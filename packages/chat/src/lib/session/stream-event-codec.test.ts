@@ -86,4 +86,17 @@ describe('chat stream event codec', () => {
       { type: 'text', text: 'streamed' },
     ]);
   });
+
+  test('releases the reader lock when cancellation rejects without replacing the primary error', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        controller.enqueue(new TextEncoder().encode('{invalid}\n'));
+      },
+      cancel() {
+        return Promise.reject(new Error('cancel failed'));
+      },
+    });
+    await expect(Array.fromAsync(decodeChatStreamEvents(stream))).rejects.toThrow();
+    expect(stream.locked).toBe(false);
+  });
 });

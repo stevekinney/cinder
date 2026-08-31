@@ -37,6 +37,199 @@ describe('chat session controller', () => {
     ).toBe(false);
   });
 
+  test('synchronizes subscribed stream lifecycle with the controller placeholder', async () => {
+    let conversation = createConversationHistory({ id: 'subscribe' });
+    const eventsSeen: string[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'hello' }]),
+    });
+    controller.adapter.subscribe?.('subscribe', {
+      onMessage: () => undefined,
+      onTypingChange: () => undefined,
+      onReadReceipt: () => undefined,
+      onStreamBegin: (id) => eventsSeen.push(`begin:${id}`),
+      onTokenPush: (token) => eventsSeen.push(`token:${token}`),
+      onStreamEnd: () => eventsSeen.push('end'),
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+    expect(eventsSeen).toEqual([`begin:${conversation.ids[1]}`, 'token:hello', 'end']);
+  });
+
+  test('ignores subscriptions for another conversation', async () => {
+    let conversation = createConversationHistory({ id: 'current' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'hello' }]),
+    });
+    const unsubscribe = controller.adapter.subscribe?.('another-conversation', {
+      onMessage: () => undefined,
+      onTypingChange: () => undefined,
+      onReadReceipt: () => undefined,
+      onStreamBegin: () => {
+        throw new Error('wrong conversation received stream events');
+      },
+      onTokenPush: () => undefined,
+      onStreamEnd: () => undefined,
+    });
+
+    unsubscribe?.();
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+    expect(Object.values(conversation.messages).at(-1)?.content).toBe('hello');
+  });
+
+  test('does not continue while any emitted tool call lacks a result', async () => {
+    let conversation = createConversationHistory({ id: 'unresolved-tool-call' });
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return events([
+          { type: 'tool_call', id: 'resolved', name: 'read', arguments: {} },
+          { type: 'tool_result', callId: 'resolved', outcome: 'success', content: 'ok' },
+          { type: 'tool_call', id: 'pending', name: 'external', arguments: {} },
+        ]);
+      },
+    });
+
+    await controller.adapter.sendMessage({ role: 'user', content: 'run tools' }, []);
+    expect(calls).toBe(1);
+  });
+
+  test('isolates throwing stream observers and unsubscribe removes them', async () => {
+    let conversation = createConversationHistory({ id: 'observer-errors' });
+    const errors: unknown[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'ok' }]),
+      hooks: {
+        onError: (error) => {
+          errors.push(error);
+          throw new Error('error observer failed');
+        },
+      },
+    });
+    const handler = {
+      onMessage: () => undefined,
+      onTypingChange: () => undefined,
+      onReadReceipt: () => undefined,
+      onStreamBegin: () => {
+        throw new Error('begin observer failed');
+      },
+      onTokenPush: () => undefined,
+      onStreamEnd: () => undefined,
+    };
+    const unsubscribe = controller.adapter.subscribe?.('observer-errors', handler);
+    unsubscribe?.();
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+    expect(errors).toHaveLength(0);
+    controller.adapter.subscribe?.('observer-errors', handler);
+    await controller.adapter.sendMessage({ role: 'user', content: 'again' }, []);
+    expect(errors.length).toBeGreaterThan(0);
+  });
+
+  test('isolates throwing tool observers and continues the turn', async () => {
+    let conversation = createConversationHistory({ id: 'tool-observer-errors' });
+    let calls = 0;
+    const errors: unknown[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        calls++ === 0
+          ? events([
+              { type: 'tool_call', id: 'call', name: 'read', arguments: {} },
+              { type: 'tool_result', callId: 'call', outcome: 'success', content: 'ok' },
+            ])
+          : events([{ type: 'text', text: 'continued' }]),
+      hooks: {
+        onToolResult: () => {
+          throw new Error('tool observer failed');
+        },
+        onError: (error) => {
+          errors.push(error);
+          throw new Error('error observer failed');
+        },
+      },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'read' }, []);
+    expect(calls).toBe(2);
+    expect(errors).toHaveLength(1);
+  });
+
+  test('rejects an approval whose hook returns undefined', async () => {
+    let conversation = createConversationHistory({ id: 'undefined-approval' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        events([
+          { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
+          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+        ]),
+      hooks: { approveToolCall: async () => undefined },
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'write' }, []);
+    await expect(controller.adapter.approveToolCall?.('call')).rejects.toThrow('must return');
+  });
+
+  test('emits stream end on abort and transport error', async () => {
+    let conversation = createConversationHistory({ id: 'terminal-events' });
+    const ends: string[] = [];
+    let rejectStream!: (error: Error) => void;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ signal }) =>
+        new Promise<AsyncIterable<ChatStreamEvent>>((resolve) => {
+          signal.addEventListener(
+            'abort',
+            () => resolve(events([{ type: 'text', text: 'partial' }])),
+            { once: true },
+          );
+          rejectStream = () =>
+            resolve(
+              (async function* () {
+                throw new Error('broken');
+              })(),
+            );
+        }),
+    });
+    controller.adapter.subscribe?.('terminal-events', {
+      onMessage: () => undefined,
+      onTypingChange: () => undefined,
+      onReadReceipt: () => undefined,
+      onStreamBegin: () => undefined,
+      onTokenPush: () => undefined,
+      onStreamEnd: () => ends.push('end'),
+    });
+    const pending = controller.adapter.sendMessage({ role: 'user', content: 'stop' }, []);
+    await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    await controller.adapter.stopGenerating?.('user');
+    await pending;
+    expect(ends).toEqual(['end']);
+    void rejectStream;
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({
@@ -74,6 +267,34 @@ describe('chat session controller', () => {
     const messageId = conversation.ids[0]!;
     await controller.adapter.retryMessage?.(messageId);
     expect(conversation.messages[messageId]?.metadata['_deliveryStatus']).toBeUndefined();
+  });
+
+  test('retries the latest user turn when retained tool rows follow it', async () => {
+    let conversation = createConversationHistory({ id: 'retry-retained-tools' });
+    let attempts = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        attempts += 1;
+        if (attempts === 1) throw new Error('failed after tool execution');
+        return events([{ type: 'text', text: 'recovered' }]);
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'run' }, []),
+    ).rejects.toThrow('failed after tool execution');
+    const userMessageId = conversation.ids[0]!;
+    conversation = appendToolResult(
+      appendToolCall(conversation, { id: 'retained-call', name: 'read', arguments: {} }),
+      { callId: 'retained-call', outcome: 'success', content: 'retained' },
+    );
+
+    await controller.adapter.retryMessage?.(userMessageId);
+
+    expect(Object.values(conversation.messages).at(-1)?.content).toBe('recovered');
   });
 
   test('rewinds an edited message and discards its superseded branch', async () => {

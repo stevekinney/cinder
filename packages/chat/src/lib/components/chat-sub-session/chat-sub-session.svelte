@@ -55,11 +55,12 @@
         <ChatMessage
           {message}
           id={`${instanceId}-${message.id}`}
+          idPrefix={`${instanceId}-${message.id}`}
           toolCallPairs={message.toolCall
             ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
             : []}
           showDefaultActions={false}
-          tabindex={-1}
+          tabindex={0}
         />
       {/if}
     {/each}

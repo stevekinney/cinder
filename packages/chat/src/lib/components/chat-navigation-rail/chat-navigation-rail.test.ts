@@ -56,6 +56,10 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('if (index >= 0) navigate(index)');
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');
+    expect(source).toContain('railMessageIds');
+    expect(source).toContain('cinder-_floating-surface');
+    expect(source).toContain('previewSide');
+    expect(stylesheet).toContain('max-block-size: calc(100dvh - 1rem)');
     expect(source).toContain('[data-message-role="user"]');
     expect(source).toContain('const observedViewport = viewport');
     expect(stylesheet).toContain('position: fixed');

@@ -44,12 +44,18 @@
   let pointerType = $state<string | undefined>(undefined);
   let touchStartY = $state(0);
   let touchMoved = $state(false);
+  let previewSide = $state<'right' | 'left'>('right');
 
   function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
     targetIndex = index;
     previewMessageId = userMessages[index]?.message.id;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    previewPosition = { top: rect.top + rect.height / 2, left: rect.right + 8 };
+    const flip = rect.right + 300 > window.innerWidth;
+    previewSide = flip ? 'left' : 'right';
+    previewPosition = {
+      top: rect.top + rect.height / 2,
+      left: flip ? rect.left - 8 : rect.right + 8,
+    };
   }
 
   function clearPreview(): void {
@@ -110,9 +116,6 @@
     pointerId = null;
     if (rail?.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
     pointerType = undefined;
-    queueMicrotask(() => {
-      suppressNextClick = false;
-    });
   }
 
   function handlePointerMove(event: PointerEvent): void {
@@ -161,7 +164,10 @@
     );
     const observed = new Set<HTMLElement>();
     const reconcile = (): void => {
-      const rows = observedViewport.querySelectorAll<HTMLElement>('[data-message-role="user"]');
+      const railMessageIds = new Set(userMessages.map(({ message }) => message.id));
+      const rows = [
+        ...observedViewport.querySelectorAll<HTMLElement>('[data-message-role="user"]'),
+      ].filter((row) => railMessageIds.has(row.dataset['messageId'] ?? ''));
       const current = new Set(rows);
       for (const row of observed) {
         if (!current.has(row)) {
@@ -175,6 +181,7 @@
           observed.add(row);
         }
       }
+      activeIds = new Set([...activeIds].filter((id) => railMessageIds.has(id)));
     };
     reconcile();
     const mutationObserver = new MutationObserver(reconcile);
@@ -225,7 +232,7 @@
   {#if activePreview}
     <span
       id={`${instanceId}-${previewMessageId}-navigation-preview`}
-      class="chat-navigation-rail-preview"
+      class={`chat-navigation-rail-preview chat-navigation-rail-preview-${previewSide} cinder-_floating-surface`}
       style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
       >{preview(activePreview)}</span
     >

@@ -24,6 +24,8 @@ describe('chat sub-session data contract', () => {
     expect(stylesheet).toContain('.chat-sub-session-live .chat-message');
     expect(stylesheet).toContain('prefers-reduced-motion');
     expect(source).toContain('role="log"');
+    expect(source).toContain('tabindex={0}');
+    expect(source).toContain('idPrefix={`${instanceId}-${message.id}`}');
   });
 
   test('pairs tool calls with their results in the default nested transcript', async () => {

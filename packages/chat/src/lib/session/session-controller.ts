@@ -4,7 +4,7 @@ import {
   finalizeStreamingMessage,
   updateStreamingMessage,
 } from 'conversationalist/streaming';
-import type { ChatAdapter } from '../components/chat/adapter/chat-adapter.ts';
+import type { ChatAdapter, ChatPushHandlers } from '../components/chat/adapter/chat-adapter.ts';
 import {
   appendMessages,
   appendToolCall,
@@ -75,6 +75,20 @@ export function createChatSessionController(
   const toolOwners = new Map<string, string>();
   const messageAttachments = new Map<string, ChatAttachment[]>();
   const pendingApprovals = new Set<string>();
+  const subscribers = new Set<ChatPushHandlers>();
+  const emit = (callback: (handlers: ChatPushHandlers) => void): void => {
+    for (const handlers of subscribers) {
+      try {
+        callback(handlers);
+      } catch (error) {
+        try {
+          options.hooks?.onError?.(error);
+        } catch {
+          /* observers are isolated */
+        }
+      }
+    }
+  };
   const assertActive = (): void => {
     if (disposed) throw new Error('Chat session is disposed');
     if (running) throw new Error('Chat session is already running');
@@ -141,12 +155,15 @@ export function createChatSessionController(
         const started = appendStreamingMessage(before, 'assistant');
         update(started.conversation);
         const messageId = started.messageId;
+        emit((handlers) => handlers.onStreamBegin(messageId));
         const controller = new AbortController();
         active = controller;
         let text = '';
         let toolResultSeen = false;
         let approvalRequired = false;
         let committed = before;
+        const toolCalls = new Set<string>();
+        const toolResults = new Set<string>();
         try {
           const events = await decodeTransportResult(
             await options.transport({
@@ -160,6 +177,7 @@ export function createChatSessionController(
             if (controller.signal.aborted) break;
             if (event.type === 'text') {
               text += event.text;
+              emit((handlers) => handlers.onTokenPush(event.text));
               update(updateStreamingMessage(options.getConversation(), messageId, text));
             } else if (event.type === 'tool_call') {
               update(
@@ -170,15 +188,25 @@ export function createChatSessionController(
                 }),
               );
               toolOwners.set(event.id, userMessageId);
+              toolCalls.add(event.id);
               committed = options.getConversation();
             } else {
               toolResultSeen = true;
+              toolResults.add(event.callId);
               approvalRequired ||= event.outcome === 'action_required';
               if (event.outcome === 'action_required') pendingApprovals.add(event.callId);
               else pendingApprovals.delete(event.callId);
               update(appendToolResult(options.getConversation(), event));
               committed = options.getConversation();
-              options.hooks?.onToolResult?.(event);
+              try {
+                options.hooks?.onToolResult?.(event);
+              } catch (observerError) {
+                try {
+                  options.hooks?.onError?.(observerError);
+                } catch {
+                  /* observer errors are isolated */
+                }
+              }
             }
           }
           update(
@@ -202,9 +230,15 @@ export function createChatSessionController(
           options.hooks?.onError?.(error);
           throw error;
         } finally {
+          emit((handlers) => handlers.onStreamEnd());
           if (active === controller) active = undefined;
         }
-        if (!toolResultSeen || approvalRequired) return;
+        if (
+          !toolResultSeen ||
+          approvalRequired ||
+          [...toolCalls].some((id) => !toolResults.has(id))
+        )
+          return;
       }
       const error = new Error(`Reached the tool-call continuation limit (${maxTurns}).`);
       update(markMessageDeliveryFailed(options.getConversation(), userMessageId));
@@ -231,8 +265,13 @@ export function createChatSessionController(
       assertActive();
       const history = options.getConversation();
       const message = history.messages[messageId];
-      if (!message || message.role !== 'user' || history.ids.at(-1) !== messageId)
-        throw new Error('Only the latest failed user message can be retried');
+      const position = history.ids.indexOf(messageId);
+      if (
+        !message ||
+        message.role !== 'user' ||
+        history.ids.slice(position + 1).some((id) => history.messages[id]?.role === 'user')
+      )
+        throw new Error('Only the latest owning user turn can be retried');
       update(clearMessageDeliveryStatus(options.getConversation(), messageId));
       await run(messageId, messageAttachments.get(messageId) ?? []);
     },
@@ -254,6 +293,13 @@ export function createChatSessionController(
       assertNotDisposed();
       active?.abort();
     },
+    subscribe: (conversationId, handlers) => {
+      if (conversationId !== options.getConversation().id) return () => undefined;
+      subscribers.add(handlers);
+      return () => {
+        subscribers.delete(handlers);
+      };
+    },
     ...(options.hooks?.approveToolCall
       ? {
           approveToolCall: async (id: string) => {
@@ -271,9 +317,11 @@ export function createChatSessionController(
             } finally {
               running = false;
             }
-            if (result) {
-              update(replaceToolResult(options.getConversation(), id, result));
-              pendingApprovals.delete(id);
+            if (!result) throw new Error('Approval hook must return a tool result');
+            update(replaceToolResult(options.getConversation(), id, result));
+            if (result.outcome === 'action_required') pendingApprovals.add(id);
+            else pendingApprovals.delete(id);
+            if (result.outcome !== 'action_required') {
               if (owner && pendingApprovals.size === 0) {
                 await run(owner, messageAttachments.get(owner) ?? []);
                 update(clearMessageDeliveryStatus(options.getConversation(), owner));
@@ -299,9 +347,11 @@ export function createChatSessionController(
             } finally {
               running = false;
             }
-            if (result) {
-              update(replaceToolResult(options.getConversation(), id, result));
-              pendingApprovals.delete(id);
+            if (!result) throw new Error('Denial hook must return a tool result');
+            update(replaceToolResult(options.getConversation(), id, result));
+            if (result.outcome === 'action_required') pendingApprovals.add(id);
+            else pendingApprovals.delete(id);
+            if (result.outcome !== 'action_required') {
               if (owner && pendingApprovals.size === 0) {
                 await run(owner, messageAttachments.get(owner) ?? []);
                 update(clearMessageDeliveryStatus(options.getConversation(), owner));

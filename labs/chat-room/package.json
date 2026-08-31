@@ -18,7 +18,7 @@
 		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts"
 	},
 	"dependencies": {
-		"@anthropic-ai/sdk": "^0.112.1",
+		"@anthropic-ai/sdk": "^0.116.0",
 		"@lasercat/homogenaize": "^1.2.41",
 		"@lostgradient/chat": "workspace:*",
 		"@lostgradient/cinder": "workspace:*",

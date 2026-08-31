@@ -433,13 +433,13 @@
   // does not tear down and reopen the real-time subscription each render.
   const conversationId = $derived(conversation.id);
 
-  const reasoningStreaming = $derived.by(() =>
-    messages.some((message) => {
-      const reasoning = resolveMessageReasoning(message, messageReasoning);
-      const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
-      return Boolean(streaming && activeMessageId === message.id && reasoning);
-    }),
-  );
+  const reasoningStreaming = $derived.by(() => {
+    if (!streaming) return false;
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    const activeMessage = messages.find((message) => message.id === activeMessageId);
+    if (!activeMessage) return false;
+    return Boolean(resolveMessageReasoning(activeMessage, messageReasoning));
+  });
   const toolActivity = $derived.by(() => {
     if (!streaming) return false;
 
@@ -526,6 +526,17 @@
     `${conversationId}:${isVirtualized ? 'virtualized' : 'full'}`,
   );
   const staticRowsResetIdentity = $derived(messages[0]?.id ?? '');
+
+  function describeToolCallSafely(
+    call: import('../conversation-model.ts').ToolCall,
+    result: import('../conversation-model.ts').ToolResult | undefined,
+  ) {
+    try {
+      return adapter?.describeToolCall?.(call, result);
+    } catch {
+      return undefined;
+    }
+  }
 
   const chatVirtualizer = new ChatVirtualizer({
     getScrollElement: () => viewport,
@@ -2664,10 +2675,9 @@
       ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
       : []}
     {@const toolCallPair = pairs.find((pair) => pair.call === message.toolCall) ?? pairs[0]}
-    {@const toolCallPresentation =
-      message.toolCall && adapter?.describeToolCall
-        ? adapter.describeToolCall(message.toolCall, toolCallPair?.result)
-        : undefined}
+    {@const toolCallPresentation = message.toolCall
+      ? describeToolCallSafely(message.toolCall, toolCallPair?.result)
+      : undefined}
     {@const pairedResultMessage = toolCallPair?.result
       ? toolResultMessagesByResult.get(toolCallPair.result)
       : undefined}
@@ -2774,7 +2784,7 @@
       <ToolCallTimeline
         messageId={renderRow.messages[0]!.id}
         describeToolCall={adapter?.describeToolCall
-          ? (pair) => adapter!.describeToolCall!(pair.call, pair.result)
+          ? (pair) => describeToolCallSafely(pair.call, pair.result)
           : undefined}
         pairs={renderRow.messages.flatMap((message) => {
           if (!message.toolCall?.id) return [];

@@ -87,8 +87,14 @@ export async function* decodeChatStreamEvents(
       if (buffer.trim()) yield decodeChatStreamEvent(buffer.trim());
       completed = true;
     } finally {
-      if (!completed) await reader.cancel();
-      reader.releaseLock();
+      try {
+        if (!completed) await reader.cancel();
+      } catch {
+        // Cancellation is cleanup. Never replace the primary read/decode
+        // failure with a provider-specific cancellation error.
+      } finally {
+        reader.releaseLock();
+      }
     }
     return;
   } else {

@@ -8,6 +8,7 @@
   export type ChatMessageProps = Omit<HTMLAttributes<HTMLElement>, 'class'> & {
     /** The message to render */
     message: Message;
+    idPrefix?: string | undefined;
     /** Paired tool calls (from pairToolCallsWithResults) - used for tool-call messages */
     toolCallPairs?: ToolCallPair[];
     /** Whether long content is expanded */
@@ -112,6 +113,7 @@
 
   let {
     message,
+    idPrefix,
     toolCallPairs = [],
     expanded = $bindable(true),
     class: className,
@@ -307,7 +309,7 @@
   const TRUNCATE_THRESHOLD = 500;
 
   // Accessibility IDs
-  const messageId = $derived(`message-${message.id}`);
+  const messageId = $derived(idPrefix ? `${idPrefix}-message` : `message-${message.id}`);
   const roleId = $derived(`${messageId}-role`);
 
   function toggleExpanded() {
