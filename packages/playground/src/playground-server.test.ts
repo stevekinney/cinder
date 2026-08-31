@@ -112,6 +112,7 @@ describe('runConcurrentStartupWarmup', () => {
         await rendererFinished;
         return 'rendered';
       },
+      async () => {},
     );
 
     await Promise.resolve();
@@ -120,6 +121,24 @@ describe('runConcurrentStartupWarmup', () => {
     finishPrebuild?.();
     finishRenderer?.();
     expect(await warmup).toEqual({ prebuild: 'prebuilt', renderer: 'rendered' });
+  });
+
+  it('cleans up the playground when either concurrent startup task rejects', async () => {
+    let cleanupCalls = 0;
+
+    const warmup = runConcurrentStartupWarmup(
+      async () => 'prebuilt',
+      async () => {
+        throw new Error('renderer failed');
+      },
+      async () => {
+        cleanupCalls += 1;
+      },
+    );
+
+    expect(warmup).rejects.toThrow('renderer failed');
+    await warmup.catch(() => {});
+    expect(cleanupCalls).toBe(1);
   });
 });
 
