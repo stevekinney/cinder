@@ -85,15 +85,17 @@
     role="group"
     aria-label={prompt}
   >
-    <p class="cinder-inline-confirm__prompt">{prompt}</p>
-    {@render children?.()}
-    <div class="cinder-inline-confirm__actions">
-      <Button variant="secondary" size="xs" data-cinder-inline-cancel onclick={cancel}
-        >{cancelLabel}</Button
-      >
-      <Button variant={destructive ? 'danger' : 'primary'} size="xs" onclick={confirm}
-        >{confirmLabel}</Button
-      >
+    <div class="cinder-inline-confirm__layout">
+      <p class="cinder-inline-confirm__prompt">{prompt}</p>
+      {@render children?.()}
+      <div class="cinder-inline-confirm__actions">
+        <Button variant="secondary" size="xs" data-cinder-inline-cancel onclick={cancel}
+          >{cancelLabel}</Button
+        >
+        <Button variant={destructive ? 'danger' : 'primary'} size="xs" onclick={confirm}
+          >{confirmLabel}</Button
+        >
+      </div>
     </div>
   </div>
 {/if}

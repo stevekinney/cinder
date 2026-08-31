@@ -2,13 +2,17 @@
 @import '../button/button.css';
 @layer cinder.components {
   .cinder-inline-confirm {
+    container-type: inline-size;
+    container-name: cinder-inline-confirm;
+    background: var(--cinder-status-neutral-background);
+    border-block: 1px solid var(--cinder-status-neutral-border);
+  }
+  .cinder-inline-confirm__layout {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-3);
     padding: var(--cinder-space-3);
-    background: var(--cinder-status-neutral-background);
-    border-block: 1px solid var(--cinder-status-neutral-border);
   }
   .cinder-inline-confirm__prompt {
     margin: 0;
@@ -28,8 +32,8 @@
   .cinder-inline-confirm[data-cinder-destructive] .cinder-inline-confirm__prompt {
     color: var(--cinder-status-danger-text);
   }
-  @media (max-width: 32rem) {
-    .cinder-inline-confirm {
+  @container cinder-inline-confirm (max-width: 32rem) {
+    .cinder-inline-confirm__layout {
       align-items: stretch;
       flex-direction: column;
     }

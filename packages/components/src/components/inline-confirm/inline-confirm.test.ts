@@ -22,6 +22,16 @@ describe('InlineConfirm', () => {
     expect(css).toContain("@import '../button/button.css';");
   });
 
+  test('responds to its own inline size instead of the viewport', () => {
+    const css = readFileSync(new URL('./inline-confirm.css', import.meta.url), 'utf8');
+
+    expect(css).toContain('container-type: inline-size');
+    expect(css).toContain('container-name: cinder-inline-confirm');
+    expect(css).toContain('@container cinder-inline-confirm (max-width: 32rem)');
+    expect(css).toContain('.cinder-inline-confirm__layout');
+    expect(css).not.toContain('@media (max-width: 32rem)');
+  });
+
   test('renders an in-flow named group without modal semantics and confirms', async () => {
     let confirmations = 0;
     const { getByRole, queryByRole } = render(InlineConfirm, {
@@ -32,7 +42,8 @@ describe('InlineConfirm', () => {
       onConfirm: () => confirmations++,
     });
 
-    expect(getByRole('group', { name: 'Delete this comment?' })).not.toBeNull();
+    const group = getByRole('group', { name: 'Delete this comment?' });
+    expect(group.firstElementChild?.classList.contains('cinder-inline-confirm__layout')).toBe(true);
     expect(queryByRole('dialog')).toBeNull();
     await fireEvent.click(getByRole('button', { name: 'Delete comment' }));
     expect(confirmations).toBe(1);
