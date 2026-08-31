@@ -14,3 +14,14 @@ export function navigationIndexFromPointer(
   if (clientY >= last.bottom) return bounds.length - 1;
   return bounds.findIndex(({ top, bottom }) => clientY >= top && clientY <= bottom);
 }
+
+export function navigationScrollFromPointer(
+  clientY: number,
+  top: number,
+  height: number,
+  maximumScroll: number,
+): number {
+  if (height <= 0 || maximumScroll <= 0) return 0;
+  const progress = Math.min(1, Math.max(0, (clientY - top) / height));
+  return progress * maximumScroll;
+}

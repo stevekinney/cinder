@@ -16,7 +16,11 @@
 
 <script lang="ts">
   import { getMessageText } from '../chat/utilities/utilities.ts';
-  import { clampNavigationIndex, navigationIndexFromPointer } from './chat-navigation-rail.ts';
+  import {
+    clampNavigationIndex,
+    navigationIndexFromPointer,
+    navigationScrollFromPointer,
+  } from './chat-navigation-rail.ts';
   let {
     messages,
     viewport = null,
@@ -74,6 +78,15 @@
 
   function updateFromPointer(event: PointerEvent): void {
     if (!rail || pointerId !== event.pointerId) return;
+    if (event.pointerType === 'touch' && rail.scrollHeight > rail.clientHeight) {
+      const railBounds = rail.getBoundingClientRect();
+      rail.scrollTop = navigationScrollFromPointer(
+        event.clientY,
+        railBounds.top,
+        railBounds.height,
+        rail.scrollHeight - rail.clientHeight,
+      );
+    }
     const bounds = [...rail.querySelectorAll<HTMLElement>('.chat-navigation-rail-row')].map(
       (node) => {
         const rect = node.getBoundingClientRect();
@@ -225,13 +238,18 @@
   {/each}
 </nav>
 
+{#each userMessages as target (target.message.id)}
+  <span id={`${instanceId}-${target.message.id}-navigation-preview`} class="sr-only"
+    >{preview(target.message)}</span
+  >
+{/each}
+
 {#if previewMessageId}
   {@const activePreview = userMessages.find(
     ({ message }) => message.id === previewMessageId,
   )?.message}
   {#if activePreview}
     <span
-      id={`${instanceId}-${previewMessageId}-navigation-preview`}
       class={`chat-navigation-rail-preview chat-navigation-rail-preview-${previewSide} cinder-_floating-surface`}
       style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
       >{preview(activePreview)}</span

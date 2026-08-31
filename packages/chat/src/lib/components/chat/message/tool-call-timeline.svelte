@@ -93,7 +93,7 @@
         <div role="listitem">
           <ToolCallGroup
             {pair}
-            occurrenceKey={`${index}-${pair.call.id}`}
+            occurrenceKey={`${navigationMessageId}-${index}-${pair.call.id}`}
             {...activityPresentations[index] ? { presentation: activityPresentations[index] } : {}}
             expanded={expandedCalls.has(`${index}:${pair.call.id}`)}
             onToggle={() => toggleCall(`${index}:${pair.call.id}`)}

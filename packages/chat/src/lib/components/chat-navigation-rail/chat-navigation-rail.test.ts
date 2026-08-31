@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
-import { clampNavigationIndex, navigationIndexFromPointer } from './chat-navigation-rail.ts';
+import {
+  clampNavigationIndex,
+  navigationIndexFromPointer,
+  navigationScrollFromPointer,
+} from './chat-navigation-rail.ts';
 
 describe('chat navigation rail mechanics', () => {
   test('clamps button navigation at both ends', () => {
@@ -27,6 +31,13 @@ describe('chat navigation rail mechanics', () => {
     ).toBe(-1);
   });
 
+  test('maps touch scrubbing across the full overflow range', () => {
+    expect(navigationScrollFromPointer(0, 100, 200, 600)).toBe(0);
+    expect(navigationScrollFromPointer(200, 100, 200, 600)).toBe(300);
+    expect(navigationScrollFromPointer(400, 100, 200, 600)).toBe(600);
+    expect(navigationScrollFromPointer(200, 100, 0, 600)).toBe(0);
+  });
+
   test('keeps the visual contracts in CSS and markup', async () => {
     const source = await readFile(
       new URL('./chat-navigation-rail.svelte', import.meta.url),
@@ -47,6 +58,8 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('aria-describedby');
     expect(source).toContain('aria-describedby={`${instanceId}-${message.id}-navigation-preview`}');
     expect(source).toContain('updateFromPointer(event);');
+    expect(source).toContain('navigationScrollFromPointer(');
+    expect(source).toContain('rail.scrollHeight - rail.clientHeight');
     expect(source).toContain("aria-current={activeMessageId === message.id ? 'true' : undefined}");
     expect(source).toContain('instanceId}-${message.id}-navigation-preview');
     expect(source).toContain('suppressNextClick');

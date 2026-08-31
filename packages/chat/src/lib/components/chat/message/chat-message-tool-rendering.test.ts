@@ -15,6 +15,7 @@ import { tick } from 'svelte';
 
 import { setupHappyDom } from '../../../test/happy-dom.ts';
 import type { Message, ToolCallPair } from '../conversation-model.ts';
+import type { ToolCallPresentation } from '../utilities/types.ts';
 
 setupHappyDom();
 
@@ -63,6 +64,7 @@ describe('ChatMessage — tool-call rendering', () => {
     const source = readFileSync(join(import.meta.dir, 'tool-call-timeline.svelte'), 'utf8');
     expect(source).toContain('expandedCalls.has(`${index}:${pair.call.id}`)');
     expect(source).toContain('toggleCall(`${index}:${pair.call.id}`)');
+    expect(source).toContain('occurrenceKey={`${navigationMessageId}-${index}-${pair.call.id}`}');
   });
 
   test('renders the ToolCallGroup card when a resolved pair is supplied', () => {
@@ -147,6 +149,31 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(timeline?.getAttribute('aria-labelledby')).toBe(heading?.id);
     expect(heading?.textContent).toContain('Called 2 tools');
     expect(container.textContent).toContain('Network unavailable');
+  });
+
+  test('namespaces grouped disclosure ids across separate timelines', async () => {
+    const pair: ToolCallPair = { call: { id: 'reused', name: 'lookup', arguments: {} } };
+    const describeToolCall = (): ToolCallPresentation => ({
+      verb: 'Checking',
+      tense: 'present',
+      detail: 'records',
+      kind: 'search',
+    });
+    const first = render(ToolCallTimeline, {
+      props: { pairs: [pair], messageId: 'timeline-one', describeToolCall },
+    });
+    const second = render(ToolCallTimeline, {
+      props: { pairs: [pair], messageId: 'timeline-two', describeToolCall },
+    });
+    const firstHeader = first.container.querySelector<HTMLElement>('.tool-call-header')!;
+    const secondHeader = second.container.querySelector<HTMLElement>('.tool-call-header')!;
+    await fireEvent.click(firstHeader);
+    await fireEvent.click(secondHeader);
+    const firstControls = firstHeader.getAttribute('aria-controls');
+    const secondControls = secondHeader.getAttribute('aria-controls');
+    expect(firstControls).toBe('tool-call-details-timeline-one-0-reused-panel');
+    expect(secondControls).toBe('tool-call-details-timeline-two-0-reused-panel');
+    expect(firstControls).not.toBe(secondControls);
   });
 
   test('grouped action-required results render null payloads explicitly', async () => {
