@@ -438,6 +438,10 @@
     const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
     const activeMessage = messages.find((message) => message.id === activeMessageId);
     if (!activeMessage) return false;
+    // With no imperative id, only a message explicitly marked as streaming is
+    // an active reasoning row. A completed historical reasoning block on the
+    // last assistant message must not hide the global typing affordance.
+    if (streamingMessageId === null && activeMessage.metadata['streaming'] !== true) return false;
     return Boolean(resolveMessageReasoning(activeMessage, messageReasoning));
   });
   const toolActivity = $derived.by(() => {
@@ -2480,6 +2484,23 @@
       navigate(() => {
         rendered.scrollIntoView({ behavior: scrollState.getScrollBehavior(), block: 'center' });
       });
+      return;
+    }
+    // Grouped tool-call rows expose the first call's id as their DOM anchor.
+    // Resolve later calls to that same rendered group in the non-virtual path.
+    if (targetIndex >= 0 && !isVirtualized) {
+      const row = renderRows[targetIndex];
+      if (row?.type === 'tool-call-group') {
+        const groupAnchor = renderedMessageById(row.messages[0]?.id ?? '');
+        if (groupAnchor) {
+          navigate(() => {
+            groupAnchor.scrollIntoView({
+              behavior: scrollState.getScrollBehavior(),
+              block: 'center',
+            });
+          });
+        }
+      }
       return;
     }
     if (targetIndex >= 0 && isVirtualized) {

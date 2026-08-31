@@ -72,12 +72,16 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');
     expect(source).toContain('railMessageIds');
+    expect(source).toContain("querySelectorAll<HTMLElement>('[data-message-id]')");
+    expect(source).toContain("!row.closest('.chat-sub-session')");
+    expect(source).toContain('visibleMessageIds.delete(removedId)');
+    expect(source).toContain('!visibleMessageIds.has(activeMessageId)');
     expect(source).toContain('const visibleMessageIds = new Set<string>()');
     expect(source).not.toContain('new Set(activeIds)');
     expect(source).toContain('cinder-_floating-surface');
     expect(source).toContain('previewSide');
     expect(stylesheet).toContain('max-block-size: calc(100dvh - 1rem)');
-    expect(source).toContain('[data-message-role="user"]');
+    expect(source).toContain("querySelectorAll<HTMLElement>('[data-message-id]')");
     expect(source).toContain('const observedViewport = viewport');
     expect(stylesheet).toContain('position: fixed');
     expect(stylesheet).toContain('left: var(--chat-navigation-preview-left)');

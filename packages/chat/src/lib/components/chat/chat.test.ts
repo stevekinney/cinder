@@ -1039,6 +1039,7 @@ describe('Chat — imperative API forwarding', () => {
     endStreaming: () => void;
     scrollToBottom: () => void;
     scrollToTop: () => void;
+    scrollToMessage: (messageId: string) => void;
     focusInput: () => void;
   };
 
@@ -1048,6 +1049,7 @@ describe('Chat — imperative API forwarding', () => {
     'endStreaming',
     'scrollToBottom',
     'scrollToTop',
+    'scrollToMessage',
     'focusInput',
   ] as const;
 
@@ -1132,6 +1134,55 @@ describe('Chat — imperative API forwarding', () => {
     expect(
       source.indexOf('navigate(() => {\n        chatVirtualizer.scrollToIndex'),
     ).toBeGreaterThan(-1);
+  });
+
+  test('scrollToMessage resolves a later call id to its non-virtual grouped row', async () => {
+    const now = new Date().toISOString();
+    const conversation: TestConversation = {
+      ...createConversation({ id: 'conversation-grouped-scroll' }),
+      ids: ['first-call', 'second-call'],
+      messages: {
+        'first-call': {
+          id: 'first-call',
+          role: 'tool-call',
+          content: '',
+          position: 0,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+          toolCall: { id: 'first', name: 'first', arguments: {} },
+        },
+        'second-call': {
+          id: 'second-call',
+          role: 'tool-call',
+          content: '',
+          position: 1,
+          createdAt: now,
+          metadata: {},
+          hidden: false,
+          toolCall: { id: 'second', name: 'second', arguments: {} },
+        },
+      },
+      updatedAt: now,
+    };
+    const target = document.createElement('div');
+    document.body.append(target);
+    const instance = mount(Chat, {
+      target,
+      props: { id: 'chat-grouped-scroll', conversation },
+    });
+    try {
+      await tick();
+      const group = target.querySelector<HTMLElement>('#message-first-call')!;
+      const scrollIntoView = jest.fn();
+      group.scrollIntoView = scrollIntoView;
+      (instance as unknown as ChatImperative).scrollToMessage('second-call');
+      expect(scrollIntoView).toHaveBeenCalledTimes(1);
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth', block: 'center' });
+    } finally {
+      unmount(instance);
+      target.remove();
+    }
   });
 
   test('forwarded scroll methods use the virtualized scroll path when enabled', async () => {

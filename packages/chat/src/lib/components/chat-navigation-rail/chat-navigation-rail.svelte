@@ -175,14 +175,17 @@
     const observed = new Set<HTMLElement>();
     const reconcile = (): void => {
       const railMessageIds = new Set(userMessages.map(({ message }) => message.id));
-      const rows = [
-        ...observedViewport.querySelectorAll<HTMLElement>('[data-message-role="user"]'),
-      ].filter((row) => railMessageIds.has(row.dataset['messageId'] ?? ''));
+      const rows = [...observedViewport.querySelectorAll<HTMLElement>('[data-message-id]')].filter(
+        (row) =>
+          railMessageIds.has(row.dataset['messageId'] ?? '') && !row.closest('.chat-sub-session'),
+      );
       const current = new Set(rows);
       for (const row of observed) {
         if (!current.has(row)) {
           observer.unobserve(row);
           observed.delete(row);
+          const removedId = row.dataset['messageId'];
+          if (removedId) visibleMessageIds.delete(removedId);
         }
       }
       for (const row of rows) {
@@ -194,7 +197,7 @@
       for (const id of visibleMessageIds) {
         if (!railMessageIds.has(id)) visibleMessageIds.delete(id);
       }
-      if (activeMessageId && !railMessageIds.has(activeMessageId)) {
+      if (!activeMessageId || !visibleMessageIds.has(activeMessageId)) {
         activeMessageId = [...visibleMessageIds][0];
       }
     };

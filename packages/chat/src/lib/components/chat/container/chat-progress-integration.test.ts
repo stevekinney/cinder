@@ -24,4 +24,9 @@ describe('Chat progress affordance integration contract', () => {
     );
     expect(source).toContain('renderTypingIndicator');
   });
+
+  test('does not treat completed content-driven reasoning as active', () => {
+    expect(source).toContain("activeMessage.metadata['streaming'] !== true");
+    expect(source).toContain('streamingMessageId === null');
+  });
 });
