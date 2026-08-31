@@ -106,6 +106,46 @@ describe('chat session controller', () => {
     expect(calls).toBe(1);
   });
 
+  test('continues an action_required result that has no actionable action descriptor', async () => {
+    let conversation = createConversationHistory({ id: 'action-required-without-action' });
+    let calls = 0;
+    let pendingApproval: unknown;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return calls === 1
+          ? events([
+              { type: 'tool_call', id: 'call', name: 'read', arguments: {} },
+              {
+                type: 'tool_result',
+                callId: 'call',
+                outcome: 'action_required',
+                content: null,
+                pendingApproval: { approvalToken: 'descriptor' },
+              },
+            ])
+          : events([{ type: 'text', text: 'continued' }]);
+      },
+      hooks: {
+        onToolResult: (result) => {
+          pendingApproval = result.pendingApproval;
+        },
+      },
+    });
+
+    await controller.adapter.sendMessage({ role: 'user', content: 'read' }, []);
+
+    expect(calls).toBe(2);
+    expect(pendingApproval).toEqual({ approvalToken: 'descriptor' });
+    expect(
+      Object.values(conversation.messages).some((message) => message.content === 'continued'),
+    ).toBe(true);
+  });
+
   test('isolates throwing stream observers and unsubscribe removes them', async () => {
     let conversation = createConversationHistory({ id: 'observer-errors' });
     const errors: unknown[] = [];
@@ -182,7 +222,13 @@ describe('chat session controller', () => {
       transport: async () =>
         events([
           { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+          {
+            type: 'tool_result',
+            callId: 'call',
+            outcome: 'action_required',
+            content: null,
+            action: { type: 'approval', message: 'Approve this tool call' },
+          },
         ]),
       hooks: { approveToolCall: async () => undefined },
     });
@@ -562,7 +608,13 @@ describe('chat session controller', () => {
         return calls === 1
           ? events([
               { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-              { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+              {
+                type: 'tool_result',
+                callId: 'call',
+                outcome: 'action_required',
+                content: null,
+                action: { type: 'approval', message: 'Approve this tool call' },
+              },
             ])
           : events([{ type: 'text', text: 'approved' }]);
       },
@@ -595,7 +647,13 @@ describe('chat session controller', () => {
         calls += 1;
         return events([
           { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+          {
+            type: 'tool_result',
+            callId: 'call',
+            outcome: 'action_required',
+            content: null,
+            action: { type: 'approval' },
+          },
         ]);
       },
       hooks: {
@@ -695,7 +753,12 @@ describe('chat session controller', () => {
         ),
         { id: 'older-call', name: 'write', arguments: {} },
       ),
-      { callId: 'older-call', outcome: 'action_required', content: null },
+      {
+        callId: 'older-call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval' },
+      },
     );
     conversation = appendUserMessage(conversation, 'newer');
     const newerUser = conversation.ids.at(-1)!;
@@ -706,7 +769,12 @@ describe('chat session controller', () => {
         name: 'write',
         arguments: {},
       }),
-      { callId: 'newer-call', outcome: 'action_required', content: null },
+      {
+        callId: 'newer-call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval' },
+      },
     );
     const markFailed = (id: string): void => {
       conversation = {
@@ -755,7 +823,7 @@ describe('chat session controller', () => {
         ),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null },
+      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
     );
     let resolveApproval!: (result: ToolResult) => void;
     const controller = createChatSessionController({
@@ -790,7 +858,7 @@ describe('chat session controller', () => {
         ),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null },
+      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
     );
     let calls = 0;
     const controller = createChatSessionController({
@@ -827,7 +895,7 @@ describe('chat session controller', () => {
         appendAssistantMessage(createConversationHistory({ id: 'orphan-approval' }), 'Working.'),
         { id: 'call', name: 'write', arguments: {} },
       ),
-      { callId: 'call', outcome: 'action_required', content: null },
+      { callId: 'call', outcome: 'action_required', content: null, action: { type: 'approval' } },
     );
     let calls = 0;
     const controller = createChatSessionController({
@@ -865,7 +933,13 @@ describe('chat session controller', () => {
         calls += 1;
         return events([
           { type: 'tool_call', id: 'a', name: 'write', arguments: {} },
-          { type: 'tool_result', callId: 'a', outcome: 'action_required', content: null },
+          {
+            type: 'tool_result',
+            callId: 'a',
+            outcome: 'action_required',
+            content: null,
+            action: { type: 'approval' },
+          },
           { type: 'tool_call', id: 'b', name: 'read', arguments: {} },
           { type: 'tool_result', callId: 'b', outcome: 'success', content: 'late' },
         ]);
@@ -984,7 +1058,13 @@ describe('chat session controller', () => {
       transport: async () =>
         events([
           { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+          {
+            type: 'tool_result',
+            callId: 'call',
+            outcome: 'action_required',
+            content: null,
+            action: { type: 'approval' },
+          },
         ]),
       hooks: {
         approveToolCall: async () => {
@@ -1009,7 +1089,13 @@ describe('chat session controller', () => {
       transport: async () =>
         events([
           { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-          { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+          {
+            type: 'tool_result',
+            callId: 'call',
+            outcome: 'action_required',
+            content: null,
+            action: { type: 'approval' },
+          },
         ]),
       hooks: {
         denyToolCall: async () => {
@@ -1058,7 +1144,7 @@ describe('chat session controller', () => {
       transport: async () =>
         new Response(
           calls++ === 0
-            ? '{"type":"tool_call","id":"call","name":"delete","arguments":{}}\n{"type":"tool_result","callId":"call","outcome":"action_required","content":null}\n'
+            ? '{"type":"tool_call","id":"call","name":"delete","arguments":{}}\n{"type":"tool_result","callId":"call","outcome":"action_required","content":null,"action":{"type":"approval"}}\n'
             : '{"type":"text","text":"denied"}\n',
           { headers: { 'Content-Type': 'application/x-ndjson' } },
         ),
@@ -1117,7 +1203,13 @@ describe('chat session controller', () => {
         calls++ === 0
           ? events([
               { type: 'tool_call', id: 'call', name: 'write', arguments: {} },
-              { type: 'tool_result', callId: 'call', outcome: 'action_required', content: null },
+              {
+                type: 'tool_result',
+                callId: 'call',
+                outcome: 'action_required',
+                content: null,
+                action: { type: 'approval' },
+              },
             ])
           : events([{ type: 'text', text: 'recovered' }]),
       hooks: {

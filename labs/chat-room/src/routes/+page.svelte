@@ -36,7 +36,7 @@
 				if (value) error = null;
 			},
 			onToolResult: (result) => {
-				updatePendingApproval(pendingApprovals, result as PendingApprovalResult);
+				updatePendingApproval(pendingApprovals, result);
 			},
 			approveToolCall: async (toolCallId) => {
 				const approval = pendingApprovals.get(toolCallId);

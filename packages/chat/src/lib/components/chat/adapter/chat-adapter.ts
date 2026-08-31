@@ -19,7 +19,13 @@
  * @module
  */
 
-import type { Message, MessageInput, ToolCall, ToolResult } from '../conversation-model.ts';
+import type {
+  JSONValue,
+  Message,
+  MessageInput,
+  ToolCall,
+  ToolResult,
+} from '../conversation-model.ts';
 import type { ChatAttachment } from '../input/chat-attachment.ts';
 import type { ToolCallPresentation } from '../utilities/types.ts';
 
@@ -38,6 +44,11 @@ export type ChatReadReceiptEvent = {
    * will show "Read by Alice, Bob" in its accessible label.
    */
   readBy?: string[];
+};
+
+/** A tool result plus an optional JSON-safe provider extension for approval state. */
+export type ChatToolResult = ToolResult & {
+  pendingApproval?: JSONValue;
 };
 
 /**

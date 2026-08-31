@@ -26,8 +26,20 @@ describe('chat approval continuation response', () => {
 
 	test('retains and replaces a pending approval returned by resume', () => {
 		const pendingApprovals = new Map<string, SignedPendingToolApproval>();
-		const first = { approvalToken: 'first' } as SignedPendingToolApproval;
-		const second = { approvalToken: 'second' } as SignedPendingToolApproval;
+		const first = {
+			callId: 'call',
+			toolName: 'remember_note',
+			arguments: {},
+			action: { type: 'approval' as const },
+			approvalToken: 'first'
+		} satisfies SignedPendingToolApproval;
+		const second = {
+			callId: 'call',
+			toolName: 'remember_note',
+			arguments: {},
+			action: { type: 'approval' as const },
+			approvalToken: 'second'
+		} satisfies SignedPendingToolApproval;
 
 		updatePendingApproval(pendingApprovals, {
 			callId: 'call',

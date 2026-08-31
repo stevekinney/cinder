@@ -37,6 +37,8 @@ export type {
   ChatCommand,
   ChatPushHandlers,
   ChatReadReceiptEvent,
+  ChatToolApprovalResolution,
+  ChatToolResult,
 } from './adapter/index.ts';
 
 // Conversation builders — an ergonomic, immutable way to construct the

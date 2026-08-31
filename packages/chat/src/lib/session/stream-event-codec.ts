@@ -1,4 +1,4 @@
-import type { ToolResult } from 'conversationalist';
+import type { ChatToolResult } from '../components/chat/adapter/chat-adapter.ts';
 import { isJSONValue, isToolResult } from '../components/chat/builders.ts';
 import type { JSONValue } from '../components/chat/conversation-model.ts';
 
@@ -6,7 +6,7 @@ import type { JSONValue } from '../components/chat/conversation-model.ts';
 export type ChatStreamEvent =
   | { type: 'text'; text: string }
   | { type: 'tool_call'; id: string; name: string; arguments: JSONValue }
-  | ({ type: 'tool_result'; pendingApproval?: JSONValue } & ToolResult);
+  | ({ type: 'tool_result' } & ChatToolResult);
 
 /** Encodes one event as a newline-delimited JSON frame. */
 export function encodeChatStreamEvent(event: ChatStreamEvent): string {

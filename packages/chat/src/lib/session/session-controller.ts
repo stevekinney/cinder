@@ -4,7 +4,11 @@ import {
   finalizeStreamingMessage,
   updateStreamingMessage,
 } from 'conversationalist/streaming';
-import type { ChatAdapter, ChatPushHandlers } from '../components/chat/adapter/chat-adapter.ts';
+import type {
+  ChatAdapter,
+  ChatPushHandlers,
+  ChatToolResult,
+} from '../components/chat/adapter/chat-adapter.ts';
 import {
   appendMessages,
   appendToolCall,
@@ -43,7 +47,7 @@ export type ChatSessionTransport = (
 ) => ChatSessionTransportResult | Promise<ChatSessionTransportResult>;
 /** Application-owned hooks for tool approval and observability. */
 export type ChatSessionHooks = {
-  onToolResult?: (result: ToolResult) => void;
+  onToolResult?: (result: ChatToolResult) => void;
   approveToolCall?: (toolCallId: string) => Promise<ToolResult | undefined>;
   denyToolCall?: (toolCallId: string) => Promise<ToolResult | undefined>;
   onError?: (error: unknown) => void;
@@ -135,9 +139,11 @@ export function createChatSessionController(
       if (message.role === 'tool-call' && message.toolCall)
         toolOwners.set(message.toolCall.id, findOwningUser(history, id));
       if (message.role === 'tool-result' && message.toolResult) {
-        if (message.toolResult.outcome === 'action_required')
+        if (message.toolResult.outcome === 'action_required' && message.toolResult.action) {
           pendingApprovals.add(message.toolResult.callId);
-        else pendingApprovals.delete(message.toolResult.callId);
+        } else {
+          pendingApprovals.delete(message.toolResult.callId);
+        }
       }
     }
   };
@@ -169,8 +175,15 @@ export function createChatSessionController(
       }
       if (message?.role === 'tool-result' && message.toolResult) {
         const owner = callOwners.get(message.toolResult.callId);
-        if (message.toolResult.outcome === 'action_required' && owner) retainedOwners.add(owner);
-        else if (owner) retainedOwners.delete(owner);
+        if (
+          message.toolResult.outcome === 'action_required' &&
+          message.toolResult.action &&
+          owner
+        ) {
+          retainedOwners.add(owner);
+        } else if (owner) {
+          retainedOwners.delete(owner);
+        }
       }
     }
     for (const owner of resolvedApprovalOwners) retainedOwners.add(owner);
@@ -242,8 +255,10 @@ export function createChatSessionController(
             } else {
               toolResultSeen = true;
               toolResults.add(event.callId);
-              approvalRequired ||= event.outcome === 'action_required';
-              if (event.outcome === 'action_required') pendingApprovals.add(event.callId);
+              const requiresApproval =
+                event.outcome === 'action_required' && event.action !== undefined;
+              approvalRequired ||= requiresApproval;
+              if (requiresApproval) pendingApprovals.add(event.callId);
               else pendingApprovals.delete(event.callId);
               update(appendToolResult(options.getConversation(), event));
               committed = options.getConversation();
