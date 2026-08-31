@@ -13,7 +13,8 @@ describe('Chat progress affordance integration contract', () => {
       'selectChatProgressState({ streaming, reasoningStreaming, toolActivity })',
     );
     expect(source).toContain("progressState === 'streaming'");
-    expect(source).toContain('pairToolCallsWithResults(messages.slice(turnStartIndex))');
+    expect(source).toContain('pairToolCallsWithResults(');
+    expect(source).toContain('messages.filter((message) => activeTurnIds.has(message.id))');
     expect(source).toContain('if (!streaming) return false');
   });
 
@@ -23,8 +24,13 @@ describe('Chat progress affordance integration contract', () => {
       'selectChatProgressState({ streaming, reasoningStreaming, toolActivity })',
     );
     expect(source).toContain('renderTypingIndicator');
-    expect(source).toContain("toolActivityActive={progressState === 'tool'}");
-    expect(source).toContain("activityActive={progressState === 'tool'}");
+    expect(source).toContain(
+      "toolActivityActive={progressState === 'tool' && activeTurnMessageIds.has(message.id)}",
+    );
+    expect(source).toContain(
+      "activityActive={progressState === 'tool' &&\n          renderRow.messages.some((message) => activeTurnMessageIds.has(message.id))}",
+    );
+    expect(source).toContain('const activeTurnMessageIds = $derived.by(() => {');
   });
 
   test('does not treat completed content-driven reasoning as active', () => {

@@ -5,11 +5,11 @@
 		createConversationHistory,
 		decodeChatStreamEvents,
 		type ChatAdapterErrorEvent,
-		type ConversationHistory,
-		type ToolResult
+		type ConversationHistory
 	} from '@lostgradient/chat';
 	import { resolve } from '$app/paths';
 	import { SvelteMap } from 'svelte/reactivity';
+	import { updatePendingApproval, type PendingApprovalResult } from '$lib/pending-approval';
 	import type { SignedPendingToolApproval } from 'armorer';
 	let conversation = $state<ConversationHistory>(
 		createConversationHistory({ id: 'chatroom-demo' })
@@ -36,9 +36,7 @@
 				if (value) error = null;
 			},
 			onToolResult: (result) => {
-				const approval = (result as ToolResult & { pendingApproval?: SignedPendingToolApproval })
-					.pendingApproval;
-				if (approval) pendingApprovals.set(result.callId, approval);
+				updatePendingApproval(pendingApprovals, result as PendingApprovalResult);
 			},
 			approveToolCall: async (toolCallId) => {
 				const approval = pendingApprovals.get(toolCallId);
@@ -49,8 +47,9 @@
 					body: JSON.stringify({ approval, decision: 'approve' })
 				});
 				if (!response.ok) throw new Error(await response.text());
-				pendingApprovals.delete(toolCallId);
-				return (await response.json()) as ToolResult;
+				const result = (await response.json()) as PendingApprovalResult;
+				updatePendingApproval(pendingApprovals, result);
+				return result;
 			},
 			denyToolCall: async (toolCallId) => {
 				pendingApprovals.delete(toolCallId);

@@ -71,7 +71,7 @@
     opacity: 0.45;
   }
   .chat-navigation-rail-label {
-    font-size: var(--cinder-text-3xs);
+    font-size: var(--cinder-text-2xs);
   }
   .chat-navigation-rail-preview {
     position: fixed;

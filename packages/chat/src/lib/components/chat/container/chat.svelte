@@ -60,6 +60,7 @@
     chatRenderRowKey,
     findPairedToolResultIds,
     findRenderRowIndexByMessageId,
+    getActiveTurnMessageIds,
     type ChatRenderRow,
   } from './use-chat-message-groups.svelte.ts';
   import { ChatVirtualizer } from './use-chat-virtualizer.svelte.ts';
@@ -448,15 +449,16 @@
     if (!streaming) return false;
 
     const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
-    const activeMessageIndex = messages.findIndex((message) => message.id === activeMessageId);
-    if (activeMessageIndex < 0) return false;
+    const activeTurnIds = getActiveTurnMessageIds(messages, activeMessageId);
+    return pairToolCallsWithResults(
+      messages.filter((message) => activeTurnIds.has(message.id)),
+    ).some((pair) => !pair.result);
+  });
+  const activeTurnMessageIds = $derived.by(() => {
+    if (!streaming) return new Set<string>();
 
-    let turnStartIndex = activeMessageIndex;
-    while (turnStartIndex > 0 && messages[turnStartIndex]?.role !== 'user') {
-      turnStartIndex -= 1;
-    }
-
-    return pairToolCallsWithResults(messages.slice(turnStartIndex)).some((pair) => !pair.result);
+    const activeMessageId = streamingMessageId ?? messages.at(-1)?.id;
+    return getActiveTurnMessageIds(messages, activeMessageId);
   });
   const progressState = $derived(
     selectChatProgressState({ streaming, reasoningStreaming, toolActivity }),
@@ -2791,7 +2793,7 @@
         onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
-        toolActivityActive={progressState === 'tool'}
+        toolActivityActive={progressState === 'tool' && activeTurnMessageIds.has(message.id)}
         onSuggestionSelect={handleSuggestionSelect}
       >
         {#snippet actions()}
@@ -2830,7 +2832,8 @@
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
         messageId={renderRow.messages[0]!.id}
-        activityActive={progressState === 'tool'}
+        activityActive={progressState === 'tool' &&
+          renderRow.messages.some((message) => activeTurnMessageIds.has(message.id))}
         describeToolCall={adapter?.describeToolCall
           ? (pair) => describeToolCallSafely(pair.call, pair.result)
           : undefined}

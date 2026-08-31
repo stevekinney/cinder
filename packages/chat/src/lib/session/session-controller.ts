@@ -318,7 +318,10 @@ export function createChatSessionController(
   };
   const send = async (message: MessageInput, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
-    const next = appendMessages(options.getConversation(), message);
+    const current = options.getConversation();
+    const cleaned = cleanIncompleteToolRows(current);
+    if (cleaned !== current) update(cleaned);
+    const next = appendMessages(cleaned, message);
     update(next);
     const userMessageId = next.ids.at(-1);
     if (userMessageId) {
@@ -328,9 +331,9 @@ export function createChatSessionController(
   };
   const cleanIncompleteToolRows = (
     history: ConversationHistory,
-    userMessageId: string,
+    userMessageId?: string,
   ): ConversationHistory => {
-    const start = history.ids.indexOf(userMessageId);
+    const start = userMessageId ? history.ids.indexOf(userMessageId) : -1;
     const suffix = history.ids.slice(start + 1);
     const calls = new Set<string>();
     const results = new Set<string>();
@@ -351,8 +354,18 @@ export function createChatSessionController(
     });
     return incomplete.toReversed().reduce((current, id) => removeMessage(current, id), history);
   };
+  const assertNoPendingApprovals = (): void => {
+    assertActive();
+    rebuildApprovalState();
+    if (pendingApprovals.size > 0) {
+      throw new Error('Cannot start a new turn while tool approval is pending');
+    }
+  };
   const adapter: ChatAdapter = {
-    sendMessage: async (message, attachments) => send(message, attachments),
+    sendMessage: async (message, attachments) => {
+      assertNoPendingApprovals();
+      await send(message, attachments);
+    },
     retryMessage: async (messageId) => {
       assertActive();
       const history = options.getConversation();
@@ -361,9 +374,10 @@ export function createChatSessionController(
       if (
         !message ||
         message.role !== 'user' ||
+        message.metadata['_deliveryStatus'] !== 'failed' ||
         history.ids.slice(position + 1).some((id) => history.messages[id]?.role === 'user')
       )
-        throw new Error('Only the latest owning user turn can be retried');
+        throw new Error('Only the latest failed owning user turn can be retried');
       update(
         cleanIncompleteToolRows(
           clearMessageDeliveryStatus(options.getConversation(), messageId),
@@ -374,6 +388,9 @@ export function createChatSessionController(
     },
     editMessage: async ({ messageId, content }) => {
       assertActive();
+      const message = options.getConversation().messages[messageId];
+      if (!message || message.role !== 'user')
+        throw new Error('Only a current user message can be edited');
       const attachments = messageAttachments.get(messageId) ?? [];
       const next = appendUserMessage(
         rewindBeforeMessage(options.getConversation(), messageId),

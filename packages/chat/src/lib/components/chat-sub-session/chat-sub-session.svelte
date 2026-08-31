@@ -27,15 +27,9 @@
   const messages = $derived(getMessages(conversation));
   const instanceId = $props.id();
   const toolCallPairs = $derived(pairToolCallsWithResults(messages));
-  const toolCallPairsByCallId = $derived.by(() => {
-    const pairsByCallId = new Map<string, typeof toolCallPairs>();
-    for (const pair of toolCallPairs) {
-      const pairs = pairsByCallId.get(pair.call.id);
-      if (pairs) pairs.push(pair);
-      else pairsByCallId.set(pair.call.id, [pair]);
-    }
-    return pairsByCallId;
-  });
+  const toolCallPairsByCall = $derived(
+    new Map(toolCallPairs.map((pair) => [pair.call, pair] as const)),
+  );
   const pairedToolResults = $derived(
     new Set(toolCallPairs.flatMap((pair) => (pair.result ? [pair.result] : []))),
   );
@@ -54,13 +48,14 @@
       {#if row}
         {@render row(message)}
       {:else if message.role !== 'tool-result' || !message.toolResult || !pairedToolResults.has(message.toolResult)}
+        {@const toolCallPair = message.toolCall
+          ? toolCallPairsByCall.get(message.toolCall)
+          : undefined}
         <ChatMessage
           {message}
           id={`${instanceId}-${message.id}`}
           idPrefix={`${instanceId}-${message.id}`}
-          toolCallPairs={message.toolCall
-            ? (toolCallPairsByCallId.get(message.toolCall.id) ?? [])
-            : []}
+          toolCallPairs={toolCallPair ? [toolCallPair] : []}
           showDefaultActions={false}
         />
       {/if}

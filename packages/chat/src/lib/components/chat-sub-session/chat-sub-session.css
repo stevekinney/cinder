@@ -3,6 +3,20 @@
 @layer cinder.components {
   .chat-sub-session {
     --cinder-chat-font-size: 0.8125rem;
+    --_cinder-chat-text-4xs: clamp(
+      0.625rem,
+      calc(var(--cinder-chat-font-size) - 0.375rem),
+      0.75rem
+    );
+    --_cinder-chat-text-3xs: clamp(
+      0.6875rem,
+      calc(var(--cinder-chat-font-size) - 0.3125rem),
+      0.75rem
+    );
+    --_cinder-chat-text-xs: clamp(0.75rem, calc(var(--cinder-chat-font-size) - 0.25rem), 0.875rem);
+    --_cinder-chat-text-sm: clamp(0.8125rem, calc(var(--cinder-chat-font-size) - 0.125rem), 1rem);
+    --_cinder-chat-text-base: clamp(0.875rem, var(--cinder-chat-font-size), 1.125rem);
+    --_cinder-chat-text-lg: clamp(1rem, calc(var(--cinder-chat-font-size) + 0.125rem), 1.25rem);
     max-block-size: 7.75rem;
     overflow: hidden;
     position: relative;

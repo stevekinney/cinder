@@ -1,12 +1,60 @@
-import { describe, expect, test } from 'bun:test';
+import { afterEach, describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
+import { setupHappyDom } from '../../test/happy-dom.ts';
+import type { Message } from '../chat/conversation-model.ts';
 import {
   clampNavigationIndex,
   navigationIndexFromPointer,
   navigationScrollFromPointer,
 } from './chat-navigation-rail.ts';
 
+setupHappyDom();
+const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
+const { default: ChatNavigationRail } = await import('./chat-navigation-rail.svelte');
+
+afterEach(() => cleanup());
+
+function userMessage(id: string, content: string): Message {
+  return {
+    id,
+    role: 'user',
+    content,
+    position: 0,
+    createdAt: '2026-08-31T00:00:00.000Z',
+    metadata: {},
+    hidden: false,
+  };
+}
+
 describe('chat navigation rail mechanics', () => {
+  test('keeps preview visible when pointer leaves a focused row', async () => {
+    const { container } = render(ChatNavigationRail, {
+      props: { messages: [userMessage('one', 'First message')] },
+    });
+    const row = container.querySelector<HTMLButtonElement>('.chat-navigation-rail-row')!;
+
+    await fireEvent.focus(row);
+    await fireEvent.pointerLeave(row);
+
+    expect(container.querySelector('.chat-navigation-rail-preview')?.textContent).toContain(
+      'First message',
+    );
+  });
+
+  test('keeps preview visible when focus leaves a hovered row', async () => {
+    const { container } = render(ChatNavigationRail, {
+      props: { messages: [userMessage('one', 'First message')] },
+    });
+    const row = container.querySelector<HTMLButtonElement>('.chat-navigation-rail-row')!;
+
+    await fireEvent.pointerEnter(row);
+    await fireEvent.blur(row);
+
+    expect(container.querySelector('.chat-navigation-rail-preview')?.textContent).toContain(
+      'First message',
+    );
+  });
+
   test('clamps button navigation at both ends', () => {
     expect(clampNavigationIndex(-3, 4)).toBe(0);
     expect(clampNavigationIndex(99, 4)).toBe(3);
@@ -69,6 +117,8 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain(':has(+ .chat-navigation-rail-row[data-scrub-target])');
     expect(stylesheet).toContain(':has(~ .chat-navigation-rail-row[data-scrub-target])');
     expect(stylesheet).toContain('prefers-reduced-motion');
+    expect(stylesheet).toContain('font-size: var(--cinder-text-2xs)');
+    expect(stylesheet).not.toContain('--cinder-text-3xs');
     expect(source).toContain('setPointerCapture');
     expect(source).toContain('if (index >= 0 && index !== lastScrubIndex)');
     expect(source).toContain('new MutationObserver(reconcile)');
@@ -91,6 +141,11 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain('touch-action: none');
     expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');
+    expect(source).toContain('hoverMessageId');
+    expect(source).toContain('focusMessageId');
+    expect(source).toContain('previewMessageId = $derived(hoverMessageId ?? focusMessageId)');
+    expect(source).toContain('onpointerleave={() => clearHoverPreview()}');
+    expect(source).toContain('onblur={() => clearFocusPreview()}');
     expect(source).toContain('lastScrubIndex');
     expect(source).toContain('index !== lastScrubIndex');
     expect(source).toContain('if (!pointerMoved)');

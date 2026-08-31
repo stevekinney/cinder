@@ -42,7 +42,9 @@
   let pointerId = $state<number | null>(null);
   let targetIndex = $state(-1);
   let activeMessageId = $state<string | undefined>(undefined);
-  let previewMessageId = $state<string | undefined>(undefined);
+  let hoverMessageId = $state<string | undefined>(undefined);
+  let focusMessageId = $state<string | undefined>(undefined);
+  const previewMessageId = $derived(hoverMessageId ?? focusMessageId);
   let suppressNextClick = $state(false);
   let previewPosition = $state({ top: 0, left: 0 });
   let pointerType = $state<string | undefined>(undefined);
@@ -55,7 +57,6 @@
 
   function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
     targetIndex = index;
-    previewMessageId = userMessages[index]?.message.id;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
     const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
     const previewWidth = Math.min(previewElement?.offsetWidth || 288, viewportWidth - 16);
@@ -88,8 +89,12 @@
     };
   });
 
-  function clearPreview(): void {
-    previewMessageId = undefined;
+  function clearHoverPreview(): void {
+    hoverMessageId = undefined;
+  }
+
+  function clearFocusPreview(): void {
+    focusMessageId = undefined;
   }
 
   function navigate(index: number): void {
@@ -274,10 +279,16 @@
       aria-current={activeMessageId === message.id ? 'true' : undefined}
       aria-describedby={`${instanceId}-${message.id}-navigation-preview`}
       onclick={() => activate(index)}
-      onpointerenter={(event) => updatePreviewPosition(event, index)}
-      onpointerleave={clearPreview}
-      onfocus={(event) => updatePreviewPosition(event, index)}
-      onblur={clearPreview}
+      onpointerenter={(event) => {
+        hoverMessageId = message.id;
+        updatePreviewPosition(event, index);
+      }}
+      onpointerleave={() => clearHoverPreview()}
+      onfocus={(event) => {
+        focusMessageId = message.id;
+        updatePreviewPosition(event, index);
+      }}
+      onblur={() => clearFocusPreview()}
     >
       <span class="chat-navigation-rail-label">{index + 1}</span>
     </button>
