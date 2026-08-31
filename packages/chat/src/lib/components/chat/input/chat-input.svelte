@@ -235,8 +235,8 @@
 
   function addAttachment(
     file: File,
-    restoreText?: string,
-    restoreRange?: { start: number; end: number },
+    restoreText: string | undefined = undefined,
+    restoreRange: { start: number; end: number } | undefined = undefined,
   ): ChatAttachment | null {
     // Type validation
     if (!isValidType(file)) {
@@ -582,7 +582,7 @@
   function translatePromotedPasteRanges(
     previousValue: string,
     nextValue: string,
-    replacementRange?: { start: number; end: number } | null,
+    replacementRange: { start: number; end: number } | null | undefined = undefined,
   ): void {
     let prefixLength = replacementRange?.start ?? 0;
     let replacedEnd = replacementRange?.end ?? 0;
