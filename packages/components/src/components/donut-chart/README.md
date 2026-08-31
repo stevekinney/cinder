@@ -12,3 +12,19 @@ Use a bar chart when precise comparison matters more than the part-to-whole rela
   onSeriesClick={(datum) => selectStatus(datum)}
 />
 ```
+
+## Usage
+
+```svelte
+<script lang="ts">
+  import { DonutChart } from '@lostgradient/cinder/donut-chart';
+  const data = [
+    { label: 'Build', value: 42 },
+    { label: 'Review', value: 28 },
+    { label: 'Test', value: 18 },
+    { label: 'Docs', value: 12 },
+  ];
+</script>
+
+<DonutChart label="Workload" {data} centerLabel="Tasks" valueLabels />
+```

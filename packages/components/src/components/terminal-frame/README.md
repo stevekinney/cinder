@@ -9,3 +9,18 @@ Use `TerminalOutput` for read-only ANSI streams. Use `TerminalFrame` when the ch
   <PtyRenderer />
 </TerminalFrame>
 ```
+
+## Usage
+
+```svelte
+<script lang="ts">
+  import { TerminalFrame } from '@lostgradient/cinder/terminal-frame';
+</script>
+
+<TerminalFrame title="Build shell" status="connected">
+  {#snippet children()}
+    <pre style="margin: 0;">$ bun run build
+Build complete.</pre>
+  {/snippet}
+</TerminalFrame>
+```
