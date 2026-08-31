@@ -550,6 +550,43 @@ describe('chat session controller', () => {
     ).toEqual({ type: 'approval', message: 'Approve production?' });
   });
 
+  test('keeps a repeated denial request pending and reports that state to Chat', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendUserMessage(createConversationHistory({ id: 'repeated-denial' }), 'deploy'),
+        { id: 'call', name: 'deploy', arguments: {} },
+      ),
+      {
+        callId: 'call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval', message: 'Approve staging?' },
+      },
+    );
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([]),
+      hooks: {
+        denyToolCall: async (callId) => ({
+          callId,
+          outcome: 'action_required',
+          content: null,
+          action: { type: 'approval', message: 'Request an exception?' },
+        }),
+      },
+    });
+
+    await expect(controller.adapter.denyToolCall?.('call')).resolves.toBe('pending');
+    expect(
+      Object.values(conversation.messages).find(
+        (message) => message.role === 'tool-result' && message.toolResult?.callId === 'call',
+      )?.toolResult?.action,
+    ).toEqual({ type: 'approval', message: 'Request an exception?' });
+  });
+
   test('continues the latest owning turn when cross-turn approvals resolve out of order', async () => {
     let conversation = appendToolResult(
       appendToolCall(
