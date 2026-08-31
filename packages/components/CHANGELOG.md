@@ -1,5 +1,378 @@
 # @lostgradient/cinder
 
+## 0.25.0
+
+### Minor Changes
+
+- [#1467](https://github.com/stevekinney/cinder/pull/1467) [`10354a2`](https://github.com/stevekinney/cinder/commit/10354a2506310adc6bdb2fb801d9bc097a232918) Thanks [@stevekinney](https://github.com/stevekinney)! - Extend the existing component foundations needed by the standalone-components project: Meter now accepts semantic verdicts and represents unknown measurements without fabricating numeric ARIA values; Spinner adds an indeterminate `arc` treatment; CapabilityGate adds `permission-limited`; and FormField adds advisory warnings plus managed-policy metadata.
+
+  CodeBlock and PayloadInspector now keep surrounding chrome unselectable while preserving text selection for copyable code, payloads, and diagnostic details. The theming and overlay policies also record Cinder's deliberate rejection of migration-alias token namespaces and item-aligned Select positioning.
+
+- [#1471](https://github.com/stevekinney/cinder/pull/1471) [`819aa26`](https://github.com/stevekinney/cinder/commit/819aa26eeb043728d810e6d23579a187be6248cb) Thanks [@stevekinney](https://github.com/stevekinney)! - Add FindBar, ZoomPanViewer, RelativeTime, Citation, CodeLocation, QuotaMeter, DonutChart, KeyValueEditor, TerminalOutput, TerminalFrame, ModalRegion, GuidanceRegion, and InlineConfirm; add severity presets to Badge and accessible column resizing to DataTable; and migrate editor comment deletion to InlineConfirm.
+
+- [#1469](https://github.com/stevekinney/cinder/pull/1469) [`43600e3`](https://github.com/stevekinney/cinder/commit/43600e3f707f747a3e96eaeda2cdc59ed3721aac) Thanks [@stevekinney](https://github.com/stevekinney)! - Add Form, SettingRow, PolicyLock, Stack, PreviewPanel, HostProvider, ShortcutField, and ParameterField; add Calendar range selection, a shared DateRangeField calendar, and form dirty guards; add a docked non-modal Drawer mode and desktop drag-region utilities; and extend Modal, Slider, and NumberInput for desktop and parameter-editing composition.
+
+- [#1468](https://github.com/stevekinney/cinder/pull/1468) [`546f0a8`](https://github.com/stevekinney/cinder/commit/546f0a8780fd4c6dadda4ab8b66b9783eb1d500a) Thanks [@stevekinney](https://github.com/stevekinney)! - Polish Chat transcript and composer interactions with shared disclosure frames, grouped tool runs, rollback previews, rich clipboard output, markdown node overrides, wide-content breakout, scoped typography, streaming shimmer, and composer keyboard, drag, paste, and async-popover improvements.
+
+  Add nested sub-session transcripts, a user-message navigation rail with live scrubbing, one progress-arbitration selector, layout-stable image attachments with a keyboard-visible maximize affordance, and adapter-supplied tool activity prose, kind icons, and reduced-motion-safe animation.
+
+  Extend Chip with brand-color and breakable URL presentation, and stabilize scrollbars in shared picker surfaces.
+
+  Add the provider-neutral streaming session controller and NDJSON transport helpers, with matching playground and chat-room exemplar integrations.
+
+  Keep ReviewEditor selection-popover dismissal anchored to the authoritative browser selection so a delayed reactive snapshot cannot reopen the popover during the close flush.
+
+- [#1417](https://github.com/stevekinney/cinder/pull/1417) [`8d68c6d`](https://github.com/stevekinney/cinder/commit/8d68c6dff95e4f1b8528050bfa84720fccff4943) Thanks [@stevekinney](https://github.com/stevekinney)! - `FormFieldFrame`'s internal error live region now mounts by default (as an empty `aria-live` region) instead of only when a form field opted in via `errorAlwaysMounted`. This fixes `Input` and `Checkbox` (and every other `FormFieldFrame` consumer that didn't already opt in) mounting their error live region only once an error was actually set, which meant a freshly-mounted `aria-live` node was not reliably announced by NVDA/JAWS the first time an error appeared.
+
+  **Migration note:** the `errorAlwaysMounted` prop on the internal `FormFieldFrame` primitive has been removed with no compatibility alias. The always-mounted behavior it used to opt into is now the default. A new `errorMountedOnDemand?: boolean` prop (default `false`) opts back into the old on-demand-mount behavior for a consumer that has a specific reason to skip pre-mounting the error region. This is an internal primitive (`_internal/form-field-frame.svelte`), not part of the public component API, so most consumers of `@lostgradient/cinder` are unaffected. It is breaking only for code that imported `FormFieldFrame` directly (an unsupported internal path) and passed `errorAlwaysMounted`.
+
+  The always-present error node is kept out of layout when no error is active by a new shared CSS partial, `styles/components/_form-field-error.css`, imported by the required `@lostgradient/cinder/styles` base. It hides the errorless region using the same screen-reader-only technique as the shared `.cinder-sr-only` utility (`position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0`) so it never reserves space or contributes a flex/grid `gap`, while staying fully exposed to assistive technology so it can still announce once an error is set. Select/Combobox/MultiSelect's original per-component copies of this rule used `visibility: hidden` instead, which removes an element from the accessibility tree — silently defeating the announcement fix for those three components too. This change corrects that family-wide, not only for the newly-covered consumers.
+
+  Known limitation carried over, not fixed here: `Input` and `Checkbox` still wrap their entire `FormFieldFrame` in `{#if label || description || error}` (`Checkbox`: `{#if renderInlineLabel || description || error}`), so the error region still isn't mounted at all when none of those are set. The default flip only fixes the ordering once `FormFieldFrame` renders — it does not force `FormFieldFrame` to always render.
+
+- [#1437](https://github.com/stevekinney/cinder/pull/1437) [`df97129`](https://github.com/stevekinney/cinder/commit/df971295ff224b44f6b175d0cac5906d7e7c606a) Thanks [@stevekinney](https://github.com/stevekinney)! - Add `--cinder-duration-pulse`, a public duration token for the breathing opacity loop shared by status indicators and skeleton placeholders.
+
+  `StatusDot`, `ConnectionIndicator`, and `Feed` previously hard-coded `1.4s` for their pulse animations. All three now use the token, so the animation collapses to `0ms` under `prefers-reduced-motion` and `data-reduced-motion='on'` like every other duration token — behavior those three components did not have before, since a literal duration cannot be overridden by a motion context.
+
+  The value is numerically equal to `--cinder-duration-progress-ring-spin` today, but the two are deliberately separate tokens: a pulse and a spinner are unrelated motions and either may be retuned without the other.
+
+  This also moves Cinder's token guardrails onto the DTCG corpus rather than parsing generated CSS. The literal-bypass guard now derives the values it flags from the `duration` and `fontWeight` tokens the corpus declares, so retuning a token re-points the guard automatically; it previously checked for values no token had carried since an earlier retune. No other token value changed.
+
+- [#1438](https://github.com/stevekinney/cinder/pull/1438) [`7905456`](https://github.com/stevekinney/cinder/commit/7905456d3bafa91a78f5c079e1291d511578e117) Thanks [@stevekinney](https://github.com/stevekinney)! - **Breaking: design token names are normalized, with no compatibility aliases.** Every `--cinder-*` custom property listed below is renamed. Update any stylesheet, component, or theme override that references an old name — the old names are gone, not deprecated.
+
+  The pre-1.0 packages use a `minor` bump for breaking changes, per [`.changeset/README.md`](../.changeset/README.md).
+
+  ### Why
+
+  Three rules the corpus broke in places:
+  - **A bare domain carries no role.** `--cinder-danger` could mean the fill, the text, or the border depending on where you used it.
+  - **`color.*` classifies by type rather than intent.** Every token is a color or is not; the namespace said nothing about what the token is for.
+  - **`bg` and `fg` are CSS-derived abbreviations** that describe a usage rather than a meaning.
+
+  ### Renamed
+
+  | Old                              | New                                    |
+  | -------------------------------- | -------------------------------------- |
+  | `--cinder-accent`                | `--cinder-accent-solid`                |
+  | `--cinder-accent-active`         | `--cinder-accent-solid-active`         |
+  | `--cinder-accent-active-on-fill` | `--cinder-accent-solid-active-on-fill` |
+  | `--cinder-accent-hover`          | `--cinder-accent-solid-hover`          |
+  | `--cinder-bg`                    | `--cinder-surface-canvas`              |
+  | `--cinder-button-bg`             | `--cinder-button-background`           |
+  | `--cinder-button-fg`             | `--cinder-button-foreground`           |
+  | `--cinder-color-accent-bg`       | `--cinder-accent-background`           |
+  | `--cinder-color-accent-border`   | `--cinder-accent-border`               |
+  | `--cinder-color-checker-base`    | `--cinder-checker-base`                |
+  | `--cinder-color-checker-tile`    | `--cinder-checker-tile`                |
+  | `--cinder-color-danger-bg`       | `--cinder-status-danger-background`    |
+  | `--cinder-color-danger-border`   | `--cinder-status-danger-border`        |
+  | `--cinder-color-danger-fg`       | `--cinder-status-danger-text`          |
+  | `--cinder-color-danger-muted`    | `--cinder-status-danger-muted`         |
+  | `--cinder-color-danger-subtle`   | `--cinder-status-danger-subtle`        |
+  | `--cinder-color-info-bg`         | `--cinder-status-info-background`      |
+  | `--cinder-color-info-border`     | `--cinder-status-info-border`          |
+  | `--cinder-color-info-fg`         | `--cinder-status-info-text`            |
+  | `--cinder-color-info-muted`      | `--cinder-status-info-muted`           |
+  | `--cinder-color-info-subtle`     | `--cinder-status-info-subtle`          |
+  | `--cinder-color-neutral-bg`      | `--cinder-status-neutral-background`   |
+  | `--cinder-color-neutral-border`  | `--cinder-status-neutral-border`       |
+  | `--cinder-color-neutral-fg`      | `--cinder-status-neutral-text`         |
+  | `--cinder-color-success-bg`      | `--cinder-status-success-background`   |
+  | `--cinder-color-success-border`  | `--cinder-status-success-border`       |
+  | `--cinder-color-success-fg`      | `--cinder-status-success-text`         |
+  | `--cinder-color-success-muted`   | `--cinder-status-success-muted`        |
+  | `--cinder-color-success-subtle`  | `--cinder-status-success-subtle`       |
+  | `--cinder-color-warning-bg`      | `--cinder-status-warning-background`   |
+  | `--cinder-color-warning-border`  | `--cinder-status-warning-border`       |
+  | `--cinder-color-warning-fg`      | `--cinder-status-warning-text`         |
+  | `--cinder-color-warning-muted`   | `--cinder-status-warning-muted`        |
+  | `--cinder-color-warning-subtle`  | `--cinder-status-warning-subtle`       |
+  | `--cinder-danger`                | `--cinder-status-danger-solid`         |
+  | `--cinder-danger-active`         | `--cinder-status-danger-solid-active`  |
+  | `--cinder-danger-contrast`       | `--cinder-status-danger-contrast`      |
+  | `--cinder-danger-hover`          | `--cinder-status-danger-solid-hover`   |
+  | `--cinder-duration`              | `--cinder-duration-base`               |
+  | `--cinder-info`                  | `--cinder-status-info-solid`           |
+  | `--cinder-info-active`           | `--cinder-status-info-solid-active`    |
+  | `--cinder-info-contrast`         | `--cinder-status-info-contrast`        |
+  | `--cinder-info-hover`            | `--cinder-status-info-solid-hover`     |
+  | `--cinder-success`               | `--cinder-status-success-solid`        |
+  | `--cinder-success-active`        | `--cinder-status-success-solid-active` |
+  | `--cinder-success-contrast`      | `--cinder-status-success-contrast`     |
+  | `--cinder-success-hover`         | `--cinder-status-success-solid-hover`  |
+  | `--cinder-text`                  | `--cinder-text-default`                |
+  | `--cinder-warning`               | `--cinder-status-warning-solid`        |
+  | `--cinder-warning-active`        | `--cinder-status-warning-solid-active` |
+  | `--cinder-warning-contrast`      | `--cinder-status-warning-contrast`     |
+  | `--cinder-warning-hover`         | `--cinder-status-warning-solid-hover`  |
+
+  ### Renamed token paths
+
+  These are the keys of the published token artifacts — `@lostgradient/cinder/tokens/resolved/*`, the unresolved corpus documents, and `TOKEN_REGISTRY` — so code that reads a token by its DTCG path needs updating too, not just CSS that references a custom property.
+
+  | Old path                   | New path                      |
+  | -------------------------- | ----------------------------- |
+  | `accent`                   | `accent.solid`                |
+  | `accent.active`            | `accent.solid.active`         |
+  | `accent.active.on-fill`    | `accent.solid.active.on-fill` |
+  | `accent.hover`             | `accent.solid.hover`          |
+  | `background`               | `surface.canvas`              |
+  | `color.accent.background`  | `accent.background`           |
+  | `color.accent.border`      | `accent.border`               |
+  | `color.checker.base`       | `checker.base`                |
+  | `color.checker.tile`       | `checker.tile`                |
+  | `color.danger.background`  | `status.danger.background`    |
+  | `color.danger.border`      | `status.danger.border`        |
+  | `color.danger.foreground`  | `status.danger.text`          |
+  | `color.danger.muted`       | `status.danger.muted`         |
+  | `color.danger.subtle`      | `status.danger.subtle`        |
+  | `color.info.background`    | `status.info.background`      |
+  | `color.info.border`        | `status.info.border`          |
+  | `color.info.foreground`    | `status.info.text`            |
+  | `color.info.muted`         | `status.info.muted`           |
+  | `color.info.subtle`        | `status.info.subtle`          |
+  | `color.neutral.background` | `status.neutral.background`   |
+  | `color.neutral.border`     | `status.neutral.border`       |
+  | `color.neutral.foreground` | `status.neutral.text`         |
+  | `color.success.background` | `status.success.background`   |
+  | `color.success.border`     | `status.success.border`       |
+  | `color.success.foreground` | `status.success.text`         |
+  | `color.success.muted`      | `status.success.muted`        |
+  | `color.success.subtle`     | `status.success.subtle`       |
+  | `color.warning.background` | `status.warning.background`   |
+  | `color.warning.border`     | `status.warning.border`       |
+  | `color.warning.foreground` | `status.warning.text`         |
+  | `color.warning.muted`      | `status.warning.muted`        |
+  | `color.warning.subtle`     | `status.warning.subtle`       |
+  | `danger`                   | `status.danger.solid`         |
+  | `danger.active`            | `status.danger.solid.active`  |
+  | `danger.contrast`          | `status.danger.contrast`      |
+  | `danger.hover`             | `status.danger.solid.hover`   |
+  | `info`                     | `status.info.solid`           |
+  | `info.active`              | `status.info.solid.active`    |
+  | `info.contrast`            | `status.info.contrast`        |
+  | `info.hover`               | `status.info.solid.hover`     |
+  | `motion`                   | `motion.base`                 |
+  | `success`                  | `status.success.solid`        |
+  | `success.active`           | `status.success.solid.active` |
+  | `success.contrast`         | `status.success.contrast`     |
+  | `success.hover`            | `status.success.solid.hover`  |
+  | `text`                     | `text.default`                |
+  | `warning`                  | `status.warning.solid`        |
+  | `warning.active`           | `status.warning.solid.active` |
+  | `warning.contrast`         | `status.warning.contrast`     |
+  | `warning.hover`            | `status.warning.solid.hover`  |
+
+  ### Merged
+
+  | Removed                    | Use instead            |
+  | -------------------------- | ---------------------- |
+  | `--cinder-color-accent-fg` | `--cinder-accent-text` |
+
+  The same merge removes a DTCG path:
+
+  | Removed path              | Use instead   |
+  | ------------------------- | ------------- |
+  | `color.accent.foreground` | `accent.text` |
+
+  `--cinder-color-accent-fg` was a pure alias of `--cinder-accent-text` in the base set and in both theme documents, with no context overriding it independently, so it folds into the token it aliased rather than being renamed.
+
+  ### Not changed
+
+  The solid and soft status families both survive. `--cinder-status-danger-solid` is the opaque fill that carries a contrast label; `--cinder-status-danger-background` is the soft tinted surface. They serve different purposes, so neither replaces the other — they simply now share one `status.danger.*` domain.
+
+- [#1418](https://github.com/stevekinney/cinder/pull/1418) [`bdb990e`](https://github.com/stevekinney/cinder/commit/bdb990e47d789ba2c3b6eb3d33699d793ca8e5ec) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a `variant="code"` prop to `Input` and `Textarea` that applies a shared monospace metric set (font-family, font-size, line-height, tab-size), and adopt it internally in place of ad-hoc mono styling across the JSON Schema editor, schema form, cron editor, front-matter fields, and the playground's CSS token editor.
+
+- [#1421](https://github.com/stevekinney/cinder/pull/1421) [`da961e7`](https://github.com/stevekinney/cinder/commit/da961e755339f3688e77f800b0b1db9127b6a3be) Thanks [@stevekinney](https://github.com/stevekinney)! - Extend the shared exit-transition lifecycle (previously canonical only for `Modal`/`Drawer` via `SlidingDialogState`) across the anchored-overlay family through a new `AnchoredOverlayExitState` helper: `Popover`, `SelectionPopover`, `Tooltip`, `HoverCard`, `NavigationBar`'s mobile panel, and `Dropdown`'s legacy non-popover-API fallback branch now render `data-cinder-closing` and await their real exit transition before unmounting/hiding, instead of snapping away instantly.
+
+  Notably:
+  - `HoverCard` had a hand-rolled version of this pattern with a reopen defect — reopening while it was mid-close could unmount the freshly-reopened card. Migrating onto the shared helper (which generation-guards a reopen) fixes that defect.
+  - `NavigationBar`'s mobile panel previously hid its exit via an unconditional `visibility: hidden`, which made its exit transition invisible even though it animated in. It now fades/slides out symmetrically.
+  - `SpeedDial`'s bespoke `waitForSpeedDialExit` mechanism now delegates its per-action transition waits to the shared `waitForTransitionCompletion` primitive instead of duplicating that parsing logic, and its actions surface now renders `data-cinder-closing`.
+  - `waitForTransitionCompletion` (`_internal/transition-completion.ts`) now resolves immediately for an element whose `transition-property` resolves to `none` (previously it would wait out the leftover computed duration even though no property would ever transition).
+  - `Dropdown`'s legacy `usesLegacySnippetApi` branch renders two mutually-exclusive sub-branches depending on browser support for the native Popover API. The non-popover fallback sub-branch now conforms via `AnchoredOverlayExitState`. The `supportsPopover` sub-branch calls the native `hidePopover()`, which synchronously removes the element from the top layer with no JS hook to delay that removal — it instead now gets a platform-native equivalent (`transition-behavior: allow-discrete` + `@starting-style`) for symmetric, reduced-motion-safe entry/exit.
+
+  `DropdownMenu`, `ContextMenu`, `CommandMenu`, and `MultiSelect` remain on the destroy-on-close exception list documented in `OVERLAY-POLICY.md` (no enter motion today, so an instant close stays symmetric) — this was evaluated and deliberately kept rather than given new motion as part of this change.
+
+- [#1420](https://github.com/stevekinney/cinder/pull/1420) [`afb342c`](https://github.com/stevekinney/cinder/commit/afb342cbf3a1a7c0915b17deddc7db4365108c49) Thanks [@stevekinney](https://github.com/stevekinney)! - Add a `format?: 'hex' | 'rgb' | 'hsl' | 'hwb' | 'oklch'` prop to `ColorField` and `ColorPicker` (default `'hex'`) that controls the emitted string's CSS Color 4 syntax; `value` stays a plain string. Alpha policy: each format decides "opaque" using its own quantization, not literally alpha `=== 1`. Hex quantizes alpha to a byte and omits the alpha suffix once it rounds to `0xff` (plain `#rrggbb` for any alpha `>= ~0.998`, e.g. `0.999`); every other format uses modern space-separated syntax with slash alpha (`oklch(l c h / a)`) and omits the `/ a` segment once alpha rounds to `1` at 4 decimal places (any alpha `>= 0.99995`, e.g. `0.99999`). Out-of-sRGB values are gamut-mapped via CSS Color 4 chroma reduction, powered by the new `culori` dependency. `ColorField`'s existing `formats` (input parsing) prop gains `'oklch'` as an accepted input syntax. `formats` and `format` are independent, but not mutually exclusive: the configured `format` is always an implicitly accepted input syntax too, regardless of what `formats` lists, so e.g. `formats={['hex']}` combined with `format="rgb"` still accepts user-entered `rgb()` values.
+
+- [#1444](https://github.com/stevekinney/cinder/pull/1444) [`a9690ee`](https://github.com/stevekinney/cinder/commit/a9690ee16f928a05f42eeb4537900444a8a0a8fa) Thanks [@stevekinney](https://github.com/stevekinney)! - Model 22 more components' public custom-property surface in the DTCG token corpus, alongside the existing `Button` and `Toggle` entries: `AccordionItem`, `ActionRow`, `Alert`, `AvatarGroup`, `Card`, `Carousel`, `CodeBlock`, `DataTable`, `FeedEvent`, `FileUpload`, `KanbanBoard`, `Marquee`, `Modal`, `SelectableRow`, `SideNavigation`, `Spinner`, `Statistic`, `StatisticGroup`, `StatusDot`, `TableOfContents`, `Tree`, and `VirtualList`.
+
+  Every corpus token added here already existed as a component-owned CSS custom property (documented in each component's `README.md` and `*.variables.json`) — this change adds `$description`, `category`, and a `component` extension for each in `registry.generated.json`, emits its default value as a `:root` declaration in `tokens-base.css` (matching the existing `Button`/`Toggle` pattern, not a documentation-only shadow of the hand-authored component CSS), and documents it in a new "Component tokens" section of `docs/tokens.md`. No existing custom property's default value changes.
+
+  `Marquee`'s play-state channel is deliberately excluded from the corpus: it is the component's own hover/focus/manual-pause/ready state wiring (a CSS custom property used as lightweight internal state, not a theming knob), and DTCG's type system has no way to represent a two-state keyword value. **Breaking:** `--cinder-marquee-play-state` (public) has been renamed to `--_cinder-marquee-play-state` (private) so its naming honestly reflects that it is internal implementation state, never a documented customization point — it no longer appears in `marquee.variables.json`. Anything setting the old public property name directly should stop; it has no effect once this ships.
+
+  `check:component-variable-registry` (CIN-32) is tightened from reporting components the corpus does not yet model to failing on them by default (`--report-only` restores the old warning-only behavior for local iteration) — every component that ships a non-empty `*.variables.json` manifest now has a matching corpus entry.
+
+- [#1377](https://github.com/stevekinney/cinder/pull/1377) [`a002d0b`](https://github.com/stevekinney/cinder/commit/a002d0b504dc926beb9940c47648cff22eb36b13) Thanks [@stevekinney](https://github.com/stevekinney)! - Add controlled and uncontrolled state ownership to JsonSchemaEditor, and render committed JSON with the themed code-block surface.
+
+- [#1419](https://github.com/stevekinney/cinder/pull/1419) [`c760383`](https://github.com/stevekinney/cinder/commit/c760383ff4933b21175477b1ba1306b16adccd67) Thanks [@stevekinney](https://github.com/stevekinney)! - Remove `BentoGrid` and `BentoGrid.Cell`/`BentoCell` and fold their behavior into `Grid` and `Grid.Item`. `bento-grid.css` shipped zero CSS rules of its own — the mosaic layout was always `Grid` underneath — so the bento mosaic is now a documented recipe built from `Grid` and `Grid.Item` rather than a separate component pair, following the marketing-family precedent set in [#1226](https://github.com/stevekinney/cinder/issues/1226).
+
+  Migration: replace `<BentoGrid columns={4} collapse>` with `<Grid columns="repeat(4, minmax(0, 1fr))" narrowCollapseEnabled>`, and replace `<BentoGrid.Cell columnSpan={2} rowSpan={2}>` with `<Grid.Item span={2} rowSpan={2}>` (`Grid.Item`'s incumbent prop is `span`, not `columnSpan`). `Grid.Item` gains a new `rowEnd` prop mirroring the existing `columnEnd`; when both `rowEnd` and `rowSpan` are set on the same `Grid.Item`, `rowEnd` wins, matching `BentoCell`'s prior suppression behavior. There is no compatibility alias for `BentoGridProps`, `BentoGridColumns`, `BentoCellProps`, or the `.cinder-bento-grid`/`.cinder-bento-cell` class hooks — remove any code or CSS that targets them directly.
+
+  Also, `Grid`'s numeric `columns` prop now maps to `repeat(<columns>, minmax(0, 1fr))` instead of `repeat(<columns>, 1fr)`, matching what `BentoGrid` (and `ChoiceGrid`, which composes on `Grid`) already did internally. This is a deliberate breaking visual change for any `Grid` consumer relying on bare `1fr` tracks with content wider than the track — `minmax(0, 1fr)` lets tracks shrink below their content's intrinsic width instead of overflowing. The `narrowCollapseEnabled` default on `Grid` remains `false`; the bento mosaic recipe passes it explicitly.
+
+  A live example of the recipe is available under the Grid documentation as "Asymmetric bento mosaic".
+
+- [#1422](https://github.com/stevekinney/cinder/pull/1422) [`7f223f8`](https://github.com/stevekinney/cinder/commit/7f223f8e25fd246a80c4bdb48e87560ce9272f74) Thanks [@stevekinney](https://github.com/stevekinney)! - Modal accepts a new `chrome?: 'default' | 'none'` prop. `chrome="none"` renders a chromeless, full-bleed surface — the header, visible title, border, `max-width: min(90vw, 32rem)`, and body padding are all suppressed — while every coordination guarantee (focus trap, scroll lock, escape-stack participation, the exit-transition lifecycle, `role="dialog"`/`aria-modal`) stays entirely unchanged. `title` is optional in the chromeless chrome; `aria-label` is required there instead, since no visible title renders to supply the accessible name. The chromeless body also no longer paints the shared scroll-fade's opaque edge gradient, since a transparent full-bleed surface has no surface color to fade into.
+
+  Modal also gains a supported backdrop-color override point: `.cinder-modal` declares `--cinder-modal-backdrop: var(--cinder-overlay-backdrop)` (kept only so tooling can discover the token — a plain, non-self-referencing reference to a different variable), and `::backdrop` reads `background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop))`. The fallback lives on that consuming `background-color` declaration rather than on a redeclaration of the variable itself — a self-referencing `--cinder-modal-backdrop: var(--cinder-modal-backdrop, ...)` would be a CSS custom-property dependency cycle, which computes to invalid and breaks the backdrop for every Modal, override or not. Because `::backdrop` does not reliably inherit custom properties from its originating element across engines, a consumer override must target BOTH the `class` selector and that same class's `::backdrop` — e.g.
+
+  ```css
+  .my-modal {
+    --cinder-modal-backdrop: rgba(0, 0, 0, 0.9);
+  }
+  .my-modal::backdrop {
+    --cinder-modal-backdrop: rgba(0, 0, 0, 0.9);
+  }
+  ```
+
+  — without a `:global()` reach into Modal's internal selectors. (Setting the variable only on `.my-modal` looks like it should work and is silently a no-op in engines where `::backdrop` doesn't inherit it.)
+
+- [#1436](https://github.com/stevekinney/cinder/pull/1436) [`c53469f`](https://github.com/stevekinney/cinder/commit/c53469fbd8c9abbb3da95833799b6960295319b8) Thanks [@stevekinney](https://github.com/stevekinney)! - Publish the DTCG design-token corpus as package exports.
+
+  The token surface is now consumable without running Cinder's resolver or reading its CSS:
+  - `@lostgradient/cinder/tokens` — an index describing the surface and where each part is published.
+  - `@lostgradient/cinder/tokens/resolver` — the DTCG 2025.10 resolver document.
+  - `@lostgradient/cinder/tokens/sets/*`, `/themes/*`, `/modes/*` — the unresolved source documents, exactly as authored.
+  - `@lostgradient/cinder/tokens/resolved/{light,dark,light-reduced-motion,dark-reduced-motion}` — fully resolved token values, one file per context.
+  - `@lostgradient/cinder/tokens/registry` — a typed module mapping token paths to CSS custom properties, grouped by category and by component, with public/private, theme-aware, and deprecation status.
+
+  Resolved contexts now keep each token's identity metadata. Previously an overridden token lost its `$description` and its whole `$extensions` block during resolution, so most tokens in a resolved context could not be mapped back to a CSS custom property. Identity and documentation are inherited from the base token while the value and its `cssRecipe` come from the overriding context.
+
+  `forced-reduced-motion` is intentionally not published as a resolved context; the four exported contexts cover the default and reduced motion pairings.
+
+- [#1412](https://github.com/stevekinney/cinder/pull/1412) [`3f9a572`](https://github.com/stevekinney/cinder/commit/3f9a5729956f4db08647c9bc82e5986ee2b18251) Thanks [@stevekinney](https://github.com/stevekinney)! - Add an optional `href` prop to `PricingCard` (plus `target`/`rel` scoped to the CTA anchor). When `href` is set, the CTA renders as an anchor instead of a button, following the same per-item action-swap pattern as `Steps`. `onPlanSelect` becomes optional when `href` is set, but is not mutually exclusive with it — pass both to navigate and still run a side effect such as analytics tracking.
+
+- [#1415](https://github.com/stevekinney/cinder/pull/1415) [`bdb1954`](https://github.com/stevekinney/cinder/commit/bdb1954d359525d3180bfe32a01bd945bd5fec7f) Thanks [@stevekinney](https://github.com/stevekinney)! - Rename `FileUploadStatus`'s `'success'` member to `'ready'`. `'ready'` is the canonical name because consumers (such as chat attachments) can create entries directly in that state without an upload ever occurring, which `'success'` couldn't express. Migration: replace any `status === 'success'` checks or literal `'success'` values against `FileUploadStatus`/`FileUploadEntry` with `'ready'`. The `data-status` attribute rendered by `FileUploadList` for the ready state also changed from `success` to `ready`; update any selectors that target it.
+
+### Patch Changes
+
+- [#1426](https://github.com/stevekinney/cinder/pull/1426) [`0de7814`](https://github.com/stevekinney/cinder/commit/0de781418392dffe49fb8fca6e5a364358efc3bb) Thanks [@stevekinney](https://github.com/stevekinney)! - Reduce the maximum visual density of large `Spectrogram` plots while preserving maximum aggregation within each sampled bucket. This prevents large SVG heatmaps from creating excessive DOM work during rendering.
+
+- [#1414](https://github.com/stevekinney/cinder/pull/1414) [`b194376`](https://github.com/stevekinney/cinder/commit/b194376254c69ad885af93318ab5e7cd4b45545b) Thanks [@stevekinney](https://github.com/stevekinney)! - Add reciprocal `@avoidWhen` metadata to `Sidebar` and `SideNavigation` pointing at each other, and link both READMEs to the `docs/decisions/side-navigation-vs-sidebar.md` decision now that it is Accepted. Both components remain public and unchanged in behavior; this only clarifies the boundary between the responsive shell (`Sidebar`) and the accessibility-focused nav landmark (`SideNavigation`) in generated component metadata.
+
+- [#1433](https://github.com/stevekinney/cinder/pull/1433) [`84cda0f`](https://github.com/stevekinney/cinder/commit/84cda0f947091bc6f26e62a098a0cd3e03345738) Thanks [@stevekinney](https://github.com/stevekinney)! - `src/styles/tokens-base.css` is now generated from the DTCG token corpus at `src/tokens/` (`bun run --filter=@lostgradient/cinder tokens:generate`) instead of hand-authored, and `tokens:check` (corpus validation plus a generator drift check) replaces the bare `tokens:validate` step in `lint:invariants`. Also adds `src/tokens/resolved/{light,dark,light-reduced-motion,dark-reduced-motion}.json`, fully resolved per-context token snapshots derived from `cinder.resolver.json`. No declaration in `tokens-base.css` changed value — this is a packaging/authoring change, not a design change — but the shipped file's bytes differ (declaration order and comment placement), which is why the published package version moves even though every token value is unchanged.
+
+- [#1413](https://github.com/stevekinney/cinder/pull/1413) [`81a7aa4`](https://github.com/stevekinney/cinder/commit/81a7aa4c9e0c59d8ad5f7a7a6ffaeacd293082e4) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix `Checkbox` forwarding a mutated event to `onchange` instead of the browser's raw native event.
+
+  Previously, `handleChange` ran `commitValue` (which invokes `onValueChangeRequest`/`onValueChange` and can veto the toggle) and mutated the DOM's `checked` state _before_ calling the consumer's `onchange`. That meant a consumer reading `event.target.checked` (or `event.currentTarget.checked`) inside `onchange` would see Cinder's post-veto value, not what the user actually did in the browser.
+
+  **Migration note:** `onchange` now fires immediately after the native change event arrives, forwarding the raw, pre-veto `checked` value—before `onValueChangeRequest`, `onValueChange`, or the DOM re-sync run. If your `onchange` handler relied on the DOM already reflecting a vetoed/committed value, switch to `onValueChange` (fires with the committed value) or `onValueChangeRequest` (can inspect/veto the proposed value) instead.
+
+- [#1442](https://github.com/stevekinney/cinder/pull/1442) [`5250f93`](https://github.com/stevekinney/cinder/commit/5250f93d385e541dc9bff981f0e5f1b9da2bdb12) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix `tokens-base.css` so an explicit `data-reduced-motion="on"` override always wins over the `@media (prefers-reduced-motion: reduce)` block, even when the OS also prefers reduced motion. The media block's selector now also excludes `[data-reduced-motion='on']`, making the two reduced-motion blocks mutually exclusive instead of relying on specificity, which previously let the media block win and silently discard the user's explicit override.
+
+  Also retires the pre-DTCG `tokens:inventory` generator and `token-inventory.md` (dev tooling only, no published change): the discovery artifact it produced predates the corpus-driven pipeline and is now fully superseded by the generated `docs/tokens.md`.
+
+- [#1383](https://github.com/stevekinney/cinder/pull/1383) [`13d1fbc`](https://github.com/stevekinney/cinder/commit/13d1fbc183c7df73ac7405ea599c796ffd11749d) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep the DataGrid's initial active descendant unselected until the user makes a selection.
+
+- [#1407](https://github.com/stevekinney/cinder/pull/1407) [`d1c146b`](https://github.com/stevekinney/cinder/commit/d1c146bc48c5ee9d395fc379f32f71e8bbe9ddf2) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep virtualized DataGrid instances at their initial row and column position during mount, and stabilize sticky header rendering at rest.
+
+- [#1457](https://github.com/stevekinney/cinder/pull/1457) [`62ba19b`](https://github.com/stevekinney/cinder/commit/62ba19bfd7b108a3d3e975b19e72e99cda5255f6) Thanks [@stevekinney](https://github.com/stevekinney)! - Give MatrixChart's active cell a non-colour channel, and reuse the shared label/value ramp in
+  TransferList's header.
+
+  MatrixChart signalled its hovered/active cell with `filter: brightness(1.15)` alone, so the state
+  was conveyed by colour only. It now also doubles the cell's stroke width, which satisfies WCAG
+  1.4.1 without changing any cell's geometry. The chart accessibility notes across MatrixChart,
+  BarChart, LineChart, and AreaChart now name the specific channel that carries interaction state
+  rather than claiming only "distinct series colors".
+
+  TransferList's header label and count adopt the ratified `_label-value.css` classes instead of
+  running a second, divergent type ramp of their own.
+
+  QrCode gains a regression test proving the largest payload QR version 40 can hold, at the
+  strictest error-correction level, encodes and renders rather than falling into the error path.
+  It deliberately asserts no wall-clock budget: a timing threshold is unreliable on a contended
+  CI worker and is the kind of assertion that gets relaxed rather than fixed. The measurement
+  that closed the underlying issue lives on it instead.
+
+- [#1449](https://github.com/stevekinney/cinder/pull/1449) [`064bafe`](https://github.com/stevekinney/cinder/commit/064bafe9dbb17f1613e10c5ec27c7fc2ae10fd6a) Thanks [@stevekinney](https://github.com/stevekinney)! - Stabilise CommandMenu's anchoring, restore CommandPalette's standard focus ring, grid-align
+  FilterBar, and compose Kanban's header buttons from the shared Button.
+
+  `createAnchoredOverlay` gains an opt-in `lockPlacement` option. Floating UI re-runs `flip` on
+  every reposition, so a panel whose height tracks its content can flip across its anchor and back
+  as that content changes. Locking holds the placement resolved when the overlay opened. Off by
+  default, so every other anchored overlay keeps continuous flip behaviour.
+
+  CommandMenu opts into it, which stops the menu jumping vertically as its filtered list narrows,
+  and pairs it with `size` so a panel that runs out of room shrinks and scrolls instead of
+  overflowing the viewport.
+
+  CommandPalette's search input now uses the library's standard focus ring on `:focus-visible`
+  rather than a bespoke full-width `border-block-end` that changed colour.
+
+  FilterBar's controls move from `flex-wrap` to a container-query-driven grid, so facets align
+  across wrap boundaries and the search field stops absorbing all available row space.
+
+  KanbanBoard's column-handle and collapse controls render through the shared `Button` (ghost,
+  small, icon-only) instead of bespoke 32px boxes, inheriting the library's focus, hover, and
+  disabled treatments.
+
+- [#1453](https://github.com/stevekinney/cinder/pull/1453) [`c126de3`](https://github.com/stevekinney/cinder/commit/c126de37a581b73c23661e4d03a317b77846c9f4) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix Card's discarded elevation, rebuild ShareCard on the Input primitive, and give ColorField's
+  swatch an accessible name that carries its value.
+
+  Card's `well` and `danger` variants set `box-shadow: none` unconditionally, at equal specificity
+  after the elevation rules, so an explicit `elevation="md"` or `"lg"` was silently dropped on those
+  variants. The flat treatment is now scoped to `elevation="sm"`, leaving the default look unchanged
+  while letting a consumer-set elevation take effect.
+
+  ShareCard's value becomes a real, keyboard-reachable field: it composes `Input` with
+  `variant="code"` and carries the copy and share controls as an interactive trailing addon, so the
+  URL can be focused, selected, and copied without a pointer. Hand-rolled SVGs are replaced with
+  lucide icons, and the bespoke code-well styling is deleted rather than left to fight the primitive.
+  `ShareCardAction.label` remains the required string accessible name and `labelSnippet` remains
+  optional rich visible content.
+
+  ColorField's swatch button now names its current value — "Choose a color, current color #ff0000"
+  rather than a static label — so screen-reader users can tell what the swatch shows without
+  inspecting the adjacent input.
+
+  The blog-post-grid Card example stops muting its excerpt, which is primary content rather than a
+  secondary annotation, and composes `Link` for the post title so a link reads as a link.
+
+- [#1447](https://github.com/stevekinney/cinder/pull/1447) [`f02d810`](https://github.com/stevekinney/cinder/commit/f02d81074291833881ed3a6040b73d51a1bd4a2c) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix layout and sizing defects across NavigationBar, TimeField, MegaMenu, Table, and StackedListItem.
+
+  NavigationBar's mobile panel rows now derive their corner radius concentrically from the panel
+  that contains them, instead of picking a smaller step off the radius scale. Bottom tabs gain an
+  inline-axis touch-target floor, which they previously lacked entirely — `flex: 1 1 0` plus a
+  zero min-content label let them shrink arbitrarily thin in a narrow bar.
+
+  TimeField's timezone select now matches its sibling time input's vertical rhythm and inherits
+  form-control typography. A native `select` does not inherit font settings, so it had been
+  rendering in browser-default type beside an input at `--cinder-text-sm`.
+
+  MegaMenu's links and submenu triggers share one `padding-block`, so a single panel no longer
+  mixes two row heights.
+
+  Table's sort chevrons move from four to six viewBox units apart. Round caps at `stroke-width: 2`
+  consume a unit off each side of the gap, so the previous spread left the two marks visually
+  touching at the rendered size.
+
+  StackedListItem's `condensed` density now actually condenses. It had been re-declaring the
+  leading value it already inherited, making the variant a no-op.
+
+- [#1446](https://github.com/stevekinney/cinder/pull/1446) [`8da508b`](https://github.com/stevekinney/cinder/commit/8da508b0f8a00170e3812120b01d465f0613d7ac) Thanks [@stevekinney](https://github.com/stevekinney)! - Sharpen type hierarchy and spacing across Footer and StatisticGroup.
+
+  Footer's outer gap moves from `--cinder-space-6` to `--cinder-space-8`. The same token had
+  been spent on two different relationships — brand-to-groups (related) and main-to-legal
+  (unrelated) — so the legal row read as a peer of the link groups. Spacing is now strictly
+  increasing with nesting depth. When a consumer supplies only `copyright` or `legalLinks`,
+  the now-empty main region no longer contributes that outer gap.
+
+  StatisticGroup's `default` variant gains a resting border and per-cell dividers, so it reads
+  as a deliberate treatment rather than an unstyled fallback next to the `cards` and
+  `shared-borders` variants.
+
+  Dividers apply to fixed `columns` counts only. `columns='1'` gets horizontal dividers,
+  `columns={2|3|4}` get vertical ones with each row's last cell suppressed, and
+  `columns='auto'` — the default — gets none: `repeat(auto-fit, …)` has no upper bound on its
+  track count, so CSS cannot identify which cells end a row. An auto group therefore keeps the
+  variant's border, inset surface, and gap without cell dividers. Its sizing tokens are
+  unchanged.
+
+- Updated dependencies [[`546f0a8`](https://github.com/stevekinney/cinder/commit/546f0a8780fd4c6dadda4ab8b66b9783eb1d500a)]:
+  - @lostgradient/markdown@0.4.0
+
 ## 0.24.8
 
 ### Patch Changes
