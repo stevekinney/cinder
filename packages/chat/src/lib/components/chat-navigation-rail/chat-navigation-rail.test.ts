@@ -57,6 +57,8 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');
     expect(source).toContain('railMessageIds');
+    expect(source).toContain('const visibleMessageIds = new Set<string>()');
+    expect(source).not.toContain('new Set(activeIds)');
     expect(source).toContain('cinder-_floating-surface');
     expect(source).toContain('previewSide');
     expect(stylesheet).toContain('max-block-size: calc(100dvh - 1rem)');

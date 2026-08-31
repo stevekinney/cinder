@@ -32,7 +32,6 @@
       .map((message, index) => ({ message, index }))
       .filter(({ message }) => message.role === 'user'),
   );
-  let activeIds = $state(new Set<string>());
   let rail = $state<HTMLElement | null>(null);
   let scrubbing = $state(false);
   let pointerId = $state<number | null>(null);
@@ -141,24 +140,22 @@
       typeof MutationObserver === 'undefined' ||
       !observedViewport
     ) {
-      activeIds = new Set();
       activeMessageId = undefined;
       return;
     }
+    const visibleMessageIds = new Set<string>();
     const observer = new IntersectionObserver(
       (entries) => {
-        const next = new Set(activeIds);
         for (const entry of entries) {
           const id = (entry.target as HTMLElement).dataset['messageId'];
           if (!id) continue;
-          if (entry.isIntersecting) next.add(id);
-          else next.delete(id);
+          if (entry.isIntersecting) visibleMessageIds.add(id);
+          else visibleMessageIds.delete(id);
         }
-        activeIds = next;
         const currentEntry = entries.find((entry) => entry.isIntersecting);
         activeMessageId = currentEntry
           ? (currentEntry.target as HTMLElement).dataset['messageId']
-          : [...next][0];
+          : [...visibleMessageIds][0];
       },
       { root: observedViewport, threshold: 0.5 },
     );
@@ -181,7 +178,12 @@
           observed.add(row);
         }
       }
-      activeIds = new Set([...activeIds].filter((id) => railMessageIds.has(id)));
+      for (const id of visibleMessageIds) {
+        if (!railMessageIds.has(id)) visibleMessageIds.delete(id);
+      }
+      if (activeMessageId && !railMessageIds.has(activeMessageId)) {
+        activeMessageId = [...visibleMessageIds][0];
+      }
     };
     reconcile();
     const mutationObserver = new MutationObserver(reconcile);
