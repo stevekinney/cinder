@@ -12,10 +12,7 @@ SettingRow arranges settings-page guidance and a control while publishing FormFi
 
 <SettingRow id="display-name" label="Display name" description="Shown to collaborators.">
   {#snippet control()}
-    <Input id="display-name" value="" placeholder="Ada Lovelace">
-      {#snippet leading()}{/snippet}
-      {#snippet trailing()}{/snippet}
-    </Input>
+    <Input id="display-name" value="" placeholder="Ada Lovelace" />
   {/snippet}
 </SettingRow>
 ```

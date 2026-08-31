@@ -15,10 +15,7 @@ Use native validation and form controls as usual. The component owns only submit
 
 <Form onSubmit={() => undefined}>
   {#snippet children({ submitting })}
-    <Input id="form-name" label="Name" value="" disabled={submitting}>
-      {#snippet leading()}{/snippet}
-      {#snippet trailing()}{/snippet}
-    </Input>
+    <Input id="form-name" label="Name" value="" disabled={submitting} />
     <Button type="submit" disabled={submitting}>Save</Button>
   {/snippet}
 </Form>

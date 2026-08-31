@@ -83,52 +83,6 @@ describe('A1: buildBaseIndex enforces assertUniqueCssProperties', () => {
   });
 });
 
-describe('resolved-context availability', () => {
-  test('marks non-representable CSS recipes as absent from resolved-context JSON', () => {
-    const baseDocument: TokenDocument = {
-      intrinsic: {
-        $type: 'dimension',
-        $value: { value: 0, unit: 'rem' },
-        $extensions: {
-          'com.lostgradient.cinder': {
-            cssProperty: '--cinder-test-intrinsic',
-            cssRecipe: 'auto',
-            nonRepresentableValue: true,
-            public: true,
-          },
-        },
-      },
-      fixed: {
-        $type: 'dimension',
-        $value: { value: 1, unit: 'rem' },
-        $extensions: {
-          'com.lostgradient.cinder': {
-            cssProperty: '--cinder-test-fixed',
-            cssRecipe: null,
-            public: true,
-          },
-        },
-      },
-    };
-    const resolver = fixtureResolver();
-    const documentsByPath = fixtureDocuments(baseDocument);
-    const registry = buildTokenRegistryFromIndexes(
-      buildBaseIndex(resolver, documentsByPath),
-      themeAwarePaths(resolver, documentsByPath),
-    );
-
-    expect(
-      registry.entries.map(({ path, availableInResolvedContexts }) => ({
-        path,
-        availableInResolvedContexts,
-      })),
-    ).toEqual([
-      { path: 'intrinsic', availableInResolvedContexts: false },
-      { path: 'fixed', availableInResolvedContexts: true },
-    ]);
-  });
-});
-
 describe('A2: cssPropertyToPath is a deterministic canonical path, and cssPropertyToPaths lists every claimant', () => {
   function extendsVerbatimFixture(): TokenDocument {
     return {

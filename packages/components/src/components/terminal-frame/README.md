@@ -7,7 +7,11 @@ Use `TerminalOutput` for read-only ANSI streams. Use `TerminalFrame` when the ch
 ## Usage
 
 ```svelte
-<TerminalFrame title="Build shell" status="connected" onDimensionsChange={resizePty}>
-  <PtyRenderer />
+<script lang="ts">
+  import { TerminalFrame } from '@lostgradient/cinder/terminal-frame';
+</script>
+
+<TerminalFrame title="Build shell" status="connected">
+  <div role="log" aria-label="Interactive shell">$ bun run dev</div>
 </TerminalFrame>
 ```

@@ -6,7 +6,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Zero spacing step, used to explicitly reset a spacing property."
     },
@@ -16,7 +15,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (8px)."
     },
@@ -26,7 +24,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (12px)."
     },
@@ -36,7 +33,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (16px)."
     },
@@ -46,7 +42,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (20px)."
     },
@@ -56,7 +51,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (24px)."
     },
@@ -66,7 +60,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (28px)."
     },
@@ -76,7 +69,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (32px)."
     },
@@ -86,7 +78,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (40px)."
     },
@@ -96,7 +87,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (48px)."
     },
@@ -106,7 +96,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (64px)."
     },
@@ -116,7 +105,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (80px)."
     },
@@ -126,7 +114,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (96px)."
     },
@@ -136,7 +123,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale step (128px)."
     },
@@ -146,7 +132,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale half-step between 0 and 1 (2px)."
     },
@@ -156,7 +141,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Base spacing increment."
     },
@@ -166,7 +150,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale half-step between 1 and 2 (6px)."
     },
@@ -176,7 +159,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale half-step between 2 and 3 (10px)."
     },
@@ -186,7 +168,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spacing scale half-step between 3 and 4 (14px)."
     },
@@ -196,7 +177,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Compact control corner radius (6px)."
     },
@@ -206,7 +186,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default control corner radius."
     },
@@ -216,7 +195,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Surface-level corner radius for cards, dialogs, and other large panels (12px)."
     },
@@ -226,7 +204,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Fully rounded corner radius for pills and circular controls."
     },
@@ -236,7 +213,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default control corner radius alias."
     },
@@ -246,7 +222,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default surface corner radius alias."
     },
@@ -256,7 +231,6 @@
       "category": "shadow",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hairline elevation for barely-raised surfaces. Gained a second hairline layer and higher alphas in this refinement pass (light 0.08 -> 0.1 plus a new 0.06 layer; dark 0.06 -> 0.09 plus a new 0.05 layer) for deeper, crisper elevation. Light and dark themes carry distinct explicit values (see the theme modifier documents) alongside this `light-dark()` recipe."
     },
@@ -266,7 +240,6 @@
       "category": "shadow",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Mid elevation for raised surfaces such as popovers."
     },
@@ -276,7 +249,6 @@
       "category": "shadow",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "High elevation for dialogs and drawers."
     },
@@ -286,7 +258,6 @@
       "category": "shadow",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Elevation for modal/drawer overlay panels. Dark mode uses a stronger black shadow rather than the light-neutral lift the other tiers use, since overlay panels sit above a dimmed backdrop rather than page content."
     },
@@ -296,7 +267,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small control height (24px)."
     },
@@ -306,7 +276,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small control height; the toolbar default (32px)."
     },
@@ -316,7 +285,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large control height; clears the WCAG AAA touch target (44px)."
     },
@@ -326,7 +294,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default UI font stack."
     },
@@ -336,7 +303,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Monospace font stack for code surfaces."
     },
@@ -346,7 +312,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Normal font weight."
     },
@@ -356,7 +321,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium font weight."
     },
@@ -366,7 +330,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Semibold font weight."
     },
@@ -376,7 +339,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Bold font weight."
     },
@@ -386,7 +348,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Smallest font size (11px)."
     },
@@ -396,7 +357,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small font size (12px)."
     },
@@ -406,7 +366,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small font size (13px)."
     },
@@ -416,7 +375,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Base body font size (14px)."
     },
@@ -426,7 +384,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium font size; the button ladder step between base and lg (15px)."
     },
@@ -436,7 +393,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large font size (16px)."
     },
@@ -446,7 +402,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large font size (18px)."
     },
@@ -456,7 +411,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "2xl font size (20px)."
     },
@@ -466,7 +420,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "3xl font size (24px)."
     },
@@ -476,7 +429,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "4xl font size (30px)."
     },
@@ -486,7 +438,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "5xl font size (36px)."
     },
@@ -496,7 +447,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "No extra line height."
     },
@@ -506,7 +456,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Tight line height for headings."
     },
@@ -516,7 +465,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Snug line height."
     },
@@ -526,7 +474,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default body line height."
     },
@@ -536,7 +483,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Relaxed line height for long-form reading."
     },
@@ -546,7 +492,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default letter spacing (no adjustment)."
     },
@@ -556,7 +501,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Tight letter-spacing, -0.01em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem."
     },
@@ -566,7 +510,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Wide letter-spacing, 0.02em. Expressed as a unitless number with an em recipe because DTCG dimension units are limited to px and rem."
     },
@@ -576,7 +519,6 @@
       "category": "typography",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Tab width for monospace/code surfaces (`variant=\"code\"` on Input/Textarea, CodeBlock). Tab characters render as this many spaces' worth."
     },
@@ -586,7 +528,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Minimum touch target size."
     },
@@ -596,7 +537,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Maximum inline size for primary page content. Caps line length and keeps content readable on wide viewports. Used by page layout styles; consumers can override per scope."
     },
@@ -606,7 +546,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Tighter centered column width."
     },
@@ -616,7 +555,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Roomier centered column width."
     },
@@ -626,7 +564,6 @@
       "category": "layout",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Prose column width, 65ch — caps line length at a readable measure. Expressed as a unitless number with a ch recipe because DTCG dimension units are limited to px and rem."
     },
@@ -636,7 +573,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Standard easing curve."
     },
@@ -646,7 +582,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Decelerate-in easing curve."
     },
@@ -656,7 +591,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Accelerate-out easing curve."
     },
@@ -666,7 +600,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Ease-in-out curve."
     },
@@ -676,7 +609,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "A fast, settled ease-out with no overshoot. Previously cubic-bezier(0.34, 1.56, 0.64, 1) — a back-ease whose y1=1.56 overshot to 156% of travel, which on the sheet/drawer (100%-of-panel translate) flung the panel past the viewport edge before settling. This curve keeps the snappy decelerate-in feel with no overshoot."
     },
@@ -686,7 +618,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Instant (no) transition duration."
     },
@@ -696,7 +627,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Fast interaction duration before a reduced-motion modifier applies."
     },
@@ -706,7 +636,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Alias of the base transition duration."
     },
@@ -716,7 +645,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Moderate transition duration."
     },
@@ -726,7 +654,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Slow transition duration."
     },
@@ -736,7 +663,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Repeating spin animation duration."
     },
@@ -746,7 +672,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Repeating pulse animation duration, for the breathing opacity loop shared by status indicators and skeleton placeholders. Numerically equal to `motion.progress.ring.spin` today, but deliberately its own token: a pulse and a spinner are unrelated motions and either may be retuned without the other."
     },
@@ -756,7 +681,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Repeating indeterminate progress-bar animation duration."
     },
@@ -766,7 +690,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Repeating progress-ring spin animation duration."
     },
@@ -776,7 +699,6 @@
       "category": "motion",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Base transition duration."
     },
@@ -786,7 +708,6 @@
       "category": "opacity",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Opacity for disabled elements."
     },
@@ -796,7 +717,6 @@
       "category": "opacity",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Opacity for muted elements."
     },
@@ -806,7 +726,6 @@
       "category": "opacity",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Opacity for faint elements."
     },
@@ -816,7 +735,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Tooltip layer."
     },
@@ -826,7 +744,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Dropdown layer."
     },
@@ -836,7 +753,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Popover layer."
     },
@@ -846,7 +762,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Modal/drawer backdrop layer."
     },
@@ -856,7 +771,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Modal/drawer panel layer."
     },
@@ -866,7 +780,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Toast layer, above modal so confirmations reach users even when a modal is open."
     },
@@ -876,7 +789,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Focused-affordance layer."
     },
@@ -886,7 +798,6 @@
       "category": "z-index",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Drag-preview layer, the topmost tier."
     },
@@ -896,7 +807,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default semantic surface. Theme modifiers provide its dark value."
     },
@@ -906,7 +816,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Elevated semantic surface. Theme modifiers provide its dark value."
     },
@@ -916,7 +825,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white."
     },
@@ -926,7 +834,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Pressed state of the raised surface. Light mode washes toward the accent; dark mode mixes toward white."
     },
@@ -936,7 +843,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Sunken region inside a card body (code blocks, wells, recessed sub-regions)."
     },
@@ -946,7 +852,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover state of the default surface. Light mode washes toward the accent rather than darkening toward black: once the light ramp is anchored at white, its four resting tiers occupy only 0.040 lightness points, so a proportional lightness-only mix would be wider than the whole ramp it has to stay clear of. A light-mode hover that washes toward the brand accent separates by chroma and hue as well, staying legible at a lightness step small enough to fit the ramp."
     },
@@ -956,7 +861,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Pressed state of the default surface. Same accent-wash rationale as `surface.hover`, at a stronger mix percentage."
     },
@@ -966,7 +870,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Inverse surface, used by Tooltip to stay a dark overlay in both themes. Light arm mirrors the text/surface swap (dark bg, light fg); dark arm uses the elevated surface + near-white text so the tooltip reads as a dark elevated layer rather than inverting to light."
     },
@@ -976,7 +879,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Upcoming step marker background. Keeps the inset treatment in light mode (surface-inset is visibly recessed vs surface), but lifts to surface in dark mode where surface-inset is nearly invisible against the dark stage."
     },
@@ -986,7 +888,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness."
     },
@@ -996,7 +897,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill."
     },
@@ -1006,7 +906,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Decorative-only hairline. Never use as a control boundary: it is intentionally below the WCAG 1.4.11 3:1 non-text threshold."
     },
@@ -1016,7 +915,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop."
     },
@@ -1026,7 +924,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`."
     },
@@ -1036,7 +933,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border for surfaces using `surface.inverse` (Tooltip). Transparent in light mode; adds a 1px delineation in dark mode only."
     },
@@ -1046,7 +942,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Muted (secondary) text color."
     },
@@ -1056,7 +951,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Subtle (tertiary) text color."
     },
@@ -1066,7 +960,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Disabled text color. Clears the 3:1 UI floor in both themes even though disabled controls are exempt from WCAG text contrast; a disabled control still has to be visible as a control."
     },
@@ -1076,7 +969,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Text color for use on `surface.inverse` (Tooltip)."
     },
@@ -1086,7 +978,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default body text color."
     },
@@ -1096,7 +987,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Neutral fill for disabled solid controls (disabled-checked checkbox/radio) so they stop misusing `text.disabled` (a text-lightness token) as an assertive fill. The glyph on top must use `text.disabled`, not `accent.contrast`: accent-contrast is dark ink in both arms and would be near-invisible on the dark-arm fill."
     },
@@ -1106,7 +996,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label color for solid accent fills. Light arm flips to white (the indigo fill is dark enough); dark arm keeps dark ink against the bright dark-mode fill."
     },
@@ -1116,7 +1005,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Accent used as text/icon on light surfaces. The light-mode fill accent (L=0.50) reads as a foreground at only ~4.7:1, just clearing AA, so this dedicated, slightly darker foreground token stays necessary for comfortable link/icon legibility. The dark arm matches the dark-mode accent fill."
     },
@@ -1126,7 +1014,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for text/icon links, derived as a darker step of `accent.text` (not the bright fill-derived `accent.solid.hover`, which is lighter than the resting text color and drops below WCAG AA on near-white)."
     },
@@ -1136,7 +1023,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Brand accent fill color."
     },
@@ -1146,7 +1032,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active/pressed step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.15, c and h held constant)."
     },
@@ -1156,7 +1041,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Pressed fill for solid accent surfaces that carry the `accent.contrast` label (primary Button, FloatingAction). Kept distinct from `accent.solid.active` so label-bearing and non-label consumers can diverge if ever needed."
     },
@@ -1166,7 +1050,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for solid accent fills, derived as a darker step of `accent.solid` (l - 0.08, c and h held constant)."
     },
@@ -1176,7 +1059,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft accent-tinted background, mixed 88% toward the current surface."
     },
@@ -1186,7 +1068,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft accent-tinted border, the accent color mixed 60% toward transparent."
     },
@@ -1196,7 +1077,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Focus ring stroke width. A floor, not a preference: WCAG 2.4.13 wants an indicator at least as large as a 2px-thick perimeter of the control."
     },
@@ -1206,7 +1086,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Focus ring offset from the control edge."
     },
@@ -1216,7 +1095,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Focus ring offset band color. The ring is a two-stop box-shadow and box-shadow cannot paint a transparent gap, so the offset band has to be some real color. Pinned to `surface.raised` (the top of the ramp) so the band disappears into raised surfaces, where controls overwhelmingly live, and reads as a light halo on recessed tiers."
     },
@@ -1226,7 +1104,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Focus ring color, relative to `accent.solid` so a consumer override re-derives the ring hue. Light arm clamps L to 0.55 for 3.56:1 against the widened ramp's darkest surface; `h` tracks the accent hue."
     },
@@ -1236,7 +1113,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Ring color tuned for use on solid accent/fill surfaces (FloatingAction primary variant). Light arm is a near-black that contrasts both the accent fill and the page background; dark arm is a near-white that contrasts the bright dark-mode accent and the dark page background."
     },
@@ -1246,7 +1122,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Scrollbar thickness."
     },
@@ -1256,7 +1131,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Scrollbar track color."
     },
@@ -1266,7 +1140,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Scrollbar thumb color."
     },
@@ -1276,7 +1149,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Scrollbar thumb hover color."
     },
@@ -1286,7 +1158,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Overlay backdrop scrim color."
     },
@@ -1296,7 +1167,6 @@
       "category": "size",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Overlay backdrop blur radius."
     },
@@ -1306,7 +1176,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Overlay panel padding."
     },
@@ -1316,7 +1185,6 @@
       "category": "radius",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Overlay panel corner radius."
     },
@@ -1326,7 +1194,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 1."
     },
@@ -1336,7 +1203,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 2."
     },
@@ -1346,7 +1212,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 3."
     },
@@ -1356,7 +1221,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 4."
     },
@@ -1366,7 +1230,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 5."
     },
@@ -1376,7 +1239,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 6."
     },
@@ -1386,7 +1248,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 7."
     },
@@ -1396,7 +1257,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Chart series 8."
     },
@@ -1406,7 +1266,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default vertical stack gap."
     },
@@ -1416,7 +1275,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default inline gap."
     },
@@ -1426,7 +1284,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default control padding."
     },
@@ -1436,7 +1293,6 @@
       "category": "spacing",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default card padding."
     },
@@ -1446,7 +1302,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label color for solid success fills."
     },
@@ -1456,7 +1311,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Success status fill color."
     },
@@ -1466,7 +1320,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active/pressed step for solid success fills."
     },
@@ -1476,7 +1329,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for solid success fills."
     },
@@ -1486,7 +1338,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft success-tinted surface background."
     },
@@ -1496,7 +1347,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Foreground color on the soft success surface."
     },
@@ -1506,7 +1356,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border color on the soft success surface."
     },
@@ -1516,7 +1365,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Success color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1526,7 +1374,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Success color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1536,7 +1383,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label color for solid warning fills."
     },
@@ -1546,7 +1392,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Warning status fill color."
     },
@@ -1556,7 +1401,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active/pressed step for solid warning fills."
     },
@@ -1566,7 +1410,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for solid warning fills."
     },
@@ -1576,7 +1419,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft warning-tinted surface background."
     },
@@ -1586,7 +1428,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Foreground color on the soft warning surface."
     },
@@ -1596,7 +1437,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border color on the soft warning surface."
     },
@@ -1606,7 +1446,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Warning color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1616,7 +1455,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Warning color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1626,7 +1464,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label color for solid danger fills. Dark-mode danger is ~72% lightness; pure white fails WCAG AA on it, so the dark arm uses a near-black ink instead."
     },
@@ -1636,7 +1473,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Danger status fill color."
     },
@@ -1646,7 +1482,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active/pressed step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness."
     },
@@ -1656,7 +1491,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for solid danger fills, explicitly authored and fitted to the in-gamut chroma maximum at this lightness."
     },
@@ -1666,7 +1500,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft danger-tinted surface background."
     },
@@ -1676,7 +1509,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Foreground color on the soft danger surface."
     },
@@ -1686,7 +1518,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border color on the soft danger surface."
     },
@@ -1696,7 +1527,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Danger color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1706,7 +1536,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Danger color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1716,7 +1545,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label color for solid info fills."
     },
@@ -1726,7 +1554,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Info status fill color."
     },
@@ -1736,7 +1563,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active/pressed step for solid info fills."
     },
@@ -1746,7 +1572,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Hover step for solid info fills."
     },
@@ -1756,7 +1581,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft info-tinted surface background."
     },
@@ -1766,7 +1590,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Foreground color on the soft info surface."
     },
@@ -1776,7 +1599,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border color on the soft info surface."
     },
@@ -1786,7 +1608,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Info color moved toward the current text color. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1796,7 +1617,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Info color moved toward the current surface. Derived in one polarity-aware recipe shared by all four status colors."
     },
@@ -1806,7 +1626,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Soft neutral-tinted surface background. Neutral retains the status-triple shape so components never need ad hoc surface mixing for the default variant."
     },
@@ -1816,7 +1635,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Foreground color on the soft neutral surface."
     },
@@ -1826,7 +1644,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Border color on the soft neutral surface."
     },
@@ -1836,7 +1653,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Highest-severity badge foreground."
     },
@@ -1846,7 +1662,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Highest-severity badge background."
     },
@@ -1856,7 +1671,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1865,7 +1679,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1874,7 +1687,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1883,7 +1695,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1892,7 +1703,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1901,7 +1711,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1910,7 +1719,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1919,7 +1727,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1928,7 +1735,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1937,7 +1743,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1946,7 +1751,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1955,7 +1759,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1964,7 +1767,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1973,7 +1775,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1982,7 +1783,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -1991,7 +1791,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false
     },
     {
@@ -2000,7 +1799,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Transparency checkerboard base tile, shared by color-domain components. Light mode preserves the historical white/gray grid; dark mode keeps the pattern visible without flashing a white backing inside dark chrome."
     },
@@ -2010,7 +1808,6 @@
       "category": "color",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Transparency checkerboard alternate tile."
     },
@@ -2021,7 +1818,6 @@
       "component": "button",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Secondary (default) button fill."
     },
@@ -2032,7 +1828,6 @@
       "component": "button",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Secondary (default) button label color."
     },
@@ -2043,7 +1838,6 @@
       "component": "button",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Secondary (default) button border."
     },
@@ -2054,7 +1848,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default button corner radius."
     },
@@ -2065,7 +1858,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small button corner radius."
     },
@@ -2076,7 +1868,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small button corner radius."
     },
@@ -2087,7 +1878,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium button corner radius."
     },
@@ -2098,7 +1888,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large button corner radius."
     },
@@ -2109,7 +1898,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large button corner radius."
     },
@@ -2120,7 +1908,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small button height (24px), aliasing the shared control-height tier."
     },
@@ -2131,7 +1918,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small button height (28px)."
     },
@@ -2142,7 +1928,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium button height (32px)."
     },
@@ -2153,7 +1938,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large button height (36px)."
     },
@@ -2164,7 +1948,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large button height (40px)."
     },
@@ -2175,7 +1958,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small button horizontal padding."
     },
@@ -2186,7 +1968,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small button horizontal padding."
     },
@@ -2197,7 +1978,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium button horizontal padding."
     },
@@ -2208,7 +1988,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large button horizontal padding."
     },
@@ -2219,7 +1998,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large button horizontal padding."
     },
@@ -2230,7 +2008,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small button vertical padding."
     },
@@ -2241,7 +2018,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small button vertical padding."
     },
@@ -2252,7 +2028,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium button vertical padding."
     },
@@ -2263,7 +2038,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large button vertical padding."
     },
@@ -2274,7 +2048,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large button vertical padding."
     },
@@ -2285,7 +2058,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-small button label font size."
     },
@@ -2296,7 +2068,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Small button label font size."
     },
@@ -2307,7 +2078,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Medium button label font size."
     },
@@ -2318,7 +2088,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Large button label font size."
     },
@@ -2329,7 +2098,6 @@
       "component": "button",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Extra-large button label font size."
     },
@@ -2340,7 +2108,6 @@
       "component": "toggle",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Toggle track color in the off, resting state. Light arm preserves the `border.muted` look; dark arm raises lightness for >=3:1 shape contrast against the surface."
     },
@@ -2351,7 +2118,6 @@
       "component": "toggle",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable."
     },
@@ -2362,7 +2128,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between the trigger's disclosure icon and label."
     },
@@ -2373,7 +2138,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Trigger block padding."
     },
@@ -2384,7 +2148,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Trigger inline padding."
     },
@@ -2395,7 +2158,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Trigger label font size."
     },
@@ -2406,7 +2168,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Trigger label font weight."
     },
@@ -2417,7 +2178,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Panel content padding, block-start edge."
     },
@@ -2428,7 +2188,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Panel content padding, block-end edge."
     },
@@ -2439,7 +2198,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Panel content inline padding."
     },
@@ -2450,7 +2208,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Panel content font size."
     },
@@ -2461,7 +2218,6 @@
       "component": "accordion-item",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Panel content line height."
     },
@@ -2472,7 +2228,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Row block padding (default density)."
     },
@@ -2483,7 +2238,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Row inline padding (default density)."
     },
@@ -2494,7 +2248,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Grid column gap between leading/body/trailing regions."
     },
@@ -2505,7 +2258,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Grid row gap between leading/body/trailing regions."
     },
@@ -2516,7 +2268,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between title, description, and meta lines."
     },
@@ -2527,7 +2278,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Title font size."
     },
@@ -2538,7 +2288,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Description font size."
     },
@@ -2549,7 +2298,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Meta line font size."
     },
@@ -2560,7 +2308,6 @@
       "component": "action-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between items in the trailing region."
     },
@@ -2571,7 +2318,6 @@
       "component": "alert",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only."
     },
@@ -2582,7 +2328,6 @@
       "component": "avatar-group",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Horizontal overlap between stacked avatars."
     },
@@ -2593,7 +2338,6 @@
       "component": "card",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Horizontal bleed a card's mobile layout extends past its container on each side."
     },
@@ -2604,7 +2348,6 @@
       "component": "carousel",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": false,
       "deprecated": false,
       "description": "Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length."
     },
@@ -2615,7 +2358,6 @@
       "component": "carousel",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between slides."
     },
@@ -2626,7 +2368,6 @@
       "component": "carousel",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": false,
       "deprecated": false,
       "description": "Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value."
     },
@@ -2637,7 +2378,6 @@
       "component": "carousel",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Pagination dot hit-target size."
     },
@@ -2648,7 +2388,6 @@
       "component": "code-block",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Code surface background. Light arm MUST stay pure `surface-raised` (not `surface-inset`) -- Shiki's github-light token colors measure their AA contrast against that surface with almost no margin; darkening it fails the axe sweep. See code-block.css for the full rationale. Dark arm uses `surface-inset` for the deeper github-dark ground."
     },
@@ -2659,7 +2398,6 @@
       "component": "code-block",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Code text font size."
     },
@@ -2670,7 +2408,6 @@
       "component": "code-block",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": false,
       "deprecated": false,
       "description": "Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height."
     },
@@ -2681,7 +2418,6 @@
       "component": "code-block",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Code text line height."
     },
@@ -2692,7 +2428,6 @@
       "component": "code-block",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Code viewport padding."
     },
@@ -2703,7 +2438,6 @@
       "component": "data-table",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default scroll-viewport height."
     },
@@ -2714,7 +2448,6 @@
       "component": "feed-event",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Rail marker box size (width and height)."
     },
@@ -2725,7 +2458,6 @@
       "component": "file-upload",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Dropzone background."
     },
@@ -2736,7 +2468,6 @@
       "component": "file-upload",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Dropzone border color."
     },
@@ -2747,7 +2478,6 @@
       "component": "file-upload",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Progress bar track background."
     },
@@ -2758,7 +2488,6 @@
       "component": "file-upload",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Progress bar fill."
     },
@@ -2769,7 +2498,6 @@
       "component": "kanban-board",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Column inline-size."
     },
@@ -2780,7 +2508,6 @@
       "component": "kanban-board",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between columns."
     },
@@ -2791,7 +2518,6 @@
       "component": "kanban-board",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Column background."
     },
@@ -2802,7 +2528,6 @@
       "component": "kanban-board",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Card background."
     },
@@ -2813,7 +2538,6 @@
       "component": "kanban-board",
       "public": true,
       "themeAware": true,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves."
     },
@@ -2824,7 +2548,6 @@
       "component": "marquee",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default scroll duration for one full loop."
     },
@@ -2835,7 +2558,6 @@
       "component": "marquee",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between marquee items."
     },
@@ -2846,7 +2568,6 @@
       "component": "modal",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "`::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability."
     },
@@ -2857,7 +2578,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Row block padding (default density)."
     },
@@ -2868,7 +2588,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Row inline padding (default density)."
     },
@@ -2879,7 +2598,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between the row's leading/primary/trailing regions."
     },
@@ -2890,7 +2608,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between primary content lines."
     },
@@ -2901,7 +2618,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between the leading control and label."
     },
@@ -2912,7 +2628,6 @@
       "component": "selectable-row",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between trailing action items."
     },
@@ -2923,7 +2638,6 @@
       "component": "side-navigation",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between top-level navigation items."
     },
@@ -2934,7 +2648,6 @@
       "component": "spinner",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": false,
       "deprecated": false,
       "description": "Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`."
     },
@@ -2945,7 +2658,6 @@
       "component": "spinner",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Spinner diameter (md default; 24px)."
     },
@@ -2956,7 +2668,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between label/value/change rows."
     },
@@ -2967,7 +2678,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between statistic columns when laid out inline."
     },
@@ -2978,7 +2688,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Label font size."
     },
@@ -2989,7 +2698,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Value font size."
     },
@@ -3000,7 +2708,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Value font weight."
     },
@@ -3011,7 +2718,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Value line height (unitless)."
     },
@@ -3022,7 +2728,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between the change indicator icon and its label."
     },
@@ -3033,7 +2738,6 @@
       "component": "statistic",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Change indicator font size."
     },
@@ -3044,7 +2748,6 @@
       "component": "statistic-group",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Gap between statistic cards."
     },
@@ -3055,7 +2758,6 @@
       "component": "statistic-group",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Padding inside each statistic card."
     },
@@ -3066,7 +2768,6 @@
       "component": "statistic-group",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Padding inside each cell in the shared-border layout mode."
     },
@@ -3077,7 +2778,6 @@
       "component": "status-dot",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Dot fill color (default, no status set)."
     },
@@ -3088,7 +2788,6 @@
       "component": "status-dot",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Dot diameter (md default; 10px)."
     },
@@ -3099,7 +2798,6 @@
       "component": "table-of-contents",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Inactive link color."
     },
@@ -3110,7 +2808,6 @@
       "component": "table-of-contents",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Active link color."
     },
@@ -3121,7 +2818,6 @@
       "component": "table-of-contents",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Indent added per heading-depth level."
     },
@@ -3132,7 +2828,6 @@
       "component": "tree",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Drop-target indicator line/ring color."
     },
@@ -3143,7 +2838,6 @@
       "component": "tree",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Drop-target indicator line thickness."
     },
@@ -3154,7 +2848,6 @@
       "component": "tree",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Opacity of an item's row while being dragged."
     },
@@ -3165,7 +2858,6 @@
       "component": "virtual-list",
       "public": true,
       "themeAware": false,
-      "availableInResolvedContexts": true,
       "deprecated": false,
       "description": "Default scroll-viewport height."
     }

@@ -32,8 +32,6 @@ export const tokensInComponent: readonly string[] | undefined =
 // Entries stay iterable and structurally match the exported entry type.
 export const entries: readonly TokenRegistryEntry[] = TOKEN_REGISTRY.entries;
 export const firstCssProperty: string | undefined = TOKEN_REGISTRY.entries[0]?.cssProperty;
-export const firstResolvedContextAvailability: boolean | undefined =
-  TOKEN_REGISTRY.entries[0]?.availableInResolvedContexts;
 
 // The optional-key facets are readable without a non-null assertion, which is
 // what makes them optional keys rather than required-with-undefined.

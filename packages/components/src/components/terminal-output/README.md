@@ -5,5 +5,9 @@ Read-only ANSI process output. It supports SGR 16-color foregrounds, bold/reset,
 ## Usage
 
 ```svelte
+<script lang="ts">
+  import { TerminalOutput } from '@lostgradient/cinder/terminal-output';
+</script>
+
 <TerminalOutput aria-label="Build output" value={'\u001b[32mready\u001b[0m\n'} />
 ```
