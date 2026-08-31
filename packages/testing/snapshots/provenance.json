@@ -1,12 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "chat-navigation-rail",
-    "chat-sub-session"
-  ],
-  "renderedSourceSha": "86d3162b9c389832080b8382500eb2dd1c801644",
+  "componentScope": ["chat-navigation-rail", "chat-sub-session"],
+  "renderedSourceSha": "75e57acf6ba93333e099ac2cec5d230557b1c643",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "x64",
+  "architecture": "arm64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }
