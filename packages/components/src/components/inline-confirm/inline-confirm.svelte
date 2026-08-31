@@ -78,24 +78,22 @@
 </script>
 
 {#if open}
-  <div class="cinder-inline-confirm-container">
-    <div
-      bind:this={root}
-      class={classNames('cinder-inline-confirm', className)}
-      data-cinder-destructive={destructive ? '' : undefined}
-      role="group"
-      aria-label={prompt}
-    >
-      <p class="cinder-inline-confirm__prompt">{prompt}</p>
-      {@render children?.()}
-      <div class="cinder-inline-confirm__actions">
-        <Button variant="secondary" size="xs" data-cinder-inline-cancel onclick={cancel}
-          >{cancelLabel}</Button
-        >
-        <Button variant={destructive ? 'danger' : 'primary'} size="xs" onclick={confirm}
-          >{confirmLabel}</Button
-        >
-      </div>
+  <div
+    bind:this={root}
+    class={classNames('cinder-inline-confirm', className)}
+    data-cinder-destructive={destructive ? '' : undefined}
+    role="group"
+    aria-label={prompt}
+  >
+    <p class="cinder-inline-confirm__prompt">{prompt}</p>
+    {@render children?.()}
+    <div class="cinder-inline-confirm__actions">
+      <Button variant="secondary" size="xs" data-cinder-inline-cancel onclick={cancel}
+        >{cancelLabel}</Button
+      >
+      <Button variant={destructive ? 'danger' : 'primary'} size="xs" onclick={confirm}
+        >{confirmLabel}</Button
+      >
     </div>
   </div>
 {/if}
