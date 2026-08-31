@@ -1,6 +1,7 @@
 ---
 '@lostgradient/cinder': minor
 '@lostgradient/chat': minor
+'@lostgradient/editor': patch
 '@lostgradient/markdown': minor
 ---
 
@@ -11,3 +12,5 @@ Add nested sub-session transcripts, a user-message navigation rail with live scr
 Extend Chip with brand-color and breakable URL presentation, and stabilize scrollbars in shared picker surfaces.
 
 Add the provider-neutral streaming session controller and NDJSON transport helpers, with matching playground and chat-room exemplar integrations.
+
+Keep ReviewEditor selection-popover dismissal anchored to the authoritative browser selection so a delayed reactive snapshot cannot reopen the popover during the close flush.

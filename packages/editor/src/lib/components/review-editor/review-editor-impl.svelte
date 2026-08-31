@@ -816,13 +816,13 @@
         selectionTimeoutId = null;
       }
 
-      const currentSelection = window.getSelection();
+      const browserSelection = window.getSelection();
       if (dismissedSelection) {
         const isDismissedSelection =
-          currentSelection?.anchorNode === dismissedSelection.anchorNode &&
-          currentSelection.anchorOffset === dismissedSelection.anchorOffset &&
-          currentSelection.focusNode === dismissedSelection.focusNode &&
-          currentSelection.focusOffset === dismissedSelection.focusOffset;
+          browserSelection?.anchorNode === dismissedSelection.anchorNode &&
+          browserSelection.anchorOffset === dismissedSelection.anchorOffset &&
+          browserSelection.focusNode === dismissedSelection.focusNode &&
+          browserSelection.focusOffset === dismissedSelection.focusOffset;
         if (isDismissedSelection) return;
         dismissedSelection = undefined;
       }
@@ -846,8 +846,6 @@
       if (selectionPopoverExpanded) {
         return;
       }
-
-      const browserSelection = window.getSelection();
 
       // If selection is collapsed, hide popover immediately and reset all popover state
       if (!browserSelection || browserSelection.isCollapsed) {
