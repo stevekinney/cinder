@@ -86,6 +86,9 @@ export type ChatPushHandlers = {
   onStreamEnd: () => void;
 };
 
+/** Result of an adapter-owned tool approval command. */
+export type ChatToolApprovalResolution = 'resolved' | 'pending';
+
 /**
  * Optional command/transport boundary around `<Chat conversation={…}>`.
  *
@@ -163,9 +166,9 @@ export type ChatAdapter = {
    */
   subscribe?: (conversationId: string, handlers: ChatPushHandlers) => () => void;
   /** Approve an action-required tool call by id. (UI wired by the tool-approval task.) */
-  approveToolCall?: (toolCallId: string) => Promise<void>;
+  approveToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
   /** Reject an action-required tool call by id. (UI wired by the tool-approval task.) */
-  denyToolCall?: (toolCallId: string) => Promise<void>;
+  denyToolCall?: (toolCallId: string) => Promise<void | ChatToolApprovalResolution>;
 };
 
 /**

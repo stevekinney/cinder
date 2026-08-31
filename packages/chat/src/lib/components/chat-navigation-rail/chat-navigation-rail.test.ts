@@ -49,7 +49,9 @@ describe('chat navigation rail mechanics', () => {
     );
     const example = await readFile(
       new URL(
-        '../../../../../playground/src/examples/chat-navigation-rail/basic.example.svelte',
+        import.meta.dir.includes('/dist/')
+          ? '../../../playground/src/examples/chat-navigation-rail/basic.example.svelte'
+          : '../../../../../playground/src/examples/chat-navigation-rail/basic.example.svelte',
         import.meta.url,
       ),
       'utf8',
@@ -91,6 +93,7 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('previewPosition');
     expect(source).toContain('onpointercancel={cancelScrub}');
     expect(source).toContain('suppressNextClick = false');
+    expect(source).toContain('queueMicrotask(() =>');
     expect(stylesheet.indexOf('.chat-navigation-rail-preview-left')).toBeGreaterThan(
       stylesheet.indexOf('@layer cinder.components'),
     );

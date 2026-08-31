@@ -154,7 +154,33 @@ export function createChatSessionController(
     return latestOwner;
   };
 
-  const update = (conversation: ConversationHistory): void => options.setConversation(conversation);
+  const pruneMessageAttachments = (history: ConversationHistory): void => {
+    const retainedOwners = new Set<string>();
+    const callOwners = new Map<string, string>();
+    let latestUserMessageId: string | undefined;
+    for (const id of history.ids) {
+      const message = history.messages[id];
+      if (message?.role === 'user') latestUserMessageId = id;
+      if (message?.role === 'tool-call' && message.toolCall) {
+        const owner = latestUserMessageId;
+        if (owner) callOwners.set(message.toolCall.id, owner);
+      }
+      if (message?.role === 'tool-result' && message.toolResult) {
+        const owner = callOwners.get(message.toolResult.callId);
+        if (message.toolResult.outcome === 'action_required' && owner) retainedOwners.add(owner);
+        else if (owner) retainedOwners.delete(owner);
+      }
+    }
+    if (latestUserMessageId) retainedOwners.add(latestUserMessageId);
+    for (const owner of resolvedApprovalOwners) retainedOwners.add(owner);
+    for (const id of messageAttachments.keys()) {
+      if (!retainedOwners.has(id)) messageAttachments.delete(id);
+    }
+  };
+  const update = (conversation: ConversationHistory): void => {
+    pruneMessageAttachments(conversation);
+    options.setConversation(conversation);
+  };
   const decodeTransportResult = async (
     result: ChatSessionTransportResult,
   ): Promise<AsyncIterable<ChatStreamEvent>> => {
@@ -347,6 +373,7 @@ export function createChatSessionController(
     },
     editMessage: async ({ messageId, content }) => {
       assertActive();
+      const attachments = messageAttachments.get(messageId) ?? [];
       const next = appendUserMessage(
         rewindBeforeMessage(options.getConversation(), messageId),
         content,
@@ -354,7 +381,6 @@ export function createChatSessionController(
       update(next);
       const id = next.ids.at(-1);
       if (id) {
-        const attachments = messageAttachments.get(messageId) ?? [];
         messageAttachments.set(id, [...attachments]);
         await executeRun(id, attachments);
       }
@@ -388,25 +414,27 @@ export function createChatSessionController(
             }
             assertNotDisposed();
             if (!result) throw new Error('Approval hook must return a tool result');
-            update(replaceToolResult(options.getConversation(), id, result));
-            if (result.outcome === 'action_required') pendingApprovals.add(id);
-            else {
+            if (result.outcome === 'action_required') {
+              pendingApprovals.add(id);
+              update(replaceToolResult(options.getConversation(), id, result));
+              return 'pending';
+            } else {
               pendingApprovals.delete(id);
               if (owner) resolvedApprovalOwners.add(owner);
             }
-            if (result.outcome !== 'action_required') {
-              if (pendingApprovals.size === 0) {
-                const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
-                resolvedApprovalOwners.clear();
-                if (continuationOwner) {
-                  await executeRun(
-                    continuationOwner,
-                    messageAttachments.get(continuationOwner) ?? [],
-                  );
-                  update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
-                }
+            update(replaceToolResult(options.getConversation(), id, result));
+            if (pendingApprovals.size === 0) {
+              const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
+              resolvedApprovalOwners.clear();
+              if (continuationOwner) {
+                await executeRun(
+                  continuationOwner,
+                  messageAttachments.get(continuationOwner) ?? [],
+                );
+                update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
               }
             }
+            return 'resolved';
           },
         }
       : {}),
@@ -428,25 +456,27 @@ export function createChatSessionController(
             }
             assertNotDisposed();
             if (!result) throw new Error('Denial hook must return a tool result');
-            update(replaceToolResult(options.getConversation(), id, result));
-            if (result.outcome === 'action_required') pendingApprovals.add(id);
-            else {
+            if (result.outcome === 'action_required') {
+              pendingApprovals.add(id);
+              update(replaceToolResult(options.getConversation(), id, result));
+              return 'pending';
+            } else {
               pendingApprovals.delete(id);
               if (owner) resolvedApprovalOwners.add(owner);
             }
-            if (result.outcome !== 'action_required') {
-              if (pendingApprovals.size === 0) {
-                const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
-                resolvedApprovalOwners.clear();
-                if (continuationOwner) {
-                  await executeRun(
-                    continuationOwner,
-                    messageAttachments.get(continuationOwner) ?? [],
-                  );
-                  update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
-                }
+            update(replaceToolResult(options.getConversation(), id, result));
+            if (pendingApprovals.size === 0) {
+              const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
+              resolvedApprovalOwners.clear();
+              if (continuationOwner) {
+                await executeRun(
+                  continuationOwner,
+                  messageAttachments.get(continuationOwner) ?? [],
+                );
+                update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
               }
             }
+            return 'resolved';
           },
         }
       : {}),
@@ -457,6 +487,7 @@ export function createChatSessionController(
     dispose: () => {
       disposed = true;
       active?.abort();
+      messageAttachments.clear();
     },
   };
 }

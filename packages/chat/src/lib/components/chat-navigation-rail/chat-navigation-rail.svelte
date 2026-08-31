@@ -116,6 +116,12 @@
     const shouldNavigateTouch = pointerType === 'touch' && !touchMoved;
     if (shouldNavigateTouch) updateFromPointer(event);
     finishScrub(event);
+    // Pointer capture can retarget pointerup (and its click) to the rail rather
+    // than a row button. Let a synchronous synthesized click consume the guard,
+    // then clear it before the next independent keyboard or pointer activation.
+    queueMicrotask(() => {
+      suppressNextClick = false;
+    });
   }
 
   function cancelScrub(event: PointerEvent): void {

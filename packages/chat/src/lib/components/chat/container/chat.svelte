@@ -2088,7 +2088,7 @@
     canHandle: boolean,
     commit: (id: string) => void,
     rollback: (id: string) => void,
-    runAdapter: (adapter: ChatAdapter) => Promise<void> | undefined,
+    runAdapter: (adapter: ChatAdapter) => Promise<void | 'resolved' | 'pending'> | undefined,
     callback: (() => void) | undefined,
   ): void {
     if (!canHandle) return;
@@ -2096,7 +2096,7 @@
     commit(toolCallId);
 
     if (adapter) {
-      let run: Promise<void> | undefined;
+      let run: Promise<void | 'resolved' | 'pending'> | undefined;
       try {
         run = runAdapter(adapter);
       } catch (error) {
@@ -2106,7 +2106,13 @@
       }
       if (run !== undefined) {
         void run.then(
-          () => callback?.(),
+          (resolution) => {
+            if (resolution === 'pending') {
+              rollback(toolCallId);
+              return;
+            }
+            callback?.();
+          },
           (error: unknown) => {
             rollback(toolCallId);
             onadaptererror?.({ command, error });

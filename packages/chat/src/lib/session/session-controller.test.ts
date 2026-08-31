@@ -513,6 +513,43 @@ describe('chat session controller', () => {
     ).toBe(true);
   });
 
+  test('keeps a repeated approval request pending and reports that state to Chat', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendUserMessage(createConversationHistory({ id: 'repeated-approval' }), 'deploy'),
+        { id: 'call', name: 'deploy', arguments: {} },
+      ),
+      {
+        callId: 'call',
+        outcome: 'action_required',
+        content: null,
+        action: { type: 'approval', message: 'Approve staging?' },
+      },
+    );
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([]),
+      hooks: {
+        approveToolCall: async (callId) => ({
+          callId,
+          outcome: 'action_required',
+          content: null,
+          action: { type: 'approval', message: 'Approve production?' },
+        }),
+      },
+    });
+
+    await expect(controller.adapter.approveToolCall?.('call')).resolves.toBe('pending');
+    expect(
+      Object.values(conversation.messages).find(
+        (message) => message.role === 'tool-result' && message.toolResult?.callId === 'call',
+      )?.toolResult?.action,
+    ).toEqual({ type: 'approval', message: 'Approve production?' });
+  });
+
   test('continues the latest owning turn when cross-turn approvals resolve out of order', async () => {
     let conversation = appendToolResult(
       appendToolCall(
@@ -773,6 +810,32 @@ describe('chat session controller', () => {
       },
     ]);
     expect(received).toBe(1);
+  });
+
+  test('preserves attachments when editing the latest retryable turn', async () => {
+    let conversation = createConversationHistory({ id: 'edit-attachments' });
+    const received: number[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ attachments }) => {
+        received.push(attachments.length);
+        return events([{ type: 'text', text: 'ok' }]);
+      },
+    });
+    const attachment: ChatAttachment = {
+      id: 'attachment-1',
+      file: new File(['x'], 'x.txt', { type: 'text/plain' }),
+      previewUrl: 'blob:attachment-1',
+      kind: 'document',
+      status: 'ready',
+    };
+    await controller.adapter.sendMessage({ role: 'user', content: 'first' }, [attachment]);
+    await controller.adapter.editMessage?.({ messageId: conversation.ids[0]!, content: 'edited' });
+
+    expect(received).toEqual([1, 1]);
   });
 
   test('marks the initiating user message when approval continuation fails', async () => {

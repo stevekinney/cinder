@@ -1964,6 +1964,29 @@ describe('ChatAdapter — tool approval', () => {
     unmount(instance);
   });
 
+  test('approve rolls back when the adapter reports another pending approval stage', async () => {
+    const approvedViaCallback: string[] = [];
+    const adapter: ChatAdapter = {
+      sendMessage: async () => {},
+      approveToolCall: async () => 'pending',
+    };
+    const { container, instance } = mountChat({
+      id: 'chat-approve-still-pending',
+      conversation: actionRequiredConversation(),
+      adapter,
+      onapprove: (callId: string) => approvedViaCallback.push(callId),
+    });
+
+    approvalButton(container, 'Approve').click();
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(approvedViaCallback).toEqual([]);
+    expect(container.querySelector('.chat-tool-approval-btn-approve')).not.toBeNull();
+
+    unmount(instance);
+  });
+
   test('deny rolls back on a synchronously-throwing adapter command', async () => {
     const errors: Array<{ command: string; error: unknown }> = [];
     const adapter = {
