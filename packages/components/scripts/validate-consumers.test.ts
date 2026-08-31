@@ -20,6 +20,7 @@ import {
   isBrowserCrashError,
   isSupportedViteNodeVersion,
   parseHydrationBrowserProcessIds,
+  pinFirstPartyFixtureOverrides,
   preoptimizeSvelteKitChatHydration,
   prepareSvelteKitChatHydrationDevServer,
   recordBoundedDiagnostic,
@@ -36,6 +37,72 @@ import {
   type SvelteKitHydrationRouteDomObservation,
   type SvelteKitHydrationRouteFailureSnapshot,
 } from './validate-consumers.ts';
+
+describe('first-party fixture overrides', () => {
+  test('pins a file: cinder dependency into overrides', () => {
+    const dependencies: Record<string, unknown> = {
+      '@lostgradient/cinder': 'file:/tmp/lostgradient-cinder-0.25.0.tgz',
+    };
+    const overrides: Record<string, unknown> = {};
+
+    pinFirstPartyFixtureOverrides(dependencies, overrides);
+
+    expect(overrides).toEqual({
+      '@lostgradient/cinder': 'file:/tmp/lostgradient-cinder-0.25.0.tgz',
+    });
+  });
+
+  test('pins chat too, so its cinder peer cannot resolve from the registry', () => {
+    // The CIN-504 regression: chat declares `"@lostgradient/cinder": "^0.25.0"`
+    // as a peer. A direct file: dependency does not constrain that peer edge, so
+    // once 0.25.0 existed on the registry the install resolved it from the
+    // network and hung. Both first-party packages must be pinned.
+    const dependencies: Record<string, unknown> = {
+      '@lostgradient/cinder': 'file:/tmp/lostgradient-cinder-0.25.0.tgz',
+      '@lostgradient/chat': 'file:/tmp/lostgradient-chat-0.13.1.tgz',
+      '@lostgradient/markdown': 'file:/tmp/lostgradient-markdown-0.4.0.tgz',
+    };
+    const overrides: Record<string, unknown> = {
+      '@lostgradient/markdown': 'file:/tmp/lostgradient-markdown-0.4.0.tgz',
+    };
+
+    pinFirstPartyFixtureOverrides(dependencies, overrides);
+
+    expect(overrides['@lostgradient/cinder']).toBe('file:/tmp/lostgradient-cinder-0.25.0.tgz');
+    expect(overrides['@lostgradient/chat']).toBe('file:/tmp/lostgradient-chat-0.13.1.tgz');
+  });
+
+  test('preserves unrelated overrides already present', () => {
+    const dependencies: Record<string, unknown> = {
+      '@lostgradient/cinder': 'file:/tmp/cinder.tgz',
+    };
+    const overrides: Record<string, unknown> = { svelte: '5.56.6' };
+
+    pinFirstPartyFixtureOverrides(dependencies, overrides);
+
+    expect(overrides['svelte']).toBe('5.56.6');
+  });
+
+  test('leaves a registry-resolved first-party dependency alone', () => {
+    // A fixture that deliberately installs the published package must keep
+    // resolving from the registry, so only file: specifiers are pinned.
+    const dependencies: Record<string, unknown> = { '@lostgradient/cinder': '^0.25.0' };
+    const overrides: Record<string, unknown> = {};
+
+    pinFirstPartyFixtureOverrides(dependencies, overrides);
+
+    expect(overrides).toEqual({});
+  });
+
+  test('adds nothing for a first-party package the fixture does not depend on', () => {
+    const dependencies: Record<string, unknown> = { '@lostgradient/cinder': 'file:/tmp/c.tgz' };
+    const overrides: Record<string, unknown> = {};
+
+    pinFirstPartyFixtureOverrides(dependencies, overrides);
+
+    expect(Object.keys(overrides)).toEqual(['@lostgradient/cinder']);
+  });
+});
 
 describe('à la carte CSS contract', () => {
   test('allows global component token declarations but rejects accordion selectors', () => {
