@@ -78,14 +78,14 @@
 </script>
 
 {#if open}
-  <div
-    bind:this={root}
-    class={classNames('cinder-inline-confirm', className)}
-    data-cinder-destructive={destructive ? '' : undefined}
-    role="group"
-    aria-label={prompt}
-  >
-    <div class="cinder-inline-confirm__layout">
+  <div class="cinder-inline-confirm-container">
+    <div
+      bind:this={root}
+      class={classNames('cinder-inline-confirm', className)}
+      data-cinder-destructive={destructive ? '' : undefined}
+      role="group"
+      aria-label={prompt}
+    >
       <p class="cinder-inline-confirm__prompt">{prompt}</p>
       {@render children?.()}
       <div class="cinder-inline-confirm__actions">
