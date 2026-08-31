@@ -67,5 +67,7 @@ describe('chat navigation rail mechanics', () => {
     expect(source.indexOf('</nav>')).toBeLessThan(source.indexOf('chat-navigation-rail-preview'));
     expect(example).toContain('<ChatNavigationRail {messages} {scrollToMessage} {viewport} />');
     expect(example).toContain('scrollIntoView');
+    expect(example).toContain('aria-label="Conversation transcript"');
+    expect(example).toContain('tabindex="0"');
   });
 });

@@ -31,7 +31,13 @@
 </script>
 
 <div style="height: 16rem; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 1rem;">
-  <div bind:this={viewport} style="overflow: auto; display: grid; gap: 1rem;">
+  <div
+    bind:this={viewport}
+    tabindex="0"
+    role="region"
+    aria-label="Conversation transcript"
+    style="overflow: auto; display: grid; gap: 1rem;"
+  >
     {#each messages as message (message.id)}
       <article
         data-message-id={message.id}
