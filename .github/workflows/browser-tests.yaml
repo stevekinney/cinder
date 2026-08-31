@@ -96,7 +96,8 @@ jobs:
       component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
       browser_relevant: ${{ steps.relevance.outputs.browser_relevant }}
-      playwright_matrix: ${{ steps.matrix.outputs.playwright_matrix }}
+      functional_matrix: ${{ steps.matrix.outputs.functional_matrix }}
+      visual_matrix: ${{ steps.matrix.outputs.visual_matrix }}
     steps:
       - name: Validate dispatch source ref
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref != ''
@@ -285,12 +286,24 @@ jobs:
 
       - name: Select Playwright shard matrix
         id: matrix
+        env:
+          COMPONENT_SCOPE_MODE: ${{ steps.decide.outputs.component_scope_mode }}
         run: |
           # Component filtering trims generated visual cases, but every other
-          # browser spec still runs. Preserve the same bounded worker lifetime
-          # for filtered and full runs instead of collapsing hundreds of tests
-          # into one long-lived browser process.
-          echo 'playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}' >> "$GITHUB_OUTPUT"
+          # browser spec still runs. Eight shards bound filtered runs. Full
+          # functional runs need a shorter server/browser lifetime because the
+          # eagerly-warmed playground cache plus 200 tests can exhaust a runner
+          # late in a shard. Visual enforcement retains its established 8-way
+          # partition so baseline-authoring shard identifiers remain stable.
+          filtered_matrix='{"shard":[1,2,3,4,5,6,7,8],"total":[8]}'
+          functional_matrix='{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}'
+          visual_matrix='{"shard":[1,2,3,4,5,6,7,8],"total":[8]}'
+          if [ "$COMPONENT_SCOPE_MODE" = "filtered" ]; then
+            functional_matrix="$filtered_matrix"
+          fi
+          echo "filtered_matrix=$filtered_matrix" >> "$GITHUB_STEP_SUMMARY"
+          echo "functional_matrix=$functional_matrix" >> "$GITHUB_OUTPUT"
+          echo "visual_matrix=$visual_matrix" >> "$GITHUB_OUTPUT"
 
   typecheck:
     needs: scope
@@ -358,7 +371,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.functional_matrix || '{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -411,7 +424,7 @@ jobs:
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          bun run test:browser -- --shard=${{ matrix.shard }}/8 --reporter=blob
+          bun run test:browser -- --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -529,7 +542,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.visual_matrix || '{"shard":[1,2,3,4,5,6,7,8],"total":[8]}') }}
     env:
       CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'block' }}
     steps:
@@ -543,7 +556,7 @@ jobs:
           CI: 'true'
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_VISUAL_DIFF: ${{ env.CINDER_VISUAL_DIFF }}
-        run: bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/8
+        run: bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/${{ matrix.total }}
       - name: Merge visual-report fragments
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         run: |

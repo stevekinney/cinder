@@ -58,15 +58,26 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain(
       `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
     );
-    expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}');
-    expect(browserWorkflow).not.toContain('playwright_matrix={"shard":[1]}');
-    expect(browserWorkflow.match(/--shard=\$\{\{ matrix\.shard \}\}\/8/g)).toHaveLength(2);
+    expect(browserWorkflow).toContain(
+      'functional_matrix=\'{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}\'',
+    );
+    expect(browserWorkflow).toContain(
+      'filtered_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'',
+    );
+    expect(browserWorkflow).toContain('visual_matrix=\'{"shard":[1,2,3,4,5,6,7,8],"total":[8]}\'');
+    expect(browserWorkflow).not.toContain('functional_matrix=\'{"shard":[1]}\'');
+    expect(
+      browserWorkflow.match(/--shard=\$\{\{ matrix\.shard \}\}\/\$\{\{ matrix\.total \}\}/g),
+    ).toHaveLength(2);
     expect(browserWorkflow).not.toContain('if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then');
     expect(browserWorkflow).not.toContain(
       'if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then',
     );
     expect(browserWorkflow).toContain(
-      "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
+      "needs.scope.result == 'success' && needs.scope.outputs.functional_matrix",
+    );
+    expect(browserWorkflow).toContain(
+      "needs.scope.result == 'success' && needs.scope.outputs.visual_matrix",
     );
     expect(browserWorkflow).toContain('playwright-visual:');
     expect(browserWorkflow).toContain('baseline-coverage:');
