@@ -3,6 +3,7 @@
 @layer cinder.components {
   .cinder-inline-confirm {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
     gap: var(--cinder-space-3);
@@ -27,11 +28,5 @@
   }
   .cinder-inline-confirm[data-cinder-destructive] .cinder-inline-confirm__prompt {
     color: var(--cinder-status-danger-text);
-  }
-  @media (max-width: 32rem) {
-    .cinder-inline-confirm {
-      align-items: stretch;
-      flex-direction: column;
-    }
   }
 }
