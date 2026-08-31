@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "componentScope": [
-    "data-table"
+    "inline-confirm"
   ],
-  "renderedSourceSha": "27afd9a1874eea037e407f42b33f220afee70a68",
+  "renderedSourceSha": "a42ec23175d31355ca1410c14ea22b55891a9c6d",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
