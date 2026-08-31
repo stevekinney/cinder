@@ -91,10 +91,9 @@ describe('chat navigation rail mechanics', () => {
     const { container } = render(ChatNavigationRail, {
       props: { messages: [userMessage('one', 'First message')], onNavigate },
     });
-    const rail = container.querySelector<HTMLElement>('.chat-navigation-rail')!;
     const row = container.querySelector<HTMLButtonElement>('.chat-navigation-rail-row')!;
     let capturedPointerId: number | undefined;
-    Object.defineProperty(rail, 'setPointerCapture', {
+    Object.defineProperty(row, 'setPointerCapture', {
       configurable: true,
       value: (pointerId: number) => {
         capturedPointerId = pointerId;
@@ -149,7 +148,7 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).not.toContain('--cinder-text-3xs');
     expect(source).toContain('setPointerCapture');
     expect(source).toContain(
-      'pointerId = event.pointerId;\n    rail.setPointerCapture(event.pointerId);',
+      'pointerCaptureElement = captureElement;\n    captureElement.setPointerCapture(event.pointerId);',
     );
     expect(source).toContain('if (index >= 0 && index !== lastScrubIndex)');
     expect(source).toContain('new MutationObserver(reconcile)');
@@ -182,7 +181,7 @@ describe('chat navigation rail mechanics', () => {
     expect(source).toContain('if (!pointerMoved)');
     expect(source).toContain('Math.hypot(');
     expect(source).toContain('pointerMoved = true;\n    suppressNextClick = true;');
-    expect(source).toContain('if (rail && !rail.hasPointerCapture(event.pointerId))');
+    expect(source).toContain('pointerCaptureElement.releasePointerCapture(event.pointerId)');
     expect(source).not.toContain("if (event.pointerType !== 'touch') updateFromPointer(event)");
     expect(source).toContain('visualViewport?.width');
     expect(source).toContain('previewElement?.offsetWidth');

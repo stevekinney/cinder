@@ -40,6 +40,7 @@
   let rail = $state<HTMLElement | null>(null);
   let scrubbing = $state(false);
   let pointerId = $state<number | null>(null);
+  let pointerCaptureElement = $state<HTMLElement | null>(null);
   let targetIndex = $state(-1);
   let activeMessageId = $state<string | undefined>(undefined);
   let hoverMessageId = $state<string | undefined>(undefined);
@@ -136,8 +137,10 @@
 
   function startScrub(event: PointerEvent): void {
     if (!event.isPrimary || event.button !== 0 || !rail) return;
+    const captureElement = event.target instanceof HTMLElement ? event.target : rail;
     pointerId = event.pointerId;
-    rail.setPointerCapture(event.pointerId);
+    pointerCaptureElement = captureElement;
+    captureElement.setPointerCapture(event.pointerId);
     scrubbing = true;
     suppressNextClick = false;
     pointerType = event.pointerType;
@@ -174,7 +177,10 @@
   function finishScrub(event: PointerEvent): void {
     scrubbing = false;
     pointerId = null;
-    if (rail?.hasPointerCapture(event.pointerId)) rail.releasePointerCapture(event.pointerId);
+    if (pointerCaptureElement?.hasPointerCapture(event.pointerId)) {
+      pointerCaptureElement.releasePointerCapture(event.pointerId);
+    }
+    pointerCaptureElement = null;
     pointerType = undefined;
   }
 
@@ -183,7 +189,6 @@
     if (movement <= (pointerType === 'touch' ? 8 : 2)) return;
     pointerMoved = true;
     suppressNextClick = true;
-    if (rail && !rail.hasPointerCapture(event.pointerId)) rail.setPointerCapture(event.pointerId);
     updateFromPointer(event);
   }
 
