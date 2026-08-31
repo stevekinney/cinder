@@ -1217,6 +1217,15 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
   return prebuild;
 }
 
+/** Run the independent browser-bundle and server-renderer startup work in parallel. */
+export async function runConcurrentStartupWarmup<Prebuild, Renderer>(
+  prebuild: () => Promise<Prebuild>,
+  prepareRenderer: () => Promise<Renderer>,
+): Promise<{ prebuild: Prebuild; renderer: Renderer }> {
+  const [prebuildResult, rendererResult] = await Promise.all([prebuild(), prepareRenderer()]);
+  return { prebuild: prebuildResult, renderer: rendererResult };
+}
+
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
   let disposePromise: Promise<void> | null = null;
   return () => {
@@ -1325,8 +1334,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
-    prebuild = prebuildAttempt.value;
+    const prebuildAttempt = await runGenerationCheckedWarmup(() =>
+      runConcurrentStartupWarmup(eagerPrebuildAndWarmManifests, loadShellServerRenderer),
+    );
+    prebuild = prebuildAttempt.value.prebuild;
     const { instabilityReasons } = prebuildAttempt;
     if (instabilityReasons.length === 0) {
       stable = true;
