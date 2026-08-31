@@ -19,7 +19,7 @@
  * Node baseline: 22+.
  */
 
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -27,88 +27,14 @@ import {
   extractUsageFence,
   matchesComponentTag,
 } from '../../scripts/extract-readme-usage-example.mjs';
-import { toIdentifier } from './to-identifier.mjs';
+import {
+  COMPOSE_ONLY_LEAF_EXEMPTIONS,
+  DOTTED_NAMESPACE_ONLY_EXEMPTIONS,
+  discoverReadmeComponents,
+  toIdentifier,
+} from '../../scripts/readme-usage-contract.mjs';
 
 const here = dirname(fileURLToPath(import.meta.url));
-
-/**
- * Compose-only leaf components whose `## Usage` section is deliberately
- * prose-only ("compose-only leaf of `<Parent>`... see the parent README for
- * the composed snippet"), pointing readers at the parent compound
- * component's README instead of duplicating a working example. This is an
- * established, repo-wide documentation convention (verified: every entry
- * below carries the identical "compose-only leaf" sentence), not a bug —
- * porting a redundant standalone example into each of these would
- * contradict the very sentence the README teaches ("the idiomatic API is
- * `Parent.Leaf`, reached through the parent namespace").
- */
-const COMPOSE_ONLY_LEAF_EXEMPTIONS = new Set([
-  'accordion-item',
-  'choice-grid-item',
-  'dropdown-item',
-  'dropdown-label',
-  'dropdown-menu',
-  'dropdown-separator',
-  'dropdown-trigger',
-  'feed-boundary',
-  'feed-event',
-  'grid-list-item',
-  'side-navigation-group',
-  'side-navigation-item',
-  'statistic',
-  'tab',
-  'tab-list',
-  'tab-panel',
-  'table-body',
-  'table-cell',
-  'table-header',
-  'table-header-cell',
-  'table-row',
-  'tree-item',
-]);
-
-/**
- * Compound-leaf components whose `## Usage` fence genuinely compiles and
- * renders — unlike the compose-only-leaf cohort above, which has no code at
- * all — but demonstrates the leaf exclusively through the parent's dotted
- * namespace form (`BentoGrid.Cell`, `Grid.Item`, `SpeedDial.Action`) rather
- * than the leaf's own flat tag. `matchesComponentTag`'s word-boundary regex
- * is deliberately literal (see its doc comment) and does not recognize
- * `Parent.Leaf` as a match for `Leaf`. Rewriting these to the flat tag
- * purely to satisfy the gate would teach the non-idiomatic composition this
- * cluster's root cause explicitly warns against; the dotted form is the
- * correct, idiomatic usage for these three.
- */
-const DOTTED_NAMESPACE_ONLY_EXEMPTIONS = new Set(['bento-cell', 'grid-item', 'speed-dial-action']);
-
-/**
- * @param {string} directory
- * @returns {Array<{ componentId: string; directory: string }>}
- */
-function discoverComponentDirectories(directory) {
-  const results = [];
-  for (const name of readdirSync(directory).sort()) {
-    if (name.startsWith('_')) continue;
-    if (name === 'icons') continue;
-
-    const entryPath = join(directory, name);
-    if (!existsSync(entryPath)) continue;
-
-    if (name === 'experimental') {
-      for (const subName of readdirSync(entryPath).sort()) {
-        if (subName.startsWith('_')) continue;
-        const subPath = join(entryPath, subName);
-        if (!existsSync(join(subPath, 'README.md'))) continue;
-        results.push({ componentId: subName, directory: subPath });
-      }
-      continue;
-    }
-
-    if (!existsSync(join(entryPath, 'README.md'))) continue;
-    results.push({ componentId: name, directory: entryPath });
-  }
-  return results;
-}
 
 /**
  * @param {string} rootDirectory absolute path to `packages/components/src/components`
@@ -127,7 +53,7 @@ export async function main(
   /** @type {Array<{ componentId: string; reason: 'no-heading' | 'no-fence' | 'no-matching-tag' }>} */
   const failures = [];
 
-  for (const { componentId, directory } of discoverComponentDirectories(rootDirectory)) {
+  for (const { componentId, directory } of discoverReadmeComponents(rootDirectory)) {
     if (COMPOSE_ONLY_LEAF_EXEMPTIONS.has(componentId)) continue;
 
     const readmeText = readFileSync(join(directory, 'README.md'), 'utf8');

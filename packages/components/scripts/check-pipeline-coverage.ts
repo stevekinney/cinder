@@ -341,6 +341,17 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'otherwise executes only in the release path — is caught on Linux CI before the same-SHA ' +
       'release can publish. See docs/validation-topology.md.',
   },
+  'check:readme-usage': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Structural half of the README `## Usage` contract (heading present, first fence is ' +
+      '```svelte, fence renders the component tag) — pure text analysis, so unlike the compile ' +
+      'half it needs no packed tarball and runs in the PR-required lane through ' +
+      '`lint:invariants`. Both halves living post-merge is what let #1471 land fifteen ' +
+      'READMEs with no `## Usage` heading, holding `main-green` red for three days and ' +
+      'blocking the 0.25.0 publish. `validate:consumer:readme-usage-examples` still owns the ' +
+      'compile half in main-green and release.',
+  },
   'validate:consumer:readme-usage-examples': {
     layers: ['main-green'],
     reason:

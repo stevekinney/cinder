@@ -21,7 +21,7 @@ import { createRequire } from 'node:module';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { toIdentifier } from './to-identifier.mjs';
+import { toIdentifier } from '../../scripts/readme-usage-contract.mjs';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
