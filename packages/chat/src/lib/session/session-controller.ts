@@ -266,7 +266,11 @@ export function createChatSessionController(
     active?.abort();
     // The initiating send/retry owns any run rejection. Stop only promises
     // that the run has settled and released the controller for its next turn.
-    await activeRun?.catch(() => undefined);
+    try {
+      await activeRun;
+    } catch {
+      // The initiating promise remains the owner of the rejection.
+    }
   };
   const send = async (message: MessageInput, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
