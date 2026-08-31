@@ -76,6 +76,7 @@ export function createChatSessionController(
   const toolOwners = new Map<string, string>();
   const messageAttachments = new Map<string, ChatAttachment[]>();
   const pendingApprovals = new Set<string>();
+  const resolvedApprovalOwners = new Set<string>();
   const subscribers = new Set<ChatPushHandlers>();
   const emit = (callback: (handlers: ChatPushHandlers) => void): void => {
     for (const handlers of subscribers) {
@@ -138,6 +139,18 @@ export function createChatSessionController(
         else pendingApprovals.delete(message.toolResult.callId);
       }
     }
+  };
+  const latestResolvedApprovalOwner = (history: ConversationHistory): string | undefined => {
+    let latestOwner: string | undefined;
+    let latestPosition = -1;
+    for (const owner of resolvedApprovalOwners) {
+      const position = history.ids.indexOf(owner);
+      if (position > latestPosition) {
+        latestOwner = owner;
+        latestPosition = position;
+      }
+    }
+    return latestOwner;
   };
 
   const update = (conversation: ConversationHistory): void => options.setConversation(conversation);
@@ -342,14 +355,25 @@ export function createChatSessionController(
             } finally {
               running = false;
             }
+            assertNotDisposed();
             if (!result) throw new Error('Approval hook must return a tool result');
             update(replaceToolResult(options.getConversation(), id, result));
             if (result.outcome === 'action_required') pendingApprovals.add(id);
-            else pendingApprovals.delete(id);
+            else {
+              pendingApprovals.delete(id);
+              if (owner) resolvedApprovalOwners.add(owner);
+            }
             if (result.outcome !== 'action_required') {
-              if (owner && pendingApprovals.size === 0) {
-                await executeRun(owner, messageAttachments.get(owner) ?? []);
-                update(clearMessageDeliveryStatus(options.getConversation(), owner));
+              if (pendingApprovals.size === 0) {
+                const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
+                resolvedApprovalOwners.clear();
+                if (continuationOwner) {
+                  await executeRun(
+                    continuationOwner,
+                    messageAttachments.get(continuationOwner) ?? [],
+                  );
+                  update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
+                }
               }
             }
           },
@@ -371,14 +395,25 @@ export function createChatSessionController(
             } finally {
               running = false;
             }
+            assertNotDisposed();
             if (!result) throw new Error('Denial hook must return a tool result');
             update(replaceToolResult(options.getConversation(), id, result));
             if (result.outcome === 'action_required') pendingApprovals.add(id);
-            else pendingApprovals.delete(id);
+            else {
+              pendingApprovals.delete(id);
+              if (owner) resolvedApprovalOwners.add(owner);
+            }
             if (result.outcome !== 'action_required') {
-              if (owner && pendingApprovals.size === 0) {
-                await executeRun(owner, messageAttachments.get(owner) ?? []);
-                update(clearMessageDeliveryStatus(options.getConversation(), owner));
+              if (pendingApprovals.size === 0) {
+                const continuationOwner = latestResolvedApprovalOwner(options.getConversation());
+                resolvedApprovalOwners.clear();
+                if (continuationOwner) {
+                  await executeRun(
+                    continuationOwner,
+                    messageAttachments.get(continuationOwner) ?? [],
+                  );
+                  update(clearMessageDeliveryStatus(options.getConversation(), continuationOwner));
+                }
               }
             }
           },

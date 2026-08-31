@@ -6,7 +6,7 @@ import {
   appendUserMessage,
   createConversationHistory,
 } from '../components/chat/builders.ts';
-import type { ConversationHistory } from '../components/chat/conversation-model.ts';
+import type { ConversationHistory, ToolResult } from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import { createChatSessionController } from './session-controller.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
@@ -511,6 +511,101 @@ describe('chat session controller', () => {
     expect(
       Object.values(conversation.messages).some((message) => message.content === 'approved'),
     ).toBe(true);
+  });
+
+  test('continues the latest owning turn when cross-turn approvals resolve out of order', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendAssistantMessage(
+          appendUserMessage(createConversationHistory({ id: 'cross-turn' }), 'older'),
+          'Older approval required.',
+        ),
+        { id: 'older-call', name: 'write', arguments: {} },
+      ),
+      { callId: 'older-call', outcome: 'action_required', content: null },
+    );
+    conversation = appendUserMessage(conversation, 'newer');
+    const newerUser = conversation.ids.at(-1)!;
+    const olderUser = conversation.ids[0]!;
+    conversation = appendToolResult(
+      appendToolCall(appendAssistantMessage(conversation, 'Newer approval required.'), {
+        id: 'newer-call',
+        name: 'write',
+        arguments: {},
+      }),
+      { callId: 'newer-call', outcome: 'action_required', content: null },
+    );
+    const markFailed = (id: string): void => {
+      conversation = {
+        ...conversation,
+        messages: {
+          ...conversation.messages,
+          [id]: {
+            ...conversation.messages[id]!,
+            metadata: { ...conversation.messages[id]!.metadata, _deliveryStatus: 'failed' },
+          },
+        },
+      };
+    };
+    markFailed(olderUser);
+    markFailed(newerUser);
+    let calls = 0;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => {
+        calls += 1;
+        return events([{ type: 'text', text: 'continued latest turn' }]);
+      },
+      hooks: {
+        approveToolCall: async (id) => ({ callId: id, outcome: 'success', content: 'allowed' }),
+      },
+    });
+
+    await controller.adapter.approveToolCall?.('newer-call');
+    expect(calls).toBe(0);
+    await controller.adapter.approveToolCall?.('older-call');
+
+    expect(calls).toBe(1);
+    expect(conversation.messages[olderUser]?.metadata['_deliveryStatus']).toBe('failed');
+    expect(conversation.messages[newerUser]?.metadata['_deliveryStatus']).toBeUndefined();
+  });
+
+  test('ignores an approval result that arrives after disposal', async () => {
+    let conversation = appendToolResult(
+      appendToolCall(
+        appendAssistantMessage(
+          appendUserMessage(createConversationHistory({ id: 'dispose-approval' }), 'write'),
+          'Approval required.',
+        ),
+        { id: 'call', name: 'write', arguments: {} },
+      ),
+      { callId: 'call', outcome: 'action_required', content: null },
+    );
+    let resolveApproval!: (result: ToolResult) => void;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () => events([{ type: 'text', text: 'unexpected' }]),
+      hooks: {
+        approveToolCall: async () =>
+          new Promise<ToolResult>((resolve) => {
+            resolveApproval = resolve;
+          }),
+      },
+    });
+    const original = conversation;
+    const approval = controller.adapter.approveToolCall?.('call');
+    await Promise.resolve();
+    controller.dispose();
+    resolveApproval({ callId: 'call', outcome: 'success', content: 'allowed' });
+
+    await expect(approval).rejects.toThrow('disposed');
+    expect(conversation).toBe(original);
   });
 
   test('continues a persisted approval from its owning user turn', async () => {

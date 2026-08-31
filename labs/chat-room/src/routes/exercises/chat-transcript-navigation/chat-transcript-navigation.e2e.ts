@@ -11,7 +11,7 @@ test('renders a bounded live child transcript and accessible navigation rail', a
 	await rows.first().focus();
 	await expect(rows.first()).toHaveAttribute('aria-describedby', /navigation-preview/);
 	await expect(page.locator('[id$="-navigation-preview"]')).toContainText('Show me the nested run');
-	await expect(page.getByRole('region', { name: 'Nested session transcript' })).toBeVisible();
+	await expect(page.getByRole('log', { name: 'Nested session transcript' })).toBeVisible();
 
 	await rows.first().click();
 	await expect(page.getByText('Selected message: 1')).toBeVisible();
