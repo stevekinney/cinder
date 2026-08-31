@@ -96,7 +96,8 @@ jobs:
       component_scope_mode: ${{ steps.decide.outputs.component_scope_mode }}
       components: ${{ steps.decide.outputs.components }}
       browser_relevant: ${{ steps.relevance.outputs.browser_relevant }}
-      playwright_matrix: ${{ steps.matrix.outputs.playwright_matrix }}
+      functional_matrix: ${{ steps.matrix.outputs.functional_matrix }}
+      visual_matrix: ${{ steps.matrix.outputs.visual_matrix }}
     steps:
       - name: Validate dispatch source ref
         if: github.event_name == 'workflow_dispatch' && github.event.inputs.source_ref != ''
@@ -286,17 +287,23 @@ jobs:
       - name: Select Playwright shard matrix
         id: matrix
         env:
-          MODE: ${{ steps.decide.outputs.component_scope_mode }}
+          COMPONENT_SCOPE_MODE: ${{ steps.decide.outputs.component_scope_mode }}
         run: |
-          if [ "$MODE" = full ]; then
-            # Full coverage takes roughly 21 minutes of browser work per
-            # two-worker shard after the required page-bundle prewarm. Eight
-            # shards preserve every test while keeping each job below its
-            # existing 30-minute cap.
-            echo 'playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}' >> "$GITHUB_OUTPUT"
-          else
-            echo 'playwright_matrix={"shard":[1]}' >> "$GITHUB_OUTPUT"
+          # Component filtering trims generated visual cases, but every other
+          # browser spec still runs. Eight shards bound filtered runs. Full
+          # functional runs need a shorter server/browser lifetime because the
+          # eagerly-warmed playground cache plus 200 tests can exhaust a runner
+          # late in a shard. Visual enforcement retains its established 8-way
+          # partition so baseline-authoring shard identifiers remain stable.
+          filtered_matrix='{"shard":[1,2,3,4,5,6,7,8],"total":[8]}'
+          functional_matrix='{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}'
+          visual_matrix='{"shard":[1,2,3,4,5,6,7,8],"total":[8]}'
+          if [ "$COMPONENT_SCOPE_MODE" = "filtered" ]; then
+            functional_matrix="$filtered_matrix"
           fi
+          echo "filtered_matrix=$filtered_matrix" >> "$GITHUB_STEP_SUMMARY"
+          echo "functional_matrix=$functional_matrix" >> "$GITHUB_OUTPUT"
+          echo "visual_matrix=$visual_matrix" >> "$GITHUB_OUTPUT"
 
   typecheck:
     needs: scope
@@ -364,7 +371,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.functional_matrix || '{"shard":[1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16],"total":[16]}') }}
     steps:
       - name: Checkout
         uses: actions/checkout@v7
@@ -417,11 +424,7 @@ jobs:
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then
-            bun run test:browser -- --shard=${{ matrix.shard }}/8 --reporter=blob
-          else
-            bun run test:browser
-          fi
+          bun run test:browser -- --shard=${{ matrix.shard }}/${{ matrix.total }} --reporter=blob
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -433,7 +436,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Playwright blob report
-        if: "always() && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-blob-${{ matrix.shard }}
@@ -539,7 +542,7 @@ jobs:
     timeout-minutes: 30
     strategy:
       fail-fast: false
-      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix || '{"shard":[1,2,3,4,5,6,7,8]}') }}
+      matrix: ${{ fromJSON(needs.scope.result == 'success' && needs.scope.outputs.visual_matrix || '{"shard":[1,2,3,4,5,6,7,8],"total":[8]}') }}
     env:
       CINDER_VISUAL_DIFF: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.mode || 'block' }}
     steps:
@@ -553,12 +556,7 @@ jobs:
           CI: 'true'
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_VISUAL_DIFF: ${{ env.CINDER_VISUAL_DIFF }}
-        run: |
-          if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then
-            bun run --filter=@cinder/testing test:browser:docker
-          else
-            bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/8
-          fi
+        run: bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/${{ matrix.total }}
       - name: Merge visual-report fragments
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         run: |
@@ -621,14 +619,14 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - name: Download blob reports
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-*
           path: packages/testing/blob-reports
           merge-multiple: true
       - name: Merge sharded report
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Merge sharded visual reports
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
@@ -645,7 +643,7 @@ jobs:
             find "$REPORTS" -name '*.json' -print0 | xargs -0 jq -s 'add' > packages/testing/visual-report.json
           fi
       - name: Upload merged report
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-merged
@@ -820,10 +818,10 @@ jobs:
 
       - name: Build Docker image and update baselines
         env:
-          # A Playwright shard identifies a partition of the full enforcement
-          # suite. Do not first filter that suite by component, or `N/8` would
-          # identify a different partition than the blocking matrix.
-          CINDER_TEST_COMPONENTS: ${{ github.event.inputs.shard == '' && needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
+          # Preserve the component filter before applying `N/8`: Playwright
+          # assigns shards from the selected test list, so reproducing a
+          # filtered enforcement shard must use the same selected list.
+          CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_TEST_SHARD: ${{ github.event.inputs.shard || '' }}
           SHARD: ${{ github.event.inputs.shard || '' }}
         run: |

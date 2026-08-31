@@ -1217,6 +1217,21 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
   return prebuild;
 }
 
+/** Run independent startup work in parallel and release server resources if either task fails. */
+export async function runConcurrentStartupWarmup<Prebuild, Renderer>(
+  prebuild: () => Promise<Prebuild>,
+  prepareRenderer: () => Promise<Renderer>,
+  cleanup: () => Promise<void>,
+): Promise<{ prebuild: Prebuild; renderer: Renderer }> {
+  try {
+    const [prebuildResult, rendererResult] = await Promise.all([prebuild(), prepareRenderer()]);
+    return { prebuild: prebuildResult, renderer: rendererResult };
+  } catch (error) {
+    await cleanup();
+    throw error;
+  }
+}
+
 export function createSharedDisposer(disposeWork: () => Promise<void>): () => Promise<void> {
   let disposePromise: Promise<void> | null = null;
   return () => {
@@ -1325,8 +1340,10 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
         throw error;
       }
     }
-    const prebuildAttempt = await runGenerationCheckedWarmup(eagerPrebuildAndWarmManifests);
-    prebuild = prebuildAttempt.value;
+    const prebuildAttempt = await runGenerationCheckedWarmup(() =>
+      runConcurrentStartupWarmup(eagerPrebuildAndWarmManifests, loadShellServerRenderer, dispose),
+    );
+    prebuild = prebuildAttempt.value.prebuild;
     const { instabilityReasons } = prebuildAttempt;
     if (instabilityReasons.length === 0) {
       stable = true;
