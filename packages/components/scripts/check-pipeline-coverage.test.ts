@@ -59,6 +59,12 @@ describe('Turbo input topology', () => {
       `image: mcr.microsoft.com/playwright:v${componentsManifest.devDependencies['@playwright/test']}-noble`,
     );
     expect(browserWorkflow).toContain('playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}');
+    expect(browserWorkflow).not.toContain('playwright_matrix={"shard":[1]}');
+    expect(browserWorkflow.match(/--shard=\$\{\{ matrix\.shard \}\}\/8/g)).toHaveLength(2);
+    expect(browserWorkflow).not.toContain('if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then');
+    expect(browserWorkflow).not.toContain(
+      'if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then',
+    );
     expect(browserWorkflow).toContain(
       "needs.scope.result == 'success' && needs.scope.outputs.playwright_matrix",
     );

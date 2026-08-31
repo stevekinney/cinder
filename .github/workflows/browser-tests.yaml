@@ -285,18 +285,12 @@ jobs:
 
       - name: Select Playwright shard matrix
         id: matrix
-        env:
-          MODE: ${{ steps.decide.outputs.component_scope_mode }}
         run: |
-          if [ "$MODE" = full ]; then
-            # Full coverage takes roughly 21 minutes of browser work per
-            # two-worker shard after the required page-bundle prewarm. Eight
-            # shards preserve every test while keeping each job below its
-            # existing 30-minute cap.
-            echo 'playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}' >> "$GITHUB_OUTPUT"
-          else
-            echo 'playwright_matrix={"shard":[1]}' >> "$GITHUB_OUTPUT"
-          fi
+          # Component filtering trims generated visual cases, but every other
+          # browser spec still runs. Preserve the same bounded worker lifetime
+          # for filtered and full runs instead of collapsing hundreds of tests
+          # into one long-lived browser process.
+          echo 'playwright_matrix={"shard":[1,2,3,4,5,6,7,8]}' >> "$GITHUB_OUTPUT"
 
   typecheck:
     needs: scope
@@ -417,11 +411,7 @@ jobs:
           if [ -n "${CINDER_TEST_COMPONENTS:-}" ]; then
             echo "Components: $CINDER_TEST_COMPONENTS"
           fi
-          if [ "$CINDER_TEST_SCOPE_MODE" = full ]; then
-            bun run test:browser -- --shard=${{ matrix.shard }}/8 --reporter=blob
-          else
-            bun run test:browser
-          fi
+          bun run test:browser -- --shard=${{ matrix.shard }}/8 --reporter=blob
 
       - name: Upload Playwright HTML report
         if: failure()
@@ -433,7 +423,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Playwright blob report
-        if: "always() && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: always()
         uses: actions/upload-artifact@v7
         with:
           name: playwright-blob-${{ matrix.shard }}
@@ -553,12 +543,7 @@ jobs:
           CI: 'true'
           CINDER_TEST_COMPONENTS: ${{ needs.scope.outputs.component_scope_mode == 'filtered' && needs.scope.outputs.components || '' }}
           CINDER_VISUAL_DIFF: ${{ env.CINDER_VISUAL_DIFF }}
-        run: |
-          if [ "${{ needs.scope.outputs.component_scope_mode }}" = filtered ]; then
-            bun run --filter=@cinder/testing test:browser:docker
-          else
-            bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/8
-          fi
+        run: bun run --filter=@cinder/testing test:browser:docker -- --shard=${{ matrix.shard }}/8
       - name: Merge visual-report fragments
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         run: |
@@ -621,14 +606,14 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
       - run: bun install --frozen-lockfile
       - name: Download blob reports
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/download-artifact@v8
         with:
           pattern: playwright-blob-*
           path: packages/testing/blob-reports
           merge-multiple: true
       - name: Merge sharded report
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
       - name: Merge sharded visual reports
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
@@ -645,7 +630,7 @@ jobs:
             find "$REPORTS" -name '*.json' -print0 | xargs -0 jq -s 'add' > packages/testing/visual-report.json
           fi
       - name: Upload merged report
-        if: "always() && needs.playwright-lane.result != 'skipped' && (needs.scope.result != 'success' || needs.scope.outputs.component_scope_mode == 'full')"
+        if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/upload-artifact@v7
         with:
           name: playwright-report-merged
