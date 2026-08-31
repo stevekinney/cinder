@@ -160,10 +160,12 @@ export function createChatSessionController(
     let latestUserMessageId: string | undefined;
     for (const id of history.ids) {
       const message = history.messages[id];
-      if (message?.role === 'user') latestUserMessageId = id;
+      if (message?.role === 'user') {
+        latestUserMessageId = id;
+        retainedOwners.add(id);
+      }
       if (message?.role === 'tool-call' && message.toolCall) {
-        const owner = latestUserMessageId;
-        if (owner) callOwners.set(message.toolCall.id, owner);
+        if (latestUserMessageId) callOwners.set(message.toolCall.id, latestUserMessageId);
       }
       if (message?.role === 'tool-result' && message.toolResult) {
         const owner = callOwners.get(message.toolResult.callId);
@@ -171,7 +173,6 @@ export function createChatSessionController(
         else if (owner) retainedOwners.delete(owner);
       }
     }
-    if (latestUserMessageId) retainedOwners.add(latestUserMessageId);
     for (const owner of resolvedApprovalOwners) retainedOwners.add(owner);
     for (const id of messageAttachments.keys()) {
       if (!retainedOwners.has(id)) messageAttachments.delete(id);

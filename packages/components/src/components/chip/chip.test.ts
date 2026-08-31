@@ -55,13 +55,17 @@ describe('Chip', () => {
     const { container } = render(Chip, { label: 'Acme', brandColor: '#ff6600' });
     const chip = container.querySelector('.cinder-chip') as HTMLElement;
     expect(chip.style.getPropertyValue('--_cinder-chip-brand-color')).toBe('#ff6600');
-    const rule = cssRuleBody(".cinder-chip[style*='--_cinder-chip-brand-color']");
+    const rule = cssRuleBody(
+      ".cinder-chip[data-cinder-variant='neutral'][style*='--_cinder-chip-brand-color']",
+    );
     expect(rule).toContain('color: var(--cinder-text-default);');
     expect(rule).toContain('var(--_cinder-chip-brand-color) 8%');
     expect(rule).not.toMatch(/(?:^|\n)\s*color:\s*color-mix/);
-    expect(chipCss.indexOf(".cinder-chip[style*='--_cinder-chip-brand-color']")).toBeGreaterThan(
-      chipCss.indexOf(".cinder-chip[data-cinder-variant='accent']"),
-    );
+    expect(
+      chipCss.indexOf(
+        ".cinder-chip[data-cinder-variant='neutral'][style*='--_cinder-chip-brand-color']",
+      ),
+    ).toBeGreaterThan(chipCss.indexOf(".cinder-chip[data-cinder-variant='accent']"));
   });
 
   test('breakable chips expose the URL wrapping and bidi layout contract', () => {
@@ -77,6 +81,13 @@ describe('Chip', () => {
     expect(chipCss).toMatch(
       /\.cinder-chip\[data-cinder-breakable\] \.cinder-chip__remove[\s\S]*?flex:\s*0 0 auto/,
     );
+  });
+
+  test('brandColor selector is scoped to neutral chips', () => {
+    expect(chipCss).toContain(
+      ".cinder-chip[data-cinder-variant='neutral'][style*='--_cinder-chip-brand-color']",
+    );
+    expect(chipCss).not.toContain(".cinder-chip[style*='--_cinder-chip-brand-color'] {");
   });
 
   test('toggle mode renders a button root with aria-pressed="false"', () => {

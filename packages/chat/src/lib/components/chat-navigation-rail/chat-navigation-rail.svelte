@@ -15,6 +15,7 @@
 </script>
 
 <script lang="ts">
+  import { untrack } from 'svelte';
   import { getMessageText } from '../chat/utilities/utilities.ts';
   import {
     clampNavigationIndex,
@@ -48,18 +49,38 @@
   let touchStartY = $state(0);
   let touchMoved = $state(false);
   let previewSide = $state<'right' | 'left'>('right');
+  let lastScrubIndex = $state(-1);
+  let previewElement = $state<HTMLElement | null>(null);
 
   function updatePreviewPosition(event: FocusEvent | PointerEvent, index: number): void {
     targetIndex = index;
     previewMessageId = userMessages[index]?.message.id;
     const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
-    const flip = rect.right + 300 > window.innerWidth;
+    const viewportWidth = window.visualViewport?.width ?? window.innerWidth;
+    const previewWidth = Math.min(previewElement?.offsetWidth || 288, viewportWidth - 16);
+    const flip = viewportWidth - rect.right < previewWidth + 8 && rect.left >= previewWidth + 8;
     previewSide = flip ? 'left' : 'right';
     previewPosition = {
       top: rect.top + rect.height / 2,
-      left: flip ? rect.left - 8 : rect.right + 8,
+      left: Math.max(
+        8,
+        Math.min(flip ? rect.left - 8 : rect.right + 8, viewportWidth - previewWidth - 8),
+      ),
     };
   }
+
+  $effect(() => {
+    previewMessageId;
+    const element = previewElement;
+    if (!element) return;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
+    const halfHeight = element.offsetHeight / 2;
+    const currentTop = untrack(() => previewPosition.top);
+    previewPosition = {
+      ...previewPosition,
+      top: Math.max(8 + halfHeight, Math.min(currentTop, viewportHeight - 8 - halfHeight)),
+    };
+  });
 
   function clearPreview(): void {
     previewMessageId = undefined;
@@ -96,7 +117,10 @@
     const index = navigationIndexFromPointer(event.clientY, bounds);
     // A pointer in a gap is not a target. In particular, do not pass -1 to
     // the clamping helper because that would intentionally select the first row.
-    if (index >= 0) navigate(index);
+    if (index >= 0 && index !== lastScrubIndex) {
+      lastScrubIndex = index;
+      navigate(index);
+    }
   }
 
   function startScrub(event: PointerEvent): void {
@@ -107,6 +131,7 @@
     pointerType = event.pointerType;
     touchStartY = event.clientY;
     touchMoved = false;
+    lastScrubIndex = -1;
     rail.setPointerCapture(event.pointerId);
     if (event.pointerType !== 'touch') updateFromPointer(event);
   }
@@ -116,12 +141,11 @@
     const shouldNavigateTouch = pointerType === 'touch' && !touchMoved;
     if (shouldNavigateTouch) updateFromPointer(event);
     finishScrub(event);
-    // Pointer capture can retarget pointerup (and its click) to the rail rather
-    // than a row button. Let a synchronous synthesized click consume the guard,
-    // then clear it before the next independent keyboard or pointer activation.
-    queueMicrotask(() => {
+    // Keep the guard through the browser's synthesized click, including when
+    // pointer capture retargets that click to the rail itself.
+    setTimeout(() => {
       suppressNextClick = false;
-    });
+    }, 0);
   }
 
   function cancelScrub(event: PointerEvent): void {
@@ -260,6 +284,7 @@
   )?.message}
   {#if activePreview}
     <span
+      bind:this={previewElement}
       class={`chat-navigation-rail-preview chat-navigation-rail-preview-${previewSide} cinder-_floating-surface`}
       style={`--chat-navigation-preview-top: ${previewPosition.top}px; --chat-navigation-preview-left: ${previewPosition.left}px;`}
       >{preview(activePreview)}</span

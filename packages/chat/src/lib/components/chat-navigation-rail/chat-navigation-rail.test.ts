@@ -70,7 +70,7 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain(':has(~ .chat-navigation-rail-row[data-scrub-target])');
     expect(stylesheet).toContain('prefers-reduced-motion');
     expect(source).toContain('setPointerCapture');
-    expect(source).toContain('if (index >= 0) navigate(index)');
+    expect(source).toContain('if (index >= 0 && index !== lastScrubIndex)');
     expect(source).toContain('new MutationObserver(reconcile)');
     expect(source).toContain('observer.unobserve(row)');
     expect(source).toContain('railMessageIds');
@@ -91,9 +91,17 @@ describe('chat navigation rail mechanics', () => {
     expect(stylesheet).toContain('touch-action: none');
     expect(stylesheet).toContain('@layer cinder.components');
     expect(source).toContain('previewPosition');
+    expect(source).toContain('lastScrubIndex');
+    expect(source).toContain('index !== lastScrubIndex');
+    expect(source).toContain('visualViewport?.width');
+    expect(source).toContain('previewElement?.offsetWidth');
+    expect(source).toContain('element.offsetHeight / 2');
+    expect(source).toContain('visualViewport?.height');
+    expect(source).toContain('setTimeout(() =>');
+    expect(source).not.toContain('queueMicrotask(() =>');
+    expect(source).toContain('bind:this={previewElement}');
     expect(source).toContain('onpointercancel={cancelScrub}');
     expect(source).toContain('suppressNextClick = false');
-    expect(source).toContain('queueMicrotask(() =>');
     expect(stylesheet.indexOf('.chat-navigation-rail-preview-left')).toBeGreaterThan(
       stylesheet.indexOf('@layer cinder.components'),
     );

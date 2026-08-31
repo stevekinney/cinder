@@ -1072,4 +1072,41 @@ describe('chat session controller', () => {
     await controller.adapter.retryMessage?.(replacementId);
     expect(received).toEqual([1, 1, 1]);
   });
+
+  test('retains attachments for every editable user owner and prunes removed turns', async () => {
+    let conversation = createConversationHistory({ id: 'attachment-owners' });
+    const received: number[] = [];
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async ({ attachments }) => {
+        received.push(attachments.length);
+        return events([{ type: 'text', text: 'reply' }]);
+      },
+    });
+    const firstAttachment = {
+      id: 'first-attachment',
+      file: new File(['1'], 'first.txt', { type: 'text/plain' }),
+      previewUrl: 'blob:first-attachment',
+      kind: 'document',
+      status: 'ready',
+    } satisfies ChatAttachment;
+    const secondAttachment = {
+      id: 'second-attachment',
+      file: new File(['2'], 'second.txt', { type: 'text/plain' }),
+      previewUrl: 'blob:second-attachment',
+      kind: 'document',
+      status: 'ready',
+    } satisfies ChatAttachment;
+    await controller.adapter.sendMessage({ role: 'user', content: 'first' }, [firstAttachment]);
+    const firstId = conversation.ids[0]!;
+    await controller.adapter.sendMessage({ role: 'user', content: 'second' }, [secondAttachment]);
+    await controller.adapter.editMessage?.({ messageId: firstId, content: 'edited first' });
+    expect(received).toEqual([1, 1, 1]);
+    expect(
+      conversation.ids.filter((id) => conversation.messages[id]?.role === 'user'),
+    ).toHaveLength(1);
+  });
 });

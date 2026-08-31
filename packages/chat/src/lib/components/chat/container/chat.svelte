@@ -2791,6 +2791,7 @@
         onsteps={() => stepsState.toggle(message.id)}
         toolCallExpanded={toolCallState.isExpanded(message.id)}
         ontoolcalltoggle={() => toolCallState.toggle(message.id)}
+        toolActivityActive={progressState === 'tool'}
         onSuggestionSelect={handleSuggestionSelect}
       >
         {#snippet actions()}
@@ -2829,6 +2830,7 @@
     {:else if renderRow.type === 'tool-call-group'}
       <ToolCallTimeline
         messageId={renderRow.messages[0]!.id}
+        activityActive={progressState === 'tool'}
         describeToolCall={adapter?.describeToolCall
           ? (pair) => describeToolCallSafely(pair.call, pair.result)
           : undefined}

@@ -9,6 +9,8 @@
     /** Stable occurrence key used to namespace disclosure ids in grouped runs. */
     occurrenceKey?: string | undefined;
     presentation?: ToolCallPresentation;
+    /** Whether the owning stream is still active. */
+    activityActive?: boolean;
     /** Whether the details are expanded */
     expanded?: boolean;
     /** Called when toggle is clicked */
@@ -30,6 +32,7 @@
     pair,
     occurrenceKey,
     presentation,
+    activityActive = true,
     expanded = false,
     onToggle,
     class: className,
@@ -88,7 +91,9 @@
     <span
       class="tool-call-activity-icon"
       data-kind={activityKind}
-      data-active={presentation?.tense === 'present' && !hasResult ? true : undefined}
+      data-active={activityActive && presentation?.tense === 'present' && !hasResult
+        ? true
+        : undefined}
     >
       {#if activityKind === 'search'}<Search size={16} />
       {:else if activityKind === 'fetch'}<Globe size={16} />

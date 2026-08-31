@@ -60,6 +60,26 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(source).toMatch(/prefers-reduced-motion:\s*reduce[\s\S]*?animation:\s*none/u);
   });
 
+  test('activity icons require the owning stream to remain active', () => {
+    const source = readFileSync(join(import.meta.dir, 'tool-call-group.svelte'), 'utf8');
+    expect(source).toContain('activityActive?: boolean');
+    expect(source).toContain("activityActive && presentation?.tense === 'present'");
+  });
+
+  test('threads owning stream activity through message tool rendering', () => {
+    const messageSource = readFileSync(join(import.meta.dir, 'chat-message.svelte'), 'utf8');
+    const rendererSource = readFileSync(
+      join(import.meta.dir, 'chat-message-parts-renderer.svelte'),
+      'utf8',
+    );
+    const partSource = readFileSync(join(import.meta.dir, 'parts/tool-call-part.svelte'), 'utf8');
+
+    expect(messageSource).toContain('toolActivityActive?: boolean');
+    expect(messageSource).toContain('{toolActivityActive}');
+    expect(rendererSource).toContain('activityActive={toolActivityActive}');
+    expect(partSource).toContain('{activityActive}');
+  });
+
   test('keys repeated presented tool disclosure state by row occurrence', () => {
     const source = readFileSync(join(import.meta.dir, 'tool-call-timeline.svelte'), 'utf8');
     expect(source).toContain('expandedCalls.has(`${index}:${pair.call.id}`)');

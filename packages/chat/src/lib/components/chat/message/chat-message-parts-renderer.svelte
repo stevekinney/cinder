@@ -28,6 +28,7 @@
     stepsExpanded = true,
     onsteps,
     onSuggestionSelect,
+    toolActivityActive = true,
   }: ChatMessagePartsRendererProps = $props();
 
   const units = $derived(toRenderUnits(parts));
@@ -82,7 +83,7 @@
   {#if part.type === 'markdown'}
     <MarkdownPart {part} {markdownNode} />
   {:else if part.type === 'tool-call'}
-    <ToolCallPart {part} {expanded} {onToggle} />
+    <ToolCallPart {part} {expanded} {onToggle} activityActive={toolActivityActive} />
   {:else if part.type === 'tool-result'}
     <ToolResultPart {part} />
   {:else if part.type === 'tool-approval'}

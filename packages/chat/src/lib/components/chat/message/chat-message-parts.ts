@@ -92,6 +92,8 @@ export type ChatMessagePartsRendererProps = {
   onsteps?: (() => void) | undefined;
   /** Called when the user selects a suggestion chip. */
   onSuggestionSelect?: ((label: string) => void) | undefined;
+  /** Whether tool activity belongs to the currently active stream. */
+  toolActivityActive?: boolean;
 };
 
 /** A renderable unit: a single body part, a contiguous run of image parts, a group of step parts, or a group of suggestion chips. */

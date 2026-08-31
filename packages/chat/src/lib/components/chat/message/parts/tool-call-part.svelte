@@ -8,6 +8,7 @@
     expanded?: boolean;
     /** Called when the card's disclosure toggle is activated. */
     onToggle?: (() => void) | undefined;
+    activityActive?: boolean;
   };
 </script>
 
@@ -16,7 +17,7 @@
 
   const noop = (): void => {};
 
-  let { part, expanded = false, onToggle }: ToolCallPartProps = $props();
+  let { part, expanded = false, onToggle, activityActive = true }: ToolCallPartProps = $props();
 
   // ToolCallGroup's `onToggle` is non-optional under exactOptionalPropertyTypes;
   // collapse an omitted handler to a noop so we never forward `undefined`.
@@ -33,4 +34,5 @@
   {...part.presentation ? { presentation: part.presentation } : {}}
   {expanded}
   onToggle={handleToggle}
+  {activityActive}
 />

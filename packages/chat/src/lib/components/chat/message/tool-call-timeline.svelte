@@ -11,10 +11,12 @@
     pairs,
     messageId,
     describeToolCall,
+    activityActive = true,
   }: {
     pairs: ToolCallPair[];
     messageId?: string;
     describeToolCall?: ((pair: ToolCallPair) => ToolCallPresentation | undefined) | undefined;
+    activityActive?: boolean;
   } = $props();
   const navigationMessageId = $derived(messageId ?? pairs[0]?.call.id ?? 'tool-call-group');
   const headingId = $derived(`message-${navigationMessageId}-tool-call-summary`);
@@ -95,6 +97,7 @@
             {pair}
             occurrenceKey={`${navigationMessageId}-${index}-${pair.call.id}`}
             {...activityPresentations[index] ? { presentation: activityPresentations[index] } : {}}
+            {activityActive}
             expanded={expandedCalls.has(`${index}:${pair.call.id}`)}
             onToggle={() => toggleCall(`${index}:${pair.call.id}`)}
           />

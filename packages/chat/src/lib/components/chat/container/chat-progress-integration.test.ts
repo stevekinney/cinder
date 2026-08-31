@@ -23,6 +23,8 @@ describe('Chat progress affordance integration contract', () => {
       'selectChatProgressState({ streaming, reasoningStreaming, toolActivity })',
     );
     expect(source).toContain('renderTypingIndicator');
+    expect(source).toContain("toolActivityActive={progressState === 'tool'}");
+    expect(source).toContain("activityActive={progressState === 'tool'}");
   });
 
   test('does not treat completed content-driven reasoning as active', () => {

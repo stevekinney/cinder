@@ -82,6 +82,8 @@ export const POST: RequestHandler = async ({ request }) => {
 		callId: result.callId,
 		outcome: result.outcome,
 		content: result.content,
+		...(result.action ? { action: result.action } : {}),
+		...(result.pendingApproval ? { pendingApproval: result.pendingApproval } : {}),
 		...(result.error ? { error: result.error } : {})
 	});
 };

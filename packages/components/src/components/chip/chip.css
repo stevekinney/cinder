@@ -122,7 +122,7 @@
   /* Third-party colour is decorative only. Keep the semantic foreground on the
    * semantic surface so arbitrary brand colours cannot reduce text contrast in
    * either theme; use the brand solely for a restrained tint and border. */
-  .cinder-chip[style*='--_cinder-chip-brand-color'] {
+  .cinder-chip[data-cinder-variant='neutral'][style*='--_cinder-chip-brand-color'] {
     color: var(--cinder-text-default);
     background: color-mix(
       in oklch,

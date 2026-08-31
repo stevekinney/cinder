@@ -33,6 +33,8 @@
     showDefaultActions?: boolean;
     /** Whether this message is currently streaming */
     streaming?: boolean;
+    /** Whether tool activity belongs to the currently active stream. */
+    toolActivityActive?: boolean;
     /** Override content for streaming (partial token buffer) */
     overrideContent?: string | undefined;
     /** Called when expanded state changes */
@@ -124,6 +126,7 @@
     markdownNode,
     showDefaultActions = true,
     streaming = false,
+    toolActivityActive = true,
     overrideContent,
     onExpandedChange,
     onretry,
@@ -405,6 +408,7 @@
           {stepsExpanded}
           {onsteps}
           {onSuggestionSelect}
+          {toolActivityActive}
         />
 
         {#if hasMarkdownBody && textContent.length > TRUNCATE_THRESHOLD}
