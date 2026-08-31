@@ -43,6 +43,7 @@ import {
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
   rewriteRepositoryRelativeReadmeLinks,
+  runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
   warmupInstabilityReasons,
 } from './playground-server.ts';
@@ -85,6 +86,59 @@ describe('eagerPrebuildComponents', () => {
 
   it('accepts a compose-only component scope without adding it to the sidebar prebuild', () => {
     expect(eagerPrebuildComponents(components, 'tab', [...components, 'tab'])).toEqual([]);
+  });
+});
+
+describe('runConcurrentStartupWarmup', () => {
+  it('starts the renderer preparation before page-bundle prebuild finishes', async () => {
+    const started: string[] = [];
+    let finishPrebuild: (() => void) | undefined;
+    let finishRenderer: (() => void) | undefined;
+    const prebuildFinished = new Promise<void>((resolve) => {
+      finishPrebuild = resolve;
+    });
+    const rendererFinished = new Promise<void>((resolve) => {
+      finishRenderer = resolve;
+    });
+
+    const warmup = runConcurrentStartupWarmup(
+      async () => {
+        started.push('prebuild');
+        await prebuildFinished;
+        return 'prebuilt';
+      },
+      async () => {
+        started.push('renderer');
+        await rendererFinished;
+        return 'rendered';
+      },
+      async () => {},
+    );
+
+    await Promise.resolve();
+    expect(started).toEqual(['prebuild', 'renderer']);
+
+    finishPrebuild?.();
+    finishRenderer?.();
+    expect(await warmup).toEqual({ prebuild: 'prebuilt', renderer: 'rendered' });
+  });
+
+  it('cleans up the playground when either concurrent startup task rejects', async () => {
+    let cleanupCalls = 0;
+
+    const warmup = runConcurrentStartupWarmup(
+      async () => 'prebuilt',
+      async () => {
+        throw new Error('renderer failed');
+      },
+      async () => {
+        cleanupCalls += 1;
+      },
+    );
+
+    expect(warmup).rejects.toThrow('renderer failed');
+    await warmup.catch(() => {});
+    expect(cleanupCalls).toBe(1);
   });
 });
 
@@ -990,6 +1044,9 @@ describe('/page/:name', () => {
   });
 
   it('serves bundled documentation CSS as one stylesheet with no import waterfall', async () => {
+    // A page render compiles the server-side Svelte graph first. The CSS build
+    // must keep resolving its own relative imports after that earlier Bun build.
+    await handleRequest(req(`/page/${FIXTURE_COMPONENT}`));
     const stylesheet = await handleRequest(req('/playground-styles/documentation.css'));
     expect(stylesheet.status).toBe(200);
     expect(stylesheet.headers.get('Content-Type')).toBe('text/css');
