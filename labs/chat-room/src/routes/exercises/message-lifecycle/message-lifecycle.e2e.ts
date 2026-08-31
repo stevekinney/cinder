@@ -65,7 +65,12 @@ async function sendAndStopGenerating(chat: Locator, log: Locator, expectedLogSub
 	// rather than after it had already finished on its own.
 	await expect(messagesLog).toContainText('Streaming a');
 
-	await chat.getByRole('button', { name: 'Stop generating' }).click();
+	// Dispatch at the observed partial-stream checkpoint. A pointer click waits
+	// for actionability and stability; on a loaded Firefox runner the simulated
+	// stream can finish during that wait and replace the button before the event
+	// lands. Dispatching the semantic button click synchronously preserves the
+	// contract under test without making the stream or test timeout longer.
+	await chat.getByRole('button', { name: 'Stop generating' }).dispatchEvent('click');
 
 	await expect(log).toContainText(expectedLogSubstring);
 	await expect(chat.getByRole('button', { name: 'Send message' })).toBeVisible();
