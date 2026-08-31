@@ -4,6 +4,8 @@
 
 Use `TerminalOutput` for read-only ANSI streams. Use `TerminalFrame` when the child content is an interactive terminal implementation whose backend needs `{ cols, rows }` resize updates.
 
+## Usage
+
 ```svelte
 <TerminalFrame title="Build shell" status="connected" onDimensionsChange={resizePty}>
   <PtyRenderer />

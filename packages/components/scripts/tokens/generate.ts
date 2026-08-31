@@ -135,6 +135,8 @@ export type CorpusEntry = {
   public?: boolean | undefined;
   category?: string | undefined;
   component?: string | undefined;
+  /** Whether the token can be represented faithfully in published resolved-context JSON. */
+  availableInResolvedContexts?: boolean | undefined;
   deprecated?: boolean | string | undefined;
   /**
    * True when `value` came from `$ref` rather than `$value`. `$ref` is a
@@ -193,6 +195,7 @@ function toEntry(
   const component =
     typeof extensions?.['component'] === 'string' ? extensions['component'] : undefined;
   const isPublic = typeof extensions?.['public'] === 'boolean' ? extensions['public'] : undefined;
+  const availableInResolvedContexts = extensions?.['nonRepresentableValue'] !== true;
   // DTCG makes `$deprecated` inheritable the same way `$type` is, and the
   // flattened corpus keeps no group records -- so without carrying the
   // ancestor state down, a `$deprecated` group whose children do not repeat the
@@ -224,6 +227,7 @@ function toEntry(
     public: isPublic,
     category,
     component,
+    availableInResolvedContexts,
     deprecated,
     isRefAlias: token.$ref !== undefined,
   };

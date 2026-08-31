@@ -81,6 +81,8 @@ export type TokenRegistryEntry = {
   public: boolean;
   /** Whether the `light` or `dark` theme document overrides this token. */
   themeAware: boolean;
+  /** Whether published resolved-context JSON includes this token with a faithful DTCG value. */
+  availableInResolvedContexts: boolean;
   /** The DTCG `$deprecated` field verbatim: `false` when absent, otherwise `true` or the deprecation message string. */
   deprecated: boolean | string;
   /** The token's `$description`, when present. */
@@ -303,6 +305,7 @@ export function buildTokenRegistryFromIndexes(
       component: entry.component,
       public: entry.public,
       themeAware: themeAware.has(entry.path),
+      availableInResolvedContexts: entry.availableInResolvedContexts !== false,
       deprecated: entry.deprecated ?? false,
       description: entry.description,
     };

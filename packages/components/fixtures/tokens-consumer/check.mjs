@@ -34,12 +34,12 @@ import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import tokenIndex from '@lostgradient/cinder/tokens' with { type: 'json' };
-import resolver from '@lostgradient/cinder/tokens/resolver' with { type: 'json' };
-import light from '@lostgradient/cinder/tokens/resolved/light' with { type: 'json' };
-import dark from '@lostgradient/cinder/tokens/resolved/dark' with { type: 'json' };
-import lightReducedMotion from '@lostgradient/cinder/tokens/resolved/light-reduced-motion' with { type: 'json' };
-import darkReducedMotion from '@lostgradient/cinder/tokens/resolved/dark-reduced-motion' with { type: 'json' };
 import { TOKEN_REGISTRY } from '@lostgradient/cinder/tokens/registry';
+import dark from '@lostgradient/cinder/tokens/resolved/dark' with { type: 'json' };
+import darkReducedMotion from '@lostgradient/cinder/tokens/resolved/dark-reduced-motion' with { type: 'json' };
+import light from '@lostgradient/cinder/tokens/resolved/light' with { type: 'json' };
+import lightReducedMotion from '@lostgradient/cinder/tokens/resolved/light-reduced-motion' with { type: 'json' };
+import resolver from '@lostgradient/cinder/tokens/resolver' with { type: 'json' };
 
 const CINDER_NAMESPACE = 'com.lostgradient.cinder';
 
@@ -62,7 +62,10 @@ assert.equal(
 
 /** The resolver document is the conformant object-keyed 2025.10 shape. */
 assert.equal(resolver.version, '2025.10', 'resolver declares its version');
-assert.ok(resolver.sets && typeof resolver.sets === 'object', 'resolver has an object-keyed `sets`');
+assert.ok(
+  resolver.sets && typeof resolver.sets === 'object',
+  'resolver has an object-keyed `sets`',
+);
 assert.ok(
   resolver.modifiers && typeof resolver.modifiers === 'object',
   'resolver has object-keyed `modifiers`',
@@ -96,10 +99,20 @@ assert.equal(
  */
 for (const [name, context] of RESOLVED_CONTEXTS) {
   const paths = Object.keys(context);
+  const resolvableEntries = TOKEN_REGISTRY.entries.filter(
+    (entry) => entry.availableInResolvedContexts,
+  );
   assert.equal(
     paths.length,
-    TOKEN_REGISTRY.entries.length,
-    `${name} resolves every token in the registry`,
+    resolvableEntries.length,
+    `${name} resolves every token the registry marks as representable`,
+  );
+
+  const resolvedPaths = new Set(paths);
+  assert.deepEqual(
+    resolvableEntries.map((entry) => entry.path).filter((path) => !resolvedPaths.has(path)),
+    [],
+    `${name} includes every representable registry entry`,
   );
 
   for (const path of paths) {

@@ -1284,6 +1284,8 @@ export type TokenRegistryEntry = {
   public: boolean;
   /** Whether a theme document overrides this token. */
   themeAware: boolean;
+  /** Whether resolved-context JSON includes this token with a faithful DTCG value. */
+  availableInResolvedContexts: boolean;
   /** The DTCG \`$deprecated\` value: \`false\`, \`true\`, or a message. */
   deprecated: boolean | string;
   /** The token's description, when it has one. */
