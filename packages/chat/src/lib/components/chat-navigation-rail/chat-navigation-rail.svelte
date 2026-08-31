@@ -239,8 +239,9 @@
 </nav>
 
 {#each userMessages as target (target.message.id)}
-  <span id={`${instanceId}-${target.message.id}-navigation-preview`} class="sr-only"
-    >{preview(target.message)}</span
+  <span
+    id={`${instanceId}-${target.message.id}-navigation-preview`}
+    class="chat-navigation-rail-description">{preview(target.message)}</span
   >
 {/each}
 
