@@ -241,7 +241,10 @@ test.describe('adapter failure-routing matrix', () => {
 			await expect(messagesLog).toContainText('Streaming a');
 
 			await setFailMode(page, mode);
-			await chat.getByRole('button', { name: 'Stop generating' }).click();
+			// Dispatch at the partial-stream checkpoint for the same reason as the
+			// shared stop helper above: Firefox can finish the simulated stream while
+			// a pointer click waits for stability, replacing the transient button.
+			await chat.getByRole('button', { name: 'Stop generating' }).dispatchEvent('click');
 
 			await expect(errorEl).toContainText('stopGenerating:');
 			await expect(errorEl).toContainText(`fail-mode: ${mode}`);
