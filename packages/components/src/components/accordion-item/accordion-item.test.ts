@@ -346,7 +346,18 @@ describe('AccordionItem', () => {
   });
 
   test('public CSS variables cover dense inspector trigger and panel subparts', async () => {
-    expect(accordionItemVariables).toEqual([]);
+    expect(accordionItemVariables).toEqual([
+      '--cinder-accordion-item-panel-font-size',
+      '--cinder-accordion-item-panel-inner-padding-block-end',
+      '--cinder-accordion-item-panel-inner-padding-block-start',
+      '--cinder-accordion-item-panel-inner-padding-inline',
+      '--cinder-accordion-item-panel-line-height',
+      '--cinder-accordion-item-trigger-font-size',
+      '--cinder-accordion-item-trigger-font-weight',
+      '--cinder-accordion-item-trigger-gap',
+      '--cinder-accordion-item-trigger-padding-block',
+      '--cinder-accordion-item-trigger-padding-inline',
+    ]);
 
     const css = await Bun.file(new URL('./accordion-item.css', import.meta.url)).text();
     expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');

@@ -124,7 +124,7 @@ describe('SideNavigation', () => {
   });
 
   test('public CSS variable controls list spacing without targeting internal list classes', async () => {
-    expect(sideNavigationVariables).toEqual([]);
+    expect(sideNavigationVariables).toEqual(['--cinder-side-navigation-list-gap']);
 
     const css = await Bun.file(new URL('./side-navigation.css', import.meta.url)).text();
     expect(css).toContain('gap: var(--cinder-side-navigation-list-gap,');
