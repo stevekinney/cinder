@@ -26,6 +26,7 @@ import {
   assertUniqueCssProperties,
   collectEntries,
   documentsForResolutionOrder,
+  entryContainsReference,
   loadCorpus,
   modifierValuesForContext,
   requireDocument,
@@ -214,6 +215,10 @@ export function themeAwarePaths(
     const overrides = new Map<string, CorpusEntry>();
     collectEntries(mergeAndExpandExtends(ownDocuments, scopeDocuments), '', undefined, overrides);
     for (const path of overrides.keys()) aware.add(path);
+  }
+  const baseIndex = buildBaseIndex(resolver, documentsByPath);
+  for (const [path, entry] of baseIndex) {
+    if (entryContainsReference(entry)) aware.add(path);
   }
   return aware;
 }

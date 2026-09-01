@@ -109,6 +109,11 @@ export function validateModifierSetExpansionOrder(
       const referencedSetNames = new Set(
         internalSetNames(sources).flatMap((setName) => [...reachableSetNames(resolver, setName)]),
       );
+      const directDocumentPaths = new Set(
+        sources
+          .filter((source) => !isInternalReference(source.$ref))
+          .map((source) => normalizeSourcePath(source.$ref)),
+      );
       for (const source of expandContextSources(resolver, entry.name, contextName)) {
         for (const setName of baseDocumentSets.get(normalizeSourcePath(source.$ref)) ?? []) {
           referencedSetNames.add(setName);
@@ -119,12 +124,11 @@ export function validateModifierSetExpansionOrder(
         if (basePosition === undefined) continue;
         const setTokenPaths = new Set<string>();
         if (documentsByPath)
-          for (const source of expandSetSources(resolver, setName))
-            collectDeclaredTokenPaths(
-              documentsByPath.get(normalizeSourcePath(source.$ref)),
-              '',
-              setTokenPaths,
-            );
+          for (const source of expandSetSources(resolver, setName)) {
+            const sourcePath = normalizeSourcePath(source.$ref);
+            if (!referencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath)) continue;
+            collectDeclaredTokenPaths(documentsByPath.get(sourcePath), '', setTokenPaths);
+          }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {
           if (candidate.kind !== 'modifiers') return false;
           if (!documentsByPath) return true;
@@ -193,20 +197,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
   const metadata = new Map<string, string>();
-  const visit = (node: unknown, prefix: string): void => {
+  const visit = (node: unknown, prefix: string, inherited: Record<string, unknown> = {}): void => {
     if (!isRecord(node)) return;
     if ('$value' in node || '$ref' in node) return;
-    metadata.set(
-      prefix,
-      JSON.stringify({
-        $type: node['$type'],
-        $deprecated: node['$deprecated'],
-        $extensions: node['$extensions'],
-      }),
-    );
+    const effective = {
+      $type: node['$type'] ?? inherited['$type'],
+      $deprecated: node['$deprecated'] ?? inherited['$deprecated'],
+      $extensions: node['$extensions'] ?? inherited['$extensions'],
+    };
+    metadata.set(prefix, JSON.stringify(effective));
     for (const [name, child] of Object.entries(node)) {
       if (name.startsWith('$')) continue;
-      visit(child, prefix ? `${prefix}.${name}` : name);
+      visit(child, prefix ? `${prefix}.${name}` : name, effective);
     }
   };
   visit(value, '');

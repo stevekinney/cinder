@@ -912,6 +912,7 @@
   --cinder-selectable-row-leading-gap: var(--cinder-space-3);
   --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
   --cinder-side-navigation-list-gap: var(--cinder-space-1);
+  --cinder-spinner-indicator: currentColor;
   --cinder-statistic-row-gap: var(--cinder-space-1);
   --cinder-statistic-column-gap: var(--cinder-space-3);
   --cinder-statistic-label-font-size: var(--cinder-text-sm);
@@ -1152,6 +1153,7 @@
   --cinder-selectable-row-leading-gap: var(--cinder-space-3);
   --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
   --cinder-side-navigation-list-gap: var(--cinder-space-1);
+  --cinder-spinner-indicator: currentColor;
   --cinder-statistic-row-gap: var(--cinder-space-1);
   --cinder-statistic-column-gap: var(--cinder-space-3);
   --cinder-statistic-label-font-size: var(--cinder-text-sm);

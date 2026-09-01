@@ -779,11 +779,24 @@ function withDependentBaseAliases(
   const scoped = new Map(overrides);
   for (const [path, entry] of baseIndex) {
     if (scoped.has(path)) continue;
-    if (serializeEntryValue(entry, baseIndex, resolveReferences).includes('var(')) {
+    if (
+      serializeEntryValue(entry, baseIndex, resolveReferences).includes('var(') ||
+      entryContainsReference(entry)
+    ) {
       scoped.set(path, entry);
     }
   }
   return scoped;
+}
+
+function valueContainsReference(value: unknown): boolean {
+  if (typeof value === 'string') return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/');
+  if (Array.isArray(value)) return value.some(valueContainsReference);
+  return isPlainObject(value) && Object.values(value).some(valueContainsReference);
+}
+
+export function entryContainsReference(entry: CorpusEntry): boolean {
+  return valueContainsReference(entry.value);
 }
 
 /**
