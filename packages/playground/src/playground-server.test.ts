@@ -40,6 +40,7 @@ import {
   eagerPrebuildComponents,
   handleRequest,
   isWarmupStable,
+  mapWithConcurrencyLimitInBatches,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
   releaseEagerPrebuildMemory,
@@ -112,6 +113,34 @@ describe('releaseIncrementalPrebuildMemory', () => {
     releaseIncrementalPrebuildMemory(48, collectGarbage);
 
     expect(calls).toEqual([true, true]);
+  });
+
+  it('runs collection callbacks only after every build in a batch has settled', async () => {
+    let activeBuilds = 0;
+    let maximumActiveBuilds = 0;
+    const collectionStates: Array<{ activeBuilds: number; completedItems: number }> = [];
+
+    const results = await mapWithConcurrencyLimitInBatches(
+      [1, 2, 3, 4, 5, 6, 7],
+      2,
+      3,
+      async (value) => {
+        activeBuilds += 1;
+        maximumActiveBuilds = Math.max(maximumActiveBuilds, activeBuilds);
+        await Promise.resolve();
+        activeBuilds -= 1;
+        return value * 2;
+      },
+      (completedItems) => collectionStates.push({ activeBuilds, completedItems }),
+    );
+
+    expect(maximumActiveBuilds).toBe(2);
+    expect(collectionStates).toEqual([
+      { activeBuilds: 0, completedItems: 3 },
+      { activeBuilds: 0, completedItems: 6 },
+      { activeBuilds: 0, completedItems: 7 },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(Array(7).fill('fulfilled'));
   });
 });
 

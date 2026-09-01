@@ -1165,6 +1165,22 @@ async function mapWithConcurrencyLimit<T, R>(
   return results;
 }
 
+export async function mapWithConcurrencyLimitInBatches<T, R>(
+  items: readonly T[],
+  concurrencyLimit: number,
+  batchSize: number,
+  task: (item: T) => Promise<R>,
+  afterBatch: (completedItems: number) => void,
+): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = [];
+  for (let offset = 0; offset < items.length; offset += batchSize) {
+    const batch = items.slice(offset, offset + batchSize);
+    results.push(...(await mapWithConcurrencyLimit(batch, concurrencyLimit, task)));
+    afterBatch(results.length);
+  }
+  return results;
+}
+
 /**
  * Pre-build every sidebar component's page bundle + the shell bundle.
  *
@@ -1196,21 +1212,16 @@ async function eagerPrebuildAll(): Promise<{
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.
   const knownComponents = new Set(components);
-  let completedBuilds = 0;
-  const pagePromise = mapWithConcurrencyLimit(
+  const shellCode = await shellPromise;
+  const pageResults = await mapWithConcurrencyLimitInBatches(
     components,
     EAGER_PREBUILD_CONCURRENCY,
+    EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL,
     async (name) => {
-      try {
-        return await buildPageBundle(name, knownComponents);
-      } finally {
-        completedBuilds += 1;
-        releaseIncrementalPrebuildMemory(completedBuilds);
-      }
+      return buildPageBundle(name, knownComponents);
     },
+    releaseIncrementalPrebuildMemory,
   );
-
-  const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
 
   let succeeded = 0;
   const failed: string[] = [];
