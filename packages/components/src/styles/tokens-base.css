@@ -609,7 +609,7 @@
   --cinder-marquee-duration: 24s;
   /* Gap between marquee items. */
   --cinder-marquee-gap: var(--cinder-space-6);
-  /* `::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability. */
+  /* `::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability. */
   --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   /* Row block padding (default density). */
   --cinder-selectable-row-padding-block: var(--cinder-space-3);
@@ -999,9 +999,41 @@
     --cinder-duration-progress-ring-spin: 0ms;
     --cinder-duration-base: 0ms;
   }
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not(
+      [data-reduced-motion='on']
+    )
+    [data-theme='dark'],
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not(
+      [data-reduced-motion='on']
+    )
+    [data-theme='light'] {
+    --cinder-duration-fast: 0ms;
+    --cinder-duration-instant: 0ms;
+    --cinder-duration-normal: 0ms;
+    --cinder-duration-moderate: 0ms;
+    --cinder-duration-slow: 0ms;
+    --cinder-duration-spin: 0ms;
+    --cinder-duration-pulse: 0ms;
+    --cinder-duration-progress-bar-indeterminate: 0ms;
+    --cinder-duration-progress-ring-spin: 0ms;
+    --cinder-duration-base: 0ms;
+  }
 }
 
 :root[data-reduced-motion='on'] {
+  --cinder-duration-fast: 0ms;
+  --cinder-duration-instant: 0ms;
+  --cinder-duration-normal: 0ms;
+  --cinder-duration-moderate: 0ms;
+  --cinder-duration-slow: 0ms;
+  --cinder-duration-spin: 0ms;
+  --cinder-duration-pulse: 0ms;
+  --cinder-duration-progress-bar-indeterminate: 0ms;
+  --cinder-duration-progress-ring-spin: 0ms;
+  --cinder-duration-base: 0ms;
+}
+:root[data-reduced-motion='on'] [data-theme='dark'],
+:root[data-reduced-motion='on'] [data-theme='light'] {
   --cinder-duration-fast: 0ms;
   --cinder-duration-instant: 0ms;
   --cinder-duration-normal: 0ms;

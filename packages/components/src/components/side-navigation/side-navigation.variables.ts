@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-side-navigation-list-gap'];
+const variables: readonly string[] = [];
 
 export default variables;

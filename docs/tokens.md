@@ -2,8 +2,6 @@
 
 cinder ships its design tokens as plain CSS custom properties on `:root`. Every token has a `--cinder-*` prefix; that prefix is the public surface, and you can override any of them at `:root` (globally) or on any ancestor selector (scoped) to reskin the system. Internal-only custom properties use `--_cinder-*`; those are not part of the contract and may change without notice.
 
-**Exception:** most [component-owned tokens](#component-tokens) do not yet honor this. Each component's own CSS still redeclares its `--cinder-<component>-*` custom properties directly on the component's root class (the pre-corpus, hand-authored pattern) rather than consuming the `:root` value the corpus now also emits — an element-level declaration always wins over an inherited one, so an ancestor or `:root` override of one of these has no effect today. `Button` and `Toggle` are the exceptions: both were already consume-only (their component CSS never redeclares these tokens, only references them via `var()`), so `--cinder-button-*` and `--cinder-toggle-track-*` overrides do work as described above. Migrating the rest is tracked separately; until then, treat each `## Component tokens` section as documenting that component's _default_, not a working override point.
-
 The token tables below are generated from the DTCG token corpus at [`src/tokens/`](../packages/components/src/tokens/) — everything between a `<!-- BEGIN GENERATED TOKEN TABLE: <slug> -->` / `<!-- END GENERATED TOKEN TABLE -->` marker pair is rewritten by `bun run --filter=@lostgradient/cinder tokens:generate`; edit the corpus, not the tables. The rest of this file — this intro, the callouts, and the explanatory prose between sections — is hand-maintained. A drift test in [`tokens-doc-drift.test.ts`](../packages/components/src/styles/tokens-doc-drift.test.ts) keeps the generated tables in sync with the corpus, and `tokens:generate -- --check` fails if they have drifted; add a new token by adding it to the corpus and to the matching section in [`generate-artifacts.ts`](../packages/components/scripts/tokens/generate-artifacts.ts), or CI will fail.
 
 All tokens are declared in [`tokens-base.css`](../packages/components/src/styles/tokens-base.css). The aggregator [`tokens.css`](../packages/components/src/styles/tokens.css) imports the base file and is the entry point components consume.
@@ -569,7 +567,7 @@ Component-specific tokens for [`Button`](../packages/components/src/components/b
 
 ## Component tokens
 
-Component-owned custom-property theming surfaces, one section per component (besides [`Button`](#button) above, and `Toggle`, whose two component-owned tokens are documented in the [Borders](#borders) section instead). Each section documents that component's default value for every `--cinder-*` custom property its own CSS declares; a component-owned state/density/size variant that locally overrides one of these (e.g. `[data-cinder-density='condensed']`) is documented in the component's own README, not here.
+Component-owned custom-property theming surfaces, one section per component (besides [`Button`](#button) above, and `Toggle`, whose two component-owned tokens are documented in the [Borders](#borders) section instead). Each section documents the corpus-owned default for the component's public `--cinder-*` tokens; component-owned state, density, and size variants that intentionally override those defaults are documented in the component's own README.
 
 ### Accordion Item
 
@@ -727,9 +725,9 @@ Component-owned custom-property theming surfaces, one section per component (bes
 
 <!-- BEGIN GENERATED TOKEN TABLE: modal -->
 
-| Token                     | Default                          | Description                                                                                                                                                                                                            |
-| ------------------------- | -------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `--cinder-modal-backdrop` | `var(--cinder-overlay-backdrop)` | `::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability. |
+| Token                     | Default                          | Description                                                                                                                   |
+| ------------------------- | -------------------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `--cinder-modal-backdrop` | `var(--cinder-overlay-backdrop)` | `::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability. |
 
 <!-- END GENERATED TOKEN TABLE -->
 

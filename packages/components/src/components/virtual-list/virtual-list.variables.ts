@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-virtual-list-height'];
+const variables: readonly string[] = [];
 
 export default variables;

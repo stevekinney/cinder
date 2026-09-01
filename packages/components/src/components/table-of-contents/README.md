@@ -33,9 +33,8 @@ On-page heading navigation for long-form content and docs layouts.
 
 <!-- generated:variables:start -->
 
-- `--cinder-table-of-contents-link-active-color`
-- `--cinder-table-of-contents-link-color`
-- `--cinder-table-of-contents-link-indent-step`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

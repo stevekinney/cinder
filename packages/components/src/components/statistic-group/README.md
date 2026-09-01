@@ -41,9 +41,7 @@ The leaf remains importable individually for à-la-carte builds — see
 
 <!-- generated:variables:start -->
 
-- `--cinder-statistic-group-card-padding`
 - `--cinder-statistic-group-gap`
-- `--cinder-statistic-group-shared-cell-padding`
 <!-- generated:variables:end -->
 
 ## Subcomponents

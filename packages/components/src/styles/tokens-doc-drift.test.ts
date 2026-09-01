@@ -108,9 +108,10 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // value (see toCodeSpan in generate-artifacts.ts), so match it with a
   // backreference rather than assuming one backtick -- otherwise a value
   // containing a backtick parses truncated and reports a false mismatch.
-  const rowPattern = /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(`+)(.+?)\2\s*\|/gm;
+  const rowPattern =
+    /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(?:(`+)(.+?)\2|((?:\\\\.|[^|])*?))\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
-    if (!match[1] || !match[3]) continue;
+    if (!match[1]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
     // Undo the generator's Markdown-table pipe escaping before comparing. The
     // generator's `toTableCell` (generate-artifacts.ts) doubles the run of
@@ -123,7 +124,7 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     // 2` original backslashes plus the literal pipe.
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
-    const body = match[3].replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+    const body = (match[3] ?? match[4] ?? '').replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
     // The encoder (`toTableCell`) always produces an ODD backslash run before
     // an escaped pipe (a run of `k` becomes `2k + 1`, which is odd for every
     // `k >= 0`). A row this regex captured with an EVEN run (0, 2, 4, ...)

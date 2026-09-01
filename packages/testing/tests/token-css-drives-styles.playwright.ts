@@ -237,4 +237,22 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect.poll(radiusOf).toBe('2px');
     expect(before).not.toBe('2px');
   });
+
+  test('a scoped ancestor override reaches a consume-only component token', async ({ page }) => {
+    await gotoDocumentationPage(page, '/page/action-row');
+
+    const row = page.locator('.cinder-action-row').first();
+    await expect(row).toBeVisible();
+    const parent = row.locator('..');
+    const paddingOf = async (): Promise<string> =>
+      row.evaluate((element) => getComputedStyle(element).paddingTop);
+
+    const before = await paddingOf();
+    await parent.evaluate((element) => {
+      (element as HTMLElement).style.setProperty('--cinder-action-row-padding-block', '1px');
+    });
+
+    await expect.poll(paddingOf).toBe('1px');
+    expect(before).not.toBe('1px');
+  });
 });

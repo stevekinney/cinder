@@ -13,7 +13,6 @@
  * ======================================== */
 
   .cinder-side-navigation {
-    --cinder-side-navigation-list-gap: var(--cinder-space-1);
     display: block;
   }
 

@@ -1,9 +1,3 @@
-const variables: readonly string[] = [
-  '--cinder-kanban-board-scroll-edge',
-  '--cinder-kanban-card-background',
-  '--cinder-kanban-column-background',
-  '--cinder-kanban-column-gap',
-  '--cinder-kanban-column-width',
-];
+const variables: readonly string[] = [];
 
 export default variables;

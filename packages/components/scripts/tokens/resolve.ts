@@ -62,23 +62,23 @@ function issue(path: string, reason: string): never {
 
 export function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
-  if (reference.startsWith('#/')) {
-    let fragment: string;
-    try {
-      fragment = decodeURIComponent(reference.slice(2));
-    } catch {
-      return issue(reference, 'JSON Pointer contains invalid percent encoding');
-    }
-    return fragment
-      .split('/')
-      .map((segment) => {
-        if (/~(?:[^01]|$)/.test(segment))
-          issue(reference, 'JSON Pointer contains invalid tilde escape');
-        return segment.replaceAll('~1', '/').replaceAll('~0', '~');
-      })
-      .join('.');
-  }
+  if (reference.startsWith('#/')) return pointerSegments(reference).join('.');
   return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
+}
+
+function pointerSegments(reference: string): string[] {
+  if (!reference.startsWith('#/')) return [];
+  let fragment: string;
+  try {
+    fragment = decodeURIComponent(reference.slice(2));
+  } catch {
+    return issue(reference, 'JSON Pointer contains invalid percent encoding');
+  }
+  return fragment.split('/').map((segment) => {
+    if (/~(?:[^01]|$)/.test(segment))
+      issue(reference, 'JSON Pointer contains invalid tilde escape');
+    return segment.replaceAll('~1', '/').replaceAll('~0', '~');
+  });
 }
 
 function getByPath(value: unknown, segments: string[]): unknown {
@@ -181,6 +181,7 @@ function resolveExtends(
   groups: Map<string, TokenGroup>,
   visiting: Set<string>,
   complete: Set<string>,
+  lookupGroups: Map<string, TokenGroup> = groups,
 ): TokenGroup {
   const group = groups.get(groupPath);
   if (!group) return issue(groupPath, '$extends must reference an existing group');
@@ -203,32 +204,17 @@ function resolveExtends(
     // `$deprecated` is itself only inherited from ITS OWN ancestor rather
     // than declared directly (`effectiveGroupDeprecated`, not a bare property
     // read).
-    // Known gap, tracked in CIN-475: `groups` is the single MERGED tree
-    // `collectGroups` built -- when the extend target lives only in a
-    // separate lookup document scope (theme/motion overrides extending a
-    // foundation group via `mergeAndExpandExtends(ownDocuments,
-    // lookupDocuments)`), and that lookup-scope ancestor's `$deprecated` is
-    // shadowed by the override's own non-deprecated group of the same name,
-    // `effectiveGroupDeprecated` walks the OVERRIDING tree's ancestor chain
-    // here, not the lookup scope's, and misses it. Deferred rather than
-    // reworked this late in review: fixing it means deciding a real
-    // precedence rule across two independent document scopes, not a
-    // one-line change, and nothing in the real corpus exercises it (no group
-    // is `$deprecated` anywhere today).
-    // Known gap, tracked in CIN-476: this caches `effectiveExtendedDeprecated`
-    // onto `group.$deprecated` the first time `group` is resolved. If the
-    // EXTENDED group's own ancestor deprecation is itself only established
-    // through a SEPARATE `$extends` chain that hasn't been expanded yet
-    // (declaration order dependent, since `resolveExtends` runs per group in
-    // document key order), `effectiveGroupDeprecated` sees no deprecation
-    // yet, caches a wrong value (or `undefined`, or an ancestor's unrelated
-    // `false`), and the `=== undefined` guard above then refuses to update
-    // it once the extended chain is later expanded and gains its real value.
-    // Fixing it means resolving ancestor `$extends` chains in dependency
-    // order before this caching runs, or switching to lazy computation --
-    // deferred rather than reworked this late in review; nothing in the real
-    // corpus exercises it (no group is `$deprecated` anywhere today).
-    const effectiveExtendedDeprecated = effectiveGroupDeprecated(extendedPath, groups);
+    // Resolve any ancestor `$extends` chains before reading their effective
+    // deprecation. This makes inheritance independent of declaration order.
+    const ancestors = extendedPath ? extendedPath.split('.') : [];
+    for (let end = ancestors.length; end >= 0; end -= 1) {
+      const ancestorPath = ancestors.slice(0, end).join('.');
+      if (groups.get(ancestorPath)?.$extends)
+        resolveExtends(ancestorPath, groups, visiting, complete, lookupGroups);
+    }
+    const effectiveExtendedDeprecated =
+      effectiveGroupDeprecated(extendedPath, groups) ??
+      effectiveGroupDeprecated(extendedPath, lookupGroups);
     if (group.$deprecated === undefined && effectiveExtendedDeprecated !== undefined)
       group.$deprecated = effectiveExtendedDeprecated;
     for (const [name, value] of Object.entries(extended))
@@ -248,7 +234,8 @@ function resolveExtends(
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isTokenGroup(value)) continue;
     const nestedPath = groupPath ? `${groupPath}.${name}` : name;
-    if (groups.has(nestedPath)) resolveExtends(nestedPath, groups, visiting, complete);
+    if (groups.has(nestedPath))
+      resolveExtends(nestedPath, groups, visiting, complete, lookupGroups);
   }
   visiting.delete(groupPath);
   complete.add(groupPath);
@@ -261,23 +248,16 @@ function resolveReference(
   rawRefs: RawRefs,
   rootTokenPaths: Set<string>,
   resolving: Set<string>,
+  groups: Map<string, TokenGroup>,
+  completed: Set<string>,
 ): unknown {
-  // Known gap, tracked in CIN-480: a bare `#/` pointer dot-joins to the
-  // empty string via `tokenPathFromReference`, which collides with the
-  // index key `collectTokens` uses for the document's OWN `$root` token
-  // (stored at prefix ''). Per RFC 6901, `#/` names a property whose key is
-  // the empty string -- not the document root (that's `#/$root`, handled
-  // correctly below) -- so a bare `#/` silently resolves as if it were
-  // `#/$root` instead of being rejected as malformed. Deferred rather than
-  // reworked this late in review, since disambiguating requires checking
-  // the ORIGINAL reference string, not just the derived path, in the few
-  // places that intentionally treat the empty string as the document-root
-  // sentinel; nothing in the real corpus uses a bare `#/` reference.
-  const segments = tokenPathFromReference(reference).split('.');
+  if (reference === '#/') return issue(reference, 'reference target does not exist');
+  const segments = reference.startsWith('#/')
+    ? pointerSegments(reference)
+    : reference.slice(1, -1).split('.');
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
     if (!rootToken) return issue(reference, 'reference target does not exist');
-    const resolvedToken = resolveToken('', tokens, rawRefs, rootTokenPaths, resolving);
     // A bare `#/$root` pointer (nothing after `$root`) names the document
     // root token's WHOLE identity, exactly like an ordinary whole-token
     // pointer with no trailing segments -- it must extract `$value`, not
@@ -288,6 +268,9 @@ function resolveReference(
     // selects that base.
     const remainder = segments.slice(1);
     const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
+    const resolvedToken = usesTokenObjectBase
+      ? tokens.get('')!
+      : resolveToken('', tokens, rawRefs, rootTokenPaths, resolving, groups, completed);
     const propertyValue =
       remainder[0] === '$ref'
         ? getByPath(rawRefs.get(''), remainder.slice(1))
@@ -299,45 +282,16 @@ function resolveReference(
   for (let end = segments.length; end > 0; end -= 1) {
     const candidatePath = segments.slice(0, end).join('.');
     const token = tokens.get(candidatePath);
-    // Known gap, tracked in CIN-481: this loop only ever matches a candidate
-    // present in `tokens` -- the token index, which indexes a GROUP only
-    // when it carries a `$root` token (at the group's own path). A `$ref`
-    // into metadata on an ordinary ROOTLESS group (`#/group/$description`
-    // where `group` has no `$root`) never has a matching candidate here at
-    // all, so it falls through to "reference target does not exist" before
-    // the metadata-base branch below even runs. Fixing it means also
-    // searching the merged GROUP tree (`collectGroups`'s output, not
-    // threaded into this function today) as a fallback -- deferred rather
-    // than reworked this late in review; nothing in the real corpus
-    // references a rootless group's metadata.
-    if (!token) continue;
-    // Known gap, tracked in CIN-477: `resolveToken` is called eagerly here,
-    // before this function knows whether the remainder targets metadata
-    // (needing only `rawRefs`/the raw token object, no recursion at all) or
-    // the token's resolved value. When `candidatePath` equals the path
-    // currently being resolved -- a token pointing to its OWN metadata, e.g.
-    // `copy: { $ref: '#/copy/$description' }` -- this eager call trips the
-    // `resolving.has(path)` circular-alias guard and rejects a valid
-    // self-referencing metadata pointer that needs no resolution at all.
-    // Fixing it means selecting the metadata base before this call, in both
-    // this loop and the `#/$root` branch above -- deferred rather than
-    // reworked this late in review; nothing in the real corpus exercises a
-    // self-referencing metadata pointer.
-    const resolvedToken = resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving);
+    const group = groups.get(candidatePath);
+    if (!token && !group) continue;
     const propertySegments = segments.slice(end);
-    // Known gap, tracked in CIN-485 (mirror of CIN-480, for a named group
-    // instead of the document root): when `propertySegments` is empty AND
-    // `candidatePath` is in `rootTokenPaths`, this is a whole-token `$ref`
-    // that named the GROUP with no explicit `$root` segment (`#/group`, not
-    // `#/group/$root`) -- under JSON Pointer semantics that names the group
-    // object, not its root token, and should be rejected. Instead
-    // `resolvedToken` (already the group's redirected root token, since
-    // that's what's indexed at `candidatePath`) is silently returned as if
-    // `$root` had been spelled explicitly. Fixing it means checking the
-    // ORIGINAL reference string, not just what happens to be indexed at the
-    // matched path -- deferred rather than reworked this late in review;
-    // nothing in the real corpus references a group without spelling
-    // `$root`.
+    if (
+      reference.startsWith('#/') &&
+      propertySegments.length === 0 &&
+      group &&
+      rootTokenPaths.has(candidatePath)
+    )
+      return issue(reference, `reference target ${candidatePath} must name $root explicitly`);
     // `$root`, when present AND `candidatePath` actually names a GROUP that
     // carries one (`rootTokenPaths.has(candidatePath)`) -- not merely an
     // ordinary token that happens to share that path -- is a REDIRECT to the
@@ -357,19 +311,8 @@ function resolveReference(
       propertySegments[0] === '$root' &&
       rootTokenPaths.has(candidatePath);
     const remainder = targetsRootToken ? propertySegments.slice(1) : propertySegments;
-    // Known gap, tracked in CIN-487: when `targetsRootToken` consumed an
-    // explicit `$root` segment and the remainder is NOT itself `$value`
-    // (or another `$`-prefixed property), `usesTokenObjectBase` below is
-    // false, so the base falls through to `resolvedToken.$value` -- letting
-    // a malformed pointer like `#/group/$root/value` (missing the `$value`
-    // segment) silently resolve `value` as if it had been spelled
-    // `#/group/$root/$value/value`. Per JSON Pointer semantics that names a
-    // property on the root TOKEN OBJECT, which doesn't have one called
-    // `value`, and should be rejected. Fixing it means keeping the token
-    // object as the base whenever `$root` was consumed, unless the
-    // remainder is itself `$value`-prefixed -- deferred rather than
-    // reworked this late in review; nothing in the real corpus references a
-    // composite-valued group root this way.
+    if (targetsRootToken && remainder.length > 0 && !remainder[0]?.startsWith('$'))
+      return issue(reference, `reference target ${candidatePath} has no requested property`);
     // A remainder starting with ANY of the token's own reserved `$`-prefixed
     // properties -- not just `$value` -- names something on the `DesignToken`
     // object itself: `#/base/$description`, `#/base/$deprecated`,
@@ -390,21 +333,18 @@ function resolveReference(
     // rather than `token.$ref` itself, which may already have been deleted by
     // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
     // comment). Every other reserved property is untouched by resolution.
-    // Known gap, tracked in CIN-474: `remainder` came from `segments`, which
-    // `tokenPathFromReference` produced by dot-joining the pointer and this
-    // function re-split on `.` -- lossy for a pointer segment that itself
-    // contains a literal dot, which vendor extension keys always do by
-    // convention (`com.lostgradient.cinder`). A `$ref` into
-    // `#/base/$extensions/com.lostgradient.cinder/cssProperty` therefore
-    // walks the wrong segments and fails to resolve, even though the
-    // property is genuinely there. Fixing it means preserving raw,
-    // pre-join pointer segments through to this walk -- deferred rather
-    // than reworked this late in review, since nothing in the real corpus
-    // exercises it.
+    const resolvedToken = token
+      ? usesTokenObjectBase
+        ? token
+        : resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
+      : undefined;
     const propertyValue =
       remainder[0] === '$ref'
         ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))
-        : getByPath(usesTokenObjectBase ? resolvedToken : resolvedToken.$value, remainder);
+        : getByPath(
+            usesTokenObjectBase ? (resolvedToken ?? group) : resolvedToken?.$value,
+            remainder,
+          );
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);
     return clone(propertyValue);
@@ -418,17 +358,29 @@ function resolveValue(
   rawRefs: RawRefs,
   rootTokenPaths: Set<string>,
   resolving: Set<string>,
+  groups: Map<string, TokenGroup>,
+  completed: Set<string>,
 ): unknown {
   if (typeof value === 'string')
     return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/')
-      ? resolveReference(value, tokens, rawRefs, rootTokenPaths, resolving)
+      ? resolveReference(value, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : value;
   if (Array.isArray(value))
-    return value.map((entry) => resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving));
+    return value.map((entry) =>
+      resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving, groups, completed),
+    );
   if (!isObject(value)) return value;
   const resolved: JsonObject = Object.create(null);
   for (const [key, entry] of Object.entries(value))
-    resolved[key] = resolveValue(entry, tokens, rawRefs, rootTokenPaths, resolving);
+    resolved[key] = resolveValue(
+      entry,
+      tokens,
+      rawRefs,
+      rootTokenPaths,
+      resolving,
+      groups,
+      completed,
+    );
   return resolved;
 }
 
@@ -489,11 +441,21 @@ function resolveRefToken(
   rawRefs: RawRefs,
   rootTokenPaths: Set<string>,
   resolving: Set<string>,
+  groups: Map<string, TokenGroup>,
+  completed: Set<string>,
 ): void {
   const ref = token.$ref;
   if (typeof ref !== 'string') return issue(path, '$ref must be a string');
   try {
-    token.$value = resolveReference(ref, tokens, rawRefs, rootTokenPaths, resolving);
+    token.$value = resolveReference(
+      ref,
+      tokens,
+      rawRefs,
+      rootTokenPaths,
+      resolving,
+      groups,
+      completed,
+    );
   } catch (error) {
     if (error instanceof TokenValidationError)
       return issue(
@@ -515,9 +477,12 @@ function resolveToken(
   rawRefs: RawRefs,
   rootTokenPaths: Set<string>,
   resolving: Set<string>,
+  groups: Map<string, TokenGroup>,
+  completed: Set<string>,
 ): DesignToken {
   const token = tokens.get(path);
   if (!token) return issue(path, 'token does not exist');
+  if (completed.has(path)) return token;
   if (resolving.has(path)) return issue(path, 'circular token alias');
   // Validation (`assertValidTokenDocument`) is what enforces `$value`/`$ref`
   // mutual exclusivity on the raw document; this is a resolve-time backstop
@@ -531,9 +496,19 @@ function resolveToken(
     return issue(path, '$value and $ref are mutually exclusive on a resolved token');
   resolving.add(path);
   if (token.$ref !== undefined)
-    resolveRefToken(path, token, tokens, rawRefs, rootTokenPaths, resolving);
-  else token.$value = resolveValue(token.$value, tokens, rawRefs, rootTokenPaths, resolving);
+    resolveRefToken(path, token, tokens, rawRefs, rootTokenPaths, resolving, groups, completed);
+  else
+    token.$value = resolveValue(
+      token.$value,
+      tokens,
+      rawRefs,
+      rootTokenPaths,
+      resolving,
+      groups,
+      completed,
+    );
   resolving.delete(path);
+  completed.add(path);
   return token;
 }
 
@@ -561,9 +536,21 @@ export function mergeAndExpandExtends(
 ): TokenDocument {
   const merged = mergeDocuments(documents);
   const groups = new Map<string, TokenGroup>();
-  if (lookupDocuments !== documents) collectGroups(mergeDocuments(lookupDocuments), '', groups);
+  const lookupGroups = new Map<string, TokenGroup>();
+  if (lookupDocuments !== documents) {
+    const lookupMerged = mergeDocuments(lookupDocuments);
+    collectGroups(lookupMerged, '', lookupGroups);
+    collectGroups(lookupMerged, '', groups);
+  }
   collectGroups(merged, '', groups);
-  for (const groupPath of groups.keys()) resolveExtends(groupPath, groups, new Set(), new Set());
+  for (const groupPath of groups.keys())
+    resolveExtends(
+      groupPath,
+      groups,
+      new Set(),
+      new Set(),
+      lookupDocuments === documents ? groups : lookupGroups,
+    );
   return merged;
 }
 
@@ -572,38 +559,30 @@ function buildTokenIndex(documents: TokenDocument[]): {
   tokens: ResolvedTokens;
   rawRefs: RawRefs;
   rootTokenPaths: Set<string>;
+  groups: Map<string, TokenGroup>;
 } {
   const tokens: ResolvedTokens = new Map();
   const rootTokenPaths = new Set<string>();
   const merged = mergeAndExpandExtends(documents);
+  const groups = new Map<string, TokenGroup>();
+  collectGroups(merged, '', groups);
   collectTokens(merged, '', tokens, rootTokenPaths);
   const rawRefs: RawRefs = new Map();
   for (const [path, token] of tokens) {
     if (typeof token.$ref === 'string') rawRefs.set(path, token.$ref);
   }
-  return { tokens, rawRefs, rootTokenPaths };
+  return { tokens, rawRefs, rootTokenPaths, groups };
 }
 
 /** Resolves group inheritance, whole-token aliases, and property-level aliases. */
 export function resolveDocuments(documents: TokenDocument[]): Record<string, DesignToken> {
-  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
+  const { tokens, rawRefs, rootTokenPaths, groups } = buildTokenIndex(documents);
+  const completed = new Set<string>();
   const resolved: Record<string, DesignToken> = Object.create(null);
-  // Known gap, tracked in CIN-484 (related to CIN-477, same
-  // self-referencing-metadata resolution area): `resolveToken` has no
-  // "already fully resolved" tracking. If an earlier token's own resolution
-  // causes a LATER token to resolve first (e.g. trigger -> copy, where
-  // `copy: { $ref: '#/alias/$ref' }` correctly resolves to alias's raw
-  // metadata string and deletes copy.$ref), then when this loop reaches
-  // that later token at its own top-level position, resolveToken sees a
-  // token with $value already set and no $ref left -- indistinguishable
-  // from an ordinary alias $value -- and resolves that metadata STRING a
-  // second time as if it were still raw, silently changing the value again.
-  // Fixing it means tracking completed tokens (mirroring resolveExtends's
-  // own `complete` set) and short-circuiting resolveToken for anything
-  // already resolved -- deferred rather than reworked this late in review;
-  // nothing in the real corpus has a $ref chain producing this ordering.
   for (const path of tokens.keys())
-    resolved[path] = clone(resolveToken(path, tokens, rawRefs, rootTokenPaths, new Set()));
+    resolved[path] = clone(
+      resolveToken(path, tokens, rawRefs, rootTokenPaths, new Set(), groups, completed),
+    );
   return resolved;
 }
 
@@ -620,8 +599,9 @@ export type ValueResolver = (value: unknown) => unknown;
  * second resolver.
  */
 export function createValueResolver(documents: TokenDocument[]): ValueResolver {
-  const { tokens, rawRefs, rootTokenPaths } = buildTokenIndex(documents);
-  return (value: unknown) => resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set());
+  const { tokens, rawRefs, rootTokenPaths, groups } = buildTokenIndex(documents);
+  return (value: unknown) =>
+    resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set(), groups, new Set());
 }
 
 /**

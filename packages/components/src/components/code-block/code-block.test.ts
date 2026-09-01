@@ -118,11 +118,11 @@ describe('CodeBlock — static structure', () => {
 
   test('public source-excerpt variables control the shared viewport and both render paths', async () => {
     const css = await Bun.file(new URL('./code-block.css', import.meta.url)).text();
-    expect(css).toContain('--cinder-code-block-height: auto');
+    expect(css).not.toContain('--cinder-code-block-height:');
     expect(css).toContain('block-size: var(--cinder-code-block-height)');
     expect(css).toContain('font-size: var(--cinder-code-block-font-size)');
     expect(css).toContain('line-height: var(--cinder-code-block-line-height)');
-    expect(css.match(/--cinder-code-block-padding/g)?.length).toBeGreaterThanOrEqual(2);
+    expect(css).not.toContain('--cinder-code-block-padding:');
     expect(css).toContain('.cinder-code-block :where(pre.shiki)');
   });
 
@@ -238,9 +238,7 @@ describe('CodeBlock — static structure', () => {
     expect(surfaceDeclaration).toMatch(
       /^light-dark\(\s*var\(--cinder-surface-raised\)\s*,\s*var\(--cinder-surface-inset\)\s*\)$/,
     );
-    expect(css).toContain(
-      '--cinder-code-block-background: var(--_cinder-code-block-code-surface);',
-    );
+    expect(css).not.toContain('--cinder-code-block-background:');
     expect(css).toContain('background: var(--cinder-code-block-background);');
     expect(css).toContain('background: var(--cinder-code-block-background) !important;');
   });

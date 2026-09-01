@@ -77,8 +77,6 @@ Composable slide rotator with controls, indicators, keyboard support, and option
 
 <!-- generated:variables:start -->
 
-- `--cinder-carousel-aspect-ratio`
-- `--cinder-carousel-dot-size`
-- `--cinder-carousel-gap`
-- `--cinder-carousel-slide-size`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->

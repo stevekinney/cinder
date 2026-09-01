@@ -1,7 +1,3 @@
-const variables: readonly string[] = [
-  '--cinder-tree-drop-line-color',
-  '--cinder-tree-drop-line-thickness',
-  '--cinder-tree-item-dragging-opacity',
-];
+const variables: readonly string[] = ['--cinder-tree-drop-line-color'];
 
 export default variables;

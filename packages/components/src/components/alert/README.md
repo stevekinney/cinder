@@ -31,7 +31,8 @@ A status message that communicates contextual feedback and can optionally be dis
 
 <!-- generated:variables:start -->
 
-- `--cinder-alert-info`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

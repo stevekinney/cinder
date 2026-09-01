@@ -842,11 +842,11 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       const baseIndex = new Map<string, CorpusEntry>([recipeEntry('test.rt', '--test-rt', raw)]);
       const table = await renderDocTable(tableSection('--test-rt'), baseIndex, (value) => value);
       const row = rowFor(table, '--test-rt');
-      // Extract the value cell's code-span body the same way extractDocTokens
-      // does: everything between the second pair of backtick-delimited cells.
-      const cellMatch = /\|\s*`--test-rt`\s*\|\s*`(.+?)`\s*\|/.exec(row);
+      // Pipe-containing values use a plain Markdown cell so the escape is
+      // consumed by GFM instead of being displayed literally in a code span.
+      const cellMatch = /\|\s*`--test-rt`\s*\|\s*((?:\\.|[^|])*)\s*\|/.exec(row);
       expect(cellMatch?.[1]).toBeDefined();
-      expect(decode(cellMatch![1]!)).toBe(raw);
+      expect(decode(cellMatch![1]!.trim())).toBe(raw);
     }
   });
 });

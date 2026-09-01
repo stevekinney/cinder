@@ -30,8 +30,6 @@
   }
 
   .cinder-data-table[data-cinder-virtualized] {
-    --cinder-data-table-height: 24rem;
-
     block-size: var(--cinder-data-table-height, 24rem);
     overflow: auto;
     overscroll-behavior: contain;

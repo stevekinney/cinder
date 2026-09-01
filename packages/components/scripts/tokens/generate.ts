@@ -784,40 +784,41 @@ function renderOverrideDeclarations(
  * group inherits members verbatim, extension metadata included -- and those emit
  * an identical declaration twice, which is redundant but harmless.
  */
-export function assertUniqueCssProperties(entries: Map<string, CorpusEntry>): void {
-  const byProperty = new Map<string, Map<string, string[]>>();
+export function assertUniqueCssProperties(
+  entries: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry> = entries,
+  resolveReferences: ValueResolver = (value) => value,
+  resolveReferencesFactory?: () => ValueResolver,
+): void {
+  const claimantsByProperty = new Map<string, Array<[string, CorpusEntry]>>();
   for (const [path, entry] of entries) {
     if (!entry.cssProperty) continue;
-    // `type` belongs in the key, not just the value: serialization is
-    // type-directed, so two entries can share a raw `$value` and still emit
-    // different CSS -- `fontFamily: "normal"` emits `normal` while
-    // `fontWeight: "normal"` emits `400`. Hashing the value alone called that
-    // pair identical, and the disagreement then surfaced downstream, where the
-    // first-claimant docs index documented one form while the CSS and the drift
-    // test's last-write map used the other, so regeneration produced
-    // documentation the required drift test rejected.
-    // Known gap, tracked in CIN-483: `entry.value` is the RAW corpus value,
-    // which for a property-level `$ref` (e.g. `#/dimension/a/$value/value`)
-    // is the unresolved pointer STRING, not the literal it resolves to. Two
-    // distinct property-level `$ref` tokens sharing this `cssProperty` and
-    // resolving to the identical literal hash to two different pointer
-    // strings and get wrongly rejected as conflicting, even though matching
-    // emitted values is exactly what this guard is supposed to permit. The
-    // same applies to a whole-token `$ref` alias -- `toEntry` records its raw
-    // reference STRING as `.value` (it has no `$value` of its own), so two
-    // whole-token aliases to different targets that themselves share this
-    // `cssProperty` hit the identical false-rejection. Fixing either means
-    // resolving the ref before this fingerprint runs -- deferred rather than
-    // reworked this late in review; nothing in the real corpus has two `$ref`
-    // tokens of either form sharing a `cssProperty`.
-    const emitted = JSON.stringify({
-      type: entry.type,
-      value: entry.value,
-      cssRecipe: entry.cssRecipe,
-    });
-    const paths = byProperty.get(entry.cssProperty) ?? new Map<string, string[]>();
-    paths.set(emitted, [...(paths.get(emitted) ?? []), path]);
-    byProperty.set(entry.cssProperty, paths);
+    const claimants = claimantsByProperty.get(entry.cssProperty) ?? [];
+    claimants.push([path, entry]);
+    claimantsByProperty.set(entry.cssProperty, claimants);
+  }
+
+  const byProperty = new Map<string, Map<string, string[]>>();
+  let activeResolver = resolveReferences;
+  if ([...claimantsByProperty.values()].some((claimants) => claimants.length > 1)) {
+    activeResolver = resolveReferencesFactory?.() ?? resolveReferences;
+  }
+  for (const [cssProperty, claimants] of claimantsByProperty) {
+    if (claimants.length < 2) continue;
+    const byValue = new Map<string, string[]>();
+    for (const [path, entry] of claimants) {
+      // `type` belongs in the key, not just the value: serialization is
+      // type-directed, so two entries can share a raw `$value` and still emit
+      // different CSS -- `fontFamily: "normal"` emits `normal` while
+      // `fontWeight: "normal"` emits `400`. Hashing the value alone called that
+      // pair identical, and the disagreement then surfaced downstream, where the
+      // first-claimant docs index documented one form while the CSS and the drift
+      // test's last-write map used the other, so regeneration produced
+      // documentation the required drift test rejected.
+      const emitted = serializeEntryValue(entry, baseIndex, activeResolver);
+      byValue.set(emitted, [...(byValue.get(emitted) ?? []), path]);
+    }
+    byProperty.set(cssProperty, byValue);
   }
   const conflicts = [...byProperty.entries()].filter(([, byValue]) => byValue.size > 1);
   if (conflicts.length === 0) return;
@@ -854,6 +855,7 @@ export function assertUniqueOverrideCssProperties(
   baseIndex: Map<string, CorpusEntry>,
   scopeIndex: Map<string, CorpusEntry>,
   blockName: string,
+  resolveReferences: ValueResolver = (value) => value,
 ): void {
   // Comparing only the paths PRESENT in `overrides` misses a base claimant
   // that shares a `cssProperty` with an overridden path but is not itself
@@ -912,11 +914,46 @@ export function assertUniqueOverrideCssProperties(
     });
   }
   try {
-    assertUniqueCssProperties(resolved);
+    assertUniqueCssProperties(resolved, baseIndex, resolveReferences);
   } catch (error) {
     if (error instanceof Error)
       throw new Error(`[${blockName}] ${error.message}`, { cause: error });
     throw error;
+  }
+}
+
+type OverrideScope = {
+  name: string;
+  resolveReferences: () => ValueResolver;
+};
+
+function containsReference(value: unknown): boolean {
+  if (typeof value === 'string') return isAliasReference(value);
+  if (Array.isArray(value)) return value.some(containsReference);
+  if (!isPlainObject(value)) return false;
+  return Object.values(value).some(containsReference);
+}
+
+/** A single emitted override declaration must be valid in every scope its selector reaches. */
+export function assertOverrideScopeConsistency(
+  overrides: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+  scopes: readonly OverrideScope[],
+  blockName: string,
+): void {
+  if (![...overrides.values()].some((entry) => entry.isRefAlias || containsReference(entry.value)))
+    return;
+  for (const [path, entry] of overrides) {
+    const values = scopes.map((scope) => ({
+      scope: scope.name,
+      value: serializeEntryValue(entry, baseIndex, scope.resolveReferences()),
+    }));
+    const distinct = new Set(values.map(({ value }) => value));
+    if (distinct.size <= 1) continue;
+    throw new Error(
+      `[${blockName}] override token "${path}" serializes differently across reachable scopes: ` +
+        values.map(({ scope, value }) => `${scope}=${value}`).join(', '),
+    );
   }
 }
 
@@ -981,21 +1018,6 @@ export function assertResolutionOrderMatchesCssBlockStructure(resolver: Resolver
         'override block order from resolutionOrder.',
     );
   }
-  // Known gap, tracked in CIN-493 (a pre-existing cinder architecture question,
-  // not something CIN-469/470 introduced): this check -- and every guard built
-  // on top of it -- assumes emitting motion's block after theme's in SOURCE
-  // ORDER is sufficient for motion to win on a shared property. That only
-  // holds when both declarations target the SAME element. Cinder's theme
-  // blocks use a bare `[data-theme='dark']`/`[data-theme='light']` selector
-  // (not `:root`-scoped) specifically so a theme can be scoped to a subtree
-  // (see docs/theming.md); the motion blocks are always `:root`-anchored with
-  // no scoped variant. For a token overridden by BOTH theme and motion,
-  // inside a theme-scoped subtree, ordinary CSS inheritance (not specificity,
-  // not source order) makes the descendant's own declared theme value win
-  // over the merely-inherited :root motion value -- the opposite of what the
-  // resolved snapshots model. Deferred: confirmed no token path is overridden
-  // by both a theme document and a motion document in the real corpus today
-  // (verified by direct path-set intersection).
   // `buildTokensBaseCss`'s override-block template is hardcoded to exactly two
   // modifiers, "theme" and "motion" -- it never reads `resolver.modifiers` generically,
   // so a third modifier's context documents would never reach ANY emitted CSS block,
@@ -1020,19 +1042,6 @@ export function assertResolutionOrderMatchesCssBlockStructure(resolver: Resolver
         'generated CSS and published resolved-context snapshots will silently disagree.',
     );
   }
-  // Known gap, tracked in CIN-491: this function validates modifier NAMES and
-  // ORDERING, but never inspects whether motion.default's own context
-  // document is actually empty. buildTokensBaseCss assembles :root
-  // exclusively from `sets` and only emits motion declarations for `reduced`
-  // and `forced-reduced-motion` -- motion.default's document is never read
-  // for CSS emission at all -- while buildResolvedContexts DOES include it
-  // when composing the default-motion resolved-context snapshots. A
-  // non-empty motion.default override would therefore reach the published
-  // JSON but never the generated CSS, the same class of silent disagreement
-  // the third-modifier rejection above exists to prevent, just for an
-  // existing modifier's default CONTENT rather than its existence. Deferred:
-  // modes/motion-default.tokens.json is deliberately empty today (its own
-  // $description explains why), and nothing else in the corpus overrides it.
 }
 
 export async function buildTokensBaseCss(
@@ -1056,12 +1065,34 @@ export async function buildTokensBaseCss(
   const mergedBase = mergeAndExpandExtends(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
-  assertUniqueCssProperties(baseIndex);
 
   // Resolves a reference nested inside a composite member (a shadow layer's `inset`, one
   // component of a color, ...) to its literal value, for base entries -- base has no
   // overriding context, so a resolver built from the base documents alone is correct here.
   const baseResolveReferences = createValueResolver(baseDocuments);
+  assertUniqueCssProperties(baseIndex, baseIndex, baseResolveReferences);
+
+  const defaultMotionContext = resolver.modifiers['motion']?.default;
+  if (!defaultMotionContext) {
+    throw new Error('resolver modifier "motion" must declare a default context');
+  }
+  const defaultMotionDocuments = refsFor(
+    documentsByPath,
+    expandContextSources(resolver, 'motion', defaultMotionContext),
+  );
+  const defaultMotionEntries = new Map<string, CorpusEntry>();
+  collectEntries(
+    mergeAndExpandExtends(defaultMotionDocuments, [...baseDocuments, ...defaultMotionDocuments]),
+    '',
+    undefined,
+    defaultMotionEntries,
+  );
+  if (defaultMotionEntries.size > 0) {
+    throw new Error(
+      `motion.default must not declare token overrides because tokens-base.css emits the ` +
+        `canonical set values in :root: ${[...defaultMotionEntries.keys()].join(', ')}`,
+    );
+  }
 
   // `expandContextSources` (not a raw `resolver.modifiers['theme'].contexts[...]` read via
   // `refsFor`) -- a theme or motion context may itself list a
@@ -1172,17 +1203,9 @@ export async function buildTokensBaseCss(
   collectEntries(mergeAndExpandExtends(lightScopeDocuments), '', undefined, lightScopeIndex);
   const darkScopeIndex = new Map<string, CorpusEntry>();
   collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
+
   assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
   assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
-  // Known gap, tracked in CIN-490 (the symmetric case of CIN-489): these two
-  // calls validate each theme override's scope filled with the DEFAULT
-  // motion context. If a light/dark override contained a reference to a
-  // token that motion.reduced/motion.forced-reduced-motion changes, the
-  // theme declaration would serialize once from the default-motion value
-  // while the reduced-motion resolved snapshots re-resolve it under reduced
-  // motion -- silently disagreeing, for a path with a unique cssProperty
-  // where the uniqueness guard is a no-op. Deferred: confirmed no theme
-  // document contains a $ref at all today.
   // The motion blocks are emitted as a fixed `@media`/attribute selector that
   // applies regardless of which `[data-theme]` is active -- unlike theme
   // (which always cascades BEFORE motion, so a theme block's own internal
@@ -1288,33 +1311,28 @@ export async function buildTokensBaseCss(
     'motion.forced-reduced-motion (dark theme)',
   );
 
-  // Known gap, tracked in CIN-492: the four calls above check only the
-  // light-composed and dark-composed scopes. Cinder also supports a third,
-  // fully-supported theme state -- "system" mode, where NO [data-theme]
-  // attribute is set and :root's color-scheme: light dark follows the OS
-  // preference (see docs/theming.md's pre-paint script). In that mode
-  // neither theme block's selector matches anything, so an element sees
-  // only :root's BASE declarations plus whatever motion adds -- a scope
-  // distinct from either light-composed or dark-composed. Deferred: nothing
-  // in the real corpus's motion documents can trigger a conflict against
-  // this unthemed scope today (see CIN-489's confirmation that motion
-  // documents don't reference anything theme-varying).
-
-  // Known gap, tracked in CIN-489: the four calls above only catch a conflict
-  // when TWO paths share one cssProperty and disagree across theme scopes.
-  // They say nothing about a SINGLE motion-overridden path (a unique
-  // cssProperty) whose own serialized value could legitimately differ
-  // between light and dark -- e.g. a property-level $ref or composite value
-  // nested-referencing a color token that varies by theme. The motion blocks
-  // below are emitted ONCE each (theme-agnostic selectors), serialized from
-  // exactly one resolver -- if such a value existed, the single emitted
-  // declaration could only ever be correct for one theme, while the
-  // published per-theme resolved-context snapshots would resolve it
-  // correctly per-theme, silently disagreeing with the CSS. Deferred rather
-  // than reworked this late in review: nothing in the real corpus's motion
-  // token documents contains a $ref or a theme-varying nested reference
-  // today (every value is a literal duration).
-
+  const systemReducedMotionScopeDocuments = documentsForSystemMotionScope(
+    resolver,
+    documentsByPath,
+    'reduced',
+  );
+  const systemForcedReducedMotionScopeDocuments = documentsForSystemMotionScope(
+    resolver,
+    documentsByPath,
+    'forced-reduced-motion',
+  );
+  assertUniqueOverrideCssProperties(
+    reducedMotionOverrides,
+    baseIndex,
+    scopeIndexFromDocuments(systemReducedMotionScopeDocuments),
+    'motion.reduced (system theme)',
+  );
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    scopeIndexFromDocuments(systemForcedReducedMotionScopeDocuments),
+    'motion.forced-reduced-motion (system theme)',
+  );
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
   // a nested reference inside a context's composite value may target a token that a DIFFERENT
   // modifier's document overrides (a reduced-motion composite referencing a token the dark theme
@@ -1325,6 +1343,69 @@ export async function buildTokensBaseCss(
   const reducedMotionResolveReferences = createValueResolver(reducedMotionScopeDocuments);
   const forcedReducedMotionResolveReferences = createValueResolver(
     forcedReducedMotionScopeDocuments,
+  );
+
+  assertOverrideScopeConsistency(
+    lightOverrides,
+    baseIndex,
+    [
+      { name: 'motion.default', resolveReferences: () => lightResolveReferences },
+      {
+        name: 'motion.reduced',
+        resolveReferences: () => createValueResolver(lightReducedMotionScopeDocuments),
+      },
+      {
+        name: 'motion.forced-reduced-motion',
+        resolveReferences: () => createValueResolver(lightForcedReducedMotionScopeDocuments),
+      },
+    ],
+    'theme.light',
+  );
+  assertOverrideScopeConsistency(
+    darkOverrides,
+    baseIndex,
+    [
+      { name: 'motion.default', resolveReferences: () => darkResolveReferences },
+      {
+        name: 'motion.reduced',
+        resolveReferences: () => createValueResolver(darkReducedMotionScopeDocuments),
+      },
+      {
+        name: 'motion.forced-reduced-motion',
+        resolveReferences: () => createValueResolver(darkForcedReducedMotionScopeDocuments),
+      },
+    ],
+    'theme.dark',
+  );
+  assertOverrideScopeConsistency(
+    reducedMotionOverrides,
+    baseIndex,
+    [
+      {
+        name: 'theme.light',
+        resolveReferences: () => createValueResolver(lightReducedMotionScopeDocuments),
+      },
+      {
+        name: 'theme.dark',
+        resolveReferences: () => createValueResolver(darkReducedMotionScopeDocuments),
+      },
+    ],
+    'motion.reduced',
+  );
+  assertOverrideScopeConsistency(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    [
+      {
+        name: 'theme.light',
+        resolveReferences: () => createValueResolver(lightForcedReducedMotionScopeDocuments),
+      },
+      {
+        name: 'theme.dark',
+        resolveReferences: () => createValueResolver(darkForcedReducedMotionScopeDocuments),
+      },
+    ],
+    'motion.forced-reduced-motion',
   );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
@@ -1391,9 +1472,17 @@ ${lightDeclarations}
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
 ${reducedMotionDeclarations}
   }
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'],
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='light'] {
+${reducedMotionDeclarations}
+  }
 }
 
 :root[data-reduced-motion='on'] {
+${forcedReducedMotionDeclarations}
+}
+:root[data-reduced-motion='on'] [data-theme='dark'],
+:root[data-reduced-motion='on'] [data-theme='light'] {
 ${forcedReducedMotionDeclarations}
 }
 `;
@@ -1505,6 +1594,25 @@ export function modifierValuesForContext(
     { [modifierName]: contextName },
     `Override context "${modifierName}.${contextName}"`,
   );
+}
+
+function scopeIndexFromDocuments(documents: readonly TokenDocument[]): Map<string, CorpusEntry> {
+  const index = new Map<string, CorpusEntry>();
+  collectEntries(mergeAndExpandExtends([...documents]), '', undefined, index);
+  return index;
+}
+
+function documentsForSystemMotionScope(
+  resolver: ResolverDocument,
+  documentsByPath: Map<string, TokenDocument>,
+  motion: string,
+): TokenDocument[] {
+  const modifierValues = { motion };
+  return parseResolutionOrder(resolver)
+    .filter(
+      (entry) => entry.kind === 'sets' || (entry.kind === 'modifiers' && entry.name === 'motion'),
+    )
+    .flatMap((entry) => refsFor(documentsByPath, sourcesForEntry(resolver, entry, modifierValues)));
 }
 
 export async function buildResolvedContexts(

@@ -1,8 +1,3 @@
-const variables: readonly string[] = [
-  '--cinder-file-upload-background',
-  '--cinder-file-upload-border-color',
-  '--cinder-file-upload-progress-background',
-  '--cinder-file-upload-progress-fill',
-];
+const variables: readonly string[] = [];
 
 export default variables;

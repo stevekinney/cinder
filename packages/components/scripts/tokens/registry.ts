@@ -31,7 +31,7 @@ import {
   requireDocument,
   type CorpusEntry,
 } from './generate.ts';
-import { mergeAndExpandExtends } from './resolve.ts';
+import { createValueResolver, mergeAndExpandExtends } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 import { expandContextSources, parseResolutionOrder, sourcesForEntry } from './validate-corpus.ts';
 
@@ -168,7 +168,9 @@ export function buildBaseIndex(
   const mergedBase = mergeAndExpandExtends(baseDocuments);
   const baseIndex = new Map<string, CorpusEntry>();
   collectEntries(mergedBase, '', undefined, baseIndex);
-  assertUniqueCssProperties(baseIndex);
+  assertUniqueCssProperties(baseIndex, baseIndex, undefined, () =>
+    createValueResolver(baseDocuments),
+  );
   return baseIndex;
 }
 

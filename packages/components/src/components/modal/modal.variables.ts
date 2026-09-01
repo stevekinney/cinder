@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-modal-backdrop'];
+const variables: readonly string[] = [];
 
 export default variables;

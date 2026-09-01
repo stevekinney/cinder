@@ -8,6 +8,8 @@ import {
   normalizeSourcePath,
   parseResolutionOrder,
   sourcesForEntry,
+  validateModifierSetExpansionOrder,
+  validateModifierTokenPaths,
 } from './validate-corpus.ts';
 
 const resolver: ResolverDocument = {
@@ -367,6 +369,76 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     };
 
     expect(expandSetSources(encoded, 'extended')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
+  });
+
+  test('a percent-encoded leading hash remains an on-disk path', () => {
+    const encodedPath: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: '%23%2Fsets%2Fbase.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+
+    expect(expandSetSources(encodedPath, 'base')).toEqual([
+      { $ref: '%23%2Fsets%2Fbase.tokens.json' },
+    ]);
+  });
+
+  test('rejects a later modifier re-expanding a set after an intervening modifier', () => {
+    const resetting: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        motion: { contexts: { reduced: [{ $ref: 'motion.json' }] } },
+        theme: { contexts: { dark: [{ $ref: '#/sets/base' }, { $ref: 'dark.json' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/base' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/theme' },
+      ],
+    };
+
+    expect(() => validateModifierSetExpansionOrder(resetting)).toThrow(
+      /set "base" is re-expanded after modifier "motion"/,
+    );
+  });
+
+  test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
+    const contextOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        lightOverrides: { sources: [{ $ref: 'light.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: '#/sets/lightOverrides' }] } },
+      },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { color: { $type: 'color', $value: 'red' } }],
+      ['light.json', { color: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(contextOnly, documents)).not.toThrow();
+  });
+
+  test('rejects a modifier token path with no base declaration', () => {
+    const missingBase: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { color: { $type: 'color', $value: 'red' } }],
+      ['light.json', { missing: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(missingBase, documents)).toThrow(
+      /override token "missing" has no matching base token/,
+    );
   });
 });
 

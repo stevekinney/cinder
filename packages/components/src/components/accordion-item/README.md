@@ -32,16 +32,8 @@ required.
 
 <!-- generated:variables:start -->
 
-- `--cinder-accordion-item-panel-font-size`
-- `--cinder-accordion-item-panel-inner-padding-block-end`
-- `--cinder-accordion-item-panel-inner-padding-block-start`
-- `--cinder-accordion-item-panel-inner-padding-inline`
-- `--cinder-accordion-item-panel-line-height`
-- `--cinder-accordion-item-trigger-font-size`
-- `--cinder-accordion-item-trigger-font-weight`
-- `--cinder-accordion-item-trigger-gap`
-- `--cinder-accordion-item-trigger-padding-block`
-- `--cinder-accordion-item-trigger-padding-inline`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

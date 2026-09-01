@@ -346,26 +346,13 @@ describe('AccordionItem', () => {
   });
 
   test('public CSS variables cover dense inspector trigger and panel subparts', async () => {
-    expect(accordionItemVariables).toEqual([
-      '--cinder-accordion-item-panel-font-size',
-      '--cinder-accordion-item-panel-inner-padding-block-end',
-      '--cinder-accordion-item-panel-inner-padding-block-start',
-      '--cinder-accordion-item-panel-inner-padding-inline',
-      '--cinder-accordion-item-panel-line-height',
-      '--cinder-accordion-item-trigger-font-size',
-      '--cinder-accordion-item-trigger-font-weight',
-      '--cinder-accordion-item-trigger-gap',
-      '--cinder-accordion-item-trigger-padding-block',
-      '--cinder-accordion-item-trigger-padding-inline',
-    ]);
+    expect(accordionItemVariables).toEqual([]);
 
     const css = await Bun.file(new URL('./accordion-item.css', import.meta.url)).text();
     expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
     expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
     expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');
-    expect(css).toContain(
-      '--cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold)',
-    );
+    expect(css).not.toContain('--cinder-accordion-item-trigger-font-weight:');
     expect(css).toContain(
       'font-weight: var(--cinder-accordion-item-trigger-font-weight, var(--cinder-font-semibold))',
     );

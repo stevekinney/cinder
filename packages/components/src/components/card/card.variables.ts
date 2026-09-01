@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-card-mobile-bleed'];
+const variables: readonly string[] = [];
 
 export default variables;

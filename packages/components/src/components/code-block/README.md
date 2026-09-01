@@ -40,11 +40,8 @@ const message = greet('world');`;
 
 <!-- generated:variables:start -->
 
-- `--cinder-code-block-background`
-- `--cinder-code-block-font-size`
-- `--cinder-code-block-height`
-- `--cinder-code-block-line-height`
-- `--cinder-code-block-padding`
+This component does not declare any local CSS variables.
+
 <!-- generated:variables:end -->
 
 ## Subcomponents

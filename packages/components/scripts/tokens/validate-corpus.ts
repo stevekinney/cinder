@@ -2,7 +2,12 @@ import { posix } from 'node:path';
 
 import { loadResolverDocument, loadTokenDocuments } from './load.ts';
 import { resolveDocuments } from './resolve.ts';
-import { TokenValidationError, type ResolverDocument, type ResolverReference } from './types.ts';
+import {
+  TokenValidationError,
+  type ResolverDocument,
+  type ResolverReference,
+  type TokenDocument,
+} from './types.ts';
 import {
   resolutionOrderTarget,
   validateResolvedToken,
@@ -41,17 +46,8 @@ export function normalizeSourcePath(reference: string): string {
  * misclassified it as a filesystem reference and reported a nonexistent file
  * named `#%2Fsets%2Fbase` instead of expanding the set.
  */
-// Known gap, tracked in CIN-478: checking the DECODED string's prefix is
-// correct for `#%2Fsets%2Fbase` (a literal `#` with its following `/`
-// percent-encoded -- still genuinely a fragment) but wrong for an on-disk
-// source path that legitimately percent-encodes a literal `#` in its own
-// FILENAME (`%23%2Fsets%2Fbase`, decoding to a relative path, not a
-// fragment) -- per RFC 3986, percent-encoding never turns `%23` into a
-// fragment delimiter; only a literal, undecoded leading `#` is one.
-// Classification should check the RAW string for `#/` first. Deferred
-// rather than reworked this late in review; nothing in the real corpus uses
-// a filename containing `#`.
 function isInternalReference(reference: string): boolean {
+  if (!reference.startsWith('#')) return false;
   let decoded = reference;
   try {
     decoded = decodeURIComponent(reference);
@@ -60,6 +56,114 @@ function isInternalReference(reference: string): boolean {
     // same way `resolutionOrderTarget` returns `undefined` for one.
   }
   return decoded.startsWith('#/');
+}
+
+function internalSetNames(sources: ResolverReference[]): string[] {
+  return sources.flatMap((source) => {
+    if (!isInternalReference(source.$ref)) return [];
+    const target = resolutionOrderTarget(source.$ref);
+    return target?.kind === 'sets' ? [target.name] : [];
+  });
+}
+
+function reachableSetNames(resolver: ResolverDocument, rootName: string): Set<string> {
+  const reachable = new Set<string>();
+  const visit = (setName: string): void => {
+    if (reachable.has(setName)) return;
+    reachable.add(setName);
+    const set = Object.hasOwn(resolver.sets, setName) ? resolver.sets[setName] : undefined;
+    if (!set) return;
+    for (const childName of internalSetNames(set.sources)) visit(childName);
+  };
+  visit(rootName);
+  return reachable;
+}
+
+/** Rejects a later modifier re-expanding a base set after another modifier already overrode it. */
+export function validateModifierSetExpansionOrder(resolver: ResolverDocument): void {
+  const order = parseResolutionOrder(resolver);
+  const basePositions = new Map<string, number>();
+  for (const [position, entry] of order.entries()) {
+    if (entry.kind !== 'sets') continue;
+    for (const setName of reachableSetNames(resolver, entry.name))
+      basePositions.set(setName, position);
+  }
+
+  const issues = [];
+  for (const [position, entry] of order.entries()) {
+    if (entry.kind !== 'modifiers') continue;
+    const modifier = resolver.modifiers[entry.name];
+    if (!modifier) continue;
+    for (const [contextName, sources] of Object.entries(modifier.contexts)) {
+      for (const setName of internalSetNames(sources)) {
+        const basePosition = basePositions.get(setName);
+        if (basePosition === undefined) continue;
+        const interveningModifier = order
+          .slice(basePosition + 1, position)
+          .find((candidate) => candidate.kind === 'modifiers');
+        if (!interveningModifier) continue;
+        issues.push({
+          path: `$.modifiers.${entry.name}.contexts.${contextName}`,
+          reason:
+            `set "${setName}" is re-expanded after modifier "${interveningModifier.name}" ` +
+            'and would reset its intervening overrides',
+        });
+      }
+    }
+  }
+  if (issues.length > 0) throw new TokenValidationError(issues);
+}
+
+function collectDeclaredTokenPaths(value: unknown, prefix: string, paths: Set<string>): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+  if ('$value' in value || '$ref' in value) {
+    if (prefix) paths.add(prefix);
+    return;
+  }
+  for (const [name, child] of Object.entries(value)) {
+    if (name.startsWith('$')) {
+      if (name === '$root') collectDeclaredTokenPaths(child, prefix, paths);
+      continue;
+    }
+    collectDeclaredTokenPaths(child, prefix ? `${prefix}.${name}` : name, paths);
+  }
+}
+
+/** Validates modifier declarations against the token paths contributed by ordered base sets. */
+export function validateModifierTokenPaths(
+  resolver: ResolverDocument,
+  documentsByPath: Map<string, TokenDocument>,
+): void {
+  const baseDocuments = parseResolutionOrder(resolver)
+    .filter((entry) => entry.kind === 'sets')
+    .flatMap((entry) =>
+      expandSetSources(resolver, entry.name).map(
+        (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+      ),
+    );
+  const basePaths = new Set<string>();
+  for (const document of baseDocuments) collectDeclaredTokenPaths(document, '', basePaths);
+  const issues = [];
+  for (const [modifierName, modifier] of Object.entries(resolver.modifiers)) {
+    for (const contextName of Object.keys(modifier.contexts)) {
+      const declaredPaths = new Set<string>();
+      for (const source of expandContextSources(resolver, modifierName, contextName)) {
+        collectDeclaredTokenPaths(
+          documentsByPath.get(normalizeSourcePath(source.$ref)),
+          '',
+          declaredPaths,
+        );
+      }
+      for (const tokenPath of declaredPaths) {
+        if (basePaths.has(tokenPath)) continue;
+        issues.push({
+          path: `$.modifiers.${modifierName}.contexts.${contextName}.${tokenPath}`,
+          reason: `override token "${tokenPath}" has no matching base token`,
+        });
+      }
+    }
+  }
+  if (issues.length > 0) throw new TokenValidationError(issues);
 }
 
 /**
@@ -180,16 +284,6 @@ export function expandContextSources(
           reason: `a modifier context may not reference another modifier: ${source.$ref}`,
         },
       ]);
-    // Known gap, tracked in CIN-482 (and CIN-479, same ordering-disagreement
-    // family): this always re-expands the referenced set's documents at
-    // THIS context's position in resolutionOrder, with no check for whether
-    // an intervening modifier's override -- applied between the set's own
-    // ordered position and this one -- gets silently reset by that
-    // re-expansion. buildTokensBaseCss composes CSS independently of this
-    // literal resolutionOrder sequencing, so the two artifacts can disagree
-    // about which value wins. Deferred rather than reworked this late in
-    // review; nothing in the real corpus references a set internally from
-    // more than one modifier context at different resolutionOrder positions.
     return expandSetSources(resolver, target.name, new Set(), contextPath);
   });
 }
@@ -260,6 +354,9 @@ async function main(): Promise<void> {
     ),
   ];
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
+
+  validateModifierSetExpansionOrder(resolver);
+  validateModifierTokenPaths(resolver, documentsByPath);
 
   const referencedPaths = new Set<string>([
     ...expandedSets.flatMap(({ sources }) =>

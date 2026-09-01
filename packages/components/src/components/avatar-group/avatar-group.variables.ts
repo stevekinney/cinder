@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-avatar-group-overlap'];
+const variables: readonly string[] = [];
 
 export default variables;

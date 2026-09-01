@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import {
+  assertOverrideScopeConsistency,
   assertResolutionOrderMatchesCssBlockStructure,
   assertUniqueCssProperties,
   assertUniqueOverrideCssProperties,
@@ -1618,7 +1619,7 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
   });
 
-  test('CIN-475 (known gap, not fixed here): a nested $extends target only in the lookup scope loses its deprecation when shadowed', () => {
+  test('a nested $extends target in the lookup scope preserves inherited deprecation when shadowed', () => {
     // `mergeAndExpandExtends(ownDocuments, lookupDocuments)` is how theme/motion
     // override contexts extend a foundation group -- here "outer.base" exists only
     // in the lookup scope and inherits $deprecated from the lookup scope's own
@@ -1626,9 +1627,6 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     // (a sibling override, not itself extending anything), which collectGroups loads
     // AFTER the lookup scope and so shadows it in the merged groups map.
     // effectiveGroupDeprecated then walks the OVERRIDING "outer", not the lookup
-    // scope's, and misses the deprecation. This test PINS today's known-limited
-    // behavior (undefined) rather than the eventually-correct one, so CIN-475
-    // landing is a deliberate, visible test change.
     const into = new Map<string, CorpusEntry>();
     collectEntries(
       mergeAndExpandExtends(
@@ -1648,10 +1646,10 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
       into,
     );
 
-    expect(into.get('derived.gutter')?.deprecated).toBeUndefined();
+    expect(into.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
   });
 
-  test('CIN-476 (known gap, not fixed here): declaration order determines whether an ancestor extends chain is resolved before it is cached', () => {
+  test('ancestor extension order does not change inherited deprecation', () => {
     // "derived" (declared first) extends "outer.child" -- a plain nested
     // group with no $extends of its own. "outer" (declared second) extends
     // "legacy", which is where the real deprecation reason lives. Because
@@ -1661,9 +1659,6 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     // "outer.child" through the not-yet-expanded "outer" (still undefined)
     // to the document root's declared $deprecated: false, and caches that.
     // Once "outer" is later expanded and gains "Legacy reason.", "derived"'s
-    // cached false is never revisited. This test PINS today's known-limited
-    // behavior (false, not "Legacy reason.") so CIN-476 landing is a
-    // deliberate, visible test change.
     const entries = entriesFor([
       {
         $deprecated: false,
@@ -1673,7 +1668,7 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
       },
     ]);
 
-    expect(entries.get('derived.grandchild')?.deprecated).toBe(false);
+    expect(entries.get('derived.grandchild')?.deprecated).toBe('Legacy reason.');
   });
 });
 
@@ -1770,6 +1765,68 @@ describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
     ]);
 
     expect(() => assertUniqueCssProperties(entries)).not.toThrow();
+  });
+});
+
+describe('CIN-483: duplicate cssProperty checks use emitted values', () => {
+  const collect = (documents: TokenDocument[]): Map<string, CorpusEntry> => {
+    const entries = new Map<string, CorpusEntry>();
+    collectEntries(mergeAndExpandExtends(documents), '', undefined, entries);
+    return entries;
+  };
+
+  test('property aliases resolving to the same value may share a property', () => {
+    const documents: TokenDocument[] = [
+      {
+        dimension: {
+          a: { $type: 'dimension', $value: { value: 1, unit: 'rem' } },
+          b: { $type: 'dimension', $value: { value: 1, unit: 'rem' } },
+        },
+        first: {
+          $type: 'number',
+          $ref: '#/dimension/a/$value/value',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+        second: {
+          $type: 'number',
+          $ref: '#/dimension/b/$value/value',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+      },
+    ];
+    const entries = collect(documents);
+    expect(() =>
+      assertUniqueCssProperties(entries, entries, createValueResolver(documents)),
+    ).not.toThrow();
+  });
+
+  test('whole-token aliases resolving to the same value may share a property', () => {
+    const documents: TokenDocument[] = [
+      {
+        targetA: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-target' } },
+        },
+        targetB: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-target' } },
+        },
+        first: {
+          $ref: '#/targetA',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+        second: {
+          $ref: '#/targetB',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+      },
+    ];
+    const entries = collect(documents);
+    expect(() =>
+      assertUniqueCssProperties(entries, entries, createValueResolver(documents)),
+    ).not.toThrow();
   });
 });
 
@@ -2226,5 +2283,112 @@ describe('CIN-469 finding 5: resolutionOrder is validated against the fixed CSS 
     expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
       /declares modifier\(s\) "density".*only knows how to emit "theme" and "motion"/,
     );
+  });
+});
+
+describe('CIN-488 through CIN-493 follow-up guards', () => {
+  const entry = (value: unknown): CorpusEntry => ({
+    path: 'test.token',
+    value,
+    type: 'color',
+    description: undefined,
+    cssProperty: '--test-token',
+    cssRecipe: undefined,
+  });
+
+  test('rejects a motion override whose serialized value differs by theme', () => {
+    const overrides = new Map([
+      [
+        'test.token',
+        {
+          ...entry('#/source/$value/components'),
+          isRefAlias: true,
+        },
+      ],
+    ]);
+    const baseIndex = new Map([
+      ['test.token', entry({ colorSpace: 'oklch', components: [0.5, 0.1, 250] })],
+    ]);
+    expect(() =>
+      assertOverrideScopeConsistency(
+        overrides,
+        baseIndex,
+        [
+          {
+            name: 'theme.light',
+            resolveReferences: () => () => ({ colorSpace: 'oklch', components: [0.9, 0.1, 250] }),
+          },
+          {
+            name: 'theme.dark',
+            resolveReferences: () => () => ({ colorSpace: 'oklch', components: [0.4, 0.1, 250] }),
+          },
+        ],
+        'motion.reduced',
+      ),
+    ).toThrow(/serializes differently across reachable scopes/);
+  });
+
+  test('motion override uniqueness can be checked against the unthemed system scope', () => {
+    const base = new Map([
+      ['a', { ...entry(1), path: 'a' }],
+      ['b', { ...entry(1), path: 'b' }],
+    ]);
+    const override = new Map([['a', { ...entry(2), path: 'a' }]]);
+    expect(() =>
+      assertUniqueOverrideCssProperties(override, base, base, 'motion.reduced (system theme)'),
+    ).toThrow(/system theme/);
+  });
+
+  test('motion selectors also target descendant theme scopes', async () => {
+    const generatedOutputs = await buildGeneratedOutputs();
+    const css = generatedOutputs.get(tokensBaseCssPath)!;
+    expect(css).toMatch(/:root\[data-reduced-motion='on'\][\s\S]*?\[data-theme='dark'\]/);
+    expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\[data-theme='light'\]/);
+  });
+
+  test('rejects a non-empty motion.default document instead of dropping it from CSS', async () => {
+    const base = {
+      token: {
+        $type: 'number',
+        $value: 1,
+        $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-token' } },
+      },
+    } as TokenDocument;
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'light.json' }], dark: [{ $ref: 'dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'default.json' }],
+            reduced: [{ $ref: 'reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    await expect(
+      buildTokensBaseCss(
+        resolver,
+        new Map([
+          ['base.json', base],
+          ['light.json', {}],
+          ['dark.json', {}],
+          ['default.json', { token: { $value: 2 } }],
+          ['reduced.json', {}],
+          ['forced.json', {}],
+        ]),
+      ),
+    ).rejects.toThrow(/motion\.default must not declare token overrides/);
   });
 });

@@ -12,7 +12,6 @@
  * Reconciling this with the global token is a separate visual-design decision.
  */
   .cinder-alert {
-    --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
   }
 
   .cinder-alert {

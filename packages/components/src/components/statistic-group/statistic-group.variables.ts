@@ -1,7 +1,3 @@
-const variables: readonly string[] = [
-  '--cinder-statistic-group-card-padding',
-  '--cinder-statistic-group-gap',
-  '--cinder-statistic-group-shared-cell-padding',
-];
+const variables: readonly string[] = ['--cinder-statistic-group-gap'];
 
 export default variables;

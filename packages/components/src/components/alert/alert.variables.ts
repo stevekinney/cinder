@@ -1,3 +1,3 @@
-const variables: readonly string[] = ['--cinder-alert-info'];
+const variables: readonly string[] = [];
 
 export default variables;
