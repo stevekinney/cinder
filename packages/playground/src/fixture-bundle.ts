@@ -198,7 +198,9 @@ export async function buildFixtureBundle(
   const cachedEntryPath = fixtureEntryByKey.get(entryKey);
   if (cachedEntryPath) {
     const cached = fixtureArtifactByPath.get(cachedEntryPath);
-    if (cached !== undefined) return cachedEntryPath;
+    if (cached !== undefined) {
+      return retainFixtureEntry(entryKey) ? cachedEntryPath : null;
+    }
   }
 
   const cacheKey = fixtureCacheKey(componentName, fixture, fixtureContentHash);
@@ -216,25 +218,19 @@ export async function buildFixtureBundle(
     );
     if (entry === null) return null;
 
-    // Always publish the artifacts (matches buildPageBundle's rationale —
-    // chunk filenames are content-hashed, so publishing is safe regardless
-    // of a racing invalidation) and always return the entry path to the
-    // caller that requested this compile: it genuinely succeeded, and the
-    // route that serves `/fixture-bundle/:filename.js` resolves by the
-    // SPECIFIC hashed path this response embeds, not through
-    // `fixtureEntryByKey` — so the fixture page still renders correctly
-    // even when the cache pointer below isn't updated.
+    if (generationAtStart !== getRebuildGeneration()) return null;
+
+    // Publish only a current-generation result. A stale result must not alter
+    // same-key artifact bookkeeping or return an entry path after invalidation.
     publishFixtureArtifacts(entryKey, entry.artifacts);
     // Only update the "latest" entry-key pointer when we're not racing a
     // newer invalidation, so a FUTURE lookup by `entryKey` doesn't resolve
     // to this now-superseded build.
-    if (generationAtStart === getRebuildGeneration()) {
-      fixtureEntryByKey.set(entryKey, entry.entryPath);
-      if (!retainFixtureEntry(entryKey)) {
-        fixtureEntryByKey.delete(entryKey);
-        return null;
-      }
-    } else return null;
+    fixtureEntryByKey.set(entryKey, entry.entryPath);
+    if (!retainFixtureEntry(entryKey)) {
+      fixtureEntryByKey.delete(entryKey);
+      return null;
+    }
     return entry.entryPath;
   })();
 

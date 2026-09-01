@@ -294,16 +294,65 @@ describe('publishFixtureArtifacts', () => {
       const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
       if (fixture === undefined) throw new Error('input disabled fixture is missing');
       const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      const newerPath = 'fixture-input-disabled-newer.js';
       const result = await buildFixtureBundle(
         'input',
         fixture,
         fixtureFile.contentHash,
         resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
-        incrementRebuildGeneration,
+        () => {
+          incrementRebuildGeneration();
+          publishFixtureArtifacts(entryKey, new Map([[newerPath, 'newer']]), 32);
+          fixtureEntryByKey.set(entryKey, newerPath);
+          expect(retainFixtureEntry(entryKey)).toBe(true);
+        },
       );
       expect(result).toBeNull();
+      expect(fixtureEntryByKey.get(entryKey)).toBe(newerPath);
+      expect(findFixtureArtifact(newerPath)).toBe('newer');
+      findFixtureArtifact(newerPath);
+      for (let index = 0; index < 40; index++) {
+        const pressureKey = `stale-pressure-${index}`;
+        fixtureEntryByKey.set(pressureKey, `fixture-${pressureKey}.js`);
+        publishFixtureArtifacts(
+          pressureKey,
+          new Map([[`fixture-${pressureKey}.js`, pressureKey]]),
+          32,
+        );
+      }
       expect(fixtureEntryByKey.has(entryKey)).toBe(false);
-      expect(retainFixtureEntry(entryKey)).toBe(false);
+      expect(findFixtureArtifact(newerPath)).toBeUndefined();
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('reacquires a lease for cached HTML entries before eviction pressure', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      fixtureEntryByKey.set(entryKey, 'fixture-cached.js');
+      publishFixtureArtifacts(entryKey, new Map([['fixture-cached.js', 'cached']]), 32);
+      expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
+
+      await expect(
+        buildFixtureBundle(
+          'input',
+          fixture,
+          fixtureFile.contentHash,
+          resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        ),
+      ).resolves.toBe('fixture-cached.js');
+      for (let index = 0; index < 40; index++) {
+        const key = `pressure-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32);
+      }
+      expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
     } finally {
       clearFixtureBundleCaches();
     }
