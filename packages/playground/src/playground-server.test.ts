@@ -358,7 +358,7 @@ describe('publishFixtureArtifacts', () => {
     }
   });
 
-  it('serves a cached HTML entry when the response lease budget is exhausted', async () => {
+  it('does not serve an unleased cached HTML entry when the response lease budget is exhausted', async () => {
     clearFixtureBundleCaches();
     try {
       const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
@@ -387,13 +387,39 @@ describe('publishFixtureArtifacts', () => {
           fixtureFile.contentHash,
           resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
         ),
-      ).resolves.toBe('fixture-cached-at-capacity.js');
+      ).resolves.toBeNull();
     } finally {
       clearFixtureBundleCaches();
     }
   });
 
-  it('atomically reserves a ninth real response after eight pending entries', async () => {
+  it('keeps the live cache within its hard cap when every resident entry is leased', () => {
+    clearFixtureBundleCaches();
+    try {
+      for (let index = 0; index < 2; index++) {
+        const key = `leased-cap-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        expect(publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 2, true)).toBe(
+          true,
+        );
+      }
+      const rejectedKey = 'leased-cap-rejected';
+      fixtureEntryByKey.set(rejectedKey, `fixture-${rejectedKey}.js`);
+      expect(
+        publishFixtureArtifacts(
+          rejectedKey,
+          new Map([[`fixture-${rejectedKey}.js`, rejectedKey]]),
+          2,
+          true,
+        ),
+      ).toBe(false);
+      expect(fixtureArtifactByPath.has(`fixture-${rejectedKey}.js`)).toBe(false);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('rejects a ninth real response when eight pending entries fill the live cache', async () => {
     clearFixtureBundleCaches();
     try {
       const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
@@ -413,31 +439,10 @@ describe('publishFixtureArtifacts', () => {
         `${fixtureFile.contentHash}-ninth`,
         resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
       );
-      expect(ninth).not.toBeNull();
+      expect(ninth).toBeNull();
       expect(
         fixtureEntryByKey.has('fixture-input-disabled-' + fixtureFile.contentHash + '-ninth'),
-      ).toBe(true);
-
-      for (let index = 9; index < 32; index++) {
-        expect(
-          publishFixtureArtifacts(
-            `pending-${index}`,
-            new Map([[`fixture-pending-${index}.js`, 'pending']]),
-            32,
-            true,
-          ),
-        ).toBe(true);
-      }
-      const beforeRejected = fixtureArtifactByPath.size;
-      expect(
-        publishFixtureArtifacts(
-          'pending-rejected',
-          new Map([['fixture-pending-rejected.js', 'rejected']]),
-          32,
-          true,
-        ),
       ).toBe(false);
-      expect(fixtureArtifactByPath.size).toBe(beforeRejected);
     } finally {
       clearFixtureBundleCaches();
     }

@@ -155,7 +155,11 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
         .replaceAll('&quot;', '"')
         .replaceAll('&gt;', '>')
         .replaceAll('&lt;', '<')
-        .replaceAll('&amp;', '&');
+        .replaceAll('&amp;', '&')
+        // Prettier normalizes numeric entities for asterisks and underscores
+        // to Markdown backslash escapes even inside inline HTML. Undo that
+        // formatting-only representation so the corpus value round-trips.
+        .replace(/\\([*_])/g, '$1');
     } else {
       decoded = (fallbackBody ?? '').replace(
         /(\\*)\|/g,
@@ -240,6 +244,11 @@ describe('docs/tokens.md drift', () => {
   test('preserves a literal backslash before a pipe in the HTML code fallback', () => {
     const html = '| `--cinder-html` | <code>literal \\&#x7c; value</code> |\n';
     expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal \\| value');
+  });
+
+  test('decodes formatter escapes inside the HTML code fallback', () => {
+    const html = '| `--cinder-markdown` | <code>\\*A\\*&#x7c;\\_B\\_&#126;C&#126;</code> |\n';
+    expect(extractDocTokens(html).tokens.get('--cinder-markdown')).toBe('*A*|_B_~C~');
   });
 
   test('keeps exact token references in focused guides current', async () => {

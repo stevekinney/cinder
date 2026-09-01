@@ -260,4 +260,24 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect.poll(paddingOf).toBe('1px');
     expect(before).not.toBe('1px');
   });
+
+  test('a scoped foundation override reaches a deferred component alias', async ({ page }) => {
+    await gotoDocumentationPage(page, '/page/accordion');
+
+    const item = page
+      .locator('.cinder-accordion-item:not([style*="--cinder-accordion-item-trigger-gap"])')
+      .first();
+    const trigger = item.locator('.cinder-accordion-item__trigger');
+    await expect(trigger).toBeVisible();
+    const gapOf = async (): Promise<string> =>
+      trigger.evaluate((element) => getComputedStyle(element).columnGap);
+
+    const before = await gapOf();
+    await item.evaluate((element) => {
+      (element as HTMLElement).style.setProperty('--cinder-space-4', '3px');
+    });
+
+    await expect.poll(gapOf).toBe('3px');
+    expect(before).not.toBe('3px');
+  });
 });

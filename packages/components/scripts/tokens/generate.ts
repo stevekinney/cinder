@@ -743,6 +743,10 @@ function renderBaseDeclarations(
     if (!entry.cssProperty) {
       throw new Error(`Base corpus token at "${entry.path}" has no cssProperty extension.`);
     }
+    // Component aliases are defaults at their consumption sites, not root
+    // declarations. Deferring them lets both the public component property and
+    // its referenced foundation token respond to scoped ancestor overrides.
+    if (entry.component && !entry.cssRecipe && isAliasReference(entry.value)) continue;
     if (entry.description) lines.push(`/* ${sanitizeComment(entry.description)} */`);
     const value = serializeEntryValue(entry, baseIndex, resolveReferences);
     const stylelintDisable = stylelintDisableCommentFor(value);

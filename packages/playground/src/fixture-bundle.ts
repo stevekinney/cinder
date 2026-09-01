@@ -82,6 +82,13 @@ export function publishFixtureArtifacts(
   ) {
     return false;
   }
+  if (
+    !fixtureArtifactPathsByEntryKey.has(entryKey) &&
+    fixtureArtifactPathsByEntryKey.size >= maximumEntries &&
+    [...fixtureArtifactPathsByEntryKey.keys()].every((key) => pendingFixtureResponseCounts.has(key))
+  ) {
+    return false;
+  }
   if (reserveResponseLease)
     pendingFixtureResponseCounts.set(
       entryKey,
@@ -96,7 +103,7 @@ export function publishFixtureArtifacts(
     const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
       (key) => !pendingFixtureResponseCounts.has(key),
     );
-    if (oldestEntryKey === undefined) return true;
+    if (oldestEntryKey === undefined) return false;
     const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
     fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
     fixtureEntryByKey.delete(oldestEntryKey);
@@ -219,8 +226,7 @@ export async function buildFixtureBundle(
   if (cachedEntryPath) {
     const cached = fixtureArtifactByPath.get(cachedEntryPath);
     if (cached !== undefined) {
-      retainFixtureEntry(entryKey);
-      return cachedEntryPath;
+      return retainFixtureEntry(entryKey) ? cachedEntryPath : null;
     }
   }
 
@@ -228,8 +234,8 @@ export async function buildFixtureBundle(
   const existing = fixtureBuildPromiseByKey.get(cacheKey);
   if (existing !== undefined) {
     const entryPath = await existing;
-    if (entryPath !== null) retainFixtureEntry(entryKey);
-    return entryPath;
+    if (entryPath === null) return null;
+    return retainFixtureEntry(entryKey) ? entryPath : null;
   }
 
   const buildPromise = (async () => {

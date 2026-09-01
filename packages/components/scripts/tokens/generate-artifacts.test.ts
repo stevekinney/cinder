@@ -887,7 +887,19 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       recipeEntry('test.literal', '--test-literal', '*<em>`|&</em>*'),
     ]);
     const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
-    expect(table).toContain('<code>_&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;_</code>');
+    expect(table).toContain('<code>\\*&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;\\*</code>');
     expect(table).not.toContain('<em>');
+  });
+
+  test('Markdown-active punctuation round-trips unchanged in an HTML token cell', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      recipeEntry('test.markdown', '--test-markdown', '*A*|_B_~C~'),
+    ]);
+    const table = await renderDocTable(
+      tableSection('--test-markdown'),
+      baseIndex,
+      (value) => value,
+    );
+    expect(table).toContain('<code>\\*A\\*&#x7c;\\_B\\_&#126;C&#126;</code>');
   });
 });

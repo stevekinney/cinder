@@ -360,6 +360,10 @@ describe('AccordionItem', () => {
     ]);
 
     const css = await Bun.file(new URL('./accordion-item.css', import.meta.url)).text();
+    const tokenCss = await Bun.file(
+      new URL('../../styles/tokens-base.css', import.meta.url),
+    ).text();
+    expect(tokenCss).not.toContain('--cinder-accordion-item-trigger-gap:');
     expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
     expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
     expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');
