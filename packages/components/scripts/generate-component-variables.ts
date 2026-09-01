@@ -8,7 +8,7 @@
 
 import { basename, join } from 'node:path';
 
-import { readFile, readdir } from 'node:fs/promises';
+import { readdir } from 'node:fs/promises';
 import { parse, type AtRule, type Declaration } from 'postcss';
 
 const PREFIX = '--cinder-';
@@ -34,7 +34,10 @@ async function readCorpusVariables(
     'tokens',
     'registry.generated.json',
   );
-  const parsed: unknown = JSON.parse(await readFile(registryPath, 'utf8'));
+  const registryFile = Bun.file(registryPath);
+  if (!(await registryFile.exists())) return new Set();
+
+  const parsed: unknown = JSON.parse(await registryFile.text());
   if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return new Set();
   if (!Array.isArray(parsed.entries)) return new Set();
 
