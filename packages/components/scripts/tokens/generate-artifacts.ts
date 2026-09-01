@@ -857,7 +857,7 @@ function escapeHtml(text: string): string {
     "'": '&#39;',
     '|': '&#x7c;',
   };
-  return text.replace(/[^\p{L}\p{M}\p{N}\s]/gu, (character) => {
+  return text.replace(/[&<>"'|]/g, (character) => {
     const namedEntity = namedEntities[character];
     return namedEntity ?? `&#${character.codePointAt(0)};`;
   });

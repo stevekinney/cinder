@@ -149,7 +149,6 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
       // Decode after branch selection so decoded `&#124;` cannot be mistaken for
       // a raw Markdown table delimiter by the invariant above.
       decoded = htmlBody
-        .replace(/\\([^A-Za-z0-9\s])/g, '$1')
         .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_entity, hex: string, decimal: string) =>
           String.fromCodePoint(Number.parseInt(hex ?? decimal, hex ? 16 : 10)),
         )
@@ -236,6 +235,11 @@ describe('docs/tokens.md drift', () => {
       'literal &#x7c; &#124; &amp;',
     );
     expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal | &');
+  });
+
+  test('preserves a literal backslash before a pipe in the HTML code fallback', () => {
+    const html = '| `--cinder-html` | <code>literal \\&#x7c; value</code> |\n';
+    expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal \\| value');
   });
 
   test('keeps exact token references in focused guides current', async () => {

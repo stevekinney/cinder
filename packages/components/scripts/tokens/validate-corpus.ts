@@ -224,8 +224,8 @@ function canonicalizeJson(value: unknown): unknown {
   );
 }
 
-function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
-  const metadata = new Map<string, string>();
+function semanticGroupMetadataByPath(value: unknown): Map<string, Record<string, unknown>> {
+  const metadata = new Map<string, Record<string, unknown>>();
   const visit = (node: unknown, prefix: string, inherited: Record<string, unknown> = {}): void => {
     if (!isRecord(node)) return;
     if ('$value' in node || '$ref' in node) return;
@@ -234,7 +234,7 @@ function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
       $deprecated: node['$deprecated'] ?? inherited['$deprecated'],
       $extensions: node['$extensions'] ?? inherited['$extensions'],
     };
-    metadata.set(prefix, JSON.stringify(canonicalizeJson(effective)));
+    metadata.set(prefix, effective);
     for (const [name, child] of Object.entries(node)) {
       if (name.startsWith('$')) continue;
       visit(child, prefix ? `${prefix}.${name}` : name, effective);
@@ -289,7 +289,21 @@ export function validateModifierTokenPaths(
         });
       }
       for (const groupPath of semanticGroupMetadataPaths) {
-        if (contextMetadata.get(groupPath) === baseMetadata.get(groupPath)) continue;
+        const baseEffective = baseMetadata.get(groupPath) ?? {};
+        const contextEffective = contextMetadata.get(groupPath) ?? {};
+        const overlaidEffective = {
+          ...baseEffective,
+          ...Object.fromEntries(
+            Object.entries(contextEffective).filter(
+              ([, metadataValue]) => metadataValue !== undefined,
+            ),
+          ),
+        };
+        if (
+          JSON.stringify(canonicalizeJson(overlaidEffective)) ===
+          JSON.stringify(canonicalizeJson(baseEffective))
+        )
+          continue;
         const unoverriddenBasePath = [...basePaths].find(
           (basePath) =>
             (groupPath === '' || basePath === groupPath || basePath.startsWith(`${groupPath}.`)) &&

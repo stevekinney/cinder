@@ -780,6 +780,7 @@ export function withDependentBaseAliases(
   const scoped = new Map(overrides);
   for (const [path, entry] of baseIndex) {
     if (scoped.has(path)) continue;
+    if (entry.cssRecipe || !entryContainsReference(entry)) continue;
     if (
       serializeEntryValue(entry, baseIndex, baseResolveReferences) !==
       serializeEntryValue(entry, baseIndex, resolveReferences)
@@ -957,13 +958,6 @@ type OverrideScope = {
   resolveReferences: ValueResolver;
 };
 
-function containsReference(value: unknown): boolean {
-  if (typeof value === 'string') return isAliasReference(value);
-  if (Array.isArray(value)) return value.some(containsReference);
-  if (!isPlainObject(value)) return false;
-  return Object.values(value).some(containsReference);
-}
-
 /** A single emitted override declaration must be valid in every scope its selector reaches. */
 export function assertOverrideScopeConsistency(
   overrides: Map<string, CorpusEntry>,
@@ -971,7 +965,7 @@ export function assertOverrideScopeConsistency(
   scopes: readonly OverrideScope[],
   blockName: string,
 ): void {
-  if (![...overrides.values()].some((entry) => entry.isRefAlias || containsReference(entry.value)))
+  if (![...overrides.values()].some((entry) => entry.isRefAlias || entryContainsReference(entry)))
     return;
   for (const [path, entry] of overrides) {
     const values = scopes.map((scope) => ({
@@ -1631,6 +1625,30 @@ export async function buildTokensBaseCss(
     baseIndex,
     darkForcedReducedMotionResolveReferences,
   );
+  const reducedDarkThemeBlock = darkReducedMotionDeclarations
+    ? `:root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'],
+:root[data-theme='dark']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
+${darkReducedMotionDeclarations}
+}`
+    : '';
+  const reducedLightThemeBlock = lightReducedMotionDeclarations
+    ? `:root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='light'],
+:root[data-theme='light']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
+${lightReducedMotionDeclarations}
+}`
+    : '';
+  const forcedDarkThemeBlock = darkForcedReducedMotionDeclarations
+    ? `:root[data-reduced-motion='on'] [data-theme='dark'],
+:root[data-reduced-motion='on'][data-theme='dark'] {
+${darkForcedReducedMotionDeclarations}
+}`
+    : '';
+  const forcedLightThemeBlock = lightForcedReducedMotionDeclarations
+    ? `:root[data-reduced-motion='on'] [data-theme='light'],
+:root[data-reduced-motion='on'][data-theme='light'] {
+${lightForcedReducedMotionDeclarations}
+}`
+    : '';
 
   const css = `/**
  * GENERATED FILE. Do not edit by hand.
@@ -1674,35 +1692,15 @@ ${lightDeclarations}
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
 ${reducedMotionDeclarations}
   }
-  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'] {
-${darkReducedMotionDeclarations}
-  }
-  :root[data-theme='dark']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
-${darkReducedMotionDeclarations}
-  }
-  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='light'] {
-${lightReducedMotionDeclarations}
-  }
-  :root[data-theme='light']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
-${lightReducedMotionDeclarations}
-  }
+${reducedDarkThemeBlock}
+${reducedLightThemeBlock}
 }
 
 :root[data-reduced-motion='on'] {
 ${forcedReducedMotionDeclarations}
 }
-:root[data-reduced-motion='on'] [data-theme='dark'] {
-${darkForcedReducedMotionDeclarations}
-}
-:root[data-reduced-motion='on'][data-theme='dark'] {
-${darkForcedReducedMotionDeclarations}
-}
-:root[data-reduced-motion='on'] [data-theme='light'] {
-${lightForcedReducedMotionDeclarations}
-}
-:root[data-reduced-motion='on'][data-theme='light'] {
-${lightForcedReducedMotionDeclarations}
-}
+${forcedDarkThemeBlock}
+${forcedLightThemeBlock}
 `;
 
   return format(css, { ...PRETTIER_OPTIONS, parser: 'css', plugins: CSS_PLUGINS });

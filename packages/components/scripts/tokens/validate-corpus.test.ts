@@ -665,6 +665,31 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
   });
 
+  test('allows sparse modifier metadata that repeats part of the effective base metadata', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          group: {
+            $type: 'number' as const,
+            $deprecated: true,
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+        },
+      ],
+      ['light.json', { group: { $deprecated: true, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
   test('treats reordered extension object members as equivalent metadata', () => {
     const metadataOnly: ResolverDocument = {
       version: '2025.10',
