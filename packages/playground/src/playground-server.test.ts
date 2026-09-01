@@ -43,6 +43,7 @@ import {
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
   releaseEagerPrebuildMemory,
+  releaseIncrementalPrebuildMemory,
   rewriteRepositoryRelativeReadmeLinks,
   runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
@@ -95,6 +96,22 @@ describe('releaseEagerPrebuildMemory', () => {
     const calls: boolean[] = [];
     releaseEagerPrebuildMemory((force) => calls.push(force));
     expect(calls).toEqual([true]);
+  });
+});
+
+describe('releaseIncrementalPrebuildMemory', () => {
+  it('collects completed compiler graphs at a bounded cadence during warmup', () => {
+    const calls: boolean[] = [];
+    const collectGarbage = (force: boolean): void => {
+      calls.push(force);
+    };
+
+    releaseIncrementalPrebuildMemory(23, collectGarbage);
+    releaseIncrementalPrebuildMemory(24, collectGarbage);
+    releaseIncrementalPrebuildMemory(25, collectGarbage);
+    releaseIncrementalPrebuildMemory(48, collectGarbage);
+
+    expect(calls).toEqual([true, true]);
   });
 });
 

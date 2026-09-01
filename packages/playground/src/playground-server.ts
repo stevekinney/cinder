@@ -1097,6 +1097,17 @@ export type PlaygroundServer = {
  * cheap cache invalidation, handled entirely by `invalidateCachesForChange`).
  */
 const EAGER_PREBUILD_CONCURRENCY = 6;
+const EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL = 24;
+
+/** Reclaim completed compiler graphs before they accumulate into a long-tail stall. */
+export function releaseIncrementalPrebuildMemory(
+  completedBuilds: number,
+  collectGarbage: (force: boolean) => void = Bun.gc,
+): void {
+  if (completedBuilds % EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL === 0) {
+    collectGarbage(true);
+  }
+}
 
 export function eagerPrebuildComponents(
   components: readonly string[],
@@ -1185,8 +1196,18 @@ async function eagerPrebuildAll(): Promise<{
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.
   const knownComponents = new Set(components);
-  const pagePromise = mapWithConcurrencyLimit(components, EAGER_PREBUILD_CONCURRENCY, (name) =>
-    buildPageBundle(name, knownComponents),
+  let completedBuilds = 0;
+  const pagePromise = mapWithConcurrencyLimit(
+    components,
+    EAGER_PREBUILD_CONCURRENCY,
+    async (name) => {
+      try {
+        return await buildPageBundle(name, knownComponents);
+      } finally {
+        completedBuilds += 1;
+        releaseIncrementalPrebuildMemory(completedBuilds);
+      }
+    },
   );
 
   const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
