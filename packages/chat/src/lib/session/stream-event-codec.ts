@@ -278,6 +278,36 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
 }
 
 /**
+ * Recursively checks a `JSONValue` for a non-finite number (`NaN`,
+ * `Infinity`, `-Infinity`). `JSONValue`'s `number` member admits these —
+ * TypeScript can't express "finite number" — but `JSON.stringify` silently
+ * rewrites each one to `null`, which corrupts the value it's attached to
+ * (most importantly, tool call arguments: a corrupted argument means the
+ * tool executes with different input than the caller intended).
+ */
+function isFiniteJSONValue(value: JSONValue): boolean {
+  if (typeof value === 'number') return Number.isFinite(value);
+  if (Array.isArray(value)) return value.every(isFiniteJSONValue);
+  if (value !== null && typeof value === 'object') {
+    return Object.values(value).every((entry) => isFiniteJSONValue(entry));
+  }
+  return true;
+}
+
+/** Throws if `value` (identified by `context` for the error message) contains a non-finite number anywhere. */
+function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
+  if (!isFiniteJSONValue(value))
+    throw new Error(`Invalid chat stream event: ${context} contains a non-finite number`);
+  return value;
+}
+
+function isLegacyChatStreamEventType(
+  type: ChatStreamEvent['type'],
+): type is 'text' | 'tool_call' | 'tool_result' {
+  return type === 'text' || type === 'tool_call' || type === 'tool_result';
+}
+
+/**
  * Projects one event into a plain JSON-safe object listing exactly its
  * declared fields, per the reference architecture's stream wire contract:
  * "The route projects event data into JSON-safe values explicitly rather
@@ -289,6 +319,12 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
  */
 function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown> {
   const envelope = projectWireEnvelope(event);
+  // The decoder requires a complete envelope on every CIN-507 member (only
+  // the three legacy members tolerate a bare frame) — the encoder must
+  // refuse to produce a frame its own decoder would then reject.
+  if (!isLegacyChatStreamEventType(event.type) && envelope.wireVersion === undefined) {
+    throw new Error(`Invalid chat stream event: ${event.type} requires a wire envelope`);
+  }
   switch (event.type) {
     case 'text':
       return { type: 'text', text: event.text, ...envelope };
@@ -297,7 +333,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         type: 'tool_call',
         id: event.id,
         name: event.name,
-        arguments: event.arguments,
+        arguments: assertFiniteJSONValue(event.arguments, 'tool_call.arguments'),
         ...envelope,
       };
     case 'tool_result':
@@ -348,7 +384,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         type: 'stream:tool-call-complete',
         toolName: event.toolName,
         blockId: event.blockId,
-        arguments: event.arguments,
+        arguments: assertFiniteJSONValue(event.arguments, 'stream:tool-call-complete.arguments'),
         ...envelope,
       };
     case 'stream:usage':
@@ -383,6 +419,15 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       return { ...projected, ...envelope };
     }
     case 'tool.settled':
+      // Mirrors the decoder's callId/toolCallId agreement check — a
+      // mismatch here would encode a frame the decoder then rejects,
+      // turning a producer bug into a downstream protocol failure instead
+      // of catching it at the source.
+      if (event.result.callId !== event.toolCallId) {
+        throw new Error(
+          'Invalid chat stream event: tool.settled result.callId must equal toolCallId',
+        );
+      }
       return {
         type: 'tool.settled',
         toolCallId: event.toolCallId,

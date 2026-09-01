@@ -783,6 +783,57 @@ describe('chat stream event codec', () => {
         'Invalid chat stream event: tool.progress percent must be finite',
       );
     });
+
+    test('rejects encoding a CIN-507 member with no wire envelope at all', () => {
+      const event = {
+        type: 'stream:text-delta',
+        content: 'h',
+        accumulated: 'h',
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: stream:text-delta requires a wire envelope',
+      );
+    });
+
+    test('rejects encoding tool.settled when result.callId disagrees with toolCallId', () => {
+      const event = {
+        type: 'tool.settled',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        result: { callId: 'call-2', outcome: 'success', content: { ok: true } },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool.settled result.callId must equal toolCallId',
+      );
+    });
+
+    test('rejects encoding non-finite numbers nested in tool_call arguments', () => {
+      const event = {
+        type: 'tool_call',
+        id: 'call-1',
+        name: 'lookup',
+        arguments: { weights: [1, Number.POSITIVE_INFINITY] },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool_call.arguments contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding non-finite numbers nested in stream:tool-call-complete arguments', () => {
+      const event = {
+        type: 'stream:tool-call-complete',
+        toolName: 'lookup',
+        blockId: 'block-1',
+        arguments: { nested: { score: Number.NaN } },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: stream:tool-call-complete.arguments contains a non-finite number',
+      );
+    });
   });
 
   describe('decodeChatStreamEvents stream-level invariants (CIN-507)', () => {
