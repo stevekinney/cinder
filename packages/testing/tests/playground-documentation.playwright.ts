@@ -137,7 +137,9 @@ test.describe('playground component documentation', () => {
     await expect(liveMount.getByRole('switch')).toBeDisabled();
   });
 
-  test('avatar-group exposes its styling variables in the raw artifacts', async ({ page }) => {
+  test('avatar-group exposes its corpus-owned token through public raw artifacts', async ({
+    page,
+  }) => {
     await page.goto('/page/avatar-group', { waitUntil: 'load' });
     const preview = page;
 

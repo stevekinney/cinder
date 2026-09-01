@@ -4,6 +4,7 @@ import { dirname, join, relative, sep } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
+import { coordinatedBuild } from './build-artifacts-shared.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 
 type RenderedFeaturedExample = {
@@ -70,14 +71,16 @@ export function renderFeaturedExample(mountIdPrefix: string) {
 
   try {
     await Bun.write(entryPath, entrySource);
-    const result = await Bun.build({
-      entrypoints: [entryPath],
-      plugins: [sveltePlugin({ generate: 'server' })],
-      target: 'bun',
-      format: 'esm',
-      conditions: ['bun', 'svelte'],
-      splitting: false,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryPath],
+        plugins: [sveltePlugin({ generate: 'server' })],
+        target: 'bun',
+        format: 'esm',
+        conditions: ['bun', 'svelte'],
+        splitting: false,
+      }),
+    );
     if (!result.success || result.outputs[0] === undefined) {
       throw new Error(
         `[playground] featured example server build failed for ${componentName}/${scenario}:\n${formatBuildLogs(result.logs)}`,

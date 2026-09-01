@@ -837,38 +837,43 @@ function toCodeSpan(content: string): string {
  * escaped), and losslessly invertible: `extractDocTokens` recovers `k` as
  * `(2k + 1 - 1) / 2`.
  */
-function toTableCell(text: string): string {
-  return text
-    .replaceAll(/\s*[\r\n]\s*/g, ' ')
-    .trim()
-    .replace(/(\\*)\|/g, (_match, backslashes: string) => `${backslashes}${backslashes}\\|`);
+function normalizeTableCell(text: string): string {
+  return text.replaceAll(/\s*[\r\n]\s*/g, ' ').trim();
 }
 
-// Known gap, tracked in CIN-488: the GFM spec's own table example (a pipe
-// inside a code span, escaped as `` `\|` ``) confirms this escaping IS
-// required -- a code span does not protect a cell's `|` from being read as a
-// column delimiter, so `toCodeSpan`'s callers below are right to escape
-// first. But CommonMark also never interprets backslash escapes INSIDE a
-// code span (its content renders exactly as written), so the escaping
-// backslashes this function inserts to survive row-splitting are never
-// consumed -- they render as literal characters in the `cssProperty`/`value`
-// columns. A value's escaping thus becomes visible in the rendered doc: one
-// backslash in the source value (`foo\|bar`) displays as three
-// (`foo\\\|bar`) once GFM's row-split escaping and this function's own
-// escaping compose. This is a structural GFM limitation (escaping a pipe for
-// row-splitting and displaying that pipe unescaped inside a code span are
-// mutually exclusive), not a simple bug -- there is no encoding of this
-// function's output that both survives row-splitting AND renders back to the
-// exact original bytes inside a code span. `tokens-doc-drift.test.ts`'s
-// decoder still round-trips correctly (it reads the MARKDOWN SOURCE, not the
-// rendered HTML), so no corpus value is silently corrupted -- only a human
-// reading the rendered `docs/tokens.md` page would see the extra
-// backslashes. Deferred rather than reworked this late in review: nothing in
-// the real corpus contains a `\` or `|` in any value today, and a real fix
-// means choosing a different rendering strategy for such values (e.g.
-// falling back to the description column's plain-escaped style instead of a
-// code span) rather than a change to this function's escaping math, which is
-// already correct for its actual job of keeping row-splitting safe.
+function toTableCell(text: string): string {
+  return normalizeTableCell(text).replace(
+    /(\\*)\|/g,
+    (_match, backslashes: string) => `${backslashes}${backslashes}\\|`,
+  );
+}
+
+function escapeHtml(text: string): string {
+  const namedEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '|': '&#x7c;',
+    '*': '&#42;',
+    _: '&#95;',
+    '~': '&#126;',
+  };
+  return text.replace(/[&<>"'|*_~]/g, (character) => {
+    const namedEntity = namedEntities[character];
+    return namedEntity ?? `&#${character.codePointAt(0)};`;
+  });
+}
+
+function renderValueCell(value: string): string {
+  // Backslash-escaped pipes cannot be displayed faithfully inside a Markdown
+  // code span, and character references are not decoded inside code spans.
+  // An HTML code element keeps the table delimiter inert while the renderer
+  // decodes entities back to the exact literal value.
+  if (value.includes('|')) return `<code>${escapeHtml(value)}</code>`;
+  return toCodeSpan(value);
+}
 
 export async function renderDocTable(
   section: DocSection,
@@ -892,7 +897,9 @@ export async function renderDocTable(
         `No base corpus entry has cssProperty "${cssProperty}" (section "${section.slug}").`,
       );
     }
-    const value = toTableCell(serializeEntryValue(entry, baseIndex, resolveReferences));
+    const value = renderValueCell(
+      normalizeTableCell(serializeEntryValue(entry, baseIndex, resolveReferences)),
+    );
     const description = toTableCell(entry.description ?? '');
     assertNoGeneratedMarkers(value, 'value', cssProperty);
     assertNoGeneratedMarkers(description, 'description', cssProperty);
@@ -901,7 +908,7 @@ export async function renderDocTable(
     // a value containing one -- a fontFamily whose family name is `A|B` becomes the
     // valid CSS string 'A|B' -- would commit a structurally malformed row that the
     // drift parser still happily reads back.
-    return `| ${toCodeSpan(cssProperty)} | ${toCodeSpan(value)} | ${description} |`;
+    return `| ${toCodeSpan(cssProperty)} | ${value} | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });

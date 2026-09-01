@@ -116,6 +116,78 @@ export const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 export const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 export const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
+export type BuildGcCoordinator = {
+  build<T>(task: () => Promise<T>): Promise<T>;
+  collectGarbage(force: boolean): void;
+};
+
+/**
+ * Coordinate compiler-graph lifetimes for the whole playground process.
+ * Bun permits build calls to overlap, but forced GC must only run after the
+ * last graph has settled. A pending collection is therefore drained by the
+ * final build completion rather than racing whichever caller requested it.
+ */
+export function createBuildGcCoordinator(
+  collect: (force: boolean) => void = (force) => Bun.gc?.(force),
+): BuildGcCoordinator {
+  let activeBuilds = 0;
+  let requestedForce: boolean | null = null;
+
+  const collectGarbage = (force: boolean): void => {
+    requestedForce = requestedForce === null ? force : requestedForce || force;
+    if (activeBuilds !== 0) return;
+    const forceCollection = requestedForce;
+    requestedForce = null;
+    if (forceCollection !== null) collect(forceCollection);
+  };
+
+  return {
+    async build<T>(task: () => Promise<T>): Promise<T> {
+      activeBuilds += 1;
+      try {
+        return await task();
+      } finally {
+        activeBuilds -= 1;
+        if (activeBuilds === 0 && requestedForce !== null) collectGarbage(requestedForce);
+      }
+    },
+    collectGarbage,
+  };
+}
+
+export const buildGcCoordinator = createBuildGcCoordinator();
+
+export function coordinatedBuild<T>(task: () => Promise<T>): Promise<T> {
+  return buildGcCoordinator.build(task);
+}
+
+export function collectCoordinatedGarbage(force = true): void {
+  buildGcCoordinator.collectGarbage(force);
+}
+
+export function createSettledBuildCollector(
+  interval: number,
+  collectGarbage: (force: boolean) => void = collectCoordinatedGarbage,
+): () => () => void {
+  let activeBuilds = 0;
+  let completedSinceCollection = 0;
+
+  return () => {
+    activeBuilds += 1;
+    let settled = false;
+    return () => {
+      if (settled) return;
+      settled = true;
+      activeBuilds -= 1;
+      completedSinceCollection += 1;
+      if (activeBuilds === 0 && completedSinceCollection >= interval) {
+        completedSinceCollection = 0;
+        collectGarbage(true);
+      }
+    };
+  };
+}
+
 /**
  * Look up an artifact for a specific bundle family route.
  *

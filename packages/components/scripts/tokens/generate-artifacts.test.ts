@@ -298,8 +298,40 @@ describe('CIN-30 review round 3', () => {
     // Exactly three unescaped cell delimiters on the row: leading, between the
     // two cells, and between value and description, plus the trailing one.
     const row = table.split('\n').find((line) => line.includes('--cinder-test-font-piped')) ?? '';
-    expect(row).toContain('A\\|B');
+    expect(row).toContain('<code>&#39;A&#x7c;B&#39;</code>');
+    expect(row).not.toContain('`&#39;A&#x7c;B&#39;`');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
+  });
+
+  test('an ordinary serialized value is wrapped in exactly one code span', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'space.zero',
+        {
+          path: 'space.zero',
+          value: { value: 0, unit: 'px' },
+          type: 'dimension',
+          description: 'Zero spacing.',
+          cssProperty: '--cinder-test-space-zero',
+          cssRecipe: undefined,
+          public: true,
+          category: 'spacing',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'spacing',
+      headings: ['Spacing'],
+      cssProperties: ['--cinder-test-space-zero'],
+    };
+
+    const table = await renderDocTable(section, baseIndex, (value) => value);
+    const row = table.split('\n').find((line) => line.includes('--cinder-test-space-zero')) ?? '';
+
+    expect(row).toMatch(/\| `0`\s+\|/);
+    expect(row).not.toContain('`` `0` ``');
   });
 });
 
@@ -832,21 +864,42 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
     // Mirrors `tokens-doc-drift.test.ts`'s `extractDocTokens` decode exactly,
     // so this test fails the same way that test would if the two sides ever
     // disagreed again.
-    const decode = (body: string): string =>
-      body.replace(
-        /(\\*)\|/g,
-        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-      );
-
     for (const raw of ['foo|bar', 'foo\\|bar']) {
       const baseIndex = new Map<string, CorpusEntry>([recipeEntry('test.rt', '--test-rt', raw)]);
       const table = await renderDocTable(tableSection('--test-rt'), baseIndex, (value) => value);
       const row = rowFor(table, '--test-rt');
-      // Extract the value cell's code-span body the same way extractDocTokens
-      // does: everything between the second pair of backtick-delimited cells.
-      const cellMatch = /\|\s*`--test-rt`\s*\|\s*`(.+?)`\s*\|/.exec(row);
+      // Pipe-containing values use an HTML code element so entities render as
+      // literal characters without becoming Markdown table delimiters.
+      const cellMatch = /\|\s*`--test-rt`\s*\|\s*((?:\\.|[^|])*)\s*\|/.exec(row);
       expect(cellMatch?.[1]).toBeDefined();
-      expect(decode(cellMatch![1]!)).toBe(raw);
+      const encoded = cellMatch![1]!.trim().replace(/^<code>|<\/code>$/g, '');
+      const decoded = encoded.replace(
+        /&#(?:x([0-9a-f]+)|(\d+));/gi,
+        (_entity, hex: string, decimal: string) =>
+          String.fromCodePoint(Number.parseInt(hex ?? decimal, hex ? 16 : 10)),
+      );
+      expect(decoded).toBe(raw);
     }
+  });
+
+  test('a pipe value is rendered as literal-safe HTML code', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      recipeEntry('test.literal', '--test-literal', '*<em>`|&</em>*'),
+    ]);
+    const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
+    expect(table).toContain('<code>\\*&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;\\*</code>');
+    expect(table).not.toContain('<em>');
+  });
+
+  test('Markdown-active punctuation round-trips unchanged in an HTML token cell', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      recipeEntry('test.markdown', '--test-markdown', '*A*|_B_~C~'),
+    ]);
+    const table = await renderDocTable(
+      tableSection('--test-markdown'),
+      baseIndex,
+      (value) => value,
+    );
+    expect(table).toContain('<code>\\*A\\*&#x7c;\\_B\\_&#126;C&#126;</code>');
   });
 });

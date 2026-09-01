@@ -214,9 +214,9 @@
   }
 
   .cinder-button[data-cinder-variant='secondary'] {
-    background: var(--cinder-surface-raised);
-    color: var(--cinder-text-default);
-    border-color: var(--cinder-border);
+    background: var(--cinder-button-background);
+    color: var(--cinder-button-foreground);
+    border-color: var(--cinder-button-border);
   }
 
   .cinder-button[data-cinder-variant='danger'] {

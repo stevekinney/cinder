@@ -1,45 +1,16 @@
 import { join, relative } from 'node:path';
 
+import { coordinatedBuild } from './build-artifacts-shared.ts';
+import { DOCUMENTATION_CINDER_COMPONENTS, LANDING_CINDER_COMPONENTS } from './component-sources.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
+
+export { DOCUMENTATION_CINDER_COMPONENTS, LANDING_CINDER_COMPONENTS } from './component-sources.ts';
 
 /**
  * Cinder primitives rendered by the documentation chrome and its colour-token
  * panel. Their styles are bundled once for every documentation route; the
  * documented component and its example dependencies are added separately.
  */
-export const DOCUMENTATION_CINDER_COMPONENTS = [
-  'accordion',
-  'alert',
-  'badge',
-  'button',
-  'callout',
-  'code-block',
-  'collapsible',
-  'color-picker',
-  'color-swatch-picker',
-  'copy-button',
-  'kbd',
-  'input',
-  'popover',
-  'status-dot',
-  'table',
-  'toggle',
-  'tooltip',
-] as const;
-
-/** Cinder primitives rendered by the landing shell and its colour-token panel. */
-export const LANDING_CINDER_COMPONENTS = [
-  'button',
-  'code-block',
-  'color-picker',
-  'color-swatch-picker',
-  'copy-button',
-  'form-field',
-  'input',
-  'popover',
-  'tooltip',
-] as const;
-
 export type PlaygroundStylesheetName = 'documentation' | 'landing';
 
 const componentsByStylesheet: Readonly<Record<PlaygroundStylesheetName, readonly string[]>> = {
@@ -86,12 +57,14 @@ export function buildPlaygroundStylesheet(name: PlaygroundStylesheetName): Promi
     // Bun caches a virtual build by its entrypoint path. Keep that path unique
     // per stylesheet or a landing request can receive the documentation graph.
     const virtualEntrypoint = join(PLAYGROUND_ROOT, 'src', `.${name}-styles.css`);
-    const result = await Bun.build({
-      entrypoints: [virtualEntrypoint],
-      files: { [virtualEntrypoint]: stylesheetEntry(componentsByStylesheet[name]) },
-      minify: true,
-      target: 'browser',
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [virtualEntrypoint],
+        files: { [virtualEntrypoint]: stylesheetEntry(componentsByStylesheet[name]) },
+        minify: true,
+        target: 'browser',
+      }),
+    );
     if (!result.success) {
       throw new Error(
         `[playground] ${name} stylesheet build failed:\n${formatBuildLogs(result.logs)}`,

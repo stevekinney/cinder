@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
+import { coordinatedBuild } from './build-artifacts-shared.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
@@ -100,14 +101,16 @@ export async function loadShellServerRenderer(): Promise<ShellServerRendererLoad
 
   const generationAtStart = getRebuildGeneration();
   const loadFreshRenderer = async (): Promise<ShellServerRenderer> => {
-    const result = await Bun.build({
-      entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
-      plugins: [sveltePlugin({ generate: 'server' })],
-      target: 'bun',
-      format: 'esm',
-      conditions: ['bun', 'svelte'],
-      splitting: false,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
+        plugins: [sveltePlugin({ generate: 'server' })],
+        target: 'bun',
+        format: 'esm',
+        conditions: ['bun', 'svelte'],
+        splitting: false,
+      }),
+    );
     if (!result.success || result.outputs[0] === undefined) {
       throw new Error(`Shell server bundle failed:\n${formatBuildLogs(result.logs)}`);
     }
@@ -220,14 +223,16 @@ export async function loadPageServerRenderer(): Promise<PageServerRenderers> {
   pageServerRendererPromise = (async () => {
     try {
       const generationAtStart = getRebuildGeneration();
-      const result = await Bun.build({
-        entrypoints: [join(PLAYGROUND_ROOT, 'src', 'page-server-entry.ts')],
-        plugins: [sveltePlugin({ generate: 'server' })],
-        target: 'bun',
-        format: 'esm',
-        conditions: ['bun', 'svelte'],
-        splitting: false,
-      });
+      const result = await coordinatedBuild(() =>
+        Bun.build({
+          entrypoints: [join(PLAYGROUND_ROOT, 'src', 'page-server-entry.ts')],
+          plugins: [sveltePlugin({ generate: 'server' })],
+          target: 'bun',
+          format: 'esm',
+          conditions: ['bun', 'svelte'],
+          splitting: false,
+        }),
+      );
       if (!result.success || result.outputs[0] === undefined) {
         throw new Error(`Page server bundle failed:\n${formatBuildLogs(result.logs)}`);
       }

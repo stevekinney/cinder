@@ -51,7 +51,7 @@ import {
   type PlaygroundFreshnessFingerprint,
 } from '../../testing/scripts/source-fingerprint.ts';
 import { analyzeComponent } from './analyze.ts';
-import { findArtifactForFamily } from './build-artifacts-shared.ts';
+import { collectCoordinatedGarbage, findArtifactForFamily } from './build-artifacts-shared.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import {
@@ -78,7 +78,7 @@ import {
   startWatcher,
   waitForPendingRebuild,
 } from './file-watcher.ts';
-import { buildFixtureBundle } from './fixture-bundle.ts';
+import { buildFixtureBundle, findFixtureArtifact } from './fixture-bundle.ts';
 import { notFound } from './http-responses.ts';
 import {
   componentManifestCache,
@@ -987,7 +987,8 @@ export const ROUTES: RouteDefinition[] = [
     pattern: /^\/fixture-bundle\/([A-Za-z0-9_-]+)\.js$/,
     handler: ({ match }) => {
       const filename = match[1]!;
-      const directHit = findArtifactForFamily('fixture', `${filename}.js`);
+      const directHit =
+        findFixtureArtifact(`${filename}.js`) ?? findArtifactForFamily('fixture', `${filename}.js`);
       if (directHit !== undefined) {
         return new Response(directHit, {
           headers: {
@@ -1097,6 +1098,17 @@ export type PlaygroundServer = {
  * cheap cache invalidation, handled entirely by `invalidateCachesForChange`).
  */
 const EAGER_PREBUILD_CONCURRENCY = 6;
+const EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL = 24;
+
+/** Reclaim completed compiler graphs before they accumulate into a long-tail stall. */
+export function releaseIncrementalPrebuildMemory(
+  completedBuilds: number,
+  collectGarbage: (force: boolean) => void = collectCoordinatedGarbage,
+): void {
+  if (completedBuilds % EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL === 0) {
+    collectGarbage(true);
+  }
+}
 
 export function eagerPrebuildComponents(
   components: readonly string[],
@@ -1134,6 +1146,9 @@ async function mapWithConcurrencyLimit<T, R>(
   limit: number,
   task: (item: T) => Promise<R>,
 ): Promise<PromiseSettledResult<R>[]> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new RangeError(`concurrencyLimit must be a positive integer; received ${limit}`);
+  }
   const results: PromiseSettledResult<R>[] = Array.from({ length: items.length });
   let nextIndex = 0;
 
@@ -1151,6 +1166,30 @@ async function mapWithConcurrencyLimit<T, R>(
 
   const workerCount = Math.min(limit, items.length);
   await Promise.all(Array.from({ length: workerCount }, () => worker()));
+  return results;
+}
+
+export async function mapWithConcurrencyLimitInBatches<T, R>(
+  items: readonly T[],
+  concurrencyLimit: number,
+  batchSize: number,
+  task: (item: T) => Promise<R>,
+  afterBatch: (completedItems: number) => void,
+): Promise<PromiseSettledResult<R>[]> {
+  if (!Number.isInteger(concurrencyLimit) || concurrencyLimit < 1) {
+    throw new RangeError(
+      `concurrencyLimit must be a positive integer; received ${concurrencyLimit}`,
+    );
+  }
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new RangeError(`batchSize must be a positive integer; received ${batchSize}`);
+  }
+  const results: PromiseSettledResult<R>[] = [];
+  for (let offset = 0; offset < items.length; offset += batchSize) {
+    const batch = items.slice(offset, offset + batchSize);
+    results.push(...(await mapWithConcurrencyLimit(batch, concurrencyLimit, task)));
+    afterBatch(results.length);
+  }
   return results;
 }
 
@@ -1185,10 +1224,15 @@ async function eagerPrebuildAll(): Promise<{
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.
   const knownComponents = new Set(components);
-  const pagePromise = mapWithConcurrencyLimit(components, EAGER_PREBUILD_CONCURRENCY, (name) =>
-    buildPageBundle(name, knownComponents),
+  const pagePromise = mapWithConcurrencyLimitInBatches(
+    components,
+    EAGER_PREBUILD_CONCURRENCY,
+    EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL,
+    async (name) => {
+      return buildPageBundle(name, knownComponents);
+    },
+    releaseIncrementalPrebuildMemory,
   );
-
   const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
 
   let succeeded = 0;
@@ -1214,7 +1258,19 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
   await getManifests().catch((error: unknown) => {
     console.error('[playground] manifest pre-warm failed:', error);
   });
+  releaseEagerPrebuildMemory();
   return prebuild;
+}
+
+/**
+ * Eager warmup creates many short-lived compiler graphs before the long-lived
+ * browser suite begins. Ask Bun to synchronously reclaim those graphs once the
+ * bundle and manifest caches hold the durable artifacts the server needs.
+ */
+export function releaseEagerPrebuildMemory(
+  collectGarbage: (force: boolean) => void = collectCoordinatedGarbage,
+): void {
+  collectGarbage(true);
 }
 
 /** Run independent startup work in parallel and release server resources if either task fails. */

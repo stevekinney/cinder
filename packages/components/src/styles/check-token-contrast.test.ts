@@ -493,6 +493,57 @@ const chartSeries = Array.from({ length: 8 }, (_, i) =>
 const AA_TEXT = 4.5;
 const NON_TEXT = 3.0;
 
+describe('newly modeled component color tokens', () => {
+  const componentColors = [
+    '--cinder-alert-info',
+    '--cinder-code-block-background',
+    '--cinder-file-upload-background',
+    '--cinder-file-upload-border-color',
+    '--cinder-file-upload-progress-background',
+    '--cinder-file-upload-progress-fill',
+    '--cinder-kanban-column-background',
+    '--cinder-kanban-card-background',
+    '--cinder-tree-drop-line-color',
+    '--cinder-status-dot-color',
+    '--cinder-table-of-contents-link-color',
+    '--cinder-table-of-contents-link-active-color',
+  ] as const;
+
+  it('keeps every fixed component color in the generated registry and both resolved themes', () => {
+    for (const token of componentColors) {
+      const arms = readOklchToken(token);
+      expect(Number.isFinite(arms.light.l)).toBe(true);
+      expect(Number.isFinite(arms.dark.l)).toBe(true);
+    }
+  });
+
+  it('keeps component text colors readable on their shipped surfaces', () => {
+    const pairs = [
+      ['--cinder-status-dot-color', '--cinder-surface-inset'],
+      ['--cinder-table-of-contents-link-color', '--cinder-surface-canvas'],
+      ['--cinder-table-of-contents-link-active-color', '--cinder-surface-hover'],
+    ] as const;
+    for (const [foregroundName, backgroundName] of pairs) {
+      const foreground = readOklchToken(foregroundName);
+      const background = readOklchToken(backgroundName);
+      for (const arm of ['light', 'dark'] as const) {
+        expect(
+          contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(background[arm])),
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+  });
+
+  it('keeps alpha-bearing component colors explicit in the resolved corpus', () => {
+    for (const path of ['kanban-board.board.scroll-edge', 'modal.backdrop']) {
+      for (const arm of ['light', 'dark'] as const) {
+        const value = readResolvedValue(arm, path);
+        expect(value).toMatchObject({ colorSpace: 'oklch', alpha: expect.any(Number) });
+      }
+    }
+  });
+});
+
 describe('ciede2000 reference correctness (zero-chroma branch)', () => {
   // Canonical pairs from Sharma, Wu & Dalal (2005), Table 1 — the dataset used to validate
   // CIEDE2000 implementations. These three exercise the zero-chroma branches: each pair has at
@@ -1056,13 +1107,19 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
   }
 
   it('applies the status-tier chroma clamp in every theme declaration', () => {
+    const statusTierDeclarations = [
+      ...css.matchAll(
+        /--cinder-status-(?:info|success|warning|danger)-(?:muted|subtle):\s*[^;]+;/g,
+      ),
+    ];
     const declarations = [
       ...css.matchAll(
         /--cinder-status-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from\s+color-mix\(\s*in oklch,\s*var\(--cinder-status-(?:info|success|warning|danger)-solid\),\s*var\(--cinder-(?:surface|text-default)\)\s+36%\s*\)\s*l\s*min\(c,\s*0\.05\)\s*h\s*\);/g,
       ),
     ];
 
-    expect(declarations).toHaveLength(24);
+    expect(statusTierDeclarations.length).toBeGreaterThan(0);
+    expect(declarations).toHaveLength(statusTierDeclarations.length);
   });
 
   chartSeries.forEach((series, index) => {

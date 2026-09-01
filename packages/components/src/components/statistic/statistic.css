@@ -1,14 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-statistic {
-    --cinder-statistic-row-gap: var(--cinder-space-1, 0.25rem);
-    --cinder-statistic-column-gap: var(--cinder-space-3, 0.75rem);
-    --cinder-statistic-label-font-size: var(--cinder-text-sm);
-    --cinder-statistic-value-font-size: var(--cinder-text-4xl);
-    --cinder-statistic-value-font-weight: var(--cinder-font-semibold);
-    --cinder-statistic-value-line-height: 1.1;
-    --cinder-statistic-change-gap: var(--cinder-space-1, 0.25rem);
-    --cinder-statistic-change-font-size: var(--cinder-text-sm);
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto;
