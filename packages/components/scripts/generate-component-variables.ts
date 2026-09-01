@@ -42,7 +42,10 @@ async function readCorpusVariables(
       .filter((entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null)
       .filter((entry) => entry.component === componentName && entry.public === true)
       .map((entry) => entry.cssProperty)
-      .filter((property): property is string => property?.startsWith(PREFIX) === true),
+      .filter(
+        (property): property is string =>
+          typeof property === 'string' && property.startsWith(PREFIX),
+      ),
   );
 }
 
