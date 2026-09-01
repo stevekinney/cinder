@@ -3037,6 +3037,11 @@
     /* Narrow-viewport tokens: tighter padding/gap at ≤480px (comfortable density). */
     --cinder-chat-narrow-padding: var(--cinder-space-3);
     --cinder-chat-narrow-gap: var(--cinder-space-2);
+    /* Readability cap shared by every transcript row — chat bubbles
+     * (chat-message.svelte's .chat-message-wrapper) and grouped tool-call
+     * cards (tool-call-timeline.svelte's .chat-tool-call-timeline) both read
+     * this one token so the two can never drift apart. */
+    --cinder-chat-message-max-width: 48rem;
   }
 
   .chat-container[data-cinder-density='compact'] {

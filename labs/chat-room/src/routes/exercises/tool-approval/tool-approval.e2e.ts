@@ -194,3 +194,102 @@ test.describe('tool approval: assertive announcement precedence', () => {
 		await expect(assertiveRegion).not.toContainText('Consumer text should not win.');
 	});
 });
+
+// CIN-506: a COMPLETED tool-call/tool-result pair renders through the grouped
+// ToolCallGroup/ToolCallTimeline path (chat.svelte's `renderRow.type ===
+// 'tool-call-group'` branch), unlike the `action_required` scenarios above,
+// which render as an ungrouped approval-prompt row instead. The grouped row
+// (`.chat-tool-call-timeline` in tool-call-timeline.svelte) carries the
+// widest content in the transcript — serialized JSON via ToolPayloadCode —
+// and, before this fix, declared no inline-size cap of its own, so it
+// stretched to the full timeline width regardless of every other row's
+// `--cinder-chat-message-max-width` readability cap (chat-message.svelte).
+test.describe('tool call group: readability cap (CIN-506)', () => {
+	const READABILITY_CAP_PX = 768; // 48rem at the browser's 16px root font size.
+	const PIXEL_TOLERANCE = 2; // Sub-pixel layout rounding.
+
+	test('at a wide viewport, the grouped tool-call row does not exceed the shared readability cap', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await gotoHydrated(page, '/exercises/tool-approval');
+
+		const row = page.locator(
+			'[data-testid="tool-approval-width-cap-wrapper"] .chat-tool-call-timeline'
+		);
+		await expect(row).toBeVisible();
+
+		const width = await row.evaluate((element) => element.getBoundingClientRect().width);
+		expect(width).toBeLessThanOrEqual(READABILITY_CAP_PX + PIXEL_TOLERANCE);
+	});
+
+	test('below the breakpoint, the grouped tool-call row still fills the available width instead of shrinking to fit-content', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 375, height: 800 });
+		await gotoHydrated(page, '/exercises/tool-approval');
+
+		const row = page.locator(
+			'[data-testid="tool-approval-width-cap-wrapper"] .chat-tool-call-timeline'
+		);
+		await expect(row).toBeVisible();
+
+		const { availableWidth, rowWidth } = await page.evaluate(() => {
+			const timelineElement = document.querySelector(
+				'#tool-approval-width-cap-chat .chat-timeline'
+			);
+			const rowElement = document.querySelector(
+				'[data-testid="tool-approval-width-cap-wrapper"] .chat-tool-call-timeline'
+			);
+			if (!(timelineElement instanceof HTMLElement) || !(rowElement instanceof HTMLElement)) {
+				throw new Error('Expected both the timeline and the tool-call-group row to be present.');
+			}
+			const timelineStyle = getComputedStyle(timelineElement);
+			const paddingLeft = Number.parseFloat(timelineStyle.paddingLeft);
+			const paddingRight = Number.parseFloat(timelineStyle.paddingRight);
+			return {
+				availableWidth: timelineElement.getBoundingClientRect().width - paddingLeft - paddingRight,
+				rowWidth: rowElement.getBoundingClientRect().width
+			};
+		});
+
+		// A `fit-content`/`max-content` regression would size the row to its
+		// (much narrower) content instead of the full available width.
+		expect(Math.abs(rowWidth - availableWidth)).toBeLessThanOrEqual(PIXEL_TOLERANCE);
+	});
+
+	test('a long unbroken payload scrolls inside its own code block rather than widening the page', async ({
+		page
+	}) => {
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await gotoHydrated(page, '/exercises/tool-approval');
+
+		// The Arguments/Result code blocks only exist in the DOM once the
+		// disclosure is open — expand it first (EntryFrame renders "Expand …" /
+		// "Collapse …" as the accessible name depending on state).
+		const wrapper = page.getByTestId('tool-approval-width-cap-wrapper');
+		await wrapper.getByRole('button', { name: /^Expand/ }).click();
+
+		const codeViewports = wrapper.locator('.cinder-code-block__viewport');
+		await expect(codeViewports.first()).toBeVisible();
+
+		const { pageScrollWidth, viewportWidth, codeBlocksOverflow } = await page.evaluate(() => {
+			const viewports = Array.from(
+				document.querySelectorAll(
+					'[data-testid="tool-approval-width-cap-wrapper"] .cinder-code-block__viewport'
+				)
+			).filter((element): element is HTMLElement => element instanceof HTMLElement);
+			return {
+				pageScrollWidth: document.documentElement.scrollWidth,
+				viewportWidth: window.innerWidth,
+				// The long, unbroken token has nowhere to wrap, so the code block's
+				// own scroll region — not the page — must absorb the overflow.
+				codeBlocksOverflow: viewports.map((element) => element.scrollWidth > element.clientWidth)
+			};
+		});
+
+		expect(pageScrollWidth).toBeLessThanOrEqual(viewportWidth + PIXEL_TOLERANCE);
+		expect(codeBlocksOverflow.length).toBeGreaterThan(0);
+		expect(codeBlocksOverflow.some(Boolean)).toBe(true);
+	});
+});
