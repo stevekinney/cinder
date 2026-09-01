@@ -10,6 +10,7 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  coordinatedBuild,
   createSettledBuildCollector,
   fixtureArtifactByPath,
   fixtureBuildPromiseByKey,
@@ -73,11 +74,13 @@ flushSync();
       `const props = ${JSON.stringify(fixtureProps)} as const;\nexport default props;\n`,
     );
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      publicPath: PUBLIC_PATH_BY_FAMILY.fixture,
-      ...SHARED_BUILD_OPTIONS,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryTempPath],
+        publicPath: PUBLIC_PATH_BY_FAMILY.fixture,
+        ...SHARED_BUILD_OPTIONS,
+      }),
+    );
 
     if (!result.success) {
       console.error(

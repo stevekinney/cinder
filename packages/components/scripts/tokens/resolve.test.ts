@@ -225,6 +225,14 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('group metadata');
   });
 
+  test('resolves effective inherited $type on a rootless group', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', child: { $description: 'child metadata' } },
+      copy: { $type: 'string', $ref: '#/group/child/$type' },
+    });
+    expect(resolved['copy']?.$value).toBe('number');
+  });
+
   test('prefers group metadata when a group and its $root share an indexed path', () => {
     const resolved = resolveDocument({
       group: {

@@ -6,6 +6,7 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  coordinatedBuild,
   pageArtifactByPath,
   pageBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
@@ -361,11 +362,13 @@ void hydratePage().catch((error) =>
   try {
     await Bun.write(entryTempPath, entrySource);
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      publicPath: PUBLIC_PATH_BY_FAMILY.page,
-      ...SHARED_BUILD_OPTIONS,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryTempPath],
+        publicPath: PUBLIC_PATH_BY_FAMILY.page,
+        ...SHARED_BUILD_OPTIONS,
+      }),
+    );
 
     if (!result.success) {
       console.error(`[playground] page bundle failed for ${componentName}:`, result.logs);

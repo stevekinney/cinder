@@ -177,6 +177,28 @@ function effectiveGroupDeprecated(
   return undefined;
 }
 
+function effectiveGroupType(
+  groupPath: string,
+  groups: Map<string, TokenGroup>,
+): TokenGroup['$type'] {
+  const segments = groupPath === '' ? [] : groupPath.split('.');
+  for (let end = segments.length; end >= 0; end -= 1) {
+    const candidate = groups.get(segments.slice(0, end).join('.'));
+    if (candidate?.$type !== undefined) return candidate.$type;
+  }
+  return undefined;
+}
+
+function groupMetadataBase(
+  group: TokenGroup,
+  groupPath: string,
+  groups: Map<string, TokenGroup>,
+): TokenGroup {
+  if (group.$type !== undefined) return group;
+  const type = effectiveGroupType(groupPath, groups);
+  return type === undefined ? group : { ...group, $type: type };
+}
+
 function resolveExtends(
   groupPath: string,
   groups: Map<string, TokenGroup>,
@@ -368,7 +390,9 @@ function resolveReference(
         : resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : undefined;
     const metadataBase =
-      readsRawMetadata && group && !targetsRootToken ? group : (resolvedToken ?? group);
+      readsRawMetadata && group && !targetsRootToken
+        ? groupMetadataBase(group, candidatePath, groups)
+        : (resolvedToken ?? group);
     const propertyValue =
       remainder[0] === '$ref'
         ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))

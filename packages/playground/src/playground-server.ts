@@ -51,7 +51,7 @@ import {
   type PlaygroundFreshnessFingerprint,
 } from '../../testing/scripts/source-fingerprint.ts';
 import { analyzeComponent } from './analyze.ts';
-import { findArtifactForFamily } from './build-artifacts-shared.ts';
+import { collectCoordinatedGarbage, findArtifactForFamily } from './build-artifacts-shared.ts';
 import { validateComponentDocumentationPayload } from './component-documentation-reference.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
 import {
@@ -1102,7 +1102,7 @@ const EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL = 24;
 /** Reclaim completed compiler graphs before they accumulate into a long-tail stall. */
 export function releaseIncrementalPrebuildMemory(
   completedBuilds: number,
-  collectGarbage: (force: boolean) => void = (force) => Bun.gc?.(force),
+  collectGarbage: (force: boolean) => void = collectCoordinatedGarbage,
 ): void {
   if (completedBuilds % EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL === 0) {
     collectGarbage(true);
@@ -1145,6 +1145,9 @@ async function mapWithConcurrencyLimit<T, R>(
   limit: number,
   task: (item: T) => Promise<R>,
 ): Promise<PromiseSettledResult<R>[]> {
+  if (!Number.isInteger(limit) || limit < 1) {
+    throw new RangeError(`concurrencyLimit must be a positive integer; received ${limit}`);
+  }
   const results: PromiseSettledResult<R>[] = Array.from({ length: items.length });
   let nextIndex = 0;
 
@@ -1172,6 +1175,14 @@ export async function mapWithConcurrencyLimitInBatches<T, R>(
   task: (item: T) => Promise<R>,
   afterBatch: (completedItems: number) => void,
 ): Promise<PromiseSettledResult<R>[]> {
+  if (!Number.isInteger(concurrencyLimit) || concurrencyLimit < 1) {
+    throw new RangeError(
+      `concurrencyLimit must be a positive integer; received ${concurrencyLimit}`,
+    );
+  }
+  if (!Number.isInteger(batchSize) || batchSize < 1) {
+    throw new RangeError(`batchSize must be a positive integer; received ${batchSize}`);
+  }
   const results: PromiseSettledResult<R>[] = [];
   for (let offset = 0; offset < items.length; offset += batchSize) {
     const batch = items.slice(offset, offset + batchSize);
@@ -1256,7 +1267,7 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
  * bundle and manifest caches hold the durable artifacts the server needs.
  */
 export function releaseEagerPrebuildMemory(
-  collectGarbage: (force: boolean) => void = (force) => Bun.gc?.(force),
+  collectGarbage: (force: boolean) => void = collectCoordinatedGarbage,
 ): void {
   collectGarbage(true);
 }

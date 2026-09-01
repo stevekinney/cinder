@@ -27,7 +27,7 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
-import { createSettledBuildCollector } from './build-artifacts-shared.ts';
+import { createBuildGcCoordinator, createSettledBuildCollector } from './build-artifacts-shared.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
@@ -142,6 +142,40 @@ describe('releaseIncrementalPrebuildMemory', () => {
       { activeBuilds: 0, completedItems: 7 },
     ]);
     expect(results.map((result) => result.status)).toEqual(Array(7).fill('fulfilled'));
+  });
+
+  it('rejects invalid concurrency and batch arguments deterministically', async () => {
+    const task = async (value: number): Promise<number> => value;
+    const afterBatch = (): void => {};
+    await expect(mapWithConcurrencyLimitInBatches([], 0, 1, task, afterBatch)).rejects.toThrow(
+      'concurrencyLimit must be a positive integer; received 0',
+    );
+    await expect(mapWithConcurrencyLimitInBatches([], 1, 0, task, afterBatch)).rejects.toThrow(
+      'batchSize must be a positive integer; received 0',
+    );
+    await expect(mapWithConcurrencyLimitInBatches([], 1.5, 1, task, afterBatch)).rejects.toThrow(
+      'concurrencyLimit must be a positive integer; received 1.5',
+    );
+  });
+});
+
+describe('createBuildGcCoordinator', () => {
+  it('defers forced GC until every compiler graph has settled', async () => {
+    const calls: boolean[] = [];
+    const coordinator = createBuildGcCoordinator((force) => calls.push(force));
+    let finishBuild!: () => void;
+    const build = coordinator.build(
+      () =>
+        new Promise<string>((resolve) => {
+          finishBuild = () => resolve('done');
+        }),
+    );
+
+    coordinator.collectGarbage(true);
+    expect(calls).toEqual([]);
+    finishBuild();
+    await expect(build).resolves.toBe('done');
+    expect(calls).toEqual([true]);
   });
 });
 

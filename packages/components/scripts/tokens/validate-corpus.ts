@@ -134,40 +134,40 @@ export function validateModifierSetExpansionOrder(
         if (basePosition === undefined) continue;
         const setTokenPaths = new Set<string>();
         if (documentsByPath) {
+          const expandedContextSources = expandContextSources(resolver, entry.name, contextName);
+          const contextDocuments = expandedContextSources.map(
+            (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+          );
           const resetSourcePaths = new Set(
             expandSetSources(resolver, setName).map((source) => normalizeSourcePath(source.$ref)),
           );
-          const resetDocuments = expandSetSources(resolver, setName).flatMap((source) => {
+          // A set can contain multiple source documents, and a context can
+          // re-expand only some of them. Track each token's reset position
+          // independently instead of using one last index for the whole set.
+          const resetPositions = new Map<string, number>();
+          for (const [sourceIndex, source] of expandedContextSources.entries()) {
             const sourcePath = normalizeSourcePath(source.$ref);
-            if (!internallyReferencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath))
-              return [];
-            return [documentsByPath.get(sourcePath)!];
-          });
-          collectDeclaredTokenPaths(
-            mergeAndExpandExtends(resetDocuments, [...baseDocuments, ...resetDocuments]),
-            '',
-            setTokenPaths,
-          );
-          const expandedContextSources = expandContextSources(resolver, entry.name, contextName);
-          const lastResetSourceIndex = expandedContextSources.findLastIndex((source) =>
-            resetSourcePaths.has(normalizeSourcePath(source.$ref)),
-          );
-          if (lastResetSourceIndex >= 0) {
-            const laterDocuments = expandedContextSources
-              .slice(lastResetSourceIndex + 1)
-              .map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
-            const overwrittenPaths = new Set<string>();
+            if (!resetSourcePaths.has(sourcePath)) continue;
+            const sourcePaths = new Set<string>();
             collectDeclaredTokenPaths(
-              mergeAndExpandExtends(laterDocuments, [
-                ...baseDocuments,
-                ...expandedContextSources.map(
-                  (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
-                ),
-              ]),
+              mergeAndExpandExtends(
+                [documentsByPath.get(sourcePath)!],
+                [...baseDocuments, ...contextDocuments.slice(0, sourceIndex + 1)],
+              ),
               '',
-              overwrittenPaths,
+              sourcePaths,
             );
-            for (const overwrittenPath of overwrittenPaths) setTokenPaths.delete(overwrittenPath);
+            for (const tokenPath of sourcePaths) {
+              resetPositions.set(tokenPath, sourceIndex);
+            }
+          }
+          for (const [tokenPath, resetIndex] of resetPositions) {
+            const overwritten = contextDocuments.slice(resetIndex + 1).some((document) => {
+              const paths = new Set<string>();
+              collectDeclaredTokenPaths(document, '', paths);
+              return paths.has(tokenPath);
+            });
+            if (!overwritten) setTokenPaths.add(tokenPath);
           }
         }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {
@@ -189,7 +189,14 @@ export function validateModifierSetExpansionOrder(
               '',
               affectedPaths,
             );
-            return [...affectedPaths].some((path) => setTokenPaths.has(path));
+            const before = resolveDocuments(baseDocuments);
+            const after = resolveDocuments([...baseDocuments, ...candidateDocuments]);
+            return [...affectedPaths].some(
+              (path) =>
+                setTokenPaths.has(path) &&
+                JSON.stringify(canonicalizeJson(before[path])) !==
+                  JSON.stringify(canonicalizeJson(after[path])),
+            );
           });
         });
         if (!interveningModifier) continue;

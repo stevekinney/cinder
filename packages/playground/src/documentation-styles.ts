@@ -1,5 +1,6 @@
 import { join, relative } from 'node:path';
 
+import { coordinatedBuild } from './build-artifacts-shared.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
 
 /**
@@ -86,12 +87,14 @@ export function buildPlaygroundStylesheet(name: PlaygroundStylesheetName): Promi
     // Bun caches a virtual build by its entrypoint path. Keep that path unique
     // per stylesheet or a landing request can receive the documentation graph.
     const virtualEntrypoint = join(PLAYGROUND_ROOT, 'src', `.${name}-styles.css`);
-    const result = await Bun.build({
-      entrypoints: [virtualEntrypoint],
-      files: { [virtualEntrypoint]: stylesheetEntry(componentsByStylesheet[name]) },
-      minify: true,
-      target: 'browser',
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [virtualEntrypoint],
+        files: { [virtualEntrypoint]: stylesheetEntry(componentsByStylesheet[name]) },
+        minify: true,
+        target: 'browser',
+      }),
+    );
     if (!result.success) {
       throw new Error(
         `[playground] ${name} stylesheet build failed:\n${formatBuildLogs(result.logs)}`,

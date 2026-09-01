@@ -503,7 +503,7 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
   });
 
-  test('rejects a set reset after an intervening modifier inherits the overlapping token', () => {
+  test('allows a set reset after an intervening modifier preserves the overlapping token', () => {
     const resolver: ResolverDocument = {
       version: '2025.10',
       sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
@@ -526,6 +526,37 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
         },
       ],
       ['dark.json', { target: { $extends: '{source}' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
+  test('rejects a set reset after an intervening modifier changes token metadata', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/foundation' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          token: {
+            $type: 'number' as const,
+            $value: 1,
+            $extensions: { 'com.example': { tier: 'base' } },
+          },
+        },
+      ],
+      ['dark.json', { token: { $value: 1, $extensions: { 'com.example': { tier: 'dark' } } } }],
     ]);
 
     expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
