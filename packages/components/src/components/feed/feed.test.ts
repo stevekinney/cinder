@@ -165,11 +165,13 @@ describe('Feed', () => {
 
   test('connector geometry derives from a shared rail-size token', async () => {
     const css = await Bun.file(new URL('../feed-event/feed-event.css', import.meta.url)).text();
-    const eventBlock = css.match(/\.cinder-feed-event\s*\{[^}]*\}/)?.[0] ?? '';
+    const tokensBaseCss = await Bun.file(
+      new URL('../../styles/tokens-base.css', import.meta.url),
+    ).text();
     const railBlock = css.match(/\.cinder-feed-event-rail\s*\{[^}]*\}/)?.[0] ?? '';
     const connectorBlock = css.match(/\.cinder-feed-event::after\s*\{[^}]*\}/)?.[0] ?? '';
 
-    expect(eventBlock).toContain('--cinder-feed-event-rail-size: var(--cinder-space-6)');
+    expect(tokensBaseCss).toContain('--cinder-feed-event-rail-size: var(--cinder-space-6)');
     expect(railBlock).toContain('inline-size: var(--cinder-feed-event-rail-size)');
     expect(railBlock).toContain('block-size: var(--cinder-feed-event-rail-size)');
     expect(connectorBlock).toContain('inset-block-start: var(--cinder-feed-event-rail-size)');

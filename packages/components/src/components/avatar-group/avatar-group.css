@@ -6,8 +6,6 @@
  * ======================================== */
 
   .cinder-avatar-group {
-    --cinder-avatar-group-overlap: 0.75rem;
-
     display: inline-flex;
     align-items: center;
     isolation: isolate;

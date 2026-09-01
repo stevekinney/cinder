@@ -1,11 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-carousel {
-    --cinder-carousel-slide-size: 100%;
-    --cinder-carousel-gap: var(--cinder-space-3);
-    --cinder-carousel-aspect-ratio: 16 / 9;
-    --cinder-carousel-dot-size: 2.75rem;
-
     display: grid;
     gap: var(--cinder-carousel-gap, var(--cinder-space-3));
   }

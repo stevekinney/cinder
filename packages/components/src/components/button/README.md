@@ -38,8 +38,35 @@ When `href` is set, the component renders as `<a>`; otherwise it renders as `<bu
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-button-background`
+- `--cinder-button-border`
+- `--cinder-button-font-size-lg`
+- `--cinder-button-font-size-md`
+- `--cinder-button-font-size-sm`
+- `--cinder-button-font-size-xl`
+- `--cinder-button-font-size-xs`
+- `--cinder-button-foreground`
+- `--cinder-button-height-lg`
+- `--cinder-button-height-md`
+- `--cinder-button-height-sm`
+- `--cinder-button-height-xl`
+- `--cinder-button-height-xs`
+- `--cinder-button-padding-x-lg`
+- `--cinder-button-padding-x-md`
+- `--cinder-button-padding-x-sm`
+- `--cinder-button-padding-x-xl`
+- `--cinder-button-padding-x-xs`
+- `--cinder-button-padding-y-lg`
+- `--cinder-button-padding-y-md`
+- `--cinder-button-padding-y-sm`
+- `--cinder-button-padding-y-xl`
+- `--cinder-button-padding-y-xs`
+- `--cinder-button-radius`
+- `--cinder-button-radius-lg`
+- `--cinder-button-radius-md`
+- `--cinder-button-radius-sm`
+- `--cinder-button-radius-xl`
+- `--cinder-button-radius-xs`
 <!-- generated:variables:end -->
 
 ## Subcomponents

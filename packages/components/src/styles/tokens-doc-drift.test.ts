@@ -108,9 +108,10 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // value (see toCodeSpan in generate-artifacts.ts), so match it with a
   // backreference rather than assuming one backtick -- otherwise a value
   // containing a backtick parses truncated and reports a false mismatch.
-  const rowPattern = /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(`+)(.+?)\2\s*\|/gm;
+  const rowPattern =
+    /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(?:(`+)(.+?)\2|<code>(.*?)<\/code>|((?:\\.|[^|])*?))\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
-    if (!match[1] || !match[3]) continue;
+    if (!match[1]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
     // Undo the generator's Markdown-table pipe escaping before comparing. The
     // generator's `toTableCell` (generate-artifacts.ts) doubles the run of
@@ -123,24 +124,48 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     // 2` original backslashes plus the literal pipe.
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
-    const body = match[3].replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
-    // The encoder (`toTableCell`) always produces an ODD backslash run before
-    // an escaped pipe (a run of `k` becomes `2k + 1`, which is odd for every
-    // `k >= 0`). A row this regex captured with an EVEN run (0, 2, 4, ...)
-    // immediately before a `|` should therefore never occur in correctly
-    // generated output -- decoding it anyway via a blind `floor(len / 2)`
-    // would silently accept a malformed row and could mask a future
-    // regression in the encoder's pipe-escaping. Fail loudly instead.
-    const evenRunPipe = /(?<!\\)(?:\\\\)*\|/.exec(body);
-    if (evenRunPipe)
-      throw new Error(
-        `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
-          `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
+    const markdownBody = match[3];
+    const htmlBody = match[4];
+    const fallbackBody = match[5];
+    let decoded: string;
+    if (markdownBody !== undefined) {
+      // Markdown code spans contain the generator's backslash-doubled table
+      // escapes. Validate and decode this raw text before doing anything else;
+      // entity decoding here would turn a literal `&#124;` into a pipe and make
+      // it look like a malformed table delimiter.
+      const body = markdownBody.replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+      const evenRunPipe = /(?<!\\)(?:\\\\)*\|/.exec(body);
+      if (evenRunPipe)
+        throw new Error(
+          `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
+            `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
+        );
+      decoded = body.replace(
+        /(\\*)\|/g,
+        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
       );
-    const decoded = body.replace(
-      /(\\*)\|/g,
-      (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-    );
+    } else if (htmlBody !== undefined) {
+      // The HTML fallback is the only branch whose content is entity-escaped.
+      // Decode after branch selection so decoded `&#124;` cannot be mistaken for
+      // a raw Markdown table delimiter by the invariant above.
+      decoded = htmlBody
+        .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_entity, hex: string, decimal: string) =>
+          String.fromCodePoint(Number.parseInt(hex ?? decimal, hex ? 16 : 10)),
+        )
+        .replaceAll('&quot;', '"')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&amp;', '&')
+        // Prettier normalizes numeric entities for asterisks and underscores
+        // to Markdown backslash escapes even inside inline HTML. Undo that
+        // formatting-only representation so the corpus value round-trips.
+        .replace(/\\([*_])/g, '$1');
+    } else {
+      decoded = (fallbackBody ?? '').replace(
+        /(\\*)\|/g,
+        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+      );
+    }
     tokens.set(match[1], normalizeTokenValue(decoded));
   }
   return { duplicates: duplicates.toSorted(), tokens };
@@ -204,6 +229,26 @@ describe('docs/tokens.md drift', () => {
     expect(extractDocTokens(oddBackslashes).tokens.get('--cinder-example')).toBe(
       normalizeTokenValue('foo|bar'),
     );
+  });
+
+  test('keeps Markdown entity text literal and decodes entities only in HTML code fallback', () => {
+    const markdown = '| `--cinder-markdown` | `literal &#x7c; &#124; &amp;` |\n';
+    const html = '| `--cinder-html` | <code>literal &#124; &amp;</code> |\n';
+
+    expect(extractDocTokens(markdown).tokens.get('--cinder-markdown')).toBe(
+      'literal &#x7c; &#124; &amp;',
+    );
+    expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal | &');
+  });
+
+  test('preserves a literal backslash before a pipe in the HTML code fallback', () => {
+    const html = '| `--cinder-html` | <code>literal \\&#x7c; value</code> |\n';
+    expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal \\| value');
+  });
+
+  test('decodes formatter escapes inside the HTML code fallback', () => {
+    const html = '| `--cinder-markdown` | <code>\\*A\\*&#x7c;\\_B\\_&#126;C&#126;</code> |\n';
+    expect(extractDocTokens(html).tokens.get('--cinder-markdown')).toBe('*A*|_B_~C~');
   });
 
   test('keeps exact token references in focused guides current', async () => {

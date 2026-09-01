@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
 import {
+  assertOverrideScopeConsistency,
   assertResolutionOrderMatchesCssBlockStructure,
   assertUniqueCssProperties,
   assertUniqueOverrideCssProperties,
@@ -19,12 +20,7 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import {
-  createValueResolver,
-  mergeAndExpandExtends,
-  resolveDocuments,
-  type ValueResolver,
-} from './resolve.ts';
+import { createValueResolver, mergeAndExpandExtends, type ValueResolver } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -180,9 +176,10 @@ describe('A1: the forced-reduced-motion selector is built from its own context',
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
     const forcedBlock = /:root\[data-reduced-motion='on'\]\s*\{([^}]*)\}/.exec(css)?.[1];
-    const mediaBlock = /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\{([^}]*)\}\s*\}/.exec(
-      css,
-    )?.[1];
+    const mediaBlock =
+      /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}\n\n:root\[data-reduced-motion='on'\]/.exec(
+        css,
+      )?.[1];
 
     expect(forcedBlock).toBeDefined();
     expect(mediaBlock).toBeDefined();
@@ -194,6 +191,7 @@ describe('A1: the forced-reduced-motion selector is built from its own context',
     expect(forcedBlock).toContain('--test-duration: 2ms;');
     expect(forcedBlock).not.toContain('1ms');
     expect(mediaBlock).toContain('--test-duration: 1ms;');
+    expect(css).not.toMatch(/\[data-theme='(?:dark|light)'\]\s*\{[^}]*--test-duration/);
   });
 });
 
@@ -869,12 +867,10 @@ describe('E1: a nested reference inside an override context resolves against tha
     const { resolver, documentsByPath } = overrideResolverFixture();
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
-    // Two selectors contain the literal substring `[data-theme='dark']` -- the structural
-    // `:root[data-theme='dark'] { color-scheme: dark; }` block (declared first, no
-    // declarations) and the actual override block further down. Take the second match.
+    // Theme-specific motion blocks also contain `[data-theme='dark']`; select the block
+    // that owns the theme override rather than relying on a fixed number of matches.
     const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
-    expect(darkBlocks.length).toBe(2);
-    const darkBlock = darkBlocks[1]?.[1];
+    const darkBlock = darkBlocks.find((match) => match[1]?.includes('--test-composite'))?.[1];
     expect(darkBlock).toBeDefined();
 
     // Pre-fix, a resolver shared across all contexts and built from `baseDocuments` alone
@@ -1078,8 +1074,7 @@ describe("F1: an override context's $extends can reference a foundation group, n
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
     const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
-    expect(darkBlocks.length).toBe(2);
-    const darkBlock = darkBlocks[1]?.[1];
+    const darkBlock = darkBlocks.find((match) => match[1]?.includes('--test-palette-accent'))?.[1];
     expect(darkBlock).toBeDefined();
 
     // Dark's own "palette" group never defines "accent" itself -- it only reaches it through
@@ -1093,11 +1088,8 @@ describe("F1: an override context's $extends can reference a foundation group, n
 describe('F2: a nested reference inside a motion override resolves against the theme context too, not just the base', () => {
   function motionNestedReferenceFixture() {
     // A base "lightness" number and a base "composite" color whose lightness component is a
-    // NESTED reference to it. BOTH themes override "lightness" to the SAME new value (0.9) --
-    // the bug this isolates is that the reduced-motion resolver saw NO theme document AT ALL
-    // (not merely the wrong one), so making light and dark agree keeps the expected value the
-    // same however the "other axis" ends up getting composed, while still proving the fix: only
-    // seeing base-plus-motion resolves the nested reference to the untouched base value (0.3).
+    // NESTED reference to it. The themes intentionally diverge so reduced-motion output must
+    // preserve the OS-selected value when no explicit data-theme is present.
     const baseDocument: TokenDocument = {
       test: {
         lightness: {
@@ -1113,10 +1105,10 @@ describe('F2: a nested reference inside a motion override resolves against the t
       },
     };
     const themeLightDocument: TokenDocument = {
-      test: { lightness: { $type: 'number', $value: 0.9 } },
+      test: { lightness: { $type: 'number', $value: 0.7 } },
     };
     const themeDarkDocument: TokenDocument = {
-      test: { lightness: { $type: 'number', $value: 0.9 } },
+      test: { lightness: { $type: 'number', $value: 0.8 } },
     };
     const motionDefaultDocument: TokenDocument = {};
     // "reduced" overrides ONLY "composite" -- it deliberately does NOT redefine "lightness"
@@ -1170,35 +1162,18 @@ describe('F2: a nested reference inside a motion override resolves against the t
     return { resolver, documentsByPath };
   }
 
-  test("the reduced-motion CSS block agrees with the generator's own dark+reduced resolved combo", async () => {
+  test('preserves system-dark reduced-motion values while explicit themes remain correct', async () => {
     const { resolver, documentsByPath } = motionNestedReferenceFixture();
 
     const css = await buildTokensBaseCss(resolver, documentsByPath);
-    const mediaBlock = /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\{([^}]*)\}\s*\}/.exec(
-      css,
-    )?.[1];
-    expect(mediaBlock).toBeDefined();
-    const declaredValue = /--test-composite:\s*([^;]+);/.exec(mediaBlock!)?.[1];
-    expect(declaredValue).toBeDefined();
-
-    // The generator's OWN OTHER output for the exact combo the media block is theoretically
-    // standing in for (dark theme, reduced motion): resolve the same documents `tokens:validate`
-    // would resolve for that full combo (`documentsForResolutionOrder` + `resolveDocuments`, the
-    // SAME machinery `buildResolvedContexts` uses for the committed JSON snapshots), and
-    // serialize the fully-resolved value the same way `buildTokensBaseCss` does. Pre-fix, the CSS
-    // side bakes in the untouched FOUNDATION value (30%) because the resolver it used never saw
-    // either theme document; post-fix the two agree.
-    const combo = documentsForResolutionOrder(resolver, documentsByPath, {
-      theme: 'dark',
-      motion: 'reduced',
-    });
-    const resolved = resolveDocuments(combo);
-    const resolvedComposite = resolved['test.composite'];
-    expect(resolvedComposite).toBeDefined();
-    const expectedValue = serializeTypedValue('color', resolvedComposite!.$value, 'test.composite');
-
-    expect(declaredValue).toBe(expectedValue);
-    expect(declaredValue).not.toContain('30%');
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\)[\s\S]*:root:not\(\[data-theme\]\):not\(\[data-cinder-reduced-motion='false'\]\)/,
+    );
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-reduced-motion='on'\]:not\(\[data-theme\]\)/,
+    );
+    expect(css).toContain('--test-composite: oklch(80% 0.1 250);');
+    expect(css).toContain('--test-composite: oklch(70% 0.1 250);');
   });
 });
 
@@ -1618,7 +1593,7 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     expect(entries.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
   });
 
-  test('CIN-475 (known gap, not fixed here): a nested $extends target only in the lookup scope loses its deprecation when shadowed', () => {
+  test('a nested $extends target in the lookup scope preserves inherited deprecation when shadowed', () => {
     // `mergeAndExpandExtends(ownDocuments, lookupDocuments)` is how theme/motion
     // override contexts extend a foundation group -- here "outer.base" exists only
     // in the lookup scope and inherits $deprecated from the lookup scope's own
@@ -1626,9 +1601,6 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     // (a sibling override, not itself extending anything), which collectGroups loads
     // AFTER the lookup scope and so shadows it in the merged groups map.
     // effectiveGroupDeprecated then walks the OVERRIDING "outer", not the lookup
-    // scope's, and misses the deprecation. This test PINS today's known-limited
-    // behavior (undefined) rather than the eventually-correct one, so CIN-475
-    // landing is a deliberate, visible test change.
     const into = new Map<string, CorpusEntry>();
     collectEntries(
       mergeAndExpandExtends(
@@ -1648,10 +1620,10 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
       into,
     );
 
-    expect(into.get('derived.gutter')?.deprecated).toBeUndefined();
+    expect(into.get('derived.gutter')?.deprecated).toBe('Use space.* instead.');
   });
 
-  test('CIN-476 (known gap, not fixed here): declaration order determines whether an ancestor extends chain is resolved before it is cached', () => {
+  test('ancestor extension order does not change inherited deprecation', () => {
     // "derived" (declared first) extends "outer.child" -- a plain nested
     // group with no $extends of its own. "outer" (declared second) extends
     // "legacy", which is where the real deprecation reason lives. Because
@@ -1661,9 +1633,6 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
     // "outer.child" through the not-yet-expanded "outer" (still undefined)
     // to the document root's declared $deprecated: false, and caches that.
     // Once "outer" is later expanded and gains "Legacy reason.", "derived"'s
-    // cached false is never revisited. This test PINS today's known-limited
-    // behavior (false, not "Legacy reason.") so CIN-476 landing is a
-    // deliberate, visible test change.
     const entries = entriesFor([
       {
         $deprecated: false,
@@ -1673,7 +1642,7 @@ describe('CIN-471: $deprecated carries through $extends expansion', () => {
       },
     ]);
 
-    expect(entries.get('derived.grandchild')?.deprecated).toBe(false);
+    expect(entries.get('derived.grandchild')?.deprecated).toBe('Legacy reason.');
   });
 });
 
@@ -1770,6 +1739,87 @@ describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
     ]);
 
     expect(() => assertUniqueCssProperties(entries)).not.toThrow();
+  });
+
+  test('two entries that emit the same text but differ in type are a conflict', () => {
+    const numberEntry: CorpusEntry = {
+      ...entry('type.number', 'fontWeight'),
+      value: 1,
+      type: 'number',
+    };
+    const weightEntry: CorpusEntry = {
+      ...entry('type.weight', 'fontWeight'),
+      value: 1,
+    };
+    const entries = new Map<string, CorpusEntry>([
+      ['type.number', numberEntry],
+      ['type.weight', weightEntry],
+    ]);
+
+    expect(() => assertUniqueCssProperties(entries)).toThrow(/conflicting values/);
+  });
+});
+
+describe('CIN-483: duplicate cssProperty checks use emitted values', () => {
+  const collect = (documents: TokenDocument[]): Map<string, CorpusEntry> => {
+    const entries = new Map<string, CorpusEntry>();
+    collectEntries(mergeAndExpandExtends(documents), '', undefined, entries);
+    return entries;
+  };
+
+  test('property aliases resolving to the same value may share a property', () => {
+    const documents: TokenDocument[] = [
+      {
+        dimension: {
+          $type: 'dimension',
+          a: { $value: { value: 1, unit: 'rem' } },
+          b: { $value: { value: 1, unit: 'rem' } },
+        },
+        first: {
+          $type: 'number',
+          $ref: '#/dimension/a/$value/value',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+        second: {
+          $type: 'number',
+          $ref: '#/dimension/b/$value/value',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+      },
+    ];
+    const entries = collect(documents);
+    expect(() =>
+      assertUniqueCssProperties(entries, entries, createValueResolver(documents)),
+    ).not.toThrow();
+  });
+
+  test('whole-token aliases resolving to the same value may share a property', () => {
+    const documents: TokenDocument[] = [
+      {
+        targetA: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-target' } },
+        },
+        targetB: {
+          $type: 'number',
+          $value: 1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-target' } },
+        },
+        first: {
+          $ref: '#/targetA',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+        second: {
+          $ref: '#/targetB',
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-shared' } },
+        },
+      },
+    ];
+    const entries = collect(documents);
+    expect(() =>
+      assertUniqueCssProperties(entries, entries, createValueResolver(documents)),
+    ).not.toThrow();
   });
 });
 
@@ -2225,6 +2275,350 @@ describe('CIN-469 finding 5: resolutionOrder is validated against the fixed CSS 
     };
     expect(() => assertResolutionOrderMatchesCssBlockStructure(resolver)).toThrow(
       /declares modifier\(s\) "density".*only knows how to emit "theme" and "motion"/,
+    );
+  });
+});
+
+describe('CIN-488 through CIN-493 follow-up guards', () => {
+  const entry = (value: unknown): CorpusEntry => ({
+    path: 'test.token',
+    value,
+    type: 'color',
+    description: undefined,
+    cssProperty: '--test-token',
+    cssRecipe: undefined,
+  });
+
+  test('rejects a motion override whose serialized value differs by theme when scope consistency is required', () => {
+    const overrides = new Map([
+      [
+        'test.token',
+        {
+          ...entry('#/source/$value/components'),
+          isRefAlias: true,
+        },
+      ],
+    ]);
+    const baseIndex = new Map([
+      ['test.token', entry({ colorSpace: 'oklch', components: [0.5, 0.1, 250] })],
+    ]);
+    expect(() =>
+      assertOverrideScopeConsistency(
+        overrides,
+        baseIndex,
+        [
+          {
+            name: 'theme.light',
+            resolveReferences: () => ({ colorSpace: 'oklch', components: [0.9, 0.1, 250] }),
+          },
+          {
+            name: 'theme.dark',
+            resolveReferences: () => ({ colorSpace: 'oklch', components: [0.4, 0.1, 250] }),
+          },
+        ],
+        'motion.reduced',
+      ),
+    ).toThrow(/serializes differently across reachable scopes/);
+  });
+
+  test('motion override uniqueness can be checked against the unthemed system scope', () => {
+    const base = new Map([
+      ['a', { ...entry(1), path: 'a' }],
+      ['b', { ...entry(1), path: 'b' }],
+    ]);
+    const override = new Map([['a', { ...entry(2), path: 'a' }]]);
+    expect(() =>
+      assertUniqueOverrideCssProperties(override, base, base, 'motion.reduced (system theme)'),
+    ).toThrow(/system theme/);
+  });
+
+  test('omits theme-specific motion selectors when no aliases need recomputation', async () => {
+    const generatedOutputs = await buildGeneratedOutputs();
+    const css = generatedOutputs.get(tokensBaseCssPath)!;
+    expect(css).not.toContain(":root[data-theme='dark']:not([data-cinder-reduced-motion='false'])");
+    expect(css).not.toContain(
+      ":root[data-theme='light']:not([data-cinder-reduced-motion='false'])",
+    );
+    expect(css).not.toContain(":root[data-reduced-motion='on'][data-theme='dark']");
+    expect(css).not.toContain(":root[data-reduced-motion='on'][data-theme='light']");
+  });
+
+  test('scoped theme blocks do not mask ancestor overrides for dynamic component aliases', async () => {
+    const generatedOutputs = await buildGeneratedOutputs();
+    const css = generatedOutputs.get(tokensBaseCssPath)!;
+    const darkBlock = css.match(/\n\[data-theme='dark'\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+    const lightBlock = css.match(/\n\[data-theme='light'\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
+
+    for (const block of [darkBlock, lightBlock]) {
+      expect(block).not.toContain('--cinder-file-upload-background:');
+      expect(block).not.toContain('--cinder-kanban-card-background:');
+    }
+  });
+
+  test('rejects a non-empty motion.default document instead of dropping it from CSS', async () => {
+    const base = {
+      token: {
+        $type: 'number',
+        $value: 1,
+        $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-token' } },
+      },
+    } as TokenDocument;
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'light.json' }], dark: [{ $ref: 'dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'default.json' }],
+            reduced: [{ $ref: 'reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    await expect(
+      buildTokensBaseCss(
+        resolver,
+        new Map([
+          ['base.json', base],
+          ['light.json', {}],
+          ['dark.json', {}],
+          ['default.json', { token: { $value: 2 } }],
+          ['reduced.json', {}],
+          ['forced.json', {}],
+        ]),
+      ),
+    ).rejects.toThrow(/motion\.default must not declare token overrides/);
+  });
+
+  test('rejects group metadata in motion.default documents', async () => {
+    const base = {
+      token: {
+        $type: 'number',
+        $value: 1,
+        $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-token' } },
+      },
+    } as TokenDocument;
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'light.json' }], dark: [{ $ref: 'dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'default.json' }],
+            reduced: [{ $ref: 'reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    await expect(
+      buildTokensBaseCss(
+        resolver,
+        new Map([
+          ['base.json', base],
+          ['light.json', {}],
+          ['dark.json', {}],
+          ['default.json', { $type: 'fontWeight' }],
+          ['reduced.json', {}],
+          ['forced.json', {}],
+        ]),
+      ),
+    ).rejects.toThrow(/motion\.default must not declare.*group metadata/);
+  });
+
+  test('root motion aliases resolve from the unthemed system scope', async () => {
+    const token = (value: unknown, cssProperty?: string): Record<string, unknown> => ({
+      $type: typeof value === 'number' ? 'number' : 'color',
+      $value: value,
+      ...(cssProperty ? { $extensions: { 'com.lostgradient.cinder': { cssProperty } } } : {}),
+    });
+    const baseDocument: TokenDocument = {
+      test: {
+        lightness: token(0.3, '--test-lightness'),
+        chroma: token(0.1, '--test-chroma'),
+        composite: token(
+          {
+            colorSpace: 'oklch',
+            components: ['{test.lightness}', '{test.chroma}', 250],
+          },
+          '--test-composite',
+        ),
+      },
+    };
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'light.json' }],
+            dark: [{ $ref: 'dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['light.json', { test: { lightness: { $type: 'number', $value: 0.9 } } }],
+      ['dark.json', { test: { lightness: { $type: 'number', $value: 0.4 } } }],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', { test: { chroma: { $type: 'number', $value: 0.2 } } }],
+      ['motion-forced.json', {}],
+    ]);
+
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    const mediaBlock = css.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?:root[^{}]*\{([^}]*)\}/,
+    )?.[1];
+    expect(mediaBlock).toContain('--test-composite: oklch(30% 0.2 250);');
+    expect(mediaBlock).not.toContain('oklch(90% 0.2 250)');
+  });
+});
+
+describe('CIN-494: a theme-exclusive override still resets in the opposite theme block', () => {
+  /**
+   * A token overridden in only ONE theme used to leave the other theme's block
+   * with no declaration for it. Custom properties inherit as COMPUTED values, so
+   * a nested island of that other theme does not fall back to the `:root`
+   * `light-dark()` declaration -- the themed ancestor already substituted its own
+   * arm, and the island inherits that substituted value.
+   *
+   * The real-corpus case was `--cinder-code-block-background`, overridden only in
+   * `dark.tokens.json`: a `[data-theme='light']` island inside a dark ancestor
+   * kept the dark `surface-inset` ground under github-light Shiki token colors.
+   */
+  function themeExclusiveOverrideFixture(overrideIn: 'light' | 'dark') {
+    const baseDocument: TokenDocument = {
+      test: {
+        raised: {
+          $type: 'number',
+          $value: 0.9,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-raised' } },
+        },
+        inset: {
+          $type: 'number',
+          $value: 0.1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-inset' } },
+        },
+        // Aliases `test.raised`, but emits through a `light-dark()` recipe -- the
+        // exact shape `code-block.background` has in the real corpus.
+        surface: {
+          $type: 'number',
+          $value: '{test.raised}',
+          $extensions: {
+            'com.lostgradient.cinder': {
+              cssProperty: '--test-surface',
+              cssRecipe: 'light-dark(var(--test-raised), var(--test-inset))',
+            },
+          },
+        },
+      },
+    };
+    // Only ONE theme overrides `test.surface`; the other says nothing about it.
+    const exclusiveOverride: TokenDocument = {
+      test: { surface: { $type: 'number', $value: '{test.inset}' } },
+    };
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'theme-light.json' }], dark: [{ $ref: 'theme-dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', overrideIn === 'light' ? exclusiveOverride : {}],
+      ['theme-dark.json', overrideIn === 'dark' ? exclusiveOverride : {}],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', {}],
+      ['motion-forced.json', {}],
+    ]);
+    return { resolver, documentsByPath };
+  }
+
+  /** The `[data-theme='<theme>']` block that actually carries the theme overrides. */
+  function themeBlock(css: string, theme: 'light' | 'dark'): string {
+    const pattern = new RegExp(`\\[data-theme='${theme}'\\]\\s*\\{([^}]*)\\}`, 'g');
+    const block = [...css.matchAll(pattern)].find((match) => match[1]?.includes('--test-'))?.[1];
+    expect(block, `expected a [data-theme='${theme}'] block declaring --test-*`).toBeDefined();
+    return block as string;
+  }
+
+  test('a dark-only override still leaves the light block a declaration to reset with', async () => {
+    const { resolver, documentsByPath } = themeExclusiveOverrideFixture('dark');
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    // The dark block pins its own override, as it always did.
+    expect(themeBlock(css, 'dark')).toContain('--test-surface: var(--test-inset);');
+
+    // Pre-fix, the light block declared nothing for `--test-surface`, so a light
+    // island nested inside a dark ancestor inherited the dark computed value.
+    // Post-fix it re-emits the `light-dark()` recipe, which self-resets under the
+    // block's own `color-scheme: light`.
+    expect(themeBlock(css, 'light')).toContain(
+      '--test-surface: light-dark(var(--test-raised), var(--test-inset));',
+    );
+  });
+
+  test('the reset is symmetric -- a light-only override reaches the dark block too', async () => {
+    const { resolver, documentsByPath } = themeExclusiveOverrideFixture('light');
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    expect(themeBlock(css, 'light')).toContain('--test-surface: var(--test-inset);');
+    expect(themeBlock(css, 'dark')).toContain(
+      '--test-surface: light-dark(var(--test-raised), var(--test-inset));',
     );
   });
 });

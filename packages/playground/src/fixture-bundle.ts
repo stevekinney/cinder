@@ -10,14 +10,163 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  coordinatedBuild,
+  createSettledBuildCollector,
   fixtureArtifactByPath,
   fixtureBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
 import { PLAYGROUND_TEMP_ROOT, relativeImportSpecifier } from './playground-paths.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
 
+const startFixtureBuildMemoryCycle = createSettledBuildCollector(24);
+
 /** Fixture-bundle entries: keyed by `fixtureEntryKey(...)` → entry artifact path. */
 export const fixtureEntryByKey = new Map<string, string>();
+const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
+/** Assets returned in fixture HTML remain pinned until their entry is fetched. */
+const pendingFixtureResponseCounts = new Map<string, number>();
+const pendingFixtureLeaseExpirations = new Map<string, number[]>();
+const FIXTURE_RESPONSE_LEASE_LIFETIME_MS = 30_000;
+/** 32 covers the local fullyParallel browser workload plus concurrent asset fetches. */
+const MAX_FIXTURE_RESPONSE_LEASES = 32;
+/** Bounded safety net for assets returned just before cache eviction. */
+const evictedFixtureArtifactsByEntryKey = new Map<string, Map<string, string>>();
+const MAX_CACHED_FIXTURE_ENTRIES = 8;
+
+export function clearFixtureBundleCaches(): void {
+  fixtureEntryByKey.clear();
+  fixtureArtifactByPath.clear();
+  fixtureArtifactPathsByEntryKey.clear();
+  pendingFixtureResponseCounts.clear();
+  pendingFixtureLeaseExpirations.clear();
+  evictedFixtureArtifactsByEntryKey.clear();
+}
+
+/** Resolve a fixture asset from the live cache or bounded post-eviction cache. */
+export function findFixtureArtifact(path: string): string | undefined {
+  reclaimExpiredFixtureLeases();
+  const live = fixtureArtifactByPath.get(path);
+  if (live !== undefined) {
+    for (const [entryKey, entryPath] of fixtureEntryByKey) {
+      if (entryPath !== path) continue;
+      const responseLeases = pendingFixtureResponseCounts.get(entryKey) ?? 0;
+      if (responseLeases <= 1) pendingFixtureResponseCounts.delete(entryKey);
+      else pendingFixtureResponseCounts.set(entryKey, responseLeases - 1);
+      const expirations = pendingFixtureLeaseExpirations.get(entryKey) ?? [];
+      expirations.shift();
+      if (expirations.length === 0) pendingFixtureLeaseExpirations.delete(entryKey);
+      else pendingFixtureLeaseExpirations.set(entryKey, expirations);
+    }
+    return live;
+  }
+  return [...evictedFixtureArtifactsByEntryKey.values()]
+    .map((artifacts) => artifacts.get(path))
+    .find((code): code is string => code !== undefined);
+}
+
+/** Reserve an entry for an HTML response until its first browser fetch. */
+export function retainFixtureEntry(entryKey: string): boolean {
+  reclaimExpiredFixtureLeases();
+  if (!fixtureArtifactPathsByEntryKey.has(entryKey) || !fixtureEntryByKey.has(entryKey))
+    return false;
+  const retainedResponseCount = [...pendingFixtureResponseCounts.values()].reduce(
+    (total, count) => total + count,
+    0,
+  );
+  if (retainedResponseCount >= MAX_FIXTURE_RESPONSE_LEASES) return false;
+  addFixtureResponseLease(entryKey);
+  return true;
+}
+
+function addFixtureResponseLease(entryKey: string, now = Date.now()): void {
+  pendingFixtureResponseCounts.set(entryKey, (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1);
+  const expirations = pendingFixtureLeaseExpirations.get(entryKey) ?? [];
+  expirations.push(now + FIXTURE_RESPONSE_LEASE_LIFETIME_MS);
+  pendingFixtureLeaseExpirations.set(entryKey, expirations);
+}
+
+/** Reclaim HTML leases whose entry script was never requested. */
+export function reclaimExpiredFixtureLeases(now = Date.now()): void {
+  for (const [entryKey, expirations] of pendingFixtureLeaseExpirations) {
+    const remaining = expirations.filter((expiration) => expiration > now);
+    if (remaining.length === expirations.length) continue;
+    if (remaining.length === 0) {
+      pendingFixtureLeaseExpirations.delete(entryKey);
+      pendingFixtureResponseCounts.delete(entryKey);
+    } else {
+      pendingFixtureLeaseExpirations.set(entryKey, remaining);
+      pendingFixtureResponseCounts.set(entryKey, remaining.length);
+    }
+  }
+}
+
+export function publishFixtureArtifacts(
+  entryKey: string,
+  artifacts: ReadonlyMap<string, string>,
+  maximumEntries = MAX_CACHED_FIXTURE_ENTRIES,
+  reserveResponseLease = false,
+): boolean {
+  reclaimExpiredFixtureLeases();
+  if (
+    reserveResponseLease &&
+    [...pendingFixtureResponseCounts.values()].reduce((total, count) => total + count, 0) >=
+      MAX_FIXTURE_RESPONSE_LEASES
+  ) {
+    return false;
+  }
+  if (
+    !fixtureArtifactPathsByEntryKey.has(entryKey) &&
+    fixtureArtifactPathsByEntryKey.size >= maximumEntries &&
+    [...fixtureArtifactPathsByEntryKey.keys()].every((key) => pendingFixtureResponseCounts.has(key))
+  ) {
+    return false;
+  }
+  if (reserveResponseLease) addFixtureResponseLease(entryKey);
+  const previousPaths = fixtureArtifactPathsByEntryKey.get(entryKey) ?? new Set<string>();
+  fixtureArtifactPathsByEntryKey.delete(entryKey);
+  fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
+  evictedFixtureArtifactsByEntryKey.delete(entryKey);
+  for (const [path, code] of artifacts) fixtureArtifactByPath.set(path, code);
+  const ownedPaths = new Set(
+    [...fixtureArtifactPathsByEntryKey.values()].flatMap((paths) => [...paths]),
+  );
+  for (const path of previousPaths) {
+    if (!ownedPaths.has(path) && !artifacts.has(path)) fixtureArtifactByPath.delete(path);
+  }
+
+  while (fixtureArtifactPathsByEntryKey.size > maximumEntries) {
+    const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
+      (key) => !pendingFixtureResponseCounts.has(key),
+    );
+    if (oldestEntryKey === undefined) return false;
+    const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
+    fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
+    fixtureEntryByKey.delete(oldestEntryKey);
+    pendingFixtureResponseCounts.delete(oldestEntryKey);
+    pendingFixtureLeaseExpirations.delete(oldestEntryKey);
+    if (evictedPaths === undefined) continue;
+    const evictedArtifacts = new Map<string, string>();
+    const retainedPaths = new Set(
+      [...fixtureArtifactPathsByEntryKey.values()].flatMap((paths) => [...paths]),
+    );
+    for (const path of evictedPaths) {
+      if (!retainedPaths.has(path)) {
+        const code = fixtureArtifactByPath.get(path);
+        if (code !== undefined) evictedArtifacts.set(path, code);
+        fixtureArtifactByPath.delete(path);
+      }
+    }
+    if (evictedArtifacts.size > 0) {
+      evictedFixtureArtifactsByEntryKey.set(oldestEntryKey, evictedArtifacts);
+    }
+    while (evictedFixtureArtifactsByEntryKey.size > MAX_CACHED_FIXTURE_ENTRIES) {
+      const oldestFallback = evictedFixtureArtifactsByEntryKey.keys().next().value;
+      if (oldestFallback === undefined) break;
+      evictedFixtureArtifactsByEntryKey.delete(oldestFallback);
+    }
+  }
+  return true;
+}
 
 export function fixtureEntryKey(
   componentName: string,
@@ -41,6 +190,7 @@ export async function compileFixtureBundleArtifacts(
   fixtureContentHash: string,
   componentOrHostPath: string,
 ): Promise<{ entryPath: string; entryCode: string; artifacts: Map<string, string> } | null> {
+  const settleBuildMemoryCycle = startFixtureBuildMemoryCycle();
   const entryBasename = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
   const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
@@ -69,11 +219,13 @@ flushSync();
       `const props = ${JSON.stringify(fixtureProps)} as const;\nexport default props;\n`,
     );
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      publicPath: PUBLIC_PATH_BY_FAMILY.fixture,
-      ...SHARED_BUILD_OPTIONS,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryTempPath],
+        publicPath: PUBLIC_PATH_BY_FAMILY.fixture,
+        ...SHARED_BUILD_OPTIONS,
+      }),
+    );
 
     if (!result.success) {
       console.error(
@@ -94,6 +246,7 @@ flushSync();
     return entry;
   } finally {
     rmSync(entryTempDir, { recursive: true, force: true });
+    settleBuildMemoryCycle();
   }
 }
 
@@ -102,20 +255,28 @@ export async function buildFixtureBundle(
   fixture: VisualFixture,
   fixtureContentHash: string,
   componentOrHostPath: string,
+  onGenerationCaptured?: () => void,
 ): Promise<string | null> {
   const entryKey = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
   const cachedEntryPath = fixtureEntryByKey.get(entryKey);
   if (cachedEntryPath) {
     const cached = fixtureArtifactByPath.get(cachedEntryPath);
-    if (cached !== undefined) return cachedEntryPath;
+    if (cached !== undefined) {
+      return retainFixtureEntry(entryKey) ? cachedEntryPath : null;
+    }
   }
 
   const cacheKey = fixtureCacheKey(componentName, fixture, fixtureContentHash);
   const existing = fixtureBuildPromiseByKey.get(cacheKey);
-  if (existing !== undefined) return existing;
+  if (existing !== undefined) {
+    const entryPath = await existing;
+    if (entryPath === null) return null;
+    return retainFixtureEntry(entryKey) ? entryPath : null;
+  }
 
   const buildPromise = (async () => {
     const generationAtStart = getRebuildGeneration();
+    onGenerationCaptured?.();
     const entry = await compileFixtureBundleArtifacts(
       componentName,
       fixture,
@@ -124,21 +285,17 @@ export async function buildFixtureBundle(
     );
     if (entry === null) return null;
 
-    // Always publish the artifacts (matches buildPageBundle's rationale —
-    // chunk filenames are content-hashed, so publishing is safe regardless
-    // of a racing invalidation) and always return the entry path to the
-    // caller that requested this compile: it genuinely succeeded, and the
-    // route that serves `/fixture-bundle/:filename.js` resolves by the
-    // SPECIFIC hashed path this response embeds, not through
-    // `fixtureEntryByKey` — so the fixture page still renders correctly
-    // even when the cache pointer below isn't updated.
-    for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
+    if (generationAtStart !== getRebuildGeneration()) return null;
+
+    // Publish only a current-generation result. A stale result must not alter
+    // same-key artifact bookkeeping or return an entry path after invalidation.
+    if (!publishFixtureArtifacts(entryKey, entry.artifacts, MAX_CACHED_FIXTURE_ENTRIES, true)) {
+      return null;
+    }
     // Only update the "latest" entry-key pointer when we're not racing a
     // newer invalidation, so a FUTURE lookup by `entryKey` doesn't resolve
     // to this now-superseded build.
-    if (generationAtStart === getRebuildGeneration()) {
-      fixtureEntryByKey.set(entryKey, entry.entryPath);
-    }
+    fixtureEntryByKey.set(entryKey, entry.entryPath);
     return entry.entryPath;
   })();
 

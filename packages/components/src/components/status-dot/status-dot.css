@@ -12,9 +12,6 @@
  * ======================================== */
 
   .cinder-status-dot {
-    --cinder-status-dot-size: 0.625rem; /* 10px — md default */
-    --cinder-status-dot-color: var(--cinder-text-muted);
-
     display: inline-flex;
     align-items: center;
     gap: var(--cinder-space-1-5);

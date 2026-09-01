@@ -27,6 +27,11 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
+import {
+  createBuildGcCoordinator,
+  createSettledBuildCollector,
+  fixtureArtifactByPath,
+} from './build-artifacts-shared.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
@@ -35,20 +40,32 @@ import {
   waitForPendingRebuild,
 } from './file-watcher.ts';
 import {
+  buildFixtureBundle,
+  clearFixtureBundleCaches,
+  findFixtureArtifact,
+  fixtureEntryByKey,
+  publishFixtureArtifacts,
+  reclaimExpiredFixtureLeases,
+  retainFixtureEntry,
+} from './fixture-bundle.ts';
+import {
   PORT,
   createSharedDisposer,
   eagerPrebuildComponents,
   handleRequest,
   isWarmupStable,
+  mapWithConcurrencyLimitInBatches,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  releaseEagerPrebuildMemory,
+  releaseIncrementalPrebuildMemory,
   rewriteRepositoryRelativeReadmeLinks,
   runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
-import { getRebuildGeneration } from './rebuild-generation.ts';
+import { getRebuildGeneration, incrementRebuildGeneration } from './rebuild-generation.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import { triggerReload } from './sse-broadcast.ts';
 import {
@@ -86,6 +103,394 @@ describe('eagerPrebuildComponents', () => {
 
   it('accepts a compose-only component scope without adding it to the sidebar prebuild', () => {
     expect(eagerPrebuildComponents(components, 'tab', [...components, 'tab'])).toEqual([]);
+  });
+});
+
+describe('releaseEagerPrebuildMemory', () => {
+  it('synchronously collects short-lived compiler graphs after warmup', () => {
+    const calls: boolean[] = [];
+    releaseEagerPrebuildMemory((force) => calls.push(force));
+    expect(calls).toEqual([true]);
+  });
+});
+
+describe('releaseIncrementalPrebuildMemory', () => {
+  it('collects completed compiler graphs at a bounded cadence during warmup', () => {
+    const calls: boolean[] = [];
+    const collectGarbage = (force: boolean): void => {
+      calls.push(force);
+    };
+
+    releaseIncrementalPrebuildMemory(23, collectGarbage);
+    releaseIncrementalPrebuildMemory(24, collectGarbage);
+    releaseIncrementalPrebuildMemory(25, collectGarbage);
+    releaseIncrementalPrebuildMemory(48, collectGarbage);
+
+    expect(calls).toEqual([true, true]);
+  });
+
+  it('runs collection callbacks only after every build in a batch has settled', async () => {
+    let activeBuilds = 0;
+    let maximumActiveBuilds = 0;
+    const collectionStates: Array<{ activeBuilds: number; completedItems: number }> = [];
+
+    const results = await mapWithConcurrencyLimitInBatches(
+      [1, 2, 3, 4, 5, 6, 7],
+      2,
+      3,
+      async (value) => {
+        activeBuilds += 1;
+        maximumActiveBuilds = Math.max(maximumActiveBuilds, activeBuilds);
+        await Promise.resolve();
+        activeBuilds -= 1;
+        return value * 2;
+      },
+      (completedItems) => collectionStates.push({ activeBuilds, completedItems }),
+    );
+
+    expect(maximumActiveBuilds).toBe(2);
+    expect(collectionStates).toEqual([
+      { activeBuilds: 0, completedItems: 3 },
+      { activeBuilds: 0, completedItems: 6 },
+      { activeBuilds: 0, completedItems: 7 },
+    ]);
+    expect(results.map((result) => result.status)).toEqual(Array(7).fill('fulfilled'));
+  });
+
+  it('rejects invalid concurrency and batch arguments deterministically', async () => {
+    const task = async (value: number): Promise<number> => value;
+    const afterBatch = (): void => {};
+    await expect(mapWithConcurrencyLimitInBatches([], 0, 1, task, afterBatch)).rejects.toThrow(
+      'concurrencyLimit must be a positive integer; received 0',
+    );
+    await expect(mapWithConcurrencyLimitInBatches([], 1, 0, task, afterBatch)).rejects.toThrow(
+      'batchSize must be a positive integer; received 0',
+    );
+    await expect(mapWithConcurrencyLimitInBatches([], 1.5, 1, task, afterBatch)).rejects.toThrow(
+      'concurrencyLimit must be a positive integer; received 1.5',
+    );
+  });
+});
+
+describe('createBuildGcCoordinator', () => {
+  it('defers forced GC until every compiler graph has settled', async () => {
+    const calls: boolean[] = [];
+    const coordinator = createBuildGcCoordinator((force) => calls.push(force));
+    let finishBuild!: () => void;
+    const build = coordinator.build(
+      () =>
+        new Promise<string>((resolve) => {
+          finishBuild = () => resolve('done');
+        }),
+    );
+
+    coordinator.collectGarbage(true);
+    expect(calls).toEqual([]);
+    finishBuild();
+    await expect(build).resolves.toBe('done');
+    expect(calls).toEqual([true]);
+  });
+});
+
+describe('createSettledBuildCollector', () => {
+  it('collects after the interval only when every concurrent build has settled', () => {
+    const collectionStates: number[] = [];
+    let activeBuilds = 0;
+    const startBuild = createSettledBuildCollector(2, () => collectionStates.push(activeBuilds));
+
+    const settleFirst = startBuild();
+    activeBuilds += 1;
+    const settleSecond = startBuild();
+    activeBuilds += 1;
+
+    activeBuilds -= 1;
+    settleFirst();
+    expect(collectionStates).toEqual([]);
+
+    activeBuilds -= 1;
+    settleSecond();
+    expect(collectionStates).toEqual([0]);
+
+    settleSecond();
+    expect(collectionStates).toEqual([0]);
+  });
+});
+
+describe('publishFixtureArtifacts', () => {
+  it('evicts old fixture entries without deleting chunks retained by a newer entry', async () => {
+    clearFixtureBundleCaches();
+    try {
+      fixtureEntryByKey.set('first', 'fixture-first.js');
+      publishFixtureArtifacts(
+        'first',
+        new Map([
+          ['fixture-first.js', 'first'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        1,
+      );
+      expect(findFixtureArtifact('fixture-first.js')).toBe('first');
+      fixtureEntryByKey.set('second', 'fixture-second.js');
+      publishFixtureArtifacts(
+        'second',
+        new Map([
+          ['fixture-second.js', 'second'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        1,
+      );
+
+      expect(fixtureEntryByKey.has('first')).toBe(false);
+      expect(fixtureArtifactByPath.has('fixture-first.js')).toBe(false);
+      // A browser can request the HTML's script and its hashed chunks after a
+      // newer fixture build evicts the entry from the live cache. The bounded
+      // fallback must keep concurrent first fetches recoverable.
+      expect(
+        await Promise.all([
+          Promise.resolve(findFixtureArtifact('fixture-first.js')),
+          Promise.resolve(findFixtureArtifact('fixture-first.js')),
+        ]),
+      ).toEqual(['first', 'first']);
+      expect(fixtureEntryByKey.get('second')).toBe('fixture-second.js');
+      expect(fixtureArtifactByPath.get('fixture-second.js')).toBe('second');
+      expect(fixtureArtifactByPath.get('chunk-shared.js')).toBe('shared');
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('counts overlapping response leases separately and releases one per fetch', () => {
+    clearFixtureBundleCaches();
+    try {
+      const entries = Array.from({ length: 20 }, (_, index) => `entry-${index}`);
+      for (const entry of entries) {
+        fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
+        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 32);
+      }
+      const retained = entries.filter((entry) => retainFixtureEntry(entry));
+      expect(retained).toHaveLength(20);
+      expect(entries.filter((entry) => retainFixtureEntry(entry))).toHaveLength(12);
+      expect(findFixtureArtifact('fixture-entry-0.js')).toBe('entry-0');
+      for (let index = 20; index < 21; index++) {
+        const entry = `entry-${index}`;
+        fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
+        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 32);
+        expect(retainFixtureEntry(entry)).toBe(true);
+      }
+      const rejected = 'entry-rejected';
+      fixtureEntryByKey.set(rejected, `fixture-${rejected}.js`);
+      publishFixtureArtifacts(rejected, new Map([[`fixture-${rejected}.js`, rejected]]), 32);
+      expect(retainFixtureEntry(rejected)).toBe(false);
+      expect(findFixtureArtifact(`fixture-${rejected}.js`)).toBe(rejected);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('returns null for a generation-raced real fixture build without installing a lease', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      const newerPath = 'fixture-input-disabled-newer.js';
+      const result = await buildFixtureBundle(
+        'input',
+        fixture,
+        fixtureFile.contentHash,
+        resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        () => {
+          incrementRebuildGeneration();
+          publishFixtureArtifacts(entryKey, new Map([[newerPath, 'newer']]), 32);
+          fixtureEntryByKey.set(entryKey, newerPath);
+          expect(retainFixtureEntry(entryKey)).toBe(true);
+        },
+      );
+      expect(result).toBeNull();
+      expect(fixtureEntryByKey.get(entryKey)).toBe(newerPath);
+      expect(findFixtureArtifact(newerPath)).toBe('newer');
+      findFixtureArtifact(newerPath);
+      for (let index = 0; index < 40; index++) {
+        const pressureKey = `stale-pressure-${index}`;
+        fixtureEntryByKey.set(pressureKey, `fixture-${pressureKey}.js`);
+        publishFixtureArtifacts(
+          pressureKey,
+          new Map([[`fixture-${pressureKey}.js`, pressureKey]]),
+          32,
+        );
+      }
+      expect(fixtureEntryByKey.has(entryKey)).toBe(false);
+      expect(findFixtureArtifact(newerPath)).toBeUndefined();
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('reacquires a lease for cached HTML entries before eviction pressure', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      fixtureEntryByKey.set(entryKey, 'fixture-cached.js');
+      publishFixtureArtifacts(entryKey, new Map([['fixture-cached.js', 'cached']]), 32);
+      expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
+
+      await expect(
+        buildFixtureBundle(
+          'input',
+          fixture,
+          fixtureFile.contentHash,
+          resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        ),
+      ).resolves.toBe('fixture-cached.js');
+      for (let index = 0; index < 40; index++) {
+        const key = `pressure-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32);
+      }
+      expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('reclaims abandoned HTML leases and removes superseded same-key paths safely', () => {
+    clearFixtureBundleCaches();
+    try {
+      fixtureEntryByKey.set('same', 'fixture-old.js');
+      publishFixtureArtifacts(
+        'same',
+        new Map([
+          ['fixture-old.js', 'old'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        32,
+      );
+      expect(retainFixtureEntry('same')).toBe(true);
+      publishFixtureArtifacts(
+        'same',
+        new Map([
+          ['fixture-new.js', 'new'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        32,
+      );
+      expect(fixtureArtifactByPath.has('fixture-old.js')).toBe(false);
+      expect(fixtureArtifactByPath.get('chunk-shared.js')).toBe('shared');
+      fixtureEntryByKey.set('abandoned', 'fixture-abandoned.js');
+      publishFixtureArtifacts(
+        'abandoned',
+        new Map([['fixture-abandoned.js', 'abandoned']]),
+        32,
+        true,
+      );
+      reclaimExpiredFixtureLeases(Date.now() + 31_000);
+      expect(
+        publishFixtureArtifacts(
+          'after-abandonment',
+          new Map([['fixture-after.js', 'after']]),
+          32,
+          true,
+        ),
+      ).toBe(true);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('does not serve an unleased cached HTML entry when the response lease budget is exhausted', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      for (let index = 0; index < 32; index++) {
+        const key = `leased-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 40);
+        expect(retainFixtureEntry(key)).toBe(true);
+      }
+
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      fixtureEntryByKey.set(entryKey, 'fixture-cached-at-capacity.js');
+      publishFixtureArtifacts(
+        entryKey,
+        new Map([['fixture-cached-at-capacity.js', 'cached-at-capacity']]),
+        40,
+      );
+
+      await expect(
+        buildFixtureBundle(
+          'input',
+          fixture,
+          fixtureFile.contentHash,
+          resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        ),
+      ).resolves.toBeNull();
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('keeps the live cache within its hard cap when every resident entry is leased', () => {
+    clearFixtureBundleCaches();
+    try {
+      for (let index = 0; index < 2; index++) {
+        const key = `leased-cap-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        expect(publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 2, true)).toBe(
+          true,
+        );
+      }
+      const rejectedKey = 'leased-cap-rejected';
+      fixtureEntryByKey.set(rejectedKey, `fixture-${rejectedKey}.js`);
+      expect(
+        publishFixtureArtifacts(
+          rejectedKey,
+          new Map([[`fixture-${rejectedKey}.js`, rejectedKey]]),
+          2,
+          true,
+        ),
+      ).toBe(false);
+      expect(fixtureArtifactByPath.has(`fixture-${rejectedKey}.js`)).toBe(false);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('rejects a ninth real response when eight pending entries fill the live cache', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      for (let index = 0; index < 8; index++) {
+        const key = `pending-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        expect(publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32, true)).toBe(
+          true,
+        );
+      }
+      const ninth = await buildFixtureBundle(
+        'input',
+        fixture,
+        `${fixtureFile.contentHash}-ninth`,
+        resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+      );
+      expect(ninth).toBeNull();
+      expect(
+        fixtureEntryByKey.has('fixture-input-disabled-' + fixtureFile.contentHash + '-ninth'),
+      ).toBe(false);
+    } finally {
+      clearFixtureBundleCaches();
+    }
   });
 });
 

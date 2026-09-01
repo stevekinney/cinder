@@ -2,8 +2,6 @@
 
 @layer cinder.components {
   .cinder-virtual-list {
-    --cinder-virtual-list-height: 20rem;
-
     display: block;
     block-size: var(--cinder-virtual-list-height, 20rem);
     inline-size: 100%;

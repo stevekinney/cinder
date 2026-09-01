@@ -1488,9 +1488,7 @@ describe('Modal chromeless mode (chrome="none")', () => {
     // that pseudo-element lives on the CONSUMING `background-color`
     // property instead (see the cyclic-fallback regression test below for
     // why a redeclaration there would be actively wrong).
-    expect(css).toMatch(
-      /\.cinder-modal\s*\{[^}]*--cinder-modal-backdrop:\s*var\(--cinder-overlay-backdrop\);/s,
-    );
+    expect(css.replace(/\/\*[\s\S]*?\*\//g, '')).not.toContain('--cinder-modal-backdrop:');
     expect(css).toContain(
       'background-color: var(--cinder-modal-backdrop, var(--cinder-overlay-backdrop));',
     );

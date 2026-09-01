@@ -19,32 +19,6 @@
      * The panel below remains the clipping boundary for ordinary content. */
     max-height: calc(100dvh - var(--cinder-space-8));
     overflow: visible;
-
-    /* Supported override point for the `::backdrop` color. This declaration
-     * exists ONLY so the variables generator collects
-     * `--cinder-modal-backdrop` into modal.variables.json/README — it is a
-     * plain reference to a DIFFERENT variable (`--cinder-overlay-backdrop`),
-     * never to itself. A self-referencing form
-     * (`--cinder-modal-backdrop: var(--cinder-modal-backdrop, fallback)`)
-     * is a CSS custom-property dependency CYCLE per spec: cycle detection
-     * happens before fallback substitution, so the fallback argument does
-     * NOT rescue it — the property computes to its guaranteed-invalid
-     * value, breaking the backdrop for every Modal with no override at all.
-     * (An earlier revision of this file made exactly that mistake; see the
-     * `::backdrop` rule below for where the real fallback logic lives now.)
-     *
-     * This declaration does not, by itself, reach `::backdrop`'s computed
-     * value — `::backdrop` does not reliably inherit custom properties from
-     * its originating element across engines — so it neither helps nor
-     * defeats a consumer override; it exists purely for the generator. A
-     * consumer override must target BOTH the `class` selector AND that same
-     * class's `::backdrop` pseudo-element directly — declare
-     * `--cinder-modal-backdrop` on `.my-modal` AND separately on
-     * `.my-modal::backdrop` (see `ImageLightbox`'s
-     * `:global(.lightbox-modal)` / `:global(.lightbox-modal::backdrop)`
-     * pair for the real pattern) — rather than reaching into
-     * `.cinder-modal::backdrop` with `:global()`. */
-    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   }
 
   /* Chromeless / full-bleed mode (`chrome="none"`): suppresses max-width so the
