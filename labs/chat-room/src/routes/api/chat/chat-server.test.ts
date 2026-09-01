@@ -7,12 +7,22 @@ import type { SignedPendingToolApproval } from 'armorer';
 const source = readFileSync(new URL('./+server.ts', import.meta.url), 'utf8');
 const resumeSource = readFileSync(new URL('./resume/+server.ts', import.meta.url), 'utf8');
 
-describe('chat stream cancellation tool-execution guard', () => {
-	test('checks settlement before and after awaiting tool execution', () => {
-		expect(source).toContain('toolCalls.length > 0 && !settled');
+describe('chat stream cancellation guard', () => {
+	test('registers the request signal on the same one-shot abort path cancel() uses', () => {
+		expect(source).toContain("request.signal.addEventListener('abort', onRequestAbort)");
+		expect(source).toContain("run?.abort('client cancelled')");
+		expect(source).toContain("run?.abort('request aborted')");
+	});
+
+	test('removes the request-signal listener and disposes the run on every terminal path', () => {
 		expect(source).toMatch(
-			/const results = await toolbox\.execute\(toolCalls, \{ requestContext \}\);\s+if \(settled\) return;/
+			/request\.signal\.removeEventListener\('abort', onRequestAbort\);\s+activeRun\[Symbol\.dispose\]\(\);/
 		);
+	});
+
+	test('guards every controller transition behind the settled one-shot flag', () => {
+		expect(source).toContain('if (settled) return;');
+		expect(source).toContain('settled = true;');
 	});
 });
 
