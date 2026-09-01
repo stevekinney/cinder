@@ -791,52 +791,6 @@ export function withDependentBaseAliases(
   return scoped;
 }
 
-function splitLightDarkRecipe(recipe: string): [string, string] | undefined {
-  const prefix = 'light-dark(';
-  if (!recipe.startsWith(prefix) || !recipe.endsWith(')')) return undefined;
-  const arms: string[] = [];
-  let depth = 0;
-  let start = prefix.length;
-  for (let index = start; index < recipe.length - 1; index += 1) {
-    const character = recipe[index];
-    if (character === '(') depth += 1;
-    else if (character === ')') depth -= 1;
-    else if (character === ',' && depth === 0) {
-      arms.push(recipe.slice(start, index).trim());
-      start = index + 1;
-    }
-  }
-  if (arms.length !== 1) return undefined;
-  arms.push(recipe.slice(start, -1).trim());
-  return arms[0] && arms[1] ? [arms[0], arms[1]] : undefined;
-}
-
-function normalizeCssValue(value: string): string {
-  return value
-    .replaceAll(/\s+/g, ' ')
-    .replaceAll(/\s*([(),/])\s*/g, '$1')
-    .trim();
-}
-
-export function omitRecipeEquivalentThemeOverrides(
-  overrides: Map<string, CorpusEntry>,
-  baseIndex: Map<string, CorpusEntry>,
-  theme: 'light' | 'dark',
-  resolveReferences: ValueResolver,
-): Map<string, CorpusEntry> {
-  const filtered = new Map(overrides);
-  for (const [path, entry] of overrides) {
-    const base = baseIndex.get(path);
-    if (base?.public !== true || !base.cssRecipe) continue;
-    const arms = splitLightDarkRecipe(base.cssRecipe);
-    if (!arms) continue;
-    const emitted = serializeEntryValue(entry, baseIndex, resolveReferences);
-    if (normalizeCssValue(emitted) === normalizeCssValue(arms[theme === 'light' ? 0 : 1]))
-      filtered.delete(path);
-  }
-  return filtered;
-}
-
 function withThemeDependentOverrides(
   overrides: Map<string, CorpusEntry>,
   baseIndex: Map<string, CorpusEntry>,
@@ -1508,26 +1462,14 @@ export async function buildTokensBaseCss(
   );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
-  const darkThemeOverrides = omitRecipeEquivalentThemeOverrides(
-    darkOverrides,
-    baseIndex,
-    'dark',
-    darkResolveReferences,
-  );
-  const lightThemeOverrides = omitRecipeEquivalentThemeOverrides(
-    lightOverrides,
-    baseIndex,
-    'light',
-    lightResolveReferences,
-  );
   const darkAliases = withDependentBaseAliases(
-    darkThemeOverrides,
+    darkOverrides,
     baseIndex,
     baseResolveReferences,
     darkResolveReferences,
   );
   const lightAliases = withDependentBaseAliases(
-    lightThemeOverrides,
+    lightOverrides,
     baseIndex,
     baseResolveReferences,
     lightResolveReferences,

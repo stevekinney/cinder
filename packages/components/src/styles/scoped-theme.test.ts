@@ -45,7 +45,7 @@ function expectDeclarations(block: string, declarations: Record<string, string>)
 }
 
 describe('scoped theme tokens', () => {
-  test('data-theme dark and light scopes pin non-recipe-equivalent tokens locally', async () => {
+  test('data-theme dark and light scopes pin core semantic tokens locally', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
     const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
     const lightBlock = extractRuleBlock(css, "[data-theme='light']");
@@ -65,6 +65,7 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
+      '--cinder-surface-canvas': 'oklch(15% 0.035 245)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
@@ -88,6 +89,7 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
+      '--cinder-surface-canvas': 'oklch(98.4% 0.003 255)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
@@ -95,11 +97,6 @@ describe('scoped theme tokens', () => {
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
     });
-
-    // Recipe-equivalent direct values inherit from :root. Re-emitting them here
-    // would duplicate the light-dark() recipe and recreate a second source of truth.
-    expect(darkBlock).not.toContain('--cinder-surface-canvas:');
-    expect(lightBlock).not.toContain('--cinder-surface-canvas:');
   });
 
   test('Sidebar and Drawer surfaces use scoped semantic tokens', async () => {
@@ -195,7 +192,7 @@ describe('scoped theme tokens', () => {
   });
 
   /**
-   * The scoped blocks must AGREE with the `light-dark()` declarations they retain.
+   * The scoped blocks must AGREE with the `light-dark()` declarations they mirror.
    *
    * The assertions above pin each block's literals independently, which cannot see
    * divergence: a token retuned in the `:root` `light-dark()` declaration while its
@@ -206,8 +203,8 @@ describe('scoped theme tokens', () => {
    * previous ramp.
    *
    * This derives the expectation instead of restating it: for every token declared
-   * as `light-dark(<light>, <dark>)` at `:root` that a scoped block retains because
-   * its value is not recipe-equivalent, the scoped value must remain compatible.
+   * as `light-dark(<light>, <dark>)` at `:root` that the scoped blocks also declare,
+   * the light block must carry the LIGHT arm and the dark block the DARK arm.
    *
    * Arms are read by paren-depth scan, not by a value-shaped regex, so this covers
    * EVERY arm form actually used — `oklch(...)`, `var(...)` (e.g.
@@ -218,7 +215,7 @@ describe('scoped theme tokens', () => {
    * that let the scoped ramp drift in the first place. The coverage floor below
    * exists so the guard cannot quietly decay back into checking almost nothing.
    */
-  test('scoped blocks omit direct light-dark() recipe arms', async () => {
+  test('scoped blocks match the light-dark() arms they mirror', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
     const rootBlock = extractRuleBlock(css, ':root');
     const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
@@ -279,26 +276,31 @@ describe('scoped theme tokens', () => {
     const lightDeclarations = declarationsIn(lightBlock);
     const darkDeclarations = declarationsIn(darkBlock);
 
-    const duplicatedRecipeArms: string[] = [];
-    let recipeCount = 0;
+    const mismatches: string[] = [];
+    let compared = 0;
 
     for (const [token, rootValue] of rootDeclarations) {
       const arms = lightDarkArms(rootValue);
       if (!arms) continue;
-      recipeCount += 1;
 
       const scopedLight = lightDeclarations.get(token);
-      if (scopedLight === arms.light || scopedLight === rootValue) {
-        duplicatedRecipeArms.push(`light ${token}`);
+      if (scopedLight !== undefined) {
+        compared += 1;
+        if (scopedLight !== arms.light && scopedLight !== rootValue) {
+          mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
+        }
       }
 
       const scopedDark = darkDeclarations.get(token);
-      if (scopedDark === arms.dark || scopedDark === rootValue) {
-        duplicatedRecipeArms.push(`dark ${token}`);
+      if (scopedDark !== undefined) {
+        compared += 1;
+        if (scopedDark !== arms.dark && scopedDark !== rootValue) {
+          mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
+        }
       }
     }
 
-    expect(duplicatedRecipeArms).toEqual([]);
+    expect(mismatches).toEqual([]);
 
     // The surface ramp is the family this guard exists for — assert it is genuinely
     // in scope rather than trusting the scan.
@@ -316,8 +318,8 @@ describe('scoped theme tokens', () => {
       ).not.toBe(null);
     }
 
-    // Coverage floor. A parser change that stops finding recipes must not let this
-    // omission guard pass vacuously.
-    expect(recipeCount).toBeGreaterThanOrEqual(30);
+    // Coverage floor. A parser change that stops matching most tokens would
+    // otherwise leave this test passing vacuously.
+    expect(compared).toBeGreaterThanOrEqual(60);
   });
 });
