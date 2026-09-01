@@ -78,7 +78,7 @@ import {
   startWatcher,
   waitForPendingRebuild,
 } from './file-watcher.ts';
-import { buildFixtureBundle } from './fixture-bundle.ts';
+import { buildFixtureBundle, findFixtureArtifact } from './fixture-bundle.ts';
 import { notFound } from './http-responses.ts';
 import {
   componentManifestCache,
@@ -987,7 +987,8 @@ export const ROUTES: RouteDefinition[] = [
     pattern: /^\/fixture-bundle\/([A-Za-z0-9_-]+)\.js$/,
     handler: ({ match }) => {
       const filename = match[1]!;
-      const directHit = findArtifactForFamily('fixture', `${filename}.js`);
+      const directHit =
+        findFixtureArtifact(`${filename}.js`) ?? findArtifactForFamily('fixture', `${filename}.js`);
       if (directHit !== undefined) {
         return new Response(directHit, {
           headers: {
@@ -1223,8 +1224,7 @@ async function eagerPrebuildAll(): Promise<{
   // bundle target. Passing the set avoids N redundant glob scans during the
   // eager pre-build.
   const knownComponents = new Set(components);
-  const shellCode = await shellPromise;
-  const pageResults = await mapWithConcurrencyLimitInBatches(
+  const pagePromise = mapWithConcurrencyLimitInBatches(
     components,
     EAGER_PREBUILD_CONCURRENCY,
     EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL,
@@ -1233,6 +1233,7 @@ async function eagerPrebuildAll(): Promise<{
     },
     releaseIncrementalPrebuildMemory,
   );
+  const [shellCode, pageResults] = await Promise.all([shellPromise, pagePromise]);
 
   let succeeded = 0;
   const failed: string[] = [];

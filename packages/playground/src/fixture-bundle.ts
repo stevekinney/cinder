@@ -23,12 +23,32 @@ const startFixtureBuildMemoryCycle = createSettledBuildCollector(24);
 /** Fixture-bundle entries: keyed by `fixtureEntryKey(...)` → entry artifact path. */
 export const fixtureEntryByKey = new Map<string, string>();
 const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
+/** Assets returned in fixture HTML remain pinned until their entry is fetched. */
+const pendingFixtureEntryKeys = new Set<string>();
+/** Bounded safety net for assets returned just before cache eviction. */
+const evictedFixtureArtifactsByEntryKey = new Map<string, Map<string, string>>();
 const MAX_CACHED_FIXTURE_ENTRIES = 8;
 
 export function clearFixtureBundleCaches(): void {
   fixtureEntryByKey.clear();
   fixtureArtifactByPath.clear();
   fixtureArtifactPathsByEntryKey.clear();
+  pendingFixtureEntryKeys.clear();
+  evictedFixtureArtifactsByEntryKey.clear();
+}
+
+/** Resolve a fixture asset from the live cache or bounded post-eviction cache. */
+export function findFixtureArtifact(path: string): string | undefined {
+  const live = fixtureArtifactByPath.get(path);
+  if (live !== undefined) {
+    for (const [entryKey, entryPath] of fixtureEntryByKey) {
+      if (entryPath === path) pendingFixtureEntryKeys.delete(entryKey);
+    }
+    return live;
+  }
+  return [...evictedFixtureArtifactsByEntryKey.values()]
+    .map((artifacts) => artifacts.get(path))
+    .find((code): code is string => code !== undefined);
 }
 
 export function publishFixtureArtifacts(
@@ -38,20 +58,38 @@ export function publishFixtureArtifacts(
 ): void {
   fixtureArtifactPathsByEntryKey.delete(entryKey);
   fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
+  pendingFixtureEntryKeys.add(entryKey);
+  evictedFixtureArtifactsByEntryKey.delete(entryKey);
   for (const [path, code] of artifacts) fixtureArtifactByPath.set(path, code);
 
   while (fixtureArtifactPathsByEntryKey.size > maximumEntries) {
-    const oldestEntryKey = fixtureArtifactPathsByEntryKey.keys().next().value;
+    const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
+      (key) => !pendingFixtureEntryKeys.has(key),
+    );
     if (oldestEntryKey === undefined) return;
     const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
     fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
     fixtureEntryByKey.delete(oldestEntryKey);
+    pendingFixtureEntryKeys.delete(oldestEntryKey);
     if (evictedPaths === undefined) continue;
+    const evictedArtifacts = new Map<string, string>();
     const retainedPaths = new Set(
       [...fixtureArtifactPathsByEntryKey.values()].flatMap((paths) => [...paths]),
     );
     for (const path of evictedPaths) {
-      if (!retainedPaths.has(path)) fixtureArtifactByPath.delete(path);
+      if (!retainedPaths.has(path)) {
+        const code = fixtureArtifactByPath.get(path);
+        if (code !== undefined) evictedArtifacts.set(path, code);
+        fixtureArtifactByPath.delete(path);
+      }
+    }
+    if (evictedArtifacts.size > 0) {
+      evictedFixtureArtifactsByEntryKey.set(oldestEntryKey, evictedArtifacts);
+    }
+    while (evictedFixtureArtifactsByEntryKey.size > MAX_CACHED_FIXTURE_ENTRIES) {
+      const oldestFallback = evictedFixtureArtifactsByEntryKey.keys().next().value;
+      if (oldestFallback === undefined) break;
+      evictedFixtureArtifactsByEntryKey.delete(oldestFallback);
     }
   }
 }
@@ -179,6 +217,7 @@ export async function buildFixtureBundle(
     // to this now-superseded build.
     if (generationAtStart === getRebuildGeneration()) {
       fixtureEntryByKey.set(entryKey, entry.entryPath);
+      pendingFixtureEntryKeys.add(entryKey);
     }
     return entry.entryPath;
   })();

@@ -41,6 +41,7 @@ import {
 } from './file-watcher.ts';
 import {
   clearFixtureBundleCaches,
+  findFixtureArtifact,
   fixtureEntryByKey,
   publishFixtureArtifacts,
 } from './fixture-bundle.ts';
@@ -213,7 +214,7 @@ describe('createSettledBuildCollector', () => {
 });
 
 describe('publishFixtureArtifacts', () => {
-  it('evicts old fixture entries without deleting chunks retained by a newer entry', () => {
+  it('evicts old fixture entries without deleting chunks retained by a newer entry', async () => {
     clearFixtureBundleCaches();
     try {
       fixtureEntryByKey.set('first', 'fixture-first.js');
@@ -225,6 +226,7 @@ describe('publishFixtureArtifacts', () => {
         ]),
         1,
       );
+      expect(findFixtureArtifact('fixture-first.js')).toBe('first');
       fixtureEntryByKey.set('second', 'fixture-second.js');
       publishFixtureArtifacts(
         'second',
@@ -237,9 +239,32 @@ describe('publishFixtureArtifacts', () => {
 
       expect(fixtureEntryByKey.has('first')).toBe(false);
       expect(fixtureArtifactByPath.has('fixture-first.js')).toBe(false);
+      // A browser can request the HTML's script and its hashed chunks after a
+      // newer fixture build evicts the entry from the live cache. The bounded
+      // fallback must keep concurrent first fetches recoverable.
+      expect(
+        await Promise.all([
+          Promise.resolve(findFixtureArtifact('fixture-first.js')),
+          Promise.resolve(findFixtureArtifact('fixture-first.js')),
+        ]),
+      ).toEqual(['first', 'first']);
       expect(fixtureEntryByKey.get('second')).toBe('fixture-second.js');
       expect(fixtureArtifactByPath.get('fixture-second.js')).toBe('second');
       expect(fixtureArtifactByPath.get('chunk-shared.js')).toBe('shared');
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('retains overlapping unserved fixture entries beyond both cache capacities', () => {
+    clearFixtureBundleCaches();
+    try {
+      const entries = Array.from({ length: 20 }, (_, index) => `entry-${index}`);
+      for (const entry of entries) {
+        fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
+        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 2);
+      }
+      expect(entries.map((entry) => findFixtureArtifact(`fixture-${entry}.js`))).toEqual(entries);
     } finally {
       clearFixtureBundleCaches();
     }

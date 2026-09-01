@@ -233,6 +233,25 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('number');
   });
 
+  test('resolves effective inherited $deprecated on a rootless group', () => {
+    const resolved = resolveDocument({
+      group: { $deprecated: 'legacy', child: { $description: 'child metadata' } },
+      copy: { $type: 'string', $ref: '#/group/child/$deprecated' },
+    });
+    expect(resolved['copy']?.$value).toBe('legacy');
+  });
+
+  test('resolves inherited $deprecated alongside an explicit local $type', () => {
+    const resolved = resolveDocument({
+      group: {
+        $deprecated: 'legacy',
+        child: { $type: 'number', $description: 'child metadata' },
+      },
+      copy: { $type: 'string', $ref: '#/group/child/$deprecated' },
+    });
+    expect(resolved['copy']?.$value).toBe('legacy');
+  });
+
   test('prefers group metadata when a group and its $root share an indexed path', () => {
     const resolved = resolveDocument({
       group: {
@@ -294,6 +313,17 @@ describe('DTCG resolver', () => {
       derived: { $extends: '{outer.child}' },
     });
     expect(resolved['derived.value']?.$value).toBe(2);
+  });
+
+  test('traverses nested wrappers after registering groups inherited by an outer extends', () => {
+    const resolved = resolveDocument({
+      base: { child: { value: { $value: 1 } } },
+      outer: {
+        $extends: '{base}',
+        wrapper: { derived: { $extends: '{outer.child}' } },
+      },
+    });
+    expect(resolved['outer.wrapper.derived.value']?.$value).toBe(1);
   });
 
   test('rejects a $root pointer into an ordinary token that has no $root member', () => {

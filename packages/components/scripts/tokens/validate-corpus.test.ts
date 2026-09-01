@@ -591,6 +591,36 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     );
   });
 
+  test('recognizes a later context source that recomputes an inherited reset token', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'foundation.json' }, { $ref: 'derived.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: {
+          contexts: {
+            reduced: [{ $ref: '#/sets/foundation' }, { $ref: 'recomputed.json' }],
+          },
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['foundation.json', { foundation: { token: { $type: 'number' as const, $value: 1 } } }],
+      ['derived.json', { derived: { $extends: '{foundation}' } }],
+      ['dark.json', { derived: { token: { $value: 2 } } }],
+      ['recomputed.json', { derived: { $extends: '{foundation}' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
   test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
     const contextOnly: ResolverDocument = {
       version: '2025.10',

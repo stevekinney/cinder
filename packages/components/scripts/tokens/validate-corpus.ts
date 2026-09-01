@@ -156,13 +156,19 @@ export function validateModifierSetExpansionOrder(
               resetPositions.set(tokenPath, sourceIndex);
             }
           }
+          const expandedSuffixPaths = (startIndex: number): Set<string> => {
+            const suffixPaths = new Set<string>();
+            const suffixDocuments = contextDocuments.slice(startIndex);
+            if (suffixDocuments.length === 0) return suffixPaths;
+            collectDeclaredTokenPaths(
+              mergeAndExpandExtends(suffixDocuments, [...baseDocuments, ...contextDocuments]),
+              '',
+              suffixPaths,
+            );
+            return suffixPaths;
+          };
           for (const [tokenPath, resetIndex] of resetPositions) {
-            const overwritten = contextDocuments.slice(resetIndex + 1).some((document) => {
-              const paths = new Set<string>();
-              collectDeclaredTokenPaths(document, '', paths);
-              return paths.has(tokenPath);
-            });
-            if (!overwritten) setTokenPaths.add(tokenPath);
+            if (!expandedSuffixPaths(resetIndex + 1).has(tokenPath)) setTokenPaths.add(tokenPath);
           }
         }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {

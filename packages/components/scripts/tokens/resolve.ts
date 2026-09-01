@@ -194,9 +194,17 @@ function groupMetadataBase(
   groupPath: string,
   groups: Map<string, TokenGroup>,
 ): TokenGroup {
-  if (group.$type !== undefined) return group;
-  const type = effectiveGroupType(groupPath, groups);
-  return type === undefined ? group : { ...group, $type: type };
+  const type = group.$type ?? effectiveGroupType(groupPath, groups);
+  const deprecated =
+    group.$deprecated === undefined
+      ? effectiveGroupDeprecated(groupPath, groups)
+      : group.$deprecated;
+  if (type === undefined && deprecated === undefined) return group;
+  return {
+    ...group,
+    ...(type === undefined ? {} : { $type: type }),
+    ...(deprecated === undefined ? {} : { $deprecated: deprecated }),
+  };
 }
 
 function resolveExtends(
@@ -253,6 +261,10 @@ function resolveExtends(
             writable: true,
           });
       }
+    // `$extends` may add a group that an ordinary nested wrapper references.
+    // Register the expanded tree before traversing those wrappers so their
+    // targets are visible to the same path index used by resolveExtends.
+    collectGroups(group, groupPath, groups);
   }
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isTokenGroup(value)) continue;
