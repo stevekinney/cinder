@@ -94,13 +94,6 @@ describe('pumpChatRun: completed success', () => {
 		]);
 		expect(envelope).toEqual({ ok: true, status: 'completed', content: 'Hello there!' });
 	});
-
-	// Proves the assertion is load-bearing: flip `ok` away from `true` and this
-	// regresses the way a real behavior break would.
-	test('regression check: a broken envelope fails the equality above', () => {
-		const broken = { ok: false, status: 'completed', content: 'Hello there!' };
-		expect(broken).not.toEqual({ ok: true, status: 'completed', content: 'Hello there!' });
-	});
 });
 
 describe('pumpChatRun: provider failure', () => {
@@ -120,9 +113,19 @@ describe('pumpChatRun: provider failure', () => {
 
 describe('pumpChatRun: aborted request', () => {
 	test('surfaces kind: "abort" when the run is aborted mid-generate', async () => {
+		// Deterministic coordination, not a wall-clock delay: the generate
+		// function resolves `abortListenerReady` the instant its own abort
+		// listener is registered, and the test awaits that signal before calling
+		// `run.abort()` — so the abort always lands after the listener exists,
+		// with no timing threshold to tune or race.
+		let signalAbortListenerReady: () => void;
+		const abortListenerReady = new Promise<void>((resolve) => {
+			signalAbortListenerReady = resolve;
+		});
 		const generate: StreamingGenerateFunction = (context) =>
 			new Promise((_resolve, reject) => {
 				context.signal?.addEventListener('abort', () => reject(new Error('generate aborted')));
+				signalAbortListenerReady();
 			});
 
 		const agent = createChatAgent({
@@ -133,7 +136,8 @@ describe('pumpChatRun: aborted request', () => {
 		});
 		const run = startChatRun(agent, conversationWith('hello'));
 
-		setTimeout(() => run.abort('test abort'), 10);
+		await abortListenerReady;
+		run.abort('test abort');
 
 		const envelope = await pumpChatRun(run, () => {});
 
@@ -155,33 +159,26 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		}
 	});
 
-	test('emits a tool_call then a tool_result carrying 4, then the follow-up reply', async () => {
-		let step = 0;
-		const generate: StreamingGenerateFunction = async ({ streaming }) => {
-			if (step === 0) {
-				step += 1;
-				return {
-					content: '',
-					toolCalls: [{ id: 'call-1', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
-				};
-			}
-			streaming.update('You rolled a 4.');
-			return { content: 'You rolled a 4.', toolCalls: [] };
+	// The run stops right after the tool step — see `stopAfterAnyToolCall` in
+	// `chat-agent.ts` — so this request never reaches a second `generate` call
+	// for a follow-up reply. `generate` below asserts that by throwing if it is
+	// ever invoked a second time: the pre-Operative contract this restores has
+	// the client's existing continuation loop (`packages/chat`'s
+	// `createChatSessionController`) re-POST for the follow-up instead.
+	test('emits a tool_call then a tool_result carrying 4, and stops without generating a follow-up', async () => {
+		let calls = 0;
+		const generate: StreamingGenerateFunction = async () => {
+			calls += 1;
+			if (calls > 1) throw new Error('generate should not be called a second time in this run');
+			return {
+				content: '',
+				toolCalls: [{ id: 'call-1', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
+			};
 		};
 
 		const { frames, envelope } = await runAndCollect(generate, createToolbox([rollDice]));
 
-		// `tool_call` and `tool_result` come from the same `StepCompletedEvent`
-		// and are pushed by the same synchronous loop body, so their relative
-		// order is guaranteed and asserted exactly. Their position relative to
-		// the *text* frame (sourced from an entirely separate, synchronously
-		// dispatched `eventTarget` channel) is not — per CIN-434's explicit
-		// scope boundary, no spec asserts tool-call/text interleaving timing,
-		// so this only asserts that the text frame arrived somewhere, not where.
-		const toolFrames = frames.filter((frame) => frame.type !== 'text');
-		const textFrames = frames.filter((frame) => frame.type === 'text');
-
-		expect(toolFrames).toEqual([
+		expect(frames).toEqual([
 			{ type: 'tool_call', id: 'call-1', name: 'roll_dice', arguments: { sides: 6, count: 1 } },
 			{
 				type: 'tool_result',
@@ -190,15 +187,8 @@ describe('pumpChatRun: roll_dice tool path', () => {
 				content: { rolls: [4], total: 4 }
 			}
 		]);
-		expect(textFrames).toEqual([{ type: 'text', text: 'You rolled a 4.' }]);
-		expect(envelope).toEqual({ ok: true, status: 'completed', content: 'You rolled a 4.' });
-	});
-
-	// Proves the shape check above is load-bearing, not vacuous: a roll that
-	// returned anything other than 4 would fail it.
-	test('regression check: a non-4 roll would fail the frame assertion above', () => {
-		const brokenResult = { rolls: [3], total: 3 };
-		expect(brokenResult).not.toEqual({ rolls: [4], total: 4 });
+		expect(envelope).toEqual({ ok: true, status: 'completed', content: '' });
+		expect(calls).toBe(1);
 	});
 });
 
@@ -255,7 +245,7 @@ describe('classifyChatRunFailure', () => {
 // tests above if it happened to swap in equivalent-looking pieces, so this
 // exercises `createAgent` directly with the same `stopWhen` combination.
 describe('createChatAgent composition', () => {
-	test('stopWhen [pendingApproval(), noToolCalls()] still stops a plain text-only run at step 1', async () => {
+	test('the production stopWhen combination still stops a plain text-only run at step 1', async () => {
 		const generate: StreamingGenerateFunction = async ({ streaming }) => {
 			streaming.update('done');
 			return { content: 'done', toolCalls: [] };
@@ -264,7 +254,11 @@ describe('createChatAgent composition', () => {
 			generate: withEnhancedStreaming(generate, { eventTarget: freshEventTarget() }),
 			toolbox: createToolbox([]),
 			executeOptions: { requestContext },
-			stopWhen: [stopWhen.pendingApproval(), stopWhen.noToolCalls()]
+			stopWhen: [
+				stopWhen.noToolCalls(),
+				stopWhen.pendingApproval(),
+				(step) => step.toolCalls.length > 0
+			]
 		});
 		const result = await agent.run({ conversation: conversationWith('hi') }).result();
 		expect(result.finishReason).toBe('stop-condition');

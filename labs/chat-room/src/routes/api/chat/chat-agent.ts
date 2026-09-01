@@ -22,6 +22,7 @@ import {
 	type EnhancedStreamingOptions,
 	type OperativeExecuteOptions,
 	type StandaloneAgent,
+	type StepResult,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
 import { withEnhancedStreaming } from '@lostgradient/operative/streaming';
@@ -48,13 +49,40 @@ export type ChatRunEnvelope =
 	| { ok: false; status: string; error: { kind: string; code: string; message: string } };
 
 /**
+ * Stops the loop the instant a step produces ANY tool call, approval-gated
+ * or not — restoring the pre-Operative contract byte-for-byte: one server
+ * step per HTTP request, never a follow-up generate call in the same
+ * response. Without this, `stopWhen: [pendingApproval(), noToolCalls()]`
+ * alone lets an ordinary (non-approval) tool call run to completion AND
+ * generate its follow-up reply within one request — which collides with
+ * `packages/chat`'s `createChatSessionController`, whose continuation loop
+ * (`session-controller.ts`, `while (++turn <= maxTurns)`) already re-POSTs
+ * whenever it sees a resolved, non-approval tool result, regardless of
+ * whether a follow-up reply also arrived in that same response. Two real
+ * problems traced back to that same collision during review: a redundant
+ * second (billed) turn after the answer had already streamed, and a message-
+ * ordering bug on the client when a tool step and assistant text landed in
+ * one response. `packages/chat` is out of scope for this change — this stop
+ * condition is the fix that belongs on this side of the boundary, and it
+ * makes both problems moot by never producing that response shape.
+ *
+ * This makes `pendingApproval()` redundant (every approval-gated call also
+ * has `toolCalls.length > 0`), but it stays in the list for clarity — the
+ * intent ("stop and hand control back on an approval") is easy to read at
+ * the call site even though this condition alone already covers it.
+ */
+const stopAfterAnyToolCall = (step: StepResult): boolean => step.toolCalls.length > 0;
+
+/**
  * Builds the module-scoped-toolbox, request-local-eventTarget agent for one
  * `/api/chat` request.
  *
- * `stopWhen` combines `pendingApproval()` with `noToolCalls()` — per the
- * declarations' own example, `pendingApproval()` alone never stops a normal,
- * no-tool-call turn, so a plain text reply would otherwise run to
- * `maximumSteps` instead of finishing after one step.
+ * `stopWhen` combines `noToolCalls()` (a plain text reply is done after one
+ * step) with `stopAfterAnyToolCall` (any step with tool calls is also done
+ * after one step, whether or not those calls need approval) and, for
+ * intent-at-a-glance, `pendingApproval()`. Without at least one condition
+ * that stops on ordinary text, a plain reply would otherwise run to
+ * `maximumSteps` — see the declarations' own example for the same pairing.
  */
 export function createChatAgent(options: {
 	generate: StreamingGenerateFunction;
@@ -66,7 +94,7 @@ export function createChatAgent(options: {
 		generate: withEnhancedStreaming(options.generate, { eventTarget: options.eventTarget }),
 		toolbox: options.toolbox,
 		executeOptions: { requestContext: options.requestContext },
-		stopWhen: [stopWhen.pendingApproval(), stopWhen.noToolCalls()]
+		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall]
 	});
 }
 
