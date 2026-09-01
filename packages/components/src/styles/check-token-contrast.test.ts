@@ -1107,13 +1107,19 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
   }
 
   it('applies the status-tier chroma clamp in every theme declaration', () => {
+    const statusTierDeclarations = [
+      ...css.matchAll(
+        /--cinder-status-(?:info|success|warning|danger)-(?:muted|subtle):\s*[^;]+;/g,
+      ),
+    ];
     const declarations = [
       ...css.matchAll(
         /--cinder-status-(?:info|success|warning|danger)-(?:muted|subtle):\s*oklch\(\s*from\s+color-mix\(\s*in oklch,\s*var\(--cinder-status-(?:info|success|warning|danger)-solid\),\s*var\(--cinder-(?:surface|text-default)\)\s+36%\s*\)\s*l\s*min\(c,\s*0\.05\)\s*h\s*\);/g,
       ),
     ];
 
-    expect(declarations).toHaveLength(24);
+    expect(statusTierDeclarations.length).toBeGreaterThan(0);
+    expect(declarations).toHaveLength(statusTierDeclarations.length);
   });
 
   chartSeries.forEach((series, index) => {
