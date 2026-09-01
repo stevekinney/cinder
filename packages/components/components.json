@@ -5972,16 +5972,14 @@
       "exportName": "VirtualList",
       "category": "data-display",
       "status": "beta",
-      "purpose": "Fixed-height windowing primitive for long vertical lists that renders only the visible rows plus overscan inside a native scroll container.",
+      "purpose": "Windowing primitive for long vertical lists that renders only the visible rows plus overscan in a native scroll container, with fixed-height rows by default and opt-in measured rows.",
       "tags": ["list", "virtualization", "performance"],
       "useWhen": [
         "Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.",
+        "Rows vary in height because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.",
         "You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet."
       ],
       "avoidWhen": [
-        {
-          "reason": "Rows have substantially variable heights that must be measured dynamically — v1 requires a fixed itemHeight."
-        },
         {
           "reason": "Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization."
         }

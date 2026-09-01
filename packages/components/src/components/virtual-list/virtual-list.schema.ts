@@ -7,7 +7,12 @@ const schema = {
     itemHeight: {
       type: 'number',
       description:
-        'Fixed row height in pixels. Variable and measured row heights are out of\nscope for v1; pass the known or estimated fixed height for every row.',
+        'Row height in pixels. By default every row is assumed to be exactly this\ntall. When `dynamicSize` is true this becomes the initial estimate for rows\nthat have not been measured yet.',
+    },
+    dynamicSize: {
+      type: 'boolean',
+      description:
+        'Measure each rendered row with `ResizeObserver` and cache the result,\ninstead of assuming every row is exactly `itemHeight` tall. Use this when\nrows wrap, contain images, or otherwise vary in height.\n\nDefaults to `false`. While false, no measurement, caching, scroll\ncorrection, or `ResizeObserver` construction happens anywhere in the\ncomponent — the fixed-height path stays the fast path.',
     },
     overscan: {
       type: 'number',
@@ -40,13 +45,18 @@ const schema = {
         name: 'getKey',
         reason: 'function-or-snippet',
         description:
-          'Stable key extractor. Omit only when items are append-only and never\nreordered; the component will fall back to full-array indexes.',
+          'Stable key extractor. Omit only when items are append-only and never\nreordered; the component will fall back to full-array indexes.\n\nRequired in practice under `dynamicSize`: measured sizes are cached by key,\nso index-derived keys will mis-attribute cached sizes if items ever reorder.',
       },
       {
         name: 'items',
         reason: 'generic-type-parameter',
         required: true,
         description: 'Items in full logical order. Only the visible window is mounted.',
+      },
+      {
+        name: 'ref',
+        reason: 'unknown-shape',
+        description: 'Typed programmatic handle. Use `bind:ref` to receive it.',
       },
       {
         name: 'row',
