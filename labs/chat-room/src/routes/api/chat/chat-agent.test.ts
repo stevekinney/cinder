@@ -10,7 +10,7 @@ import {
 } from '@lostgradient/operative';
 import { withEnhancedStreaming } from '@lostgradient/operative/streaming';
 import { createTool, createToolbox, type AnyToolbox, type ToolRequestContext } from 'armorer';
-import { appendUserMessage, createConversationHistory } from 'conversationalist';
+import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
 import { z } from 'zod';
 
 import {

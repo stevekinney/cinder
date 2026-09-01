@@ -193,8 +193,14 @@ export async function pumpChatRun(
 				});
 			}
 
+			// Pre-indexed once per step rather than `event.results.find(...)`
+			// inside the loop below — `toolCalls`/`results` are already fully
+			// materialized on `StepCompletedEvent`, so a per-call linear scan is
+			// needless O(steps × calls²) work for no behavior difference.
+			const resultsByCallId = new Map(event.results.map((result) => [result.callId, result]));
+
 			for (const toolCall of event.toolCalls) {
-				const result = event.results.find((candidate) => candidate.callId === toolCall.id);
+				const result = resultsByCallId.get(toolCall.id);
 				if (!result) continue;
 
 				onFrame({

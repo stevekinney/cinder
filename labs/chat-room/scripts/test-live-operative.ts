@@ -12,7 +12,7 @@
  */
 import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic';
 import { createToolbox } from 'armorer';
-import { appendUserMessage, createConversationHistory } from 'conversationalist';
+import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
 
 import {
 	createChatAgent,
