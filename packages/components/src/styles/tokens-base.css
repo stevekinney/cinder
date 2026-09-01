@@ -452,8 +452,26 @@
   --cinder-checker-base: light-dark(#fff, oklch(28% 0.02 245));
   /* Transparency checkerboard alternate tile. */
   --cinder-checker-tile: light-dark(#ccc, oklch(38% 0.02 245));
+  /* Secondary (default) button fill. */
+  --cinder-button-background: var(--cinder-surface-raised);
+  /* Secondary (default) button label color. */
+  --cinder-button-foreground: var(--cinder-text-default);
   /* Secondary (default) button border. */
   --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
+  /* Default button corner radius. */
+  --cinder-button-radius: var(--cinder-radius-md);
+  /* Extra-small button corner radius. */
+  --cinder-button-radius-xs: var(--cinder-radius-sm);
+  /* Small button corner radius. */
+  --cinder-button-radius-sm: var(--cinder-radius-sm);
+  /* Medium button corner radius. */
+  --cinder-button-radius-md: var(--cinder-radius-md);
+  /* Large button corner radius. */
+  --cinder-button-radius-lg: var(--cinder-radius-md);
+  /* Extra-large button corner radius. */
+  --cinder-button-radius-xl: var(--cinder-radius-md);
+  /* Extra-small button height (24px), aliasing the shared control-height tier. */
+  --cinder-button-height-xs: var(--cinder-control-height-xs);
   /* Small button height (28px). */
   --cinder-button-height-sm: 1.75rem;
   /* Medium button height (32px). */
@@ -462,14 +480,68 @@
   --cinder-button-height-lg: 2.25rem;
   /* Extra-large button height (40px). */
   --cinder-button-height-xl: 2.5rem;
+  /* Extra-small button horizontal padding. */
+  --cinder-button-padding-x-xs: var(--cinder-space-1-5);
+  /* Small button horizontal padding. */
+  --cinder-button-padding-x-sm: var(--cinder-space-2);
+  /* Medium button horizontal padding. */
+  --cinder-button-padding-x-md: var(--cinder-space-2-5);
+  /* Large button horizontal padding. */
+  --cinder-button-padding-x-lg: var(--cinder-space-3);
+  /* Extra-large button horizontal padding. */
+  --cinder-button-padding-x-xl: var(--cinder-space-3-5);
+  /* Extra-small button vertical padding. */
+  --cinder-button-padding-y-xs: var(--cinder-space-0-5);
+  /* Small button vertical padding. */
+  --cinder-button-padding-y-sm: var(--cinder-space-1);
+  /* Medium button vertical padding. */
+  --cinder-button-padding-y-md: var(--cinder-space-1-5);
+  /* Large button vertical padding. */
+  --cinder-button-padding-y-lg: var(--cinder-space-2);
+  /* Extra-large button vertical padding. */
+  --cinder-button-padding-y-xl: var(--cinder-space-2-5);
+  /* Extra-small button label font size. */
+  --cinder-button-font-size-xs: var(--cinder-text-xs);
+  /* Small button label font size. */
+  --cinder-button-font-size-sm: var(--cinder-text-sm);
+  /* Medium button label font size. */
+  --cinder-button-font-size-md: var(--cinder-text-sm);
+  /* Large button label font size. */
+  --cinder-button-font-size-lg: var(--cinder-text-md);
+  /* Extra-large button label font size. */
+  --cinder-button-font-size-xl: var(--cinder-text-lg);
   /* Toggle track color in the off, resting state. Light arm preserves the `border.muted` look; dark arm raises lightness for >=3:1 shape contrast against the surface. */
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   /* Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable. */
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+  /* Row block padding (default density). */
+  --cinder-action-row-padding-block: var(--cinder-space-3);
+  /* Row inline padding (default density). */
+  --cinder-action-row-padding-inline: var(--cinder-space-4);
+  /* Grid column gap between leading/body/trailing regions. */
+  --cinder-action-row-layout-column-gap: var(--cinder-space-3);
+  /* Grid row gap between leading/body/trailing regions. */
+  --cinder-action-row-layout-row-gap: var(--cinder-space-2);
+  /* Gap between title, description, and meta lines. */
+  --cinder-action-row-body-gap: var(--cinder-space-1);
+  /* Title font size. */
+  --cinder-action-row-title-font-size: var(--cinder-text-sm);
+  /* Description font size. */
+  --cinder-action-row-description-font-size: var(--cinder-text-sm);
+  /* Meta line font size. */
+  --cinder-action-row-meta-font-size: var(--cinder-text-xs);
+  /* Gap between items in the trailing region. */
+  --cinder-action-row-trailing-gap: var(--cinder-space-2);
   /* Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only. */
   --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
+  /* Horizontal overlap between stacked avatars. */
+  --cinder-avatar-group-overlap: var(--cinder-space-3);
+  /* Horizontal bleed a card's mobile layout extends past its container on each side. */
+  --cinder-card-mobile-bleed: var(--cinder-space-4);
   /* Slide inline-size as a percentage of the viewport. `$value` (100) is the percentage number, not a dimension -- CSS `100%` has no DTCG dimension representation. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply a bare unitless `100` as a CSS length. */
   --cinder-carousel-slide-size: 100%;
+  /* Gap between slides. */
+  --cinder-carousel-gap: var(--cinder-space-3);
   /* Slide aspect ratio (16:9). `$value` is the ratio as a number (16/9); `cssRecipe` emits the exact `16 / 9` CSS `aspect-ratio` syntax. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply the bare ratio number as a CSS `aspect-ratio` value. */
   --cinder-carousel-aspect-ratio: 16 / 9;
   /* Pagination dot hit-target size. */
@@ -479,12 +551,34 @@
     var(--cinder-surface-raised),
     var(--cinder-surface-inset)
   );
+  /* Code text font size. */
+  --cinder-code-block-font-size: var(--cinder-text-sm);
   /* Block height. Real value is CSS `auto` (intrinsic content height); DTCG's dimension type has no keyword form, so `$value` is a non-authoritative placeholder and `cssRecipe` governs emission. Flagged in the CIN-472 PR body as a type-system limitation, not a design decision. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer applying `$value` literally does not collapse the block to zero height. */
   --cinder-code-block-height: auto;
+  /* Code text line height. */
+  --cinder-code-block-line-height: var(--cinder-leading-relaxed);
+  /* Code viewport padding. */
+  --cinder-code-block-padding: var(--cinder-space-4);
   /* Default scroll-viewport height. */
   --cinder-data-table-height: 24rem;
+  /* Rail marker box size (width and height). */
+  --cinder-feed-event-rail-size: var(--cinder-space-6);
+  /* Dropzone background. */
+  --cinder-file-upload-background: var(--cinder-surface);
+  /* Dropzone border color. */
+  --cinder-file-upload-border-color: var(--cinder-border);
+  /* Progress bar track background. */
+  --cinder-file-upload-progress-background: var(--cinder-surface-inset);
+  /* Progress bar fill. */
+  --cinder-file-upload-progress-fill: var(--cinder-accent-solid);
   /* Column inline-size. */
   --cinder-kanban-column-width: 18rem;
+  /* Gap between columns. */
+  --cinder-kanban-column-gap: var(--cinder-space-4);
+  /* Column background. */
+  --cinder-kanban-column-background: var(--cinder-surface-raised);
+  /* Card background. */
+  --cinder-kanban-card-background: var(--cinder-surface);
   /* Horizontal scroll-edge fade gradient color -- `text-default` at 12% opacity, tracking whichever theme arm resolves. */
   --cinder-kanban-board-scroll-edge: color-mix(
     in oklch,
@@ -493,14 +587,62 @@
   );
   /* Default scroll duration for one full loop. */
   --cinder-marquee-duration: 24s;
+  /* Gap between marquee items. */
+  --cinder-marquee-gap: var(--cinder-space-6);
+  /* `::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability. */
+  --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
+  /* Row block padding (default density). */
+  --cinder-selectable-row-padding-block: var(--cinder-space-3);
+  /* Row inline padding (default density). */
+  --cinder-selectable-row-padding-inline: var(--cinder-space-4);
+  /* Gap between the row's leading/primary/trailing regions. */
+  --cinder-selectable-row-column-gap: var(--cinder-space-2);
+  /* Gap between primary content lines. */
+  --cinder-selectable-row-content-gap: var(--cinder-space-1);
+  /* Gap between the leading control and label. */
+  --cinder-selectable-row-leading-gap: var(--cinder-space-3);
+  /* Gap between trailing action items. */
+  --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
+  /* Gap between top-level navigation items. */
+  --cinder-side-navigation-list-gap: var(--cinder-space-1);
   /* Spinner arc color. Default is `currentColor` (inherits from context); the reduced-motion static state re-asserts the same track-color fallback explicitly. `$value` aliases `text.default` as the closest resolvable stand-in for `currentColor`'s typical resolution. Excluded from the published resolved-context JSON (`nonRepresentableValue`) so a generic consumer does not apply this fixed color in place of the real, context-inheriting `currentColor`. */
   --cinder-spinner-indicator: currentColor;
   /* Spinner diameter (md default; 24px). */
   --cinder-spinner-size: 1.5rem;
+  /* Gap between label/value/change rows. */
+  --cinder-statistic-row-gap: var(--cinder-space-1);
+  /* Gap between statistic columns when laid out inline. */
+  --cinder-statistic-column-gap: var(--cinder-space-3);
+  /* Label font size. */
+  --cinder-statistic-label-font-size: var(--cinder-text-sm);
+  /* Value font size. */
+  --cinder-statistic-value-font-size: var(--cinder-text-4xl);
+  /* Value font weight. */
+  --cinder-statistic-value-font-weight: var(--cinder-font-semibold);
   /* Value line height (unitless). */
   --cinder-statistic-value-line-height: 1.1;
+  /* Gap between the change indicator icon and its label. */
+  --cinder-statistic-change-gap: var(--cinder-space-1);
+  /* Change indicator font size. */
+  --cinder-statistic-change-font-size: var(--cinder-text-sm);
+  /* Gap between statistic cards. */
+  --cinder-statistic-group-gap: var(--cinder-space-4);
+  /* Padding inside each statistic card. */
+  --cinder-statistic-group-card-padding: var(--cinder-space-4);
+  /* Padding inside each cell in the shared-border layout mode. */
+  --cinder-statistic-group-shared-cell-padding: var(--cinder-space-4);
+  /* Dot fill color (default, no status set). */
+  --cinder-status-dot-color: var(--cinder-text-muted);
   /* Dot diameter (md default; 10px). */
   --cinder-status-dot-size: 0.625rem;
+  /* Inactive link color. */
+  --cinder-table-of-contents-link-color: var(--cinder-text-muted);
+  /* Active link color. */
+  --cinder-table-of-contents-link-active-color: var(--cinder-text-default);
+  /* Indent added per heading-depth level. */
+  --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
+  /* Drop-target indicator line/ring color. */
+  --cinder-tree-drop-line-color: var(--cinder-accent-solid);
   /* Drop-target indicator line thickness. */
   --cinder-tree-drop-line-thickness: 2px;
   /* Opacity of an item's row while being dragged. */
