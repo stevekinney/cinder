@@ -197,6 +197,62 @@ describe('chat stream event codec', () => {
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
     });
 
+    test('round-trips stream:block-delta', () => {
+      const event = {
+        type: 'stream:block-delta' as const,
+        block: {
+          id: 'block-1',
+          type: 'text' as const,
+          index: 0,
+          content: 'he',
+          complete: false,
+        },
+        delta: 'he',
+        wireVersion: 1 as const,
+        sequence: 1,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:block-complete', () => {
+      const event = {
+        type: 'stream:block-complete' as const,
+        block: {
+          id: 'block-1',
+          type: 'text' as const,
+          index: 0,
+          content: 'hello',
+          complete: true,
+        },
+        wireVersion: 1 as const,
+        sequence: 2,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:tool-call-start', () => {
+      const event = {
+        type: 'stream:tool-call-start' as const,
+        toolName: 'lookup',
+        blockId: 'block-2',
+        wireVersion: 1 as const,
+        sequence: 3,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:tool-call-delta', () => {
+      const event = {
+        type: 'stream:tool-call-delta' as const,
+        toolName: 'lookup',
+        blockId: 'block-2',
+        partialArguments: '{"query":',
+        wireVersion: 1 as const,
+        sequence: 4,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
     test('round-trips stream:text-delta', () => {
       const event = {
         type: 'stream:text-delta' as const,
@@ -279,6 +335,19 @@ describe('chat stream event codec', () => {
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
     });
 
+    test('round-trips tool.progress', () => {
+      const event = {
+        type: 'tool.progress' as const,
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        percent: 42,
+        message: 'Fetching…',
+        wireVersion: 1 as const,
+        sequence: 1,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
     test('round-trips tool.settled with a paused result carrying an action descriptor', () => {
       const event = {
         type: 'tool.settled' as const,
@@ -294,6 +363,19 @@ describe('chat stream event codec', () => {
         sequence: 2,
       };
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects tool.settled when result is not a valid ChatToolResult', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'tool.settled',
+          toolCallId: 'call-1',
+          toolName: 'remember_note',
+          result: { callId: 'call-1' },
+          wireVersion: 1,
+          sequence: 2,
+        }),
+      ).toThrow('Invalid chat stream event');
     });
 
     test('round-trips tool.error with JSONValue-narrowed error', () => {
