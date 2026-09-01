@@ -1385,19 +1385,25 @@ export async function buildTokensBaseCss(
     documentsByPath,
     'forced-reduced-motion',
   );
+  const systemReducedMotionResolveReferences = createValueResolver(
+    systemReducedMotionScopeDocuments,
+  );
+  const systemForcedReducedMotionResolveReferences = createValueResolver(
+    systemForcedReducedMotionScopeDocuments,
+  );
   assertUniqueOverrideCssProperties(
     reducedMotionOverrides,
     baseIndex,
     scopeIndexFromDocuments(systemReducedMotionScopeDocuments),
     'motion.reduced (system theme)',
-    createValueResolver(systemReducedMotionScopeDocuments),
+    systemReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
     scopeIndexFromDocuments(systemForcedReducedMotionScopeDocuments),
     'motion.forced-reduced-motion (system theme)',
-    createValueResolver(systemForcedReducedMotionScopeDocuments),
+    systemForcedReducedMotionResolveReferences,
   );
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
   // a nested reference inside a context's composite value may target a token that a DIFFERENT
@@ -1455,7 +1461,7 @@ export async function buildTokensBaseCss(
       },
       {
         name: 'theme.system',
-        resolveReferences: createValueResolver(systemReducedMotionScopeDocuments),
+        resolveReferences: systemReducedMotionResolveReferences,
       },
     ],
     'motion.reduced',
@@ -1474,7 +1480,7 @@ export async function buildTokensBaseCss(
       },
       {
         name: 'theme.system',
-        resolveReferences: createValueResolver(systemForcedReducedMotionScopeDocuments),
+        resolveReferences: systemForcedReducedMotionResolveReferences,
       },
     ],
     'motion.forced-reduced-motion',
@@ -1521,36 +1527,36 @@ export async function buildTokensBaseCss(
     reducedMotionOverrides,
     baseIndex,
     baseResolveReferences,
-    reducedMotionResolveReferences,
+    systemReducedMotionResolveReferences,
   );
   const forcedReducedMotionAliases = withDependentBaseAliases(
     forcedReducedMotionOverrides,
     baseIndex,
     baseResolveReferences,
-    forcedReducedMotionResolveReferences,
+    systemForcedReducedMotionResolveReferences,
   );
   const lightReducedMotionAliases = withDependentBaseAliases(
     new Map(),
     baseIndex,
-    reducedMotionResolveReferences,
+    systemReducedMotionResolveReferences,
     lightReducedMotionResolveReferences,
   );
   const darkReducedMotionAliases = withDependentBaseAliases(
     new Map(),
     baseIndex,
-    reducedMotionResolveReferences,
+    systemReducedMotionResolveReferences,
     darkReducedMotionResolveReferences,
   );
   const lightForcedReducedMotionAliases = withDependentBaseAliases(
     new Map(),
     baseIndex,
-    forcedReducedMotionResolveReferences,
+    systemForcedReducedMotionResolveReferences,
     lightForcedReducedMotionResolveReferences,
   );
   const darkForcedReducedMotionAliases = withDependentBaseAliases(
     new Map(),
     baseIndex,
-    forcedReducedMotionResolveReferences,
+    systemForcedReducedMotionResolveReferences,
     darkForcedReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
@@ -1558,14 +1564,14 @@ export async function buildTokensBaseCss(
     baseIndex,
     scopeIndexFromDocuments(systemReducedMotionScopeDocuments),
     'motion.reduced dependent aliases',
-    reducedMotionResolveReferences,
+    systemReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionAliases,
     baseIndex,
     scopeIndexFromDocuments(systemForcedReducedMotionScopeDocuments),
     'motion.forced-reduced-motion dependent aliases',
-    forcedReducedMotionResolveReferences,
+    systemForcedReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     lightReducedMotionAliases,
@@ -1598,12 +1604,12 @@ export async function buildTokensBaseCss(
   const reducedMotionDeclarations = renderOverrideDeclarations(
     reducedMotionAliases,
     baseIndex,
-    reducedMotionResolveReferences,
+    systemReducedMotionResolveReferences,
   );
   const forcedReducedMotionDeclarations = renderOverrideDeclarations(
     forcedReducedMotionAliases,
     baseIndex,
-    forcedReducedMotionResolveReferences,
+    systemForcedReducedMotionResolveReferences,
   );
   const lightReducedMotionDeclarations = renderOverrideDeclarations(
     lightReducedMotionAliases,

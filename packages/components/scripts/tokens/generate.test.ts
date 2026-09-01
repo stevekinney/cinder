@@ -2443,4 +2443,66 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
       ),
     ).rejects.toThrow(/motion\.default must not declare.*group metadata/);
   });
+
+  test('root motion aliases resolve from the unthemed system scope', async () => {
+    const token = (value: unknown, cssProperty?: string): Record<string, unknown> => ({
+      $type: typeof value === 'number' ? 'number' : 'color',
+      $value: value,
+      ...(cssProperty ? { $extensions: { 'com.lostgradient.cinder': { cssProperty } } } : {}),
+    });
+    const baseDocument: TokenDocument = {
+      test: {
+        lightness: token(0.3, '--test-lightness'),
+        chroma: token(0.1, '--test-chroma'),
+        composite: token(
+          {
+            colorSpace: 'oklch',
+            components: ['{test.lightness}', '{test.chroma}', 250],
+          },
+          '--test-composite',
+        ),
+      },
+    };
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: {
+            light: [{ $ref: 'light.json' }],
+            dark: [{ $ref: 'dark.json' }],
+          },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['light.json', { test: { lightness: { $type: 'number', $value: 0.9 } } }],
+      ['dark.json', { test: { lightness: { $type: 'number', $value: 0.4 } } }],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', { test: { chroma: { $type: 'number', $value: 0.2 } } }],
+      ['motion-forced.json', {}],
+    ]);
+
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    const mediaBlock = css.match(
+      /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?:root[^{}]*\{([^}]*)\}/,
+    )?.[1];
+    expect(mediaBlock).toContain('--test-composite: oklch(30% 0.2 250);');
+    expect(mediaBlock).not.toContain('oklch(90% 0.2 250)');
+  });
 });

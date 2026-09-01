@@ -134,6 +134,9 @@ export function validateModifierSetExpansionOrder(
         if (basePosition === undefined) continue;
         const setTokenPaths = new Set<string>();
         if (documentsByPath) {
+          const resetSourcePaths = new Set(
+            expandSetSources(resolver, setName).map((source) => normalizeSourcePath(source.$ref)),
+          );
           const resetDocuments = expandSetSources(resolver, setName).flatMap((source) => {
             const sourcePath = normalizeSourcePath(source.$ref);
             if (!internallyReferencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath))
@@ -145,6 +148,27 @@ export function validateModifierSetExpansionOrder(
             '',
             setTokenPaths,
           );
+          const expandedContextSources = expandContextSources(resolver, entry.name, contextName);
+          const lastResetSourceIndex = expandedContextSources.findLastIndex((source) =>
+            resetSourcePaths.has(normalizeSourcePath(source.$ref)),
+          );
+          if (lastResetSourceIndex >= 0) {
+            const laterDocuments = expandedContextSources
+              .slice(lastResetSourceIndex + 1)
+              .map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
+            const overwrittenPaths = new Set<string>();
+            collectDeclaredTokenPaths(
+              mergeAndExpandExtends(laterDocuments, [
+                ...baseDocuments,
+                ...expandedContextSources.map(
+                  (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+                ),
+              ]),
+              '',
+              overwrittenPaths,
+            );
+            for (const overwrittenPath of overwrittenPaths) setTokenPaths.delete(overwrittenPath);
+          }
         }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {
           if (candidate.kind !== 'modifiers') return false;
