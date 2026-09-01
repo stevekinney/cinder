@@ -119,11 +119,6 @@ export function validateModifierSetExpansionOrder(
         internalSetNames(sources).flatMap((setName) => [...reachableSetNames(resolver, setName)]),
       );
       const referencedSetNames = new Set(internallyReferencedSetNames);
-      const directDocumentPaths = new Set(
-        sources
-          .filter((source) => !isInternalReference(source.$ref))
-          .map((source) => normalizeSourcePath(source.$ref)),
-      );
       for (const source of expandContextSources(resolver, entry.name, contextName)) {
         for (const setName of baseDocumentSets.get(normalizeSourcePath(source.$ref)) ?? []) {
           referencedSetNames.add(setName);
