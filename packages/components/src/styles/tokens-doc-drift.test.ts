@@ -109,7 +109,7 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
   // backreference rather than assuming one backtick -- otherwise a value
   // containing a backtick parses truncated and reports a false mismatch.
   const rowPattern =
-    /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(?:(`+)(.+?)\2|((?:\\\\.|[^|])*?))\s*\|/gm;
+    /^\|\s*`(--_?cinder-[a-z0-9-]+)`\s*\|\s*(?:(`+)(.+?)\2|<code>(.*?)<\/code>|((?:\\.|[^|])*?))\s*\|/gm;
   for (const match of markdown.matchAll(rowPattern)) {
     if (!match[1]) continue;
     if (tokens.has(match[1])) duplicates.push(match[1]);
@@ -124,7 +124,16 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     // 2` original backslashes plus the literal pipe.
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
-    const body = (match[3] ?? match[4] ?? '').replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+    const htmlEscaped = (match[3] ?? match[4] ?? match[5] ?? '').includes('&#124;');
+    const body = (match[3] ?? match[4] ?? match[5] ?? '')
+      .replace(/^ (?=`)/, '')
+      .replace(/(?<=`) $/, '')
+      .replaceAll('&#124;', '|')
+      .replaceAll('&#39;', "'")
+      .replaceAll('&quot;', '"')
+      .replaceAll('&gt;', '>')
+      .replaceAll('&lt;', '<')
+      .replaceAll('&amp;', '&');
     // The encoder (`toTableCell`) always produces an ODD backslash run before
     // an escaped pipe (a run of `k` becomes `2k + 1`, which is odd for every
     // `k >= 0`). A row this regex captured with an EVEN run (0, 2, 4, ...)
@@ -138,10 +147,12 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
         `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
           `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
       );
-    const decoded = body.replace(
-      /(\\*)\|/g,
-      (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-    );
+    const decoded = htmlEscaped
+      ? body
+      : body.replace(
+          /(\\*)\|/g,
+          (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+        );
     tokens.set(match[1], normalizeTokenValue(decoded));
   }
   return { duplicates: duplicates.toSorted(), tokens };

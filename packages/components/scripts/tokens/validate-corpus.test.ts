@@ -424,6 +424,30 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierTokenPaths(contextOnly, documents)).not.toThrow();
   });
 
+  test('allows a modifier to override a token inherited through base $extends', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            $type: 'color' as const,
+            accent: { $value: 'red' },
+          },
+          themed: { $extends: '{foundation}' },
+        },
+      ],
+      ['light.json', { themed: { accent: { $value: 'blue' } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inherited, documents)).not.toThrow();
+  });
+
   test('rejects a modifier token path with no base declaration', () => {
     const missingBase: ResolverDocument = {
       version: '2025.10',

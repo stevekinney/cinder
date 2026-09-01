@@ -137,7 +137,7 @@ test.describe('playground component documentation', () => {
     await expect(liveMount.getByRole('switch')).toBeDisabled();
   });
 
-  test('avatar-group exposes its styling variables in the raw artifacts', async ({ page }) => {
+  test('avatar-group omits its corpus-owned token from local raw artifacts', async ({ page }) => {
     await page.goto('/page/avatar-group', { waitUntil: 'load' });
     const preview = page;
 
@@ -148,7 +148,7 @@ test.describe('playground component documentation', () => {
     await preview.getByRole('button', { name: 'Raw artifacts' }).click();
 
     await expect(preview.getByRole('heading', { name: 'Variables' })).toBeVisible();
-    await expect(preview.getByText('--cinder-avatar-group-overlap')).toBeVisible();
+    await expect(preview.getByText('--cinder-avatar-group-overlap')).toHaveCount(0);
   });
 });
 

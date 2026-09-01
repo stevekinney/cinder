@@ -924,7 +924,7 @@ export function assertUniqueOverrideCssProperties(
 
 type OverrideScope = {
   name: string;
-  resolveReferences: () => ValueResolver;
+  resolveReferences: ValueResolver;
 };
 
 function containsReference(value: unknown): boolean {
@@ -946,7 +946,7 @@ export function assertOverrideScopeConsistency(
   for (const [path, entry] of overrides) {
     const values = scopes.map((scope) => ({
       scope: scope.name,
-      value: serializeEntryValue(entry, baseIndex, scope.resolveReferences()),
+      value: serializeEntryValue(entry, baseIndex, scope.resolveReferences),
     }));
     const distinct = new Set(values.map(({ value }) => value));
     if (distinct.size <= 1) continue;
@@ -1344,19 +1344,27 @@ export async function buildTokensBaseCss(
   const forcedReducedMotionResolveReferences = createValueResolver(
     forcedReducedMotionScopeDocuments,
   );
+  const lightReducedMotionResolveReferences = createValueResolver(lightReducedMotionScopeDocuments);
+  const darkReducedMotionResolveReferences = createValueResolver(darkReducedMotionScopeDocuments);
+  const lightForcedReducedMotionResolveReferences = createValueResolver(
+    lightForcedReducedMotionScopeDocuments,
+  );
+  const darkForcedReducedMotionResolveReferences = createValueResolver(
+    darkForcedReducedMotionScopeDocuments,
+  );
 
   assertOverrideScopeConsistency(
     lightOverrides,
     baseIndex,
     [
-      { name: 'motion.default', resolveReferences: () => lightResolveReferences },
+      { name: 'motion.default', resolveReferences: lightResolveReferences },
       {
         name: 'motion.reduced',
-        resolveReferences: () => createValueResolver(lightReducedMotionScopeDocuments),
+        resolveReferences: lightReducedMotionResolveReferences,
       },
       {
         name: 'motion.forced-reduced-motion',
-        resolveReferences: () => createValueResolver(lightForcedReducedMotionScopeDocuments),
+        resolveReferences: lightForcedReducedMotionResolveReferences,
       },
     ],
     'theme.light',
@@ -1365,14 +1373,14 @@ export async function buildTokensBaseCss(
     darkOverrides,
     baseIndex,
     [
-      { name: 'motion.default', resolveReferences: () => darkResolveReferences },
+      { name: 'motion.default', resolveReferences: darkResolveReferences },
       {
         name: 'motion.reduced',
-        resolveReferences: () => createValueResolver(darkReducedMotionScopeDocuments),
+        resolveReferences: darkReducedMotionResolveReferences,
       },
       {
         name: 'motion.forced-reduced-motion',
-        resolveReferences: () => createValueResolver(darkForcedReducedMotionScopeDocuments),
+        resolveReferences: darkForcedReducedMotionResolveReferences,
       },
     ],
     'theme.dark',
@@ -1383,11 +1391,11 @@ export async function buildTokensBaseCss(
     [
       {
         name: 'theme.light',
-        resolveReferences: () => createValueResolver(lightReducedMotionScopeDocuments),
+        resolveReferences: lightReducedMotionResolveReferences,
       },
       {
         name: 'theme.dark',
-        resolveReferences: () => createValueResolver(darkReducedMotionScopeDocuments),
+        resolveReferences: darkReducedMotionResolveReferences,
       },
     ],
     'motion.reduced',
@@ -1398,11 +1406,11 @@ export async function buildTokensBaseCss(
     [
       {
         name: 'theme.light',
-        resolveReferences: () => createValueResolver(lightForcedReducedMotionScopeDocuments),
+        resolveReferences: lightForcedReducedMotionResolveReferences,
       },
       {
         name: 'theme.dark',
-        resolveReferences: () => createValueResolver(darkForcedReducedMotionScopeDocuments),
+        resolveReferences: darkForcedReducedMotionResolveReferences,
       },
     ],
     'motion.forced-reduced-motion',

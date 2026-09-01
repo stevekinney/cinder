@@ -14,20 +14,6 @@
  * These invariants hold across all 135+ component directories today. Any
  * generator change or hand-edit that breaks them will be caught immediately.
  *
- * NOTE — file-upload runtime-state vars
- * -------------------------------------
- * `file-upload.variables.json` currently includes
- * `--cinder-file-upload-progress-background` and
- * `--cinder-file-upload-progress-fill`. These are declared as CSS custom
- * properties in the component's `:root`-level `.cinder-file-upload {}` rule,
- * which causes the generator to include them. However they describe the
- * progress UI whose runtime state is driven by JS (the bare
- * `--cinder-file-upload-progress` counter set via `style=`), making them
- * semantically "runtime-state" rather than "consumer theme API".
- *
- * Runtime-state declarations use the `@runtime-state` marker and must never
- * enter the generated public override manifest.
- *
  * Test files may use `any` per project conventions.
  */
 
@@ -43,9 +29,6 @@ const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
 // scan is still making progress.
 setDefaultTimeout(30_000);
 
-/**
- * Static progress color variables are public FileUpload theme overrides.
- */
 const FILE_UPLOAD_PROGRESS_COLOR_VARIABLES = [
   { component: 'file-upload', variable: '--cinder-file-upload-progress-background' },
   { component: 'file-upload', variable: '--cinder-file-upload-progress-fill' },
@@ -163,22 +146,22 @@ describe('component *.variables.json contract', () => {
     expect(violations).toEqual([]);
   });
 
-  test('FileUpload exposes static progress color overrides', async () => {
+  test('FileUpload does not redeclare corpus-owned progress color overrides', async () => {
     const allComponents = await loadAllComponentVariables();
 
     const allVariablesByComponent = new Map(
       allComponents.map(({ componentName, variables }) => [componentName, variables]),
     );
 
-    const missing: string[] = [];
+    const redeclared: string[] = [];
 
     for (const { component, variable } of FILE_UPLOAD_PROGRESS_COLOR_VARIABLES) {
       const componentVariables = allVariablesByComponent.get(component);
       if (componentVariables === undefined) continue;
 
-      if (!componentVariables.includes(variable)) missing.push(`${component}: ${variable}`);
+      if (componentVariables.includes(variable)) redeclared.push(`${component}: ${variable}`);
     }
 
-    expect(missing).toEqual([]);
+    expect(redeclared).toEqual([]);
   });
 });

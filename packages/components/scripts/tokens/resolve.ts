@@ -600,8 +600,13 @@ export type ValueResolver = (value: unknown) => unknown;
  */
 export function createValueResolver(documents: TokenDocument[]): ValueResolver {
   const { tokens, rawRefs, rootTokenPaths, groups } = buildTokenIndex(documents);
+  // Keep completion state for the lifetime of this resolver. Each invocation
+  // may resolve a different composite value, but the token index is shared;
+  // resetting completion state per call can revisit and mutate an already
+  // resolved alias differently during generator validation versus emission.
+  const completed = new Set<string>();
   return (value: unknown) =>
-    resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set(), groups, new Set());
+    resolveValue(value, tokens, rawRefs, rootTokenPaths, new Set(), groups, completed);
 }
 
 /**

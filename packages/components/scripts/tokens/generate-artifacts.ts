@@ -837,19 +837,34 @@ function toCodeSpan(content: string): string {
  * escaped), and losslessly invertible: `extractDocTokens` recovers `k` as
  * `(2k + 1 - 1) / 2`.
  */
+function normalizeTableCell(text: string): string {
+  return text.replaceAll(/\s*[\r\n]\s*/g, ' ').trim();
+}
+
 function toTableCell(text: string): string {
+  return normalizeTableCell(text).replace(
+    /(\\*)\|/g,
+    (_match, backslashes: string) => `${backslashes}${backslashes}\\|`,
+  );
+}
+
+function escapeHtml(text: string): string {
   return text
-    .replaceAll(/\s*[\r\n]\s*/g, ' ')
-    .trim()
-    .replace(/(\\*)\|/g, (_match, backslashes: string) => `${backslashes}${backslashes}\\|`);
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#39;')
+    .replaceAll('|', '&#124;');
 }
 
 function renderValueCell(value: string): string {
   // Backslash-escaped pipes cannot be displayed faithfully inside a Markdown
-  // code span: CommonMark preserves the escape characters there. A plain cell
-  // consumes the same escapes while rendering the original value, and the
-  // drift parser accepts both representations.
-  return value.includes('|') ? value : toCodeSpan(value);
+  // code span: CommonMark preserves the escape characters there. HTML entities
+  // display the exact value while escaping both Markdown and HTML metacharacters,
+  // so emphasis-like or tag-like token values stay literal.
+  if (value.includes('|')) return escapeHtml(value);
+  return toCodeSpan(value);
 }
 
 export async function renderDocTable(
@@ -874,7 +889,9 @@ export async function renderDocTable(
         `No base corpus entry has cssProperty "${cssProperty}" (section "${section.slug}").`,
       );
     }
-    const value = toTableCell(serializeEntryValue(entry, baseIndex, resolveReferences));
+    const value = renderValueCell(
+      normalizeTableCell(serializeEntryValue(entry, baseIndex, resolveReferences)),
+    );
     const description = toTableCell(entry.description ?? '');
     assertNoGeneratedMarkers(value, 'value', cssProperty);
     assertNoGeneratedMarkers(description, 'description', cssProperty);

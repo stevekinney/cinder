@@ -58,14 +58,14 @@ describe('buildComponentDocumentation', () => {
     expect(payload.rawArtifacts.examples).toBe(payload.examples);
   });
 
-  it('returns AvatarGroup variables', async () => {
+  it('returns an empty local variable list for a corpus-owned component token', async () => {
     const payload = await buildComponentDocumentation(
       'avatar-group',
       await componentManifest('avatar-group'),
     );
 
-    expect(payload.variables).toEqual(['--cinder-avatar-group-overlap']);
-    expect(payload.rawArtifacts.variables).toEqual(['--cinder-avatar-group-overlap']);
+    expect(payload.variables).toEqual([]);
+    expect(payload.rawArtifacts.variables).toEqual([]);
   });
 
   it('rewrites component README links to playground component routes', async () => {

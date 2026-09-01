@@ -2316,11 +2316,11 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
         [
           {
             name: 'theme.light',
-            resolveReferences: () => () => ({ colorSpace: 'oklch', components: [0.9, 0.1, 250] }),
+            resolveReferences: () => ({ colorSpace: 'oklch', components: [0.9, 0.1, 250] }),
           },
           {
             name: 'theme.dark',
-            resolveReferences: () => () => ({ colorSpace: 'oklch', components: [0.4, 0.1, 250] }),
+            resolveReferences: () => ({ colorSpace: 'oklch', components: [0.4, 0.1, 250] }),
           },
         ],
         'motion.reduced',

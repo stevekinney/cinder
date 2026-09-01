@@ -1,7 +1,7 @@
 import { posix } from 'node:path';
 
 import { loadResolverDocument, loadTokenDocuments } from './load.ts';
-import { resolveDocuments } from './resolve.ts';
+import { mergeAndExpandExtends, resolveDocuments } from './resolve.ts';
 import {
   TokenValidationError,
   type ResolverDocument,
@@ -142,7 +142,10 @@ export function validateModifierTokenPaths(
       ),
     );
   const basePaths = new Set<string>();
-  for (const document of baseDocuments) collectDeclaredTokenPaths(document, '', basePaths);
+  // Expand the same `$extends` inheritance used by the resolver and generator
+  // before collecting paths. Otherwise a modifier that overrides an inherited
+  // member is reported as having no matching base token.
+  collectDeclaredTokenPaths(mergeAndExpandExtends(baseDocuments), '', basePaths);
   const issues = [];
   for (const [modifierName, modifier] of Object.entries(resolver.modifiers)) {
     for (const contextName of Object.keys(modifier.contexts)) {

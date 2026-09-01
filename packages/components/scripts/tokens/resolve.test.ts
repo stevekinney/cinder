@@ -1,5 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { mergeAndExpandExtends, mergeDocuments, resolveDocument } from './resolve.ts';
+import {
+  createValueResolver,
+  mergeAndExpandExtends,
+  mergeDocuments,
+  resolveDocument,
+} from './resolve.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 import { assertValidTokenDocument } from './validate.ts';
 
@@ -185,6 +190,19 @@ describe('DTCG resolver', () => {
       base: { $type: 'string', $value: 'literal' },
     });
     expect(resolved['copy']?.$value).toBe('#/base');
+  });
+
+  test('keeps completion state across createValueResolver calls', () => {
+    const resolver = createValueResolver([
+      {
+        base: { $type: 'string', $value: 'literal' },
+        alias: { $ref: '#/base' },
+        copy: { $type: 'string', $ref: '#/alias/$ref' },
+        trigger: { $value: '{copy}' },
+      },
+    ]);
+    expect(resolver('{trigger}')).toBe('#/base');
+    expect(resolver('{copy}')).toBe('#/base');
   });
 
   test('preserves lookup-scope deprecation through a shadowing group', () => {

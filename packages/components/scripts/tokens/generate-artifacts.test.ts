@@ -298,7 +298,7 @@ describe('CIN-30 review round 3', () => {
     // Exactly three unescaped cell delimiters on the row: leading, between the
     // two cells, and between value and description, plus the trailing one.
     const row = table.split('\n').find((line) => line.includes('--cinder-test-font-piped')) ?? '';
-    expect(row).toContain('A\\|B');
+    expect(row).toContain('A&#124;B');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
   });
 });
@@ -832,21 +832,25 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
     // Mirrors `tokens-doc-drift.test.ts`'s `extractDocTokens` decode exactly,
     // so this test fails the same way that test would if the two sides ever
     // disagreed again.
-    const decode = (body: string): string =>
-      body.replace(
-        /(\\*)\|/g,
-        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-      );
-
     for (const raw of ['foo|bar', 'foo\\|bar']) {
       const baseIndex = new Map<string, CorpusEntry>([recipeEntry('test.rt', '--test-rt', raw)]);
       const table = await renderDocTable(tableSection('--test-rt'), baseIndex, (value) => value);
       const row = rowFor(table, '--test-rt');
-      // Pipe-containing values use a plain Markdown cell so the escape is
-      // consumed by GFM instead of being displayed literally in a code span.
+      // Pipe-containing values use HTML entities so Markdown escapes and
+      // HTML-like text remain literal in the rendered documentation.
       const cellMatch = /\|\s*`--test-rt`\s*\|\s*((?:\\.|[^|])*)\s*\|/.exec(row);
       expect(cellMatch?.[1]).toBeDefined();
-      expect(decode(cellMatch![1]!.trim())).toBe(raw);
+      const encoded = cellMatch![1]!.trim().replace(/^`|`$/g, '');
+      expect(encoded.replaceAll('&#124;', '|')).toBe(raw);
     }
+  });
+
+  test('a pipe value is rendered as literal-safe HTML code', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      recipeEntry('test.literal', '--test-literal', '<em>|&</em>'),
+    ]);
+    const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
+    expect(table).toContain('&lt;em&gt;&#124;&amp;&lt;/em&gt;');
+    expect(table).not.toContain('<em>');
   });
 });
