@@ -151,8 +151,8 @@ export function validateModifierSetExpansionOrder(
               resolver,
               candidate.name,
               candidateContext,
-            ).map((candidateSource) =>
-              documentsByPath.get(normalizeSourcePath(candidateSource.$ref)),
+            ).map(
+              (candidateSource) => documentsByPath.get(normalizeSourcePath(candidateSource.$ref))!,
             );
             collectDeclaredTokenPaths(
               mergeAndExpandExtends(candidateDocuments, [...baseDocuments, ...candidateDocuments]),
