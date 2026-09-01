@@ -62,6 +62,7 @@ function issue(path: string, reason: string): never {
 
 export function tokenPathFromReference(reference: string): string {
   if (/^\{[^{}]+\}$/.test(reference)) return reference.slice(1, -1);
+  if (reference === '#/') return issue(reference, 'reference target does not exist');
   if (reference.startsWith('#/')) return pointerSegments(reference).join('.');
   return issue(reference, 'reference must use curly-brace or JSON Pointer syntax');
 }
@@ -354,8 +355,13 @@ function resolveReference(
     // rather than `token.$ref` itself, which may already have been deleted by
     // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
     // comment). Every other reserved property is untouched by resolution.
+    const requiresResolvedType =
+      readsRawMetadata &&
+      remainder[0] === '$type' &&
+      token?.$type === undefined &&
+      (!group || targetsRootToken);
     const resolvedToken = token
-      ? readsRawMetadata
+      ? readsRawMetadata && !requiresResolvedType
         ? token
         : resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : undefined;

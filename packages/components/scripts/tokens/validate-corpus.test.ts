@@ -449,6 +449,33 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     );
   });
 
+  test('allows a later modifier to re-expand a set untouched by intervening modifiers', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        layout: { sources: [{ $ref: 'layout.json' }] },
+        color: { sources: [{ $ref: 'color.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/layout' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/layout' },
+        { $ref: '#/sets/color' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['layout.json', { spacing: { $type: 'dimension', $value: { value: 4, unit: 'px' } } }],
+      ['color.json', { color: { $type: 'color', $value: 'red' } }],
+      ['dark.json', { color: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
   test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
     const contextOnly: ResolverDocument = {
       version: '2025.10',
@@ -563,6 +590,44 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
 
     expect(() => validateModifierTokenPaths(metadataOnly, documents)).toThrow(
       /group metadata affects base token "typography\.normal" without an explicit override/,
+    );
+  });
+
+  test('allows modifier group metadata that repeats the effective base metadata', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { group: { $type: 'number' as const, a: { $value: 1 }, b: { $value: 2 } } }],
+      ['light.json', { group: { $type: 'number' as const, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('rejects semantic metadata inherited by a modifier through $extends', () => {
+    const inheritedMetadata: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          metadata: { $type: 'fontWeight' as const },
+          group: { $type: 'fontFamily' as const, a: { $value: 'Inter' }, b: { $value: 'serif' } },
+        },
+      ],
+      ['light.json', { group: { $extends: '{metadata}', a: { $value: 500 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inheritedMetadata, documents)).toThrow(
+      /group metadata affects base token "group\.b" without an explicit override/,
     );
   });
 });

@@ -80,7 +80,10 @@ function reachableSetNames(resolver: ResolverDocument, rootName: string): Set<st
 }
 
 /** Rejects a later modifier re-expanding a base set after another modifier already overrode it. */
-export function validateModifierSetExpansionOrder(resolver: ResolverDocument): void {
+export function validateModifierSetExpansionOrder(
+  resolver: ResolverDocument,
+  documentsByPath?: Map<string, TokenDocument>,
+): void {
   const order = parseResolutionOrder(resolver);
   const basePositions = new Map<string, number>();
   const baseDocumentSets = new Map<string, Set<string>>();
@@ -114,9 +117,34 @@ export function validateModifierSetExpansionOrder(resolver: ResolverDocument): v
       for (const setName of referencedSetNames) {
         const basePosition = basePositions.get(setName);
         if (basePosition === undefined) continue;
-        const interveningModifier = order
-          .slice(basePosition + 1, position)
-          .find((candidate) => candidate.kind === 'modifiers');
+        const setTokenPaths = new Set<string>();
+        if (documentsByPath)
+          for (const source of expandSetSources(resolver, setName))
+            collectDeclaredTokenPaths(
+              documentsByPath.get(normalizeSourcePath(source.$ref)),
+              '',
+              setTokenPaths,
+            );
+        const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {
+          if (candidate.kind !== 'modifiers') return false;
+          if (!documentsByPath) return true;
+          const candidateModifier = resolver.modifiers[candidate.name];
+          if (!candidateModifier) return false;
+          return Object.keys(candidateModifier.contexts).some((candidateContext) => {
+            const affectedPaths = new Set<string>();
+            for (const candidateSource of expandContextSources(
+              resolver,
+              candidate.name,
+              candidateContext,
+            ))
+              collectDeclaredTokenPaths(
+                documentsByPath.get(normalizeSourcePath(candidateSource.$ref)),
+                '',
+                affectedPaths,
+              );
+            return [...affectedPaths].some((path) => setTokenPaths.has(path));
+          });
+        });
         if (!interveningModifier) continue;
         issues.push({
           path: `$.modifiers.${entry.name}.contexts.${contextName}`,
@@ -159,6 +187,29 @@ function collectSemanticGroupMetadataPaths(
   }
 }
 
+function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
+  const metadata = new Map<string, string>();
+  const visit = (node: unknown, prefix: string): void => {
+    if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+    if ('$value' in node || '$ref' in node) return;
+    const group = node as Record<string, unknown>;
+    metadata.set(
+      prefix,
+      JSON.stringify({
+        $type: group['$type'],
+        $deprecated: group['$deprecated'],
+        $extensions: group['$extensions'],
+      }),
+    );
+    for (const [name, child] of Object.entries(group)) {
+      if (name.startsWith('$')) continue;
+      visit(child, prefix ? `${prefix}.${name}` : name);
+    }
+  };
+  visit(value, '');
+  return metadata;
+}
+
 /** Validates modifier declarations against the token paths contributed by ordered base sets. */
 export function validateModifierTokenPaths(
   resolver: ResolverDocument,
@@ -176,6 +227,7 @@ export function validateModifierTokenPaths(
   // before collecting paths. Otherwise a modifier that overrides an inherited
   // member is reported as having no matching base token.
   collectDeclaredTokenPaths(mergeAndExpandExtends(baseDocuments), '', basePaths);
+  const baseMetadata = semanticGroupMetadataByPath(mergeAndExpandExtends(baseDocuments));
   const issues = [];
   for (const [modifierName, modifier] of Object.entries(resolver.modifiers)) {
     for (const contextName of Object.keys(modifier.contexts)) {
@@ -187,13 +239,14 @@ export function validateModifierTokenPaths(
       const semanticGroupMetadataPaths = new Set<string>();
       for (const document of contextDocuments) {
         collectDeclaredTokenPaths(document, '', explicitlyDeclaredPaths);
-        collectSemanticGroupMetadataPaths(document, '', semanticGroupMetadataPaths);
       }
-      collectDeclaredTokenPaths(
-        mergeAndExpandExtends(contextDocuments, [...baseDocuments, ...contextDocuments]),
-        '',
-        declaredPaths,
-      );
+      const expandedContext = mergeAndExpandExtends(contextDocuments, [
+        ...baseDocuments,
+        ...contextDocuments,
+      ]);
+      collectDeclaredTokenPaths(expandedContext, '', declaredPaths);
+      collectSemanticGroupMetadataPaths(expandedContext, '', semanticGroupMetadataPaths);
+      const contextMetadata = semanticGroupMetadataByPath(expandedContext);
       for (const tokenPath of declaredPaths) {
         if (basePaths.has(tokenPath)) continue;
         issues.push({
@@ -202,6 +255,7 @@ export function validateModifierTokenPaths(
         });
       }
       for (const groupPath of semanticGroupMetadataPaths) {
+        if (contextMetadata.get(groupPath) === baseMetadata.get(groupPath)) continue;
         const unoverriddenBasePath = [...basePaths].find(
           (basePath) =>
             (groupPath === '' || basePath === groupPath || basePath.startsWith(`${groupPath}.`)) &&
@@ -409,7 +463,7 @@ async function main(): Promise<void> {
   ];
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
-  validateModifierSetExpansionOrder(resolver);
+  validateModifierSetExpansionOrder(resolver, documentsByPath);
   validateModifierTokenPaths(resolver, documentsByPath);
 
   const referencedPaths = new Set<string>([

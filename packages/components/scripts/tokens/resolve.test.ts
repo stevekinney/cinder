@@ -4,6 +4,7 @@ import {
   mergeAndExpandExtends,
   mergeDocuments,
   resolveDocument,
+  tokenPathFromReference,
 } from './resolve.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 import { assertValidTokenDocument } from './validate.ts';
@@ -168,6 +169,20 @@ describe('DTCG resolver', () => {
     expect(() => resolveDocument({ $root: { $value: 1 }, copy: { $ref: '#/' } })).toThrow(
       /reference target does not exist/,
     );
+  });
+
+  test('rejects a bare JSON Pointer fragment when normalizing a generator path', () => {
+    expect(() => tokenPathFromReference('#/')).toThrow(/reference target does not exist/);
+  });
+
+  test('resolves an inferred alias type before a metadata pointer reads it', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 2 },
+      copy: { $type: 'string', $value: '#/alias/$type' },
+      alias: { $ref: '#/base' },
+    });
+
+    expect(resolved['copy']?.$value).toBe('number');
   });
 
   test('rejects a group pointer that omits the explicit $root segment', () => {
