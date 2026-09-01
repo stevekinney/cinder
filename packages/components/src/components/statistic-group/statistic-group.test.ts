@@ -351,7 +351,11 @@ describe('StatisticGroup', () => {
   });
 
   test('public CSS variables cover compact group spacing and tile padding', async () => {
-    expect(statGroupVariables).toEqual(['--cinder-statistic-group-gap']);
+    expect(statGroupVariables).toEqual([
+      '--cinder-statistic-group-card-padding',
+      '--cinder-statistic-group-gap',
+      '--cinder-statistic-group-shared-cell-padding',
+    ]);
 
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
     expect(css).toContain('gap: var(--cinder-statistic-group-gap,');
