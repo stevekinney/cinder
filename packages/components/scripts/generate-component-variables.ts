@@ -6,7 +6,7 @@
  * consumption are correctly excluded.
  */
 
-import { basename, join } from 'node:path';
+import { basename, dirname, join } from 'node:path';
 
 import { readdir } from 'node:fs/promises';
 import { parse, type AtRule, type Declaration } from 'postcss';
@@ -14,6 +14,15 @@ import { parse, type AtRule, type Declaration } from 'postcss';
 const PREFIX = '--cinder-';
 
 type RegistryEntry = { component?: unknown; cssProperty?: unknown; public?: unknown };
+const registryCache = new Map<string, Promise<Set<string>>>();
+
+export function resolveRegistryPath(componentDirectory: string): string {
+  const packageRoot =
+    basename(dirname(componentDirectory)) === 'experimental'
+      ? join(componentDirectory, '..', '..', '..', '..')
+      : join(componentDirectory, '..', '..', '..');
+  return join(packageRoot, 'src', 'tokens', 'registry.generated.json');
+}
 
 /**
  * Corpus-owned tokens are emitted by the shared `:root` stylesheet, so they
@@ -21,36 +30,33 @@ type RegistryEntry = { component?: unknown; cssProperty?: unknown; public?: unkn
  * component variable entrypoint nevertheless: the variables subpath is the
  * public discovery surface consumed by the CLI, MCP, and generated README.
  */
-async function readCorpusVariables(
+export async function readCorpusVariables(
   componentDirectory: string,
   componentName: string,
 ): Promise<Set<string>> {
-  const registryPath = join(
-    componentDirectory,
-    '..',
-    '..',
-    '..',
-    'src',
-    'tokens',
-    'registry.generated.json',
-  );
-  const registryFile = Bun.file(registryPath);
-  if (!(await registryFile.exists())) return new Set();
-
-  const parsed: unknown = JSON.parse(await registryFile.text());
-  if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return new Set();
-  if (!Array.isArray(parsed.entries)) return new Set();
-
-  return new Set(
-    parsed.entries
-      .filter((entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null)
-      .filter((entry) => entry.component === componentName && entry.public === true)
-      .map((entry) => entry.cssProperty)
-      .filter(
-        (property): property is string =>
-          typeof property === 'string' && property.startsWith(PREFIX),
-      ),
-  );
+  const registryPath = resolveRegistryPath(componentDirectory);
+  let registryPromise = registryCache.get(registryPath);
+  if (!registryPromise) {
+    registryPromise = (async () => {
+      const registryFile = Bun.file(registryPath);
+      if (!(await registryFile.exists())) return new Set<string>();
+      const parsed: unknown = JSON.parse(await registryFile.text());
+      if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return new Set();
+      if (!Array.isArray(parsed.entries)) return new Set();
+      return new Set(
+        parsed.entries
+          .filter((entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null)
+          .filter((entry) => entry.component === componentName && entry.public === true)
+          .map((entry) => entry.cssProperty)
+          .filter(
+            (property): property is string =>
+              typeof property === 'string' && property.startsWith(PREFIX),
+          ),
+      );
+    })();
+    registryCache.set(registryPath, registryPromise);
+  }
+  return registryPromise;
 }
 
 export interface VariablesResult {
