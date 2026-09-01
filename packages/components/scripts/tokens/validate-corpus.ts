@@ -187,21 +187,24 @@ function collectSemanticGroupMetadataPaths(
   }
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
 function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
   const metadata = new Map<string, string>();
   const visit = (node: unknown, prefix: string): void => {
-    if (!node || typeof node !== 'object' || Array.isArray(node)) return;
+    if (!isRecord(node)) return;
     if ('$value' in node || '$ref' in node) return;
-    const group = node as Record<string, unknown>;
     metadata.set(
       prefix,
       JSON.stringify({
-        $type: group['$type'],
-        $deprecated: group['$deprecated'],
-        $extensions: group['$extensions'],
+        $type: node['$type'],
+        $deprecated: node['$deprecated'],
+        $extensions: node['$extensions'],
       }),
     );
-    for (const [name, child] of Object.entries(group)) {
+    for (const [name, child] of Object.entries(node)) {
       if (name.startsWith('$')) continue;
       visit(child, prefix ? `${prefix}.${name}` : name);
     }
