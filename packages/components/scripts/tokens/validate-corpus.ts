@@ -106,9 +106,10 @@ export function validateModifierSetExpansionOrder(
     const modifier = resolver.modifiers[entry.name];
     if (!modifier) continue;
     for (const [contextName, sources] of Object.entries(modifier.contexts)) {
-      const referencedSetNames = new Set(
+      const internallyReferencedSetNames = new Set(
         internalSetNames(sources).flatMap((setName) => [...reachableSetNames(resolver, setName)]),
       );
+      const referencedSetNames = new Set(internallyReferencedSetNames);
       const directDocumentPaths = new Set(
         sources
           .filter((source) => !isInternalReference(source.$ref))
@@ -126,7 +127,8 @@ export function validateModifierSetExpansionOrder(
         if (documentsByPath)
           for (const source of expandSetSources(resolver, setName)) {
             const sourcePath = normalizeSourcePath(source.$ref);
-            if (!referencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath)) continue;
+            if (!internallyReferencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath))
+              continue;
             collectDeclaredTokenPaths(documentsByPath.get(sourcePath), '', setTokenPaths);
           }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {

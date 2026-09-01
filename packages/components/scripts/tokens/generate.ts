@@ -1495,13 +1495,37 @@ export async function buildTokensBaseCss(
     baseIndex,
     lightResolveReferences,
   );
-  const reducedMotionDeclarations = renderOverrideDeclarations(
+  const reducedMotionAliases = withDependentBaseAliases(
     reducedMotionOverrides,
     baseIndex,
     reducedMotionResolveReferences,
   );
-  const forcedReducedMotionDeclarations = renderOverrideDeclarations(
+  const forcedReducedMotionAliases = withDependentBaseAliases(
     forcedReducedMotionOverrides,
+    baseIndex,
+    forcedReducedMotionResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    reducedMotionAliases,
+    baseIndex,
+    scopeIndexFromDocuments(systemReducedMotionScopeDocuments),
+    'motion.reduced dependent aliases',
+    reducedMotionResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    forcedReducedMotionAliases,
+    baseIndex,
+    scopeIndexFromDocuments(systemForcedReducedMotionScopeDocuments),
+    'motion.forced-reduced-motion dependent aliases',
+    forcedReducedMotionResolveReferences,
+  );
+  const reducedMotionDeclarations = renderOverrideDeclarations(
+    reducedMotionAliases,
+    baseIndex,
+    reducedMotionResolveReferences,
+  );
+  const forcedReducedMotionDeclarations = renderOverrideDeclarations(
+    forcedReducedMotionAliases,
     baseIndex,
     forcedReducedMotionResolveReferences,
   );
