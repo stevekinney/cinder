@@ -298,7 +298,8 @@ describe('CIN-30 review round 3', () => {
     // Exactly three unescaped cell delimiters on the row: leading, between the
     // two cells, and between value and description, plus the trailing one.
     const row = table.split('\n').find((line) => line.includes('--cinder-test-font-piped')) ?? '';
-    expect(row).toContain('A&#x7c;B');
+    expect(row).toContain('<code>&#39;A&#x7c;B&#39;</code>');
+    expect(row).not.toContain('`&#39;A&#x7c;B&#39;`');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
   });
 
@@ -867,11 +868,11 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       const baseIndex = new Map<string, CorpusEntry>([recipeEntry('test.rt', '--test-rt', raw)]);
       const table = await renderDocTable(tableSection('--test-rt'), baseIndex, (value) => value);
       const row = rowFor(table, '--test-rt');
-      // Pipe-containing values use HTML entities so Markdown escapes and
-      // HTML-like text remain literal in the rendered documentation.
+      // Pipe-containing values use an HTML code element so entities render as
+      // literal characters without becoming Markdown table delimiters.
       const cellMatch = /\|\s*`--test-rt`\s*\|\s*((?:\\.|[^|])*)\s*\|/.exec(row);
       expect(cellMatch?.[1]).toBeDefined();
-      const encoded = cellMatch![1]!.trim().replace(/^`|`$/g, '');
+      const encoded = cellMatch![1]!.trim().replace(/^<code>|<\/code>$/g, '');
       expect(encoded.replaceAll('&#x7c;', '|')).toBe(raw);
     }
   });
@@ -881,7 +882,7 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       recipeEntry('test.literal', '--test-literal', '*<em>`|&</em>*'),
     ]);
     const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
-    expect(table).toContain('*&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;*');
+    expect(table).toContain('<code>_&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;_</code>');
     expect(table).not.toContain('<em>');
   });
 });

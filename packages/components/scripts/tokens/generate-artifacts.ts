@@ -860,10 +860,10 @@ function escapeHtml(text: string): string {
 
 function renderValueCell(value: string): string {
   // Backslash-escaped pipes cannot be displayed faithfully inside a Markdown
-  // code span: CommonMark preserves the escape characters there. HTML entities
-  // display the exact value while escaping both Markdown and HTML metacharacters,
-  // so emphasis-like or tag-like token values stay literal.
-  if (value.includes('|')) return toCodeSpan(escapeHtml(value));
+  // code span, and character references are not decoded inside code spans.
+  // An HTML code element keeps the table delimiter inert while the renderer
+  // decodes entities back to the exact literal value.
+  if (value.includes('|')) return `<code>${escapeHtml(value)}</code>`;
   return toCodeSpan(value);
 }
 
