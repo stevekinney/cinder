@@ -62,6 +62,7 @@ import {
   rewriteRepositoryRelativeReadmeLinks,
   runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
+  warmPageServerRenderer,
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
@@ -2077,4 +2078,57 @@ describe('/page/:name server-rendering surfaces', () => {
     // page's.
     expect(preview.length).toBeLessThan(canonical.length / 2);
   }, 60_000);
+});
+
+describe('warmPageServerRenderer', () => {
+  /**
+   * `startServer`'s warmup prepared only the SHELL renderer, so `/ping` reported
+   * ready while `page-server-entry.ts` was still uncompiled and the first
+   * `GET /page/:name` paid a full uncached `Bun.build()`. `validate-playground.ts`
+   * crawls every route under a fixed 5s timeout with no warmup and no retry, so
+   * the alphabetically-first component absorbed that compile and intermittently
+   * blew the budget — turning main red after a merge, since that crawl runs only
+   * on main and never on pull requests.
+   */
+  it('compiles the page server renderer so the first request does not pay for it', async () => {
+    let loadCalls = 0;
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => {
+        loadCalls += 1;
+        return {};
+      },
+      () => {
+        resetCalls += 1;
+      },
+    );
+
+    expect(loadCalls).toBe(1);
+    expect(resetCalls).toBe(0);
+  });
+
+  /**
+   * A warmup failure must not be fatal and must not be cached. `loadPageServerRenderer`
+   * resolves build errors against its last-good renderer, and at startup there is no
+   * last-good — so a genuine failure rejects. Caching that rejected promise would
+   * poison every later request, so the memo slot is dropped and the first real request
+   * retries exactly as it did before this warmup existed.
+   */
+  it('drops the memo slot on failure instead of caching a rejection, and does not throw', async () => {
+    let resetCalls = 0;
+
+    const warmup = warmPageServerRenderer(
+      async () => {
+        throw new Error('page server bundle failed');
+      },
+      () => {
+        resetCalls += 1;
+      },
+    );
+
+    expect(warmup).resolves.toBeUndefined();
+    await warmup;
+    expect(resetCalls).toBe(1);
+  });
 });

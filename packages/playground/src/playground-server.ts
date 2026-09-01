@@ -119,6 +119,7 @@ import {
   loadShellServerRenderer,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
+  resetPageServerRendererPromise,
   resetShellRendererWarmupState,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
@@ -1353,6 +1354,45 @@ export async function runGenerationCheckedWarmup<T>(
   };
 }
 
+/**
+ * Compile the documentation-page server renderer before readiness is advertised.
+ *
+ * `startServer`'s warmup already prepares the SHELL renderer, whose own comment
+ * promises requests "must never pay the cold Svelte server compilation cost on
+ * the first navigation". That guarantee did not actually cover `GET /page/:name`:
+ * {@link loadPageServerRenderer} is memoized only on its first CALL, and its one
+ * call site is the request handler itself. So `/ping` answered 200 -- flipping
+ * `startupReady` -- while `page-server-entry.ts` was still uncompiled, and the
+ * first page request paid a full uncached `Bun.build()` of that entry.
+ *
+ * That is a latency gap, not a correctness one, but `validate-playground.ts`
+ * crawls every route under a fixed 5s `AbortSignal.timeout` with no warmup and
+ * no retry, so the alphabetically-first component absorbed the entire compile
+ * and intermittently blew the budget -- turning main red after a merge, since
+ * that crawl runs only on main and never on pull requests.
+ *
+ * Failure is deliberately NOT fatal. `loadPageServerRenderer` already resolves
+ * build errors against its last-good renderer, and at startup there is no
+ * last-good, so a genuine failure rejects. Caching that rejection would poison
+ * every later request, so the memo slot is dropped and the first real request
+ * retries exactly as it does today -- this only moves a successful compile
+ * earlier, it never makes a broken build worse.
+ */
+export async function warmPageServerRenderer(
+  loadRenderer: () => Promise<unknown> = loadPageServerRenderer,
+  resetRenderer: () => void = resetPageServerRendererPromise,
+): Promise<void> {
+  try {
+    await loadRenderer();
+  } catch (error) {
+    console.warn(
+      '[playground] page server renderer warmup failed; the first /page request will retry:',
+      error,
+    );
+    resetRenderer();
+  }
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   startupReady = false;
@@ -1508,6 +1548,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await dispose();
     throw new Error('[playground] shell renderer invalidated repeatedly; refusing readiness');
   }
+  await warmPageServerRenderer();
   startupReady = true;
   return {
     port: actualPort,
