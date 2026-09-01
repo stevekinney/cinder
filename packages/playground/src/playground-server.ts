@@ -1102,7 +1102,7 @@ const EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL = 24;
 /** Reclaim completed compiler graphs before they accumulate into a long-tail stall. */
 export function releaseIncrementalPrebuildMemory(
   completedBuilds: number,
-  collectGarbage: (force: boolean) => void = Bun.gc,
+  collectGarbage: (force: boolean) => void = (force) => Bun.gc?.(force),
 ): void {
   if (completedBuilds % EAGER_PREBUILD_GARBAGE_COLLECTION_INTERVAL === 0) {
     collectGarbage(true);
@@ -1245,7 +1245,7 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
  * bundle and manifest caches hold the durable artifacts the server needs.
  */
 export function releaseEagerPrebuildMemory(
-  collectGarbage: (force: boolean) => void = Bun.gc,
+  collectGarbage: (force: boolean) => void = (force) => Bun.gc?.(force),
 ): void {
   collectGarbage(true);
 }

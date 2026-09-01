@@ -26,10 +26,10 @@ import {
   assertUniqueCssProperties,
   collectEntries,
   documentsForResolutionOrder,
-  entryContainsReference,
   loadCorpus,
   modifierValuesForContext,
   requireDocument,
+  withDependentBaseAliases,
   type CorpusEntry,
 } from './generate.ts';
 import { createValueResolver, mergeAndExpandExtends } from './resolve.ts';
@@ -191,6 +191,8 @@ export function themeAwarePaths(
   if (!themeModifier) return new Set();
 
   const aware = new Set<string>();
+  const baseDocuments = buildBaseDocuments(resolver, documentsByPath);
+  const baseIndex = buildBaseIndex(resolver, documentsByPath);
   // Only the contexts buildTokensBaseCss actually emits a selector for. The
   // registry contract defines themeAware as "light or dark overrides this", so
   // counting a future third context (say `high-contrast`) would advertise
@@ -214,11 +216,13 @@ export function themeAwarePaths(
     );
     const overrides = new Map<string, CorpusEntry>();
     collectEntries(mergeAndExpandExtends(ownDocuments, scopeDocuments), '', undefined, overrides);
-    for (const path of overrides.keys()) aware.add(path);
-  }
-  const baseIndex = buildBaseIndex(resolver, documentsByPath);
-  for (const [path, entry] of baseIndex) {
-    if (entryContainsReference(entry)) aware.add(path);
+    for (const path of withDependentBaseAliases(
+      overrides,
+      baseIndex,
+      createValueResolver(baseDocuments),
+      createValueResolver(scopeDocuments),
+    ).keys())
+      aware.add(path);
   }
   return aware;
 }

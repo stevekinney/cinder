@@ -2325,15 +2325,15 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
     expect(css).toContain(":root[data-reduced-motion='on'][data-theme='light']");
   });
 
-  test('scoped theme blocks recompute dependent component aliases', async () => {
+  test('scoped theme blocks do not mask ancestor overrides for dynamic component aliases', async () => {
     const generatedOutputs = await buildGeneratedOutputs();
     const css = generatedOutputs.get(tokensBaseCssPath)!;
     const darkBlock = css.match(/\n\[data-theme='dark'\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
     const lightBlock = css.match(/\n\[data-theme='light'\]\s*\{([\s\S]*?)\n\}/)?.[1] ?? '';
 
     for (const block of [darkBlock, lightBlock]) {
-      expect(block).toContain('--cinder-file-upload-background: var(--cinder-surface);');
-      expect(block).toContain('--cinder-kanban-card-background: var(--cinder-surface);');
+      expect(block).not.toContain('--cinder-file-upload-background:');
+      expect(block).not.toContain('--cinder-kanban-card-background:');
     }
   });
 

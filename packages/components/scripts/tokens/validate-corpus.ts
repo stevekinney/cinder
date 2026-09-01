@@ -133,13 +133,19 @@ export function validateModifierSetExpansionOrder(
         const basePosition = basePositions.get(setName);
         if (basePosition === undefined) continue;
         const setTokenPaths = new Set<string>();
-        if (documentsByPath)
-          for (const source of expandSetSources(resolver, setName)) {
+        if (documentsByPath) {
+          const resetDocuments = expandSetSources(resolver, setName).flatMap((source) => {
             const sourcePath = normalizeSourcePath(source.$ref);
             if (!internallyReferencedSetNames.has(setName) && !directDocumentPaths.has(sourcePath))
-              continue;
-            collectDeclaredTokenPaths(documentsByPath.get(sourcePath), '', setTokenPaths);
-          }
+              return [];
+            return [documentsByPath.get(sourcePath)!];
+          });
+          collectDeclaredTokenPaths(
+            mergeAndExpandExtends(resetDocuments, [...baseDocuments, ...resetDocuments]),
+            '',
+            setTokenPaths,
+          );
+        }
         const interveningModifier = order.slice(basePosition + 1, position).find((candidate) => {
           if (candidate.kind !== 'modifiers') return false;
           if (!documentsByPath) return true;

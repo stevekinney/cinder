@@ -771,17 +771,18 @@ function renderOverrideDeclarations(
   return lines.join('\n');
 }
 
-function withDependentBaseAliases(
+export function withDependentBaseAliases(
   overrides: Map<string, CorpusEntry>,
   baseIndex: Map<string, CorpusEntry>,
+  baseResolveReferences: ValueResolver,
   resolveReferences: ValueResolver,
 ): Map<string, CorpusEntry> {
   const scoped = new Map(overrides);
   for (const [path, entry] of baseIndex) {
     if (scoped.has(path)) continue;
     if (
-      serializeEntryValue(entry, baseIndex, resolveReferences).includes('var(') ||
-      entryContainsReference(entry)
+      serializeEntryValue(entry, baseIndex, baseResolveReferences) !==
+      serializeEntryValue(entry, baseIndex, resolveReferences)
     ) {
       scoped.set(path, entry);
     }
@@ -1486,43 +1487,59 @@ export async function buildTokensBaseCss(
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
   const darkDeclarations = renderOverrideDeclarations(
-    withDependentBaseAliases(darkOverrides, baseIndex, darkResolveReferences),
+    withDependentBaseAliases(
+      darkOverrides,
+      baseIndex,
+      baseResolveReferences,
+      darkResolveReferences,
+    ),
     baseIndex,
     darkResolveReferences,
   );
   const lightDeclarations = renderOverrideDeclarations(
-    withDependentBaseAliases(lightOverrides, baseIndex, lightResolveReferences),
+    withDependentBaseAliases(
+      lightOverrides,
+      baseIndex,
+      baseResolveReferences,
+      lightResolveReferences,
+    ),
     baseIndex,
     lightResolveReferences,
   );
   const reducedMotionAliases = withDependentBaseAliases(
     reducedMotionOverrides,
     baseIndex,
+    baseResolveReferences,
     reducedMotionResolveReferences,
   );
   const forcedReducedMotionAliases = withDependentBaseAliases(
     forcedReducedMotionOverrides,
     baseIndex,
+    baseResolveReferences,
     forcedReducedMotionResolveReferences,
   );
   const lightReducedMotionAliases = withDependentBaseAliases(
     reducedMotionOverrides,
     baseIndex,
+    lightResolveReferences,
     lightReducedMotionResolveReferences,
   );
   const darkReducedMotionAliases = withDependentBaseAliases(
     reducedMotionOverrides,
     baseIndex,
+    darkResolveReferences,
     darkReducedMotionResolveReferences,
   );
   const lightForcedReducedMotionAliases = withDependentBaseAliases(
     forcedReducedMotionOverrides,
     baseIndex,
+    lightResolveReferences,
     lightForcedReducedMotionResolveReferences,
   );
   const darkForcedReducedMotionAliases = withDependentBaseAliases(
     forcedReducedMotionOverrides,
     baseIndex,
+    darkResolveReferences,
     darkForcedReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
