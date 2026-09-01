@@ -734,11 +734,20 @@ function refsFor(
   return refs.map((ref) => requireDocument(documentsByPath, ref.$ref));
 }
 
+export function isRootDeclaredEntry(entry: CorpusEntry): boolean {
+  const deferredComponentAliasFamilies = new Set(['accordion-item']);
+  return !(
+    entry.component &&
+    deferredComponentAliasFamilies.has(entry.component) &&
+    !entry.cssRecipe &&
+    isAliasReference(entry.value)
+  );
+}
+
 function renderBaseDeclarations(
   baseIndex: Map<string, CorpusEntry>,
   resolveReferences: ValueResolver,
 ): string {
-  const deferredComponentAliasFamilies = new Set(['accordion-item']);
   const lines: string[] = [];
   for (const entry of baseIndex.values()) {
     if (!entry.cssProperty) {
@@ -747,13 +756,7 @@ function renderBaseDeclarations(
     // Component aliases are defaults at their consumption sites, not root
     // declarations. Deferring them lets both the public component property and
     // its referenced foundation token respond to scoped ancestor overrides.
-    if (
-      entry.component &&
-      deferredComponentAliasFamilies.has(entry.component) &&
-      !entry.cssRecipe &&
-      isAliasReference(entry.value)
-    )
-      continue;
+    if (!isRootDeclaredEntry(entry)) continue;
     if (entry.description) lines.push(`/* ${sanitizeComment(entry.description)} */`);
     const value = serializeEntryValue(entry, baseIndex, resolveReferences);
     const stylelintDisable = stylelintDisableCommentFor(value);
