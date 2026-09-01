@@ -855,7 +855,7 @@ function escapeHtml(text: string): string {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#39;')
-    .replaceAll('|', '&#124;');
+    .replaceAll('|', '&#x7c;');
 }
 
 function renderValueCell(value: string): string {
@@ -863,7 +863,7 @@ function renderValueCell(value: string): string {
   // code span: CommonMark preserves the escape characters there. HTML entities
   // display the exact value while escaping both Markdown and HTML metacharacters,
   // so emphasis-like or tag-like token values stay literal.
-  if (value.includes('|')) return escapeHtml(value);
+  if (value.includes('|')) return toCodeSpan(escapeHtml(value));
   return toCodeSpan(value);
 }
 

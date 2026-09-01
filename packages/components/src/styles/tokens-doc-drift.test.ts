@@ -140,16 +140,25 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
           `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
             `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
         );
-      decoded = body.replace(
-        /(\\*)\|/g,
-        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-      );
+      decoded = body.includes('&#x7c;')
+        ? body
+            .replaceAll('&#x7c;', '|')
+            .replaceAll('&#39;', "'")
+            .replaceAll('&quot;', '"')
+            .replaceAll('&gt;', '>')
+            .replaceAll('&lt;', '<')
+            .replaceAll('&amp;', '&')
+        : body.replace(
+            /(\\*)\|/g,
+            (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+          );
     } else if (htmlBody !== undefined) {
       // The HTML fallback is the only branch whose content is entity-escaped.
       // Decode after branch selection so decoded `&#124;` cannot be mistaken for
       // a raw Markdown table delimiter by the invariant above.
       decoded = htmlBody
         .replaceAll('&#124;', '|')
+        .replaceAll('&#x7c;', '|')
         .replaceAll('&#39;', "'")
         .replaceAll('&quot;', '"')
         .replaceAll('&gt;', '>')
