@@ -46,6 +46,15 @@ describe('DTCG resolver', () => {
     });
   });
 
+  test('resolves a property-level $value pointer through a later-declared target alias', () => {
+    const resolved = resolveDocument({
+      copy: { $type: 'number', $value: '#/source/$value/value' },
+      source: { $type: 'dimension', $value: '#/late/$value' },
+      late: { $type: 'dimension', $value: { value: 3, unit: 'px' } },
+    });
+    expect(resolved.copy?.$value).toBe(3);
+  });
+
   test('resolves a $ref pointer into token metadata other than $value', () => {
     // The earlier property-level fix only special-cased a remainder starting
     // with `$value`; any other reserved token property ($description here,

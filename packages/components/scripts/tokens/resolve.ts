@@ -268,8 +268,11 @@ function resolveReference(
     // selects that base.
     const remainder = segments.slice(1);
     const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
+    const readsRawMetadata = usesTokenObjectBase && remainder[0] !== '$value';
     const resolvedToken = usesTokenObjectBase
-      ? tokens.get('')!
+      ? readsRawMetadata
+        ? tokens.get('')!
+        : resolveToken('', tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : resolveToken('', tokens, rawRefs, rootTokenPaths, resolving, groups, completed);
     const propertyValue =
       remainder[0] === '$ref'
@@ -324,6 +327,7 @@ function resolveReference(
       reference.startsWith('#/') &&
       typeof remainder[0] === 'string' &&
       remainder[0].startsWith('$');
+    const readsRawMetadata = usesTokenObjectBase && remainder[0] !== '$value';
     // `$ref` is unique among token metadata: `resolveToken` deletes it from
     // the token object once resolved (see `resolveRefToken`'s doc comment --
     // deliberate, so downstream consumers never see a leftover alias pointer
@@ -334,7 +338,7 @@ function resolveReference(
     // an EARLIER, unrelated resolution of the same path (see `RawRefs`'s doc
     // comment). Every other reserved property is untouched by resolution.
     const resolvedToken = token
-      ? usesTokenObjectBase
+      ? readsRawMetadata
         ? token
         : resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : undefined;

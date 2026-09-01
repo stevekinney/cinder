@@ -95,7 +95,10 @@ export function validateModifierSetExpansionOrder(resolver: ResolverDocument): v
     const modifier = resolver.modifiers[entry.name];
     if (!modifier) continue;
     for (const [contextName, sources] of Object.entries(modifier.contexts)) {
-      for (const setName of internalSetNames(sources)) {
+      const referencedSetNames = internalSetNames(sources).flatMap((setName) => [
+        ...reachableSetNames(resolver, setName),
+      ]);
+      for (const setName of referencedSetNames) {
         const basePosition = basePositions.get(setName);
         if (basePosition === undefined) continue;
         const interveningModifier = order

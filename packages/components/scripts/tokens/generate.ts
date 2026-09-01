@@ -1204,8 +1204,27 @@ export async function buildTokensBaseCss(
   const darkScopeIndex = new Map<string, CorpusEntry>();
   collectEntries(mergeAndExpandExtends(darkScopeDocuments), '', undefined, darkScopeIndex);
 
-  assertUniqueOverrideCssProperties(lightOverrides, baseIndex, lightScopeIndex, 'theme.light');
-  assertUniqueOverrideCssProperties(darkOverrides, baseIndex, darkScopeIndex, 'theme.dark');
+  // Use the exact composed scope for uniqueness serialization as well as CSS
+  // emission. This matters for nested/property references: resolving against
+  // base-only (or the wrong modifier combination) can produce a different
+  // emitted value while the renderer uses the composed scope.
+  const lightResolveReferences = createValueResolver(lightScopeDocuments);
+  const darkResolveReferences = createValueResolver(darkScopeDocuments);
+
+  assertUniqueOverrideCssProperties(
+    lightOverrides,
+    baseIndex,
+    lightScopeIndex,
+    'theme.light',
+    lightResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    darkOverrides,
+    baseIndex,
+    darkScopeIndex,
+    'theme.dark',
+    darkResolveReferences,
+  );
   // The motion blocks are emitted as a fixed `@media`/attribute selector that
   // applies regardless of which `[data-theme]` is active -- unlike theme
   // (which always cascades BEFORE motion, so a theme block's own internal
@@ -1286,29 +1305,41 @@ export async function buildTokensBaseCss(
     undefined,
     darkForcedReducedMotionScopeIndex,
   );
+  const lightReducedMotionResolveReferences = createValueResolver(lightReducedMotionScopeDocuments);
+  const darkReducedMotionResolveReferences = createValueResolver(darkReducedMotionScopeDocuments);
+  const lightForcedReducedMotionResolveReferences = createValueResolver(
+    lightForcedReducedMotionScopeDocuments,
+  );
+  const darkForcedReducedMotionResolveReferences = createValueResolver(
+    darkForcedReducedMotionScopeDocuments,
+  );
   assertUniqueOverrideCssProperties(
     reducedMotionOverrides,
     baseIndex,
     lightReducedMotionScopeIndex,
     'motion.reduced (light theme)',
+    lightReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     reducedMotionOverrides,
     baseIndex,
     darkReducedMotionScopeIndex,
     'motion.reduced (dark theme)',
+    darkReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
     lightForcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion (light theme)',
+    lightForcedReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
     darkForcedReducedMotionScopeIndex,
     'motion.forced-reduced-motion (dark theme)',
+    darkForcedReducedMotionResolveReferences,
   );
 
   const systemReducedMotionScopeDocuments = documentsForSystemMotionScope(
@@ -1326,31 +1357,23 @@ export async function buildTokensBaseCss(
     baseIndex,
     scopeIndexFromDocuments(systemReducedMotionScopeDocuments),
     'motion.reduced (system theme)',
+    createValueResolver(systemReducedMotionScopeDocuments),
   );
   assertUniqueOverrideCssProperties(
     forcedReducedMotionOverrides,
     baseIndex,
     scopeIndexFromDocuments(systemForcedReducedMotionScopeDocuments),
     'motion.forced-reduced-motion (system theme)',
+    createValueResolver(systemForcedReducedMotionScopeDocuments),
   );
   // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
   // a nested reference inside a context's composite value may target a token that a DIFFERENT
   // modifier's document overrides (a reduced-motion composite referencing a token the dark theme
   // also overrides), and a resolver built from base-plus-this-context-alone would miss that
   // override entirely and silently substitute the base/foundation value.
-  const lightResolveReferences = createValueResolver(lightScopeDocuments);
-  const darkResolveReferences = createValueResolver(darkScopeDocuments);
   const reducedMotionResolveReferences = createValueResolver(reducedMotionScopeDocuments);
   const forcedReducedMotionResolveReferences = createValueResolver(
     forcedReducedMotionScopeDocuments,
-  );
-  const lightReducedMotionResolveReferences = createValueResolver(lightReducedMotionScopeDocuments);
-  const darkReducedMotionResolveReferences = createValueResolver(darkReducedMotionScopeDocuments);
-  const lightForcedReducedMotionResolveReferences = createValueResolver(
-    lightForcedReducedMotionScopeDocuments,
-  );
-  const darkForcedReducedMotionResolveReferences = createValueResolver(
-    darkForcedReducedMotionScopeDocuments,
   );
 
   assertOverrideScopeConsistency(
@@ -1397,6 +1420,10 @@ export async function buildTokensBaseCss(
         name: 'theme.dark',
         resolveReferences: darkReducedMotionResolveReferences,
       },
+      {
+        name: 'theme.system',
+        resolveReferences: createValueResolver(systemReducedMotionScopeDocuments),
+      },
     ],
     'motion.reduced',
   );
@@ -1411,6 +1438,10 @@ export async function buildTokensBaseCss(
       {
         name: 'theme.dark',
         resolveReferences: darkForcedReducedMotionResolveReferences,
+      },
+      {
+        name: 'theme.system',
+        resolveReferences: createValueResolver(systemForcedReducedMotionScopeDocuments),
       },
     ],
     'motion.forced-reduced-motion',

@@ -20,12 +20,7 @@ import {
   serializeTypedValue,
   tokensBaseCssPath,
 } from './generate.ts';
-import {
-  createValueResolver,
-  mergeAndExpandExtends,
-  resolveDocuments,
-  type ValueResolver,
-} from './resolve.ts';
+import { createValueResolver, mergeAndExpandExtends, type ValueResolver } from './resolve.ts';
 import type { ResolverDocument, TokenDocument } from './types.ts';
 
 async function readCommitted(paths: Iterable<string>): Promise<Map<string, string | undefined>> {
@@ -1171,35 +1166,12 @@ describe('F2: a nested reference inside a motion override resolves against the t
     return { resolver, documentsByPath };
   }
 
-  test("the reduced-motion CSS block agrees with the generator's own dark+reduced resolved combo", async () => {
+  test('rejects a motion value that agrees across explicit themes but differs in system mode', async () => {
     const { resolver, documentsByPath } = motionNestedReferenceFixture();
 
-    const css = await buildTokensBaseCss(resolver, documentsByPath);
-    const mediaBlock = /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\{([^}]*)\}\s*\}/.exec(
-      css,
-    )?.[1];
-    expect(mediaBlock).toBeDefined();
-    const declaredValue = /--test-composite:\s*([^;]+);/.exec(mediaBlock!)?.[1];
-    expect(declaredValue).toBeDefined();
-
-    // The generator's OWN OTHER output for the exact combo the media block is theoretically
-    // standing in for (dark theme, reduced motion): resolve the same documents `tokens:validate`
-    // would resolve for that full combo (`documentsForResolutionOrder` + `resolveDocuments`, the
-    // SAME machinery `buildResolvedContexts` uses for the committed JSON snapshots), and
-    // serialize the fully-resolved value the same way `buildTokensBaseCss` does. Pre-fix, the CSS
-    // side bakes in the untouched FOUNDATION value (30%) because the resolver it used never saw
-    // either theme document; post-fix the two agree.
-    const combo = documentsForResolutionOrder(resolver, documentsByPath, {
-      theme: 'dark',
-      motion: 'reduced',
-    });
-    const resolved = resolveDocuments(combo);
-    const resolvedComposite = resolved['test.composite'];
-    expect(resolvedComposite).toBeDefined();
-    const expectedValue = serializeTypedValue('color', resolvedComposite!.$value, 'test.composite');
-
-    expect(declaredValue).toBe(expectedValue);
-    expect(declaredValue).not.toContain('30%');
+    await expect(buildTokensBaseCss(resolver, documentsByPath)).rejects.toThrow(
+      /theme\.system=oklch\(30% 0\.1 250\)/,
+    );
   });
 });
 
@@ -1779,8 +1751,9 @@ describe('CIN-483: duplicate cssProperty checks use emitted values', () => {
     const documents: TokenDocument[] = [
       {
         dimension: {
-          a: { $type: 'dimension', $value: { value: 1, unit: 'rem' } },
-          b: { $type: 'dimension', $value: { value: 1, unit: 'rem' } },
+          $type: 'dimension',
+          a: { $value: { value: 1, unit: 'rem' } },
+          b: { $value: { value: 1, unit: 'rem' } },
         },
         first: {
           $type: 'number',

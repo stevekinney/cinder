@@ -124,35 +124,43 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
     // 2` original backslashes plus the literal pipe.
     // match[3] is the span body; strip the single space of padding toCodeSpan adds
     // when the content starts or ends with a backtick, then undo pipe escaping.
-    const htmlEscaped = (match[3] ?? match[4] ?? match[5] ?? '').includes('&#124;');
-    const body = (match[3] ?? match[4] ?? match[5] ?? '')
-      .replace(/^ (?=`)/, '')
-      .replace(/(?<=`) $/, '')
-      .replaceAll('&#124;', '|')
-      .replaceAll('&#39;', "'")
-      .replaceAll('&quot;', '"')
-      .replaceAll('&gt;', '>')
-      .replaceAll('&lt;', '<')
-      .replaceAll('&amp;', '&');
-    // The encoder (`toTableCell`) always produces an ODD backslash run before
-    // an escaped pipe (a run of `k` becomes `2k + 1`, which is odd for every
-    // `k >= 0`). A row this regex captured with an EVEN run (0, 2, 4, ...)
-    // immediately before a `|` should therefore never occur in correctly
-    // generated output -- decoding it anyway via a blind `floor(len / 2)`
-    // would silently accept a malformed row and could mask a future
-    // regression in the encoder's pipe-escaping. Fail loudly instead.
-    const evenRunPipe = /(?<!\\)(?:\\\\)*\|/.exec(body);
-    if (evenRunPipe)
-      throw new Error(
-        `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
-          `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
-      );
-    const decoded = htmlEscaped
-      ? body
-      : body.replace(
-          /(\\*)\|/g,
-          (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+    const markdownBody = match[3];
+    const htmlBody = match[4];
+    const fallbackBody = match[5];
+    let decoded: string;
+    if (markdownBody !== undefined) {
+      // Markdown code spans contain the generator's backslash-doubled table
+      // escapes. Validate and decode this raw text before doing anything else;
+      // entity decoding here would turn a literal `&#124;` into a pipe and make
+      // it look like a malformed table delimiter.
+      const body = markdownBody.replace(/^ (?=`)/, '').replace(/(?<=`) $/, '');
+      const evenRunPipe = /(?<!\\)(?:\\\\)*\|/.exec(body);
+      if (evenRunPipe)
+        throw new Error(
+          `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
+            `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
         );
+      decoded = body.replace(
+        /(\\*)\|/g,
+        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+      );
+    } else if (htmlBody !== undefined) {
+      // The HTML fallback is the only branch whose content is entity-escaped.
+      // Decode after branch selection so decoded `&#124;` cannot be mistaken for
+      // a raw Markdown table delimiter by the invariant above.
+      decoded = htmlBody
+        .replaceAll('&#124;', '|')
+        .replaceAll('&#39;', "'")
+        .replaceAll('&quot;', '"')
+        .replaceAll('&gt;', '>')
+        .replaceAll('&lt;', '<')
+        .replaceAll('&amp;', '&');
+    } else {
+      decoded = (fallbackBody ?? '').replace(
+        /(\\*)\|/g,
+        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+      );
+    }
     tokens.set(match[1], normalizeTokenValue(decoded));
   }
   return { duplicates: duplicates.toSorted(), tokens };
@@ -216,6 +224,14 @@ describe('docs/tokens.md drift', () => {
     expect(extractDocTokens(oddBackslashes).tokens.get('--cinder-example')).toBe(
       normalizeTokenValue('foo|bar'),
     );
+  });
+
+  test('keeps Markdown entity text literal and decodes entities only in HTML code fallback', () => {
+    const markdown = '| `--cinder-markdown` | `literal &#124; &amp;` |\n';
+    const html = '| `--cinder-html` | <code>literal &#124; &amp;</code> |\n';
+
+    expect(extractDocTokens(markdown).tokens.get('--cinder-markdown')).toBe('literal &#124; &amp;');
+    expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal | &');
   });
 
   test('keeps exact token references in focused guides current', async () => {
