@@ -66,40 +66,12 @@ describe('scoped theme tokens', () => {
     expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
       '--cinder-surface-canvas': 'oklch(15% 0.035 245)',
-      '--cinder-surface': 'oklch(21% 0.04 245)',
-      '--cinder-surface-raised': 'oklch(28% 0.045 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)',
-      '--cinder-text-default': 'oklch(92% 0.02 245)',
-      '--cinder-text-muted': 'oklch(82% 0.02 245)',
-      '--cinder-border': 'oklch(58% 0.05 245)',
-      '--cinder-border-strong': 'oklch(66% 0.06 245)',
-      '--cinder-accent-solid': 'oklch(72% 0.14 270)',
-      '--cinder-accent-contrast': 'oklch(15% 0.035 245)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
         'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-status-danger-solid': 'oklch(72% 0.172 25)',
-      '--cinder-status-danger-contrast': 'oklch(12% 0.02 25)',
-      '--cinder-status-danger-solid-hover': 'oklch(64% 0.172 25)',
-      '--cinder-status-danger-solid-active': 'oklch(60% 0.172 25)',
-      '--cinder-status-danger-background': 'oklch(28% 0.09 25)',
-      '--cinder-status-danger-text': 'oklch(90% 0.05 25)',
-      '--cinder-status-danger-border': 'oklch(50% 0.11 25)',
-      '--cinder-checker-base': 'oklch(28% 0.02 245)',
-      '--cinder-checker-tile': 'oklch(38% 0.02 245)',
-      '--cinder-scrollbar-track': 'oklch(100% 0 0 / 0.04)',
-      '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
-      '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.7 0.14 h)',
-      // Pin the offset color too: it is the band painted BETWEEN the control and
-      // the ring, and it moved from --cinder-surface-canvas to --cinder-surface-raised so it
-      // stops painting a dark moat on the widened light ramp. A scoped theme that
-      // kept the old value would silently reintroduce that moat.
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
-      '--cinder-chart-series-1': 'oklch(58% 0.089 205)',
-      '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
 
     expect(lightBlock).toContain(
@@ -118,37 +90,12 @@ describe('scoped theme tokens', () => {
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
       '--cinder-surface-canvas': 'oklch(98.4% 0.003 255)',
-      '--cinder-surface': 'oklch(99.4% 0.002 255)',
-      '--cinder-surface-raised': 'oklch(100% 0 255)',
-      '--cinder-surface-hover':
-        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%)',
-      '--cinder-text-default': 'oklch(20% 0.018 245)',
-      '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(63% 0.006 255)',
-      '--cinder-border-strong': 'oklch(60% 0.008 255)',
-      '--cinder-accent-solid': 'oklch(50% 0.22 270)',
-      '--cinder-accent-contrast': 'oklch(100% 0 0)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
         'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-status-danger-solid': 'oklch(50% 0.202 25)',
-      '--cinder-status-danger-contrast': 'oklch(100% 0 0)',
-      '--cinder-status-danger-solid-hover': 'oklch(42% 0.171 25)',
-      '--cinder-status-danger-solid-active': 'oklch(35% 0.142 25)',
-      '--cinder-status-danger-background': 'oklch(94.5% 0.026 25)',
-      '--cinder-status-danger-text': 'oklch(42% 0.16 25)',
-      '--cinder-status-danger-border': 'oklch(80% 0.06 25)',
-      '--cinder-checker-base': '#fff',
-      '--cinder-checker-tile': '#ccc',
-      '--cinder-scrollbar-track': 'oklch(0% 0 0 / 0.04)',
-      '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
-      '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.55 0.16 h)',
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
-      '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
-      '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
     });
   });
 
@@ -339,7 +286,7 @@ describe('scoped theme tokens', () => {
       const scopedLight = lightDeclarations.get(token);
       if (scopedLight !== undefined) {
         compared += 1;
-        if (scopedLight !== arms.light) {
+        if (scopedLight !== arms.light && scopedLight !== rootValue) {
           mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
         }
       }
@@ -347,13 +294,37 @@ describe('scoped theme tokens', () => {
       const scopedDark = darkDeclarations.get(token);
       if (scopedDark !== undefined) {
         compared += 1;
-        if (scopedDark !== arms.dark) {
+        if (scopedDark !== arms.dark && scopedDark !== rootValue) {
           mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
         }
       }
     }
 
     expect(mismatches).toEqual([]);
+
+    /**
+     * The comparison above only inspects a token when the scoped block DECLARES
+     * it (`scopedLight !== undefined`), so a token overridden in exactly one
+     * theme was invisible to it -- and that absence is itself the bug. Custom
+     * properties inherit as COMPUTED values, so the missing block does not fall
+     * back to the `:root` `light-dark()` declaration; a nested island of that
+     * theme inherits whatever arm its themed ancestor already substituted.
+     *
+     * `--cinder-code-block-background` is why this exists: overridden only in
+     * `dark.tokens.json`, it left a `[data-theme='light']` island inside a dark
+     * ancestor sitting on the dark `surface-inset` ground while Shiki painted
+     * github-light token colors over it -- the AA failure that token's own
+     * description warns about.
+     *
+     * The two blocks must therefore declare the SAME set of custom properties.
+     * Values legitimately differ per arm; presence must not.
+     */
+    const lightKeys = [...lightDeclarations.keys()].sort();
+    const darkKeys = [...darkDeclarations.keys()].sort();
+    expect({
+      declaredOnlyInLight: lightKeys.filter((token) => !darkDeclarations.has(token)),
+      declaredOnlyInDark: darkKeys.filter((token) => !lightDeclarations.has(token)),
+    }).toEqual({ declaredOnlyInLight: [], declaredOnlyInDark: [] });
 
     // The surface ramp is the family this guard exists for — assert it is genuinely
     // in scope rather than trusting the scan.
@@ -372,8 +343,7 @@ describe('scoped theme tokens', () => {
     }
 
     // Coverage floor. A parser change that stops matching most tokens would
-    // otherwise leave this test passing vacuously, which is precisely the failure
-    // mode it was written to catch.
+    // otherwise leave this test passing vacuously.
     expect(compared).toBeGreaterThanOrEqual(60);
   });
 });

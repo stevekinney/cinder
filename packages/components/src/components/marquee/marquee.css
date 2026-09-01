@@ -1,8 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-marquee {
-    --cinder-marquee-duration: 24s;
-    --cinder-marquee-gap: 1.5rem;
     --_cinder-marquee-play-state: running;
     display: block;
     position: relative;

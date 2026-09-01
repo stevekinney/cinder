@@ -9,11 +9,6 @@
  * ======================================== */
 
   .cinder-code-block {
-    --cinder-code-block-background: var(--_cinder-code-block-code-surface);
-    --cinder-code-block-font-size: var(--cinder-text-sm);
-    --cinder-code-block-height: auto;
-    --cinder-code-block-line-height: var(--cinder-leading-relaxed);
-    --cinder-code-block-padding: var(--cinder-space-4);
     /* The light arm MUST stay pure white, and this is an accessibility constraint
      * rather than a stylistic one — do not "simplify" it to a single token.
      *

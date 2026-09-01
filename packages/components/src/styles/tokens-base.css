@@ -514,44 +514,6 @@
   --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
   /* Toggle track color in the off state on hover. Steps up from `off-resting` to be distinguishable. */
   --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
-  /* Gap between the trigger's disclosure icon and label. */
-  --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
-  /* Trigger block padding. */
-  --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
-  /* Trigger inline padding. */
-  --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
-  /* Trigger label font size. */
-  --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
-  /* Trigger label font weight. */
-  --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
-  /* Panel content padding, block-start edge. */
-  --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
-  /* Panel content padding, block-end edge. */
-  --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
-  /* Panel content inline padding. */
-  --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
-  /* Panel content font size. */
-  --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
-  /* Panel content line height. */
-  --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
-  /* Row block padding (default density). */
-  --cinder-action-row-padding-block: var(--cinder-space-3);
-  /* Row inline padding (default density). */
-  --cinder-action-row-padding-inline: var(--cinder-space-4);
-  /* Grid column gap between leading/body/trailing regions. */
-  --cinder-action-row-layout-column-gap: var(--cinder-space-3);
-  /* Grid row gap between leading/body/trailing regions. */
-  --cinder-action-row-layout-row-gap: var(--cinder-space-2);
-  /* Gap between title, description, and meta lines. */
-  --cinder-action-row-body-gap: var(--cinder-space-1);
-  /* Title font size. */
-  --cinder-action-row-title-font-size: var(--cinder-text-sm);
-  /* Description font size. */
-  --cinder-action-row-description-font-size: var(--cinder-text-sm);
-  /* Meta line font size. */
-  --cinder-action-row-meta-font-size: var(--cinder-text-xs);
-  /* Gap between items in the trailing region. */
-  --cinder-action-row-trailing-gap: var(--cinder-space-2);
   /* Alert `info` tone ring/status-base color, single-consumer (alert.css); encodes the light/dark pair directly here so alert.css stays var()-only. */
   --cinder-alert-info: light-dark(oklch(45% 0.14 245), oklch(78% 0.15 245));
   /* Horizontal overlap between stacked avatars. */
@@ -609,7 +571,7 @@
   --cinder-marquee-duration: 24s;
   /* Gap between marquee items. */
   --cinder-marquee-gap: var(--cinder-space-6);
-  /* `::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability. */
+  /* `::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability. */
   --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
   /* Row block padding (default density). */
   --cinder-selectable-row-padding-block: var(--cinder-space-3);
@@ -982,6 +944,33 @@
   --cinder-checker-base: #fff;
   --cinder-checker-tile: #ccc;
   --cinder-alert-info: oklch(45% 0.14 245);
+  --cinder-severity-critical: light-dark(oklch(38% 0.18 25), oklch(95% 0.04 25));
+  --cinder-severity-critical-background: light-dark(oklch(93% 0.045 25), oklch(24% 0.11 25));
+  --cinder-terminal-ansi-black: light-dark(oklch(25% 0 0), oklch(82% 0 0));
+  --cinder-terminal-ansi-red: light-dark(oklch(42% 0.16 25), oklch(72% 0.14 25));
+  --cinder-terminal-ansi-green: light-dark(oklch(38% 0.13 145), oklch(72% 0.13 145));
+  --cinder-terminal-ansi-yellow: light-dark(oklch(48% 0.14 85), oklch(82% 0.13 85));
+  --cinder-terminal-ansi-blue: light-dark(oklch(40% 0.16 260), oklch(72% 0.15 260));
+  --cinder-terminal-ansi-magenta: light-dark(oklch(42% 0.16 325), oklch(75% 0.14 325));
+  --cinder-terminal-ansi-cyan: light-dark(oklch(35% 0.11 205), oklch(75% 0.12 205));
+  --cinder-terminal-ansi-white: light-dark(oklch(18% 0 0), oklch(94% 0 0));
+  --cinder-terminal-ansi-bright-black: light-dark(oklch(42% 0 0), oklch(68% 0 0));
+  --cinder-terminal-ansi-bright-red: light-dark(oklch(52% 0.18 25), oklch(78% 0.15 25));
+  --cinder-terminal-ansi-bright-green: light-dark(oklch(48% 0.15 145), oklch(80% 0.14 145));
+  --cinder-terminal-ansi-bright-yellow: light-dark(oklch(52% 0.16 85), oklch(88% 0.14 85));
+  --cinder-terminal-ansi-bright-blue: light-dark(oklch(50% 0.18 260), oklch(80% 0.16 260));
+  --cinder-terminal-ansi-bright-magenta: light-dark(oklch(54% 0.18 325), oklch(82% 0.15 325));
+  --cinder-terminal-ansi-bright-cyan: light-dark(oklch(45% 0.13 205), oklch(82% 0.13 205));
+  --cinder-terminal-ansi-bright-white: light-dark(oklch(10% 0 0), oklch(98% 0 0));
+  --cinder-code-block-background: light-dark(
+    var(--cinder-surface-raised),
+    var(--cinder-surface-inset)
+  );
+  --cinder-kanban-board-scroll-edge: color-mix(
+    in oklch,
+    var(--cinder-text-default),
+    transparent 88%
+  );
 }
 
 @media (prefers-reduced-motion: reduce) {

@@ -370,4 +370,45 @@ describe('CIN-464 review: themeAwarePaths expands resolver-internal set referenc
     const aware = themeAwarePaths(resolver, documentsByPath);
     expect(aware.has('color')).toBe(true);
   });
+
+  test('a stable var-based cssRecipe is not marked theme-aware or redundantly scoped', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'light.json' }], dark: [{ $ref: 'dark.json' }] },
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      [
+        'base.json',
+        {
+          color: {
+            $type: 'color',
+            $value: { colorSpace: 'srgb', components: [0, 0, 0] },
+            $extensions: { 'com.lostgradient.cinder': { cssProperty: '--cinder-color' } },
+          },
+          recipe: {
+            $type: 'color',
+            $value: { colorSpace: 'srgb', components: [0, 0, 0] },
+            $extensions: {
+              'com.lostgradient.cinder': {
+                cssProperty: '--cinder-recipe',
+                cssRecipe: 'var(--cinder-color)',
+              },
+            },
+          },
+        },
+      ],
+      ['light.json', { color: { $value: { colorSpace: 'srgb', components: [1, 1, 1] } } }],
+      ['dark.json', { color: { $value: { colorSpace: 'srgb', components: [0.2, 0.2, 0.2] } } }],
+    ]);
+
+    const aware = themeAwarePaths(resolver, documentsByPath);
+    expect(aware.has('color')).toBe(true);
+    expect(aware.has('recipe')).toBe(false);
+  });
 });

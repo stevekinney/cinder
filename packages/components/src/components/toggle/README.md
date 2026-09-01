@@ -36,8 +36,8 @@ On/off switch input for binary settings, presented as a sliding pill control.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-toggle-track-off-hover-resting`
+- `--cinder-toggle-track-off-resting`
 <!-- generated:variables:end -->
 
 ## Subcomponents

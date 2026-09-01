@@ -6,6 +6,7 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  coordinatedBuild,
   scenarioArtifactByPath,
   scenarioBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
@@ -96,11 +97,13 @@ async function buildBundleUncached(
     // is idempotent for a missing dir).
     await Bun.write(entryTempPath, shim);
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      publicPath: PUBLIC_PATH_BY_FAMILY.scenario,
-      ...SHARED_BUILD_OPTIONS,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryTempPath],
+        publicPath: PUBLIC_PATH_BY_FAMILY.scenario,
+        ...SHARED_BUILD_OPTIONS,
+      }),
+    );
 
     if (!result.success) {
       console.error(`[playground] Bundle failed for ${componentName}/${scenario}:`, result.logs);

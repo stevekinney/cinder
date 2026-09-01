@@ -8,8 +8,6 @@
  * ======================================== */
 
   .cinder-feed-event {
-    --cinder-feed-event-rail-size: var(--cinder-space-6);
-
     position: relative;
     display: grid;
     grid-template-columns: auto 1fr;

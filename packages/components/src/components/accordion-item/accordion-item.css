@@ -5,16 +5,6 @@
  * ======================================== */
 
   .cinder-accordion-item {
-    --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
-    --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
-    --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
-    --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
-    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
-    --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
-    --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
-    --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
-    --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
-    --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
     border-block-end: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface);
   }

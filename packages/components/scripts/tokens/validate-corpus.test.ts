@@ -8,6 +8,8 @@ import {
   normalizeSourcePath,
   parseResolutionOrder,
   sourcesForEntry,
+  validateModifierSetExpansionOrder,
+  validateModifierTokenPaths,
 } from './validate-corpus.ts';
 
 const resolver: ResolverDocument = {
@@ -367,6 +369,559 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     };
 
     expect(expandSetSources(encoded, 'extended')).toEqual([{ $ref: 'sets/base.tokens.json' }]);
+  });
+
+  test('a percent-encoded leading hash remains an on-disk path', () => {
+    const encodedPath: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: '%23%2Fsets%2Fbase.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+
+    expect(expandSetSources(encodedPath, 'base')).toEqual([
+      { $ref: '%23%2Fsets%2Fbase.tokens.json' },
+    ]);
+  });
+
+  test('rejects a later modifier re-expanding a set after an intervening modifier', () => {
+    const resetting: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        motion: { contexts: { reduced: [{ $ref: 'motion.json' }] } },
+        theme: { contexts: { dark: [{ $ref: '#/sets/base' }, { $ref: 'dark.json' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/base' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/theme' },
+      ],
+    };
+
+    expect(() => validateModifierSetExpansionOrder(resetting)).toThrow(
+      /set "base" is re-expanded after modifier "motion"/,
+    );
+  });
+
+  test('rejects a later modifier transitively re-expanding a base set', () => {
+    const resetting: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        base: { sources: [{ $ref: 'base.json' }] },
+        themeOverrides: {
+          sources: [{ $ref: '#/sets/base' }, { $ref: 'dark.json' }],
+        },
+      },
+      modifiers: {
+        motion: { contexts: { reduced: [{ $ref: 'motion.json' }] } },
+        theme: { contexts: { dark: [{ $ref: '#/sets/themeOverrides' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/base' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/theme' },
+      ],
+    };
+
+    expect(() => validateModifierSetExpansionOrder(resetting)).toThrow(
+      /set "base" is re-expanded after modifier "motion"/,
+    );
+  });
+
+  test('rejects a later modifier directly re-expanding an ordered base document', () => {
+    const resetting: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        motion: { contexts: { reduced: [{ $ref: 'motion.json' }] } },
+        theme: { contexts: { light: [{ $ref: './base.json' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/base' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/theme' },
+      ],
+    };
+
+    expect(() => validateModifierSetExpansionOrder(resetting)).toThrow(
+      /set "base" is re-expanded after modifier "motion"/,
+    );
+  });
+
+  test('allows a later modifier to re-expand a set untouched by intervening modifiers', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        layout: { sources: [{ $ref: 'layout.json' }] },
+        color: { sources: [{ $ref: 'color.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/layout' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/layout' },
+        { $ref: '#/sets/color' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['layout.json', { spacing: { $type: 'dimension', $value: { value: 4, unit: 'px' } } }],
+      ['color.json', { color: { $type: 'color', $value: 'red' } }],
+      ['dark.json', { color: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
+  test('allows a later context document to overwrite a re-expanded set token', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: {
+          contexts: {
+            reduced: [{ $ref: '#/sets/foundation' }, { $ref: 'reduced.json' }],
+          },
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['base.json', { x: { $type: 'number' as const, $value: 1 } }],
+      ['dark.json', { x: { $value: 2 } }],
+      ['reduced.json', { x: { $value: 3 } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
+  test('allows a set reset after an intervening modifier preserves the overlapping token', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/foundation' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          source: { token: { $type: 'number' as const, $value: 1 } },
+          target: { token: { $type: 'number' as const, $value: 1 } },
+        },
+      ],
+      ['dark.json', { target: { $extends: '{source}' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
+  test('rejects a set reset after an intervening modifier changes token metadata', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/foundation' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          token: {
+            $type: 'number' as const,
+            $value: 1,
+            $extensions: { 'com.example': { tier: 'base' } },
+          },
+        },
+      ],
+      ['dark.json', { token: { $value: 1, $extensions: { 'com.example': { tier: 'dark' } } } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
+      /set "foundation" is re-expanded after modifier "theme"/,
+    );
+  });
+
+  test('detects a reset after a composed modifier reference changes the effective value', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        resettable: { sources: [{ $ref: 'resettable.json' }] },
+      },
+      modifiers: {
+        first: {
+          contexts: {
+            active: [{ $ref: 'first.json' }],
+            alternate: [{ $ref: 'alternate-first.json' }],
+          },
+          default: 'active',
+        },
+        second: { contexts: { active: [{ $ref: 'second.json' }] }, default: 'active' },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/resettable' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/sets/resettable' },
+        { $ref: '#/modifiers/first' },
+        { $ref: '#/modifiers/second' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['base.json', { values: { $type: 'number' as const, x: { $value: 1 } } }],
+      ['resettable.json', { values: { y: { $type: 'number' as const, $value: 0 } } }],
+      ['first.json', { values: { x: { $value: 1 } } }],
+      ['alternate-first.json', { values: { x: { $value: 2 } } }],
+      ['second.json', { values: { y: { $value: '{values.x}' } } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
+      /set "resettable" is re-expanded after modifier "second"/,
+    );
+  });
+
+  test('expands a directly re-used base document before comparing its reset footprint', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'foundation.json' }, { $ref: 'derived.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: 'derived.json' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['foundation.json', { foundation: { token: { $type: 'number' as const, $value: 1 } } }],
+      ['derived.json', { derived: { $extends: '{foundation}' } }],
+      ['dark.json', { derived: { token: { $value: 2 } } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
+      /set "foundation" is re-expanded after modifier "theme"/,
+    );
+  });
+
+  test('recognizes a later context source that recomputes an inherited reset token', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'foundation.json' }, { $ref: 'derived.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: {
+          contexts: {
+            reduced: [{ $ref: '#/sets/foundation' }, { $ref: 'recomputed.json' }],
+          },
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['foundation.json', { foundation: { token: { $type: 'number' as const, $value: 1 } } }],
+      ['derived.json', { derived: { $extends: '{foundation}' } }],
+      ['dark.json', { derived: { token: { $value: 2 } } }],
+      ['recomputed.json', { derived: { $extends: '{foundation}' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
+  });
+
+  test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
+    const contextOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        lightOverrides: { sources: [{ $ref: 'light.json' }] },
+      },
+      modifiers: {
+        theme: { contexts: { light: [{ $ref: '#/sets/lightOverrides' }] } },
+      },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { color: { $type: 'color', $value: 'red' } }],
+      ['light.json', { color: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(contextOnly, documents)).not.toThrow();
+  });
+
+  test('allows a modifier to override a token inherited through base $extends', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            $type: 'color' as const,
+            accent: { $value: 'red' },
+          },
+          themed: { $extends: '{foundation}' },
+        },
+      ],
+      ['light.json', { themed: { accent: { $value: 'blue' } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inherited, documents)).not.toThrow();
+  });
+
+  test('preserves an empty document-root token path', () => {
+    const rootToken: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { $type: 'color' as const, $value: 'red' }],
+      ['light.json', { $type: 'color' as const, $value: 'blue' }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(rootToken, documents)).not.toThrow();
+  });
+
+  test('allows modifier token paths introduced by $extends', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            accent: { $type: 'color' as const, $value: 'red' },
+          },
+        },
+      ],
+      ['light.json', { themed: { $extends: '{foundation}' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inherited, documents)).toThrow(
+      /override token "themed.accent" has no matching base token/,
+    );
+  });
+
+  test('rejects a modifier token path with no base declaration', () => {
+    const missingBase: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { color: { $type: 'color', $value: 'red' } }],
+      ['light.json', { missing: { $type: 'color', $value: 'blue' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(missingBase, documents)).toThrow(
+      /override token "missing" has no matching base token/,
+    );
+  });
+
+  test('rejects modifier group metadata that changes an inherited base token', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { typography: { $type: 'fontFamily', normal: { $value: 'normal' } } }],
+      ['light.json', { typography: { $type: 'fontWeight' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).toThrow(
+      /group metadata affects base token "typography\.normal" without an explicit override/,
+    );
+  });
+
+  test('treats tokens contributed through modifier $extends as explicit overrides', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            $type: 'number' as const,
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+          themed: { $extends: '{foundation}' },
+        },
+      ],
+      [
+        'light.json',
+        { themed: { $extends: '{foundation}', $type: 'number' as const, a: { $value: 3 } } },
+      ],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('allows modifier group metadata that repeats the effective base metadata', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { group: { $type: 'number' as const, a: { $value: 1 }, b: { $value: 2 } } }],
+      ['light.json', { group: { $type: 'number' as const, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('allows sparse modifier metadata that repeats part of the effective base metadata', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          group: {
+            $type: 'number' as const,
+            $deprecated: true,
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+        },
+      ],
+      ['light.json', { group: { $deprecated: true, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('treats reordered extension object members as equivalent metadata', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          group: {
+            $extensions: { 'org.example': { alpha: 1, beta: 2 } },
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+        },
+      ],
+      [
+        'light.json',
+        {
+          group: {
+            $extensions: { 'org.example': { beta: 2, alpha: 1 } },
+            a: { $value: 3 },
+          },
+        },
+      ],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('deep-merges sparse modifier extension metadata before comparing semantics', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          group: {
+            $extensions: { 'org.example': { alpha: 1, beta: 2 } },
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+        },
+      ],
+      ['light.json', { group: { $extensions: { 'org.example': { alpha: 1 } }, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
+  test('rejects semantic metadata inherited by a modifier through $extends', () => {
+    const inheritedMetadata: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          metadata: { $type: 'fontWeight' as const },
+          group: { $type: 'fontFamily' as const, a: { $value: 'Inter' }, b: { $value: 'serif' } },
+        },
+      ],
+      ['light.json', { group: { $extends: '{metadata}', a: { $value: 500 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inheritedMetadata, documents)).toThrow(
+      /group metadata affects base token "group\.b" without an explicit override/,
+    );
   });
 });
 
