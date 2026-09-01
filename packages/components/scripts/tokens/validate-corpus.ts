@@ -120,7 +120,7 @@ export function validateModifierSetExpansionOrder(resolver: ResolverDocument): v
 function collectDeclaredTokenPaths(value: unknown, prefix: string, paths: Set<string>): void {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return;
   if ('$value' in value || '$ref' in value) {
-    if (prefix) paths.add(prefix);
+    paths.add(prefix);
     return;
   }
   for (const [name, child] of Object.entries(value)) {
@@ -153,13 +153,14 @@ export function validateModifierTokenPaths(
   for (const [modifierName, modifier] of Object.entries(resolver.modifiers)) {
     for (const contextName of Object.keys(modifier.contexts)) {
       const declaredPaths = new Set<string>();
-      for (const source of expandContextSources(resolver, modifierName, contextName)) {
-        collectDeclaredTokenPaths(
-          documentsByPath.get(normalizeSourcePath(source.$ref)),
-          '',
-          declaredPaths,
-        );
-      }
+      const contextDocuments = expandContextSources(resolver, modifierName, contextName).map(
+        (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+      );
+      collectDeclaredTokenPaths(
+        mergeAndExpandExtends(contextDocuments, [...baseDocuments, ...contextDocuments]),
+        '',
+        declaredPaths,
+      );
       for (const tokenPath of declaredPaths) {
         if (basePaths.has(tokenPath)) continue;
         issues.push({

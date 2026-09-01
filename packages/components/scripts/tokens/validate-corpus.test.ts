@@ -473,6 +473,45 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierTokenPaths(inherited, documents)).not.toThrow();
   });
 
+  test('preserves an empty document-root token path', () => {
+    const rootToken: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { $type: 'color' as const, $value: 'red' }],
+      ['light.json', { $type: 'color' as const, $value: 'blue' }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(rootToken, documents)).not.toThrow();
+  });
+
+  test('allows modifier token paths introduced by $extends', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            accent: { $type: 'color' as const, $value: 'red' },
+          },
+        },
+      ],
+      ['light.json', { themed: { $extends: '{foundation}' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(inherited, documents)).toThrow(
+      /override token "themed.accent" has no matching base token/,
+    );
+  });
+
   test('rejects a modifier token path with no base declaration', () => {
     const missingBase: ResolverDocument = {
       version: '2025.10',
