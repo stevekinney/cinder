@@ -2316,6 +2316,15 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
     expect(css).toMatch(/@media \(prefers-reduced-motion: reduce\)[\s\S]*\[data-theme='light'\]/);
   });
 
+  test('motion selectors target root-level explicit themes', async () => {
+    const generatedOutputs = await buildGeneratedOutputs();
+    const css = generatedOutputs.get(tokensBaseCssPath)!;
+    expect(css).toContain(":root[data-theme='dark']:not([data-cinder-reduced-motion='false'])");
+    expect(css).toContain(":root[data-theme='light']:not([data-cinder-reduced-motion='false'])");
+    expect(css).toContain(":root[data-reduced-motion='on'][data-theme='dark']");
+    expect(css).toContain(":root[data-reduced-motion='on'][data-theme='light']");
+  });
+
   test('scoped theme blocks recompute dependent component aliases', async () => {
     const generatedOutputs = await buildGeneratedOutputs();
     const css = generatedOutputs.get(tokensBaseCssPath)!;

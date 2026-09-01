@@ -99,6 +99,15 @@ export function validateModifierSetExpansionOrder(
       }
     }
   }
+  const baseDocuments = documentsByPath
+    ? order
+        .filter((entry) => entry.kind === 'sets')
+        .flatMap((entry) =>
+          expandSetSources(resolver, entry.name).map(
+            (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
+          ),
+        )
+    : [];
 
   const issues = [];
   for (const [position, entry] of order.entries()) {
@@ -138,16 +147,18 @@ export function validateModifierSetExpansionOrder(
           if (!candidateModifier) return false;
           return Object.keys(candidateModifier.contexts).some((candidateContext) => {
             const affectedPaths = new Set<string>();
-            for (const candidateSource of expandContextSources(
+            const candidateDocuments = expandContextSources(
               resolver,
               candidate.name,
               candidateContext,
-            ))
-              collectDeclaredTokenPaths(
-                documentsByPath.get(normalizeSourcePath(candidateSource.$ref)),
-                '',
-                affectedPaths,
-              );
+            ).map((candidateSource) =>
+              documentsByPath.get(normalizeSourcePath(candidateSource.$ref)),
+            );
+            collectDeclaredTokenPaths(
+              mergeAndExpandExtends(candidateDocuments, [...baseDocuments, ...candidateDocuments]),
+              '',
+              affectedPaths,
+            );
             return [...affectedPaths].some((path) => setTokenPaths.has(path));
           });
         });

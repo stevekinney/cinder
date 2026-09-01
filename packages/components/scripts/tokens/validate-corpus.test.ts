@@ -476,6 +476,36 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierSetExpansionOrder(resolver, documents)).not.toThrow();
   });
 
+  test('rejects a set reset after an intervening modifier inherits the overlapping token', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: { contexts: { dark: [{ $ref: 'dark.json' }] } },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/foundation' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          source: { token: { $type: 'number' as const, $value: 1 } },
+          target: { token: { $type: 'number' as const, $value: 1 } },
+        },
+      ],
+      ['dark.json', { target: { $extends: '{source}' } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
+      /set "foundation" is re-expanded after modifier "theme"/,
+    );
+  });
+
   test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
     const contextOnly: ResolverDocument = {
       version: '2025.10',

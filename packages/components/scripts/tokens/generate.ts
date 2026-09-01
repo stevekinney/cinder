@@ -1643,7 +1643,13 @@ ${reducedMotionDeclarations}
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'] {
 ${darkReducedMotionDeclarations}
   }
+  :root[data-theme='dark']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
+${darkReducedMotionDeclarations}
+  }
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='light'] {
+${lightReducedMotionDeclarations}
+  }
+  :root[data-theme='light']:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
 ${lightReducedMotionDeclarations}
   }
 }
@@ -1654,7 +1660,13 @@ ${forcedReducedMotionDeclarations}
 :root[data-reduced-motion='on'] [data-theme='dark'] {
 ${darkForcedReducedMotionDeclarations}
 }
+:root[data-reduced-motion='on'][data-theme='dark'] {
+${darkForcedReducedMotionDeclarations}
+}
 :root[data-reduced-motion='on'] [data-theme='light'] {
+${lightForcedReducedMotionDeclarations}
+}
+:root[data-reduced-motion='on'][data-theme='light'] {
 ${lightForcedReducedMotionDeclarations}
 }
 `;
