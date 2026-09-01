@@ -16,9 +16,10 @@ describe('component variable corpus lookup', () => {
     const componentDirectory = new URL('../src/components/accordion-item/', import.meta.url)
       .pathname;
     const first = await readCorpusVariables(componentDirectory, 'accordion-item');
-    const second = await readCorpusVariables(componentDirectory, 'accordion-item');
-    expect(second).toBe(first);
     expect(first).toContain('--cinder-accordion-item-trigger-gap');
+    const second = await readCorpusVariables(componentDirectory, 'action-row');
+    expect(second).toContain('--cinder-action-row-body-gap');
+    expect(second).not.toContain('--cinder-accordion-item-trigger-gap');
 
     const missing = await readCorpusVariables(
       '/workspace/packages/chat/src/components/chat',

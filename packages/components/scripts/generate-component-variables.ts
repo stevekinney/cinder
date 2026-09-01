@@ -14,7 +14,7 @@ import { parse, type AtRule, type Declaration } from 'postcss';
 const PREFIX = '--cinder-';
 
 type RegistryEntry = { component?: unknown; cssProperty?: unknown; public?: unknown };
-const registryCache = new Map<string, Promise<Set<string>>>();
+const registryCache = new Map<string, Promise<RegistryEntry[]>>();
 
 export function resolveRegistryPath(componentDirectory: string): string {
   const packageRoot =
@@ -39,24 +39,26 @@ export async function readCorpusVariables(
   if (!registryPromise) {
     registryPromise = (async () => {
       const registryFile = Bun.file(registryPath);
-      if (!(await registryFile.exists())) return new Set<string>();
+      if (!(await registryFile.exists())) return [];
       const parsed: unknown = JSON.parse(await registryFile.text());
-      if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return new Set();
-      if (!Array.isArray(parsed.entries)) return new Set();
-      return new Set(
-        parsed.entries
-          .filter((entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null)
-          .filter((entry) => entry.component === componentName && entry.public === true)
-          .map((entry) => entry.cssProperty)
-          .filter(
-            (property): property is string =>
-              typeof property === 'string' && property.startsWith(PREFIX),
-          ),
+      if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return [];
+      if (!Array.isArray(parsed.entries)) return [];
+      return parsed.entries.filter(
+        (entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null,
       );
     })();
     registryCache.set(registryPath, registryPromise);
   }
-  return registryPromise;
+  const entries = await registryPromise;
+  return new Set(
+    entries
+      .filter((entry) => entry.component === componentName && entry.public === true)
+      .map((entry) => entry.cssProperty)
+      .filter(
+        (property): property is string =>
+          typeof property === 'string' && property.startsWith(PREFIX),
+      ),
+  );
 }
 
 export interface VariablesResult {
