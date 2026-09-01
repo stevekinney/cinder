@@ -791,6 +791,29 @@ export function withDependentBaseAliases(
   return scoped;
 }
 
+function withThemeDependentOverrides(
+  overrides: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+  systemResolveReferences: ValueResolver,
+  themeResolveReferences: ValueResolver,
+): Map<string, CorpusEntry> {
+  const scoped = withDependentBaseAliases(
+    new Map(),
+    baseIndex,
+    systemResolveReferences,
+    themeResolveReferences,
+  );
+  for (const [path, entry] of overrides) {
+    if (
+      serializeEntryValue(entry, baseIndex, systemResolveReferences) !==
+      serializeEntryValue(entry, baseIndex, themeResolveReferences)
+    ) {
+      scoped.set(path, entry);
+    }
+  }
+  return scoped;
+}
+
 function valueContainsReference(value: unknown): boolean {
   if (typeof value === 'string') return /^\{[^{}]+\}$/.test(value) || value.startsWith('#/');
   if (Array.isArray(value)) return value.some(valueContainsReference);
@@ -1437,44 +1460,6 @@ export async function buildTokensBaseCss(
     ],
     'theme.dark',
   );
-  assertOverrideScopeConsistency(
-    reducedMotionOverrides,
-    baseIndex,
-    [
-      {
-        name: 'theme.light',
-        resolveReferences: lightReducedMotionResolveReferences,
-      },
-      {
-        name: 'theme.dark',
-        resolveReferences: darkReducedMotionResolveReferences,
-      },
-      {
-        name: 'theme.system',
-        resolveReferences: systemReducedMotionResolveReferences,
-      },
-    ],
-    'motion.reduced',
-  );
-  assertOverrideScopeConsistency(
-    forcedReducedMotionOverrides,
-    baseIndex,
-    [
-      {
-        name: 'theme.light',
-        resolveReferences: lightForcedReducedMotionResolveReferences,
-      },
-      {
-        name: 'theme.dark',
-        resolveReferences: darkForcedReducedMotionResolveReferences,
-      },
-      {
-        name: 'theme.system',
-        resolveReferences: systemForcedReducedMotionResolveReferences,
-      },
-    ],
-    'motion.forced-reduced-motion',
-  );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
   const darkAliases = withDependentBaseAliases(
@@ -1525,26 +1510,26 @@ export async function buildTokensBaseCss(
     baseResolveReferences,
     systemForcedReducedMotionResolveReferences,
   );
-  const lightReducedMotionAliases = withDependentBaseAliases(
-    new Map(),
+  const lightReducedMotionAliases = withThemeDependentOverrides(
+    reducedMotionOverrides,
     baseIndex,
     systemReducedMotionResolveReferences,
     lightReducedMotionResolveReferences,
   );
-  const darkReducedMotionAliases = withDependentBaseAliases(
-    new Map(),
+  const darkReducedMotionAliases = withThemeDependentOverrides(
+    reducedMotionOverrides,
     baseIndex,
     systemReducedMotionResolveReferences,
     darkReducedMotionResolveReferences,
   );
-  const lightForcedReducedMotionAliases = withDependentBaseAliases(
-    new Map(),
+  const lightForcedReducedMotionAliases = withThemeDependentOverrides(
+    forcedReducedMotionOverrides,
     baseIndex,
     systemForcedReducedMotionResolveReferences,
     lightForcedReducedMotionResolveReferences,
   );
-  const darkForcedReducedMotionAliases = withDependentBaseAliases(
-    new Map(),
+  const darkForcedReducedMotionAliases = withThemeDependentOverrides(
+    forcedReducedMotionOverrides,
     baseIndex,
     systemForcedReducedMotionResolveReferences,
     darkForcedReducedMotionResolveReferences,
@@ -1633,6 +1618,20 @@ ${darkReducedMotionDeclarations}
 ${lightReducedMotionDeclarations}
 }`
     : '';
+  const reducedSystemDarkBlock = darkReducedMotionDeclarations
+    ? `@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]):not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
+${darkReducedMotionDeclarations}
+  }
+}`
+    : '';
+  const reducedSystemLightBlock = lightReducedMotionDeclarations
+    ? `@media (prefers-color-scheme: light) {
+  :root:not([data-theme]):not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
+${lightReducedMotionDeclarations}
+  }
+}`
+    : '';
   const forcedDarkThemeBlock = darkForcedReducedMotionDeclarations
     ? `:root[data-reduced-motion='on'] [data-theme='dark'],
 :root[data-reduced-motion='on'][data-theme='dark'] {
@@ -1643,6 +1642,20 @@ ${darkForcedReducedMotionDeclarations}
     ? `:root[data-reduced-motion='on'] [data-theme='light'],
 :root[data-reduced-motion='on'][data-theme='light'] {
 ${lightForcedReducedMotionDeclarations}
+}`
+    : '';
+  const forcedSystemDarkBlock = darkForcedReducedMotionDeclarations
+    ? `@media (prefers-color-scheme: dark) {
+  :root:not([data-theme]) {
+${darkForcedReducedMotionDeclarations}
+  }
+}`
+    : '';
+  const forcedSystemLightBlock = lightForcedReducedMotionDeclarations
+    ? `@media (prefers-color-scheme: light) {
+  :root:not([data-theme]) {
+${lightForcedReducedMotionDeclarations}
+  }
 }`
     : '';
 
@@ -1690,6 +1703,8 @@ ${reducedMotionDeclarations}
   }
 ${reducedDarkThemeBlock}
 ${reducedLightThemeBlock}
+${reducedSystemDarkBlock}
+${reducedSystemLightBlock}
 }
 
 :root[data-reduced-motion='on'] {
@@ -1697,6 +1712,8 @@ ${forcedReducedMotionDeclarations}
 }
 ${forcedDarkThemeBlock}
 ${forcedLightThemeBlock}
+${forcedSystemDarkBlock}
+${forcedSystemLightBlock}
 `;
 
   return format(css, { ...PRETTIER_OPTIONS, parser: 'css', plugins: CSS_PLUGINS });

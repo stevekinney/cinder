@@ -1088,11 +1088,8 @@ describe("F1: an override context's $extends can reference a foundation group, n
 describe('F2: a nested reference inside a motion override resolves against the theme context too, not just the base', () => {
   function motionNestedReferenceFixture() {
     // A base "lightness" number and a base "composite" color whose lightness component is a
-    // NESTED reference to it. BOTH themes override "lightness" to the SAME new value (0.9) --
-    // the bug this isolates is that the reduced-motion resolver saw NO theme document AT ALL
-    // (not merely the wrong one), so making light and dark agree keeps the expected value the
-    // same however the "other axis" ends up getting composed, while still proving the fix: only
-    // seeing base-plus-motion resolves the nested reference to the untouched base value (0.3).
+    // NESTED reference to it. The themes intentionally diverge so reduced-motion output must
+    // preserve the OS-selected value when no explicit data-theme is present.
     const baseDocument: TokenDocument = {
       test: {
         lightness: {
@@ -1108,10 +1105,10 @@ describe('F2: a nested reference inside a motion override resolves against the t
       },
     };
     const themeLightDocument: TokenDocument = {
-      test: { lightness: { $type: 'number', $value: 0.9 } },
+      test: { lightness: { $type: 'number', $value: 0.7 } },
     };
     const themeDarkDocument: TokenDocument = {
-      test: { lightness: { $type: 'number', $value: 0.9 } },
+      test: { lightness: { $type: 'number', $value: 0.8 } },
     };
     const motionDefaultDocument: TokenDocument = {};
     // "reduced" overrides ONLY "composite" -- it deliberately does NOT redefine "lightness"
@@ -1165,12 +1162,15 @@ describe('F2: a nested reference inside a motion override resolves against the t
     return { resolver, documentsByPath };
   }
 
-  test('rejects a motion value that agrees across explicit themes but differs in system mode', async () => {
+  test('preserves system-dark reduced-motion values while explicit themes remain correct', async () => {
     const { resolver, documentsByPath } = motionNestedReferenceFixture();
 
-    await expect(buildTokensBaseCss(resolver, documentsByPath)).rejects.toThrow(
-      /theme\.system=oklch\(30% 0\.1 250\)/,
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\)[\s\S]*:root:not\(\[data-theme\]\):not\(\[data-cinder-reduced-motion='false'\]\)/,
     );
+    expect(css).toContain('--test-composite: oklch(80% 0.1 250);');
+    expect(css).toContain('--test-composite: oklch(70% 0.1 250);');
   });
 });
 
@@ -2286,7 +2286,7 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
     cssRecipe: undefined,
   });
 
-  test('rejects a motion override whose serialized value differs by theme', () => {
+  test('rejects a motion override whose serialized value differs by theme when scope consistency is required', () => {
     const overrides = new Map([
       [
         'test.token',
