@@ -2364,4 +2364,50 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
       ),
     ).rejects.toThrow(/motion\.default must not declare token overrides/);
   });
+
+  test('rejects group metadata in motion.default documents', async () => {
+    const base = {
+      token: {
+        $type: 'number',
+        $value: 1,
+        $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-token' } },
+      },
+    } as TokenDocument;
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'light.json' }], dark: [{ $ref: 'dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'default.json' }],
+            reduced: [{ $ref: 'reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    await expect(
+      buildTokensBaseCss(
+        resolver,
+        new Map([
+          ['base.json', base],
+          ['light.json', {}],
+          ['dark.json', {}],
+          ['default.json', { $type: 'fontWeight' }],
+          ['reduced.json', {}],
+          ['forced.json', {}],
+        ]),
+      ),
+    ).rejects.toThrow(/motion\.default must not declare.*group metadata/);
+  });
 });

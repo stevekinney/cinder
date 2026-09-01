@@ -1080,6 +1080,15 @@ export async function buildTokensBaseCss(
     documentsByPath,
     expandContextSources(resolver, 'motion', defaultMotionContext),
   );
+  const nonEmptyDefaultMotionDocuments = defaultMotionDocuments.filter((document) =>
+    Object.keys(document).some((key) => key !== '$schema' && key !== '$description'),
+  );
+  if (nonEmptyDefaultMotionDocuments.length > 0) {
+    throw new Error(
+      'motion.default must not declare token overrides or group metadata; it must be empty apart ' +
+        'from $schema and $description because tokens-base.css emits the canonical set values in :root',
+    );
+  }
   const defaultMotionEntries = new Map<string, CorpusEntry>();
   collectEntries(
     mergeAndExpandExtends(defaultMotionDocuments, [...baseDocuments, ...defaultMotionDocuments]),
