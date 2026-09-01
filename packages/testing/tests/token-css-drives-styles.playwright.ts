@@ -241,7 +241,12 @@ test.describe('generated token CSS drives visible styles', () => {
   test('a scoped ancestor override reaches a consume-only component token', async ({ page }) => {
     await gotoDocumentationPage(page, '/page/action-row');
 
-    const row = page.locator('.cinder-action-row').first();
+    // The documentation page also contains a condensed example that sets this
+    // token directly on the row. That local declaration correctly outranks an
+    // ancestor override, so select a consume-only row with no local claimant.
+    const row = page
+      .locator('.cinder-action-row:not([style*="--cinder-action-row-padding-block"])')
+      .first();
     await expect(row).toBeVisible();
     const parent = row.locator('..');
     const paddingOf = async (): Promise<string> =>
