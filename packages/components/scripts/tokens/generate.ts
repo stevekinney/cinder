@@ -845,7 +845,8 @@ export function assertUniqueCssProperties(
       // test's last-write map used the other, so regeneration produced
       // documentation the required drift test rejected.
       const emitted = serializeEntryValue(entry, baseIndex, activeResolver);
-      byValue.set(emitted, [...(byValue.get(emitted) ?? []), path]);
+      const fingerprint = `${entry.type ?? ''}\u0000${emitted}`;
+      byValue.set(fingerprint, [...(byValue.get(fingerprint) ?? []), path]);
     }
     byProperty.set(cssProperty, byValue);
   }
@@ -1486,23 +1487,39 @@ export async function buildTokensBaseCss(
   );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
+  const darkAliases = withDependentBaseAliases(
+    darkOverrides,
+    baseIndex,
+    baseResolveReferences,
+    darkResolveReferences,
+  );
+  const lightAliases = withDependentBaseAliases(
+    lightOverrides,
+    baseIndex,
+    baseResolveReferences,
+    lightResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    darkAliases,
+    baseIndex,
+    darkScopeIndex,
+    'theme.dark dependent aliases',
+    darkResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    lightAliases,
+    baseIndex,
+    lightScopeIndex,
+    'theme.light dependent aliases',
+    lightResolveReferences,
+  );
   const darkDeclarations = renderOverrideDeclarations(
-    withDependentBaseAliases(
-      darkOverrides,
-      baseIndex,
-      baseResolveReferences,
-      darkResolveReferences,
-    ),
+    darkAliases,
     baseIndex,
     darkResolveReferences,
   );
   const lightDeclarations = renderOverrideDeclarations(
-    withDependentBaseAliases(
-      lightOverrides,
-      baseIndex,
-      baseResolveReferences,
-      lightResolveReferences,
-    ),
+    lightAliases,
     baseIndex,
     lightResolveReferences,
   );

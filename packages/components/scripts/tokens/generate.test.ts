@@ -1735,6 +1735,24 @@ describe('CIN-30 review round 14: the uniqueness key includes $type', () => {
 
     expect(() => assertUniqueCssProperties(entries)).not.toThrow();
   });
+
+  test('two entries that emit the same text but differ in type are a conflict', () => {
+    const numberEntry: CorpusEntry = {
+      ...entry('type.number', 'fontWeight'),
+      value: 1,
+      type: 'number',
+    };
+    const weightEntry: CorpusEntry = {
+      ...entry('type.weight', 'fontWeight'),
+      value: 1,
+    };
+    const entries = new Map<string, CorpusEntry>([
+      ['type.number', numberEntry],
+      ['type.weight', weightEntry],
+    ]);
+
+    expect(() => assertUniqueCssProperties(entries)).toThrow(/conflicting values/);
+  });
 });
 
 describe('CIN-483: duplicate cssProperty checks use emitted values', () => {
