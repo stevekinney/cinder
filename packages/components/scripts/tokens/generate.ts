@@ -1536,27 +1536,27 @@ export async function buildTokensBaseCss(
     forcedReducedMotionResolveReferences,
   );
   const lightReducedMotionAliases = withDependentBaseAliases(
-    reducedMotionOverrides,
+    new Map(),
     baseIndex,
-    lightResolveReferences,
+    reducedMotionResolveReferences,
     lightReducedMotionResolveReferences,
   );
   const darkReducedMotionAliases = withDependentBaseAliases(
-    reducedMotionOverrides,
+    new Map(),
     baseIndex,
-    darkResolveReferences,
+    reducedMotionResolveReferences,
     darkReducedMotionResolveReferences,
   );
   const lightForcedReducedMotionAliases = withDependentBaseAliases(
-    forcedReducedMotionOverrides,
+    new Map(),
     baseIndex,
-    lightResolveReferences,
+    forcedReducedMotionResolveReferences,
     lightForcedReducedMotionResolveReferences,
   );
   const darkForcedReducedMotionAliases = withDependentBaseAliases(
-    forcedReducedMotionOverrides,
+    new Map(),
     baseIndex,
-    darkResolveReferences,
+    forcedReducedMotionResolveReferences,
     darkForcedReducedMotionResolveReferences,
   );
   assertUniqueOverrideCssProperties(

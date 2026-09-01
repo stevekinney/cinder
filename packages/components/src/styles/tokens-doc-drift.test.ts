@@ -140,18 +140,10 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
           `${match[1]}: doc table cell has an unescaped pipe (even backslash run) at index ` +
             `${evenRunPipe.index} -- malformed row, not a valid encoder output: ${JSON.stringify(body)}`,
         );
-      decoded = body.includes('&#x7c;')
-        ? body
-            .replaceAll('&#x7c;', '|')
-            .replaceAll('&#39;', "'")
-            .replaceAll('&quot;', '"')
-            .replaceAll('&gt;', '>')
-            .replaceAll('&lt;', '<')
-            .replaceAll('&amp;', '&')
-        : body.replace(
-            /(\\*)\|/g,
-            (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
-          );
+      decoded = body.replace(
+        /(\\*)\|/g,
+        (_match, backslashes: string) => '\\'.repeat(Math.floor(backslashes.length / 2)) + '|',
+      );
     } else if (htmlBody !== undefined) {
       // The HTML fallback is the only branch whose content is entity-escaped.
       // Decode after branch selection so decoded `&#124;` cannot be mistaken for
@@ -237,10 +229,12 @@ describe('docs/tokens.md drift', () => {
   });
 
   test('keeps Markdown entity text literal and decodes entities only in HTML code fallback', () => {
-    const markdown = '| `--cinder-markdown` | `literal &#124; &amp;` |\n';
+    const markdown = '| `--cinder-markdown` | `literal &#x7c; &#124; &amp;` |\n';
     const html = '| `--cinder-html` | <code>literal &#124; &amp;</code> |\n';
 
-    expect(extractDocTokens(markdown).tokens.get('--cinder-markdown')).toBe('literal &#124; &amp;');
+    expect(extractDocTokens(markdown).tokens.get('--cinder-markdown')).toBe(
+      'literal &#x7c; &#124; &amp;',
+    );
     expect(extractDocTokens(html).tokens.get('--cinder-html')).toBe('literal | &');
   });
 

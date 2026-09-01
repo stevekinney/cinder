@@ -1003,59 +1003,19 @@
       [data-reduced-motion='on']
     )
     [data-theme='dark'] {
-    --cinder-duration-fast: 0ms;
-    --cinder-duration-instant: 0ms;
-    --cinder-duration-normal: 0ms;
-    --cinder-duration-moderate: 0ms;
-    --cinder-duration-slow: 0ms;
-    --cinder-duration-spin: 0ms;
-    --cinder-duration-pulse: 0ms;
-    --cinder-duration-progress-bar-indeterminate: 0ms;
-    --cinder-duration-progress-ring-spin: 0ms;
-    --cinder-duration-base: 0ms;
   }
   :root[data-theme='dark']:not([data-cinder-reduced-motion='false']):not(
       [data-reduced-motion='off']
     ):not([data-reduced-motion='on']) {
-    --cinder-duration-fast: 0ms;
-    --cinder-duration-instant: 0ms;
-    --cinder-duration-normal: 0ms;
-    --cinder-duration-moderate: 0ms;
-    --cinder-duration-slow: 0ms;
-    --cinder-duration-spin: 0ms;
-    --cinder-duration-pulse: 0ms;
-    --cinder-duration-progress-bar-indeterminate: 0ms;
-    --cinder-duration-progress-ring-spin: 0ms;
-    --cinder-duration-base: 0ms;
   }
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not(
       [data-reduced-motion='on']
     )
     [data-theme='light'] {
-    --cinder-duration-fast: 0ms;
-    --cinder-duration-instant: 0ms;
-    --cinder-duration-normal: 0ms;
-    --cinder-duration-moderate: 0ms;
-    --cinder-duration-slow: 0ms;
-    --cinder-duration-spin: 0ms;
-    --cinder-duration-pulse: 0ms;
-    --cinder-duration-progress-bar-indeterminate: 0ms;
-    --cinder-duration-progress-ring-spin: 0ms;
-    --cinder-duration-base: 0ms;
   }
   :root[data-theme='light']:not([data-cinder-reduced-motion='false']):not(
       [data-reduced-motion='off']
     ):not([data-reduced-motion='on']) {
-    --cinder-duration-fast: 0ms;
-    --cinder-duration-instant: 0ms;
-    --cinder-duration-normal: 0ms;
-    --cinder-duration-moderate: 0ms;
-    --cinder-duration-slow: 0ms;
-    --cinder-duration-spin: 0ms;
-    --cinder-duration-pulse: 0ms;
-    --cinder-duration-progress-bar-indeterminate: 0ms;
-    --cinder-duration-progress-ring-spin: 0ms;
-    --cinder-duration-base: 0ms;
   }
 }
 
@@ -1072,50 +1032,10 @@
   --cinder-duration-base: 0ms;
 }
 :root[data-reduced-motion='on'] [data-theme='dark'] {
-  --cinder-duration-fast: 0ms;
-  --cinder-duration-instant: 0ms;
-  --cinder-duration-normal: 0ms;
-  --cinder-duration-moderate: 0ms;
-  --cinder-duration-slow: 0ms;
-  --cinder-duration-spin: 0ms;
-  --cinder-duration-pulse: 0ms;
-  --cinder-duration-progress-bar-indeterminate: 0ms;
-  --cinder-duration-progress-ring-spin: 0ms;
-  --cinder-duration-base: 0ms;
 }
 :root[data-reduced-motion='on'][data-theme='dark'] {
-  --cinder-duration-fast: 0ms;
-  --cinder-duration-instant: 0ms;
-  --cinder-duration-normal: 0ms;
-  --cinder-duration-moderate: 0ms;
-  --cinder-duration-slow: 0ms;
-  --cinder-duration-spin: 0ms;
-  --cinder-duration-pulse: 0ms;
-  --cinder-duration-progress-bar-indeterminate: 0ms;
-  --cinder-duration-progress-ring-spin: 0ms;
-  --cinder-duration-base: 0ms;
 }
 :root[data-reduced-motion='on'] [data-theme='light'] {
-  --cinder-duration-fast: 0ms;
-  --cinder-duration-instant: 0ms;
-  --cinder-duration-normal: 0ms;
-  --cinder-duration-moderate: 0ms;
-  --cinder-duration-slow: 0ms;
-  --cinder-duration-spin: 0ms;
-  --cinder-duration-pulse: 0ms;
-  --cinder-duration-progress-bar-indeterminate: 0ms;
-  --cinder-duration-progress-ring-spin: 0ms;
-  --cinder-duration-base: 0ms;
 }
 :root[data-reduced-motion='on'][data-theme='light'] {
-  --cinder-duration-fast: 0ms;
-  --cinder-duration-instant: 0ms;
-  --cinder-duration-normal: 0ms;
-  --cinder-duration-moderate: 0ms;
-  --cinder-duration-slow: 0ms;
-  --cinder-duration-spin: 0ms;
-  --cinder-duration-pulse: 0ms;
-  --cinder-duration-progress-bar-indeterminate: 0ms;
-  --cinder-duration-progress-ring-spin: 0ms;
-  --cinder-duration-base: 0ms;
 }

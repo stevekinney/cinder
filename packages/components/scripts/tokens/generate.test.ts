@@ -176,9 +176,10 @@ describe('A1: the forced-reduced-motion selector is built from its own context',
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
     const forcedBlock = /:root\[data-reduced-motion='on'\]\s*\{([^}]*)\}/.exec(css)?.[1];
-    const mediaBlock = /@media \(prefers-reduced-motion: reduce\) \{[\s\S]*?\{([^}]*)\}\s*\}/.exec(
-      css,
-    )?.[1];
+    const mediaBlock =
+      /@media \(prefers-reduced-motion: reduce\) \{([\s\S]*?)\n\}\n\n:root\[data-reduced-motion='on'\]/.exec(
+        css,
+      )?.[1];
 
     expect(forcedBlock).toBeDefined();
     expect(mediaBlock).toBeDefined();
@@ -190,6 +191,7 @@ describe('A1: the forced-reduced-motion selector is built from its own context',
     expect(forcedBlock).toContain('--test-duration: 2ms;');
     expect(forcedBlock).not.toContain('1ms');
     expect(mediaBlock).toContain('--test-duration: 1ms;');
+    expect(css).not.toMatch(/\[data-theme='(?:dark|light)'\]\s*\{[^}]*--test-duration/);
   });
 });
 
