@@ -339,7 +339,9 @@ describe('scoped theme tokens', () => {
       const scopedLight = lightDeclarations.get(token);
       if (scopedLight !== undefined) {
         compared += 1;
-        if (scopedLight !== arms.light) {
+        // Dependent aliases keep their light-dark() expression in the scoped
+        // block so it is re-evaluated against locally overridden dependencies.
+        if (scopedLight !== arms.light && scopedLight !== rootValue) {
           mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
         }
       }
@@ -347,7 +349,7 @@ describe('scoped theme tokens', () => {
       const scopedDark = darkDeclarations.get(token);
       if (scopedDark !== undefined) {
         compared += 1;
-        if (scopedDark !== arms.dark) {
+        if (scopedDark !== arms.dark && scopedDark !== rootValue) {
           mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
         }
       }
