@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { scan, scanSource } from './check-visually-hidden-classes.ts';
+import {
+  extractClassNamesCallArguments,
+  scan,
+  scanSource,
+} from './check-visually-hidden-classes.ts';
 
 describe('scanSource — bare `sr-only` detection', () => {
   test('flags a bare sr-only class applied in markup (double quotes)', () => {
@@ -36,9 +40,43 @@ describe('scanSource — bare `sr-only` detection', () => {
     expect(hits[0]?.lineNumber).toBe(3);
   });
 
+  test('flags a Svelte class directive (shorthand)', () => {
+    expect(scanSource('<span class:sr-only>hi</span>')).toHaveLength(1);
+  });
+
+  test('flags a Svelte class directive with a condition expression', () => {
+    expect(scanSource('<span class:sr-only={collapsed}>hi</span>')).toHaveLength(1);
+  });
+
+  test('flags a bare token quoted inside a classNames() call', () => {
+    expect(scanSource("<div class={classNames('sr-only', className)}>hi</div>")).toHaveLength(1);
+  });
+
+  test('flags a bare token quoted inside a classNames() call with a nested ternary', () => {
+    expect(
+      scanSource("<div class={classNames(active ? 'sr-only' : 'visible', className)}>hi</div>"),
+    ).toHaveLength(1);
+  });
+
+  test('flags a bare token inside a template-literal class attribute', () => {
+    expect(scanSource('<div class={`foo sr-only bar`}>hi</div>')).toHaveLength(1);
+  });
+
+  test('flags a bare sr-only-prefixed variant with no cinder- prefix', () => {
+    expect(scanSource('<span class="sr-only-focusable">hi</span>')).toHaveLength(1);
+    expect(scanSource('.sr-only-focusable:focus-visible {\n  position: fixed;\n}')).toHaveLength(1);
+  });
+
   test('does NOT flag the correct cinder-sr-only class', () => {
     expect(scanSource('<span class="cinder-sr-only">hi</span>')).toHaveLength(0);
     expect(scanSource('.cinder-sr-only {\n  position: absolute;\n}')).toHaveLength(0);
+  });
+
+  test('does NOT flag the correct class used via classNames() or a class directive', () => {
+    expect(
+      scanSource("<div class={classNames('cinder-sr-only', className)}>hi</div>"),
+    ).toHaveLength(0);
+    expect(scanSource('<span class:cinder-sr-only>hi</span>')).toHaveLength(0);
   });
 
   test('does NOT flag the focusable variant', () => {
@@ -55,6 +93,30 @@ describe('scanSource — bare `sr-only` detection', () => {
 
   test('does NOT flag an element with no sr-only anywhere', () => {
     expect(scanSource('<span class="cinder-icon-sm">hi</span>')).toHaveLength(0);
+  });
+});
+
+describe('extractClassNamesCallArguments', () => {
+  test('extracts a single call correctly', () => {
+    const calls = extractClassNamesCallArguments("classNames('foo', className)");
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.argumentsText).toBe("'foo', className");
+  });
+
+  test('handles nested parens inside the arguments', () => {
+    const calls = extractClassNamesCallArguments(
+      "classNames(isOpen ? getLabel('open') : 'closed', className)",
+    );
+    expect(calls).toHaveLength(1);
+    expect(calls[0]?.argumentsText).toBe("isOpen ? getLabel('open') : 'closed', className");
+  });
+
+  test('extracts multiple calls in the same source', () => {
+    const calls = extractClassNamesCallArguments(
+      "classNames('a')\nsomeOtherCall()\nclassNames('b')",
+    );
+    expect(calls).toHaveLength(2);
+    expect(calls.map((call) => call.argumentsText)).toEqual(["'a'", "'b'"]);
   });
 });
 
