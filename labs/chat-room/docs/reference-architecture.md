@@ -33,13 +33,20 @@ npm view @lostgradient/operative@0.7.0 version dist.integrity dist.shasum dist.t
 
 It must then confirm every API named in this document against the installed declarations. Any mismatch blocks Chatroom work and belongs upstream; an internal export such as `createActiveRun` is not an acceptable substitute.
 
-Chatroom currently composes the Operative contract with `armorer@0.14.0`, `conversationalist@0.6.1`, and `@lostgradient/chat` (a `workspace:*` sibling since the 2026-08-25 monorepo merge). Those exact installed versions define the current `Toolbox`, `ConversationHistory`, conversation-builder, and `ChatAdapter` behavior. A dependency bump that changes one of those contracts requires the same re-verification.
+Chatroom currently composes the Operative contract with `armorer@2.0.0`, `conversationalist@1.0.0`, and `@lostgradient/chat` (a `workspace:*` sibling since the 2026-08-25 monorepo merge). Those exact installed versions define the current `Toolbox`, `ConversationHistory`, conversation-builder, and `ChatAdapter` behavior. A dependency bump that changes one of those contracts requires the same re-verification.
+
+> [!WARNING] The companion API claims below predate two major bumps
+> This document was authored against `armorer@0.14.0` and `conversationalist@0.6.1`. The lab now installs `armorer@2.0.0` and `conversationalist@1.0.0` — a major bump each. Only the version literals have been corrected here; the behavioral claims attributed to them (`createToolbox()`, `toolbox.resumeApproval()`, `resolveToolResult()`, `withConversationHistory()`, `ConversationHistoryDraft.appendMessages()`) have **not** been re-verified against the installed majors.
+>
+> Treat every such claim as unverified until checked against the installed declarations. The first implementation pull request that relies on one confirms it and corrects this document if it moved.
 
 <a id="dependency-provenance"></a>
 
 ## Dependency provenance
 
-Chatroom is a published-artifact testbed. `package.json` and `bun.lock` are the source of truth for what the application consumes. Chatroom does not declare Operative yet; the first adoption pull request must add the exact dependency described above, and the resulting lockfile entry must resolve through `https://registry.npmjs.org`. A green source-checkout test in Agent Bureau does not satisfy this boundary. Neither does a merged release pull request: the exact package must exist in npm and pass the external-consumer verification owned by AB-24.
+Chatroom is a published-artifact testbed. `package.json` and `bun.lock` are the source of truth for what the application consumes. Chatroom does not declare Operative yet; the first adoption pull request must add the exact dependency described above, and the resulting lockfile entry must resolve through `https://registry.npmjs.org`. A green source-checkout test in Agent Bureau does not satisfy this boundary. Neither does a merged release pull request: the exact package must exist in npm, and the adopting pull request must itself verify the artifact it pins.
+
+That verification is the adopting pull request's own responsibility and is satisfied by recording, in the pull request, a `npm view @lostgradient/operative@<pinned> dist.integrity` result that matches the `bun.lock` entry. It is deliberately **not** delegated to [AB-24](https://linear.app/lost-gradient/issue/AB-24/publish-and-externally-verify-lostgradientoperative020): that issue is closed, and its recorded end-to-end external-consumer run covers `0.6.0` rather than the `0.7.0` selected above. Pointing the contract at a completed issue that verified a different version would make this requirement unsatisfiable by construction.
 
 <a id="state-model"></a>
 
@@ -64,7 +71,7 @@ Operative snapshots the input. It must never mutate the object supplied by the r
 
 System instructions belong to the module-scoped `createAgent` definition. They are not appended again when resuming from `{ conversation }`; the posted history already contains the context accumulated so far.
 
-Approval resume changes one existing message. `toolbox.resumeApproval()` produces the resolved result, and `resolveToolResult()` from `conversationalist@0.6.1` replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid because it leaves the provider with two results for one tool call.
+Approval resume changes one existing message. `toolbox.resumeApproval()` produces the resolved result, and `resolveToolResult()` from `conversationalist@1.0.0` replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid because it leaves the provider with two results for one tool call.
 
 <a id="credential-boundary"></a>
 
@@ -78,13 +85,13 @@ The browser may hold a signed pending-approval descriptor. That descriptor is a 
 
 ## Toolbox and approval ownership
 
-The host creates one module-scoped `Toolbox` with `createToolbox()` from `armorer@0.14.0` and passes that exact instance to `createAgent({ toolbox })`. Operative must use it as-is across runs. Building a fresh toolbox for each request breaks `toolbox.resumeApproval(signedApproval)`, because only the instance configured with the signing `approvalSecret` can verify the token.
+The host creates one module-scoped `Toolbox` with `createToolbox()` from `armorer@2.0.0` and passes that exact instance to `createAgent({ toolbox })`. Operative must use it as-is across runs. Building a fresh toolbox for each request breaks `toolbox.resumeApproval(signedApproval)`, because only the instance configured with the signing `approvalSecret` can verify the token.
 
 The secret must remain stable for at least as long as an approval descriptor can be resumed, and every server instance that may accept `/api/chat/resume` must use the same secret. A process-random secret is acceptable only for the explicitly documented local-development limitation where a restart invalidates every pending approval. It is not the deployable stateless-host contract.
 
 The agent parks with `stopWhen.pendingApproval()` combined with `stopWhen.noToolCalls()` from `@lostgradient/operative@0.7.0`. The combination matters: `pendingApproval()` stops after an approval-gated result, while `noToolCalls()` ends an ordinary text response instead of running to `maximumSteps`. The pending descriptor travels to the browser as tool activity. Approval or denial resolves that one call, replaces its existing `action_required` result, and starts a fresh run from the updated browser-owned history.
 
-The server never trusts a client-edited approval descriptor. `/api/chat/resume` validates its shape and lets `toolbox.resumeApproval()` verify the signature before execution. Signature validity is necessary but not sufficient: the host atomically consumes each signed approval capability before the tool side effect begins. A second submission of the same capability returns the already-recorded outcome or a deterministic consumed-capability response; it never calls `resumeApproval()` again. The deployable stateless-host contract therefore includes a shared consumed-capability ledger keyed by the signed descriptor's stable identity. A process-local ledger is acceptable only for the documented local-development limitation and must not be presented as replay protection across restarts or server instances. `armorer@0.14.0` supplies signature verification through `Toolbox.resumeApproval()`; the atomic consumption ledger and its idempotency behavior are Chatroom host responsibilities.
+The server never trusts a client-edited approval descriptor. `/api/chat/resume` validates its shape and lets `toolbox.resumeApproval()` verify the signature before execution. Signature validity is necessary but not sufficient: the host atomically consumes each signed approval capability before the tool side effect begins. A second submission of the same capability returns the already-recorded outcome or a deterministic consumed-capability response; it never calls `resumeApproval()` again. The deployable stateless-host contract therefore includes a shared consumed-capability ledger keyed by the signed descriptor's stable identity. A process-local ledger is acceptable only for the documented local-development limitation and must not be presented as replay protection across restarts or server instances. `armorer@2.0.0` supplies signature verification through `Toolbox.resumeApproval()`; the atomic consumption ledger and its idempotency behavior are Chatroom host responsibilities.
 
 Every tool that can create a non-reversible external side effect must use that approval-and-consumption path. A tool may execute without approval only when it is read-only, safely replayable, or protected by a host-owned idempotency key that is claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient because a retry may generate a different call for the same action. The canonical exemplar keeps this boundary simple: replay-unsafe tools require approval, while ordinary tools are replay-safe. A lost `tool.settled` or `run.completed` frame may therefore lose display progress, but a user retry cannot repeat an untracked external effect.
 
@@ -118,7 +125,11 @@ The enhanced-streaming target must also be request-local. The published `0.7.0` 
 > [!WARNING] Unresolved: this vocabulary conflicts with the published client decoder
 > Since [cinder#1472](https://github.com/stevekinney/cinder/pull/1472) the browser decodes with `decodeChatStreamEvents` from `@lostgradient/chat`, whose `ChatStreamEvent` union is exactly `text | tool_call | tool_result` and which throws `'Invalid chat stream event'` on anything else. Emitting the `wireVersion` / `stream:*` / `tool.*` / `run.*` frames specified above would make every frame throw in the browser.
 >
-> This section is therefore **not yet implementable as written**. CIN-436 records the three candidate resolutions — project Operative's events down onto the published vocabulary, extend `@lostgradient/chat` to carry the richer union, or stop using the published decoder — and must settle one before any streaming code is written. Whichever is chosen, this section is updated to match before the implementation lands.
+> **Resolved 2026-09-01: extend `@lostgradient/chat` additively.** The three existing union members keep their exact shapes; the `stream:*`, `tool.*`, and `run.*` members plus the `wireVersion` and `sequence` envelope fields are added alongside them, and `decodeChatStreamEvent` keeps throwing on genuinely unknown frames. The vocabulary specified in this section therefore stands as written — it is the decoder that grows to meet it.
+>
+> This follows a standing project rule: **`@lostgradient/chat` expands to utilize all of Operative's features and never constrains Operative to fit its current surface.** Projecting Operative's events down onto the existing three-member union was rejected for exactly that reason, and re-introducing a hand-rolled local decoder was rejected because it would regress the published-controller adoption.
+>
+> The decision is settled; the implementation is outstanding and is owned by CIN-436. Until it lands, this section describes the target contract, not the shipped one.
 
 Exactly one terminal frame is written when the connection remains available. The server closes the stream immediately after that frame. EOF without a terminal frame is a truncated response and therefore a transport failure, not success. A client cancellation is the exception because the client deliberately stopped reading and cannot receive the terminal abort frame.
 
@@ -142,7 +153,7 @@ ChatAdapter.stopGenerating()
 
 A user stop is not an adapter error. The browser finalizes a non-empty partial assistant message, removes an empty placeholder with `cancelStreamingMessage()`, calls Chat's `endStreaming()`, and resolves `stopGenerating()`. It does not mark the user message failed and does not populate the error banner.
 
-Tool-call frames are provisional until a matching result arrives. On cancellation, the adapter discards that request's staged tool calls and progress UI before the next turn can be posted. If an implementation has already mutated `ConversationHistory`, it restores the pre-run snapshot and may then preserve only the non-empty partial assistant text; it must not retain a call without a result or invent a provider-visible aborted result that Operative did not produce. The public `withConversationHistory()` and `ConversationHistoryDraft.appendMessages()` APIs from `conversationalist@0.6.1` commit a paired call and result in one returned history value, while `@lostgradient/chat` (a `workspace:*` sibling since the 2026-08-25 monorepo merge) `cancelStreamingMessage()` and `endStreaming()` own placeholder cleanup. This keeps the next provider transcript valid even when cancellation races with `stream:tool-call-complete`.
+Tool-call frames are provisional until a matching result arrives. On cancellation, the adapter discards that request's staged tool calls and progress UI before the next turn can be posted. If an implementation has already mutated `ConversationHistory`, it restores the pre-run snapshot and may then preserve only the non-empty partial assistant text; it must not retain a call without a result or invent a provider-visible aborted result that Operative did not produce. The public `withConversationHistory()` and `ConversationHistoryDraft.appendMessages()` APIs from `conversationalist@1.0.0` commit a paired call and result in one returned history value, while `@lostgradient/chat` (a `workspace:*` sibling since the 2026-08-25 monorepo merge) `cancelStreamingMessage()` and `endStreaming()` own placeholder cleanup. This keeps the next provider transcript valid even when cancellation races with `stream:tool-call-complete`.
 
 <a id="error-contract"></a>
 
