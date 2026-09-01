@@ -13,6 +13,7 @@ import {
   type CorpusEntry,
   documentsForResolutionOrder,
   findDriftedPaths,
+  omitRecipeEquivalentThemeOverrides,
   requireDocument,
   resolveAlias,
   resolvedDirectory,
@@ -2352,7 +2353,65 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
     for (const block of [darkBlock, lightBlock]) {
       expect(block).not.toContain('--cinder-file-upload-background:');
       expect(block).not.toContain('--cinder-kanban-card-background:');
+      expect(block).not.toContain('--cinder-alert-info:');
+      expect(block).not.toContain('--cinder-code-block-background:');
     }
+  });
+
+  test('keeps a real theme override while omitting a value represented by light-dark()', () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'equivalent',
+        {
+          path: 'equivalent',
+          value: { colorSpace: 'oklch', components: [0.45, 0.1, 20] },
+          type: 'color',
+          description: undefined,
+          cssProperty: '--test-equivalent',
+          cssRecipe: 'light-dark(oklch(45% 0.1 20), oklch(78% 0.1 20))',
+          public: true,
+        },
+      ],
+      [
+        'different',
+        {
+          path: 'different',
+          value: { colorSpace: 'oklch', components: [0.45, 0.1, 20] },
+          type: 'color',
+          description: undefined,
+          cssProperty: '--test-different',
+          cssRecipe: 'light-dark(oklch(45% 0.1 20), oklch(78% 0.1 20))',
+          public: true,
+        },
+      ],
+    ]);
+    const overrides = new Map<string, CorpusEntry>([
+      [
+        'equivalent',
+        {
+          ...baseIndex.get('equivalent')!,
+          value: { colorSpace: 'oklch', components: [0.45, 0.1, 20] },
+          cssRecipe: undefined,
+        },
+      ],
+      [
+        'different',
+        {
+          ...baseIndex.get('different')!,
+          value: { colorSpace: 'oklch', components: [0.5, 0.1, 20] },
+          cssRecipe: undefined,
+        },
+      ],
+    ]);
+
+    const filtered = omitRecipeEquivalentThemeOverrides(
+      overrides,
+      baseIndex,
+      'light',
+      (value) => value,
+    );
+    expect(filtered.has('equivalent')).toBe(false);
+    expect(filtered.has('different')).toBe(true);
   });
 
   test('rejects a non-empty motion.default document instead of dropping it from CSS', async () => {

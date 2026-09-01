@@ -685,55 +685,17 @@
   /* Structural: not a design token. */
   color-scheme: dark;
 
-  --cinder-surface: oklch(21% 0.04 245);
-  --cinder-surface-raised: oklch(28% 0.045 245);
-  --cinder-surface-raised-hover: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    oklch(100% 0 0) 2.5%
-  );
-  --cinder-surface-raised-pressed: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    oklch(100% 0 0) 6%
-  );
-  --cinder-surface-inset: oklch(11% 0.03 245);
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%);
-  --cinder-surface-pressed: color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%);
-  --cinder-surface-inverse: var(--cinder-surface-raised);
-  --cinder-surface-upcoming-marker: var(--cinder-surface);
-  --cinder-surface-canvas: oklch(15% 0.035 245);
-  --cinder-border: oklch(58% 0.05 245);
-  --cinder-border-faint: oklch(33% 0.03 245);
-  --cinder-border-muted: oklch(38% 0.04 245);
-  --cinder-border-strong: oklch(66% 0.06 245);
-  --cinder-border-inverse: var(--cinder-border-strong);
-  --cinder-text-muted: oklch(82% 0.02 245);
-  --cinder-text-subtle: oklch(72% 0.02 245);
-  --cinder-text-disabled: oklch(64% 0.02 245);
-  --cinder-text-inverse: var(--cinder-text-default);
-  --cinder-text-default: oklch(92% 0.02 245);
-  --cinder-fill-disabled: oklch(30% 0.015 245);
-  --cinder-accent-contrast: oklch(15% 0.035 245);
-  --cinder-accent-text: oklch(72% 0.14 270);
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
   --cinder-accent-background: color-mix(
     in oklch,
     var(--cinder-accent-solid),
     var(--cinder-surface) 88%
   );
-  --cinder-accent-solid: oklch(72% 0.14 270);
   --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
   --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
   --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
   --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
-  --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.7 0.14 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
-  --cinder-ring-on-accent: oklch(100% 0 0);
-  --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
-  --cinder-scrollbar-thumb: oklch(100% 0 0 / 0.45);
-  --cinder-scrollbar-thumb-hover: oklch(100% 0 0 / 0.65);
-  --cinder-overlay-backdrop: oklch(8% 0.02 245 / 0.65);
   --cinder-shadow-sm: 0 1px 2px oklch(100% 0 0 / 0.09), 0 1px 1px oklch(100% 0 0 / 0.05);
   --cinder-shadow-md: 0 4px 6px -1px oklch(100% 0 0 / 0.09), 0 2px 4px -2px oklch(100% 0 0 / 0.06);
   --cinder-shadow-lg:
@@ -742,20 +704,6 @@
     0 10px 15px -3px oklch(0% 0 0 / 0.45), 0 4px 6px -4px oklch(0% 0 0 / 0.32);
   --cinder-button-background: var(--cinder-surface-raised);
   --cinder-button-foreground: var(--cinder-text-default);
-  --cinder-button-border: var(--cinder-border-strong);
-  --cinder-toggle-track-off-resting: oklch(45% 0.02 245);
-  --cinder-toggle-track-off-hover-resting: oklch(52% 0.02 245);
-  --cinder-chart-series-1: oklch(58% 0.089 205);
-  --cinder-chart-series-2: oklch(67% 0.275 330);
-  --cinder-chart-series-3: oklch(69% 0.182 44);
-  --cinder-chart-series-4: oklch(70% 0.144 160);
-  --cinder-chart-series-5: oklch(78% 0.12 8);
-  --cinder-chart-series-6: oklch(81% 0.152 80);
-  --cinder-chart-series-7: oklch(85% 0.078 235);
-  --cinder-chart-series-8: oklch(89% 0.19 120);
-  --cinder-status-success-background: oklch(28% 0.07 145);
-  --cinder-status-success-text: oklch(88% 0.11 145);
-  --cinder-status-success-border: oklch(45% 0.09 145);
   --cinder-status-success-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -764,13 +712,6 @@
     from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-success-contrast: oklch(15% 0.03 145);
-  --cinder-status-success-solid: oklch(78% 0.14 145);
-  --cinder-status-success-solid-active: oklch(62% 0.14 145);
-  --cinder-status-success-solid-hover: oklch(70% 0.14 145);
-  --cinder-status-warning-background: oklch(28% 0.06 75);
-  --cinder-status-warning-text: oklch(90% 0.08 75);
-  --cinder-status-warning-border: oklch(50% 0.1 75);
   --cinder-status-warning-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -779,16 +720,8 @@
     from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-warning-contrast: oklch(20% 0.04 75);
-  --cinder-status-warning-solid: oklch(82% 0.156 75);
-  --cinder-status-warning-solid-active: oklch(66% 0.13 75);
-  --cinder-status-warning-solid-hover: oklch(74% 0.156 75);
-  --cinder-status-neutral-background: oklch(28% 0.04 245);
   --cinder-status-neutral-text: var(--cinder-text-default);
   --cinder-status-neutral-border: var(--cinder-border);
-  --cinder-status-danger-background: oklch(28% 0.09 25);
-  --cinder-status-danger-text: oklch(90% 0.05 25);
-  --cinder-status-danger-border: oklch(50% 0.11 25);
   --cinder-status-danger-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -797,13 +730,6 @@
     from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-danger-contrast: oklch(12% 0.02 25);
-  --cinder-status-danger-solid: oklch(72% 0.172 25);
-  --cinder-status-danger-solid-active: oklch(60% 0.172 25);
-  --cinder-status-danger-solid-hover: oklch(64% 0.172 25);
-  --cinder-status-info-background: oklch(28% 0.057 230);
-  --cinder-status-info-text: oklch(88% 0.071 230);
-  --cinder-status-info-border: oklch(45% 0.08 230);
   --cinder-status-info-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -812,32 +738,6 @@
     from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-info-contrast: oklch(15% 0.03 230);
-  --cinder-status-info-solid: oklch(78% 0.13 230);
-  --cinder-status-info-solid-active: oklch(62% 0.12 230);
-  --cinder-status-info-solid-hover: oklch(70% 0.13 230);
-  --cinder-severity-critical: oklch(95% 0.04 25);
-  --cinder-severity-critical-background: oklch(24% 0.11 25);
-  --cinder-terminal-ansi-black: oklch(82% 0 0);
-  --cinder-terminal-ansi-red: oklch(72% 0.14 25);
-  --cinder-terminal-ansi-green: oklch(72% 0.13 145);
-  --cinder-terminal-ansi-yellow: oklch(82% 0.13 85);
-  --cinder-terminal-ansi-blue: oklch(72% 0.15 260);
-  --cinder-terminal-ansi-magenta: oklch(75% 0.14 325);
-  --cinder-terminal-ansi-cyan: oklch(75% 0.12 205);
-  --cinder-terminal-ansi-white: oklch(94% 0 0);
-  --cinder-terminal-ansi-bright-black: oklch(68% 0 0);
-  --cinder-terminal-ansi-bright-red: oklch(78% 0.15 25);
-  --cinder-terminal-ansi-bright-green: oklch(80% 0.14 145);
-  --cinder-terminal-ansi-bright-yellow: oklch(88% 0.14 85);
-  --cinder-terminal-ansi-bright-blue: oklch(80% 0.16 260);
-  --cinder-terminal-ansi-bright-magenta: oklch(82% 0.15 325);
-  --cinder-terminal-ansi-bright-cyan: oklch(82% 0.13 205);
-  --cinder-terminal-ansi-bright-white: oklch(98% 0 0);
-  --cinder-checker-base: oklch(28% 0.02 245);
-  --cinder-checker-tile: oklch(38% 0.02 245);
-  --cinder-alert-info: oklch(78% 0.15 245);
-  --cinder-code-block-background: var(--cinder-surface-inset);
   --cinder-kanban-board-scroll-edge: oklch(92% 0.02 245 / 0.12);
 }
 
@@ -845,59 +745,17 @@
   /* Structural: not a design token. */
   color-scheme: light;
 
-  --cinder-surface: oklch(99.4% 0.002 255);
-  --cinder-surface-raised: oklch(100% 0 255);
-  --cinder-surface-raised-hover: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    var(--cinder-accent-solid) 6%
-  );
-  --cinder-surface-raised-pressed: color-mix(
-    in oklch,
-    var(--cinder-surface-raised),
-    var(--cinder-accent-solid) 12%
-  );
-  --cinder-surface-inset: oklch(96% 0.005 255);
-  --cinder-surface-hover: color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%);
-  --cinder-surface-pressed: color-mix(
-    in oklch,
-    var(--cinder-surface),
-    var(--cinder-accent-solid) 12%
-  );
-  --cinder-surface-inverse: var(--cinder-text-default);
-  --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
-  --cinder-surface-canvas: oklch(98.4% 0.003 255);
-  --cinder-border: oklch(63% 0.006 255);
-  --cinder-border-faint: oklch(92% 0.003 255);
-  --cinder-border-muted: oklch(85% 0.004 255);
-  --cinder-border-strong: oklch(60% 0.008 255);
-  --cinder-border-inverse: transparent;
-  --cinder-text-muted: oklch(32% 0.014 245);
-  --cinder-text-subtle: oklch(42% 0.012 245);
-  --cinder-text-disabled: oklch(52% 0.01 245);
-  --cinder-text-inverse: var(--cinder-surface);
-  --cinder-text-default: oklch(20% 0.018 245);
-  --cinder-fill-disabled: oklch(86% 0.006 255);
-  --cinder-accent-contrast: oklch(100% 0 0);
-  --cinder-accent-text: oklch(45% 0.22 270);
   --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
   --cinder-accent-background: color-mix(
     in oklch,
     var(--cinder-accent-solid),
     var(--cinder-surface) 88%
   );
-  --cinder-accent-solid: oklch(50% 0.22 270);
   --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
   --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
   --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
   --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
-  --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.55 0.16 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
-  --cinder-ring-on-accent: oklch(15% 0.035 245);
-  --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
-  --cinder-scrollbar-thumb: oklch(0% 0 0 / 0.45);
-  --cinder-scrollbar-thumb-hover: oklch(0% 0 0 / 0.65);
-  --cinder-overlay-backdrop: oklch(20% 0.03 245 / 0.5);
   --cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.1), 0 1px 1px oklch(0% 0 0 / 0.06);
   --cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);
   --cinder-shadow-lg: 0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
@@ -905,20 +763,6 @@
     0 10px 15px -3px oklch(0% 0 0 / 0.14), 0 4px 6px -4px oklch(0% 0 0 / 0.12);
   --cinder-button-background: var(--cinder-surface-raised);
   --cinder-button-foreground: var(--cinder-text-default);
-  --cinder-button-border: var(--cinder-border);
-  --cinder-toggle-track-off-resting: var(--cinder-border-muted);
-  --cinder-toggle-track-off-hover-resting: var(--cinder-border);
-  --cinder-chart-series-1: oklch(33% 0.121 8);
-  --cinder-chart-series-2: oklch(36% 0.069 80);
-  --cinder-chart-series-3: oklch(40% 0.082 160);
-  --cinder-chart-series-4: oklch(45% 0.087 235);
-  --cinder-chart-series-5: oklch(53% 0.218 330);
-  --cinder-chart-series-6: oklch(56% 0.148 44);
-  --cinder-chart-series-7: oklch(59% 0.126 120);
-  --cinder-chart-series-8: oklch(63% 0.098 205);
-  --cinder-status-success-background: oklch(94.5% 0.045 145);
-  --cinder-status-success-text: oklch(40% 0.127 145);
-  --cinder-status-success-border: oklch(80% 0.05 145);
   --cinder-status-success-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -927,13 +771,6 @@
     from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-success-contrast: oklch(100% 0 0);
-  --cinder-status-success-solid: oklch(50% 0.157 145);
-  --cinder-status-success-solid-active: oklch(35% 0.1 145);
-  --cinder-status-success-solid-hover: oklch(42% 0.12 145);
-  --cinder-status-warning-background: oklch(94.5% 0.042 75);
-  --cinder-status-warning-text: oklch(40% 0.085 75);
-  --cinder-status-warning-border: oklch(80% 0.06 75);
   --cinder-status-warning-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -942,16 +779,8 @@
     from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-warning-contrast: oklch(100% 0 0);
-  --cinder-status-warning-solid: oklch(54% 0.113 75);
-  --cinder-status-warning-solid-active: oklch(38% 0.07 75);
-  --cinder-status-warning-solid-hover: oklch(42% 0.08 75);
-  --cinder-status-neutral-background: oklch(94.5% 0.004 255);
   --cinder-status-neutral-text: var(--cinder-text-default);
   --cinder-status-neutral-border: var(--cinder-border);
-  --cinder-status-danger-background: oklch(94.5% 0.026 25);
-  --cinder-status-danger-text: oklch(42% 0.16 25);
-  --cinder-status-danger-border: oklch(80% 0.06 25);
   --cinder-status-danger-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -960,13 +789,6 @@
     from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-danger-contrast: oklch(100% 0 0);
-  --cinder-status-danger-solid: oklch(50% 0.202 25);
-  --cinder-status-danger-solid-active: oklch(35% 0.142 25);
-  --cinder-status-danger-solid-hover: oklch(42% 0.171 25);
-  --cinder-status-info-background: oklch(94.5% 0.03 230);
-  --cinder-status-info-text: oklch(40% 0.079 230);
-  --cinder-status-info-border: oklch(80% 0.05 230);
   --cinder-status-info-subtle: oklch(
     from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
       min(c, 0.05) h
@@ -975,13 +797,6 @@
     from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
       min(c, 0.05) h
   );
-  --cinder-status-info-contrast: oklch(100% 0 0);
-  --cinder-status-info-solid: oklch(50% 0.098 230);
-  --cinder-status-info-solid-active: oklch(35% 0.065 230);
-  --cinder-status-info-solid-hover: oklch(42% 0.079 230);
-  --cinder-checker-base: #fff;
-  --cinder-checker-tile: #ccc;
-  --cinder-alert-info: oklch(45% 0.14 245);
 }
 
 @media (prefers-reduced-motion: reduce) {

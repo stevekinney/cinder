@@ -357,6 +357,56 @@ describe('publishFixtureArtifacts', () => {
       clearFixtureBundleCaches();
     }
   });
+
+  it('atomically reserves a ninth real response after eight pending entries', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      for (let index = 0; index < 8; index++) {
+        const key = `pending-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        expect(publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32, true)).toBe(
+          true,
+        );
+      }
+      const ninth = await buildFixtureBundle(
+        'input',
+        fixture,
+        `${fixtureFile.contentHash}-ninth`,
+        resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+      );
+      expect(ninth).not.toBeNull();
+      expect(
+        fixtureEntryByKey.has('fixture-input-disabled-' + fixtureFile.contentHash + '-ninth'),
+      ).toBe(true);
+
+      for (let index = 9; index < 32; index++) {
+        expect(
+          publishFixtureArtifacts(
+            `pending-${index}`,
+            new Map([[`fixture-pending-${index}.js`, 'pending']]),
+            32,
+            true,
+          ),
+        ).toBe(true);
+      }
+      const beforeRejected = fixtureArtifactByPath.size;
+      expect(
+        publishFixtureArtifacts(
+          'pending-rejected',
+          new Map([['fixture-pending-rejected.js', 'rejected']]),
+          32,
+          true,
+        ),
+      ).toBe(false);
+      expect(fixtureArtifactByPath.size).toBe(beforeRejected);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
 });
 
 describe('runConcurrentStartupWarmup', () => {

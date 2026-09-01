@@ -294,6 +294,14 @@ describe('DTCG resolver', () => {
     expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
   });
 
+  test('resolves lookup ancestor extends before inheriting deprecation through a shadowing wrapper', () => {
+    const merged = mergeAndExpandExtends(
+      [{ outer: { wrapper: { marker: { $value: 1 } } }, derived: { $extends: '{outer.base}' } }],
+      [{ outer: { base: { $extends: '{legacy}' } }, legacy: { $deprecated: 'legacy' } }],
+    );
+    expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
+  });
+
   test('resolves ancestor extends before inheriting deprecation', () => {
     const merged = mergeAndExpandExtends([
       {

@@ -67,7 +67,16 @@ export function publishFixtureArtifacts(
   entryKey: string,
   artifacts: ReadonlyMap<string, string>,
   maximumEntries = MAX_CACHED_FIXTURE_ENTRIES,
-): void {
+  reserveResponseLease = false,
+): boolean {
+  if (
+    reserveResponseLease &&
+    !pendingFixtureEntryKeys.has(entryKey) &&
+    pendingFixtureEntryKeys.size >= MAX_FIXTURE_RESPONSE_LEASES
+  ) {
+    return false;
+  }
+  if (reserveResponseLease) pendingFixtureEntryKeys.add(entryKey);
   fixtureArtifactPathsByEntryKey.delete(entryKey);
   fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
   evictedFixtureArtifactsByEntryKey.delete(entryKey);
@@ -77,7 +86,7 @@ export function publishFixtureArtifacts(
     const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
       (key) => !pendingFixtureEntryKeys.has(key),
     );
-    if (oldestEntryKey === undefined) return;
+    if (oldestEntryKey === undefined) return true;
     const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
     fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
     fixtureEntryByKey.delete(oldestEntryKey);
@@ -103,6 +112,7 @@ export function publishFixtureArtifacts(
       evictedFixtureArtifactsByEntryKey.delete(oldestFallback);
     }
   }
+  return true;
 }
 
 export function fixtureEntryKey(
@@ -222,15 +232,13 @@ export async function buildFixtureBundle(
 
     // Publish only a current-generation result. A stale result must not alter
     // same-key artifact bookkeeping or return an entry path after invalidation.
-    publishFixtureArtifacts(entryKey, entry.artifacts);
+    if (!publishFixtureArtifacts(entryKey, entry.artifacts, MAX_CACHED_FIXTURE_ENTRIES, true)) {
+      return null;
+    }
     // Only update the "latest" entry-key pointer when we're not racing a
     // newer invalidation, so a FUTURE lookup by `entryKey` doesn't resolve
     // to this now-superseded build.
     fixtureEntryByKey.set(entryKey, entry.entryPath);
-    if (!retainFixtureEntry(entryKey)) {
-      fixtureEntryByKey.delete(entryKey);
-      return null;
-    }
     return entry.entryPath;
   })();
 

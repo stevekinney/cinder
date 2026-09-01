@@ -242,6 +242,8 @@ function resolveExtends(
       const ancestorPath = ancestors.slice(0, end).join('.');
       if (groups.get(ancestorPath)?.$extends)
         resolveExtends(ancestorPath, groups, visiting, complete, lookupGroups);
+      if (lookupGroups.get(ancestorPath)?.$extends)
+        resolveExtends(ancestorPath, lookupGroups, new Set(), new Set(), lookupGroups);
     }
     const effectiveExtendedDeprecated =
       effectiveGroupDeprecated(extendedPath, groups) ??
