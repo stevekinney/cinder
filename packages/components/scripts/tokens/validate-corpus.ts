@@ -132,6 +132,20 @@ function collectDeclaredTokenPaths(value: unknown, prefix: string, paths: Set<st
   }
 }
 
+function collectSemanticGroupMetadataPaths(
+  value: unknown,
+  prefix: string,
+  paths: Set<string>,
+): void {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+  if ('$value' in value || '$ref' in value) return;
+  if ('$type' in value || '$deprecated' in value || '$extensions' in value) paths.add(prefix);
+  for (const [name, child] of Object.entries(value)) {
+    if (name.startsWith('$')) continue;
+    collectSemanticGroupMetadataPaths(child, prefix ? `${prefix}.${name}` : name, paths);
+  }
+}
+
 /** Validates modifier declarations against the token paths contributed by ordered base sets. */
 export function validateModifierTokenPaths(
   resolver: ResolverDocument,
@@ -156,6 +170,12 @@ export function validateModifierTokenPaths(
       const contextDocuments = expandContextSources(resolver, modifierName, contextName).map(
         (source) => documentsByPath.get(normalizeSourcePath(source.$ref))!,
       );
+      const explicitlyDeclaredPaths = new Set<string>();
+      const semanticGroupMetadataPaths = new Set<string>();
+      for (const document of contextDocuments) {
+        collectDeclaredTokenPaths(document, '', explicitlyDeclaredPaths);
+        collectSemanticGroupMetadataPaths(document, '', semanticGroupMetadataPaths);
+      }
       collectDeclaredTokenPaths(
         mergeAndExpandExtends(contextDocuments, [...baseDocuments, ...contextDocuments]),
         '',
@@ -166,6 +186,20 @@ export function validateModifierTokenPaths(
         issues.push({
           path: `$.modifiers.${modifierName}.contexts.${contextName}.${tokenPath}`,
           reason: `override token "${tokenPath}" has no matching base token`,
+        });
+      }
+      for (const groupPath of semanticGroupMetadataPaths) {
+        const unoverriddenBasePath = [...basePaths].find(
+          (basePath) =>
+            (groupPath === '' || basePath === groupPath || basePath.startsWith(`${groupPath}.`)) &&
+            !explicitlyDeclaredPaths.has(basePath),
+        );
+        if (unoverriddenBasePath === undefined) continue;
+        issues.push({
+          path: `$.modifiers.${modifierName}.contexts.${contextName}.${groupPath || '$root'}`,
+          reason:
+            `group metadata affects base token "${unoverriddenBasePath}" without an explicit override; ` +
+            'resolved token semantics would diverge from generated CSS',
         });
       }
     }

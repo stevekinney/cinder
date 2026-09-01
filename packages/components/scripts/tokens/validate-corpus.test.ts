@@ -528,6 +528,23 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
       /override token "missing" has no matching base token/,
     );
   });
+
+  test('rejects modifier group metadata that changes an inherited base token', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      ['base.json', { typography: { $type: 'fontFamily', normal: { $value: 'normal' } } }],
+      ['light.json', { typography: { $type: 'fontWeight' } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).toThrow(
+      /group metadata affects base token "typography\.normal" without an explicit override/,
+    );
+  });
 });
 
 describe('buildContextSourcesIndex keys are collision-free', () => {
