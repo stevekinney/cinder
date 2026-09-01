@@ -52,7 +52,7 @@ describe('DTCG resolver', () => {
       source: { $type: 'dimension', $value: '#/late/$value' },
       late: { $type: 'dimension', $value: { value: 3, unit: 'px' } },
     });
-    expect(resolved.copy?.$value).toBe(3);
+    expect(resolved['copy']?.$value).toBe(3);
   });
 
   test('resolves a $ref pointer into token metadata other than $value', () => {
