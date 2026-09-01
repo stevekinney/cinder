@@ -255,6 +255,23 @@ function resolveReference(
   const segments = reference.startsWith('#/')
     ? pointerSegments(reference)
     : reference.slice(1, -1).split('.');
+  // The document itself is also the root group. When it carries both group
+  // metadata and a `$root` token, document-level metadata pointers must read
+  // the group object unless `$root` is explicitly present.
+  const documentGroup = groups.get('');
+  if (
+    reference.startsWith('#/') &&
+    documentGroup &&
+    typeof segments[0] === 'string' &&
+    segments[0].startsWith('$') &&
+    segments[0] !== '$root' &&
+    segments[0] !== '$value'
+  ) {
+    const propertyValue = getByPath(documentGroup, segments);
+    if (propertyValue === undefined)
+      issue(reference, 'reference target document group has no requested property');
+    return clone(propertyValue);
+  }
   if (reference.startsWith('#/') && segments[0] === '$root') {
     const rootToken = tokens.get('');
     if (!rootToken) return issue(reference, 'reference target does not exist');

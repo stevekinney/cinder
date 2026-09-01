@@ -75,6 +75,15 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('the document root token');
   });
 
+  test('resolves document-root group metadata without requiring an explicit $root segment', () => {
+    const resolved = resolveDocument({
+      $description: 'document group metadata',
+      $root: { $type: 'number', $value: 1, $description: 'document root token metadata' },
+      copy: { $type: 'string', $ref: '#/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('document group metadata');
+  });
+
   test("resolves a $ref pointer into another alias token's own $ref, reading it before resolution deletes it", () => {
     // resolveRefToken deletes `$ref` from its token once resolved (so a
     // resolved token never carries a leftover alias pointer). Reading
