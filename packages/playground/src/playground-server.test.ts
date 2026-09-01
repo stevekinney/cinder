@@ -42,6 +42,7 @@ import {
   isWarmupStable,
   mergeGeneratedSchemaMetadata,
   readGeneratedComponentSchema,
+  releaseEagerPrebuildMemory,
   rewriteRepositoryRelativeReadmeLinks,
   runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
@@ -86,6 +87,14 @@ describe('eagerPrebuildComponents', () => {
 
   it('accepts a compose-only component scope without adding it to the sidebar prebuild', () => {
     expect(eagerPrebuildComponents(components, 'tab', [...components, 'tab'])).toEqual([]);
+  });
+});
+
+describe('releaseEagerPrebuildMemory', () => {
+  it('synchronously collects short-lived compiler graphs after warmup', () => {
+    const calls: boolean[] = [];
+    releaseEagerPrebuildMemory((force) => calls.push(force));
+    expect(calls).toEqual([true]);
   });
 });
 

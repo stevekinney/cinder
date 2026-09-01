@@ -1214,7 +1214,19 @@ async function eagerPrebuildAndWarmManifests(): ReturnType<typeof eagerPrebuildA
   await getManifests().catch((error: unknown) => {
     console.error('[playground] manifest pre-warm failed:', error);
   });
+  releaseEagerPrebuildMemory();
   return prebuild;
+}
+
+/**
+ * Eager warmup creates many short-lived compiler graphs before the long-lived
+ * browser suite begins. Ask Bun to synchronously reclaim those graphs once the
+ * bundle and manifest caches hold the durable artifacts the server needs.
+ */
+export function releaseEagerPrebuildMemory(
+  collectGarbage: (force: boolean) => void = Bun.gc,
+): void {
+  collectGarbage(true);
 }
 
 /** Run independent startup work in parallel and release server resources if either task fails. */
