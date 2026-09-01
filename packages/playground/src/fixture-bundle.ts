@@ -10,11 +10,14 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  createSettledBuildCollector,
   fixtureArtifactByPath,
   fixtureBuildPromiseByKey,
 } from './build-artifacts-shared.ts';
 import { PLAYGROUND_TEMP_ROOT, relativeImportSpecifier } from './playground-paths.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
+
+const startFixtureBuildMemoryCycle = createSettledBuildCollector(24);
 
 /** Fixture-bundle entries: keyed by `fixtureEntryKey(...)` → entry artifact path. */
 export const fixtureEntryByKey = new Map<string, string>();
@@ -41,6 +44,7 @@ export async function compileFixtureBundleArtifacts(
   fixtureContentHash: string,
   componentOrHostPath: string,
 ): Promise<{ entryPath: string; entryCode: string; artifacts: Map<string, string> } | null> {
+  const settleBuildMemoryCycle = startFixtureBuildMemoryCycle();
   const entryBasename = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
   const entryTempDir = join(PLAYGROUND_TEMP_ROOT, randomUUID());
   const entryTempPath = join(entryTempDir, `${entryBasename}.ts`);
@@ -94,6 +98,7 @@ flushSync();
     return entry;
   } finally {
     rmSync(entryTempDir, { recursive: true, force: true });
+    settleBuildMemoryCycle();
   }
 }
 

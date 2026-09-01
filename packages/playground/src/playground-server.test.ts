@@ -27,6 +27,7 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
+import { createSettledBuildCollector } from './build-artifacts-shared.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
@@ -141,6 +142,30 @@ describe('releaseIncrementalPrebuildMemory', () => {
       { activeBuilds: 0, completedItems: 7 },
     ]);
     expect(results.map((result) => result.status)).toEqual(Array(7).fill('fulfilled'));
+  });
+});
+
+describe('createSettledBuildCollector', () => {
+  it('collects after the interval only when every concurrent build has settled', () => {
+    const collectionStates: number[] = [];
+    let activeBuilds = 0;
+    const startBuild = createSettledBuildCollector(2, () => collectionStates.push(activeBuilds));
+
+    const settleFirst = startBuild();
+    activeBuilds += 1;
+    const settleSecond = startBuild();
+    activeBuilds += 1;
+
+    activeBuilds -= 1;
+    settleFirst();
+    expect(collectionStates).toEqual([]);
+
+    activeBuilds -= 1;
+    settleSecond();
+    expect(collectionStates).toEqual([0]);
+
+    settleSecond();
+    expect(collectionStates).toEqual([0]);
   });
 });
 

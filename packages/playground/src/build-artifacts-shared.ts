@@ -116,6 +116,29 @@ export const pageBuildPromiseByKey = new Map<string, Promise<string | null>>();
 export const scenarioBuildPromiseByKey = new Map<string, Promise<string | null>>();
 export const fixtureBuildPromiseByKey = new Map<string, Promise<string | null>>();
 
+export function createSettledBuildCollector(
+  interval: number,
+  collectGarbage: (force: boolean) => void = (force) => Bun.gc?.(force),
+): () => () => void {
+  let activeBuilds = 0;
+  let completedSinceCollection = 0;
+
+  return () => {
+    activeBuilds += 1;
+    let settled = false;
+    return () => {
+      if (settled) return;
+      settled = true;
+      activeBuilds -= 1;
+      completedSinceCollection += 1;
+      if (activeBuilds === 0 && completedSinceCollection >= interval) {
+        completedSinceCollection = 0;
+        collectGarbage(true);
+      }
+    };
+  };
+}
+
 /**
  * Look up an artifact for a specific bundle family route.
  *
