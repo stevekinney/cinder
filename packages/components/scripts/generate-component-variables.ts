@@ -34,7 +34,8 @@ async function readCorpusVariables(
     'tokens',
     'registry.generated.json',
   );
-  const parsed = JSON.parse(await readFile(registryPath, 'utf8')) as { entries?: unknown };
+  const parsed: unknown = JSON.parse(await readFile(registryPath, 'utf8'));
+  if (typeof parsed !== 'object' || parsed === null || !('entries' in parsed)) return new Set();
   if (!Array.isArray(parsed.entries)) return new Set();
 
   return new Set(
