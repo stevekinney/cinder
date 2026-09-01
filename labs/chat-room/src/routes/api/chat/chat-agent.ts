@@ -175,6 +175,15 @@ export async function pumpChatRun(
 		for await (const event of run) {
 			if (!(event instanceof StepCompletedEvent)) continue;
 
+			// All calls before any result, matching the pre-Operative handler's
+			// emission order byte-for-byte: it streamed `tool_call` frames as each
+			// content block completed, then emitted every `tool_result` only after
+			// the whole response ended and `toolbox.execute` returned. Interleaving
+			// call/result per call instead would represent a step's calls as
+			// sequential (call → observe its result → call again) rather than the
+			// single parallel assistant step they actually were, which is also what
+			// `createChatSessionController` assumes when it appends these frames to
+			// the conversation in arrival order.
 			for (const toolCall of event.toolCalls) {
 				onFrame({
 					type: 'tool_call',
@@ -182,7 +191,9 @@ export async function pumpChatRun(
 					name: toolCall.name,
 					arguments: toolCall.arguments
 				});
+			}
 
+			for (const toolCall of event.toolCalls) {
 				const result = event.results.find((candidate) => candidate.callId === toolCall.id);
 				if (!result) continue;
 

@@ -89,31 +89,36 @@ async function main(): Promise<void> {
 		return;
 	}
 
-	// A "completed" envelope with no real content — or with the streaming path
-	// silently dropping every delta — is exactly the failure mode a status-only
-	// check would miss. `content` and the streamed `text` frames are asserted
-	// separately because they come from two different sources: `envelope.content`
-	// is the run's own accumulated text, while `textFrames` is what the
-	// `stream:text-delta` listener above actually observed — the same split
-	// `chat-agent.test.ts` exercises deterministically.
+	// A "completed" envelope whose content doesn't actually satisfy the
+	// prompt — or with the streaming path silently dropping every delta while
+	// `envelope.content` still comes through some other way — is exactly the
+	// failure mode a status-only (or merely non-empty) check would miss.
+	// `envelope.content` (the run's own accumulated text) and the assembled
+	// `stream:text-delta` frames (what the listener above actually observed)
+	// are two independent sources, so both are checked against the requested
+	// reply, not just against each other.
 	const textFrames = frames.filter((frame) => frame.type === 'text');
+	const assembledFromFrames = textFrames.map((frame) => frame.text).join('');
+	const expectedSubstring = 'pong';
 
-	if (envelope.content.trim().length === 0) {
-		console.error('test:live-operative failed: the completed run reported empty content.');
+	if (!envelope.content.toLowerCase().includes(expectedSubstring)) {
+		console.error(
+			`test:live-operative failed: envelope.content did not contain "${expectedSubstring}" — got ${JSON.stringify(envelope.content)}.`
+		);
 		process.exitCode = 1;
 		return;
 	}
 
-	if (textFrames.length === 0) {
+	if (textFrames.length === 0 || !assembledFromFrames.toLowerCase().includes(expectedSubstring)) {
 		console.error(
-			'test:live-operative failed: no stream:text-delta frames were observed — the streaming path may be dropping deltas even though the run completed.'
+			`test:live-operative failed: the streamed stream:text-delta frames did not assemble into text containing "${expectedSubstring}" — got ${JSON.stringify(assembledFromFrames)} across ${textFrames.length} frame(s). The streaming path may be dropping deltas even though the run completed.`
 		);
 		process.exitCode = 1;
 		return;
 	}
 
 	console.log(
-		`test:live-operative OK — reached status: 'completed' with ${envelope.content.length} character(s) of content across ${textFrames.length} text frame(s).`
+		`test:live-operative OK — reached status: 'completed' with content containing "${expectedSubstring}" across ${textFrames.length} text frame(s).`
 	);
 }
 
