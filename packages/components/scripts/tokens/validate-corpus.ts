@@ -224,6 +224,15 @@ function canonicalizeJson(value: unknown): unknown {
   );
 }
 
+function mergeMetadataValue(base: unknown, override: unknown): unknown {
+  if (!isRecord(base) || !isRecord(override)) return override;
+  const merged = { ...base };
+  for (const [key, value] of Object.entries(override)) {
+    merged[key] = mergeMetadataValue(base[key], value);
+  }
+  return merged;
+}
+
 function semanticGroupMetadataByPath(value: unknown): Map<string, Record<string, unknown>> {
   const metadata = new Map<string, Record<string, unknown>>();
   const visit = (node: unknown, prefix: string, inherited: Record<string, unknown> = {}): void => {
@@ -294,9 +303,12 @@ export function validateModifierTokenPaths(
         const overlaidEffective = {
           ...baseEffective,
           ...Object.fromEntries(
-            Object.entries(contextEffective).filter(
-              ([, metadataValue]) => metadataValue !== undefined,
-            ),
+            Object.entries(contextEffective)
+              .filter(([, metadataValue]) => metadataValue !== undefined)
+              .map(([metadataName, metadataValue]) => [
+                metadataName,
+                mergeMetadataValue(baseEffective[metadataName], metadataValue),
+              ]),
           ),
         };
         if (

@@ -722,6 +722,30 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
   });
 
+  test('deep-merges sparse modifier extension metadata before comparing semantics', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          group: {
+            $extensions: { 'org.example': { alpha: 1, beta: 2 } },
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+        },
+      ],
+      ['light.json', { group: { $extensions: { 'org.example': { alpha: 1 } }, a: { $value: 3 } } }],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
+  });
+
   test('rejects semantic metadata inherited by a modifier through $extends', () => {
     const inheritedMetadata: ResolverDocument = {
       version: '2025.10',
