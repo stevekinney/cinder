@@ -105,7 +105,7 @@ export const PRETTIER_OPTIONS = {
 /** The `json` parser lives in the babel plugin; `estree` supplies its printer. */
 export const JSON_PLUGINS = [babelPlugin, estreePlugin];
 const CSS_PLUGINS = [postcssPlugin];
-const DEFERRED_COMPONENT_ALIAS_FAMILIES = new Set(['accordion-item']);
+const DEFERRED_COMPONENT_ALIAS_FAMILIES = new Set(['accordion-item', 'action-row']);
 
 // ---------------------------------------------------------------------------
 // Corpus tree walking. Collects every `$value`-bearing node in a merged
@@ -805,6 +805,47 @@ export function withDependentBaseAliases(
   return scoped;
 }
 
+/**
+ * A token overridden in only ONE theme leaves the other theme's block with no
+ * declaration for it. Custom properties inherit as COMPUTED values, so a nested
+ * island of that other theme does not fall back to the `:root` `light-dark()`
+ * declaration -- the themed ancestor has already substituted its own arm, and
+ * the island inherits that substituted value.
+ *
+ * `--cinder-code-block-background` is the case this exists for: it is overridden
+ * only in `dark.tokens.json`, so a `[data-theme='light']` island inside a dark
+ * ancestor kept the dark `surface-inset` ground underneath github-light Shiki
+ * token colors -- the exact AA failure that token's own `$description` warns
+ * about. Redeclaring the foundation token it aliases (`--cinder-surface-inset`,
+ * which the light block DOES reset) cannot rescue it, because the alias was
+ * already resolved against the ancestor.
+ *
+ * So each scoped block carries a declaration for every path the OTHER block
+ * declares. The added entry is the BASE entry, rendered by
+ * {@link renderOverrideDeclarations} under this block's own resolver -- the same
+ * mechanism {@link withDependentBaseAliases} already uses for the aliases it
+ * pulls in, so a `cssRecipe` token re-emits its full `light-dark(...)` recipe
+ * (self-resetting under the block's own `color-scheme`) and a plain alias
+ * re-resolves against this theme.
+ *
+ * Applied symmetrically. Only dark currently has theme-exclusive overrides, but
+ * the asymmetry is a property of the corpus on any given day, not of the
+ * generator, and a light-only override added later must not reintroduce this.
+ */
+export function withOppositeThemeResets(
+  aliases: Map<string, CorpusEntry>,
+  oppositeAliases: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+): Map<string, CorpusEntry> {
+  const scoped = new Map(aliases);
+  for (const path of oppositeAliases.keys()) {
+    if (scoped.has(path)) continue;
+    const base = baseIndex.get(path);
+    if (base) scoped.set(path, base);
+  }
+  return scoped;
+}
+
 function withThemeDependentOverrides(
   overrides: Map<string, CorpusEntry>,
   baseIndex: Map<string, CorpusEntry>,
@@ -1476,17 +1517,29 @@ export async function buildTokensBaseCss(
   );
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
-  const darkAliases = withDependentBaseAliases(
+  const darkDependentAliases = withDependentBaseAliases(
     darkOverrides,
     baseIndex,
     baseResolveReferences,
     darkResolveReferences,
   );
-  const lightAliases = withDependentBaseAliases(
+  const lightDependentAliases = withDependentBaseAliases(
     lightOverrides,
     baseIndex,
     baseResolveReferences,
     lightResolveReferences,
+  );
+  // Both unions are taken from the RAW maps, so neither depends on the other
+  // having been widened first.
+  const darkAliases = withOppositeThemeResets(
+    darkDependentAliases,
+    lightDependentAliases,
+    baseIndex,
+  );
+  const lightAliases = withOppositeThemeResets(
+    lightDependentAliases,
+    darkDependentAliases,
+    baseIndex,
   );
   assertUniqueOverrideCssProperties(
     darkAliases,

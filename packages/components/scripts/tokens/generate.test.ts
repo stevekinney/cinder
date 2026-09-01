@@ -2509,3 +2509,116 @@ describe('CIN-488 through CIN-493 follow-up guards', () => {
     expect(mediaBlock).not.toContain('oklch(90% 0.2 250)');
   });
 });
+
+describe('CIN-494: a theme-exclusive override still resets in the opposite theme block', () => {
+  /**
+   * A token overridden in only ONE theme used to leave the other theme's block
+   * with no declaration for it. Custom properties inherit as COMPUTED values, so
+   * a nested island of that other theme does not fall back to the `:root`
+   * `light-dark()` declaration -- the themed ancestor already substituted its own
+   * arm, and the island inherits that substituted value.
+   *
+   * The real-corpus case was `--cinder-code-block-background`, overridden only in
+   * `dark.tokens.json`: a `[data-theme='light']` island inside a dark ancestor
+   * kept the dark `surface-inset` ground under github-light Shiki token colors.
+   */
+  function themeExclusiveOverrideFixture(overrideIn: 'light' | 'dark') {
+    const baseDocument: TokenDocument = {
+      test: {
+        raised: {
+          $type: 'number',
+          $value: 0.9,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-raised' } },
+        },
+        inset: {
+          $type: 'number',
+          $value: 0.1,
+          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-inset' } },
+        },
+        // Aliases `test.raised`, but emits through a `light-dark()` recipe -- the
+        // exact shape `code-block.background` has in the real corpus.
+        surface: {
+          $type: 'number',
+          $value: '{test.raised}',
+          $extensions: {
+            'com.lostgradient.cinder': {
+              cssProperty: '--test-surface',
+              cssRecipe: 'light-dark(var(--test-raised), var(--test-inset))',
+            },
+          },
+        },
+      },
+    };
+    // Only ONE theme overrides `test.surface`; the other says nothing about it.
+    const exclusiveOverride: TokenDocument = {
+      test: { surface: { $type: 'number', $value: '{test.inset}' } },
+    };
+
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        theme: {
+          contexts: { light: [{ $ref: 'theme-light.json' }], dark: [{ $ref: 'theme-dark.json' }] },
+          default: 'light',
+        },
+        motion: {
+          contexts: {
+            default: [{ $ref: 'motion-default.json' }],
+            reduced: [{ $ref: 'motion-reduced.json' }],
+            'forced-reduced-motion': [{ $ref: 'motion-forced.json' }],
+          },
+          default: 'default',
+        },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/modifiers/theme' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documentsByPath = new Map<string, TokenDocument>([
+      ['base.json', baseDocument],
+      ['theme-light.json', overrideIn === 'light' ? exclusiveOverride : {}],
+      ['theme-dark.json', overrideIn === 'dark' ? exclusiveOverride : {}],
+      ['motion-default.json', {}],
+      ['motion-reduced.json', {}],
+      ['motion-forced.json', {}],
+    ]);
+    return { resolver, documentsByPath };
+  }
+
+  /** The `[data-theme='<theme>']` block that actually carries the theme overrides. */
+  function themeBlock(css: string, theme: 'light' | 'dark'): string {
+    const pattern = new RegExp(`\\[data-theme='${theme}'\\]\\s*\\{([^}]*)\\}`, 'g');
+    const block = [...css.matchAll(pattern)].find((match) => match[1]?.includes('--test-'))?.[1];
+    expect(block, `expected a [data-theme='${theme}'] block declaring --test-*`).toBeDefined();
+    return block as string;
+  }
+
+  test('a dark-only override still leaves the light block a declaration to reset with', async () => {
+    const { resolver, documentsByPath } = themeExclusiveOverrideFixture('dark');
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    // The dark block pins its own override, as it always did.
+    expect(themeBlock(css, 'dark')).toContain('--test-surface: var(--test-inset);');
+
+    // Pre-fix, the light block declared nothing for `--test-surface`, so a light
+    // island nested inside a dark ancestor inherited the dark computed value.
+    // Post-fix it re-emits the `light-dark()` recipe, which self-resets under the
+    // block's own `color-scheme: light`.
+    expect(themeBlock(css, 'light')).toContain(
+      '--test-surface: light-dark(var(--test-raised), var(--test-inset));',
+    );
+  });
+
+  test('the reset is symmetric -- a light-only override reaches the dark block too', async () => {
+    const { resolver, documentsByPath } = themeExclusiveOverrideFixture('light');
+    const css = await buildTokensBaseCss(resolver, documentsByPath);
+
+    expect(themeBlock(css, 'light')).toContain('--test-surface: var(--test-inset);');
+    expect(themeBlock(css, 'dark')).toContain(
+      '--test-surface: light-dark(var(--test-raised), var(--test-inset));',
+    );
+  });
+});

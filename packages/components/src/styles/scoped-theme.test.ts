@@ -302,6 +302,30 @@ describe('scoped theme tokens', () => {
 
     expect(mismatches).toEqual([]);
 
+    /**
+     * The comparison above only inspects a token when the scoped block DECLARES
+     * it (`scopedLight !== undefined`), so a token overridden in exactly one
+     * theme was invisible to it -- and that absence is itself the bug. Custom
+     * properties inherit as COMPUTED values, so the missing block does not fall
+     * back to the `:root` `light-dark()` declaration; a nested island of that
+     * theme inherits whatever arm its themed ancestor already substituted.
+     *
+     * `--cinder-code-block-background` is why this exists: overridden only in
+     * `dark.tokens.json`, it left a `[data-theme='light']` island inside a dark
+     * ancestor sitting on the dark `surface-inset` ground while Shiki painted
+     * github-light token colors over it -- the AA failure that token's own
+     * description warns about.
+     *
+     * The two blocks must therefore declare the SAME set of custom properties.
+     * Values legitimately differ per arm; presence must not.
+     */
+    const lightKeys = [...lightDeclarations.keys()].sort();
+    const darkKeys = [...darkDeclarations.keys()].sort();
+    expect({
+      declaredOnlyInLight: lightKeys.filter((token) => !darkDeclarations.has(token)),
+      declaredOnlyInDark: darkKeys.filter((token) => !lightDeclarations.has(token)),
+    }).toEqual({ declaredOnlyInLight: [], declaredOnlyInDark: [] });
+
     // The surface ramp is the family this guard exists for — assert it is genuinely
     // in scope rather than trusting the scan.
     for (const token of [
