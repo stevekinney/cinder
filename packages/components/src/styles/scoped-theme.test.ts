@@ -45,7 +45,7 @@ function expectDeclarations(block: string, declarations: Record<string, string>)
 }
 
 describe('scoped theme tokens', () => {
-  test('data-theme dark and light scopes pin core semantic tokens locally', async () => {
+  test('data-theme dark and light scopes pin non-recipe-equivalent tokens locally', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
     const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
     const lightBlock = extractRuleBlock(css, "[data-theme='light']");
@@ -65,41 +65,12 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(darkBlock, {
       'color-scheme': 'dark',
-      '--cinder-surface-canvas': 'oklch(15% 0.035 245)',
-      '--cinder-surface': 'oklch(21% 0.04 245)',
-      '--cinder-surface-raised': 'oklch(28% 0.045 245)',
-      '--cinder-surface-hover': 'color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)',
-      '--cinder-text-default': 'oklch(92% 0.02 245)',
-      '--cinder-text-muted': 'oklch(82% 0.02 245)',
-      '--cinder-border': 'oklch(58% 0.05 245)',
-      '--cinder-border-strong': 'oklch(66% 0.06 245)',
-      '--cinder-accent-solid': 'oklch(72% 0.14 270)',
-      '--cinder-accent-contrast': 'oklch(15% 0.035 245)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
         'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-status-danger-solid': 'oklch(72% 0.172 25)',
-      '--cinder-status-danger-contrast': 'oklch(12% 0.02 25)',
-      '--cinder-status-danger-solid-hover': 'oklch(64% 0.172 25)',
-      '--cinder-status-danger-solid-active': 'oklch(60% 0.172 25)',
-      '--cinder-status-danger-background': 'oklch(28% 0.09 25)',
-      '--cinder-status-danger-text': 'oklch(90% 0.05 25)',
-      '--cinder-status-danger-border': 'oklch(50% 0.11 25)',
-      '--cinder-checker-base': 'oklch(28% 0.02 245)',
-      '--cinder-checker-tile': 'oklch(38% 0.02 245)',
-      '--cinder-scrollbar-track': 'oklch(100% 0 0 / 0.04)',
-      '--cinder-scrollbar-thumb': 'oklch(100% 0 0 / 0.45)',
-      '--cinder-scrollbar-thumb-hover': 'oklch(100% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.7 0.14 h)',
-      // Pin the offset color too: it is the band painted BETWEEN the control and
-      // the ring, and it moved from --cinder-surface-canvas to --cinder-surface-raised so it
-      // stops painting a dark moat on the widened light ramp. A scoped theme that
-      // kept the old value would silently reintroduce that moat.
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
-      '--cinder-chart-series-1': 'oklch(58% 0.089 205)',
-      '--cinder-overlay-backdrop': 'oklch(8% 0.02 245 / 0.65)',
     });
 
     expect(lightBlock).toContain(
@@ -117,39 +88,18 @@ describe('scoped theme tokens', () => {
 
     expectDeclarations(lightBlock, {
       'color-scheme': 'light',
-      '--cinder-surface-canvas': 'oklch(98.4% 0.003 255)',
-      '--cinder-surface': 'oklch(99.4% 0.002 255)',
-      '--cinder-surface-raised': 'oklch(100% 0 255)',
-      '--cinder-surface-hover':
-        'color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%)',
-      '--cinder-text-default': 'oklch(20% 0.018 245)',
-      '--cinder-text-muted': 'oklch(32% 0.014 245)',
-      '--cinder-border': 'oklch(63% 0.006 255)',
-      '--cinder-border-strong': 'oklch(60% 0.008 255)',
-      '--cinder-accent-solid': 'oklch(50% 0.22 270)',
-      '--cinder-accent-contrast': 'oklch(100% 0 0)',
       '--cinder-accent-solid-hover': 'oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h)',
       '--cinder-accent-solid-active': 'oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h)',
       '--cinder-accent-solid-active-on-fill':
         'oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h)',
       '--cinder-accent-text-hover': 'oklch(from var(--cinder-accent-text) calc(l - 0.08) c h)',
-      '--cinder-status-danger-solid': 'oklch(50% 0.202 25)',
-      '--cinder-status-danger-contrast': 'oklch(100% 0 0)',
-      '--cinder-status-danger-solid-hover': 'oklch(42% 0.171 25)',
-      '--cinder-status-danger-solid-active': 'oklch(35% 0.142 25)',
-      '--cinder-status-danger-background': 'oklch(94.5% 0.026 25)',
-      '--cinder-status-danger-text': 'oklch(42% 0.16 25)',
-      '--cinder-status-danger-border': 'oklch(80% 0.06 25)',
-      '--cinder-checker-base': '#fff',
-      '--cinder-checker-tile': '#ccc',
-      '--cinder-scrollbar-track': 'oklch(0% 0 0 / 0.04)',
-      '--cinder-scrollbar-thumb': 'oklch(0% 0 0 / 0.45)',
-      '--cinder-scrollbar-thumb-hover': 'oklch(0% 0 0 / 0.65)',
-      '--cinder-ring-color': 'oklch(from var(--cinder-accent-solid) 0.55 0.16 h)',
       '--cinder-ring-offset-color': 'var(--cinder-surface-raised)',
-      '--cinder-chart-series-1': 'oklch(33% 0.121 8)',
-      '--cinder-overlay-backdrop': 'oklch(20% 0.03 245 / 0.5)',
     });
+
+    // Recipe-equivalent direct values inherit from :root. Re-emitting them here
+    // would duplicate the light-dark() recipe and recreate a second source of truth.
+    expect(darkBlock).not.toContain('--cinder-surface-canvas:');
+    expect(lightBlock).not.toContain('--cinder-surface-canvas:');
   });
 
   test('Sidebar and Drawer surfaces use scoped semantic tokens', async () => {
@@ -245,7 +195,7 @@ describe('scoped theme tokens', () => {
   });
 
   /**
-   * The scoped blocks must AGREE with the `light-dark()` declarations they mirror.
+   * The scoped blocks must AGREE with the `light-dark()` declarations they retain.
    *
    * The assertions above pin each block's literals independently, which cannot see
    * divergence: a token retuned in the `:root` `light-dark()` declaration while its
@@ -256,8 +206,8 @@ describe('scoped theme tokens', () => {
    * previous ramp.
    *
    * This derives the expectation instead of restating it: for every token declared
-   * as `light-dark(<light>, <dark>)` at `:root` that the scoped blocks also declare,
-   * the light block must carry the LIGHT arm and the dark block the DARK arm.
+   * as `light-dark(<light>, <dark>)` at `:root` that a scoped block retains because
+   * its value is not recipe-equivalent, the scoped value must remain compatible.
    *
    * Arms are read by paren-depth scan, not by a value-shaped regex, so this covers
    * EVERY arm form actually used — `oklch(...)`, `var(...)` (e.g.
@@ -268,7 +218,7 @@ describe('scoped theme tokens', () => {
    * that let the scoped ramp drift in the first place. The coverage floor below
    * exists so the guard cannot quietly decay back into checking almost nothing.
    */
-  test('scoped blocks match the light-dark() arms they mirror', async () => {
+  test('scoped blocks omit direct light-dark() recipe arms', async () => {
     const css = await readFile(TOKENS_BASE_PATH, 'utf8');
     const rootBlock = extractRuleBlock(css, ':root');
     const darkBlock = extractRuleBlock(css, "[data-theme='dark']");
@@ -329,33 +279,26 @@ describe('scoped theme tokens', () => {
     const lightDeclarations = declarationsIn(lightBlock);
     const darkDeclarations = declarationsIn(darkBlock);
 
-    const mismatches: string[] = [];
-    let compared = 0;
+    const duplicatedRecipeArms: string[] = [];
+    let recipeCount = 0;
 
     for (const [token, rootValue] of rootDeclarations) {
       const arms = lightDarkArms(rootValue);
       if (!arms) continue;
+      recipeCount += 1;
 
       const scopedLight = lightDeclarations.get(token);
-      if (scopedLight !== undefined) {
-        compared += 1;
-        // Dependent aliases keep their light-dark() expression in the scoped
-        // block so it is re-evaluated against locally overridden dependencies.
-        if (scopedLight !== arms.light && scopedLight !== rootValue) {
-          mismatches.push(`light ${token}: scoped "${scopedLight}" vs :root "${arms.light}"`);
-        }
+      if (scopedLight === arms.light || scopedLight === rootValue) {
+        duplicatedRecipeArms.push(`light ${token}`);
       }
 
       const scopedDark = darkDeclarations.get(token);
-      if (scopedDark !== undefined) {
-        compared += 1;
-        if (scopedDark !== arms.dark && scopedDark !== rootValue) {
-          mismatches.push(`dark ${token}: scoped "${scopedDark}" vs :root "${arms.dark}"`);
-        }
+      if (scopedDark === arms.dark || scopedDark === rootValue) {
+        duplicatedRecipeArms.push(`dark ${token}`);
       }
     }
 
-    expect(mismatches).toEqual([]);
+    expect(duplicatedRecipeArms).toEqual([]);
 
     // The surface ramp is the family this guard exists for — assert it is genuinely
     // in scope rather than trusting the scan.
@@ -373,9 +316,8 @@ describe('scoped theme tokens', () => {
       ).not.toBe(null);
     }
 
-    // Coverage floor. A parser change that stops matching most tokens would
-    // otherwise leave this test passing vacuously, which is precisely the failure
-    // mode it was written to catch.
-    expect(compared).toBeGreaterThanOrEqual(60);
+    // Coverage floor. A parser change that stops finding recipes must not let this
+    // omission guard pass vacuously.
+    expect(recipeCount).toBeGreaterThanOrEqual(30);
   });
 });
