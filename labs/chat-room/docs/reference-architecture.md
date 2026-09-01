@@ -2,7 +2,7 @@
 
 This document defines the constraints a host application must satisfy when it drives an agent loop on behalf of a browser chat client. It exists next to the code because violating any rule here is a **bug**, not a plan change — a leaked credential, a replayed side effect, an orphaned run, a transcript the provider will reject on the next turn.
 
-It is deliberately not a planning document. It names no versions, no issue numbers, and no schedule. What to adopt, when, and in what order is tracked in Linear; `package.json` and `bun.lock` are the only source of truth for what is installed. Anything here that can be settled by reading the lockfile has been removed on purpose, because duplicating that state is what made an earlier version of this file go stale.
+It is deliberately not a planning document. It names no package versions, no issue numbers, and no schedule. (`wireVersion` below is a constant of the protocol this document defines, not a dependency version.) What to adopt, when, and in what order is tracked in Linear; `package.json` and `bun.lock` are the only source of truth for what is installed. Anything here that can be settled by reading the lockfile has been removed on purpose, because duplicating that state is what made an earlier version of this file go stale.
 
 Where a rule names an API, confirm it against the installed declarations before relying on it.
 
@@ -76,7 +76,8 @@ The enhanced-streaming event target must also be **request-local**. `EventTarget
 
 Exactly one terminal frame is written when the connection remains available, and the server closes the stream immediately after it. EOF without a terminal frame is a truncated response — a transport failure, not success. Client cancellation is the exception, because the client deliberately stopped reading and cannot receive the terminal frame.
 
-> [!NOTE] This vocabulary is wider than the client decoder currently accepts The published chat client decodes a narrower union and throws on anything outside it, so the decoder must be extended before this table can be emitted. The decoder grows to meet this contract rather than this contract narrowing to fit the decoder.
+> [!NOTE] This vocabulary is wider than the client decoder currently accepts
+> The published chat client decodes a narrower union and throws on anything outside it, so the decoder must be extended before this table can be emitted. The decoder grows to meet this contract rather than this contract narrowing to fit the decoder.
 
 <a id="cancellation-contract"></a>
 
