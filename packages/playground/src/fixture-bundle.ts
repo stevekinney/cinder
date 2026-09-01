@@ -22,6 +22,39 @@ const startFixtureBuildMemoryCycle = createSettledBuildCollector(24);
 
 /** Fixture-bundle entries: keyed by `fixtureEntryKey(...)` → entry artifact path. */
 export const fixtureEntryByKey = new Map<string, string>();
+const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
+const MAX_CACHED_FIXTURE_ENTRIES = 8;
+
+export function clearFixtureBundleCaches(): void {
+  fixtureEntryByKey.clear();
+  fixtureArtifactByPath.clear();
+  fixtureArtifactPathsByEntryKey.clear();
+}
+
+export function publishFixtureArtifacts(
+  entryKey: string,
+  artifacts: ReadonlyMap<string, string>,
+  maximumEntries = MAX_CACHED_FIXTURE_ENTRIES,
+): void {
+  fixtureArtifactPathsByEntryKey.delete(entryKey);
+  fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
+  for (const [path, code] of artifacts) fixtureArtifactByPath.set(path, code);
+
+  while (fixtureArtifactPathsByEntryKey.size > maximumEntries) {
+    const oldestEntryKey = fixtureArtifactPathsByEntryKey.keys().next().value;
+    if (oldestEntryKey === undefined) return;
+    const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
+    fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
+    fixtureEntryByKey.delete(oldestEntryKey);
+    if (evictedPaths === undefined) continue;
+    const retainedPaths = new Set(
+      [...fixtureArtifactPathsByEntryKey.values()].flatMap((paths) => [...paths]),
+    );
+    for (const path of evictedPaths) {
+      if (!retainedPaths.has(path)) fixtureArtifactByPath.delete(path);
+    }
+  }
+}
 
 export function fixtureEntryKey(
   componentName: string,
@@ -140,7 +173,7 @@ export async function buildFixtureBundle(
     // SPECIFIC hashed path this response embeds, not through
     // `fixtureEntryByKey` — so the fixture page still renders correctly
     // even when the cache pointer below isn't updated.
-    for (const [path, code] of entry.artifacts) fixtureArtifactByPath.set(path, code);
+    publishFixtureArtifacts(entryKey, entry.artifacts);
     // Only update the "latest" entry-key pointer when we're not racing a
     // newer invalidation, so a FUTURE lookup by `entryKey` doesn't resolve
     // to this now-superseded build.

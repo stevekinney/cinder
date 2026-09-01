@@ -27,7 +27,11 @@ import {
   resolveFixtureFilePath,
 } from '../../components/scripts/lib/visual-fixtures/loader.ts';
 import type { ComponentManifest } from './analyze.ts';
-import { createBuildGcCoordinator, createSettledBuildCollector } from './build-artifacts-shared.ts';
+import {
+  createBuildGcCoordinator,
+  createSettledBuildCollector,
+  fixtureArtifactByPath,
+} from './build-artifacts-shared.ts';
 import { isComponentDocumentationPayload } from './component-documentation-reference.ts';
 import { COMPOSE_ONLY_COMPONENTS } from './discover.ts';
 import {
@@ -35,6 +39,11 @@ import {
   scheduleRebuild,
   waitForPendingRebuild,
 } from './file-watcher.ts';
+import {
+  clearFixtureBundleCaches,
+  fixtureEntryByKey,
+  publishFixtureArtifacts,
+} from './fixture-bundle.ts';
 import {
   PORT,
   createSharedDisposer,
@@ -200,6 +209,40 @@ describe('createSettledBuildCollector', () => {
 
     settleSecond();
     expect(collectionStates).toEqual([0]);
+  });
+});
+
+describe('publishFixtureArtifacts', () => {
+  it('evicts old fixture entries without deleting chunks retained by a newer entry', () => {
+    clearFixtureBundleCaches();
+    try {
+      fixtureEntryByKey.set('first', 'fixture-first.js');
+      publishFixtureArtifacts(
+        'first',
+        new Map([
+          ['fixture-first.js', 'first'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        1,
+      );
+      fixtureEntryByKey.set('second', 'fixture-second.js');
+      publishFixtureArtifacts(
+        'second',
+        new Map([
+          ['fixture-second.js', 'second'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        1,
+      );
+
+      expect(fixtureEntryByKey.has('first')).toBe(false);
+      expect(fixtureArtifactByPath.has('fixture-first.js')).toBe(false);
+      expect(fixtureEntryByKey.get('second')).toBe('fixture-second.js');
+      expect(fixtureArtifactByPath.get('fixture-second.js')).toBe('second');
+      expect(fixtureArtifactByPath.get('chunk-shared.js')).toBe('shared');
+    } finally {
+      clearFixtureBundleCaches();
+    }
   });
 });
 

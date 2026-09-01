@@ -3,7 +3,6 @@ import { join } from 'node:path';
 
 import { resetProject } from './analyze.ts';
 import {
-  fixtureArtifactByPath,
   fixtureBuildPromiseByKey,
   pageArtifactByPath,
   pageBuildPromiseByKey,
@@ -13,7 +12,7 @@ import {
 import { COMPONENT_SOURCES } from './component-sources.ts';
 import { invalidateDiscoveryCache } from './discover.ts';
 import { resetPlaygroundStylesheetBuilds } from './documentation-styles.ts';
-import { fixtureEntryByKey } from './fixture-bundle.ts';
+import { clearFixtureBundleCaches } from './fixture-bundle.ts';
 import { clearManifestCaches } from './manifest-cache.ts';
 import { pageEntryByName } from './page-bundle.ts';
 import { PLAYGROUND_ROOT } from './playground-paths.ts';
@@ -161,8 +160,7 @@ export function invalidateCachesForChange(scope: ChangeScope): void {
   // cheap regardless of what changed.
   bundleEntryByKey.clear();
   scenarioArtifactByPath.clear();
-  fixtureEntryByKey.clear();
-  fixtureArtifactByPath.clear();
+  clearFixtureBundleCaches();
   fixtureBuildPromiseByKey.clear();
   // Also clear the in-flight dedup slot, not just the resolved-artifact
   // caches above. A build already in flight when this invalidation fires
