@@ -873,7 +873,12 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       const cellMatch = /\|\s*`--test-rt`\s*\|\s*((?:\\.|[^|])*)\s*\|/.exec(row);
       expect(cellMatch?.[1]).toBeDefined();
       const encoded = cellMatch![1]!.trim().replace(/^<code>|<\/code>$/g, '');
-      expect(encoded.replaceAll('&#x7c;', '|')).toBe(raw);
+      const decoded = encoded
+        .replace(/\\([^A-Za-z0-9\s])/g, '$1')
+        .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_entity, hex: string, decimal: string) =>
+          String.fromCodePoint(Number.parseInt(hex ?? decimal, hex ? 16 : 10)),
+        );
+      expect(decoded).toBe(raw);
     }
   });
 
@@ -882,7 +887,7 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       recipeEntry('test.literal', '--test-literal', '*<em>`|&</em>*'),
     ]);
     const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
-    expect(table).toContain('<code>_&lt;em&gt;`&#x7c;&amp;&lt;/em&gt;_</code>');
+    expect(table).toContain('<code>\\*&lt;em&gt;&#96;&#x7c;&amp;&lt;/em&gt;\\*</code>');
     expect(table).not.toContain('<em>');
   });
 });

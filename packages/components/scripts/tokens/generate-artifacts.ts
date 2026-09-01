@@ -849,13 +849,23 @@ function toTableCell(text: string): string {
 }
 
 function escapeHtml(text: string): string {
-  return text
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#39;')
-    .replaceAll('|', '&#x7c;');
+  const markdownPunctuation = new Set('\\`*_{}[]()#+-.!');
+  const namedEntities: Record<string, string> = {
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#39;',
+    '|': '&#x7c;',
+  };
+  return [...text]
+    .map((character) => {
+      const namedEntity = namedEntities[character];
+      if (namedEntity) return namedEntity;
+      if (markdownPunctuation.has(character)) return `&#${character.codePointAt(0)};`;
+      return character;
+    })
+    .join('');
 }
 
 function renderValueCell(value: string): string {

@@ -157,9 +157,10 @@ function extractDocTokens(markdown: string): { duplicates: string[]; tokens: Map
       // Decode after branch selection so decoded `&#124;` cannot be mistaken for
       // a raw Markdown table delimiter by the invariant above.
       decoded = htmlBody
-        .replaceAll('&#124;', '|')
-        .replaceAll('&#x7c;', '|')
-        .replaceAll('&#39;', "'")
+        .replace(/\\([^A-Za-z0-9\s])/g, '$1')
+        .replace(/&#(?:x([0-9a-f]+)|(\d+));/gi, (_entity, hex: string, decimal: string) =>
+          String.fromCodePoint(Number.parseInt(hex ?? decimal, hex ? 16 : 10)),
+        )
         .replaceAll('&quot;', '"')
         .replaceAll('&gt;', '>')
         .replaceAll('&lt;', '<')
