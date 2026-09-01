@@ -90,6 +90,17 @@ export const POST: RequestHandler = async ({ request }) => {
 
 	const stream = new ReadableStream<Uint8Array>({
 		start(controller) {
+			// A client that disconnects between the initial `fetch` and this point
+			// leaves `request.signal` already aborted — `addEventListener('abort', …)`
+			// below would never fire for a signal that fired before it was attached.
+			// Without this check the run would still start (and still bill the
+			// provider) for a response nothing will ever read.
+			if (request.signal.aborted) {
+				settled = true;
+				controller.close();
+				return;
+			}
+
 			function enqueueFrame(frame: ChatStreamFrame): void {
 				if (settled) return;
 				controller.enqueue(encoder.encode(`${JSON.stringify(frame)}\n`));
@@ -158,7 +169,16 @@ export const POST: RequestHandler = async ({ request }) => {
 					}
 				} finally {
 					request.signal.removeEventListener('abort', onRequestAbort);
-					activeRun[Symbol.dispose]();
+					// Best-effort: disposal is cleanup, not the outcome. Letting it throw
+					// here would replace whatever `envelope`/`cause` this `finally` is
+					// unwinding from with a disposal error, masking the real failure.
+					try {
+						activeRun[Symbol.dispose]();
+					} catch {
+						// Nothing left to do with a disposal failure but swallow it — the
+						// run is ending either way, and there is no controller-safe way to
+						// surface a second error after the terminal transition above.
+					}
 				}
 			})();
 		},

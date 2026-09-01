@@ -2,7 +2,7 @@
  * The Operative-backed agent loop for `/api/chat`, factored out of the route
  * so the exact same pump — the code that turns run events into NDJSON
  * frames and a terminal envelope — runs under both the real HTTP handler and
- * the deterministic unit tests in `chat-server.test.ts`. Only the `generate`
+ * the deterministic unit tests in `chat-agent.test.ts`. Only the `generate`
  * function differs: the route wraps `createAnthropicProviderStream`, the
  * tests wrap a local fixture with no network or model calls.
  *
@@ -81,7 +81,7 @@ export function startChatRun(agent: StandaloneAgent, conversation: ConversationH
  * serializing an unknown error object (which could carry a credential-bearing
  * provider response) straight onto the wire.
  *
- * Exported so `chat-server.test.ts` can pin the `AgentRunError` shapes
+ * Exported so `chat-agent.test.ts` can pin the `AgentRunError` shapes
  * `@lostgradient/operative` documents directly — most usefully
  * `StandardSchemaValidationError` (`kind: 'output'`, `code: 'INVALID_OUTPUT'`),
  * which this route never triggers live: `createChatAgent` sets no `output`

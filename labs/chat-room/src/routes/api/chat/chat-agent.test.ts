@@ -73,6 +73,13 @@ async function runAndCollect(
 
 describe('pumpChatRun: completed success', () => {
 	test('streams text deltas and resolves ok:true with the final content', async () => {
+		// `streaming.update(text)` takes the FULL accumulated text so far, not a
+		// delta — `withEnhancedStreaming` diffs each call against the previous one
+		// internally to compute the `stream:text-delta` event's `content` field
+		// (see `node_modules/@lostgradient/operative/dist/streaming-*.js`). So the
+		// second call below is the whole string again, and the SECOND `text` frame
+		// this test asserts is only the new suffix ("there!"), not a repeat of the
+		// first.
 		const generate: StreamingGenerateFunction = async ({ streaming }) => {
 			streaming.update('Hello ');
 			streaming.update('Hello there!');

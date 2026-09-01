@@ -15,14 +15,34 @@ describe('chat stream cancellation guard', () => {
 	});
 
 	test('removes the request-signal listener and disposes the run on every terminal path', () => {
+		expect(source).toMatch(/request\.signal\.removeEventListener\('abort', onRequestAbort\);/);
+		expect(source).toMatch(/try \{\s+activeRun\[Symbol\.dispose\]\(\);\s+\} catch \{/);
+	});
+
+	// A single generic `expect(source).toContain('if (settled) return;')` would
+	// still pass with `enqueueFrame`'s guard alone, even if the terminal guard
+	// before `controller.close()`/`controller.error()` or the catch-path guard
+	// before the second `controller.error()` were deleted — reintroducing the
+	// double-settlement race these guards exist to prevent. Each transition's
+	// own guard is asserted by name below instead.
+	test('guards the terminal close()/error() transition behind its own settled check', () => {
+		expect(source).toMatch(/if \(settled\) return;\s+settled = true;\s+\/\/ A user-initiated stop/);
+	});
+
+	test('closes the stream for a successful or cleanly aborted envelope', () => {
 		expect(source).toMatch(
-			/request\.signal\.removeEventListener\('abort', onRequestAbort\);\s+activeRun\[Symbol\.dispose\]\(\);/
+			/envelope\.ok \|\| envelope\.error\.kind === 'abort'\) \{\s+controller\.close\(\);/
 		);
 	});
 
-	test('guards every controller transition behind the settled one-shot flag', () => {
-		expect(source).toContain('if (settled) return;');
-		expect(source).toContain('settled = true;');
+	test('errors the stream for any other envelope failure', () => {
+		expect(source).toContain('controller.error(new Error(envelope.error.message));');
+	});
+
+	test('guards the catch-path controller.error() behind its own settled check', () => {
+		expect(source).toMatch(
+			/catch \(cause\) \{\s+if \(!settled\) \{\s+settled = true;\s+controller\.error\(cause\);\s+\}\s+\}/
+		);
 	});
 });
 

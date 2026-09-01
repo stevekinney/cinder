@@ -40,6 +40,15 @@ async function main(): Promise<void> {
 		EnhancedStreamingOptions['eventTarget']
 	>;
 
+	const frames: ChatStreamFrame[] = [];
+	// `createChatAgent` never wires this listener itself — the caller attaches
+	// it to the exact `eventTarget` instance passed in, same as `+server.ts`
+	// and `chat-agent.test.ts`. Without it this script would report success
+	// on a run that silently dropped every text delta.
+	eventTarget.addEventListener('stream:text-delta', (event) => {
+		frames.push({ type: 'text', text: event.detail.content });
+	});
+
 	const agent = createChatAgent({
 		generate: createAnthropicProviderStream({ model: MODEL, maximumTokens: MAX_TOKENS, apiKey }),
 		toolbox,
@@ -63,7 +72,6 @@ async function main(): Promise<void> {
 		'Reply with exactly the word: pong'
 	);
 
-	const frames: ChatStreamFrame[] = [];
 	const run = startChatRun(agent, conversation);
 	const envelope = await pumpChatRun(run, (frame) => frames.push(frame));
 
@@ -81,8 +89,31 @@ async function main(): Promise<void> {
 		return;
 	}
 
+	// A "completed" envelope with no real content — or with the streaming path
+	// silently dropping every delta — is exactly the failure mode a status-only
+	// check would miss. `content` and the streamed `text` frames are asserted
+	// separately because they come from two different sources: `envelope.content`
+	// is the run's own accumulated text, while `textFrames` is what the
+	// `stream:text-delta` listener above actually observed — the same split
+	// `chat-agent.test.ts` exercises deterministically.
+	const textFrames = frames.filter((frame) => frame.type === 'text');
+
+	if (envelope.content.trim().length === 0) {
+		console.error('test:live-operative failed: the completed run reported empty content.');
+		process.exitCode = 1;
+		return;
+	}
+
+	if (textFrames.length === 0) {
+		console.error(
+			'test:live-operative failed: no stream:text-delta frames were observed — the streaming path may be dropping deltas even though the run completed.'
+		);
+		process.exitCode = 1;
+		return;
+	}
+
 	console.log(
-		`test:live-operative OK — reached status: 'completed' (${frames.length} frame(s) streamed).`
+		`test:live-operative OK — reached status: 'completed' with ${envelope.content.length} character(s) of content across ${textFrames.length} text frame(s).`
 	);
 }
 
