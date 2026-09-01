@@ -1646,14 +1646,14 @@ ${lightForcedReducedMotionDeclarations}
     : '';
   const forcedSystemDarkBlock = darkForcedReducedMotionDeclarations
     ? `@media (prefers-color-scheme: dark) {
-  :root:not([data-theme]) {
+  :root[data-reduced-motion='on']:not([data-theme]) {
 ${darkForcedReducedMotionDeclarations}
   }
 }`
     : '';
   const forcedSystemLightBlock = lightForcedReducedMotionDeclarations
     ? `@media (prefers-color-scheme: light) {
-  :root:not([data-theme]) {
+  :root[data-reduced-motion='on']:not([data-theme]) {
 ${lightForcedReducedMotionDeclarations}
   }
 }`

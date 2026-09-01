@@ -1169,6 +1169,9 @@ describe('F2: a nested reference inside a motion override resolves against the t
     expect(css).toMatch(
       /@media \(prefers-color-scheme: dark\)[\s\S]*:root:not\(\[data-theme\]\):not\(\[data-cinder-reduced-motion='false'\]\)/,
     );
+    expect(css).toMatch(
+      /@media \(prefers-color-scheme: dark\)[\s\S]*:root\[data-reduced-motion='on'\]:not\(\[data-theme\]\)/,
+    );
     expect(css).toContain('--test-composite: oklch(80% 0.1 250);');
     expect(css).toContain('--test-composite: oklch(70% 0.1 250);');
   });

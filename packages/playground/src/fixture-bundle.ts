@@ -25,6 +25,8 @@ export const fixtureEntryByKey = new Map<string, string>();
 const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
 /** Assets returned in fixture HTML remain pinned until their entry is fetched. */
 const pendingFixtureEntryKeys = new Set<string>();
+/** 32 covers the local fullyParallel browser workload plus concurrent asset fetches. */
+const MAX_FIXTURE_RESPONSE_LEASES = 32;
 /** Bounded safety net for assets returned just before cache eviction. */
 const evictedFixtureArtifactsByEntryKey = new Map<string, Map<string, string>>();
 const MAX_CACHED_FIXTURE_ENTRIES = 8;
@@ -51,6 +53,16 @@ export function findFixtureArtifact(path: string): string | undefined {
     .find((code): code is string => code !== undefined);
 }
 
+/** Reserve an entry for an HTML response until its first browser fetch. */
+export function retainFixtureEntry(entryKey: string): boolean {
+  if (!fixtureArtifactPathsByEntryKey.has(entryKey) || !fixtureEntryByKey.has(entryKey))
+    return false;
+  if (pendingFixtureEntryKeys.has(entryKey)) return true;
+  if (pendingFixtureEntryKeys.size >= MAX_FIXTURE_RESPONSE_LEASES) return false;
+  pendingFixtureEntryKeys.add(entryKey);
+  return true;
+}
+
 export function publishFixtureArtifacts(
   entryKey: string,
   artifacts: ReadonlyMap<string, string>,
@@ -58,7 +70,6 @@ export function publishFixtureArtifacts(
 ): void {
   fixtureArtifactPathsByEntryKey.delete(entryKey);
   fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
-  pendingFixtureEntryKeys.add(entryKey);
   evictedFixtureArtifactsByEntryKey.delete(entryKey);
   for (const [path, code] of artifacts) fixtureArtifactByPath.set(path, code);
 
@@ -181,6 +192,7 @@ export async function buildFixtureBundle(
   fixture: VisualFixture,
   fixtureContentHash: string,
   componentOrHostPath: string,
+  onGenerationCaptured?: () => void,
 ): Promise<string | null> {
   const entryKey = fixtureEntryKey(componentName, fixture.name, fixtureContentHash);
   const cachedEntryPath = fixtureEntryByKey.get(entryKey);
@@ -195,6 +207,7 @@ export async function buildFixtureBundle(
 
   const buildPromise = (async () => {
     const generationAtStart = getRebuildGeneration();
+    onGenerationCaptured?.();
     const entry = await compileFixtureBundleArtifacts(
       componentName,
       fixture,
@@ -217,8 +230,11 @@ export async function buildFixtureBundle(
     // to this now-superseded build.
     if (generationAtStart === getRebuildGeneration()) {
       fixtureEntryByKey.set(entryKey, entry.entryPath);
-      pendingFixtureEntryKeys.add(entryKey);
-    }
+      if (!retainFixtureEntry(entryKey)) {
+        fixtureEntryByKey.delete(entryKey);
+        return null;
+      }
+    } else return null;
     return entry.entryPath;
   })();
 

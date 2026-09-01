@@ -40,10 +40,12 @@ import {
   waitForPendingRebuild,
 } from './file-watcher.ts';
 import {
+  buildFixtureBundle,
   clearFixtureBundleCaches,
   findFixtureArtifact,
   fixtureEntryByKey,
   publishFixtureArtifacts,
+  retainFixtureEntry,
 } from './fixture-bundle.ts';
 import {
   PORT,
@@ -62,7 +64,7 @@ import {
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
-import { getRebuildGeneration } from './rebuild-generation.ts';
+import { getRebuildGeneration, incrementRebuildGeneration } from './rebuild-generation.ts';
 import { jsonForScriptTag } from './render-shell.ts';
 import { triggerReload } from './sse-broadcast.ts';
 import {
@@ -262,9 +264,46 @@ describe('publishFixtureArtifacts', () => {
       const entries = Array.from({ length: 20 }, (_, index) => `entry-${index}`);
       for (const entry of entries) {
         fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
-        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 2);
+        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 32);
       }
-      expect(entries.map((entry) => findFixtureArtifact(`fixture-${entry}.js`))).toEqual(entries);
+      const retained = entries.filter((entry) => retainFixtureEntry(entry));
+      expect(retained).toHaveLength(20);
+      expect(entries.filter((entry) => retainFixtureEntry(entry))).toHaveLength(20);
+      for (let index = 20; index < 32; index++) {
+        const entry = `entry-${index}`;
+        fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
+        publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 32);
+        expect(retainFixtureEntry(entry)).toBe(true);
+      }
+      const rejected = 'entry-rejected';
+      fixtureEntryByKey.set(rejected, `fixture-${rejected}.js`);
+      publishFixtureArtifacts(rejected, new Map([[`fixture-${rejected}.js`, rejected]]), 32);
+      expect(retainFixtureEntry(rejected)).toBe(false);
+      expect(fixtureEntryByKey.has(rejected)).toBe(false);
+      expect(findFixtureArtifact(`fixture-${rejected}.js`)).toBe(rejected);
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('returns null for a generation-raced real fixture build without installing a lease', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      const result = await buildFixtureBundle(
+        'input',
+        fixture,
+        fixtureFile.contentHash,
+        resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        incrementRebuildGeneration,
+      );
+      expect(result).toBeNull();
+      expect(fixtureEntryByKey.has(entryKey)).toBe(false);
+      expect(retainFixtureEntry(entryKey)).toBe(false);
     } finally {
       clearFixtureBundleCaches();
     }
