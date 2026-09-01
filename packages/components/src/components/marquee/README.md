@@ -39,8 +39,8 @@ Render continuously looping horizontal or vertical ticker content with pause and
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-marquee-duration`
+- `--cinder-marquee-gap`
 <!-- generated:variables:end -->
 
 ## Subcomponents

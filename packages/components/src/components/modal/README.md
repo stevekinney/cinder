@@ -119,8 +119,7 @@ This conditional requirement is expressed in the generated JSON Schema below via
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-modal-backdrop`
 <!-- generated:variables:end -->
 
 ## Subcomponents

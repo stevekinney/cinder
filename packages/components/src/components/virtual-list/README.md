@@ -60,8 +60,7 @@ scrolled up leaves the scroll position unchanged.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-virtual-list-height`
 <!-- generated:variables:end -->
 
 ## Subcomponents

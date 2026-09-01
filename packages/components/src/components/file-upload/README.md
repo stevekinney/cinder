@@ -95,6 +95,8 @@ starts, cancels, or retries a network request by itself.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-file-upload-background`
+- `--cinder-file-upload-border-color`
+- `--cinder-file-upload-progress-background`
+- `--cinder-file-upload-progress-fill`
 <!-- generated:variables:end -->

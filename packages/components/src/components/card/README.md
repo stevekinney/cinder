@@ -57,8 +57,7 @@ A card becomes interactive when it receives `href` (the whole card renders as an
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-card-mobile-bleed`
 <!-- generated:variables:end -->
 
 ## Subcomponents

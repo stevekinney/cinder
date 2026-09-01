@@ -31,8 +31,7 @@ snippet. The flat `@lostgradient/cinder/feed-event` subpath remains exported for
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-feed-event-rail-size`
 <!-- generated:variables:end -->
 
 ## Subcomponents

@@ -66,6 +66,8 @@ The leaf remains importable individually for à-la-carte builds — see
 <!-- generated:variables:start -->
 
 - `--cinder-tree-drop-line-color`
+- `--cinder-tree-drop-line-thickness`
+- `--cinder-tree-item-dragging-opacity`
 <!-- generated:variables:end -->
 
 ## Subcomponents

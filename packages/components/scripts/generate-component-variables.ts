@@ -8,10 +8,43 @@
 
 import { basename, join } from 'node:path';
 
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { parse, type AtRule, type Declaration } from 'postcss';
 
 const PREFIX = '--cinder-';
+
+type RegistryEntry = { component?: unknown; cssProperty?: unknown; public?: unknown };
+
+/**
+ * Corpus-owned tokens are emitted by the shared `:root` stylesheet, so they
+ * no longer appear as declarations in a component's CSS. Keep them in the
+ * component variable entrypoint nevertheless: the variables subpath is the
+ * public discovery surface consumed by the CLI, MCP, and generated README.
+ */
+async function readCorpusVariables(
+  componentDirectory: string,
+  componentName: string,
+): Promise<Set<string>> {
+  const registryPath = join(
+    componentDirectory,
+    '..',
+    '..',
+    '..',
+    'src',
+    'tokens',
+    'registry.generated.json',
+  );
+  const parsed = JSON.parse(await readFile(registryPath, 'utf8')) as { entries?: unknown };
+  if (!Array.isArray(parsed.entries)) return new Set();
+
+  return new Set(
+    parsed.entries
+      .filter((entry): entry is RegistryEntry => typeof entry === 'object' && entry !== null)
+      .filter((entry) => entry.component === componentName && entry.public === true)
+      .map((entry) => entry.cssProperty)
+      .filter((property): property is string => property?.startsWith(PREFIX) === true),
+  );
+}
 
 export interface VariablesResult {
   variables: readonly string[];
@@ -40,7 +73,7 @@ export async function generateVariablesForComponent(
   const entries = await readdir(componentDirectory);
   const cssFiles = entries.filter((name) => name.endsWith('.css')).toSorted();
 
-  const collected = new Set<string>();
+  const collected = await readCorpusVariables(componentDirectory, options.componentName);
 
   for (const cssFile of cssFiles) {
     const filePath = join(componentDirectory, cssFile);

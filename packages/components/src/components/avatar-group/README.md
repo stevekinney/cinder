@@ -34,8 +34,7 @@ Overlapping collaborator stack built on Avatar, with focusable names and an over
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-avatar-group-overlap`
 <!-- generated:variables:end -->
 
 ## Subcomponents

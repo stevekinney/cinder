@@ -17,12 +17,13 @@
  * Test files may use `any` per project conventions.
  */
 
-import { readdir } from 'node:fs/promises';
+import { readFile, readdir } from 'node:fs/promises';
 import { join } from 'node:path';
 
 import { describe, expect, setDefaultTimeout, test } from 'bun:test';
 
 const COMPONENTS_DIR = join(import.meta.dir, '..', 'components');
+const TOKEN_REGISTRY = join(import.meta.dir, '..', 'tokens', 'registry.generated.json');
 
 // This file scans every component variables manifest. Under parallel CI or
 // multi-worktree local runs, Bun's default 5s test timeout can expire while the
@@ -67,6 +68,28 @@ async function loadAllComponentVariables(): Promise<ComponentVariables[]> {
 }
 
 describe('component *.variables.json contract', () => {
+  test('preserves every public corpus-owned token in its component discovery manifest', async () => {
+    const allComponents = await loadAllComponentVariables();
+    const manifests = new Map(
+      allComponents.map(({ componentName, variables }) => [componentName, variables]),
+    );
+    const registry = (JSON.parse(await readFile(TOKEN_REGISTRY, 'utf8')) as { entries: unknown[] })
+      .entries;
+    const missing: string[] = [];
+
+    for (const entry of registry) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const record = entry as { component?: unknown; cssProperty?: unknown; public?: unknown };
+      if (typeof record.component !== 'string' || typeof record.cssProperty !== 'string') continue;
+      if (record.public !== true) continue;
+      if (!manifests.get(record.component)?.includes(record.cssProperty)) {
+        missing.push(`${record.component}: ${record.cssProperty}`);
+      }
+    }
+
+    expect(missing).toEqual([]);
+  });
+
   // ACTIVE: no private --_cinder-* variables should appear in any variables.json.
   //
   // Private variables (prefixed `--_`) are internal implementation details;
@@ -146,22 +169,22 @@ describe('component *.variables.json contract', () => {
     expect(violations).toEqual([]);
   });
 
-  test('FileUpload does not redeclare corpus-owned progress color overrides', async () => {
+  test('FileUpload discovery includes corpus-owned progress color overrides', async () => {
     const allComponents = await loadAllComponentVariables();
 
     const allVariablesByComponent = new Map(
       allComponents.map(({ componentName, variables }) => [componentName, variables]),
     );
 
-    const redeclared: string[] = [];
+    const missing: string[] = [];
 
     for (const { component, variable } of FILE_UPLOAD_PROGRESS_COLOR_VARIABLES) {
       const componentVariables = allVariablesByComponent.get(component);
       if (componentVariables === undefined) continue;
 
-      if (componentVariables.includes(variable)) redeclared.push(`${component}: ${variable}`);
+      if (!componentVariables.includes(variable)) missing.push(`${component}: ${variable}`);
     }
 
-    expect(redeclared).toEqual([]);
+    expect(missing).toEqual([]);
   });
 });

@@ -82,8 +82,7 @@ for this mode.
 
 <!-- generated:variables:start -->
 
-This component does not declare any local CSS variables.
-
+- `--cinder-data-table-height`
 <!-- generated:variables:end -->
 
 ## Subcomponents
