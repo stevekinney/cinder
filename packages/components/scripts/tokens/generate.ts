@@ -1405,16 +1405,6 @@ export async function buildTokensBaseCss(
     'motion.forced-reduced-motion (system theme)',
     systemForcedReducedMotionResolveReferences,
   );
-  // A per-context resolver, each built from the SAME composed scope used for `$extends` above --
-  // a nested reference inside a context's composite value may target a token that a DIFFERENT
-  // modifier's document overrides (a reduced-motion composite referencing a token the dark theme
-  // also overrides), and a resolver built from base-plus-this-context-alone would miss that
-  // override entirely and silently substitute the base/foundation value.
-  const reducedMotionResolveReferences = createValueResolver(reducedMotionScopeDocuments);
-  const forcedReducedMotionResolveReferences = createValueResolver(
-    forcedReducedMotionScopeDocuments,
-  );
-
   assertOverrideScopeConsistency(
     lightOverrides,
     baseIndex,
