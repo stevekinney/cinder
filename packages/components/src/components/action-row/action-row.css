@@ -1,9 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-action-row {
-    --cinder-action-row-padding-block: var(--cinder-space-3);
-    --cinder-action-row-padding-inline: var(--cinder-space-4);
-
     display: block;
     inline-size: 100%;
     padding: var(--cinder-action-row-padding-block, var(--cinder-space-3))

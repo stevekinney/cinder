@@ -134,8 +134,6 @@ describe('ActionRow', () => {
     ]);
 
     const css = await Bun.file(new URL('./action-row.css', import.meta.url)).text();
-    expect(css).toContain('--cinder-action-row-padding-block: var(--cinder-space-3);');
-    expect(css).toContain('--cinder-action-row-padding-inline: var(--cinder-space-4);');
     expect(css).toContain('padding: var(--cinder-action-row-padding-block,');
     expect(css).toContain('column-gap: var(--cinder-action-row-layout-column-gap,');
     expect(css).toContain('gap: var(--cinder-action-row-body-gap,');
