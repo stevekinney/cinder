@@ -45,6 +45,7 @@ import {
   findFixtureArtifact,
   fixtureEntryByKey,
   publishFixtureArtifacts,
+  reclaimExpiredFixtureLeases,
   retainFixtureEntry,
 } from './fixture-bundle.ts';
 import {
@@ -353,6 +354,50 @@ describe('publishFixtureArtifacts', () => {
         publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32);
       }
       expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('reclaims abandoned HTML leases and removes superseded same-key paths safely', () => {
+    clearFixtureBundleCaches();
+    try {
+      fixtureEntryByKey.set('same', 'fixture-old.js');
+      publishFixtureArtifacts(
+        'same',
+        new Map([
+          ['fixture-old.js', 'old'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        32,
+      );
+      expect(retainFixtureEntry('same')).toBe(true);
+      publishFixtureArtifacts(
+        'same',
+        new Map([
+          ['fixture-new.js', 'new'],
+          ['chunk-shared.js', 'shared'],
+        ]),
+        32,
+      );
+      expect(fixtureArtifactByPath.has('fixture-old.js')).toBe(false);
+      expect(fixtureArtifactByPath.get('chunk-shared.js')).toBe('shared');
+      fixtureEntryByKey.set('abandoned', 'fixture-abandoned.js');
+      publishFixtureArtifacts(
+        'abandoned',
+        new Map([['fixture-abandoned.js', 'abandoned']]),
+        32,
+        true,
+      );
+      reclaimExpiredFixtureLeases(Date.now() + 31_000);
+      expect(
+        publishFixtureArtifacts(
+          'after-abandonment',
+          new Map([['fixture-after.js', 'after']]),
+          32,
+          true,
+        ),
+      ).toBe(true);
     } finally {
       clearFixtureBundleCaches();
     }

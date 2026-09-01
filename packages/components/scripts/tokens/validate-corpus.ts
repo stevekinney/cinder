@@ -190,14 +190,49 @@ export function validateModifierSetExpansionOrder(
               '',
               affectedPaths,
             );
-            const before = resolveDocuments(baseDocuments);
-            const after = resolveDocuments([...baseDocuments, ...candidateDocuments]);
-            return [...affectedPaths].some(
-              (path) =>
-                setTokenPaths.has(path) &&
-                JSON.stringify(canonicalizeJson(before[path])) !==
-                  JSON.stringify(canonicalizeJson(after[path])),
+            // Resolve this modifier in the scope established by the ordered
+            // entries before it. A candidate may reference a token changed by
+            // an earlier modifier; comparing against base-only would miss the
+            // resulting effective-value reset.
+            const precedingModifierNames = order
+              .slice(0, order.indexOf(candidate))
+              .filter((preceding) => preceding.kind === 'modifiers')
+              .map((preceding) => preceding.name);
+            const prefixContextCombinations = precedingModifierNames.reduce<
+              Array<Map<string, string>>
+            >(
+              (selections, modifierName) =>
+                selections.flatMap((selection) =>
+                  Object.keys(resolver.modifiers[modifierName]!.contexts).map(
+                    (precedingContextName) => {
+                      const next = new Map(selection);
+                      next.set(modifierName, precedingContextName);
+                      return next;
+                    },
+                  ),
+                ),
+              [new Map()],
             );
+            return prefixContextCombinations.some((contextSelection) => {
+              const precedingDocuments = order
+                .slice(0, order.indexOf(candidate))
+                .flatMap((preceding) => {
+                  if (preceding.kind === 'sets') return expandSetSources(resolver, preceding.name);
+                  const precedingContext = contextSelection.get(preceding.name);
+                  return precedingContext === undefined
+                    ? []
+                    : expandContextSources(resolver, preceding.name, precedingContext);
+                })
+                .map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
+              const before = resolveDocuments(precedingDocuments);
+              const after = resolveDocuments([...precedingDocuments, ...candidateDocuments]);
+              return [...affectedPaths].some(
+                (path) =>
+                  setTokenPaths.has(path) &&
+                  JSON.stringify(canonicalizeJson(before[path])) !==
+                    JSON.stringify(canonicalizeJson(after[path])),
+              );
+            });
           });
         });
         if (!interveningModifier) continue;
@@ -312,14 +347,15 @@ export function validateModifierTokenPaths(
       );
       const explicitlyDeclaredPaths = new Set<string>();
       const semanticGroupMetadataPaths = new Set<string>();
-      for (const document of contextDocuments) {
-        collectDeclaredTokenPaths(document, '', explicitlyDeclaredPaths);
-      }
       const expandedContext = mergeAndExpandExtends(contextDocuments, [
         ...baseDocuments,
         ...contextDocuments,
       ]);
       collectDeclaredTokenPaths(expandedContext, '', declaredPaths);
+      // `$extends` can contribute the effective token leaves of an override
+      // context. Treat those expanded paths as explicit too, otherwise group
+      // metadata validation reports inherited members as unoverridden.
+      collectDeclaredTokenPaths(expandedContext, '', explicitlyDeclaredPaths);
       collectSemanticGroupMetadataPaths(expandedContext, '', semanticGroupMetadataPaths);
       const contextMetadata = semanticGroupMetadataByPath(expandedContext);
       for (const tokenPath of declaredPaths) {

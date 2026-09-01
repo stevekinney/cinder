@@ -564,6 +564,45 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     );
   });
 
+  test('detects a reset after a composed modifier reference changes the effective value', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        foundation: { sources: [{ $ref: 'base.json' }] },
+        resettable: { sources: [{ $ref: 'resettable.json' }] },
+      },
+      modifiers: {
+        first: {
+          contexts: {
+            active: [{ $ref: 'first.json' }],
+            alternate: [{ $ref: 'alternate-first.json' }],
+          },
+          default: 'active',
+        },
+        second: { contexts: { active: [{ $ref: 'second.json' }] }, default: 'active' },
+        motion: { contexts: { reduced: [{ $ref: '#/sets/resettable' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/foundation' },
+        { $ref: '#/sets/resettable' },
+        { $ref: '#/modifiers/first' },
+        { $ref: '#/modifiers/second' },
+        { $ref: '#/modifiers/motion' },
+      ],
+    };
+    const documents = new Map([
+      ['base.json', { values: { $type: 'number' as const, x: { $value: 1 } } }],
+      ['resettable.json', { values: { y: { $type: 'number' as const, $value: 0 } } }],
+      ['first.json', { values: { x: { $value: 1 } } }],
+      ['alternate-first.json', { values: { x: { $value: 2 } } }],
+      ['second.json', { values: { y: { $value: '{values.x}' } } }],
+    ]);
+
+    expect(() => validateModifierSetExpansionOrder(resolver, documents)).toThrow(
+      /set "resettable" is re-expanded after modifier "second"/,
+    );
+  });
+
   test('expands a directly re-used base document before comparing its reset footprint', () => {
     const resolver: ResolverDocument = {
       version: '2025.10',
@@ -736,6 +775,34 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     expect(() => validateModifierTokenPaths(metadataOnly, documents)).toThrow(
       /group metadata affects base token "typography\.normal" without an explicit override/,
     );
+  });
+
+  test('treats tokens contributed through modifier $extends as explicit overrides', () => {
+    const metadataOnly: ResolverDocument = {
+      version: '2025.10',
+      sets: { foundation: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: { theme: { contexts: { light: [{ $ref: 'light.json' }] } } },
+      resolutionOrder: [{ $ref: '#/sets/foundation' }, { $ref: '#/modifiers/theme' }],
+    };
+    const documents = new Map([
+      [
+        'base.json',
+        {
+          foundation: {
+            $type: 'number' as const,
+            a: { $value: 1 },
+            b: { $value: 2 },
+          },
+          themed: { $extends: '{foundation}' },
+        },
+      ],
+      [
+        'light.json',
+        { themed: { $extends: '{foundation}', $type: 'number' as const, a: { $value: 3 } } },
+      ],
+    ]);
+
+    expect(() => validateModifierTokenPaths(metadataOnly, documents)).not.toThrow();
   });
 
   test('allows modifier group metadata that repeats the effective base metadata', () => {

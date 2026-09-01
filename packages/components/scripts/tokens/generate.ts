@@ -105,6 +105,7 @@ export const PRETTIER_OPTIONS = {
 /** The `json` parser lives in the babel plugin; `estree` supplies its printer. */
 export const JSON_PLUGINS = [babelPlugin, estreePlugin];
 const CSS_PLUGINS = [postcssPlugin];
+const DEFERRED_COMPONENT_ALIAS_FAMILIES = new Set(['accordion-item']);
 
 // ---------------------------------------------------------------------------
 // Corpus tree walking. Collects every `$value`-bearing node in a merged
@@ -735,10 +736,9 @@ function refsFor(
 }
 
 export function isRootDeclaredEntry(entry: CorpusEntry): boolean {
-  const deferredComponentAliasFamilies = new Set(['accordion-item']);
   return !(
     entry.component &&
-    deferredComponentAliasFamilies.has(entry.component) &&
+    DEFERRED_COMPONENT_ALIAS_FAMILIES.has(entry.component) &&
     !entry.cssRecipe &&
     isAliasReference(entry.value)
   );

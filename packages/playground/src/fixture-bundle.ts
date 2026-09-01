@@ -25,6 +25,8 @@ export const fixtureEntryByKey = new Map<string, string>();
 const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
 /** Assets returned in fixture HTML remain pinned until their entry is fetched. */
 const pendingFixtureResponseCounts = new Map<string, number>();
+const pendingFixtureLeaseExpirations = new Map<string, number[]>();
+const FIXTURE_RESPONSE_LEASE_LIFETIME_MS = 30_000;
 /** 32 covers the local fullyParallel browser workload plus concurrent asset fetches. */
 const MAX_FIXTURE_RESPONSE_LEASES = 32;
 /** Bounded safety net for assets returned just before cache eviction. */
@@ -36,11 +38,13 @@ export function clearFixtureBundleCaches(): void {
   fixtureArtifactByPath.clear();
   fixtureArtifactPathsByEntryKey.clear();
   pendingFixtureResponseCounts.clear();
+  pendingFixtureLeaseExpirations.clear();
   evictedFixtureArtifactsByEntryKey.clear();
 }
 
 /** Resolve a fixture asset from the live cache or bounded post-eviction cache. */
 export function findFixtureArtifact(path: string): string | undefined {
+  reclaimExpiredFixtureLeases();
   const live = fixtureArtifactByPath.get(path);
   if (live !== undefined) {
     for (const [entryKey, entryPath] of fixtureEntryByKey) {
@@ -48,6 +52,10 @@ export function findFixtureArtifact(path: string): string | undefined {
       const responseLeases = pendingFixtureResponseCounts.get(entryKey) ?? 0;
       if (responseLeases <= 1) pendingFixtureResponseCounts.delete(entryKey);
       else pendingFixtureResponseCounts.set(entryKey, responseLeases - 1);
+      const expirations = pendingFixtureLeaseExpirations.get(entryKey) ?? [];
+      expirations.shift();
+      if (expirations.length === 0) pendingFixtureLeaseExpirations.delete(entryKey);
+      else pendingFixtureLeaseExpirations.set(entryKey, expirations);
     }
     return live;
   }
@@ -58,6 +66,7 @@ export function findFixtureArtifact(path: string): string | undefined {
 
 /** Reserve an entry for an HTML response until its first browser fetch. */
 export function retainFixtureEntry(entryKey: string): boolean {
+  reclaimExpiredFixtureLeases();
   if (!fixtureArtifactPathsByEntryKey.has(entryKey) || !fixtureEntryByKey.has(entryKey))
     return false;
   const retainedResponseCount = [...pendingFixtureResponseCounts.values()].reduce(
@@ -65,8 +74,30 @@ export function retainFixtureEntry(entryKey: string): boolean {
     0,
   );
   if (retainedResponseCount >= MAX_FIXTURE_RESPONSE_LEASES) return false;
-  pendingFixtureResponseCounts.set(entryKey, (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1);
+  addFixtureResponseLease(entryKey);
   return true;
+}
+
+function addFixtureResponseLease(entryKey: string, now = Date.now()): void {
+  pendingFixtureResponseCounts.set(entryKey, (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1);
+  const expirations = pendingFixtureLeaseExpirations.get(entryKey) ?? [];
+  expirations.push(now + FIXTURE_RESPONSE_LEASE_LIFETIME_MS);
+  pendingFixtureLeaseExpirations.set(entryKey, expirations);
+}
+
+/** Reclaim HTML leases whose entry script was never requested. */
+export function reclaimExpiredFixtureLeases(now = Date.now()): void {
+  for (const [entryKey, expirations] of pendingFixtureLeaseExpirations) {
+    const remaining = expirations.filter((expiration) => expiration > now);
+    if (remaining.length === expirations.length) continue;
+    if (remaining.length === 0) {
+      pendingFixtureLeaseExpirations.delete(entryKey);
+      pendingFixtureResponseCounts.delete(entryKey);
+    } else {
+      pendingFixtureLeaseExpirations.set(entryKey, remaining);
+      pendingFixtureResponseCounts.set(entryKey, remaining.length);
+    }
+  }
 }
 
 export function publishFixtureArtifacts(
@@ -75,6 +106,7 @@ export function publishFixtureArtifacts(
   maximumEntries = MAX_CACHED_FIXTURE_ENTRIES,
   reserveResponseLease = false,
 ): boolean {
+  reclaimExpiredFixtureLeases();
   if (
     reserveResponseLease &&
     [...pendingFixtureResponseCounts.values()].reduce((total, count) => total + count, 0) >=
@@ -89,15 +121,18 @@ export function publishFixtureArtifacts(
   ) {
     return false;
   }
-  if (reserveResponseLease)
-    pendingFixtureResponseCounts.set(
-      entryKey,
-      (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1,
-    );
+  if (reserveResponseLease) addFixtureResponseLease(entryKey);
+  const previousPaths = fixtureArtifactPathsByEntryKey.get(entryKey) ?? new Set<string>();
   fixtureArtifactPathsByEntryKey.delete(entryKey);
   fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
   evictedFixtureArtifactsByEntryKey.delete(entryKey);
   for (const [path, code] of artifacts) fixtureArtifactByPath.set(path, code);
+  const ownedPaths = new Set(
+    [...fixtureArtifactPathsByEntryKey.values()].flatMap((paths) => [...paths]),
+  );
+  for (const path of previousPaths) {
+    if (!ownedPaths.has(path) && !artifacts.has(path)) fixtureArtifactByPath.delete(path);
+  }
 
   while (fixtureArtifactPathsByEntryKey.size > maximumEntries) {
     const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
@@ -108,6 +143,7 @@ export function publishFixtureArtifacts(
     fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
     fixtureEntryByKey.delete(oldestEntryKey);
     pendingFixtureResponseCounts.delete(oldestEntryKey);
+    pendingFixtureLeaseExpirations.delete(oldestEntryKey);
     if (evictedPaths === undefined) continue;
     const evictedArtifacts = new Map<string, string>();
     const retainedPaths = new Set(
