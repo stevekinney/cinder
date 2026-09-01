@@ -1354,9 +1354,6 @@ export async function runGenerationCheckedWarmup<T>(
   };
 }
 
-/** Matches the shell renderer's warmup retry budget in {@link startServer}. */
-const RENDERER_WARMUP_MAX_ATTEMPTS = 5;
-
 /**
  * Compile the documentation-page server renderer before readiness is advertised.
  *
@@ -1379,9 +1376,16 @@ const RENDERER_WARMUP_MAX_ATTEMPTS = 5;
  * the build is in flight, `invalidateCachesForChange` advances the generation and
  * clears the memo slot, and `loadPageServerRenderer` then declines to publish its
  * now-stale result as last-good -- but still RESOLVES this await. Readiness would
- * be advertised behind an empty memo, and the first request would recompile,
- * reproducing the exact timeout this exists to prevent. Only a build that ends on
- * the generation it started is known to still be in the memo.
+ * be advertised behind an empty (or superseded) memo, and the first request would
+ * recompile, reproducing the exact timeout this exists to prevent. Only a build
+ * that ends on the generation it started is known to still be in the memo.
+ *
+ * An invalidated warmup is NOT retried. Retrying would buy a warm memo in the
+ * racy case at the cost of a retry budget, which AGENTS.md forbids adding, and
+ * the racy case is not the one this fixes: CI starts the server against a static
+ * checkout, so the first attempt is stable there. Dropping the memo instead keeps
+ * the correctness guarantee (readiness never sits behind a stale renderer) and
+ * costs, at worst, the single cold compile that was the status quo.
  *
  * Failure is deliberately NOT fatal. `loadPageServerRenderer` already resolves
  * build errors against its last-good renderer, and at startup there is no
@@ -1397,33 +1401,30 @@ export async function warmPageServerRenderer(
     value: T;
     instabilityReasons: string[];
   }> = runGenerationCheckedWarmup,
-  maxAttempts: number = RENDERER_WARMUP_MAX_ATTEMPTS,
 ): Promise<void> {
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    let instabilityReasons: string[];
-    try {
-      ({ instabilityReasons } = await runChecked(loadRenderer));
-    } catch (error) {
-      console.warn(
-        '[playground] page server renderer warmup failed; the first /page request will retry:',
-        error,
-      );
-      resetRenderer();
-      return;
-    }
-    // A stable build is the only one whose memo is guaranteed to still hold it.
-    if (instabilityReasons.length === 0) return;
+  let instabilityReasons: string[];
+  try {
+    ({ instabilityReasons } = await runChecked(loadRenderer));
+  } catch (error) {
     console.warn(
-      `[playground] page renderer warmup invalidated on attempt ${attempt + 1}/${maxAttempts}: ${instabilityReasons.join('; ')}`,
+      '[playground] page server renderer warmup failed; the first /page request will retry:',
+      error,
     );
+    resetRenderer();
+    return;
   }
-  // Never advertise readiness behind a memo that may hold a renderer built
-  // against a superseded generation -- that is worse than no memo, because the
-  // request path would serve it instead of rebuilding. Dropping the slot
-  // restores exactly the pre-warmup behaviour for this (CI-improbable) case.
+  if (instabilityReasons.length === 0) return;
+  // The build raced a source change, so the memo either was cleared outright by
+  // `invalidateCachesForChange` or still holds a renderer compiled against a
+  // superseded generation. Drop it rather than advertise readiness behind it: a
+  // stale memo is worse than an empty one, because the request path would serve
+  // it instead of rebuilding. Deliberately NOT retried -- retrying would trade a
+  // real correctness guarantee for a latency optimisation, and AGENTS.md forbids
+  // adding a retry budget outright. An unwarmed page renderer costs one cold
+  // compile on the first request, which is exactly the pre-existing behaviour.
   resetRenderer();
   console.warn(
-    '[playground] page renderer warmup did not stabilize; the first /page request will rebuild',
+    `[playground] page renderer warmup invalidated (${instabilityReasons.join('; ')}); the first /page request will rebuild`,
   );
 }
 
