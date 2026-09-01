@@ -258,7 +258,7 @@ describe('publishFixtureArtifacts', () => {
     }
   });
 
-  it('retains overlapping unserved fixture entries beyond both cache capacities', () => {
+  it('counts overlapping response leases separately and releases one per fetch', () => {
     clearFixtureBundleCaches();
     try {
       const entries = Array.from({ length: 20 }, (_, index) => `entry-${index}`);
@@ -268,8 +268,9 @@ describe('publishFixtureArtifacts', () => {
       }
       const retained = entries.filter((entry) => retainFixtureEntry(entry));
       expect(retained).toHaveLength(20);
-      expect(entries.filter((entry) => retainFixtureEntry(entry))).toHaveLength(20);
-      for (let index = 20; index < 32; index++) {
+      expect(entries.filter((entry) => retainFixtureEntry(entry))).toHaveLength(12);
+      expect(findFixtureArtifact('fixture-entry-0.js')).toBe('entry-0');
+      for (let index = 20; index < 21; index++) {
         const entry = `entry-${index}`;
         fixtureEntryByKey.set(entry, `fixture-${entry}.js`);
         publishFixtureArtifacts(entry, new Map([[`fixture-${entry}.js`, entry]]), 32);
@@ -279,7 +280,6 @@ describe('publishFixtureArtifacts', () => {
       fixtureEntryByKey.set(rejected, `fixture-${rejected}.js`);
       publishFixtureArtifacts(rejected, new Map([[`fixture-${rejected}.js`, rejected]]), 32);
       expect(retainFixtureEntry(rejected)).toBe(false);
-      expect(fixtureEntryByKey.has(rejected)).toBe(false);
       expect(findFixtureArtifact(`fixture-${rejected}.js`)).toBe(rejected);
     } finally {
       clearFixtureBundleCaches();
@@ -353,6 +353,41 @@ describe('publishFixtureArtifacts', () => {
         publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 32);
       }
       expect(findFixtureArtifact('fixture-cached.js')).toBe('cached');
+    } finally {
+      clearFixtureBundleCaches();
+    }
+  });
+
+  it('serves a cached HTML entry when the response lease budget is exhausted', async () => {
+    clearFixtureBundleCaches();
+    try {
+      const fixtureFile = await loadFixtureFile(resolveFixtureFilePath('input', COMPONENTS_ROOT));
+      if (fixtureFile === null) throw new Error('input fixture file is missing');
+      const fixture = fixtureFile.fixtures.find((candidate) => candidate.name === 'disabled');
+      if (fixture === undefined) throw new Error('input disabled fixture is missing');
+      for (let index = 0; index < 32; index++) {
+        const key = `leased-${index}`;
+        fixtureEntryByKey.set(key, `fixture-${key}.js`);
+        publishFixtureArtifacts(key, new Map([[`fixture-${key}.js`, key]]), 40);
+        expect(retainFixtureEntry(key)).toBe(true);
+      }
+
+      const entryKey = `fixture-input-${fixture.name}-${fixtureFile.contentHash}`;
+      fixtureEntryByKey.set(entryKey, 'fixture-cached-at-capacity.js');
+      publishFixtureArtifacts(
+        entryKey,
+        new Map([['fixture-cached-at-capacity.js', 'cached-at-capacity']]),
+        40,
+      );
+
+      await expect(
+        buildFixtureBundle(
+          'input',
+          fixture,
+          fixtureFile.contentHash,
+          resolve(COMPONENTS_ROOT, 'input', 'input.svelte'),
+        ),
+      ).resolves.toBe('fixture-cached-at-capacity.js');
     } finally {
       clearFixtureBundleCaches();
     }

@@ -24,7 +24,7 @@ const startFixtureBuildMemoryCycle = createSettledBuildCollector(24);
 export const fixtureEntryByKey = new Map<string, string>();
 const fixtureArtifactPathsByEntryKey = new Map<string, ReadonlySet<string>>();
 /** Assets returned in fixture HTML remain pinned until their entry is fetched. */
-const pendingFixtureEntryKeys = new Set<string>();
+const pendingFixtureResponseCounts = new Map<string, number>();
 /** 32 covers the local fullyParallel browser workload plus concurrent asset fetches. */
 const MAX_FIXTURE_RESPONSE_LEASES = 32;
 /** Bounded safety net for assets returned just before cache eviction. */
@@ -35,7 +35,7 @@ export function clearFixtureBundleCaches(): void {
   fixtureEntryByKey.clear();
   fixtureArtifactByPath.clear();
   fixtureArtifactPathsByEntryKey.clear();
-  pendingFixtureEntryKeys.clear();
+  pendingFixtureResponseCounts.clear();
   evictedFixtureArtifactsByEntryKey.clear();
 }
 
@@ -44,7 +44,10 @@ export function findFixtureArtifact(path: string): string | undefined {
   const live = fixtureArtifactByPath.get(path);
   if (live !== undefined) {
     for (const [entryKey, entryPath] of fixtureEntryByKey) {
-      if (entryPath === path) pendingFixtureEntryKeys.delete(entryKey);
+      if (entryPath !== path) continue;
+      const responseLeases = pendingFixtureResponseCounts.get(entryKey) ?? 0;
+      if (responseLeases <= 1) pendingFixtureResponseCounts.delete(entryKey);
+      else pendingFixtureResponseCounts.set(entryKey, responseLeases - 1);
     }
     return live;
   }
@@ -57,9 +60,12 @@ export function findFixtureArtifact(path: string): string | undefined {
 export function retainFixtureEntry(entryKey: string): boolean {
   if (!fixtureArtifactPathsByEntryKey.has(entryKey) || !fixtureEntryByKey.has(entryKey))
     return false;
-  if (pendingFixtureEntryKeys.has(entryKey)) return true;
-  if (pendingFixtureEntryKeys.size >= MAX_FIXTURE_RESPONSE_LEASES) return false;
-  pendingFixtureEntryKeys.add(entryKey);
+  const retainedResponseCount = [...pendingFixtureResponseCounts.values()].reduce(
+    (total, count) => total + count,
+    0,
+  );
+  if (retainedResponseCount >= MAX_FIXTURE_RESPONSE_LEASES) return false;
+  pendingFixtureResponseCounts.set(entryKey, (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1);
   return true;
 }
 
@@ -71,12 +77,16 @@ export function publishFixtureArtifacts(
 ): boolean {
   if (
     reserveResponseLease &&
-    !pendingFixtureEntryKeys.has(entryKey) &&
-    pendingFixtureEntryKeys.size >= MAX_FIXTURE_RESPONSE_LEASES
+    [...pendingFixtureResponseCounts.values()].reduce((total, count) => total + count, 0) >=
+      MAX_FIXTURE_RESPONSE_LEASES
   ) {
     return false;
   }
-  if (reserveResponseLease) pendingFixtureEntryKeys.add(entryKey);
+  if (reserveResponseLease)
+    pendingFixtureResponseCounts.set(
+      entryKey,
+      (pendingFixtureResponseCounts.get(entryKey) ?? 0) + 1,
+    );
   fixtureArtifactPathsByEntryKey.delete(entryKey);
   fixtureArtifactPathsByEntryKey.set(entryKey, new Set(artifacts.keys()));
   evictedFixtureArtifactsByEntryKey.delete(entryKey);
@@ -84,13 +94,13 @@ export function publishFixtureArtifacts(
 
   while (fixtureArtifactPathsByEntryKey.size > maximumEntries) {
     const oldestEntryKey = [...fixtureArtifactPathsByEntryKey.keys()].find(
-      (key) => !pendingFixtureEntryKeys.has(key),
+      (key) => !pendingFixtureResponseCounts.has(key),
     );
     if (oldestEntryKey === undefined) return true;
     const evictedPaths = fixtureArtifactPathsByEntryKey.get(oldestEntryKey);
     fixtureArtifactPathsByEntryKey.delete(oldestEntryKey);
     fixtureEntryByKey.delete(oldestEntryKey);
-    pendingFixtureEntryKeys.delete(oldestEntryKey);
+    pendingFixtureResponseCounts.delete(oldestEntryKey);
     if (evictedPaths === undefined) continue;
     const evictedArtifacts = new Map<string, string>();
     const retainedPaths = new Set(
@@ -209,13 +219,18 @@ export async function buildFixtureBundle(
   if (cachedEntryPath) {
     const cached = fixtureArtifactByPath.get(cachedEntryPath);
     if (cached !== undefined) {
-      return retainFixtureEntry(entryKey) ? cachedEntryPath : null;
+      retainFixtureEntry(entryKey);
+      return cachedEntryPath;
     }
   }
 
   const cacheKey = fixtureCacheKey(componentName, fixture, fixtureContentHash);
   const existing = fixtureBuildPromiseByKey.get(cacheKey);
-  if (existing !== undefined) return existing;
+  if (existing !== undefined) {
+    const entryPath = await existing;
+    if (entryPath !== null) retainFixtureEntry(entryKey);
+    return entryPath;
+  }
 
   const buildPromise = (async () => {
     const generationAtStart = getRebuildGeneration();
