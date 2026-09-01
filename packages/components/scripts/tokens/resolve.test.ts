@@ -191,6 +191,17 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('group metadata');
   });
 
+  test('prefers group metadata when a group and its $root share an indexed path', () => {
+    const resolved = resolveDocument({
+      group: {
+        $description: 'group metadata',
+        $root: { $type: 'number', $value: 1, $description: 'root metadata' },
+      },
+      copy: { $type: 'string', $ref: '#/group/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('group metadata');
+  });
+
   test('does not re-resolve a metadata value when its token is reached later', () => {
     const resolved = resolveDocument({
       alias: { $ref: '#/base', $description: 'base' },
@@ -232,6 +243,15 @@ describe('DTCG resolver', () => {
       },
     ]);
     expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
+  });
+
+  test('does not report a false circular extends when a nested target is under an active ancestor', () => {
+    const resolved = resolveDocument({
+      base: { child: { value: { $value: 1 } } },
+      outer: { $extends: '{base}', child: { value: { $value: 2 } } },
+      derived: { $extends: '{outer.child}' },
+    });
+    expect(resolved['derived.value']?.$value).toBe(2);
   });
 
   test('rejects a $root pointer into an ordinary token that has no $root member', () => {

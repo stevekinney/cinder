@@ -234,7 +234,7 @@ function resolveExtends(
   for (const [name, value] of Object.entries(group)) {
     if (name.startsWith('$') || !isTokenGroup(value)) continue;
     const nestedPath = groupPath ? `${groupPath}.${name}` : name;
-    if (groups.has(nestedPath))
+    if (groups.get(nestedPath)?.$extends)
       resolveExtends(nestedPath, groups, visiting, complete, lookupGroups);
   }
   visiting.delete(groupPath);
@@ -342,13 +342,12 @@ function resolveReference(
         ? token
         : resolveToken(candidatePath, tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : undefined;
+    const metadataBase =
+      readsRawMetadata && group && !targetsRootToken ? group : (resolvedToken ?? group);
     const propertyValue =
       remainder[0] === '$ref'
         ? getByPath(rawRefs.get(candidatePath), remainder.slice(1))
-        : getByPath(
-            usesTokenObjectBase ? (resolvedToken ?? group) : resolvedToken?.$value,
-            remainder,
-          );
+        : getByPath(usesTokenObjectBase ? metadataBase : resolvedToken?.$value, remainder);
     if (propertyValue === undefined)
       issue(reference, `reference target ${candidatePath} has no requested property`);
     return clone(propertyValue);
