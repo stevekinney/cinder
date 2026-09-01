@@ -900,7 +900,7 @@ export async function renderDocTable(
     // a value containing one -- a fontFamily whose family name is `A|B` becomes the
     // valid CSS string 'A|B' -- would commit a structurally malformed row that the
     // drift parser still happily reads back.
-    return `| ${toCodeSpan(cssProperty)} | ${renderValueCell(value)} | ${description} |`;
+    return `| ${toCodeSpan(cssProperty)} | ${value} | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });

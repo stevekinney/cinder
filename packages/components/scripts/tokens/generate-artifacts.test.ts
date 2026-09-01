@@ -301,6 +301,37 @@ describe('CIN-30 review round 3', () => {
     expect(row).toContain('A&#124;B');
     expect(row.replace(/\\\|/g, '').split('|').length - 1).toBe(4);
   });
+
+  test('an ordinary serialized value is wrapped in exactly one code span', async () => {
+    const baseIndex = new Map<string, CorpusEntry>([
+      [
+        'space.zero',
+        {
+          path: 'space.zero',
+          value: { value: 0, unit: 'px' },
+          type: 'dimension',
+          description: 'Zero spacing.',
+          cssProperty: '--cinder-test-space-zero',
+          cssRecipe: undefined,
+          public: true,
+          category: 'spacing',
+          component: undefined,
+          deprecated: undefined,
+        },
+      ],
+    ]);
+    const section: DocSection = {
+      slug: 'spacing',
+      headings: ['Spacing'],
+      cssProperties: ['--cinder-test-space-zero'],
+    };
+
+    const table = await renderDocTable(section, baseIndex, (value) => value);
+    const row = table.split('\n').find((line) => line.includes('--cinder-test-space-zero')) ?? '';
+
+    expect(row).toMatch(/\| `0`\s+\|/);
+    expect(row).not.toContain('`` `0` ``');
+  });
 });
 
 describe('CIN-30 review round 5', () => {
