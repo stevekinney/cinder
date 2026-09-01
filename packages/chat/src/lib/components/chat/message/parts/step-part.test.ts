@@ -118,7 +118,7 @@ describe('StepPart — accessibility (not icon-only)', () => {
 
   test('status suffix is present in visually-hidden span', () => {
     const { container } = render(StepPart, { props: { part: makeStep('running') } });
-    const srOnly = container.querySelector('.sr-only');
+    const srOnly = container.querySelector('.cinder-sr-only');
     expect(srOnly).not.toBeNull();
     // The visually-hidden suffix communicates status as text
     expect(srOnly?.textContent).toContain('in progress');
@@ -126,19 +126,19 @@ describe('StepPart — accessibility (not icon-only)', () => {
 
   test('done status has "complete" visually-hidden text', () => {
     const { container } = render(StepPart, { props: { part: makeStep('done') } });
-    const srOnly = container.querySelector('.sr-only');
+    const srOnly = container.querySelector('.cinder-sr-only');
     expect(srOnly?.textContent).toContain('complete');
   });
 
   test('error status has "failed" visually-hidden text', () => {
     const { container } = render(StepPart, { props: { part: makeStep('error') } });
-    const srOnly = container.querySelector('.sr-only');
+    const srOnly = container.querySelector('.cinder-sr-only');
     expect(srOnly?.textContent).toContain('failed');
   });
 
   test('pending status has "pending" visually-hidden text', () => {
     const { container } = render(StepPart, { props: { part: makeStep('pending') } });
-    const srOnly = container.querySelector('.sr-only');
+    const srOnly = container.querySelector('.cinder-sr-only');
     expect(srOnly?.textContent).toContain('pending');
   });
 });
