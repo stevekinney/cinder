@@ -2082,7 +2082,12 @@ describe('/page/:name server-rendering surfaces', () => {
 
 describe('warmPageServerRenderer', () => {
   /** Runs the work and reports a stable generation, like an undisturbed startup. */
-  const stable = async (work) => ({ value: await work(), instabilityReasons: [] });
+  const stable = async <T>(
+    work: () => Promise<T>,
+  ): Promise<{ value: T; instabilityReasons: string[] }> => ({
+    value: await work(),
+    instabilityReasons: [],
+  });
 
   /**
    * `startServer`'s warmup prepared only the SHELL renderer, so `/ping` reported
