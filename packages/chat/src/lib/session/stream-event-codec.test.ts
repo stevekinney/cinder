@@ -99,4 +99,347 @@ describe('chat stream event codec', () => {
     await expect(Array.fromAsync(decodeChatStreamEvents(stream))).rejects.toThrow();
     expect(stream.locked).toBe(false);
   });
+
+  describe('legacy members keep their exact current shape (CIN-507)', () => {
+    test('a bare `text` frame with no envelope decodes byte-identically to today', () => {
+      const event = { type: 'text' as const, text: 'hello' };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('a bare `tool_call` frame with no envelope decodes byte-identically to today', () => {
+      const event = {
+        type: 'tool_call' as const,
+        id: 'call-1',
+        name: 'lookup',
+        arguments: { query: 'weather' },
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('a bare `tool_result` frame with no envelope decodes byte-identically to today', () => {
+      const event = {
+        type: 'tool_result' as const,
+        callId: 'call-1',
+        outcome: 'success' as const,
+        content: { ok: true },
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('legacy members also accept an attached wire envelope', () => {
+      const event = { type: 'text' as const, text: 'hi', wireVersion: 1 as const, sequence: 0 };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+  });
+
+  describe('wire envelope (CIN-507)', () => {
+    test('rejects an unsupported wireVersion on a legacy member', () => {
+      expect(() =>
+        decodeChatStreamEvent({ type: 'text', text: 'hi', wireVersion: 2, sequence: 0 }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('rejects an unsupported wireVersion on a new member', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:text-delta',
+          content: 'h',
+          accumulated: 'h',
+          wireVersion: 2,
+          sequence: 0,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('new members require the envelope — missing sequence is rejected', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:text-delta',
+          content: 'h',
+          accumulated: 'h',
+          wireVersion: 1,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('new members require the envelope — missing wireVersion is rejected', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:text-delta',
+          content: 'h',
+          accumulated: 'h',
+          sequence: 0,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+  });
+
+  test('still throws on a genuinely unrecognized type', () => {
+    expect(() =>
+      decodeChatStreamEvent({ type: 'not-a-real-event', wireVersion: 1, sequence: 0 }),
+    ).toThrow('Invalid chat stream event');
+  });
+
+  describe('stream:* members mirror Operative StreamEvent (CIN-507)', () => {
+    test('round-trips stream:block-start', () => {
+      const event = {
+        type: 'stream:block-start' as const,
+        block: {
+          id: 'block-1',
+          type: 'text' as const,
+          index: 0,
+          content: '',
+          complete: false,
+        },
+        wireVersion: 1 as const,
+        sequence: 0,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:text-delta', () => {
+      const event = {
+        type: 'stream:text-delta' as const,
+        content: 'lo',
+        accumulated: 'hello',
+        wireVersion: 1 as const,
+        sequence: 3,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:tool-call-complete with JSONValue-narrowed arguments', () => {
+      const event = {
+        type: 'stream:tool-call-complete' as const,
+        toolName: 'lookup',
+        blockId: 'block-2',
+        arguments: { query: 'weather' },
+        wireVersion: 1 as const,
+        sequence: 4,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects stream:tool-call-complete when arguments is not JSON-safe', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:tool-call-complete',
+          toolName: 'lookup',
+          blockId: 'block-2',
+          arguments: undefined,
+          wireVersion: 1,
+          sequence: 4,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('round-trips stream:complete with a nested StreamState', () => {
+      const block = {
+        id: 'block-1',
+        type: 'text' as const,
+        index: 0,
+        content: 'hello',
+        complete: true,
+      };
+      const event = {
+        type: 'stream:complete' as const,
+        state: {
+          blocks: [block],
+          textContent: 'hello',
+          toolCalls: [],
+          complete: true,
+          usage: { prompt: 10, completion: 5, total: 15 },
+        },
+        wireVersion: 1 as const,
+        sequence: 5,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:error with JSONValue-narrowed error', () => {
+      const event = {
+        type: 'stream:error' as const,
+        error: { message: 'provider failed' },
+        wireVersion: 1 as const,
+        sequence: 6,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+  });
+
+  describe('tool.* members key by toolCallId (CIN-507)', () => {
+    test('round-trips tool.started', () => {
+      const event = {
+        type: 'tool.started' as const,
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1 as const,
+        sequence: 1,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips tool.settled with a paused result carrying an action descriptor', () => {
+      const event = {
+        type: 'tool.settled' as const,
+        toolCallId: 'call-1',
+        toolName: 'remember_note',
+        result: {
+          callId: 'call-1',
+          outcome: 'action_required' as const,
+          content: 'Save this note?',
+          action: { type: 'approval' as const, message: 'Save this note?' },
+        },
+        wireVersion: 1 as const,
+        sequence: 2,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips tool.error with JSONValue-narrowed error', () => {
+      const event = {
+        type: 'tool.error' as const,
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        error: { code: 'TIMEOUT' },
+        wireVersion: 1 as const,
+        sequence: 2,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips tool.policy-denied', () => {
+      const event = {
+        type: 'tool.policy-denied' as const,
+        toolCallId: 'call-1',
+        toolName: 'delete_file',
+        reason: 'not permitted',
+        wireVersion: 1 as const,
+        sequence: 2,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+  });
+
+  describe('run.* terminal frames (CIN-507)', () => {
+    const conversation = {
+      schemaVersion: 1,
+      id: 'conversation-1',
+      status: 'active' as const,
+      metadata: {},
+      ids: [] as string[],
+      messages: {},
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-01T00:00:00.000Z',
+    };
+
+    test('round-trips run.completed carrying the authoritative final conversation', () => {
+      const event = {
+        type: 'run.completed' as const,
+        conversation,
+        content: 'Done.',
+        usage: { prompt: 10, completion: 5, total: 15 },
+        finishReason: 'stop-condition',
+        wireVersion: 1 as const,
+        sequence: 9,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects run.completed when conversation is not a valid ConversationHistory', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'run.completed',
+          conversation: { id: 'conversation-1' },
+          content: 'Done.',
+          usage: { prompt: 10, completion: 5, total: 15 },
+          finishReason: 'stop-condition',
+          wireVersion: 1,
+          sequence: 9,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('round-trips run.error as a serialized error with cause omitted', () => {
+      const event = {
+        type: 'run.error' as const,
+        error: {
+          name: 'AgentRunError',
+          message: 'The model call failed.',
+          kind: 'generate' as const,
+          code: 'UNKNOWN' as const,
+        },
+        wireVersion: 1 as const,
+        sequence: 9,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('strips a `cause` field from run.error rather than forwarding it', () => {
+      const decoded = decodeChatStreamEvent({
+        type: 'run.error',
+        error: {
+          name: 'AgentRunError',
+          message: 'The model call failed.',
+          kind: 'generate',
+          code: 'UNKNOWN',
+          cause: { apiKey: 'sk-should-never-cross-the-wire' },
+        },
+        wireVersion: 1,
+        sequence: 9,
+      });
+      expect(decoded).toEqual({
+        type: 'run.error',
+        error: {
+          name: 'AgentRunError',
+          message: 'The model call failed.',
+          kind: 'generate',
+          code: 'UNKNOWN',
+        },
+        wireVersion: 1,
+        sequence: 9,
+      });
+    });
+
+    test('round-trips run.tripwire as a serialized error', () => {
+      const event = {
+        type: 'run.tripwire' as const,
+        error: {
+          name: 'GuardrailTripwireError',
+          message: 'Guardrail tripped.',
+          kind: 'policy' as const,
+          code: 'TRIPWIRE' as const,
+        },
+        wireVersion: 1 as const,
+        sequence: 9,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects run.error with an unrecognized error kind', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'run.error',
+          error: {
+            name: 'AgentRunError',
+            message: 'oops',
+            kind: 'not-a-real-kind',
+            code: 'UNKNOWN',
+          },
+          wireVersion: 1,
+          sequence: 9,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('round-trips run.aborted', () => {
+      const event = {
+        type: 'run.aborted' as const,
+        reason: 'user cancelled',
+        wireVersion: 1 as const,
+        sequence: 9,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+  });
 });

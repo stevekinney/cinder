@@ -250,7 +250,7 @@ export function createChatSessionController(
               toolOwners.set(event.id, userMessageId);
               toolCalls.add(event.id);
               committed = options.getConversation();
-            } else {
+            } else if (event.type === 'tool_result') {
               toolResultSeen = true;
               toolResults.add(event.callId);
               const requiresApproval =
@@ -266,6 +266,11 @@ export function createChatSessionController(
                 reportError(observerError);
               }
             }
+            // CIN-507 extends the codec's vocabulary (`stream:*`, `tool.*`,
+            // `run.*`) without wiring a reducer for it yet — that lands with
+            // the route that emits these frames (a separate, out-of-scope
+            // issue). Unrecognized-here members fall through as a no-op
+            // rather than crash this loop.
           }
           update(
             text
