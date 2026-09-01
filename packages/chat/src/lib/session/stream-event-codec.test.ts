@@ -244,6 +244,23 @@ describe('chat stream event codec', () => {
       ).toThrow('Invalid chat stream event');
     });
 
+    test('rejects a block index above Number.MAX_SAFE_INTEGER', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:block-start',
+          block: {
+            id: 'block-1',
+            type: 'text',
+            index: Number.MAX_SAFE_INTEGER + 1,
+            content: '',
+            complete: false,
+          },
+          wireVersion: 1,
+          sequence: 0,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
     test('round-trips stream:block-delta', () => {
       const event = {
         type: 'stream:block-delta' as const,
@@ -403,6 +420,19 @@ describe('chat stream event codec', () => {
         sequence: 1,
       };
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects a non-finite tool.progress percent', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'tool.progress',
+          toolCallId: 'call-1',
+          toolName: 'lookup',
+          percent: Number.POSITIVE_INFINITY,
+          wireVersion: 1,
+          sequence: 1,
+        }),
+      ).toThrow('Invalid chat stream event');
     });
 
     test('round-trips tool.settled with a paused result carrying an action descriptor', () => {
@@ -666,6 +696,92 @@ describe('chat stream event codec', () => {
 
       expect(encoded).not.toContain('internalDebugToken');
       expect(encoded).not.toContain('should-never-cross-the-wire');
+    });
+
+    test('rejects encoding a wire envelope carrying only wireVersion', () => {
+      const event = {
+        type: 'text',
+        text: 'hi',
+        wireVersion: 1,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: cannot encode a malformed wire envelope',
+      );
+    });
+
+    test('rejects encoding a wire envelope with an unsupported wireVersion', () => {
+      const event = {
+        type: 'text',
+        text: 'hi',
+        wireVersion: 2,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: cannot encode a malformed wire envelope',
+      );
+    });
+
+    test('never encodes extra properties smuggled onto a nested stream:block-start block', () => {
+      const event = {
+        type: 'stream:block-start',
+        block: {
+          id: 'block-1',
+          type: 'text',
+          index: 0,
+          content: '',
+          complete: false,
+          providerSecret: 'should-never-cross-the-wire',
+        },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+
+      const encoded = encodeChatStreamEvent(event);
+
+      expect(encoded).not.toContain('providerSecret');
+      expect(encoded).not.toContain('should-never-cross-the-wire');
+    });
+
+    test('never encodes extra properties smuggled onto nested stream:complete blocks', () => {
+      const event = {
+        type: 'stream:complete',
+        state: {
+          blocks: [
+            {
+              id: 'block-1',
+              type: 'text',
+              index: 0,
+              content: 'hi',
+              complete: true,
+              providerSecret: 'should-never-cross-the-wire',
+            },
+          ],
+          textContent: 'hi',
+          toolCalls: [],
+          complete: true,
+        },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+
+      const encoded = encodeChatStreamEvent(event);
+
+      expect(encoded).not.toContain('providerSecret');
+      expect(encoded).not.toContain('should-never-cross-the-wire');
+    });
+
+    test('rejects encoding a non-finite tool.progress percent', () => {
+      const event = {
+        type: 'tool.progress',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        percent: Number.NaN,
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool.progress percent must be finite',
+      );
     });
   });
 

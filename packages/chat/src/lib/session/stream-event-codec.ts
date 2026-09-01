@@ -188,9 +188,26 @@ export type ChatStreamEvent =
   | ({ type: 'run.tripwire'; error: ChatSerializedRunError } & WireEnvelope)
   | ({ type: 'run.aborted'; reason?: string } & WireEnvelope);
 
+/**
+ * Mirrors `readWireEnvelope`'s all-or-nothing validation on the encode
+ * side. TypeScript's static type doesn't stop a caller from handing in a
+ * partial or malformed envelope at runtime — silently dropping a
+ * half-present envelope to "bare" here would downgrade a frame without
+ * telling anyone, which makes a producer bug invisible until decode fails
+ * downstream (or, worse, doesn't).
+ */
 function projectWireEnvelope(event: Partial<WireEnvelope>): Partial<WireEnvelope> {
-  if (event.wireVersion === undefined || event.sequence === undefined) return {};
-  return { wireVersion: event.wireVersion, sequence: event.sequence };
+  const hasWireVersion = event.wireVersion !== undefined;
+  const hasSequence = event.sequence !== undefined;
+  if (!hasWireVersion && !hasSequence) return {};
+  if (
+    hasWireVersion !== hasSequence ||
+    event.wireVersion !== SUPPORTED_WIRE_VERSION ||
+    !isNonNegativeSafeInteger(event.sequence)
+  ) {
+    throw new Error('Invalid chat stream event: cannot encode a malformed wire envelope');
+  }
+  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence: event.sequence };
 }
 
 /**
@@ -210,6 +227,40 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
   if (result.inputDigest !== undefined) projected['inputDigest'] = result.inputDigest;
   if (result.outputDigest !== undefined) projected['outputDigest'] = result.outputDigest;
   if (result.pendingApproval !== undefined) projected['pendingApproval'] = result.pendingApproval;
+  return projected;
+}
+
+/**
+ * Whitelists exactly `ChatStreamBlock`'s declared fields. A `block` handed
+ * in through a variable is only structurally checked by TypeScript, so an
+ * Operative-derived object carrying provider-only metadata could otherwise
+ * ride along unnoticed — the same risk `projectChatToolResult` closes for
+ * tool results.
+ */
+function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown> {
+  const projected: Record<string, unknown> = {
+    id: block.id,
+    type: block.type,
+    index: block.index,
+    content: block.content,
+    complete: block.complete,
+  };
+  if (block.toolName !== undefined) projected['toolName'] = block.toolName;
+  if (block.partialArguments !== undefined) projected['partialArguments'] = block.partialArguments;
+  return projected;
+}
+
+/** Whitelists exactly `ChatStreamState`'s declared fields, including its nested block arrays. */
+function projectChatStreamState(state: ChatStreamState): Record<string, unknown> {
+  const projected: Record<string, unknown> = {
+    blocks: state.blocks.map(projectChatStreamBlock),
+    textContent: state.textContent,
+    toolCalls: state.toolCalls.map(projectChatStreamBlock),
+    complete: state.complete,
+  };
+  if (state.activeBlock !== undefined)
+    projected['activeBlock'] = projectChatStreamBlock(state.activeBlock);
+  if (state.usage !== undefined) projected['usage'] = state.usage;
   return projected;
 }
 
@@ -252,11 +303,24 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
     case 'tool_result':
       return { type: 'tool_result', ...projectChatToolResult(event), ...envelope };
     case 'stream:block-start':
-      return { type: 'stream:block-start', block: event.block, ...envelope };
+      return {
+        type: 'stream:block-start',
+        block: projectChatStreamBlock(event.block),
+        ...envelope,
+      };
     case 'stream:block-delta':
-      return { type: 'stream:block-delta', block: event.block, delta: event.delta, ...envelope };
+      return {
+        type: 'stream:block-delta',
+        block: projectChatStreamBlock(event.block),
+        delta: event.delta,
+        ...envelope,
+      };
     case 'stream:block-complete':
-      return { type: 'stream:block-complete', block: event.block, ...envelope };
+      return {
+        type: 'stream:block-complete',
+        block: projectChatStreamBlock(event.block),
+        ...envelope,
+      };
     case 'stream:text-delta':
       return {
         type: 'stream:text-delta',
@@ -290,7 +354,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
     case 'stream:usage':
       return { type: 'stream:usage', usage: event.usage, ...envelope };
     case 'stream:complete':
-      return { type: 'stream:complete', state: event.state, ...envelope };
+      return { type: 'stream:complete', state: projectChatStreamState(event.state), ...envelope };
     case 'stream:error':
       return { type: 'stream:error', error: event.error, ...envelope };
     case 'tool.started':
@@ -306,7 +370,15 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         toolCallId: event.toolCallId,
         toolName: event.toolName,
       };
-      if (event.percent !== undefined) projected['percent'] = event.percent;
+      if (event.percent !== undefined) {
+        // JSON.stringify serializes a non-finite number (NaN, Infinity) as
+        // `null`, which the decoder's own `percent` predicate then rejects
+        // — silently turning a valid-looking ChatStreamEvent into malformed
+        // wire data. Reject it here instead, before it ever reaches the wire.
+        if (!Number.isFinite(event.percent))
+          throw new Error('Invalid chat stream event: tool.progress percent must be finite');
+        projected['percent'] = event.percent;
+      }
       if (event.message !== undefined) projected['message'] = event.message;
       return { ...projected, ...envelope };
     }
@@ -416,8 +488,7 @@ function isChatStreamBlock(value: unknown): value is ChatStreamBlock {
   if (!isRecord(value)) return false;
   if (typeof value['id'] !== 'string') return false;
   if (!isChatStreamBlockType(value['type'])) return false;
-  if (typeof value['index'] !== 'number' || !Number.isInteger(value['index']) || value['index'] < 0)
-    return false;
+  if (!isNonNegativeSafeInteger(value['index'])) return false;
   if (typeof value['content'] !== 'string') return false;
   if (typeof value['complete'] !== 'boolean') return false;
   if (value['toolName'] !== undefined && typeof value['toolName'] !== 'string') return false;
@@ -620,7 +691,8 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
     eventType === 'tool.progress' &&
     typeof parsed['toolCallId'] === 'string' &&
     typeof parsed['toolName'] === 'string' &&
-    (parsed['percent'] === undefined || typeof parsed['percent'] === 'number') &&
+    (parsed['percent'] === undefined ||
+      (typeof parsed['percent'] === 'number' && Number.isFinite(parsed['percent']))) &&
     (parsed['message'] === undefined || typeof parsed['message'] === 'string')
   ) {
     return {
