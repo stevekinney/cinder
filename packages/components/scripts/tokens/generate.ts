@@ -771,6 +771,21 @@ function renderOverrideDeclarations(
   return lines.join('\n');
 }
 
+function withDependentBaseAliases(
+  overrides: Map<string, CorpusEntry>,
+  baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver,
+): Map<string, CorpusEntry> {
+  const scoped = new Map(overrides);
+  for (const [path, entry] of baseIndex) {
+    if (scoped.has(path)) continue;
+    if (serializeEntryValue(entry, baseIndex, resolveReferences).includes('var(')) {
+      scoped.set(path, entry);
+    }
+  }
+  return scoped;
+}
+
 /**
  * Two tokens mapping to one `cssProperty` with DIFFERENT values is not something
  * `tokens:validate` can catch -- the mapping lives in vendor extension data, which
@@ -1458,12 +1473,12 @@ export async function buildTokensBaseCss(
 
   const rootDeclarations = renderBaseDeclarations(baseIndex, baseResolveReferences);
   const darkDeclarations = renderOverrideDeclarations(
-    darkOverrides,
+    withDependentBaseAliases(darkOverrides, baseIndex, darkResolveReferences),
     baseIndex,
     darkResolveReferences,
   );
   const lightDeclarations = renderOverrideDeclarations(
-    lightOverrides,
+    withDependentBaseAliases(lightOverrides, baseIndex, lightResolveReferences),
     baseIndex,
     lightResolveReferences,
   );

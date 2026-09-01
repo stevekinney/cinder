@@ -429,6 +429,26 @@ describe('CIN-464: resolver-internal set references in source lists', () => {
     );
   });
 
+  test('rejects a later modifier directly re-expanding an ordered base document', () => {
+    const resetting: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.json' }] } },
+      modifiers: {
+        motion: { contexts: { reduced: [{ $ref: 'motion.json' }] } },
+        theme: { contexts: { light: [{ $ref: './base.json' }] } },
+      },
+      resolutionOrder: [
+        { $ref: '#/sets/base' },
+        { $ref: '#/modifiers/motion' },
+        { $ref: '#/modifiers/theme' },
+      ],
+    };
+
+    expect(() => validateModifierSetExpansionOrder(resetting)).toThrow(
+      /set "base" is re-expanded after modifier "motion"/,
+    );
+  });
+
   test('allows a modifier-only set when its token paths exist in an unrelated base set', () => {
     const contextOnly: ResolverDocument = {
       version: '2025.10',

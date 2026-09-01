@@ -83,10 +83,18 @@ function reachableSetNames(resolver: ResolverDocument, rootName: string): Set<st
 export function validateModifierSetExpansionOrder(resolver: ResolverDocument): void {
   const order = parseResolutionOrder(resolver);
   const basePositions = new Map<string, number>();
+  const baseDocumentSets = new Map<string, Set<string>>();
   for (const [position, entry] of order.entries()) {
     if (entry.kind !== 'sets') continue;
-    for (const setName of reachableSetNames(resolver, entry.name))
+    for (const setName of reachableSetNames(resolver, entry.name)) {
       basePositions.set(setName, position);
+      for (const source of expandSetSources(resolver, setName)) {
+        const path = normalizeSourcePath(source.$ref);
+        const setNames = baseDocumentSets.get(path) ?? new Set<string>();
+        setNames.add(setName);
+        baseDocumentSets.set(path, setNames);
+      }
+    }
   }
 
   const issues = [];
@@ -95,9 +103,14 @@ export function validateModifierSetExpansionOrder(resolver: ResolverDocument): v
     const modifier = resolver.modifiers[entry.name];
     if (!modifier) continue;
     for (const [contextName, sources] of Object.entries(modifier.contexts)) {
-      const referencedSetNames = internalSetNames(sources).flatMap((setName) => [
-        ...reachableSetNames(resolver, setName),
-      ]);
+      const referencedSetNames = new Set(
+        internalSetNames(sources).flatMap((setName) => [...reachableSetNames(resolver, setName)]),
+      );
+      for (const source of expandContextSources(resolver, entry.name, contextName)) {
+        for (const setName of baseDocumentSets.get(normalizeSourcePath(source.$ref)) ?? []) {
+          referencedSetNames.add(setName);
+        }
+      }
       for (const setName of referencedSetNames) {
         const basePosition = basePositions.get(setName);
         if (basePosition === undefined) continue;
