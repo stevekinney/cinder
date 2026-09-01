@@ -887,7 +887,7 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       recipeEntry('test.literal', '--test-literal', '*<em>`|&</em>*'),
     ]);
     const table = await renderDocTable(tableSection('--test-literal'), baseIndex, (value) => value);
-    expect(table).toContain('<code>\\*&lt;em&gt;&#96;&#x7c;&amp;&lt;/em&gt;\\*</code>');
+    expect(table).toContain('<code>\\*&lt;em&gt;&#96;&#x7c;&amp;&lt;&#47;em&gt;\\*</code>');
     expect(table).not.toContain('<em>');
   });
 });

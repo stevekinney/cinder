@@ -849,7 +849,6 @@ function toTableCell(text: string): string {
 }
 
 function escapeHtml(text: string): string {
-  const markdownPunctuation = new Set('\\`*_{}[]()#+-.!');
   const namedEntities: Record<string, string> = {
     '&': '&amp;',
     '<': '&lt;',
@@ -858,14 +857,10 @@ function escapeHtml(text: string): string {
     "'": '&#39;',
     '|': '&#x7c;',
   };
-  return [...text]
-    .map((character) => {
-      const namedEntity = namedEntities[character];
-      if (namedEntity) return namedEntity;
-      if (markdownPunctuation.has(character)) return `&#${character.codePointAt(0)};`;
-      return character;
-    })
-    .join('');
+  return text.replace(/[^\p{L}\p{M}\p{N}\s]/gu, (character) => {
+    const namedEntity = namedEntities[character];
+    return namedEntity ?? `&#${character.codePointAt(0)};`;
+  });
 }
 
 function renderValueCell(value: string): string {
