@@ -363,7 +363,13 @@ describe('AccordionItem', () => {
     const tokenCss = await Bun.file(
       new URL('../../styles/tokens-base.css', import.meta.url),
     ).text();
-    expect(tokenCss).not.toContain('--cinder-accordion-item-trigger-gap:');
+    // Declared on `:root` like every other public token. These aliases were briefly
+    // deferred out of `:root` so a scoped ancestor override could reach them, but that
+    // broke `validate:consumer` -- which asserts every `public: true` token is declared
+    // in the shipped CSS -- and failed the 0.25.1 release. Deferring them again requires
+    // the registry to first express "public but not root-declared"; see
+    // DEFERRED_COMPONENT_ALIAS_FAMILIES in scripts/tokens/generate.ts.
+    expect(tokenCss).toContain('--cinder-accordion-item-trigger-gap:');
     expect(css).toContain('gap: var(--cinder-accordion-item-trigger-gap,');
     expect(css).toContain('var(--cinder-accordion-item-trigger-padding-block,');
     expect(css).toContain('font-size: var(--cinder-accordion-item-trigger-font-size,');

@@ -261,7 +261,23 @@ test.describe('generated token CSS drives visible styles', () => {
     expect(before).not.toBe('1px');
   });
 
-  test('a scoped foundation override reaches a deferred component alias', async ({ page }) => {
+  /**
+   * Pins the CURRENT behaviour, which is a deliberate tradeoff rather than an oversight.
+   *
+   * Component aliases are declared on `:root`, so an alias resolves against `:root`'s
+   * foundation value and a foundation override scoped to an ancestor does NOT reach it.
+   * These aliases were briefly deferred out of `:root` so that it WOULD -- and this test
+   * asserted exactly that -- but deferring them broke `validate:consumer`, which requires
+   * every `public: true` token to be declared in the shipped CSS, and failed the 0.25.1
+   * release. Restoring the declarations restores this limitation.
+   *
+   * Overriding the component property directly still works and is the supported path --
+   * see the ActionRow test above. If the deferral is reintroduced (which needs the
+   * registry to first express "public but not root-declared"), this test flips back.
+   */
+  test('a scoped foundation override does not reach a root-declared component alias', async ({
+    page,
+  }) => {
     await gotoDocumentationPage(page, '/page/accordion');
 
     const item = page
@@ -277,7 +293,15 @@ test.describe('generated token CSS drives visible styles', () => {
       (element as HTMLElement).style.setProperty('--cinder-space-4', '3px');
     });
 
-    await expect.poll(gapOf).toBe('3px');
+    // The alias already resolved against :root's --cinder-space-4, so the scoped
+    // override changes nothing here.
+    await expect.poll(gapOf).toBe(before);
     expect(before).not.toBe('3px');
+
+    // The component property itself remains overridable, which is the supported escape hatch.
+    await item.evaluate((element) => {
+      (element as HTMLElement).style.setProperty('--cinder-accordion-item-trigger-gap', '5px');
+    });
+    await expect.poll(gapOf).toBe('5px');
   });
 });
