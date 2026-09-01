@@ -188,17 +188,195 @@ export type ChatStreamEvent =
   | ({ type: 'run.tripwire'; error: ChatSerializedRunError } & WireEnvelope)
   | ({ type: 'run.aborted'; reason?: string } & WireEnvelope);
 
+function projectWireEnvelope(event: Partial<WireEnvelope>): Partial<WireEnvelope> {
+  if (event.wireVersion === undefined || event.sequence === undefined) return {};
+  return { wireVersion: event.wireVersion, sequence: event.sequence };
+}
+
+/**
+ * Whitelists exactly `ChatToolResult`'s declared fields. Used for both the
+ * top-level `tool_result` member and `tool.settled`'s nested `result`, so an
+ * object built by spreading a provider payload — which could carry extra
+ * properties — can't ride along onto the wire unnoticed.
+ */
+function projectChatToolResult(result: ChatToolResult): Record<string, unknown> {
+  const projected: Record<string, unknown> = {
+    callId: result.callId,
+    outcome: result.outcome,
+    content: result.content,
+  };
+  if (result.error !== undefined) projected['error'] = result.error;
+  if (result.action !== undefined) projected['action'] = result.action;
+  if (result.inputDigest !== undefined) projected['inputDigest'] = result.inputDigest;
+  if (result.outputDigest !== undefined) projected['outputDigest'] = result.outputDigest;
+  if (result.pendingApproval !== undefined) projected['pendingApproval'] = result.pendingApproval;
+  return projected;
+}
+
+/**
+ * Rebuilds a `ChatSerializedRunError` into exactly `{ name, message, kind,
+ * code }`. This is the encode-side half of the `cause` redaction: TypeScript
+ * types don't exist at runtime, so a host that builds a `run.error` frame by
+ * spreading Operative's `agentRunErrorToJSON()` output — which *does*
+ * include `cause` — would otherwise carry it straight onto the wire via a
+ * bare `JSON.stringify`. Rebuilding here, not just at decode, is what
+ * actually stops that: nothing re-attaches `cause` by construction.
+ */
+function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSerializedRunError {
+  return { name: error.name, message: error.message, kind: error.kind, code: error.code };
+}
+
+/**
+ * Projects one event into a plain JSON-safe object listing exactly its
+ * declared fields, per the reference architecture's stream wire contract:
+ * "The route projects event data into JSON-safe values explicitly rather
+ * than calling `JSON.stringify()` on an `Event` instance and hoping its
+ * fields are enumerable." A bare `JSON.stringify(event)` would forward
+ * whatever extra properties happen to be riding on the object a caller
+ * handed in — this makes the encoder symmetric with the field-by-field
+ * decoder above instead of trusting the static type at runtime.
+ */
+function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown> {
+  const envelope = projectWireEnvelope(event);
+  switch (event.type) {
+    case 'text':
+      return { type: 'text', text: event.text, ...envelope };
+    case 'tool_call':
+      return {
+        type: 'tool_call',
+        id: event.id,
+        name: event.name,
+        arguments: event.arguments,
+        ...envelope,
+      };
+    case 'tool_result':
+      return { type: 'tool_result', ...projectChatToolResult(event), ...envelope };
+    case 'stream:block-start':
+      return { type: 'stream:block-start', block: event.block, ...envelope };
+    case 'stream:block-delta':
+      return { type: 'stream:block-delta', block: event.block, delta: event.delta, ...envelope };
+    case 'stream:block-complete':
+      return { type: 'stream:block-complete', block: event.block, ...envelope };
+    case 'stream:text-delta':
+      return {
+        type: 'stream:text-delta',
+        content: event.content,
+        accumulated: event.accumulated,
+        ...envelope,
+      };
+    case 'stream:tool-call-start':
+      return {
+        type: 'stream:tool-call-start',
+        toolName: event.toolName,
+        blockId: event.blockId,
+        ...envelope,
+      };
+    case 'stream:tool-call-delta':
+      return {
+        type: 'stream:tool-call-delta',
+        toolName: event.toolName,
+        blockId: event.blockId,
+        partialArguments: event.partialArguments,
+        ...envelope,
+      };
+    case 'stream:tool-call-complete':
+      return {
+        type: 'stream:tool-call-complete',
+        toolName: event.toolName,
+        blockId: event.blockId,
+        arguments: event.arguments,
+        ...envelope,
+      };
+    case 'stream:usage':
+      return { type: 'stream:usage', usage: event.usage, ...envelope };
+    case 'stream:complete':
+      return { type: 'stream:complete', state: event.state, ...envelope };
+    case 'stream:error':
+      return { type: 'stream:error', error: event.error, ...envelope };
+    case 'tool.started':
+      return {
+        type: 'tool.started',
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        ...envelope,
+      };
+    case 'tool.progress': {
+      const projected: Record<string, unknown> = {
+        type: 'tool.progress',
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+      };
+      if (event.percent !== undefined) projected['percent'] = event.percent;
+      if (event.message !== undefined) projected['message'] = event.message;
+      return { ...projected, ...envelope };
+    }
+    case 'tool.settled':
+      return {
+        type: 'tool.settled',
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        result: projectChatToolResult(event.result),
+        ...envelope,
+      };
+    case 'tool.error':
+      return {
+        type: 'tool.error',
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+        error: event.error,
+        ...envelope,
+      };
+    case 'tool.policy-denied': {
+      const projected: Record<string, unknown> = {
+        type: 'tool.policy-denied',
+        toolCallId: event.toolCallId,
+        toolName: event.toolName,
+      };
+      if (event.reason !== undefined) projected['reason'] = event.reason;
+      return { ...projected, ...envelope };
+    }
+    case 'run.completed':
+      return {
+        type: 'run.completed',
+        conversation: event.conversation,
+        content: event.content,
+        usage: event.usage,
+        finishReason: event.finishReason,
+        ...envelope,
+      };
+    case 'run.error':
+      return { type: 'run.error', error: projectChatSerializedRunError(event.error), ...envelope };
+    case 'run.tripwire':
+      return {
+        type: 'run.tripwire',
+        error: projectChatSerializedRunError(event.error),
+        ...envelope,
+      };
+    case 'run.aborted': {
+      const projected: Record<string, unknown> = { type: 'run.aborted' };
+      if (event.reason !== undefined) projected['reason'] = event.reason;
+      return { ...projected, ...envelope };
+    }
+  }
+}
+
 /** Encodes one event as a newline-delimited JSON frame. */
 export function encodeChatStreamEvent(event: ChatStreamEvent): string {
-  return `${JSON.stringify(event)}\n`;
+  return `${JSON.stringify(projectChatStreamEvent(event))}\n`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null;
 }
 
-function isNonNegativeInteger(value: unknown): value is number {
-  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+/**
+ * `sequence` is a wire field, so it must round-trip through JSON precisely.
+ * A plain `Number.isInteger` check accepts values above
+ * `Number.MAX_SAFE_INTEGER`, which can silently lose precision going through
+ * JSON — require a *safe* integer instead.
+ */
+function isNonNegativeSafeInteger(value: unknown): value is number {
+  return typeof value === 'number' && Number.isSafeInteger(value) && value >= 0;
 }
 
 /**
@@ -206,19 +384,21 @@ function isNonNegativeInteger(value: unknown): value is number {
  * all members — including the three legacy ones — because an unsupported
  * `wireVersion` or malformed `sequence` must be rejected wherever it
  * appears, not just on the new vocabulary that requires the envelope.
+ *
+ * The envelope is all-or-nothing: `wireVersion` and `sequence` must appear
+ * together or not at all. A frame carrying only one half is neither the
+ * bare legacy format nor a valid versioned frame, and a sequence-only frame
+ * could otherwise bypass `wireVersion` validation entirely.
  */
 function readWireEnvelope(parsed: Record<string, unknown>): Partial<WireEnvelope> {
-  const envelope: Partial<WireEnvelope> = {};
-  if ('wireVersion' in parsed) {
-    if (parsed['wireVersion'] !== SUPPORTED_WIRE_VERSION)
-      throw new Error('Invalid chat stream event');
-    envelope.wireVersion = SUPPORTED_WIRE_VERSION;
-  }
-  if ('sequence' in parsed) {
-    if (!isNonNegativeInteger(parsed['sequence'])) throw new Error('Invalid chat stream event');
-    envelope.sequence = parsed['sequence'];
-  }
-  return envelope;
+  const hasWireVersion = 'wireVersion' in parsed;
+  const hasSequence = 'sequence' in parsed;
+  if (!hasWireVersion && !hasSequence) return {};
+  if (hasWireVersion !== hasSequence) throw new Error('Invalid chat stream event');
+  if (parsed['wireVersion'] !== SUPPORTED_WIRE_VERSION)
+    throw new Error('Invalid chat stream event');
+  if (!isNonNegativeSafeInteger(parsed['sequence'])) throw new Error('Invalid chat stream event');
+  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence: parsed['sequence'] };
 }
 
 /** A fully-present wire envelope, required on every new (CIN-507) member. */
@@ -236,7 +416,8 @@ function isChatStreamBlock(value: unknown): value is ChatStreamBlock {
   if (!isRecord(value)) return false;
   if (typeof value['id'] !== 'string') return false;
   if (!isChatStreamBlockType(value['type'])) return false;
-  if (typeof value['index'] !== 'number' || !Number.isInteger(value['index'])) return false;
+  if (typeof value['index'] !== 'number' || !Number.isInteger(value['index']) || value['index'] < 0)
+    return false;
   if (typeof value['content'] !== 'string') return false;
   if (typeof value['complete'] !== 'boolean') return false;
   if (value['toolName'] !== undefined && typeof value['toolName'] !== 'string') return false;
@@ -460,6 +641,11 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
     const { pendingApproval, ...resultCandidate } = parsed['result'];
     if (
       isToolResult(resultCandidate) &&
+      // The browser contract keys the atomic staged-call/result update by
+      // `toolCallId`, while transcript helpers associate the result by its
+      // own `callId`. A mismatch here could commit a result to the wrong
+      // call, so the two must agree.
+      resultCandidate.callId === parsed['toolCallId'] &&
       (pendingApproval === undefined || isJSONValue(pendingApproval))
     ) {
       return {
@@ -541,16 +727,83 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   throw new Error('Invalid chat stream event');
 }
 
+type StreamGuardState = {
+  /**
+   * Which envelope shape this request-local stream committed to on its
+   * first frame. A stream may be wholly bare (legacy) or wholly versioned —
+   * never both. Accepting a bare frame after a versioned one (or vice
+   * versa) would mean losing the ordering guarantee the envelope exists to
+   * provide partway through the response.
+   */
+  mode: 'bare' | 'versioned' | undefined;
+  sawTerminal: boolean;
+  lastSequence: number | undefined;
+};
+
+function isTerminalChatStreamEvent(event: ChatStreamEvent): boolean {
+  return (
+    event.type === 'run.completed' ||
+    event.type === 'run.error' ||
+    event.type === 'run.tripwire' ||
+    event.type === 'run.aborted'
+  );
+}
+
+/**
+ * Applies the stream-level invariants a single frame's own decode can't
+ * check on its own: a request-local monotonically increasing `sequence`
+ * (reference architecture, "Stream wire contract"), and one consistent
+ * envelope mode for the whole stream.
+ */
+function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState): void {
+  const frameMode: 'bare' | 'versioned' = event.wireVersion === undefined ? 'bare' : 'versioned';
+  if (guard.mode === undefined) guard.mode = frameMode;
+  else if (guard.mode !== frameMode)
+    throw new Error('Invalid chat stream event: envelope mode changed mid-stream');
+
+  if (frameMode === 'versioned') {
+    const sequence = event.sequence;
+    if (sequence === undefined) throw new Error('Invalid chat stream event: missing sequence');
+    if (guard.lastSequence !== undefined && sequence <= guard.lastSequence)
+      throw new Error('Invalid chat stream event: sequence did not increase');
+    guard.lastSequence = sequence;
+  }
+
+  if (isTerminalChatStreamEvent(event)) guard.sawTerminal = true;
+}
+
+/**
+ * A versioned stream that reaches EOF without ever emitting one of the
+ * `run.*` terminal frames is a truncated response, not success (reference
+ * architecture, "Stream wire contract" and "Cancellation contract"). This
+ * only runs when the generator's body resumes normally past its last
+ * `yield` — a consumer that stops iterating early instead calls the
+ * generator's `return()`, which unwinds through any enclosing `finally`
+ * blocks but never reaches this code, so a deliberate client cancellation
+ * is correctly exempt without any extra bookkeeping.
+ */
+function assertStreamTerminated(guard: StreamGuardState): void {
+  if (guard.mode === 'versioned' && !guard.sawTerminal)
+    throw new Error('Invalid chat stream event: stream ended without a terminal frame');
+}
+
 /** Decodes newline-delimited events from a string or an async byte stream. */
 export async function* decodeChatStreamEvents(
   source: string | AsyncIterable<string | Uint8Array> | ReadableStream<Uint8Array>,
 ): AsyncGenerator<ChatStreamEvent> {
+  const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
+  const decodeAndTrack = (line: string): ChatStreamEvent => {
+    const event = decodeChatStreamEvent(line);
+    noteDecodedStreamEvent(event, guard);
+    return event;
+  };
   if (typeof source === 'string') {
     for (const line of source
       .split('\n')
       .map((item) => item.trim())
       .filter(Boolean))
-      yield decodeChatStreamEvent(line);
+      yield decodeAndTrack(line);
+    assertStreamTerminated(guard);
     return;
   }
   const decoder = new TextDecoder();
@@ -559,8 +812,7 @@ export async function* decodeChatStreamEvents(
     buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
-    for (const line of lines.map((item) => item.trim()).filter(Boolean))
-      yield decodeChatStreamEvent(line);
+    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
   };
   if (source instanceof ReadableStream) {
     const reader = source.getReader();
@@ -571,7 +823,8 @@ export async function* decodeChatStreamEvents(
         if (done) break;
         yield* appendChunk(value);
       }
-      if (buffer.trim()) yield decodeChatStreamEvent(buffer.trim());
+      if (buffer.trim()) yield decodeAndTrack(buffer.trim());
+      assertStreamTerminated(guard);
       completed = true;
     } finally {
       try {
@@ -587,7 +840,8 @@ export async function* decodeChatStreamEvents(
   } else {
     for await (const chunk of source) yield* appendChunk(chunk);
   }
-  if (buffer.trim()) yield decodeChatStreamEvent(buffer.trim());
+  if (buffer.trim()) yield decodeAndTrack(buffer.trim());
+  assertStreamTerminated(guard);
 }
 
 /** Short aliases for applications that already call their wire format `StreamEvent`. */
