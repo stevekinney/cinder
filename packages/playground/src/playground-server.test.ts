@@ -2081,6 +2081,9 @@ describe('/page/:name server-rendering surfaces', () => {
 });
 
 describe('warmPageServerRenderer', () => {
+  /** Runs the work and reports a stable generation, like an undisturbed startup. */
+  const stable = async (work) => ({ value: await work(), instabilityReasons: [] });
+
   /**
    * `startServer`'s warmup prepared only the SHELL renderer, so `/ping` reported
    * ready while `page-server-entry.ts` was still uncompiled and the first
@@ -2102,10 +2105,77 @@ describe('warmPageServerRenderer', () => {
       () => {
         resetCalls += 1;
       },
+      stable,
     );
 
     expect(loadCalls).toBe(1);
     expect(resetCalls).toBe(0);
+  });
+
+  /**
+   * Awaiting the load alone is not enough. If a watched source changes mid-build,
+   * `invalidateCachesForChange` advances the generation and clears the memo slot,
+   * and `loadPageServerRenderer` declines to publish its stale result as last-good
+   * — but still RESOLVES the await. Readiness would then be advertised behind an
+   * empty memo and the first request would recompile, reproducing the very timeout
+   * this warmup exists to prevent. Only a build that ends on the generation it
+   * started is known to still be in the memo, so an unstable attempt is retried.
+   */
+  it('retries when the build raced a source change instead of accepting a cleared memo', async () => {
+    let loadCalls = 0;
+    let resetCalls = 0;
+    let checkedAttempts = 0;
+
+    await warmPageServerRenderer(
+      async () => {
+        loadCalls += 1;
+        return {};
+      },
+      () => {
+        resetCalls += 1;
+      },
+      // Unstable on the first attempt only, stable on the retry. The attempt is
+      // counted BEFORE the work runs -- reading loadCalls afterwards would already
+      // see the increment and report the first attempt as stable.
+      async (work) => {
+        checkedAttempts += 1;
+        const attempt = checkedAttempts;
+        return {
+          value: await work(),
+          instabilityReasons: attempt === 1 ? ['source changed during warmup'] : [],
+        };
+      },
+    );
+
+    expect(loadCalls).toBe(2);
+    expect(resetCalls).toBe(0);
+  });
+
+  /**
+   * If it never stabilizes, the memo may hold a renderer built against a
+   * superseded generation — worse than no memo, because the request path would
+   * serve it rather than rebuild. Drop the slot instead of advertising readiness
+   * behind it. Readiness itself is not refused: an uncompiled page renderer is a
+   * latency problem, not a correctness one, and the request path already rebuilds.
+   */
+  it('drops the memo when the warmup never stabilizes, without refusing readiness', async () => {
+    let loadCalls = 0;
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => {
+        loadCalls += 1;
+        return {};
+      },
+      () => {
+        resetCalls += 1;
+      },
+      async (work) => ({ value: await work(), instabilityReasons: ['still changing'] }),
+      3,
+    );
+
+    expect(loadCalls).toBe(3);
+    expect(resetCalls).toBe(1);
   });
 
   /**
@@ -2125,10 +2195,10 @@ describe('warmPageServerRenderer', () => {
       () => {
         resetCalls += 1;
       },
+      stable,
     );
 
-    expect(warmup).resolves.toBeUndefined();
-    await warmup;
+    await expect(warmup).resolves.toBeUndefined();
     expect(resetCalls).toBe(1);
   });
 });

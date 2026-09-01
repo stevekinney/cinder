@@ -1354,6 +1354,9 @@ export async function runGenerationCheckedWarmup<T>(
   };
 }
 
+/** Matches the shell renderer's warmup retry budget in {@link startServer}. */
+const RENDERER_WARMUP_MAX_ATTEMPTS = 5;
+
 /**
  * Compile the documentation-page server renderer before readiness is advertised.
  *
@@ -1371,6 +1374,15 @@ export async function runGenerationCheckedWarmup<T>(
  * and intermittently blew the budget -- turning main red after a merge, since
  * that crawl runs only on main and never on pull requests.
  *
+ * Runs behind the same generation/pending-rebuild validation the shell renderer
+ * uses. Awaiting the load alone is not enough: if a watched source changes while
+ * the build is in flight, `invalidateCachesForChange` advances the generation and
+ * clears the memo slot, and `loadPageServerRenderer` then declines to publish its
+ * now-stale result as last-good -- but still RESOLVES this await. Readiness would
+ * be advertised behind an empty memo, and the first request would recompile,
+ * reproducing the exact timeout this exists to prevent. Only a build that ends on
+ * the generation it started is known to still be in the memo.
+ *
  * Failure is deliberately NOT fatal. `loadPageServerRenderer` already resolves
  * build errors against its last-good renderer, and at startup there is no
  * last-good, so a genuine failure rejects. Caching that rejection would poison
@@ -1381,16 +1393,38 @@ export async function runGenerationCheckedWarmup<T>(
 export async function warmPageServerRenderer(
   loadRenderer: () => Promise<unknown> = loadPageServerRenderer,
   resetRenderer: () => void = resetPageServerRendererPromise,
+  runChecked: <T>(work: () => Promise<T>) => Promise<{
+    value: T;
+    instabilityReasons: string[];
+  }> = runGenerationCheckedWarmup,
+  maxAttempts: number = RENDERER_WARMUP_MAX_ATTEMPTS,
 ): Promise<void> {
-  try {
-    await loadRenderer();
-  } catch (error) {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    let instabilityReasons: string[];
+    try {
+      ({ instabilityReasons } = await runChecked(loadRenderer));
+    } catch (error) {
+      console.warn(
+        '[playground] page server renderer warmup failed; the first /page request will retry:',
+        error,
+      );
+      resetRenderer();
+      return;
+    }
+    // A stable build is the only one whose memo is guaranteed to still hold it.
+    if (instabilityReasons.length === 0) return;
     console.warn(
-      '[playground] page server renderer warmup failed; the first /page request will retry:',
-      error,
+      `[playground] page renderer warmup invalidated on attempt ${attempt + 1}/${maxAttempts}: ${instabilityReasons.join('; ')}`,
     );
-    resetRenderer();
   }
+  // Never advertise readiness behind a memo that may hold a renderer built
+  // against a superseded generation -- that is worse than no memo, because the
+  // request path would serve it instead of rebuilding. Dropping the slot
+  // restores exactly the pre-warmup behaviour for this (CI-improbable) case.
+  resetRenderer();
+  console.warn(
+    '[playground] page renderer warmup did not stabilize; the first /page request will rebuild',
+  );
 }
 
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
