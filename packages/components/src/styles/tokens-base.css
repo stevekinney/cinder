@@ -1363,7 +1363,192 @@
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not(
       [data-reduced-motion='on']
     )
-    [data-theme='dark'],
+    [data-theme='dark'] {
+    --cinder-duration-fast: 0ms;
+    --cinder-duration-instant: 0ms;
+    --cinder-duration-normal: 0ms;
+    --cinder-duration-moderate: 0ms;
+    --cinder-duration-slow: 0ms;
+    --cinder-duration-spin: 0ms;
+    --cinder-duration-pulse: 0ms;
+    --cinder-duration-progress-bar-indeterminate: 0ms;
+    --cinder-duration-progress-ring-spin: 0ms;
+    --cinder-duration-base: 0ms;
+    --cinder-radius-control: var(--cinder-radius-md);
+    --cinder-radius-surface: var(--cinder-radius-lg);
+    --cinder-surface-raised-hover: light-dark(
+      color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%),
+      color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)
+    );
+    --cinder-surface-raised-pressed: light-dark(
+      color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%),
+      color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)
+    );
+    --cinder-surface-hover: light-dark(
+      color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%),
+      color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)
+    );
+    --cinder-surface-pressed: light-dark(
+      color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%),
+      color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)
+    );
+    --cinder-surface-inverse: light-dark(var(--cinder-text-default), var(--cinder-surface-raised));
+    --cinder-surface-upcoming-marker: light-dark(
+      var(--cinder-surface-inset),
+      var(--cinder-surface)
+    );
+    --cinder-border-inverse: light-dark(transparent, var(--cinder-border-strong));
+    --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text-default));
+    --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
+    --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
+    --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
+    --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
+    --cinder-accent-background: color-mix(
+      in oklch,
+      var(--cinder-accent-solid),
+      var(--cinder-surface) 88%
+    );
+    --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
+    --cinder-ring-offset-color: var(--cinder-surface-raised);
+    --cinder-ring-color: light-dark(
+      oklch(from var(--cinder-accent-solid) 0.55 0.16 h),
+      oklch(from var(--cinder-accent-solid) 0.7 0.14 h)
+    );
+    --cinder-overlay-padding: var(--cinder-space-6);
+    --cinder-overlay-radius: var(--cinder-radius-lg);
+    --cinder-gap-stack: var(--cinder-space-3);
+    --cinder-gap-inline: var(--cinder-space-2);
+    --cinder-pad-control: var(--cinder-space-2-5);
+    --cinder-pad-card: var(--cinder-space-4);
+    --cinder-status-success-subtle: oklch(
+      from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-success-muted: oklch(
+      from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-warning-subtle: oklch(
+      from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-warning-muted: oklch(
+      from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-danger-subtle: oklch(
+      from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-danger-muted: oklch(
+      from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-info-subtle: oklch(
+      from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-info-muted: oklch(
+      from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
+        min(c, 0.05) h
+    );
+    --cinder-status-neutral-text: var(--cinder-text-default);
+    --cinder-status-neutral-border: var(--cinder-border);
+    --cinder-button-background: var(--cinder-surface-raised);
+    --cinder-button-foreground: var(--cinder-text-default);
+    --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
+    --cinder-button-radius: var(--cinder-radius-md);
+    --cinder-button-radius-xs: var(--cinder-radius-sm);
+    --cinder-button-radius-sm: var(--cinder-radius-sm);
+    --cinder-button-radius-md: var(--cinder-radius-md);
+    --cinder-button-radius-lg: var(--cinder-radius-md);
+    --cinder-button-radius-xl: var(--cinder-radius-md);
+    --cinder-button-height-xs: var(--cinder-control-height-xs);
+    --cinder-button-padding-x-xs: var(--cinder-space-1-5);
+    --cinder-button-padding-x-sm: var(--cinder-space-2);
+    --cinder-button-padding-x-md: var(--cinder-space-2-5);
+    --cinder-button-padding-x-lg: var(--cinder-space-3);
+    --cinder-button-padding-x-xl: var(--cinder-space-3-5);
+    --cinder-button-padding-y-xs: var(--cinder-space-0-5);
+    --cinder-button-padding-y-sm: var(--cinder-space-1);
+    --cinder-button-padding-y-md: var(--cinder-space-1-5);
+    --cinder-button-padding-y-lg: var(--cinder-space-2);
+    --cinder-button-padding-y-xl: var(--cinder-space-2-5);
+    --cinder-button-font-size-xs: var(--cinder-text-xs);
+    --cinder-button-font-size-sm: var(--cinder-text-sm);
+    --cinder-button-font-size-md: var(--cinder-text-sm);
+    --cinder-button-font-size-lg: var(--cinder-text-md);
+    --cinder-button-font-size-xl: var(--cinder-text-lg);
+    --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
+    --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+    --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
+    --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
+    --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
+    --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
+    --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
+    --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
+    --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
+    --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
+    --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
+    --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
+    --cinder-action-row-padding-block: var(--cinder-space-3);
+    --cinder-action-row-padding-inline: var(--cinder-space-4);
+    --cinder-action-row-layout-column-gap: var(--cinder-space-3);
+    --cinder-action-row-layout-row-gap: var(--cinder-space-2);
+    --cinder-action-row-body-gap: var(--cinder-space-1);
+    --cinder-action-row-title-font-size: var(--cinder-text-sm);
+    --cinder-action-row-description-font-size: var(--cinder-text-sm);
+    --cinder-action-row-meta-font-size: var(--cinder-text-xs);
+    --cinder-action-row-trailing-gap: var(--cinder-space-2);
+    --cinder-avatar-group-overlap: var(--cinder-space-3);
+    --cinder-card-mobile-bleed: var(--cinder-space-4);
+    --cinder-carousel-gap: var(--cinder-space-3);
+    --cinder-code-block-background: light-dark(
+      var(--cinder-surface-raised),
+      var(--cinder-surface-inset)
+    );
+    --cinder-code-block-font-size: var(--cinder-text-sm);
+    --cinder-code-block-line-height: var(--cinder-leading-relaxed);
+    --cinder-code-block-padding: var(--cinder-space-4);
+    --cinder-feed-event-rail-size: var(--cinder-space-6);
+    --cinder-file-upload-background: var(--cinder-surface);
+    --cinder-file-upload-border-color: var(--cinder-border);
+    --cinder-file-upload-progress-background: var(--cinder-surface-inset);
+    --cinder-file-upload-progress-fill: var(--cinder-accent-solid);
+    --cinder-kanban-column-gap: var(--cinder-space-4);
+    --cinder-kanban-column-background: var(--cinder-surface-raised);
+    --cinder-kanban-card-background: var(--cinder-surface);
+    --cinder-kanban-board-scroll-edge: color-mix(
+      in oklch,
+      var(--cinder-text-default),
+      transparent 88%
+    );
+    --cinder-marquee-gap: var(--cinder-space-6);
+    --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
+    --cinder-selectable-row-padding-block: var(--cinder-space-3);
+    --cinder-selectable-row-padding-inline: var(--cinder-space-4);
+    --cinder-selectable-row-column-gap: var(--cinder-space-2);
+    --cinder-selectable-row-content-gap: var(--cinder-space-1);
+    --cinder-selectable-row-leading-gap: var(--cinder-space-3);
+    --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
+    --cinder-side-navigation-list-gap: var(--cinder-space-1);
+    --cinder-spinner-indicator: currentColor;
+    --cinder-statistic-row-gap: var(--cinder-space-1);
+    --cinder-statistic-column-gap: var(--cinder-space-3);
+    --cinder-statistic-label-font-size: var(--cinder-text-sm);
+    --cinder-statistic-value-font-size: var(--cinder-text-4xl);
+    --cinder-statistic-value-font-weight: var(--cinder-font-semibold);
+    --cinder-statistic-change-gap: var(--cinder-space-1);
+    --cinder-statistic-change-font-size: var(--cinder-text-sm);
+    --cinder-statistic-group-gap: var(--cinder-space-4);
+    --cinder-statistic-group-card-padding: var(--cinder-space-4);
+    --cinder-statistic-group-shared-cell-padding: var(--cinder-space-4);
+    --cinder-status-dot-color: var(--cinder-text-muted);
+    --cinder-table-of-contents-link-color: var(--cinder-text-muted);
+    --cinder-table-of-contents-link-active-color: var(--cinder-text-default);
+    --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
+    --cinder-tree-drop-line-color: var(--cinder-accent-solid);
+  }
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not(
       [data-reduced-motion='on']
     )
@@ -1738,7 +1923,189 @@
   --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
   --cinder-tree-drop-line-color: var(--cinder-accent-solid);
 }
-:root[data-reduced-motion='on'] [data-theme='dark'],
+:root[data-reduced-motion='on'] [data-theme='dark'] {
+  --cinder-duration-fast: 0ms;
+  --cinder-duration-instant: 0ms;
+  --cinder-duration-normal: 0ms;
+  --cinder-duration-moderate: 0ms;
+  --cinder-duration-slow: 0ms;
+  --cinder-duration-spin: 0ms;
+  --cinder-duration-pulse: 0ms;
+  --cinder-duration-progress-bar-indeterminate: 0ms;
+  --cinder-duration-progress-ring-spin: 0ms;
+  --cinder-duration-base: 0ms;
+  --cinder-radius-control: var(--cinder-radius-md);
+  --cinder-radius-surface: var(--cinder-radius-lg);
+  --cinder-surface-raised-hover: light-dark(
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 6%),
+    color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 2.5%)
+  );
+  --cinder-surface-raised-pressed: light-dark(
+    color-mix(in oklch, var(--cinder-surface-raised), var(--cinder-accent-solid) 12%),
+    color-mix(in oklch, var(--cinder-surface-raised), oklch(100% 0 0) 6%)
+  );
+  --cinder-surface-hover: light-dark(
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 6%),
+    color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 2.5%)
+  );
+  --cinder-surface-pressed: light-dark(
+    color-mix(in oklch, var(--cinder-surface), var(--cinder-accent-solid) 12%),
+    color-mix(in oklch, var(--cinder-surface), oklch(100% 0 0) 6%)
+  );
+  --cinder-surface-inverse: light-dark(var(--cinder-text-default), var(--cinder-surface-raised));
+  --cinder-surface-upcoming-marker: light-dark(var(--cinder-surface-inset), var(--cinder-surface));
+  --cinder-border-inverse: light-dark(transparent, var(--cinder-border-strong));
+  --cinder-text-inverse: light-dark(var(--cinder-surface), var(--cinder-text-default));
+  --cinder-accent-text-hover: oklch(from var(--cinder-accent-text) calc(l - 0.08) c h);
+  --cinder-accent-solid-active: oklch(from var(--cinder-accent-solid) calc(l - 0.15) c h);
+  --cinder-accent-solid-active-on-fill: oklch(from var(--cinder-accent-solid) calc(l - 0.11) c h);
+  --cinder-accent-solid-hover: oklch(from var(--cinder-accent-solid) calc(l - 0.08) c h);
+  --cinder-accent-background: color-mix(
+    in oklch,
+    var(--cinder-accent-solid),
+    var(--cinder-surface) 88%
+  );
+  --cinder-accent-border: color-mix(in oklch, var(--cinder-accent-solid), transparent 60%);
+  --cinder-ring-offset-color: var(--cinder-surface-raised);
+  --cinder-ring-color: light-dark(
+    oklch(from var(--cinder-accent-solid) 0.55 0.16 h),
+    oklch(from var(--cinder-accent-solid) 0.7 0.14 h)
+  );
+  --cinder-overlay-padding: var(--cinder-space-6);
+  --cinder-overlay-radius: var(--cinder-radius-lg);
+  --cinder-gap-stack: var(--cinder-space-3);
+  --cinder-gap-inline: var(--cinder-space-2);
+  --cinder-pad-control: var(--cinder-space-2-5);
+  --cinder-pad-card: var(--cinder-space-4);
+  --cinder-status-success-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-success-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-success-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-warning-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-warning-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-danger-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-danger-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-subtle: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-text-default) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-info-muted: oklch(
+    from color-mix(in oklch, var(--cinder-status-info-solid), var(--cinder-surface) 36%) l
+      min(c, 0.05) h
+  );
+  --cinder-status-neutral-text: var(--cinder-text-default);
+  --cinder-status-neutral-border: var(--cinder-border);
+  --cinder-button-background: var(--cinder-surface-raised);
+  --cinder-button-foreground: var(--cinder-text-default);
+  --cinder-button-border: light-dark(var(--cinder-border), var(--cinder-border-strong));
+  --cinder-button-radius: var(--cinder-radius-md);
+  --cinder-button-radius-xs: var(--cinder-radius-sm);
+  --cinder-button-radius-sm: var(--cinder-radius-sm);
+  --cinder-button-radius-md: var(--cinder-radius-md);
+  --cinder-button-radius-lg: var(--cinder-radius-md);
+  --cinder-button-radius-xl: var(--cinder-radius-md);
+  --cinder-button-height-xs: var(--cinder-control-height-xs);
+  --cinder-button-padding-x-xs: var(--cinder-space-1-5);
+  --cinder-button-padding-x-sm: var(--cinder-space-2);
+  --cinder-button-padding-x-md: var(--cinder-space-2-5);
+  --cinder-button-padding-x-lg: var(--cinder-space-3);
+  --cinder-button-padding-x-xl: var(--cinder-space-3-5);
+  --cinder-button-padding-y-xs: var(--cinder-space-0-5);
+  --cinder-button-padding-y-sm: var(--cinder-space-1);
+  --cinder-button-padding-y-md: var(--cinder-space-1-5);
+  --cinder-button-padding-y-lg: var(--cinder-space-2);
+  --cinder-button-padding-y-xl: var(--cinder-space-2-5);
+  --cinder-button-font-size-xs: var(--cinder-text-xs);
+  --cinder-button-font-size-sm: var(--cinder-text-sm);
+  --cinder-button-font-size-md: var(--cinder-text-sm);
+  --cinder-button-font-size-lg: var(--cinder-text-md);
+  --cinder-button-font-size-xl: var(--cinder-text-lg);
+  --cinder-toggle-track-off-resting: light-dark(var(--cinder-border-muted), oklch(45% 0.02 245));
+  --cinder-toggle-track-off-hover-resting: light-dark(var(--cinder-border), oklch(52% 0.02 245));
+  --cinder-accordion-item-trigger-gap: var(--cinder-space-4);
+  --cinder-accordion-item-trigger-padding-block: var(--cinder-space-4);
+  --cinder-accordion-item-trigger-padding-inline: var(--cinder-space-5);
+  --cinder-accordion-item-trigger-font-size: var(--cinder-text-base);
+  --cinder-accordion-item-trigger-font-weight: var(--cinder-font-semibold);
+  --cinder-accordion-item-panel-inner-padding-block-start: var(--cinder-space-4);
+  --cinder-accordion-item-panel-inner-padding-block-end: var(--cinder-space-5);
+  --cinder-accordion-item-panel-inner-padding-inline: var(--cinder-space-5);
+  --cinder-accordion-item-panel-font-size: var(--cinder-text-base);
+  --cinder-accordion-item-panel-line-height: var(--cinder-leading-normal);
+  --cinder-action-row-padding-block: var(--cinder-space-3);
+  --cinder-action-row-padding-inline: var(--cinder-space-4);
+  --cinder-action-row-layout-column-gap: var(--cinder-space-3);
+  --cinder-action-row-layout-row-gap: var(--cinder-space-2);
+  --cinder-action-row-body-gap: var(--cinder-space-1);
+  --cinder-action-row-title-font-size: var(--cinder-text-sm);
+  --cinder-action-row-description-font-size: var(--cinder-text-sm);
+  --cinder-action-row-meta-font-size: var(--cinder-text-xs);
+  --cinder-action-row-trailing-gap: var(--cinder-space-2);
+  --cinder-avatar-group-overlap: var(--cinder-space-3);
+  --cinder-card-mobile-bleed: var(--cinder-space-4);
+  --cinder-carousel-gap: var(--cinder-space-3);
+  --cinder-code-block-background: light-dark(
+    var(--cinder-surface-raised),
+    var(--cinder-surface-inset)
+  );
+  --cinder-code-block-font-size: var(--cinder-text-sm);
+  --cinder-code-block-line-height: var(--cinder-leading-relaxed);
+  --cinder-code-block-padding: var(--cinder-space-4);
+  --cinder-feed-event-rail-size: var(--cinder-space-6);
+  --cinder-file-upload-background: var(--cinder-surface);
+  --cinder-file-upload-border-color: var(--cinder-border);
+  --cinder-file-upload-progress-background: var(--cinder-surface-inset);
+  --cinder-file-upload-progress-fill: var(--cinder-accent-solid);
+  --cinder-kanban-column-gap: var(--cinder-space-4);
+  --cinder-kanban-column-background: var(--cinder-surface-raised);
+  --cinder-kanban-card-background: var(--cinder-surface);
+  --cinder-kanban-board-scroll-edge: color-mix(
+    in oklch,
+    var(--cinder-text-default),
+    transparent 88%
+  );
+  --cinder-marquee-gap: var(--cinder-space-6);
+  --cinder-modal-backdrop: var(--cinder-overlay-backdrop);
+  --cinder-selectable-row-padding-block: var(--cinder-space-3);
+  --cinder-selectable-row-padding-inline: var(--cinder-space-4);
+  --cinder-selectable-row-column-gap: var(--cinder-space-2);
+  --cinder-selectable-row-content-gap: var(--cinder-space-1);
+  --cinder-selectable-row-leading-gap: var(--cinder-space-3);
+  --cinder-selectable-row-trailing-actions-gap: var(--cinder-space-2);
+  --cinder-side-navigation-list-gap: var(--cinder-space-1);
+  --cinder-spinner-indicator: currentColor;
+  --cinder-statistic-row-gap: var(--cinder-space-1);
+  --cinder-statistic-column-gap: var(--cinder-space-3);
+  --cinder-statistic-label-font-size: var(--cinder-text-sm);
+  --cinder-statistic-value-font-size: var(--cinder-text-4xl);
+  --cinder-statistic-value-font-weight: var(--cinder-font-semibold);
+  --cinder-statistic-change-gap: var(--cinder-space-1);
+  --cinder-statistic-change-font-size: var(--cinder-text-sm);
+  --cinder-statistic-group-gap: var(--cinder-space-4);
+  --cinder-statistic-group-card-padding: var(--cinder-space-4);
+  --cinder-statistic-group-shared-cell-padding: var(--cinder-space-4);
+  --cinder-status-dot-color: var(--cinder-text-muted);
+  --cinder-table-of-contents-link-color: var(--cinder-text-muted);
+  --cinder-table-of-contents-link-active-color: var(--cinder-text-default);
+  --cinder-table-of-contents-link-indent-step: var(--cinder-space-3);
+  --cinder-tree-drop-line-color: var(--cinder-accent-solid);
+}
 :root[data-reduced-motion='on'] [data-theme='light'] {
   --cinder-duration-fast: 0ms;
   --cinder-duration-instant: 0ms;

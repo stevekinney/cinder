@@ -197,6 +197,16 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+function canonicalizeJson(value: unknown): unknown {
+  if (Array.isArray(value)) return value.map(canonicalizeJson);
+  if (!isRecord(value)) return value;
+  return Object.fromEntries(
+    Object.entries(value)
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([key, child]) => [key, canonicalizeJson(child)]),
+  );
+}
+
 function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
   const metadata = new Map<string, string>();
   const visit = (node: unknown, prefix: string, inherited: Record<string, unknown> = {}): void => {
@@ -207,7 +217,7 @@ function semanticGroupMetadataByPath(value: unknown): Map<string, string> {
       $deprecated: node['$deprecated'] ?? inherited['$deprecated'],
       $extensions: node['$extensions'] ?? inherited['$extensions'],
     };
-    metadata.set(prefix, JSON.stringify(effective));
+    metadata.set(prefix, JSON.stringify(canonicalizeJson(effective)));
     for (const [name, child] of Object.entries(node)) {
       if (name.startsWith('$')) continue;
       visit(child, prefix ? `${prefix}.${name}` : name, effective);

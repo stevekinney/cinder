@@ -1505,6 +1505,26 @@ export async function buildTokensBaseCss(
     baseIndex,
     forcedReducedMotionResolveReferences,
   );
+  const lightReducedMotionAliases = withDependentBaseAliases(
+    reducedMotionOverrides,
+    baseIndex,
+    lightReducedMotionResolveReferences,
+  );
+  const darkReducedMotionAliases = withDependentBaseAliases(
+    reducedMotionOverrides,
+    baseIndex,
+    darkReducedMotionResolveReferences,
+  );
+  const lightForcedReducedMotionAliases = withDependentBaseAliases(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    lightForcedReducedMotionResolveReferences,
+  );
+  const darkForcedReducedMotionAliases = withDependentBaseAliases(
+    forcedReducedMotionOverrides,
+    baseIndex,
+    darkForcedReducedMotionResolveReferences,
+  );
   assertUniqueOverrideCssProperties(
     reducedMotionAliases,
     baseIndex,
@@ -1519,6 +1539,34 @@ export async function buildTokensBaseCss(
     'motion.forced-reduced-motion dependent aliases',
     forcedReducedMotionResolveReferences,
   );
+  assertUniqueOverrideCssProperties(
+    lightReducedMotionAliases,
+    baseIndex,
+    lightReducedMotionScopeIndex,
+    'motion.reduced dependent aliases (light theme)',
+    lightReducedMotionResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    darkReducedMotionAliases,
+    baseIndex,
+    darkReducedMotionScopeIndex,
+    'motion.reduced dependent aliases (dark theme)',
+    darkReducedMotionResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    lightForcedReducedMotionAliases,
+    baseIndex,
+    lightForcedReducedMotionScopeIndex,
+    'motion.forced-reduced-motion dependent aliases (light theme)',
+    lightForcedReducedMotionResolveReferences,
+  );
+  assertUniqueOverrideCssProperties(
+    darkForcedReducedMotionAliases,
+    baseIndex,
+    darkForcedReducedMotionScopeIndex,
+    'motion.forced-reduced-motion dependent aliases (dark theme)',
+    darkForcedReducedMotionResolveReferences,
+  );
   const reducedMotionDeclarations = renderOverrideDeclarations(
     reducedMotionAliases,
     baseIndex,
@@ -1528,6 +1576,26 @@ export async function buildTokensBaseCss(
     forcedReducedMotionAliases,
     baseIndex,
     forcedReducedMotionResolveReferences,
+  );
+  const lightReducedMotionDeclarations = renderOverrideDeclarations(
+    lightReducedMotionAliases,
+    baseIndex,
+    lightReducedMotionResolveReferences,
+  );
+  const darkReducedMotionDeclarations = renderOverrideDeclarations(
+    darkReducedMotionAliases,
+    baseIndex,
+    darkReducedMotionResolveReferences,
+  );
+  const lightForcedReducedMotionDeclarations = renderOverrideDeclarations(
+    lightForcedReducedMotionAliases,
+    baseIndex,
+    lightForcedReducedMotionResolveReferences,
+  );
+  const darkForcedReducedMotionDeclarations = renderOverrideDeclarations(
+    darkForcedReducedMotionAliases,
+    baseIndex,
+    darkForcedReducedMotionResolveReferences,
   );
 
   const css = `/**
@@ -1572,18 +1640,22 @@ ${lightDeclarations}
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) {
 ${reducedMotionDeclarations}
   }
-  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'],
+  :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='dark'] {
+${darkReducedMotionDeclarations}
+  }
   :root:not([data-cinder-reduced-motion='false']):not([data-reduced-motion='off']):not([data-reduced-motion='on']) [data-theme='light'] {
-${reducedMotionDeclarations}
+${lightReducedMotionDeclarations}
   }
 }
 
 :root[data-reduced-motion='on'] {
 ${forcedReducedMotionDeclarations}
 }
-:root[data-reduced-motion='on'] [data-theme='dark'],
+:root[data-reduced-motion='on'] [data-theme='dark'] {
+${darkForcedReducedMotionDeclarations}
+}
 :root[data-reduced-motion='on'] [data-theme='light'] {
-${forcedReducedMotionDeclarations}
+${lightForcedReducedMotionDeclarations}
 }
 `;
 

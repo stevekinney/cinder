@@ -865,12 +865,10 @@ describe('E1: a nested reference inside an override context resolves against tha
     const { resolver, documentsByPath } = overrideResolverFixture();
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
-    // Two selectors contain the literal substring `[data-theme='dark']` -- the structural
-    // `:root[data-theme='dark'] { color-scheme: dark; }` block (declared first, no
-    // declarations) and the actual override block further down. Take the second match.
+    // Theme-specific motion blocks also contain `[data-theme='dark']`; select the block
+    // that owns the theme override rather than relying on a fixed number of matches.
     const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
-    expect(darkBlocks.length).toBe(2);
-    const darkBlock = darkBlocks[1]?.[1];
+    const darkBlock = darkBlocks.find((match) => match[1]?.includes('--test-composite'))?.[1];
     expect(darkBlock).toBeDefined();
 
     // Pre-fix, a resolver shared across all contexts and built from `baseDocuments` alone
@@ -1074,8 +1072,7 @@ describe("F1: an override context's $extends can reference a foundation group, n
     const css = await buildTokensBaseCss(resolver, documentsByPath);
 
     const darkBlocks = [...css.matchAll(/\[data-theme='dark'\]\s*\{([^}]*)\}/g)];
-    expect(darkBlocks.length).toBe(2);
-    const darkBlock = darkBlocks[1]?.[1];
+    const darkBlock = darkBlocks.find((match) => match[1]?.includes('--test-palette-accent'))?.[1];
     expect(darkBlock).toBeDefined();
 
     // Dark's own "palette" group never defines "accent" itself -- it only reaches it through

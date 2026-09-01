@@ -185,6 +185,16 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('number');
   });
 
+  test('resolves an inferred document-root alias type before a metadata pointer reads it', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 2 },
+      $root: { $ref: '#/base' },
+      copy: { $type: 'string', $value: '#/$root/$type' },
+    });
+
+    expect(resolved['copy']?.$value).toBe('number');
+  });
+
   test('rejects a group pointer that omits the explicit $root segment', () => {
     expect(() =>
       resolveDocument({ group: { $root: { $value: 1 } }, copy: { $ref: '#/group' } }),

@@ -287,8 +287,10 @@ function resolveReference(
     const remainder = segments.slice(1);
     const usesTokenObjectBase = typeof remainder[0] === 'string' && remainder[0].startsWith('$');
     const readsRawMetadata = usesTokenObjectBase && remainder[0] !== '$value';
+    const requiresResolvedType =
+      readsRawMetadata && remainder[0] === '$type' && rootToken.$type === undefined;
     const resolvedToken = usesTokenObjectBase
-      ? readsRawMetadata
+      ? readsRawMetadata && !requiresResolvedType
         ? tokens.get('')!
         : resolveToken('', tokens, rawRefs, rootTokenPaths, resolving, groups, completed)
       : resolveToken('', tokens, rawRefs, rootTokenPaths, resolving, groups, completed);
