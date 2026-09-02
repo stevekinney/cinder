@@ -816,10 +816,23 @@ export function decodeCssValueEscapes(value: string): string {
 export function isCssSelectorContext(source: string, matchEnd: number): boolean {
   for (let index = matchEnd; index < source.length; index++) {
     const character = source[index];
+    // `@supports selector(.sr-only) { … }` asks the parser whether it
+    // understands the selector; it styles nothing, so the `{` that follows
+    // opens a rule for the selectors INSIDE it, not for this one.
+    if (character === ')') return false;
     if (character === '{') return true;
     if (character === ';' || character === '}') return false;
   }
   return false;
+}
+
+/**
+ * Whether an attribute name is HTML's `class`. Attribute names are
+ * case-insensitive in HTML, so `<div CLASS="sr-only">` carries the same
+ * class the lowercase spelling would.
+ */
+function isClassAttributeName(name: string): boolean {
+  return name.toLowerCase() === 'class';
 }
 
 /**
@@ -1114,7 +1127,22 @@ export function extractTagAttributes(tagText: string): TagAttribute[] {
 
     const opener = tagText[index] ?? '';
     if (opener === '"' || opener === "'") {
-      const close = tagText.indexOf(opener, index + 1);
+      // A quoted value can interpolate, and the expression may use the same
+      // quote: `class="foo {enabled ? "sr-only" : ""}"` is valid Svelte. So
+      // the closing quote is found by walking, stepping over each balanced
+      // `{…}` rather than taking the first quote that appears.
+      let close = -1;
+      for (let cursor = index + 1; cursor < end; cursor++) {
+        const valueCharacter = tagText[cursor];
+        if (valueCharacter === '{') {
+          cursor += balancedExpressionLength(tagText, cursor) - 1;
+          continue;
+        }
+        if (valueCharacter === opener) {
+          close = cursor;
+          break;
+        }
+      }
       const valueEnd = close === -1 ? end : close;
       attributes.push({
         kind: 'attribute',
@@ -1357,12 +1385,16 @@ export function extractStringBindings(
   const bindings: Array<{ name: string; content: string; contentStart: number }> = [];
   const declarationPattern =
     /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[\w$<>[\]|.]+\s*)?=\s*(?=["'`])/g;
-  const masked = maskRegexLiterals(text);
+  // Declarations are located on a view with the strings blanked, so
+  // declaration-shaped TEXT inside a string (a doc comment's example) cannot
+  // register a binding — or shadow the real one. The literal each surviving
+  // declaration opens is still read from the original source.
+  const masked = maskStringLiterals(maskRegexLiterals(text));
   // Only a top-level declaration can be what the markup refers to: a
   // binding inside a function or block is out of scope there, so it is
   // neither registered nor allowed to shadow the top-level one. Depth is
   // counted on the fully masked text so a brace in a literal is not a scope.
-  const structure = maskStringLiterals(masked);
+  const structure = masked;
   let depth = 0;
   let structureCursor = 0;
   let declaration: RegExpExecArray | null;
@@ -1385,7 +1417,10 @@ export function extractStringBindings(
   return bindings;
 }
 
-const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]+\w+)*(?=\s|$)`, 'g');
+const CLASS_LIST_TOKEN_PATTERN = new RegExp(
+  String.raw`(?<=^|[${HTML_ASCII_WHITESPACE}])sr-only(?:[-_]+\w+)*(?=[${HTML_ASCII_WHITESPACE}]|$)`,
+  'g',
+);
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
 export function scanSource(
@@ -1419,6 +1454,22 @@ export function scanSource(
   const scanMarkup = (region: string, regionOffset: number): void => {
     for (const span of extractOpeningTagSpans(region))
       scanOpeningTag(span.text, regionOffset + span.start);
+    // `{@const cls = 'sr-only'}` declares a value in the markup itself, and
+    // `<span class={cls}>` then applies it. The body is JavaScript, so it is
+    // scanned as the script region it effectively is — which is what already
+    // catches the same declaration written in a `<script>` block.
+    for (let cursor = 0; cursor < region.length; ) {
+      const brace = region.indexOf('{', cursor);
+      if (brace === -1) break;
+      const length = balancedExpressionLength(region, brace);
+      const prefix = /^\{\s*@const\b/.exec(region.slice(brace, brace + 12));
+      if (prefix)
+        scanScript(
+          region.slice(brace + prefix[0].length, brace + length - 1),
+          regionOffset + brace + prefix[0].length,
+        );
+      cursor = brace + Math.max(length, 1);
+    }
     HTML_REFERENCE_PATTERN.lastIndex = 0;
     let reference: RegExpExecArray | null;
     while ((reference = HTML_REFERENCE_PATTERN.exec(region)) !== null) {
@@ -1444,9 +1495,12 @@ export function scanSource(
   // this one. The script pass already exempts those reads, and the same
   // filter applies here for the same reason.
   const scanClassExpression = (rawExpression: string, offset: number): void => {
-    // Comments are masked first: `condition /* 'sr-only' */ ? 'selected' : ''`
-    // can only ever apply `selected`. The mask keeps every length.
-    const expression = maskScriptComments(rawExpression);
+    // Comments and regex bodies are masked first: neither
+    // `condition /* 'sr-only' */ ? 'selected' : ''` nor
+    // `/'sr-only'/.test(value) ? 'selected' : ''` can apply anything but
+    // `selected`. Both masks keep every length, so offsets still map onto
+    // the original text.
+    const expression = maskRegexLiterals(maskScriptComments(rawExpression));
     let index = 0;
     while (index < expression.length) {
       const quote = expression[index] ?? '';
@@ -1546,13 +1600,13 @@ export function scanSource(
       if (attribute.kind === 'expression') {
         if (CLASS_DIRECTIVE_PATTERN.test(attribute.name)) {
           record(offset + text.lastIndexOf(attribute.name, attribute.expressionStart));
-        } else if (attribute.name === 'class') {
+        } else if (isClassAttributeName(attribute.name)) {
           scanClassExpression(attribute.expression, offset + attribute.expressionStart);
         }
         continue;
       }
 
-      if (attribute.name !== 'class') continue;
+      if (!isClassAttributeName(attribute.name)) continue;
       // A quoted value can still interpolate: `class="foo {cond ? 'x' : ''}"`.
       // The expression is JavaScript and is scanned as such — its comments
       // apply no class, its literals can — while the surrounding text keeps

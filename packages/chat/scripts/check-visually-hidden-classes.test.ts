@@ -1139,3 +1139,54 @@ describe('scanSource — ninth-round review findings', () => {
     );
   });
 });
+
+describe('scanSource — tenth-round review findings', () => {
+  test('a regex body inside a class expression applies no class', () => {
+    expect(
+      scanSource(`<div class={/'sr-only'/.test(value) ? 'selected' : ''}>x</div>`, 'svelte'),
+    ).toHaveLength(0);
+    expect(
+      scanSource(`<div class={/'x'/.test(value) ? 'sr-only' : ''}>x</div>`, 'svelte'),
+    ).toHaveLength(1);
+  });
+
+  test('a script literal splits on HTML whitespace, not every Unicode space', () => {
+    expect(scanSource("export const cls = 'foo\u00a0sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("export const cls = 'foo sr-only';", 'script')).toHaveLength(1);
+  });
+
+  test('a class value declared with `{@const}` is scanned', () => {
+    expect(
+      scanSource(`{#if ok}{@const cls = 'sr-only'}<span class={cls}>x</span>{/if}`, 'svelte'),
+    ).toHaveLength(1);
+  });
+
+  test('a selector inside an `@supports selector()` condition styles nothing', () => {
+    expect(
+      scanSource('@supports selector(.sr-only) { .safe { color: red; } }', 'css'),
+    ).toHaveLength(0);
+    expect(scanSource('.sr-only { color: red; }', 'css')).toHaveLength(1);
+  });
+
+  test('an HTML class attribute is recognized whatever its case', () => {
+    expect(scanSource('<div CLASS="sr-only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div Class={"sr-only"}>x</div>', 'svelte')).toHaveLength(1);
+  });
+
+  test('a quoted attribute ends after its interpolations, not inside one', () => {
+    expect(
+      scanSource(`<div class="foo {enabled ? "sr-only" : "selected"}">x</div>`, 'svelte'),
+    ).toHaveLength(1);
+  });
+
+  test('declaration-shaped text inside a string registers no binding', () => {
+    const source = [
+      `<script>`,
+      `  const html = '<span class="sr-only">bad</span>';`,
+      `  const documentation = "const html = '<span>safe</span>'";`,
+      `</script>`,
+      `{@html html}`,
+    ].join('\n');
+    expect(scanSource(source, 'svelte')).toHaveLength(1);
+  });
+});
