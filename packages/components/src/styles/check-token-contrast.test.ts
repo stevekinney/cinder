@@ -73,6 +73,10 @@ describe('non-color component tokens', () => {
       'utf8',
     );
     const tokenDocumentation = readFileSync(join(repositoryRoot, 'docs/tokens.md'), 'utf8');
+    const tokenBaseCss = readFileSync(
+      join(repositoryRoot, 'packages/components/src/styles/tokens-base.css'),
+      'utf8',
+    );
 
     expect(chatCss).toContain('--cinder-chat-message-max-width: 48rem');
     // Declared in the CSS sidecar rather than a scoped <style>, which is what
@@ -80,6 +84,10 @@ describe('non-color component tokens', () => {
     expect(chatVariables).toContain('--cinder-chat-message-max-width');
     expect(tokenDocumentation).toContain('`--cinder-chat-message-max-width`');
     expect(tokenDocumentation).toContain('48rem');
+    // A layout measure has no contrast to gate. It belongs to Chat's sidecar,
+    // not to the color contract this file audits, so its absence from
+    // `tokens-base.css` is part of what is being pinned.
+    expect(tokenBaseCss).not.toContain('--cinder-chat-message-max-width');
   });
 });
 

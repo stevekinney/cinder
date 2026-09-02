@@ -205,8 +205,16 @@ test.describe('tool approval: assertive announcement precedence', () => {
 // stretched to the full timeline width regardless of every other row's
 // `--cinder-chat-message-max-width` readability cap (chat-message.svelte).
 test.describe('tool call group: readability cap (CIN-506)', () => {
-	const READABILITY_CAP_PX = 768; // 48rem at the browser's 16px root font size.
+	const READABILITY_CAP_REM = 48; // The `--cinder-chat-message-max-width` default.
 	const PIXEL_TOLERANCE = 2; // Sub-pixel layout rounding.
+
+	// `rem` is user-scalable by design, so the cap is resolved against the
+	// page's actual root font size rather than assumed to be 16px.
+	const readabilityCapInPixels = (page: Page): Promise<number> =>
+		page.evaluate(
+			(rem) => rem * parseFloat(getComputedStyle(document.documentElement).fontSize),
+			READABILITY_CAP_REM
+		);
 
 	test('at a wide viewport, the grouped tool-call row does not exceed the shared readability cap', async ({
 		page
@@ -220,7 +228,7 @@ test.describe('tool call group: readability cap (CIN-506)', () => {
 		await expect(row).toBeVisible();
 
 		const width = await row.evaluate((element) => element.getBoundingClientRect().width);
-		expect(width).toBeLessThanOrEqual(READABILITY_CAP_PX + PIXEL_TOLERANCE);
+		expect(width).toBeLessThanOrEqual((await readabilityCapInPixels(page)) + PIXEL_TOLERANCE);
 	});
 
 	test('below the breakpoint, the grouped tool-call row still fills the available width instead of shrinking to fit-content', async ({
