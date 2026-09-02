@@ -22,6 +22,7 @@ import { join } from 'node:path';
 
 import Ajv from 'ajv/dist/2020.js';
 import * as prettier from 'prettier';
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 import type { CategoryId, StatusLevel } from '../src/manifest.meta.ts';
 import { categories, overlapFamilies, statusLevels } from '../src/manifest.meta.ts';
@@ -390,6 +391,7 @@ export async function buildManifest(): Promise<Manifest> {
  * the file on commit and `manifest:check` then reports drift on the next run.
  */
 async function formatJson(content: string, filepath: string): Promise<string> {
+  assertPrettierResolvesToRoot();
   const options = await prettier.resolveConfig(filepath);
   return prettier.format(content, { ...options, filepath, parser: 'json' });
 }

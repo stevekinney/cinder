@@ -15,7 +15,7 @@
 		"preview": "vite preview",
 		"test": "bun run test:unit",
 		"test:playwright": "playwright install && playwright test",
-		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts ./src/routes/api/chat/chat-server.test.ts"
+		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts ./scripts/playwright-collision-guard.test.ts ./src/routes/api/chat/chat-server.test.ts"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.116.0",

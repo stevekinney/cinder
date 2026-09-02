@@ -191,6 +191,64 @@
   }
 
   /* ----------------------------------------
+ * Input host (no addons)
+ * ---------------------------------------- */
+
+  /* The control wrapper is always rendered so the native <input> keeps one
+   position in the tree when an addon appears or disappears (see
+   input.svelte). Without addons the wrapper is `.cinder-input-host` instead of
+   `.cinder-input-group`, and `display: contents` removes its box: the input
+   takes part in the parent's layout exactly as a bare element did, so a
+   flex-row parent still sizes the input itself rather than a shrink-wrapped
+   div around it. The host still carries `data-cinder-full-width` so ancestors
+   that detect a full-width control by direct child (access-gate.css) keep
+   matching. */
+  .cinder-input-host {
+    display: contents;
+    /* The host and the group are the SAME element: when an addon appears the
+       class swaps, and `.cinder-input-group`'s border-color transition runs
+       from whatever the host computed. Pin the host's resting border colours
+       to the group's so the appearing border does not fade in from
+       `currentcolor` (the initial value). A boxless element paints nothing,
+       so these are inert until the swap. Same source order as the group's
+       state rules, so disabled wins over invalid here too. */
+    border-color: var(--cinder-border);
+  }
+  /* The host is hovered whenever the input inside it is (`:hover` matches an
+     ancestor of the hovered element even when that ancestor has no box), so
+     the hover colours are mirrored too — with the same precedence as the
+     group's rules below: invalid beats resting, hover beats both, disabled
+     beats everything. Sticky-hover suppression on touch, as for the group. */
+  @media (hover: hover) {
+    .cinder-input-host:hover:not([data-disabled]) {
+      border-color: var(--cinder-border-strong);
+    }
+  }
+  .cinder-input-host[data-invalid] {
+    --_cinder-input-ring: var(--cinder-status-danger-solid);
+    border-color: var(--cinder-status-danger-solid);
+  }
+  @media (hover: hover) {
+    .cinder-input-host[data-invalid]:hover:not([data-disabled]) {
+      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
+    }
+  }
+  .cinder-input-host[data-disabled] {
+    border-color: var(--cinder-border-muted);
+  }
+  /* Ring ownership moves from the input to the wrapper when an addon appears.
+     The host is boxless and paints nothing, but its computed box-shadow is
+     what the group's box-shadow transition would start from, so pin it to the
+     group's ring while the input inside is focused — the same token math as
+     `.cinder-input-group:focus-within` below. */
+  .cinder-input-host:focus-within {
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-input-ring, var(--cinder-ring-color));
+  }
+
+  /* ----------------------------------------
  * Input group (leading / trailing addons)
  * ---------------------------------------- */
 
@@ -207,14 +265,29 @@
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* Inner input: strip its own chrome, inherit the group's */
+  /* Inner input: strip its own chrome, inherit the group's. `border-style`
+     rather than the `border` shorthand: the shorthand would reset the input's
+     computed border-color to `currentcolor`, and because the input is the
+     same element before and after an addon is removed, its own border-color
+     transition would then run from the text colour when its border comes
+     back. Leaving the colour alone keeps it equal on both sides of the swap,
+     for the invalid and disabled states too. */
   .cinder-input-group > .cinder-input {
-    border: none;
+    border-style: none;
     border-radius: 0;
     background: transparent;
     flex: 1 1 auto;
     min-width: 0;
     padding-inline: var(--cinder-space-3);
+    /* The input keeps its own focus ring VALUE inside the group and the clip
+       hides it, rather than setting `box-shadow: none`: the input is the same
+       element before and after an addon is removed, and a value change would
+       run its box-shadow transition — the ring fading in while the group's
+       ring vanished. With the value unchanged and only the clip toggling
+       (not a transitioned property), ring ownership moves between the input
+       and the wrapper without any animation. The clip is the border box, so
+       nothing the input paints itself is affected. */
+    clip-path: inset(0);
   }
 
   /* When an addon is present on a given side, the input trims its padding on
@@ -231,9 +304,9 @@
   }
 
   .cinder-input-group > .cinder-input:focus-visible {
-    box-shadow: none;
     /* cinder-focus-ring-owner: parent — the .cinder-input-group wrapper paints
-       the ring for the whole grouped control. */
+       the ring for the whole grouped control; the input's own ring is clipped
+       away above, not zeroed, so the swap does not animate it. */
     outline: none;
   }
 

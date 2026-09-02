@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { format, resolveConfig } from 'prettier';
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 import {
   checkPropNames,
@@ -221,6 +222,7 @@ async function runPropNamesCheck(
     }
     const depthToSrc = isExperimental ? 3 : 2;
     const generateResult = generateSchemaForComponent({ typesFilePath, componentName, depthToSrc });
+    assertPrettierResolvesToRoot();
     const prettierOptions = await resolveConfig(committedSchemaPath);
     freshSchemaJson = await format(generateResult.schemaJson, {
       ...prettierOptions,
