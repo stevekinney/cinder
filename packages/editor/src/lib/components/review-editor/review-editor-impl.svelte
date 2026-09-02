@@ -274,6 +274,23 @@
    */
   let consumedSelection: { from: number; to: number } | null = null;
 
+  /**
+   * Keys that only modify the next keystroke. Pressing one starts no
+   * selection of its own, so it must not release {@link consumedSelection}.
+   */
+  const MODIFIER_KEYS = new Set([
+    'Alt',
+    'AltGraph',
+    'CapsLock',
+    'Control',
+    'Fn',
+    'Meta',
+    'NumLock',
+    'ScrollLock',
+    'Shift',
+    'Symbol',
+  ]);
+
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
     activeView === 'editor' &&
@@ -919,21 +936,37 @@
     // selection, so the consumed range no longer applies. Selection changes
     // alone cannot tell that apart from the collapsed caret and restored range
     // the browser and ProseMirror write while focus returns after a submit.
+    //
+    // A modifier held on its own is excluded: `Shift` is how a keyboard
+    // selection begins, so it arrives before any selection exists, and
+    // releasing on it would reopen the popover over the range just commented
+    // on. The key that actually moves the caret releases the latch.
     function releaseConsumedSelection(event: Event) {
       if (!consumedSelection) return;
+      if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
       const editorDom = editorRef?.getView()?.dom;
       if (editorDom && event.target instanceof Node && editorDom.contains(event.target)) {
         consumedSelection = null;
       }
     }
 
+    // `pointerdown` covers mouse, touch, and pen in one listener; the
+    // `mousedown`/`touchstart` pair is the fallback for a browser without
+    // Pointer Events, matching how the components package handles this.
+    const supportsPointerEvents = typeof window.PointerEvent !== 'undefined';
+    const pointerEventNames = supportsPointerEvents
+      ? (['pointerdown'] as const)
+      : (['mousedown', 'touchstart'] as const);
+
     document.addEventListener('selectionchange', handleBrowserSelectionChange);
-    document.addEventListener('mousedown', releaseConsumedSelection, true);
+    for (const eventName of pointerEventNames)
+      document.addEventListener(eventName, releaseConsumedSelection, true);
     document.addEventListener('keydown', releaseConsumedSelection, true);
 
     return () => {
       document.removeEventListener('selectionchange', handleBrowserSelectionChange);
-      document.removeEventListener('mousedown', releaseConsumedSelection, true);
+      for (const eventName of pointerEventNames)
+        document.removeEventListener(eventName, releaseConsumedSelection, true);
       document.removeEventListener('keydown', releaseConsumedSelection, true);
       if (selectionTimeoutId !== null) {
         clearTimeout(selectionTimeoutId);

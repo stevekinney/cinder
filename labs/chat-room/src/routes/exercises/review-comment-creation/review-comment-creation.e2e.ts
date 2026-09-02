@@ -536,19 +536,22 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 				selection.addRange(range);
 			});
 		await reselectParagraph();
-		await expect
-			.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed))
-			.toBe(false);
-		await page.evaluate(() => new Promise((resolve) => setTimeout(resolve, 100)));
+		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(false);
+		await page.waitForTimeout(100);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// The hold is not permanent: a key (or pointer) pressed inside the editor
-		// releases it, so selecting the same paragraph again afterwards offers a
-		// comment as usual.
+		// A modifier held on its own does not release the hold — `Shift` is how a
+		// keyboard selection starts, so it arrives before the selection exists.
+		await page.keyboard.press('Shift');
+		await reselectParagraph();
+		await page.waitForTimeout(100);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
+
+		// The hold is not permanent: the key (or pointer) that actually moves the
+		// caret releases it, so selecting the same paragraph again afterwards
+		// offers a comment as usual.
 		await page.keyboard.press('ArrowRight');
-		await expect
-			.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed))
-			.toBe(true);
+		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(true);
 		await reselectParagraph();
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
 	});
