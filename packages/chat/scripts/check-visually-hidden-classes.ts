@@ -67,9 +67,39 @@ export type VisuallyHiddenClassFlag = {
   line: string;
 };
 
-/** True for test/spec sources, which are never part of the authoring rule. */
+/**
+ * True for test/spec sources, which are never part of the authoring rule.
+ *
+ * Covers every extension the scanner actually visits, not just TypeScript:
+ * a `.test.svelte` fixture or a `.test.css` file is as much a test source as
+ * a `.test.ts`, and both are reachable by the walk.
+ */
 export function isTestPath(relativePath: string): boolean {
-  return /\.(?:test|spec)\.[cm]?tsx?$/.test(relativePath);
+  return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
+}
+
+/** Replaces every character except newlines with a space, preserving offsets. */
+const blank = (match: string): string => match.replace(/[^\n]/g, ' ');
+
+/**
+ * Blanks comment spans so documentation of the prohibited form is not itself
+ * flagged — `<!-- never write class="sr-only" -->` describes the rule rather
+ * than breaking it, and this file's own prose would otherwise trip the guard.
+ *
+ * Replaces each comment character with a space and preserves newlines, so
+ * every reported line number still points at the original source.
+ *
+ * Deliberately conservative about `//`. Only a line comment that begins its
+ * own line is blanked, because a trailing `//` cannot be told from the inside
+ * of a string literal without parsing, and blanking a string could hide a
+ * real `class="sr-only"`. A false negative there is worse than the false
+ * positive it would avoid.
+ */
+export function maskComments(source: string): string {
+  return source
+    .replace(/<!--[\s\S]*?-->/g, blank)
+    .replace(/\/\*[\s\S]*?\*\//g, blank)
+    .replace(/^[ \t]*\/\/[^\n]*/gm, blank);
 }
 
 /** Normalizes a path to forward slashes so report output is OS-independent. */
@@ -83,12 +113,24 @@ export function toPosixPath(path: string): string {
  * treats `-` as a token character, so `cinder-sr-only` and
  * `cinder-sr-only-focusable` never match — only a token that is NOT itself
  * preceded by another hyphenated segment.
+ *
+ * Suffix segments use `\w`, not `[a-zA-Z]`: digits and underscores are legal
+ * in a CSS class, so `sr-only-v2` and `sr-only-legacy_2` are exactly as
+ * broken as `sr-only-focusable` and must be caught the same way.
  */
-const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:-[a-zA-Z]+)*(?![\w-])`;
+const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:-\w+)*(?![\w-])`;
 
-/** Matches a static `class="..."` / `class='...'` attribute containing the bare token. */
+/**
+ * Matches a static `class="..."` / `class='...'` attribute containing the
+ * bare token.
+ *
+ * The `(?<![-\w:])` guard anchors the match to the attribute actually named
+ * `class`. Without it any attribute whose name merely ends in `class` —
+ * `data-class`, `wrapperclass`, a framework's `activeClass` — would match and
+ * report a usage site that does not exist.
+ */
 const STATIC_CLASS_ATTRIBUTE_PATTERN = new RegExp(
-  String.raw`class\s*=\s*(["'])(?:(?!\1)[\s\S])*${BARE_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
+  String.raw`(?<![-\w:])class\s*=\s*(["'])(?:(?!\1)[\s\S])*${BARE_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
   'g',
 );
 
@@ -115,7 +157,7 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * which is a common enough CSS shape to be a real bypass rather than a
  * theoretical one.
  */
-const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:-[a-zA-Z]+)*(?![\w-])`, 'g');
+const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:-\w+)*(?![\w-])`, 'g');
 
 /**
  * Extracts the argument text of every `classNames(...)` call in `source`,
@@ -154,9 +196,12 @@ export function extractClassNamesCallArguments(
 }
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
-export function scanSource(source: string): Array<{ lineNumber: number; line: string }> {
+export function scanSource(original: string): Array<{ lineNumber: number; line: string }> {
   const hits: Array<{ lineNumber: number; line: string }> = [];
-  const lines = source.split('\n');
+  // Match against comment-blanked text, but report from the original so the
+  // offending line reads as written. `maskComments` preserves offsets.
+  const source = maskComments(original);
+  const lines = original.split('\n');
   const lineNumberAt = (index: number): number => source.slice(0, index).split('\n').length;
   const record = (index: number): void => {
     const lineNumber = lineNumberAt(index);
@@ -188,7 +233,7 @@ export function scanSource(source: string): Array<{ lineNumber: number; line: st
   // `class={`... sr-only ...`}`. Scoped to `class={` so an unrelated quoted
   // string elsewhere in the file (e.g. a test's `.contains('sr-only')`
   // assertion) is never flagged.
-  const dynamicClassAttributePattern = /class\s*=\s*\{/g;
+  const dynamicClassAttributePattern = /(?<![-\w:])class\s*=\s*\{/g;
   let dynamicMatch: RegExpExecArray | null;
   while ((dynamicMatch = dynamicClassAttributePattern.exec(source)) !== null) {
     const openBraceIndex = dynamicMatch.index + dynamicMatch[0].length - 1;
