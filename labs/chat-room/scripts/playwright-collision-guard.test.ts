@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createServer, type Server } from 'node:http';
+import { connect } from 'node:net';
 import { join } from 'node:path';
 
 /**
@@ -17,13 +18,24 @@ import { join } from 'node:path';
 const LAB_ROOT = join(import.meta.dir, '..');
 const PREVIEW_PORT = 4173;
 
-async function portIsFree(port: number): Promise<boolean> {
-	try {
-		await fetch(`http://localhost:${port}/`, { signal: AbortSignal.timeout(500) });
-		return false;
-	} catch {
-		return true;
-	}
+/**
+ * TCP-level, so only "connection refused" counts as free. A listener that is
+ * slow, or not speaking HTTP at all, must read as in use: treating a fetch
+ * timeout as free would let the fake's `listen()` collide with it and turn a
+ * held port into a confusing failure of this test rather than a clear one.
+ */
+function portIsFree(port: number): Promise<boolean> {
+	return new Promise((resolve) => {
+		const socket = connect({ port, host: '127.0.0.1' });
+		const done = (free: boolean) => {
+			socket.removeAllListeners();
+			socket.destroy();
+			resolve(free);
+		};
+		socket.setTimeout(1000, () => done(false));
+		socket.once('connect', () => done(false));
+		socket.once('error', (error: NodeJS.ErrnoException) => done(error.code === 'ECONNREFUSED'));
+	});
 }
 
 describe('chat-room Playwright refuses a web server it did not start', () => {
