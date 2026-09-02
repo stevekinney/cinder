@@ -28,6 +28,7 @@ const CROSS_ENGINE_SHARDS = [
 	[
 		'**/adapter-push.e2e.ts',
 		'**/assistant-metadata.e2e.ts',
+		'**/chat-token-registration.e2e.ts',
 		'**/composer-popover.e2e.ts',
 		'**/conversation-list.e2e.ts',
 		'**/diff-viewer.e2e.ts',

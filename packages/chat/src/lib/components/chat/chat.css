@@ -20,9 +20,17 @@
  * this is what puts the token into `chat.variables.json`, the generated
  * README, and MCP tooling. Every consuming rule still carries a `, 48rem`
  * fallback, so a consumer who does not import `@lostgradient/chat/styles`
- * gets the same measure. */
+ * gets the same measure.
+ *
+ * The syntax is the universal `*` rather than `<length-percentage>` on
+ * purpose: a typed registration's `initial-value` must be computationally
+ * independent, and a `rem` length is not (it resolves against the root font
+ * size), so browsers silently drop a typed `48rem` registration — the token
+ * then has no default at all. The universal syntax accepts the scalable
+ * default; the consuming rules' fallbacks cover a malformed override the
+ * same way they do for every other untyped cinder token. */
 @property --cinder-chat-message-max-width {
-  syntax: '<length-percentage>';
+  syntax: '*';
   inherits: true;
   initial-value: 48rem;
 }

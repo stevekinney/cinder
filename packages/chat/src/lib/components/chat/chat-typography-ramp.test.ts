@@ -27,7 +27,7 @@ describe('Chat scoped typography ramp', () => {
     // (inheritance never wins against a declaration on the element itself),
     // so the default has to come from `@property`'s `initial-value`.
     expect(chatCss).toMatch(
-      /@property --cinder-chat-message-max-width \{\s*syntax: '<length-percentage>';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
+      /@property --cinder-chat-message-max-width \{\s*syntax: '\*';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
     );
     expect(chatCss).not.toMatch(/--cinder-chat-message-max-width:\s*[^;]+;/);
 

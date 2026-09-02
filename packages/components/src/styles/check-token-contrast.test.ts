@@ -81,7 +81,7 @@ describe('non-color component tokens', () => {
     // Registered with `@property` (so ancestor overrides inherit) rather than
     // declared on the component root, where a value would beat inheritance.
     expect(chatCss).toMatch(
-      /@property --cinder-chat-message-max-width \{\s*syntax: '<length-percentage>';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
+      /@property --cinder-chat-message-max-width \{\s*syntax: '\*';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
     );
     expect(chatCss).not.toMatch(/--cinder-chat-message-max-width:\s*[^;]+;/);
     // Registered in the CSS sidecar rather than a scoped <style>, which is what
