@@ -107,11 +107,17 @@ export default defineConfig({
 	],
 	webServer: [
 		// ROADMAP HS-1/HS-2. Stands in for the ANTHROPIC API, not for `/api/chat` —
-		// so the real SvelteKit endpoint, the real SDK stream, the real ndjson
-		// re-encode, the real `toolbox.execute` signature, and the real browser
-		// `ReadableStream` read are all still under test. It is reachable only
-		// because the Anthropic SDK resolves `baseURL` from `ANTHROPIC_BASE_URL` at
-		// construction, so pointing the preview server at it changes no app code.
+		// so the real SvelteKit endpoint, the real Operative provider stream, the
+		// real ndjson re-encode, the real `toolbox.execute` signature, and the real
+		// browser `ReadableStream` read are all still under test.
+		//
+		// It is reachable because `/api/chat` forwards `env.ANTHROPIC_BASE_URL`
+		// into `createAnthropicProviderStream({ baseURL })` explicitly. That used
+		// to be implicit — the raw Anthropic SDK read `ANTHROPIC_BASE_URL` from the
+		// environment at construction — but Operative's provider does not, so the
+		// option is application code that has to stay. Removing it points every
+		// spec below at the real Anthropic API, which fails the suite only after
+		// making live billed calls.
 		//
 		// Playwright's `Route` cannot trickle a body — `fulfill` takes a complete
 		// one and `route.fetch()` returns a buffered response — so no amount of

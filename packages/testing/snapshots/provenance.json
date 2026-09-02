@@ -1,8 +1,6 @@
 {
   "schemaVersion": 1,
-  "componentScope": [
-    "statistic-group"
-  ],
+  "componentScope": ["statistic-group"],
   "renderedSourceSha": "b83a13d48ddf7ebec39376a56254d9ba1cf0632f",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
