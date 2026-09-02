@@ -235,6 +235,15 @@ describe('isTestPath', () => {
     for (const path of ['fixture-gallery.svelte', 'chat-fixtureless.svelte'])
       expect(isTestPath(path)).toBe(false);
   });
+
+  // `files` also excludes every `test/` directory under `dist`, and
+  // `src/lib/test/` is where the package keeps its test helpers.
+  test('exempts the test helper directory the package refuses to publish', () => {
+    for (const path of ['test/css.ts', 'components/chat/test/helper.svelte', 'test\\css.ts'])
+      expect(isTestPath(path)).toBe(true);
+    for (const path of ['testing/css.ts', 'contest/a.ts', 'latest/a.svelte', 'test.ts'])
+      expect(isTestPath(path)).toBe(false);
+  });
 });
 
 describe('scanSource — context and syntax coverage', () => {
@@ -700,6 +709,30 @@ describe('scanSource — fourth-round review findings', () => {
         'svelte',
       ),
     ).toHaveLength(1);
+  });
+
+  test('HTML comment delimiters inside script strings do not hide a literal between them', () => {
+    const source =
+      "<script>\n  const open = '<!--';\n  const hidden = 'sr-only';\n  const close = '-->';\n</script>\n<div class={hidden}></div>";
+    const hits = scanSource(source, 'svelte');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.lineNumber).toBe(3);
+  });
+
+  test('an HTML comment is masked only in markup, and a script tag inside one is not a script', () => {
+    expect(scanSource('<!-- <span class="sr-only">doc</span> -->', 'svelte')).toHaveLength(0);
+    expect(
+      scanSource("<!-- <script>const hidden = 'sr-only';</script> -->\n<span>ok</span>", 'svelte'),
+    ).toHaveLength(0);
+    expect(
+      scanSource(
+        "<script>\n  // <!-- not a comment opener\n  const hidden = 'sr-only';\n  // -->\n</script>",
+        'svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      scanSource('<style>\n  /* .sr-only {} */\n</style>\n<!-- .sr-only -->', 'svelte'),
+    ).toHaveLength(0);
   });
 
   test('extractStringBindings reads only single-literal initializers', () => {

@@ -81,6 +81,9 @@ export type VisuallyHiddenClassFlag = {
  */
 const FIXTURE_PATH_PATTERN = /(?:\.fixture\.|-fixture\.|-fixtures\.)[^/]*$/;
 
+/** A `test/` directory segment — `files` excludes every `test/` directory under `dist` the same way. */
+const TEST_DIRECTORY_PATTERN = /(?:^|\/)test\//;
+
 export function isTestPath(relativePath: string): boolean {
   // Fixtures are test-only markup, and `packages/chat/package.json` is the
   // authority on that rather than this script's opinion: its `files` field
@@ -94,7 +97,12 @@ export function isTestPath(relativePath: string): boolean {
   // on the mistaken belief that the other fixture files shipped because they
   // appear in the local `dist/` build. `dist/` is the build output; `files`
   // decides what is actually published, and it excludes them.
+  //
+  // The same field excludes every `test/` directory under `dist`, so
+  // `src/lib/test/` — the package's established home for test helpers — is
+  // exempt for the same reason: a helper there never reaches the tarball.
   if (FIXTURE_PATH_PATTERN.test(relativePath)) return true;
+  if (TEST_DIRECTORY_PATTERN.test(toPosixPath(relativePath))) return true;
   return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
 }
 
@@ -246,27 +254,60 @@ export function maskScriptLiterals(source: string): string {
 
 /**
  * Blanks every comment in a file while stepping over string literals, so a
- * comment delimiter quoted in code (`const open = '/*'`) cannot open a
- * comment that swallows the real class literal between it and the next
- * quoted `*\/`. Which delimiters count depends on the region: HTML comments
- * are blanked everywhere first (they are the only comment markup has), then
- * each script region is walked by `maskScriptComments` and each style region
- * by `maskCssComments`. Both walkers preserve length and newlines, so the
- * region offsets `splitSourceRegions` computed on the HTML-masked text still
- * line up with the fully masked result.
+ * comment delimiter quoted in code (`const open = '/*'`, or `'<!--'`) cannot
+ * open a comment that swallows the real class literal between it and the
+ * next quoted closer. Which delimiters count depends on where the text sits:
+ * markup has only HTML comments, a `<script>` block only JavaScript ones, a
+ * `<style>` block only CSS ones. A single walk over the file tracks which of
+ * the three it is in, so an HTML comment cannot be opened from inside a
+ * script string and a `<script>` written inside an HTML comment does not
+ * start a script block. Every walker preserves length and newlines, so
+ * offsets into the masked text are offsets into the original.
+ *
+ * A file the caller knows to be a stylesheet or a script never enters the
+ * markup walk; a snippet with no language and no tag at all is treated as
+ * script, matching `splitSourceRegions`' own inference.
  */
 export function maskComments(source: string, language?: SourceLanguage): string {
-  const htmlMasked = source.replace(/<!--[\s\S]*?-->/g, blank);
+  if (language === 'css') return maskCssComments(source);
+  if (language === 'script') return maskScriptComments(source);
+  if (language === undefined && !/<(?:[a-zA-Z][\s\S]*>|!--)/.test(source))
+    return maskScriptComments(source);
+
+  const blockOpenPattern = /^<(script|style)\b[^>]*>/;
   let output = '';
-  let cursor = 0;
-  for (const region of splitSourceRegions(htmlMasked, language)) {
-    output += htmlMasked.slice(cursor, region.start);
-    if (region.kind === 'style') output += maskCssComments(region.text);
-    else if (region.kind === 'markup') output += region.text;
-    else output += maskScriptComments(region.text);
-    cursor = region.start + region.text.length;
+  let index = 0;
+  while (index < source.length) {
+    if (source[index] !== '<') {
+      output += source[index];
+      index += 1;
+      continue;
+    }
+    if (source.startsWith('<!--', index)) {
+      const end = source.indexOf('-->', index + 4);
+      const stop = end === -1 ? source.length : end + 3;
+      output += blank(source.slice(index, stop));
+      index = stop;
+      continue;
+    }
+    const open = blockOpenPattern.exec(source.slice(index));
+    if (!open) {
+      output += '<';
+      index += 1;
+      continue;
+    }
+    const tag = open[1] ?? '';
+    const closePattern = new RegExp(`</${tag}\\s*>`, 'g');
+    closePattern.lastIndex = index + open[0].length;
+    const close = closePattern.exec(source);
+    const innerStart = index + open[0].length;
+    const innerEnd = close ? close.index : source.length;
+    const inner = source.slice(innerStart, innerEnd);
+    output += open[0] + (tag === 'script' ? maskScriptComments(inner) : maskCssComments(inner));
+    output += close ? close[0] : '';
+    index = close ? close.index + close[0].length : source.length;
   }
-  return output + htmlMasked.slice(cursor);
+  return output;
 }
 
 /**
