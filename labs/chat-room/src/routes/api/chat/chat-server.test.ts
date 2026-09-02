@@ -31,10 +31,15 @@ describe('chat stream cancellation guard', () => {
 	// The window between the two guards spans `startChatRun`, which opens a
 	// billed provider request — so an abort lost in it costs money as well as
 	// leaving the stream open.
-	test('re-checks the signal after attaching the listener', () => {
+	test('re-checks the signal after attaching the listener, without returning', () => {
 		expect(source).toMatch(
-			/request\.signal\.addEventListener\('abort', onRequestAbort\);[\s\S]*?if \(request\.signal\.aborted\) \{\s+onRequestAbort\(\);\s+return;\s+\}/
+			/request\.signal\.addEventListener\('abort', onRequestAbort\);[\s\S]*?if \(request\.signal\.aborted\) onRequestAbort\(\);/
 		);
+		// The absence of a `return` is the load-bearing half. Returning here
+		// would skip the pump, and with it the `finally` that removes the
+		// listener and disposes the run — trading a lost abort for a leaked one.
+		const recheck = source.slice(source.indexOf('if (request.signal.aborted) onRequestAbort();'));
+		expect(recheck.slice(0, recheck.indexOf('void (async'))).not.toContain('return;');
 	});
 
 	test('guards the abort handler as a one-shot', () => {

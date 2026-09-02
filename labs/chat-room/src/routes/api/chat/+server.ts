@@ -181,10 +181,18 @@ export const POST: RequestHandler = async ({ request }) => {
 			// run keeps going and being billed, and the stream never reaches a
 			// terminal state. `onRequestAbort` is a one-shot, so calling it directly
 			// here is safe even if the listener also fires.
-			if (request.signal.aborted) {
-				onRequestAbort();
-				return;
-			}
+			//
+			// It deliberately does NOT return. Returning would skip the pump below,
+			// and with it the `finally` that removes this listener and disposes the
+			// run — trading a lost abort for a leaked run and an unremoved
+			// listener. Falling through instead costs nothing: the run is already
+			// aborted, so `pumpChatRun` resolves immediately with an abort
+			// envelope, `settled` short-circuits every controller interaction, and
+			// the cleanup path runs exactly as it does for every other outcome.
+			// It also keeps `run.result()` awaited, so a future Operative version
+			// that rejects on abort — as its documentation describes — cannot
+			// produce an unhandled rejection here.
+			if (request.signal.aborted) onRequestAbort();
 
 			void (async () => {
 				try {
