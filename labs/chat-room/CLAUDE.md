@@ -380,8 +380,9 @@ conclude the test proves nothing. Check all four before believing a negative res
 - **`vite dev` serves dependencies from a pre-bundled cache** (`node_modules/.vite`) that a
   lockfile change invalidates and a hand-edit to a dependency's files does not. A warm cache runs
   the OLD code while reporting success. `rm -rf node_modules/.vite`, or drive `build && preview`,
-  which is immune — and kill any listening preview server first, since Playwright reuses one and a
-  stale build will happily serve the code you just changed.
+  which is immune — and kill any listening preview server first: every `webServer` entry sets
+  `reuseExistingServer: false` (CIN-509), so Playwright refuses to start while the port is held
+  (`http://localhost:4173 is already used …`) rather than adopting a stale build.
 
 Restore by copying a backup back, and verify by hash rather than by eye. No "file was modified"
 notice fires for `node_modules`, so hashing is the only thing that catches a concurrent write.

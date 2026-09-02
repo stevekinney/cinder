@@ -1,79 +1,113 @@
 import { afterEach, describe, expect, test } from 'bun:test';
 import { createServer, type Server } from 'node:http';
-import { connect } from 'node:net';
 import { join } from 'node:path';
+
+import playwrightConfig from '../playwright.config.ts';
 
 /**
  * Proves the CIN-509 guard the way the issue asks: occupy a `webServer` port
  * with a server that belongs to "another checkout", run the suite, and assert
  * it refuses loudly instead of silently adopting the server.
  *
- * The fake sits on the preview port (4173), the one every meaningful spec
- * exercises and one of the two entries without `--strictPort`. `CI` is
- * cleared in the child environment so the result does not depend on it: the
- * refusal comes from `reuseExistingServer: false` in `playwright.config.ts`,
- * and this test is what stops that from drifting to the docs' recommended
- * `!process.env.CI`, which is exactly the setting that would create the bug.
+ * Two layers, because Playwright starts `webServer` entries in order and only
+ * reaches a later entry's port after the earlier ones are up — a held dev port
+ * (5175) is only checked after the preview has been built and started, which
+ * is seconds of work that has nothing to do with the property under test:
+ *
+ * 1. The MECHANISM is proven live against the first entry (the fixture on
+ *    4599): a fake foreign server holds the port, Playwright is spawned with
+ *    `CI` cleared, and the run must refuse at startup naming the port.
+ * 2. Every entry's `reuseExistingServer: false` is pinned by reading the config
+ *    itself, so one entry drifting to the docs' recommended `!process.env.CI`
+ *    (which would reopen the bug for that server alone) fails here.
+ *
+ * No timeouts, by design. The child is spawned asynchronously so the fake can
+ * serve requests, and the fake ends the run deterministically: the only way it
+ * ever receives an HTTP request is if Playwright adopted it and started running
+ * specs — the drifted-config failure this test exists to catch — so the first
+ * request kills the child and the assertions read the result. On the correct
+ * config Playwright refuses before making any request and the run ends on its
+ * own in about a second.
  */
 const LAB_ROOT = join(import.meta.dir, '..');
-const PREVIEW_PORT = 4173;
 
-/**
- * TCP-level, so only "connection refused" counts as free. A listener that is
- * slow, or not speaking HTTP at all, must read as in use: treating a fetch
- * timeout as free would let the fake's `listen()` collide with it and turn a
- * held port into a confusing failure of this test rather than a clear one.
- */
-function portIsFree(port: number): Promise<boolean> {
-	return new Promise((resolve) => {
-		const socket = connect({ port, host: '127.0.0.1' });
-		const done = (free: boolean) => {
-			socket.removeAllListeners();
-			socket.destroy();
-			resolve(free);
-		};
-		socket.setTimeout(1000, () => done(false));
-		socket.once('connect', () => done(false));
-		socket.once('error', (error: NodeJS.ErrnoException) => done(error.code === 'ECONNREFUSED'));
+/** The `webServer` entries as configured, in start order. */
+const WEB_SERVERS = Array.isArray(playwrightConfig.webServer)
+	? playwrightConfig.webServer
+	: playwrightConfig.webServer
+		? [playwrightConfig.webServer]
+		: [];
+const FIRST_PORT = WEB_SERVERS[0]?.port;
+
+function listenOrExplain(server: Server, port: number): Promise<void> {
+	return new Promise((resolve, reject) => {
+		server.once('error', (error: NodeJS.ErrnoException) => {
+			reject(
+				error.code === 'EADDRINUSE'
+					? new Error(
+							`port ${port} is already held — by another checkout's server, or a stray one; this test needs it free to stand in as the foreign server`
+						)
+					: error
+			);
+		});
+		server.listen(port, '127.0.0.1', () => resolve());
 	});
 }
 
 describe('chat-room Playwright refuses a web server it did not start', () => {
 	let fake: Server | undefined;
+	let child: ReturnType<typeof Bun.spawn> | undefined;
 
 	afterEach(async () => {
+		child?.kill();
+		child = undefined;
 		if (fake) {
 			await new Promise<void>((resolve) => fake?.close(() => resolve()));
 			fake = undefined;
 		}
 	});
 
-	test('a held preview port fails the run at startup and names the port', async () => {
-		expect(
-			await portIsFree(PREVIEW_PORT),
-			`port ${PREVIEW_PORT} must be free to run this test`
-		).toBe(true);
+	test('every webServer entry sets reuseExistingServer to false', () => {
+		expect(WEB_SERVERS.map((entry) => entry.port)).toEqual([4599, 4173, 5175]);
+		for (const entry of WEB_SERVERS) {
+			expect(entry.reuseExistingServer, `port ${entry.port}: ${entry.command}`).toBe(false);
+		}
+	});
+
+	test('a held port fails the run at startup and names the port', async () => {
+		expect(FIRST_PORT).toBeDefined();
+		if (FIRST_PORT === undefined) return;
+		let adopted = false;
 
 		fake = createServer((_request, response) => {
+			// Playwright only talks HTTP to this port if it adopted the fake and
+			// began running specs against it. End the run right here.
+			adopted = true;
 			response.writeHead(200, { 'content-type': 'text/html' });
-			response.end("<!doctype html><title>another checkout's preview</title>");
+			response.end('<!doctype html><title>another checkout</title>');
+			child?.kill();
 		});
-		await new Promise<void>((resolve) => fake?.listen(PREVIEW_PORT, '127.0.0.1', () => resolve()));
+		await listenOrExplain(fake, FIRST_PORT);
 
 		const environment = { ...process.env };
 		delete environment['CI'];
-		const run = Bun.spawnSync(
+		child = Bun.spawn(
 			['bunx', 'playwright', 'test', '--project=chromium', 'src/routes/page.svelte.e2e.ts'],
-			// Bounded: the refusal arrives in about a second. If the setting ever
-			// drifts to reuse, Playwright would adopt the fake and start running specs
-			// against it; SIGTERM after the timeout lets it tear its own servers down.
-			{ cwd: LAB_ROOT, env: environment, stdout: 'pipe', stderr: 'pipe', timeout: 60_000 }
+			{ cwd: LAB_ROOT, env: environment, stdout: 'pipe', stderr: 'pipe' }
 		);
-		const output = `${run.stdout.toString()}\n${run.stderr.toString()}`;
+		const [stdout, stderr, exitCode] = await Promise.all([
+			new Response(child.stdout).text(),
+			new Response(child.stderr).text(),
+			child.exited
+		]);
+		const output = `${stdout}\n${stderr}`;
 
-		expect(run.exitCode, output).not.toBe(0);
-		expect(output).toContain(`http://localhost:${PREVIEW_PORT} is already used`);
-		// And it never got as far as running a spec against the fake.
+		expect(
+			adopted,
+			`Playwright adopted the fake server on port ${FIRST_PORT} and ran specs against it:\n${output}`
+		).toBe(false);
+		expect(exitCode, output).not.toBe(0);
+		expect(output).toContain(`http://localhost:${FIRST_PORT} is already used`);
 		expect(output).not.toMatch(/\d+ passed/);
-	}, 120_000);
+	});
 });
