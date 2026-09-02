@@ -84,7 +84,7 @@ export function isTestPath(relativePath: string): boolean {
   // `chat-history-pagination-fixture.svelte` are built into `dist/` and ship
   // to consumers, so exempting them would create exactly the blind spot this
   // guard exists to close.
-  if (/\.test-fixture\.svelte$/.test(relativePath)) return true;
+  if (relativePath.endsWith('.test-fixture.svelte')) return true;
   return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
 }
 
