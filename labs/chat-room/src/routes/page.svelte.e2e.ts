@@ -265,10 +265,11 @@ test('a forged approvalToken is rejected by the real resume route', async ({ pag
 // REQUIRES TWO LINES IN `playwright.config.ts` — the `webServer` entry that
 // starts the fixture, and `env: { ANTHROPIC_BASE_URL }` on the preview entry.
 // Without them these tests fail; `expectFixtureHandled` is what turns that into
-// a legible failure instead of a mystified timeout. Note that Playwright's
-// `reuseExistingServer` will happily adopt a preview server that was started
-// without the env var, so "the config is right" is not the same as "the running
-// server was started from it".
+// a legible failure instead of a mystified timeout. Every `webServer` entry sets
+// `reuseExistingServer: false` (CIN-509), so a preview started by hand without
+// the env var is not adopted: Playwright refuses to start while its port is
+// held (`http://localhost:4173 is already used …`), which is the signal to stop
+// that server rather than a reason to doubt the config.
 test.describe('production streaming path', () => {
 	test.beforeAll(async () => {
 		const health = await fetch(`${FIXTURE_ORIGIN}/__fixture/health`).catch(() => undefined);

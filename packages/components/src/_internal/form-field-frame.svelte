@@ -152,8 +152,13 @@
     </label>
   {/if}
 
+  <!-- `data-cinder-full-width` mirrors the frame's own marker onto the wrapper:
+       ancestors that detect a full-width control by direct child (access-gate.css's
+       `:has(> .cinder-form-field > [data-cinder-full-width])`) keep matching when
+       the control sits inside this wrapper instead of directly in the frame. -->
   {#if needsControlWrapper}<div
       class={classNames('cinder-form-field__control', controlClass)}
+      data-cinder-full-width={fullWidth ? '' : undefined}
       data-leading={controlLeading ? '' : undefined}
       data-trailing={controlTrailing ? '' : undefined}
       data-native-date={controlNativeDate ? '' : undefined}
