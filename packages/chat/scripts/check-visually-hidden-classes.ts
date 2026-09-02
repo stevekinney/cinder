@@ -655,10 +655,10 @@ const NAMED_CHARACTER_REFERENCES: Record<string, string> = {
 export function decodeCharacterReferences(value: string): string {
   return value.replace(
     /&(?:#x([0-9a-fA-F]+)|#([0-9]+)|([a-zA-Z]+));/g,
-    (match, hex, decimal, name) => {
+    (match: string, hex: string | undefined, decimal: string | undefined, name: string) => {
       if (hex !== undefined) return String.fromCodePoint(Number.parseInt(hex, 16));
       if (decimal !== undefined) return String.fromCodePoint(Number.parseInt(decimal, 10));
-      return NAMED_CHARACTER_REFERENCES[name as string] ?? match;
+      return NAMED_CHARACTER_REFERENCES[name] ?? match;
     },
   );
 }
