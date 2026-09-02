@@ -146,6 +146,8 @@ label of a control.
 
 `--cinder-content-width` caps the inline size of primary page content. It is the default width for [`Container`](../packages/components/src/components/container/container.svelte); consumers can override it globally or per scope.
 
+Chat scopes its own measure to its root rather than reading the page-level tokens above. `--cinder-chat-message-max-width` defaults to `48rem` and caps every transcript row — message bubbles and grouped tool-call cards alike — so the two can never drift to different widths. Override it on an individual Chat container to widen or tighten the transcript independently of surrounding page content. Every rule that consumes it carries the same `48rem` fallback, so the measure holds even for a consumer that does not import `@lostgradient/chat/styles`; and because the declaration lives inside `@layer cinder.components`, unlayered author CSS overrides it without a specificity fight.
+
 `--cinder-content-width-prose`, `--cinder-content-width-narrow`, and `--cinder-content-width-wide` form the named width scale selected by [`Container`](../packages/components/src/components/container/container.svelte)'s `maxWidth` prop; omitting `maxWidth` falls back to `--cinder-content-width`. The `maxWidth="full"` keyword removes the cap entirely (`max-inline-size: none`) and maps to no token.
 
 ## Motion

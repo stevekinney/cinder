@@ -56,6 +56,31 @@ describe('non-color component tokens', () => {
     expect(chatCss).toContain('--_cinder-chat-text-base: clamp(');
     expect(tokenDocumentation).toContain('`--cinder-chat-font-size`');
   });
+
+  // Publishing a token through `chat.variables.*` and the generated README
+  // makes it supported customization API, which carries a documentation
+  // obligation. This pins that obligation so the two cannot drift: a default
+  // changed in CSS without the docs following, or the token removed from one
+  // side only, fails here.
+  it('documents the Chat transcript measure and keeps it out of the color contract', () => {
+    const repositoryRoot = join(dirname(fileURLToPath(import.meta.url)), '..', '..', '..', '..');
+    const chatCss = readFileSync(
+      join(repositoryRoot, 'packages/chat/src/lib/components/chat/chat.css'),
+      'utf8',
+    );
+    const chatVariables = readFileSync(
+      join(repositoryRoot, 'packages/chat/src/lib/components/chat/chat.variables.json'),
+      'utf8',
+    );
+    const tokenDocumentation = readFileSync(join(repositoryRoot, 'docs/tokens.md'), 'utf8');
+
+    expect(chatCss).toContain('--cinder-chat-message-max-width: 48rem');
+    // Declared in the CSS sidecar rather than a scoped <style>, which is what
+    // makes it reachable by the artifact generator at all.
+    expect(chatVariables).toContain('--cinder-chat-message-max-width');
+    expect(tokenDocumentation).toContain('`--cinder-chat-message-max-width`');
+    expect(tokenDocumentation).toContain('48rem');
+  });
 });
 
 // ---------------------------------------------------------------------------
