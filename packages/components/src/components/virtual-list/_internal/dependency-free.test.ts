@@ -471,4 +471,55 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/sub`);
   });
+
+  test('flags an import() written in a Svelte TEMPLATE, outside any script block', () => {
+    // Valid Svelte that loads the package for real, but it lives in the markup, so a
+    // scan of extracted <script> bodies never sees it.
+    const source = [
+      '<script lang="ts">',
+      "  import { thing } from './local.ts';",
+      '</script>',
+      '',
+      `{#await import('${FORBIDDEN_SPECIFIER}') then module}`,
+      '  <div>{module.name}</div>',
+      '{/await}',
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('does not report a script-block import twice for a Svelte component', () => {
+    // The template walk covers only the fragment; script bodies belong to the
+    // TypeScript parser. Walking both over the same nodes would double-report.
+    const source = [
+      '<script lang="ts">',
+      `  import { thing } from '${FORBIDDEN_SPECIFIER}';`,
+      '</script>',
+      '',
+      '<div>markup</div>',
+    ].join('\n');
+
+    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toHaveLength(1);
+  });
+
+  test('flags an import type node whose specifier ships in the declaration file', () => {
+    // `export type X = import('pkg').Y` keeps the specifier in the emitted .d.ts, so
+    // a published consumer resolves it exactly like a value import.
+    const source = "export type Core = import('some-dev-only-package').Core;";
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('flags a type-only reference to the forbidden package', () => {
+    const source = `type Virtualizer = import('${FORBIDDEN_SPECIFIER}').Virtualizer;`;
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
 });

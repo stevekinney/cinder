@@ -1078,4 +1078,52 @@ describe('VirtualList — dynamicSize', () => {
 
     expect(list.scrollTop).toBe(900);
   });
+
+  test('does not arm the pin when stickToBottom is disabled before the deferred callback runs', async () => {
+    // The append pin defers past a tick. If the prop is disabled in between, the
+    // disabled-mode effect clears the pin — and arming it again here would leave a
+    // stale flag that no later scroll clears, so re-enabling would jump to the end
+    // with no append behind it.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(51),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, {
+      items: makeItems(50),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickToBottom: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 800;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Append with the option still ON so the deferred callback is scheduled, then
+    // disable it before the awaited tick resolves. Deliberately not awaited between
+    // the two, which is what puts the disable inside the callback's window.
+    void view.rerender({ ...base, stickToBottom: true, row: rowSnippet() });
+    void view.rerender({ ...base, stickToBottom: false, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    list.scrollTop = 100;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Re-enable. With a stale pin this jumps to the bottom; correctly, it holds.
+    await view.rerender({ ...base, stickToBottom: true, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    expect(list.scrollTop).toBe(100);
+  });
 });

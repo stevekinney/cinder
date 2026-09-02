@@ -43,6 +43,7 @@ import { isBuiltin } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { parse as parseSvelte } from 'svelte/compiler';
 import ts from 'typescript';
 
 import { readJsonFile } from './lib/read-json-file.ts';
@@ -186,6 +187,75 @@ function extractScriptBlocks(content: string): Array<{ text: string; offset: num
 }
 
 /**
+ * Collects `import()` expressions written in a Svelte TEMPLATE, outside any
+ * `<script>` block.
+ *
+ * `{#await import('@tanstack/virtual-core')}` is valid Svelte and loads the
+ * package for real, but it lives in the markup, so a scan of extracted script
+ * bodies never sees it. The template is walked through Svelte's own parser rather
+ * than pattern-matched, for the same reason the script bodies go through
+ * TypeScript's: the guard should see what the runtime sees.
+ */
+function collectTemplateSpecifiers(content: string): ParsedSpecifier[] {
+  const found: ParsedSpecifier[] = [];
+  let root: unknown;
+  try {
+    root = parseSvelte(content, { modern: true });
+  } catch {
+    // A component that does not parse cannot ship either, and the build reports
+    // that far more clearly than this guard would.
+    return found;
+  }
+
+  const seen = new Set<object>();
+
+  const visit = (node: unknown): void => {
+    if (!isPlainRecord(node)) {
+      if (Array.isArray(node)) for (const child of node) visit(child);
+      return;
+    }
+    if (seen.has(node)) return;
+    seen.add(node);
+
+    if (node['type'] === 'ImportExpression') found.push(parseTemplateImport(node));
+
+    for (const key of Object.keys(node)) {
+      if (key === 'parent') continue;
+      visit(node[key]);
+    }
+  };
+
+  // Only the template fragment. Script bodies belong to the TypeScript parser, and
+  // walking them here as well would report every import in them twice.
+  visit(isPlainRecord(root) ? root['fragment'] : undefined);
+  return found;
+}
+
+/** Narrows to a walkable AST node without asserting a shape the value may not have. */
+function isPlainRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** Reads one template `import()` expression into the shape the classifier expects. */
+function parseTemplateImport(node: Record<string, unknown>): ParsedSpecifier {
+  const nodeStart = typeof node['start'] === 'number' ? node['start'] : 0;
+  const source = node['source'];
+  if (isPlainRecord(source) && source['type'] === 'Literal') {
+    const value = source['value'];
+    const sourceStart = typeof source['start'] === 'number' ? source['start'] : nodeStart;
+    if (typeof value === 'string') {
+      return { specifier: value, offset: sourceStart, isDynamic: true, isLiteral: true };
+    }
+  }
+  return {
+    specifier: 'import(<computed>)',
+    offset: nodeStart,
+    isDynamic: true,
+    isLiteral: false,
+  };
+}
+
+/**
  * Collects import specifiers from one TypeScript source using the compiler's own
  * parser.
  *
@@ -227,6 +297,21 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
       }
     }
 
+    // `export type X = import('pkg').Y` — the specifier is retained in the emitted
+    // declaration file, so a published consumer resolves it exactly like a value
+    // import. A type-only reference to the forbidden package is still a reference.
+    if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument)) {
+      const literal = node.argument.literal;
+      if (ts.isStringLiteral(literal)) {
+        found.push({
+          specifier: literal.text,
+          offset: baseOffset + literal.getStart(sourceFile),
+          isDynamic: false,
+          isLiteral: true,
+        });
+      }
+    }
+
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       const [argument] = node.arguments;
       if (argument !== undefined) {
@@ -255,7 +340,10 @@ const NONLITERAL_DYNAMIC_IMPORT_REASON =
 /**
  * Decides whether one parsed import is a violation.
  *
- * TEST FILES face ONLY the forbidden-package ban, for every import shape. They
+ * TEST FILES face ONLY the forbidden-package ban, and only where the specifier is
+ * a literal — a computed `import(name)` cannot be resolved to a package by
+ * anything, so there is nothing to compare against. That is acceptable here
+ * precisely because test files do not ship. They
  * legitimately reach for devDependencies — `import { render } from
  * '@testing-library/svelte'` as much as the dynamic form — and this guard resolves
  * bare specifiers against `dependencies` alone, so the full rule would flag every
@@ -297,13 +385,14 @@ export function findDependencyViolations(
   const lineStartOffsets = buildLineStartOffsets(content);
   const lines = content.split('\n');
 
-  const blocks = filePath.endsWith('.svelte')
-    ? extractScriptBlocks(content)
-    : [{ text: content, offset: 0 }];
+  const isSvelte = filePath.endsWith('.svelte');
+  const blocks = isSvelte ? extractScriptBlocks(content) : [{ text: content, offset: 0 }];
+  const parsedSpecifiers = blocks.flatMap((block) => collectSpecifiers(block.text, block.offset));
+  if (isSvelte) parsedSpecifiers.push(...collectTemplateSpecifiers(content));
 
   const violations: DependencyViolation[] = [];
-  for (const block of blocks) {
-    for (const parsed of collectSpecifiers(block.text, block.offset)) {
+  {
+    for (const parsed of parsedSpecifiers) {
       const reason = resolveViolationReason(parsed, isTestFile, declaredDependencyNames);
       if (reason === undefined) continue;
       const lineNumber = lineNumberForOffset(lineStartOffsets, parsed.offset);

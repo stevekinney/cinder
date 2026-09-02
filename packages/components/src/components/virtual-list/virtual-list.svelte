@@ -244,6 +244,14 @@
     if (!stickToBottom || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
+      // Re-read the prop: it can be disabled between the append and this callback,
+      // and the disabled-mode effect will already have cleared the pin. Arming it
+      // again here would leave a stale flag that no later scroll clears, so
+      // re-enabling the option would jump to the end with no append behind it.
+      if (!stickToBottom) {
+        shouldStickAfterAppend = false;
+        return;
+      }
       // Measure first. An update that appends AND shrinks `height` in one go would
       // otherwise compute the bottom from the pre-patch viewport and land short —
       // and in fixed mode there is no re-pin effect afterwards to rescue it.
