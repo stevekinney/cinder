@@ -270,25 +270,33 @@
    * non-collapsed) selection into the DOM on focus; the resulting
    * `selectionchange` would otherwise re-open the popover over the text that
    * was just commented on. It is cleared once the user has pressed a key or a
-   * pointer inside the editor AND the editor's own selection has settled
-   * somewhere else — see {@link consumedSelectionReleaseArmed}.
+   * pointer inside the editor AND the editor's own selection has settled —
+   * see {@link consumedSelectionReleaseArm}.
    */
   let consumedSelection: { from: number; to: number } | null = null;
 
   /**
-   * Whether the user has since done something inside the editor that could
-   * start a new selection — a key or a pointer press. It arms the release of
-   * {@link consumedSelection} without performing it: the release itself waits
-   * until the editor's selection has actually settled somewhere else.
+   * What the user has since done inside the editor that could start a new
+   * selection, if anything. It arms the release of {@link consumedSelection}
+   * without performing it: the release itself waits for the editor's
+   * selection to settle.
    *
-   * Both halves are load-bearing. Releasing on the keystroke alone loses to
+   * Both halves are load-bearing. Releasing on the input alone loses to
    * ProseMirror's deferred `selectionToDOM`, which can restore the old range
-   * after the key has collapsed the DOM selection. Releasing on the settled
+   * after a key has collapsed the DOM selection. Releasing on the settled
    * selection alone misfires during the hand-off back from the composer,
    * where ProseMirror briefly reports a caret at the top of the document
    * before restoring the range — no user input, so nothing is armed.
+   *
+   * Which input it was decides what "settled" has to show. A pointer press
+   * always lands a caret of its own first, so anything it selects afterwards
+   * is the user's, even the very same range: a double-click on the word that
+   * was just commented on must offer to comment on it again. A key cannot be
+   * trusted that way — the restore is indistinguishable from a keyboard
+   * re-selection of the same range — so a key only releases the latch once
+   * the selection has settled somewhere genuinely different.
    */
-  let consumedSelectionReleaseArmed = false;
+  let consumedSelectionReleaseArm: 'pointer' | 'key' | null = null;
 
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
@@ -910,11 +918,13 @@
         // lands inside the window simply reschedules this callback, so what
         // it reads is where the selection actually ended up.
         const settledView = editorRef?.getView();
-        if (consumedSelection && consumedSelectionReleaseArmed && settledView?.hasFocus()) {
+        if (consumedSelection && consumedSelectionReleaseArm && settledView?.hasFocus()) {
           const settled = settledView.state.selection;
-          if (settled.from !== consumedSelection.from || settled.to !== consumedSelection.to) {
+          const movedElsewhere =
+            settled.from !== consumedSelection.from || settled.to !== consumedSelection.to;
+          if (movedElsewhere || consumedSelectionReleaseArm === 'pointer') {
             consumedSelection = null;
-            consumedSelectionReleaseArmed = false;
+            consumedSelectionReleaseArm = null;
           }
         }
 
@@ -960,7 +970,7 @@
       if (!consumedSelection) return;
       const editorDom = editorRef?.getView()?.dom;
       if (editorDom && event.target instanceof Node && editorDom.contains(event.target))
-        consumedSelectionReleaseArmed = true;
+        consumedSelectionReleaseArm = event.type === 'keydown' ? 'key' : 'pointer';
     }
 
     // `pointerdown` covers mouse, touch, and pen in one listener; the
@@ -1602,7 +1612,7 @@
     // Clear state. Remember the range so the selection ProseMirror restores on
     // refocus does not re-open the popover over the text just commented on.
     consumedSelection = { from, to };
-    consumedSelectionReleaseArmed = false;
+    consumedSelectionReleaseArm = null;
     capturedSelectionForPopover = null;
     selectionPopoverPosition = null;
     selectionPopoverExpanded = false;

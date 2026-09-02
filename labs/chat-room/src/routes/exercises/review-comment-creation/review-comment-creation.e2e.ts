@@ -567,11 +567,11 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// The hold is not permanent: once the selection settles somewhere else —
-		// here a caret placed by ArrowRight — it is released, and selecting the
-		// same paragraph again offers a comment as usual.
-		await page.keyboard.press('ArrowRight');
-		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		// The hold is not permanent. A pointer press lands a caret of its own
+		// first, so whatever it selects next is the user's — including the very
+		// same paragraph, which is what a double-click on just-commented text
+		// does, and which must offer to comment on it again.
+		await editor.click();
 		await reselectParagraph();
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
