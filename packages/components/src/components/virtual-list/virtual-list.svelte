@@ -103,6 +103,7 @@
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
   let isPinnedToBottom = $state(false);
   let scrollToIndexGeneration = 0;
+  let lastProgrammaticScrollTarget: number | null = null;
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
@@ -317,50 +318,54 @@
     const corrections = measurementStore.consumePendingCorrections();
     const currentOffsets = offsets?.offsets;
     const currentEstimate = resolvedItemHeight;
+    const element = scrollElement;
 
-    // Restore the reader's position after a width reset rebuilt the table from
-    // estimates. Runs before the estimate-change branch below because a reset has
-    // already discarded the geometry that branch compares against.
-    if (pendingReanchor !== null && currentOffsets) {
-      const { index, offsetWithinRow } = pendingReanchor;
-      pendingReanchor = null;
-      pendingScrollTarget = Math.max(0, (currentOffsets[index] ?? 0) + offsetWithinRow);
-    }
-
-    // An `itemHeight` change re-sizes every UNMEASURED row at once. No
-    // ResizeObserver fires for that — the rows did not change, the estimate did —
-    // so no correction is queued, and because this mode disables native scroll
-    // anchoring nothing else holds the position either. The same scrollTop then
-    // resolves to a completely different row: with a 20px estimate, offset 10,000
-    // is index 500; at 40px it is index 250, and the reader is silently teleported.
-    //
-    // Re-anchoring on the row the reader is actually looking at, and on how far into
-    // it they are, keeps them there across the rebuild.
-    if (
-      previousEstimate > 0 &&
-      currentEstimate !== previousEstimate &&
-      scrollElement &&
-      previousOffsets &&
-      currentOffsets
-    ) {
-      const liveScrollOffset = Math.max(0, scrollElement.scrollTop);
-      const anchorIndex = findOffsetIndex(previousOffsets, liveScrollOffset);
-      const offsetWithinAnchor = liveScrollOffset - (previousOffsets[anchorIndex] ?? 0);
-      pendingScrollTarget = Math.max(0, (currentOffsets[anchorIndex] ?? 0) + offsetWithinAnchor);
-    }
+    const estimateChanged = previousEstimate > 0 && currentEstimate !== previousEstimate;
     previousEstimate = currentEstimate;
 
-    if (corrections.length > 0 && scrollElement && previousOffsets) {
-      // Live, not the `scrollOffset` state: during a smooth scroll, after an
-      // external write, or before a throttled scroll event lands, the state trails
-      // the real position — and resolving the anchor from a stale offset picks the
-      // wrong row, so the correction moves content the reader is looking at.
-      const liveScrollOffset = Math.max(0, scrollElement.scrollTop);
-      const anchorIndex = findOffsetIndex(previousOffsets, liveScrollOffset);
-      const delta = resolveMeasurementCorrectionDelta(corrections, anchorIndex);
-      if (delta !== 0) pendingScrollTarget = liveScrollOffset + delta;
+    if (!element || !currentOffsets) {
+      previousOffsets = currentOffsets;
+      return;
     }
 
+    // Live, not the `scrollOffset` state: during a smooth scroll, after an external
+    // write, or before a throttled scroll event lands, the state trails the real
+    // position, and every calculation below is relative to where the reader is NOW.
+    const liveScrollOffset = Math.max(0, element.scrollTop);
+
+    // Every wholesale rebuild of the offsets table funnels through one re-anchor.
+    // There are three triggers — a width-driven cache reset, an `itemHeight` change,
+    // and (historically) each new one someone adds — and each moves the reader
+    // unless the row they are on is restored, because this mode turns off the
+    // browser's native scroll anchoring in order to own that itself. Handling them
+    // as separate branches is what let the third one overwrite the others.
+    let anchor = pendingReanchor;
+    pendingReanchor = null;
+    if (anchor === null && estimateChanged && previousOffsets) {
+      // A reset captured its anchor before discarding the cache; an estimate change
+      // can still read the pre-change table here.
+      const index = findOffsetIndex(previousOffsets, liveScrollOffset);
+      anchor = { index, offsetWithinRow: liveScrollOffset - (previousOffsets[index] ?? 0) };
+    }
+
+    let target =
+      anchor === null
+        ? null
+        : Math.max(0, (currentOffsets[anchor.index] ?? 0) + anchor.offsetWithinRow);
+
+    // Measurement corrections apply ONLY when no re-anchor ran. A re-anchor is
+    // computed from the rebuilt table, which already contains this flush's
+    // measurements, so adding the delta on top would count them twice and overshoot
+    // by exactly the measured difference. Previously the correction simply
+    // overwrote the re-anchored target, which lost the estimate adjustment instead —
+    // both are wrong, and which one wins is not a matter of ordering.
+    if (target === null && corrections.length > 0 && previousOffsets) {
+      const anchorIndex = findOffsetIndex(previousOffsets, liveScrollOffset);
+      const delta = resolveMeasurementCorrectionDelta(corrections, anchorIndex);
+      if (delta !== 0) target = liveScrollOffset + delta;
+    }
+
+    if (target !== null) pendingScrollTarget = Math.max(0, target);
     previousOffsets = currentOffsets;
   });
 
@@ -475,7 +480,23 @@
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
-    scrollOffset = Math.max(0, element.scrollTop);
+    const nextOffset = Math.max(0, element.scrollTop);
+
+    // A scroll this component did not perform means the user has taken over —
+    // wheel, drag, touch, keyboard. An in-flight settle loop would otherwise read
+    // their position as an inaccurate programmatic result and scroll back, fighting
+    // them for up to three passes. Retiring the generation abandons that loop.
+    // Compared against the last programmatic write rather than timed, so a delayed
+    // scroll event is still recognised as ours.
+    if (
+      lastProgrammaticScrollTarget === null ||
+      Math.abs(nextOffset - lastProgrammaticScrollTarget) > SCROLL_TO_INDEX_SETTLED_EPSILON
+    ) {
+      scrollToIndexGeneration += 1;
+      lastProgrammaticScrollTarget = null;
+    }
+
+    scrollOffset = nextOffset;
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom) isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
   }
@@ -638,6 +659,7 @@
         align,
       });
 
+      lastProgrammaticScrollTarget = target;
       if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
         element.scrollTo({ top: target, behavior: 'smooth' });
       } else {

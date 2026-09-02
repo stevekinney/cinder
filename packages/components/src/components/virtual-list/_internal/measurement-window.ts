@@ -209,8 +209,8 @@ export function computeScrollToIndexOffset(options: {
       const viewportEnd = viewportStart + options.viewportSize;
       const overflowsAbove = start < viewportStart;
       const overflowsBelow = start + size > viewportEnd;
-      if (size >= options.viewportSize) {
-        // A row at least as tall as the viewport can never satisfy both edge checks,
+      if (size > options.viewportSize) {
+        // A row STRICTLY taller than the viewport can never satisfy both edge checks,
         // so edge-preference alternates forever: align its start and the end now
         // overflows, align its end and the start does. The loop would oscillate and
         // the final position would depend on the attempt cap.
@@ -220,6 +220,8 @@ export function computeScrollToIndexOffset(options: {
         // one flag is true and the earlier both-flags form fell through to edge
         // alignment again. Overlapping means the reader is already inside the row, so
         // hold; otherwise bring its start into view, after which holding takes over.
+        // Strictly taller, not >=: a row exactly the viewport's height CAN be fully
+        // revealed, so holding it half-visible would break auto's own contract.
         const overlapsViewport = start < viewportEnd && start + size > viewportStart;
         target = overlapsViewport ? options.currentScrollOffset : start;
       } else if (overflowsAbove) target = start;

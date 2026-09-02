@@ -70,6 +70,12 @@ export const FEATURE_PROBES: FeatureProbe[] = [
   { feature: 'text-wrap', tier: 1, pattern: /text-wrap\s*:/, globs: STYLE_GLOBS },
   { feature: 'accent-color', tier: 1, pattern: /accent-color\s*:/, globs: STYLE_GLOBS },
   {
+    feature: 'scrollbar-gutter',
+    tier: 1,
+    pattern: /scrollbar-gutter\s*:/,
+    globs: STYLE_GLOBS,
+  },
+  {
     feature: 'overflow-anchor (opt-out)',
     tier: 1,
     pattern: /overflow-anchor\s*:/,

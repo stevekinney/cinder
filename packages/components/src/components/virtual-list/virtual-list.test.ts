@@ -1155,4 +1155,63 @@ describe('VirtualList — dynamicSize', () => {
     // the reader at index 250 instead.
     expect(list.scrollTop).toBe(20_000);
   });
+
+  test('re-anchors from the rebuilt table when an estimate change and a measurement land together', async () => {
+    // The re-anchor is computed from the table AFTER the rebuild, so it already
+    // contains this flush's measurement. Adding the correction delta on top would
+    // count it twice; letting the correction overwrite the re-anchor would drop the
+    // estimate adjustment. Neither is right — the re-anchor alone is.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(100),
+      height: '200px',
+      dynamicSize: true,
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, { ...base, itemHeight: 20, row: rowSnippet() });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 400;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Row 15 is mounted and sits above the anchor at index 20.
+    reportRowSizes(new Map([[15, 60]]));
+    await view.rerender({ ...base, itemHeight: 40, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    // Rebuilt table: rows 0-14 and 16-19 at the new 40px estimate, row 15 measured
+    // at 60. Index 20 therefore starts at 19*40 + 60 = 820, and the reader was
+    // exactly at the top of index 20.
+    expect(list.scrollTop).toBe(820);
+  });
+
+  test('retires the settle generation on a scroll it did not perform', async () => {
+    // Source-shape, deliberately. A behavioural test cannot reach this: in happy-dom
+    // the settle loop converges on its first attempt — the write lands exactly, the
+    // position stops moving, and the loop returns — so it is never in flight when a
+    // user scroll arrives. The race needs real smooth scrolling or a target that
+    // keeps moving as rows measure, neither of which this harness has.
+    //
+    // What is pinned here is the mechanism: the handler compares against the last
+    // programmatic target rather than a timer, so a delayed scroll event is still
+    // recognised as the component's own, and anything else retires the generation
+    // so an in-flight loop stops fighting the user. Real behaviour is browser-verified.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+
+    const handlerStart = source.indexOf('function handleScroll(');
+    const handlerBody = source.slice(
+      handlerStart,
+      source.indexOf('function maxScrollOffset', handlerStart),
+    );
+
+    expect(handlerBody).toContain('lastProgrammaticScrollTarget');
+    expect(handlerBody).toContain('scrollToIndexGeneration += 1');
+    // And every programmatic write must record its target, or the comparison above
+    // treats the component's own scroll as user input and cancels itself.
+    expect(source).toContain('lastProgrammaticScrollTarget = target;');
+  });
 });

@@ -27,6 +27,20 @@
    */
   .cinder-virtual-list[data-cinder-dynamic-size='true'] {
     overflow-anchor: none;
+
+    /*
+     * Reserve the scrollbar gutter so the width available to rows does not depend
+     * on whether a scrollbar is currently showing.
+     *
+     * Without this, dynamic sizing oscillates on platforms with non-overlay
+     * scrollbars: measured rows overflow the estimated total, a scrollbar appears,
+     * the narrower content width invalidates every measurement, the estimated
+     * spacer shrinks below the viewport, the scrollbar disappears, the width grows
+     * back, and the cycle repeats — burning layout work and tripping
+     * ResizeObserver loop errors. A stable gutter removes the input to that loop
+     * instead of damping its output.
+     */
+    scrollbar-gutter: stable;
   }
 
   .cinder-virtual-list__spacer {
