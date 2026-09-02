@@ -449,21 +449,12 @@ describe('ShareCard Input composition', () => {
 
   test('the value field presents identically in both action layouts', () => {
     // `labelSnippet` presence decides whether the actions ride inside `Input`'s trailing
-    // addon or render as a sibling row, and those are two separate `Input` invocations.
-    // A review rightly flagged that switching arms tears the value field down, dropping
-    // focus and selection on a presentation-only change.
-    //
-    // Collapsing to one call site does not work: a conditional spread widens `trailing`
-    // to optional, which `InputProps`' leading/trailing union rejects under
-    // `exactOptionalPropertyTypes`. And it would not have helped anyway -- `Input` wraps
-    // its `<input>` in `.cinder-input-group` only when `trailing` is set, so the element
-    // is recreated inside `Input` regardless of what this file does. Preserving it means
-    // changing a primitive every component depends on, tracked separately.
-    //
-    // What is worth guarding is that the two arms cannot DRIFT: the field must present
-    // the same contract either way. Asserted on the rendered result rather than by
-    // regex-parsing the source, so a reformat or refactor cannot fail it without an
-    // actual behavioural change.
+    // addon or render as a sibling row. That used to be two separate `Input` arms,
+    // which tore the value field down on a presentation-only change; it is one call
+    // site now (CIN-512), and the test below pins the element's identity across the
+    // boundary. This one keeps guarding that the field presents the same contract in
+    // both layouts, asserted on the rendered result rather than by regex-parsing the
+    // source, so a reformat or refactor cannot fail it without a behavioural change.
     const richLabel = createRawSnippet(() => ({ render: () => '<span>Copy it</span>' }));
     const value = 'https://example.com/a/b/c';
 
@@ -503,6 +494,52 @@ describe('ShareCard Input composition', () => {
     // Sanity-check the contract is not vacuously empty on both sides.
     expect(compactContract.value).toBe(value);
     expect(compactContract.readOnly).toBe(true);
+  });
+
+  test('the value field keeps its native element when actions cross the labelSnippet boundary', async () => {
+    // A parent that reactively changes `actions` so that a `labelSnippet` appears or
+    // disappears moves the actions between the trailing addon and the sibling row.
+    // With one `Input` call site and Input keeping its element across an addon
+    // toggle (CIN-500), that is a prop update on the same element: focus and the
+    // selection range survive. Exactly one field is asserted alongside identity
+    // because happy-dom can leave a torn-down `{#if}` arm's nodes connected, and
+    // identity alone would then pass against the stale node.
+    const richLabel = createRawSnippet(() => ({ render: () => '<span>Copy it</span>' }));
+    const value = 'https://example.com/a/b/c';
+    const compactActions = [{ key: 'copy', label: 'Copy', copyValue: value }];
+    const richActions = [{ key: 'copy', label: 'Copy', labelSnippet: richLabel, copyValue: value }];
+
+    const { container, rerender } = render(ShareCard, { value, actions: compactActions });
+    const field = () => container.querySelectorAll<HTMLInputElement>('.cinder-share-card__value');
+    expect(field()).toHaveLength(1);
+    const before = field()[0]!;
+    before.focus();
+    before.setSelectionRange(8, 19);
+    expect(document.activeElement).toBe(before);
+    expect(
+      container.querySelector('.cinder-input-group__trailing .cinder-share-card__actions'),
+    ).not.toBeNull();
+
+    await rerender({ actions: richActions });
+    expect(field()).toHaveLength(1);
+    expect(field()[0]).toBe(before);
+    expect(document.activeElement).toBe(before);
+    expect(before.selectionStart).toBe(8);
+    expect(before.selectionEnd).toBe(19);
+    expect(container.querySelector('.cinder-input-group')).toBeNull();
+    expect(container.querySelector('.cinder-share-card__actions')?.parentElement).toBe(
+      container.querySelector<HTMLElement>('.cinder-share-card'),
+    );
+
+    await rerender({ actions: compactActions });
+    expect(field()).toHaveLength(1);
+    expect(field()[0]).toBe(before);
+    expect(document.activeElement).toBe(before);
+    expect(before.selectionStart).toBe(8);
+    expect(before.selectionEnd).toBe(19);
+    expect(
+      container.querySelector('.cinder-input-group__trailing .cinder-share-card__actions'),
+    ).not.toBeNull();
   });
 
   test('both action layouts render exactly one value field, in the right place', () => {
