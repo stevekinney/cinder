@@ -191,6 +191,37 @@
   }
 
   /* ----------------------------------------
+ * Input host (no addons)
+ * ---------------------------------------- */
+
+  /* The control wrapper is always rendered so the native <input> keeps one
+   position in the tree when an addon appears or disappears (see
+   input.svelte). Without addons the wrapper is `.cinder-input-host` instead of
+   `.cinder-input-group`, and `display: contents` removes its box: the input
+   takes part in the parent's layout exactly as a bare element did, so a
+   flex-row parent still sizes the input itself rather than a shrink-wrapped
+   div around it. The host still carries `data-cinder-full-width` so ancestors
+   that detect a full-width control by direct child (access-gate.css) keep
+   matching. */
+  .cinder-input-host {
+    display: contents;
+    /* The host and the group are the SAME element: when an addon appears the
+       class swaps, and `.cinder-input-group`'s border-color transition runs
+       from whatever the host computed. Pin the host's resting border colours
+       to the group's so the appearing border does not fade in from
+       `currentcolor` (the initial value). A boxless element paints nothing,
+       so these are inert until the swap. Same source order as the group's
+       state rules, so disabled wins over invalid here too. */
+    border-color: var(--cinder-border);
+  }
+  .cinder-input-host[data-invalid] {
+    border-color: var(--cinder-status-danger-solid);
+  }
+  .cinder-input-host[data-disabled] {
+    border-color: var(--cinder-border-muted);
+  }
+
+  /* ----------------------------------------
  * Input group (leading / trailing addons)
  * ---------------------------------------- */
 

@@ -359,22 +359,19 @@
        (`max-inline-size: 40%`), so the actions render OUTSIDE the field as
        a normal full-width row instead of being clipped inside it. -->
   <!-- Two `Input` arms rather than one call site with the addon applied conditionally.
-       That would be preferable — a review rightly noted that switching arms tears the
-       value field down, so a parent reactively updating `actions` across the
-       `labelSnippet` boundary drops the user's focus and selection. Both alternatives
-       were tried and neither works here:
+       Switching arms tears the value field down — two `<Input>` instances are two
+       native elements — so a parent reactively updating `actions` across the
+       `labelSnippet` boundary drops the user's focus and selection.
 
-       A conditional spread (`{...cond ? {} : { trailing, trailingInteractive }}`) does
-       not typecheck: `InputProps` pairs `leading`/`trailing` in a union that requires
-       both, and spreading widens `trailing` to optional, which no longer satisfies
-       either branch under `exactOptionalPropertyTypes`.
-
-       And it would not have fixed the teardown regardless: `Input` wraps its `<input>`
-       in `.cinder-input-group` only when `trailing` is set (input.svelte's
-       `{#if hasGroupWrapper}`), so the element is recreated INSIDE `Input` when the
-       addon appears or disappears, whatever this file does. Preserving it across that
-       switch is a change to the shared primitive, affecting every consumer, and is
-       tracked separately. -->
+       `Input` itself no longer recreates its `<input>` when an addon appears or
+       disappears (CIN-500: the control wrapper is always rendered), so a single call
+       site WOULD now preserve the element. The remaining obstacle is typing: a
+       conditional spread (`{...cond ? {} : { trailing, trailingInteractive }}`) does
+       not typecheck against `InputProps`' leading/trailing union under
+       `exactOptionalPropertyTypes`, because the conditional's type is widened before
+       the spread. A spread of a `$derived` object whose type is already narrowed to
+       the union does typecheck (CIN-500's fixture does exactly that). Collapsing to
+       that form is tracked as CIN-512. -->
   {#if hasLabelSnippetAction}
     <Input
       id={valueFieldId}

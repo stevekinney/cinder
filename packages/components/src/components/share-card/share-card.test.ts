@@ -453,12 +453,10 @@ describe('ShareCard Input composition', () => {
     // A review rightly flagged that switching arms tears the value field down, dropping
     // focus and selection on a presentation-only change.
     //
-    // Collapsing to one call site does not work: a conditional spread widens `trailing`
-    // to optional, which `InputProps`' leading/trailing union rejects under
-    // `exactOptionalPropertyTypes`. And it would not have helped anyway -- `Input` wraps
-    // its `<input>` in `.cinder-input-group` only when `trailing` is set, so the element
-    // is recreated inside `Input` regardless of what this file does. Preserving it means
-    // changing a primitive every component depends on, tracked separately.
+    // `Input` itself now keeps its `<input>` when an addon appears or disappears
+    // (CIN-500), so one call site with a union-narrowed `$derived` spread would preserve
+    // the element; a conditional spread inside the attribute still does not typecheck
+    // under `exactOptionalPropertyTypes`. Collapsing the arms is tracked as CIN-512.
     //
     // What is worth guarding is that the two arms cannot DRIFT: the field must present
     // the same contract either way. Asserted on the rendered result rather than by
