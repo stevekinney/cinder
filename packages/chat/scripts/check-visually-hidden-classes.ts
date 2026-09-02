@@ -232,15 +232,41 @@ export function maskRegexLiterals(source: string): string {
  * after a block statement an expression starts, after an object literal an
  * operator does, and which it was depends on what opened the brace.
  */
-function regexCanStartAt(before: string, next: string | undefined): boolean {
+function regexCanStartAt(
+  before: string,
+  next: string | undefined,
+  from: number = before.length - 1,
+): boolean {
   if (next === '/' || next === '*' || next === undefined) return false;
-  const trimmed = before.replace(/\s+$/, '');
-  if (trimmed === '') return true;
-  if (trimmed.endsWith('}')) return !closesObjectLiteral(trimmed);
-  if (trimmed.endsWith(')')) return closesControlFlowCondition(trimmed);
-  if (/(?:[(,=:[!&|?{;]|=>)$/.test(trimmed)) return true;
-  return /(?:^|[^\w$])(?:return|throw|typeof|case|do|else|in|of|yield|await)$/.test(trimmed);
+  // Walk back to the last significant character instead of copying and
+  // trimming the whole prefix: this runs for every `/` in a file, and the
+  // prefix grows with the file, which made a large component quadratic.
+  // `from` lets a caller point at a position inside `before` rather than
+  // slicing a prefix out of it for the same reason.
+  let end = from;
+  while (end >= 0 && /\s/.test(before[end] ?? '')) end -= 1;
+  if (end < 0) return true;
+  const last = before[end];
+  // These two need real context — the matching `{` or `(` — but only a `/`
+  // written directly after a brace or paren reaches them, which is rare.
+  if (last === '}') return !closesObjectLiteral(before.slice(0, end + 1));
+  if (last === ')') return closesControlFlowCondition(before.slice(0, end + 1));
+  // Everything else is decided by the handful of characters before the
+  // slash, so only that window is tested. It starts one character early so
+  // the keyword test's `[^\w$]` boundary sees the real neighbour rather than
+  // the window's edge.
+  const start = Math.max(0, end - KEYWORD_WINDOW_LENGTH);
+  const window = before.slice(start, end + 1);
+  if (/(?:[(,=:[!&|?{;]|=>)$/.test(window)) return true;
+  return /(?:^|[^\w$])(?:return|throw|typeof|case|do|else|in|of|yield|await)$/.test(window);
 }
+
+/**
+ * How far back {@link regexCanStartAt} looks for an expression-start keyword.
+ * The longest is `typeof` at six characters; the window is generous enough
+ * that the boundary character before the keyword is always inside it.
+ */
+const KEYWORD_WINDOW_LENGTH = 32;
 
 /**
  * Whether the `}` that ends `text` closes an object literal. The matching
@@ -380,7 +406,9 @@ type BlockElement = {
  */
 function findBlockElements(source: string): BlockElement[] {
   const blocks: BlockElement[] = [];
-  const openPattern = /^<(script|style)\b[^>]*>/;
+  // Sticky rather than anchored-on-a-slice: this runs at every `<`, and
+  // copying the rest of the file each time is what made it quadratic.
+  const openPattern = /<(script|style)\b[^>]*>/y;
   let index = 0;
   while (index < source.length) {
     const character = source[index];
@@ -397,7 +425,8 @@ function findBlockElements(source: string): BlockElement[] {
       index = end === -1 ? source.length : end + 3;
       continue;
     }
-    const open = openPattern.exec(source.slice(index));
+    openPattern.lastIndex = index;
+    const open = openPattern.exec(source);
     if (!open) {
       index += 1;
       continue;
@@ -652,6 +681,18 @@ const CLASS_ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(CLASS_VALUE_TOKEN_SOURCE,
  * references HTML always recognizes. The element receives the decoded
  * class, so that is what is matched.
  */
+/**
+ * `String.fromCodePoint` throws on anything above U+10FFFF (and on a
+ * surrogate), where CSS and HTML parsers substitute U+FFFD instead. The audit
+ * follows the parsers: an out-of-range escape is a harmless oddity in the
+ * source, not a reason to crash the required check.
+ */
+function codePointToCharacter(codePoint: number): string {
+  if (!Number.isFinite(codePoint) || codePoint < 0 || codePoint > 0x10ffff) return '\ufffd';
+  if (codePoint >= 0xd800 && codePoint <= 0xdfff) return '\ufffd';
+  return String.fromCodePoint(codePoint);
+}
+
 const NAMED_CHARACTER_REFERENCES: Record<string, string> = {
   amp: '&',
   AMP: '&',
@@ -677,8 +718,8 @@ export function decodeCharacterReferences(value: string): string {
     // matching the standard's much narrower legacy list.
     /&(?:#x([0-9a-fA-F]+);?|#([0-9]+);?|([a-zA-Z]+);)/g,
     (match: string, hex: string | undefined, decimal: string | undefined, name: string) => {
-      if (hex !== undefined) return String.fromCodePoint(Number.parseInt(hex, 16));
-      if (decimal !== undefined) return String.fromCodePoint(Number.parseInt(decimal, 10));
+      if (hex !== undefined) return codePointToCharacter(Number.parseInt(hex, 16));
+      if (decimal !== undefined) return codePointToCharacter(Number.parseInt(decimal, 10));
       return NAMED_CHARACTER_REFERENCES[name] ?? match;
     },
   );
@@ -751,7 +792,7 @@ export function decodeCssIdentifierEscapes(cssText: string): string {
       /\\(?:([0-9a-fA-F]{1,6}) ?|([^\n0-9a-fA-F]))/g,
       (_match, hex: string | undefined, literal: string | undefined) => {
         const character =
-          hex !== undefined ? String.fromCodePoint(Number.parseInt(hex, 16)) : (literal ?? '');
+          hex !== undefined ? codePointToCharacter(Number.parseInt(hex, 16)) : (literal ?? '');
         // An escaped delimiter is part of the identifier, not a new selector:
         // `.foo\.sr-only` is the single class `foo.sr-only`. Decoding it to a
         // literal `.` would invent a class boundary, so anything that is not
@@ -809,7 +850,7 @@ export function decodeCssValueEscapes(value: string): string {
   const decoded = value.replace(
     /\\(?:([0-9a-fA-F]{1,6}) ?|([^\n0-9a-fA-F]))/g,
     (_match, hex: string | undefined, literal: string | undefined) =>
-      hex !== undefined ? String.fromCodePoint(Number.parseInt(hex, 16)) : (literal ?? ''),
+      hex !== undefined ? codePointToCharacter(Number.parseInt(hex, 16)) : (literal ?? ''),
   );
   return decoded.padEnd(value.length, ' ');
 }
@@ -951,7 +992,7 @@ export function isClassWriteArgument(prefix: string): boolean {
     /(?:^|[^\w$])classList\s*\.\s*(?:add|remove|toggle|replace)\s*\(\s*(?:["'`][^"'`]*["'`]\s*,\s*)*$/.test(
       prefix,
     ) ||
-    /(?:^|[^\w$])class(?:Name)?\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])(?:class(?:Name)?|classList\s*\.\s*value)\s*(?:\+?=)\s*$/.test(prefix) ||
     /(?:^|[^\w$])setAttribute\s*\(\s*["'`]class["'`]\s*,\s*$/i.test(prefix)
   );
 }
@@ -1002,7 +1043,11 @@ export function maskTypeDeclarations(source: string): string {
  * parameter annotation by the `,` or `)` that ends it. An object literal's
  * `key: 'value'` is a VALUE and is deliberately not matched — it is a
  * property, not an annotation, and the two are told apart by what encloses
- * them, which is why only annotations inside a parameter list qualify.
+ * them, which is why only annotations inside a parameter list qualify. A
+ * class member's type annotation is spelled exactly like an object literal's
+ * property, so it is not matched either: without a parser the two cannot be
+ * separated, and the safe direction is to keep reporting a class that might
+ * really be applied rather than to stop reporting one that is.
  */
 function maskTypeExpressions(source: string): string {
   const masked = maskStringLiterals(source);
@@ -1010,8 +1055,22 @@ function maskTypeExpressions(source: string): string {
   let index = 0;
   // `as`/`satisfies` take a type directly; a `(name: 'literal'` is a
   // parameter annotation; a `const name: 'literal'` a variable one.
-  const pattern =
-    /(?:(?<![\w$.])(?:as|satisfies)\s+|[(,]\s*[A-Za-z_$][\w$]*\??\s*:\s*|(?<![\w$.])(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*)(["'`])/g;
+  const pattern = new RegExp(
+    [
+      // `value as 'sr-only'`, `value satisfies 'sr-only'`
+      String.raw`(?<![\w$.])(?:as|satisfies)\s+`,
+      // a parameter annotation, `(cls: 'sr-only')`
+      String.raw`[(,]\s*[A-Za-z_$][\w$]*\??\s*:\s*`,
+      // a variable annotation, `const cls: 'sr-only'`
+      String.raw`(?<![\w$.])(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*`,
+      // a return type, `function f(): 'sr-only'`
+      String.raw`\)\s*:\s*`,
+      // a generic constraint or default, `<T extends 'sr-only'>`
+      String.raw`(?<![\w$.])extends\s+`,
+      String.raw`<[^<>=]*=\s*`,
+    ].join('|') + String.raw`(["'\`])`,
+    'g',
+  );
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(masked)) !== null) {
     const quoteIndex = match.index + match[0].length - 1;
@@ -1188,21 +1247,36 @@ export type TagAttribute =
  * expression early.
  */
 function balancedExpressionLength(text: string, openBraceIndex: number): number {
-  const body = text.slice(openBraceIndex);
   // `{/if}` and `{/each}` close a Svelte block: that `/` opens no regex.
-  const lead = /^\{\s*\/[a-z]+\s*\}/.exec(body)?.[0].length ?? 0;
-  const balance = body.slice(0, lead) + maskScriptLiterals(body.slice(lead));
+  const lead = BLOCK_CLOSER_PATTERN.exec(text.slice(openBraceIndex, openBraceIndex + 16))?.[0]
+    .length;
+  if (lead !== undefined) return lead;
+  // Scanned in place rather than by masking a copy of everything that
+  // follows: this runs at every `{` in a file, and slicing plus masking the
+  // whole remainder each time made a large component quadratic. Strings and
+  // regex literals are stepped over as units, which is what the mask was for.
   let depth = 0;
-  let relative = 0;
-  for (; relative < balance.length; relative++) {
-    if (balance[relative] === '{') depth++;
-    else if (balance[relative] === '}') {
+  let index = openBraceIndex;
+  for (; index < text.length; index++) {
+    const character = text[index] ?? '';
+    if (character === '"' || character === "'" || character === '`') {
+      index = stringLiteralEnd(text, index) - 1;
+      continue;
+    }
+    if (character === '/' && regexCanStartAt(text, text[index + 1], index - 1)) {
+      index = regexLiteralEnd(text, index) - 1;
+      continue;
+    }
+    if (character === '{') depth++;
+    else if (character === '}') {
       depth--;
       if (depth === 0) break;
     }
   }
-  return relative + 1;
+  return index - openBraceIndex + 1;
 }
+
+const BLOCK_CLOSER_PATTERN = /^\{\s*\/[a-z]+\s*\}/;
 
 /**
  * Number of `{` object-literal openers still open at `text[index]`, ignoring
@@ -1433,7 +1507,7 @@ export function decodeStringEscapes(content: string): string {
       const code = braced ?? unicode ?? hex;
       if (code !== undefined) {
         const codePoint = Number.parseInt(code, 16);
-        return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+        return codePoint <= 0x10ffff ? codePointToCharacter(codePoint) : match;
       }
       const escaped = match.slice(1);
       if (escaped === '\n' || escaped === '\r\n' || escaped === '\r') return '';
@@ -1532,8 +1606,14 @@ export function extractStringBindings(
   // and `const html: Record<string, string>[] =` are both ordinary
   // declarations, and a narrow character class silently stopped following
   // them. `[^=;\n]` keeps the match on one declaration.
+  // A declaration OR a later assignment: `let html = '…'` followed by
+  // `html = '<span class="sr-only">…'` injects the second string, so both
+  // are recorded and both are scanned. The `(?<![\w$.])` keeps a property
+  // write (`node.html = …`) from registering as the binding `html`, and the
+  // `(?<![=!<>+\-*/%&|^])=(?!=)` pair keeps a comparison or an arrow from
+  // reading as an assignment.
   const declarationPattern =
-    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=\s*(?=["'`])/g;
+    /(?<![\w$.])(?:(?:const|let|var)\s+)?([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?(?<![=!<>+\-*/%&|^])=(?!=)\s*(?=["'`])/g;
   // Declarations are located on a view with the strings blanked, so
   // declaration-shaped TEXT inside a string (a doc comment's example) cannot
   // register a binding — or shadow the real one. The literal each surviving
@@ -1590,14 +1670,16 @@ export function scanSource(
   // ones written inline. Only a binding that resolves statically to one
   // literal is followed; anything computed is opaque to a text scanner.
   const regions = splitSourceRegions(masked, language);
-  const htmlBindings = new Map<string, { content: string; offset: number }>();
+  // Every literal a name is bound to, not just the last: a declaration and a
+  // later reassignment are both strings `{@html name}` can inject.
+  const htmlBindings = new Map<string, Array<{ content: string; offset: number }>>();
   for (const region of regions) {
     if (region.kind !== 'script' && region.kind !== 'code') continue;
-    for (const binding of extractStringBindings(region.text))
-      htmlBindings.set(binding.name, {
-        content: binding.content,
-        offset: region.start + binding.contentStart,
-      });
+    for (const binding of extractStringBindings(region.text)) {
+      const bound = htmlBindings.get(binding.name) ?? [];
+      bound.push({ content: binding.content, offset: region.start + binding.contentStart });
+      htmlBindings.set(binding.name, bound);
+    }
   }
 
   const scanMarkup = (region: string, regionOffset: number): void => {
@@ -1622,14 +1704,14 @@ export function scanSource(
     HTML_REFERENCE_PATTERN.lastIndex = 0;
     let reference: RegExpExecArray | null;
     while ((reference = HTML_REFERENCE_PATTERN.exec(region)) !== null) {
-      const binding = htmlBindings.get(reference[1] ?? '');
-      if (!binding) continue;
-      // The binding's escapes are decoded first: `'<span class="sr\u002donly">'`
-      // renders the bare class. The decode preserves length, so the spans it
-      // yields still point at the original source.
-      const content = decodeStringEscapes(binding.content);
-      for (const span of extractOpeningTagSpans(content))
-        scanOpeningTag(span.text, binding.offset + span.start);
+      for (const binding of htmlBindings.get(reference[1] ?? '') ?? []) {
+        // The binding's escapes are decoded first:
+        // `'<span class="sr\u002donly">'` renders the bare class. The decode
+        // preserves length, so the spans it yields still point at the source.
+        const content = decodeStringEscapes(binding.content);
+        for (const span of extractOpeningTagSpans(content))
+          scanOpeningTag(span.text, binding.offset + span.start);
+      }
     }
   };
 

@@ -1278,3 +1278,33 @@ describe('scanSource — twelfth-round review findings', () => {
     expect(scanSource("const cls = 'sr-only';", 'script')).toHaveLength(1);
   });
 });
+
+describe('scanSource — thirteenth-round review findings', () => {
+  test('a classList.value assignment is a class write', () => {
+    expect(scanSource("node.classList.value = 'state(active) sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("node.dataset.value = 'state(active) sr-only';", 'script')).toHaveLength(0);
+  });
+
+  test('a return, generic, or default type position applies no class', () => {
+    expect(scanSource("function f(): 'sr-only' { throw 1 }", 'script')).toHaveLength(0);
+    expect(scanSource("function f<T extends 'sr-only'>() {}", 'script')).toHaveLength(0);
+    expect(scanSource("type A<T = 'sr-only'> = T;", 'script')).toHaveLength(0);
+  });
+
+  test('a literal reassigned into an `{@html}` binding is scanned', () => {
+    expect(
+      scanSource(
+        `<script>let html = '<span>safe</span>'; html = '<span class="sr-only">bad</span>';</script>{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('an out-of-range numeric escape is replaced, not thrown', () => {
+    expect(scanSource(String.raw`.\ffffff { color: red }`, 'css')).toHaveLength(0);
+    expect(scanSource('<div class="&#1114112;">x</div>', 'svelte')).toHaveLength(0);
+    // The replacement is a character like any other, so a real token beside
+    // one is still found.
+    expect(scanSource('<div class="&#1114112; sr-only">x</div>', 'svelte')).toHaveLength(1);
+  });
+});
