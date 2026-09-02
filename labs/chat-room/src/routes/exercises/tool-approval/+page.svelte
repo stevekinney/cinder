@@ -198,6 +198,46 @@
 		const level: ChatAnnounceLevel = 'assertive';
 		chatAssertiveRef?.announce('Consumer text should not win.', level);
 	}
+
+	// --- Scenario 6: grouped tool-call readability cap (CIN-506) -------------
+	// A COMPLETED (non-`action_required`) pair renders through the grouped
+	// `ToolCallGroup`/`ToolCallTimeline` path rather than the ungrouped
+	// approval-prompt row the scenarios above use. That grouped row is the one
+	// that must respect the same `--cinder-chat-message-max-width` readability
+	// cap as every chat bubble — see chat-message.svelte's `.chat-message-wrapper`
+	// and tool-call-timeline.svelte's `.chat-tool-call-timeline`. The argument
+	// carries one long, unbroken (no-whitespace) token so a real overflow case
+	// exists to prove the cap and the code block's own internal scrolling.
+	const LONG_UNBROKEN_TOKEN = 'x'.repeat(400);
+
+	function seedWithCompletedToolCall(id: string): ConversationHistory {
+		let conversation = createConversationHistory({ id });
+		conversation = appendUserMessage(conversation, 'Look up the shipment for order A100.');
+		conversation = appendToolCall(conversation, {
+			id: 'call-lookup',
+			name: 'lookup_shipment',
+			arguments: { orderId: 'A100', token: LONG_UNBROKEN_TOKEN }
+		});
+		conversation = appendToolResult(conversation, {
+			callId: 'call-lookup',
+			outcome: 'success',
+			content: { status: 'shipped', trackingToken: LONG_UNBROKEN_TOKEN }
+		});
+		return conversation;
+	}
+
+	const conversationWidthCap: ConversationHistory =
+		seedWithCompletedToolCall('tool-approval-width-cap');
+
+	const adapterWidthCap: ChatAdapter = {
+		sendMessage: async () => {},
+		describeToolCall: () => ({
+			verb: 'Checked',
+			tense: 'past',
+			detail: 'the shipment tracker',
+			kind: 'fetch'
+		})
+	};
 </script>
 
 <div
@@ -299,6 +339,17 @@
 				id="tool-approval-assertive-chat"
 				bind:this={chatAssertiveRef}
 				conversation={conversationAssertive}
+			/>
+		</div>
+	</section>
+
+	<section style="display: flex; flex-direction: column; gap: 0.5rem;">
+		<h2 style="margin: 0;">6. Grouped tool-call readability cap</h2>
+		<div data-testid="tool-approval-width-cap-wrapper" style="height: 24rem;">
+			<Chat
+				id="tool-approval-width-cap-chat"
+				conversation={conversationWidthCap}
+				adapter={adapterWidthCap}
 			/>
 		</div>
 	</section>
