@@ -1,9 +1,11 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["inline-confirm"],
-  "renderedSourceSha": "a42ec23175d31355ca1410c14ea22b55891a9c6d",
+  "componentScope": [
+    "virtual-list"
+  ],
+  "renderedSourceSha": "8d6645db88e0424b31780962c40f6f5b09fcc287",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "arm64",
+  "architecture": "x64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }
