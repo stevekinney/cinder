@@ -3715,7 +3715,20 @@ async function readmeUsageExamplesSmoke(): Promise<void> {
   process.stdout.write('[validate-consumers] readme usage examples smoke passed.\n');
 }
 
-/** Cheap PR gate for packed manifest/export consistency; no browser or registry fixtures. */
+/**
+ * Cheap PR gate for packed-artifact consistency: the manifest/export fixture and
+ * the token-registry fixture, both pure Node resolution against one shared pack.
+ * No browser, no SvelteKit.
+ *
+ * `tokens-consumer` is here because it once ran ONLY on the release path. PR
+ * #1484 deferred 19 `public: true` component-alias tokens out of `:root`, passed
+ * every pull-request check, and then failed the 0.25.1 publish on this fixture's
+ * "every public token the registry advertises is declared in the shipped CSS"
+ * assertion -- the first moment anything ran it. The step itself costs well under
+ * a second after the pack (0.6s in that release's log); the pack is already paid
+ * for by the manifest fixture. Running it here makes that class of breakage a
+ * red pull request instead of a failed release.
+ */
 async function manifestSmoke(): Promise<void> {
   installHookProcessCleanup();
   ensureSupportedPlatform();
@@ -3726,7 +3739,10 @@ async function manifestSmoke(): Promise<void> {
   await packWorkspaceDependencyTarballs();
   await packTarball();
   await runManifestConsumerFixture();
-  process.stdout.write('[validate-consumers] manifest smoke passed.\n');
+  await runTokensConsumerFixture();
+  process.stdout.write(
+    '[validate-consumers] manifest smoke passed (manifest + tokens fixtures).\n',
+  );
 }
 
 if (import.meta.main) {
