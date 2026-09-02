@@ -1085,3 +1085,57 @@ describe('scanSource — eighth-round review findings', () => {
     expect(scanSource('{@html \'<span class="sr-only">a</span>\'}', 'svelte')).toHaveLength(1);
   });
 });
+
+describe('scanSource — ninth-round review findings', () => {
+  test('a class boundary is HTML ASCII whitespace, not every Unicode space', () => {
+    // `&nbsp;` decodes to U+00A0, which HTML keeps inside one class token.
+    expect(scanSource('<div class="foo&nbsp;sr-only">x</div>', 'svelte')).toHaveLength(0);
+    expect(scanSource('<div class="foo&#160;sr-only">x</div>', 'svelte')).toHaveLength(0);
+    expect(scanSource('<div class="foo&#9;sr-only">x</div>', 'svelte')).toHaveLength(1);
+  });
+
+  test('a CSS attribute selector decodes its value and honors the `i` modifier', () => {
+    expect(scanSource(String.raw`[class~="sr\2d only"] { color: red; }`, 'css')).toHaveLength(1);
+    expect(scanSource(String.raw`[class~="sr\-only"] { color: red; }`, 'css')).toHaveLength(1);
+    expect(scanSource('[class~="SR-ONLY" i] { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[class~="SR-ONLY"] { color: red; }', 'css')).toHaveLength(0);
+  });
+
+  test('a bound `{@html}` literal is decoded before its markup is read', () => {
+    expect(
+      scanSource(
+        String.raw`<script>const html = '<span class="sr\u002donly">x</span>';</script>{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('an escaped quote inside a class expression is a class-name character', () => {
+    expect(scanSource(String.raw`<div class={'foo\'sr-only'}>x</div>`, 'svelte')).toHaveLength(0);
+    expect(scanSource(String.raw`<div class={'foo\nsr-only'}>x</div>`, 'svelte')).toHaveLength(1);
+  });
+
+  test('a comment inside a quoted interpolated class attribute applies no class', () => {
+    expect(
+      scanSource(
+        `<div class="foo {condition /* 'sr-only' */ ? 'selected' : ''}">x</div>`,
+        'svelte',
+      ),
+    ).toHaveLength(0);
+    // A literal the interpolation can actually apply is still a hit, and the
+    // text around it keeps its own boundaries.
+    expect(
+      scanSource(`<div class="foo {condition ? 'sr-only' : ''}">x</div>`, 'svelte'),
+    ).toHaveLength(1);
+    expect(scanSource('<div class="sr-only{suffix}">x</div>', 'svelte')).toHaveLength(0);
+  });
+
+  test('a comment between a spread class key and its colon still names the property', () => {
+    expect(scanSource(`<div {...{ class /* why */: 'sr-only' }}>x</div>`, 'svelte')).toHaveLength(
+      1,
+    );
+    expect(scanSource(`<div {...{ title /* why */: 'sr-only' }}>x</div>`, 'svelte')).toHaveLength(
+      0,
+    );
+  });
+});
