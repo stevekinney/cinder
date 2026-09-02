@@ -703,7 +703,10 @@ function projectChatStreamEventBody(
       // would have to reimplement that entire schema (messages, multimodal
       // content, tool calls/results, ...); reusing the guard is the
       // maintainable way to get the same guarantee.
-      if (!isConversationHistory(event.conversation)) {
+      // Read once: a stateful accessor could otherwise pass the guard and hand
+      // the projection below a different value.
+      const conversation = event.conversation;
+      if (!isConversationHistory(conversation)) {
         throw new Error(
           'Invalid chat stream event: conversation is not a valid ConversationHistory',
         );
@@ -717,7 +720,7 @@ function projectChatStreamEventBody(
         // `JSON.stringify` would call, replacing the validated history with
         // whatever the hook returns. Project to plain JSON data (own
         // enumerable keys only, no prototype) and refuse any hook outright.
-        conversation: projectPlainJSON(event.conversation, 'conversation'),
+        conversation: projectPlainJSON(conversation, 'conversation'),
         content: requireString(event.content, 'content'),
         usage: projectTokenUsage(event.usage),
         finishReason: requireString(event.finishReason, 'finishReason'),
@@ -948,12 +951,18 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   if (!isRecord(raw) || Array.isArray(raw) || !Object.hasOwn(raw, 'type'))
     throw new Error('Invalid chat stream event');
   // An already-decoded transport hands the guard the producer's own object,
-  // not a JSON.parse result, so its fields can be accessors that answer
-  // differently per read — passing a guard with one value and reaching the
-  // returned event with another. Copying the own enumerable fields once
-  // freezes what every check below validates. (A non-enumerable own field is
-  // dropped, which is correct: nothing on the wire can produce one.)
-  const parsed: Record<string, unknown> = { ...raw };
+  // not a JSON.parse result, so its fields — at every depth — can be
+  // accessors that answer differently per read, or carry a `toJSON` that
+  // would rewrite them on their way back out. Rebuilding the whole frame as
+  // plain data first is exactly "what this value would be if it had crossed
+  // the wire", which is the guarantee the typed path owes the NDJSON one:
+  // every read below sees one frozen snapshot, a hook anywhere in the graph
+  // is refused, and an array smuggled in as a nested object arrives as the
+  // `[]` it would serialize to. A parsed JSON string is already plain data,
+  // so the hot streaming path skips the copy.
+  const projected = typeof value === 'string' ? raw : projectPlainJSON(raw, 'frame');
+  if (!isRecord(projected)) throw new Error('Invalid chat stream event');
+  const parsed: Record<string, unknown> = projected;
   if (typeof parsed['type'] !== 'string') throw new Error('Invalid chat stream event');
   const eventType = parsed['type'];
   const envelope = readWireEnvelope(parsed);

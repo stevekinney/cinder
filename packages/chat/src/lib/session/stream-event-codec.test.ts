@@ -803,6 +803,40 @@ describe('chat stream event codec', () => {
       if (decoded.type === 'run.error') expect(decoded.error.name).toBe('AgentRunError');
     });
 
+    test('encodes the conversation it validated when a getter answers differently per read', () => {
+      const histories: unknown[] = [
+        {
+          schemaVersion: 1,
+          id: 'conversation-1',
+          status: 'active',
+          metadata: {},
+          ids: [],
+          messages: {},
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        'not a history',
+      ];
+      const event = {
+        type: 'run.completed',
+        content: 'done',
+        usage: { prompt: 1, completion: 1, total: 2 },
+        finishReason: 'stop-condition',
+        wireVersion: 1,
+        sequence: 7,
+      } as Record<string, unknown>;
+      Object.defineProperty(event, 'conversation', {
+        enumerable: true,
+        get: () => histories.shift() ?? histories[0],
+      });
+      const decoded = decodeChatStreamEvent(
+        encodeChatStreamEvent(event as unknown as ChatStreamEvent),
+      );
+      expect(decoded.type).toBe('run.completed');
+      if (decoded.type === 'run.completed')
+        expect((decoded.conversation as { id: string }).id).toBe('conversation-1');
+    });
+
     test('rejects an array carrying frame-shaped properties', () => {
       // It spreads into an ordinary frame but serializes to `[]`, so the
       // typed-transport path would accept what the NDJSON path rejects.
@@ -811,6 +845,63 @@ describe('chat stream event codec', () => {
           Object.assign([], { type: 'run.aborted', wireVersion: 1, sequence: 0 }),
         ),
       ).toThrow('Invalid chat stream event');
+    });
+
+    test('reads a nested block field once on the already-decoded path', () => {
+      const answers = [0, Number.NaN];
+      const block = { id: 'block-1', type: 'text', content: '', complete: false } as Record<
+        string,
+        unknown
+      >;
+      Object.defineProperty(block, 'index', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      const decoded = decodeChatStreamEvent({
+        type: 'stream:block-start',
+        block,
+        wireVersion: 1,
+        sequence: 0,
+      });
+      expect(decoded.type).toBe('stream:block-start');
+      if (decoded.type === 'stream:block-start') expect(decoded.block.index).toBe(0);
+    });
+
+    test('rejects an array smuggled in as a nested block', () => {
+      // It reads as a block but serializes to `[]`, which the NDJSON path
+      // rejects — so the typed path must reject it too.
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:block-start',
+          block: Object.assign([], {
+            id: 'block-1',
+            type: 'text',
+            index: 0,
+            content: '',
+            complete: false,
+          }),
+          wireVersion: 1,
+          sequence: 0,
+        }),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('rebuilds a decoded JSON payload as plain data', () => {
+      const args = { query: 'weather' };
+      Object.defineProperty(args, 'toJSON', {
+        enumerable: false,
+        value: () => 'replaced',
+      });
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:tool-call-complete',
+          toolName: 'lookup',
+          blockId: 'toolu_1',
+          arguments: args,
+          wireVersion: 1,
+          sequence: 3,
+        }),
+      ).toThrow('toJSON');
     });
 
     test('validates the already-decoded event fields it returns when a getter answers differently per read', () => {
