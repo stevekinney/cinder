@@ -174,8 +174,8 @@ export function maskStringLiterals(source: string): string {
  * regex delimiter.
  *
  * A regex literal is only recognised where an expression can START (after
- * `(`, `,`, `=`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}`, `;`, `return`, or at
- * the very beginning), so `a / b / c` is division and stays visible. The
+ * `(`, `,`, `=`, `=>`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}`, `;`, `return`,
+ * or at the very beginning), so `a / b / c` is division and stays visible. The
  * heuristic is the classic one every non-parsing tokenizer uses; it is
  * exactly as good as it needs to be for the two consumers here.
  */
@@ -235,7 +235,7 @@ function regexCanStartAt(source: string, slashIndex: number): boolean {
   if (next === '/' || next === '*' || next === undefined) return false;
   const before = source.slice(0, slashIndex).replace(/\s+$/, '');
   if (before === '') return true;
-  if (/[(,=:[!&|?{};]$/.test(before)) return true;
+  if (/(?:[(,=:[!&|?{};]|=>)$/.test(before)) return true;
   return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(before);
 }
 
@@ -249,6 +249,48 @@ export function maskComments(source: string): string {
     .replace(/<!--[\s\S]*?-->/g, blank)
     .replace(/\/\*[\s\S]*?\*\//g, blank)
     .replace(/^[ \t]*\/\/[^\n]*/gm, blank);
+}
+
+/**
+ * Blanks `/* ... *\/` comments in a stylesheet while stepping over string
+ * literals, so `content: "/*"` cannot open a comment that swallows every
+ * rule up to the next `content: "*\/"`. CSS strings end at their quote or at
+ * an unescaped newline and have no other nesting, which is why a hand-rolled
+ * walk is enough here where the script side leans on regexes. A comment is
+ * still blanked when it contains an apostrophe.
+ */
+export function maskCssComments(source: string): string {
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    const character = source[index] ?? '';
+    if (character === '"' || character === "'") {
+      output += character;
+      index += 1;
+      while (index < source.length) {
+        const inner = source[index] ?? '';
+        output += inner;
+        index += 1;
+        if (inner === '\\') {
+          output += source[index] ?? '';
+          index += 1;
+          continue;
+        }
+        if (inner === character || inner === '\n') break;
+      }
+      continue;
+    }
+    if (character === '/' && source[index + 1] === '*') {
+      const end = source.indexOf('*/', index + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      output += blank(source.slice(index, stop));
+      index = stop;
+      continue;
+    }
+    output += character;
+    index += 1;
+  }
+  return output;
 }
 
 /** Normalizes a path to forward slashes so report output is OS-independent. */
@@ -286,11 +328,13 @@ const ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(BARE_TOKEN_SOURCE, 'g');
 const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`^class:${BARE_TOKEN_SOURCE}$`);
 
 /**
- * Matches a `class` property inside a spread object — `{...{ class: 'sr-only' }}`.
- * Only the property's value is scanned afterwards, so `title: 'sr-only'` in
- * the same object is not a hit.
+ * Matches a `class` property inside a spread object — `{...{ class: 'sr-only' }}`,
+ * `{ 'class': ... }`, or the statically computed `{ ['class']: ... }`. Only
+ * the property's value is scanned afterwards, so `title: 'sr-only'` in the
+ * same object is not a hit.
  */
-const SPREAD_CLASS_PROPERTY_PATTERN = /(?<![\w$.])(?:class|['"]class['"])\s*:\s*/g;
+const SPREAD_CLASS_PROPERTY_PATTERN =
+  /(?<![\w$.])(?:class|['"]class['"]|\[\s*['"`]class['"`]\s*\])\s*:\s*/g;
 
 /**
  * Tells whether a `SPREAD_CLASS_PROPERTY_PATTERN` match at `index` of the raw
@@ -299,11 +343,16 @@ const SPREAD_CLASS_PROPERTY_PATTERN = /(?<![\w$.])(?:class|['"]class['"])\s*:\s*
  * masking (it was not inside a quoted value), and a quoted `'class'` is a key
  * only if the mask shows exactly that string literal there (an opening quote
  * followed by five blanked characters and the closing quote) rather than a
- * fragment of a longer string.
+ * fragment of a longer string. A computed `['class']` key is checked the same
+ * way at the quote inside its brackets.
  */
 export function isSpreadClassKey(maskedExpression: string, index: number): boolean {
+  if (maskedExpression[index] === '[') {
+    const quoteIndex = maskedExpression.slice(index).search(/['"`]/);
+    return quoteIndex > 0 && isSpreadClassKey(maskedExpression, index + quoteIndex);
+  }
   const quote = maskedExpression[index];
-  if (quote === "'" || quote === '"') {
+  if (quote === "'" || quote === '"' || quote === '`') {
     return maskedExpression.slice(index, index + 7) === `${quote}     ${quote}`;
   }
   return maskedExpression.startsWith('class', index);
@@ -728,7 +777,7 @@ export function scanSource(
   language?: SourceLanguage,
 ): Array<{ lineNumber: number; line: string }> {
   const hits: Array<{ lineNumber: number; line: string }> = [];
-  const masked = maskComments(original);
+  const masked = language === 'css' ? maskCssComments(original) : maskComments(original);
   const lines = original.split('\n');
   const record = (index: number): void => {
     const lineNumber = masked.slice(0, index).split('\n').length;
@@ -902,7 +951,7 @@ export async function scan(
   sourceRoot: string = defaultSourceRoot,
 ): Promise<VisuallyHiddenClassFlag[]> {
   const flags: VisuallyHiddenClassFlag[] = [];
-  const glob = new Glob('**/*.{css,svelte,ts,mts,cts,js,mjs,cjs}');
+  const glob = new Glob('**/*.{css,svelte,ts,mts,cts,tsx,js,mjs,cjs,jsx}');
 
   for await (const relativePath of glob.scan({ cwd: sourceRoot })) {
     if (isTestPath(relativePath)) continue;

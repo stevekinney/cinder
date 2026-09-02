@@ -605,3 +605,49 @@ describe('scanSource — script-side review findings', () => {
     ).toHaveLength(1);
   });
 });
+
+describe('scanSource — third-round review findings', () => {
+  test('scan() visits .tsx and .jsx production modules', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'visually-hidden-'));
+    try {
+      await writeFile(join(root, 'classes.tsx'), "export const hidden = 'sr-only';\n");
+      await writeFile(join(root, 'legacy.jsx'), "export const hidden = 'sr-only';\n");
+      await writeFile(join(root, 'classes.test.tsx'), "export const hidden = 'sr-only';\n");
+      const flags = await scan(root);
+      expect(flags.map((flag) => flag.filePath)).toEqual([
+        'src/lib/classes.tsx',
+        'src/lib/legacy.jsx',
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('a regex literal returned straight from an arrow function is not a string', () => {
+    expect(scanSource("const pattern = () => /'sr-only'/;", 'script')).toHaveLength(0);
+    expect(maskRegexLiterals("() => /a'b/")).toBe('() => /   /');
+  });
+
+  test('flags a computed class key in a spread object', () => {
+    expect(scanSource(`<span {...{ ['class']: 'sr-only' }}>hi</span>`)).toHaveLength(1);
+    expect(scanSource(`<span {...{ ["class"]: 'sr-only' }}>hi</span>`)).toHaveLength(1);
+    expect(scanSource('<span {...{ [`class`]: "sr-only" }}>hi</span>')).toHaveLength(1);
+    expect(scanSource(`<span {...{ [ 'class' ] : 'sr-only' }}>hi</span>`)).toHaveLength(1);
+  });
+
+  test('a computed key that is not exactly class is not a hit', () => {
+    expect(scanSource(`<span {...{ ['subclass']: 'sr-only' }}>hi</span>`)).toHaveLength(0);
+    expect(scanSource(`<span {...{ [className]: 'sr-only' }}>hi</span>`)).toHaveLength(0);
+  });
+
+  test('comment delimiters inside CSS strings do not hide a selector between them', () => {
+    const css =
+      'a::before { content: "/*"; }\n.sr-only { position: absolute; }\na::after { content: "*/"; }\n';
+    expect(scanSource(css, 'css').map((hit) => hit.lineNumber)).toEqual([2]);
+  });
+
+  test('a real CSS comment still hides a documented selector', () => {
+    expect(scanSource('/* never write .sr-only { } */\n.ok { }\n', 'css')).toHaveLength(0);
+    expect(scanSource('a { content: "it\'s"; }\n/* .sr-only { } */\n', 'css')).toHaveLength(0);
+  });
+});
