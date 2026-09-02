@@ -99,6 +99,19 @@ const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"])([^'"\n]+)\1/g;
 /** Files whose imports never ship, so the undeclared-bare-import rule does not apply to them. */
 const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?tsx?$/u;
 
+/**
+ * Whether a specifier resolves to the forbidden package, root or subpath.
+ *
+ * Shared by every branch on purpose. `@tanstack/virtual-core/some-entry` reduces
+ * to the package root, which IS a declared dependency here, so any branch that
+ * compares against the root alone waves deep imports through — which is exactly
+ * what the test-file branch did after the root-or-subpath rule was added to
+ * `classifySpecifier` but nowhere else.
+ */
+export function isForbiddenSpecifier(specifier: string): boolean {
+  return specifier === FORBIDDEN_SPECIFIER || specifier.startsWith(`${FORBIDDEN_SPECIFIER}/`);
+}
+
 const FORBIDDEN_SPECIFIER_REASON =
   'the virtual-list engine (CIN-204) must stay dependency-free of @tanstack/virtual-core';
 
@@ -151,7 +164,7 @@ export function classifySpecifier(
   // Subpaths count. `@tanstack/virtual-core/some-entry` reduces to the package
   // root, which IS a declared dependency of this package, so an exact-match check
   // alone would wave a deep import straight through the CIN-204 boundary.
-  if (specifier === FORBIDDEN_SPECIFIER || specifier.startsWith(`${FORBIDDEN_SPECIFIER}/`)) {
+  if (isForbiddenSpecifier(specifier)) {
     return FORBIDDEN_SPECIFIER_REASON;
   }
   if (isRelativeSpecifier(specifier)) return undefined;
@@ -222,7 +235,7 @@ export function findDependencyViolations(
     // reported above; do not report the same occurrence twice.
     if (seenOffsets.has(match.index)) continue;
     const reason = isTestFile
-      ? specifier === FORBIDDEN_SPECIFIER
+      ? isForbiddenSpecifier(specifier)
         ? FORBIDDEN_SPECIFIER_REASON
         : undefined
       : classifySpecifier(specifier, declaredDependencyNames);

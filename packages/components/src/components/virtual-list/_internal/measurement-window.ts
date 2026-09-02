@@ -114,7 +114,17 @@ export function getDynamicVirtualWindow(options: {
     visibleEndIndex += 1;
   }
 
-  const startIndex = Math.max(0, visibleStartIndex - resolvedOverscan);
+  // Zero-height rows share an offset with their neighbour, and findOffsetIndex
+  // resolves a tie to the LAST such index — so a collapsed row sitting exactly at
+  // the window's leading edge falls outside it. With overscan 0 that row unmounts,
+  // loses its ResizeObserver, keeps its cached zero, and can never be remeasured
+  // to expand again. Extending the start back over zero-size siblings keeps them
+  // mounted and observable.
+  let leadingIndex = Math.max(0, visibleStartIndex - resolvedOverscan);
+  while (leadingIndex > 0 && offsets[leadingIndex] === offsets[leadingIndex - 1]) {
+    leadingIndex -= 1;
+  }
+  const startIndex = leadingIndex;
   const endIndex = Math.min(count, visibleEndIndex + 1 + resolvedOverscan); // +1: endIndex is exclusive
 
   const items = [];
@@ -183,8 +193,18 @@ export function computeScrollToIndexOffset(options: {
     default: {
       const viewportStart = options.currentScrollOffset;
       const viewportEnd = viewportStart + options.viewportSize;
-      if (start < viewportStart) target = start;
-      else if (start + size > viewportEnd) target = start + size - options.viewportSize;
+      const overflowsAbove = start < viewportStart;
+      const overflowsBelow = start + size > viewportEnd;
+      if (overflowsAbove && overflowsBelow) {
+        // A row taller than the viewport fails BOTH visibility checks at once, and
+        // the viewport is already inside it. Preferring either edge unconditionally
+        // makes the settle loop alternate — start, then end, then start — so the
+        // final position would depend on the attempt cap and would visibly jitter
+        // under smooth scrolling. Staying put is the stable answer: the reader is
+        // already looking at the row, and no offset can show all of it.
+        target = options.currentScrollOffset;
+      } else if (overflowsAbove) target = start;
+      else if (overflowsBelow) target = start + size - options.viewportSize;
       else target = options.currentScrollOffset;
       break;
     }

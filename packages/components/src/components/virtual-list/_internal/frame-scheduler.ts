@@ -46,16 +46,17 @@ const NO_ANIMATION_FRAME_ID = -1;
  */
 export const rafFrameScheduler: FrameScheduler = {
   request(callback) {
-    const requestAnimationFrame = globalThis.requestAnimationFrame;
-    if (typeof requestAnimationFrame === 'function') {
-      return requestAnimationFrame(callback);
+    // Invoked through globalThis rather than copied into a local first: browsers
+    // that enforce the Web API receiver for Window methods throw "Illegal
+    // invocation" when one is called bare.
+    if (typeof globalThis.requestAnimationFrame === 'function') {
+      return globalThis.requestAnimationFrame(callback);
     }
     return NO_ANIMATION_FRAME_ID;
   },
   cancel(id) {
-    const cancelAnimationFrame = globalThis.cancelAnimationFrame;
-    if (typeof cancelAnimationFrame === 'function') {
-      cancelAnimationFrame(id);
+    if (typeof globalThis.cancelAnimationFrame === 'function') {
+      globalThis.cancelAnimationFrame(id);
     }
   },
 };

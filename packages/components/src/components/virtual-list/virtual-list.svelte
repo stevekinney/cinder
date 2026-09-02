@@ -88,7 +88,9 @@
   let hasObservedItemCount = false;
   let shouldStickAfterAppend = false;
 
-  // Dynamic-size mode only. Never read or written while `dynamicSize` is false.
+  // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
+  // false, so it is not strictly untouched in fixed mode — but nothing in fixed
+  // mode ever reads a measured size or queues a correction.
   const measurementStore = new VirtualListMeasurementStore();
   let rowResizeObserver: ResizeObserver | undefined;
   let previousOffsets: readonly number[] | undefined;
@@ -455,12 +457,15 @@
 
   function nextAnimationFrame(): Promise<void> {
     return new Promise((resolve) => {
-      const request = globalThis.requestAnimationFrame;
-      if (typeof request !== 'function') {
+      if (typeof globalThis.requestAnimationFrame !== 'function') {
         resolve();
         return;
       }
-      request(() => {
+      // Called through globalThis so the Window receiver is preserved. Copying the
+      // method into a local and invoking it bare throws "Illegal invocation" in
+      // browsers that enforce the Web API receiver — which would reject this
+      // promise on every dynamic scrollToIndex and silently skip every settle pass.
+      globalThis.requestAnimationFrame(() => {
         resolve();
       });
     });

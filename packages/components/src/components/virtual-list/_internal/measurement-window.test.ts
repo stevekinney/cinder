@@ -496,3 +496,74 @@ describe('resolveMeasurementCorrectionDelta', () => {
     expect(resolveMeasurementCorrectionDelta(corrections, 0)).toBe(0);
   });
 });
+
+describe('round-four engine regressions', () => {
+  test('auto alignment holds position for a row taller than the viewport', () => {
+    // Such a row fails BOTH visibility checks at once. Preferring either edge makes
+    // the settle loop alternate start -> end -> start, so the final position would
+    // depend on the attempt cap and jitter visibly under smooth scrolling.
+    const locator = {
+      getStart: () => 100,
+      getSize: () => 500,
+    };
+    const shared = {
+      index: 0,
+      itemCount: 1,
+      locator,
+      totalSize: 600,
+      viewportSize: 200,
+      align: 'auto' as const,
+    };
+
+    // Viewport sits inside the oversized row.
+    const target = computeScrollToIndexOffset({ ...shared, currentScrollOffset: 300 });
+    expect(target).toBe(300);
+
+    // And it is genuinely stable: feeding the result back changes nothing.
+    expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: target })).toBe(target);
+  });
+
+  test('auto alignment still scrolls to a row that is merely out of view', () => {
+    // The oversized-row rule must not swallow the ordinary cases.
+    const locator = { getStart: () => 400, getSize: () => 20 };
+    const shared = {
+      index: 0,
+      itemCount: 1,
+      locator,
+      totalSize: 1000,
+      viewportSize: 200,
+      align: 'auto' as const,
+    };
+
+    // Below the viewport: align its end.
+    expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: 0 })).toBe(220);
+    // Above the viewport: align its start.
+    expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: 600 })).toBe(400);
+  });
+
+  test('keeps a zero-height row mounted at the window edge', () => {
+    // Zero-height rows share an offset with their neighbour and findOffsetIndex
+    // resolves the tie to the LAST index, so a collapsed row at the leading edge
+    // would fall outside the window. With overscan 0 it then unmounts, loses its
+    // observer, keeps its cached zero, and can never be remeasured to expand.
+    const measured = new Map<number, number>([[2, 0]]);
+    const offsets = buildVirtualOffsets({
+      itemCount: 6,
+      estimateSize: 10,
+      getKey: (index) => index,
+      measuredSizes: measured,
+    });
+
+    // Offsets: [0, 10, 20, 20, 30, 40, 50] — index 2 is the collapsed row.
+    const result = getDynamicVirtualWindow({
+      offsets,
+      getKey: (index) => index,
+      scrollOffset: 20,
+      viewportSize: 10,
+      overscan: 0,
+    });
+
+    expect(result.items.some((item) => item.index === 2)).toBe(true);
+    expect(result.items.find((item) => item.index === 2)?.size).toBe(0);
+  });
+});

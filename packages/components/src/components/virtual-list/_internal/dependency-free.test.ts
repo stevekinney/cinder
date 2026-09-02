@@ -352,4 +352,14 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
 
     expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}-adapter`, declared)).toBeUndefined();
   });
+
+  test('rejects a forbidden SUBPATH dynamically imported from a test file', () => {
+    // The test-file branch compared against the package root only, so a deep
+    // import slipped past it even after classifySpecifier learned the subpath rule.
+    const source = `const deep = await import('${FORBIDDEN_SPECIFIER}/some-entry');`;
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/some-entry`);
+  });
 });
