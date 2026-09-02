@@ -22,7 +22,9 @@
   "license": "MIT",
   "author": "Steve Kinney <hello@stevekinney.net>",
   "sideEffects": [
-    "**/*.css"
+    "**/*.css",
+    "src/lib/components/*/index.ts",
+    "dist/components/*/index.js"
   ],
   "type": "module",
   "exports": {
