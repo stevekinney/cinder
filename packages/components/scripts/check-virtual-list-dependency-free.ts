@@ -267,12 +267,17 @@ function parseTemplateImport(node: Record<string, unknown>): ParsedSpecifier {
  * comments, arbitrary whitespace, and string-literal form stop mattering.
  */
 function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] {
+  // TS, not TSX. In TSX grammar a legal angle-bracket type assertion — `const value
+  // = <Foo>bar;` — parses as malformed JSX, and because parser diagnostics are
+  // ignored here, every import after it can vanish from the AST and slip past this
+  // guard. The repository compiles these files as ordinary TypeScript, so the
+  // scanner must read them the same way.
   const sourceFile = ts.createSourceFile(
-    'scan.tsx',
+    'scan.ts',
     text,
     ts.ScriptTarget.Latest,
     /* setParentNodes */ true,
-    ts.ScriptKind.TSX,
+    ts.ScriptKind.TS,
   );
   const found: ParsedSpecifier[] = [];
 
@@ -308,6 +313,27 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
           offset: baseOffset + literal.getStart(sourceFile),
           isDynamic: false,
           isLiteral: true,
+        });
+      }
+    }
+
+    // `require('pkg')` loads a real dependency that a bundler will include, and Bun's
+    // types make it legal TypeScript here, so leaving it unscanned would let a
+    // forbidden or undeclared package in through the side door.
+    if (
+      ts.isCallExpression(node) &&
+      ts.isIdentifier(node.expression) &&
+      node.expression.text === 'require' &&
+      node.arguments.length === 1
+    ) {
+      const [argument] = node.arguments;
+      if (argument !== undefined) {
+        const specifier = literalText(argument);
+        found.push({
+          specifier: specifier ?? argument.getText(sourceFile),
+          offset: baseOffset + argument.getStart(sourceFile),
+          isDynamic: true,
+          isLiteral: specifier !== undefined,
         });
       }
     }

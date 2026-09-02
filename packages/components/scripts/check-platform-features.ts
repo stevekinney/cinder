@@ -69,6 +69,12 @@ export const FEATURE_PROBES: FeatureProbe[] = [
   { feature: '@starting-style', tier: 1, pattern: /@starting-style\b/, globs: STYLE_GLOBS },
   { feature: 'text-wrap', tier: 1, pattern: /text-wrap\s*:/, globs: STYLE_GLOBS },
   { feature: 'accent-color', tier: 1, pattern: /accent-color\s*:/, globs: STYLE_GLOBS },
+  {
+    feature: 'overflow-anchor (opt-out)',
+    tier: 1,
+    pattern: /overflow-anchor\s*:/,
+    globs: STYLE_GLOBS,
+  },
   { feature: 'content-visibility', tier: 2, pattern: /content-visibility\s*:/, globs: STYLE_GLOBS },
   { feature: 'subgrid', tier: 2, pattern: /\bsubgrid\b/, globs: STYLE_GLOBS },
   {

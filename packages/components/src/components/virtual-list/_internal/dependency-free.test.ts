@@ -522,4 +522,37 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
   });
+
+  test('flags a CommonJS require of the forbidden package in shipped source', () => {
+    // require() loads a real dependency that a bundler will include, and Bun's types
+    // make it legal TypeScript here, so leaving it unscanned is a side door.
+    const source = `const virtualizer = require('${FORBIDDEN_SPECIFIER}');`;
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('flags a CommonJS require of an undeclared package in shipped source', () => {
+    const source = "const helper = require('some-dev-only-package');";
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('still sees imports that follow an angle-bracket type assertion', () => {
+    // Parsed as TSX, `<Foo>bar` is malformed JSX and can swallow everything after it,
+    // so a later import silently disappears from the AST. These files compile as
+    // ordinary TypeScript, and the scanner has to read them the same way.
+    const source = [
+      'const value = <Foo>bar;',
+      `import { thing } from '${FORBIDDEN_SPECIFIER}';`,
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
 });
