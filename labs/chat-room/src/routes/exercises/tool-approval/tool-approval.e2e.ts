@@ -251,7 +251,7 @@ test.describe('tool call group: readability cap (CIN-506)', () => {
 		await expect
 			.poll(() =>
 				row.evaluate((element) =>
-					getComputedStyle(element).getPropertyValue('--cinder-chat-message-max-width')
+					getComputedStyle(element).getPropertyValue('--cinder-chat-message-max-width').trim()
 				)
 			)
 			.toBe('30rem');
