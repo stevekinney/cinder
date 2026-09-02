@@ -612,12 +612,56 @@ export function toPosixPath(path: string): string {
 const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]+\w+)*(?![\w-])`;
 
 /**
- * Matches the bare token anywhere inside an attribute VALUE. The value has
- * already been isolated by `extractTagAttributes`, so this runs over `sr-only
- * label` rather than over the whole tag — a `class=sr-only` substring inside
- * `data-example="..."` never reaches it.
+ * The bare token as a whole CLASS token. HTML splits a class value on
+ * whitespace only, so `focus:sr-only` and `foo.sr-only` are single tokens
+ * that never apply the bare class; here the boundary is whitespace, a quote
+ * (the edge of a string literal in a `classNames()` argument or a class
+ * expression), or the edge of the text — not arbitrary punctuation.
+ */
+const CLASS_TOKEN_SOURCE = String.raw`(?<![^\s"'\`])sr-only(?:[-_]+\w+)*(?![^\s"'\`])`;
+
+/**
+ * Matches the bare token as a whole class token inside a `class` attribute
+ * VALUE. The value has already been isolated by `extractTagAttributes`, so
+ * this runs over `sr-only label` rather than over the whole tag — a
+ * `class=sr-only` substring inside `data-example="..."` never reaches it.
+ */
+const CLASS_ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(CLASS_TOKEN_SOURCE, 'g');
+
+/**
+ * Matches the bare token anywhere inside a CSS `[class...]` attribute
+ * selector's value. This keeps the punctuation boundary rather than the
+ * whole-token one: `*=`, `^=`, and `$=` select on substrings, so
+ * `[class*="sr-only"]` reaches `focus:sr-only` elements too.
  */
 const ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(BARE_TOKEN_SOURCE, 'g');
+
+/**
+ * Decodes the character references a static attribute value can carry —
+ * `sr&#45;only`, `sr&#x2D;only`, `foo&#32;sr-only`, and the named
+ * references HTML always recognizes. The element receives the decoded
+ * class, so that is what is matched.
+ */
+const NAMED_CHARACTER_REFERENCES: Record<string, string> = {
+  amp: '&',
+  lt: '<',
+  gt: '>',
+  quot: '"',
+  apos: "'",
+  nbsp: '\u00a0',
+  tab: '\t',
+  newline: '\n',
+};
+export function decodeCharacterReferences(value: string): string {
+  return value.replace(
+    /&(?:#x([0-9a-fA-F]+)|#([0-9]+)|([a-zA-Z]+));/g,
+    (match, hex, decimal, name) => {
+      if (hex !== undefined) return String.fromCodePoint(Number.parseInt(hex, 16));
+      if (decimal !== undefined) return String.fromCodePoint(Number.parseInt(decimal, 10));
+      return NAMED_CHARACTER_REFERENCES[name as string] ?? match;
+    },
+  );
+}
 
 /** Matches a Svelte class directive NAME: `class:sr-only` (with or without `={expr}`). */
 const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`^class:${BARE_TOKEN_SOURCE}$`);
@@ -655,7 +699,7 @@ export function isSpreadClassKey(maskedExpression: string, index: number): boole
 
 /** Matches a bare token inside a quoted string literal (single, double, or template). */
 const QUOTED_TOKEN_PATTERN = new RegExp(
-  String.raw`(["'\`])(?:(?!\1)[\s\S])*${BARE_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
+  String.raw`(["'\`])(?:(?!\1)[\s\S])*${CLASS_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
   'g',
 );
 
@@ -674,6 +718,23 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * theoretical one.
  */
 const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]+\w+)*(?![\w-])`, 'g');
+
+/**
+ * Decodes CSS identifier escapes inside class selectors so `.sr\-only`,
+ * `.sr\2d only`, and `.sr\00002donly` are matched as the `.sr-only` they
+ * select. Each decoded identifier is padded with spaces back to its source
+ * length, so every offset still maps onto the original text.
+ */
+export function decodeCssIdentifierEscapes(cssText: string): string {
+  return cssText.replace(/\.(?:[\w-]|\\(?:[0-9a-fA-F]{1,6} ?|[^\n0-9a-fA-F]))+/g, (identifier) => {
+    const decoded = identifier.replace(
+      /\\(?:([0-9a-fA-F]{1,6}) ?|([^\n0-9a-fA-F]))/g,
+      (_match, hex: string | undefined, literal: string | undefined) =>
+        hex !== undefined ? String.fromCodePoint(Number.parseInt(hex, 16)) : (literal ?? ''),
+    );
+    return decoded.padEnd(identifier.length, ' ');
+  });
+}
 
 /**
  * Matches a `[class...]` attribute selector, capturing its value so the bare
@@ -1213,7 +1274,7 @@ export function templatePlaceholders(content: string): Array<{ start: number; te
 }
 
 /** An `{@html identifier}` tag — the one markup form that follows a script binding. */
-const HTML_REFERENCE_PATTERN = /\{\s*@html\s+([A-Za-z_$][\w$]*)\s*\}/g;
+const HTML_REFERENCE_PATTERN = /\{\s*@html\s+(?:\(\s*)*([A-Za-z_$][\w$]*)(?:\s*\))*\s*\}/g;
 
 /**
  * Every `const`, `let`, or `var` in a script whose initializer is a single
@@ -1316,7 +1377,9 @@ export function scanSource(
     // Escapes are decoded first so `'foo\\nsr-only'` carries the two class
     // tokens the runtime would apply; the decode keeps every literal's
     // length, so offsets still map onto the original text.
-    const expression = decodeExpressionStringEscapes(rawExpression);
+    // Comments are masked first: `condition /* 'sr-only' */ ? 'selected' : ''`
+    // can only ever apply `selected`. The mask keeps every length too.
+    const expression = decodeExpressionStringEscapes(maskScriptComments(rawExpression));
     QUOTED_TOKEN_PATTERN.lastIndex = 0;
     let quotedMatch: RegExpExecArray | null;
     while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null) {
@@ -1385,9 +1448,10 @@ export function scanSource(
       }
 
       if (attribute.name !== 'class') continue;
-      ATTRIBUTE_VALUE_TOKEN_PATTERN.lastIndex = 0;
+      const value = decodeCharacterReferences(attribute.value);
+      CLASS_ATTRIBUTE_VALUE_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
-      while ((tokenMatch = ATTRIBUTE_VALUE_TOKEN_PATTERN.exec(attribute.value)) !== null)
+      while ((tokenMatch = CLASS_ATTRIBUTE_VALUE_TOKEN_PATTERN.exec(value)) !== null)
         record(offset + attribute.valueStart + tokenMatch.index);
     }
   };
@@ -1395,7 +1459,7 @@ export function scanSource(
   const scanStyle = (text: string, offset: number): void => {
     // CSS strings are real strings, so masking is safe and necessary here:
     // `content: '.sr-only'` applies no class.
-    const cssText = maskStringLiterals(text);
+    const cssText = decodeCssIdentifierEscapes(maskStringLiterals(text));
     // A class attribute selector's value IS a string, so it is read from the
     // unmasked text and then held to the selector-context test on the masked
     // text, where a quoted selector inside a declaration is followed by `;`.
@@ -1418,12 +1482,16 @@ export function scanSource(
 
   const scanScript = (text: string, offset: number): void => {
     for (const call of extractClassNamesCallArguments(text)) {
-      const tokenPattern = new RegExp(BARE_TOKEN_SOURCE, 'g');
+      // `classNames(/sr-only/.test(value) && 'selected')` can only apply
+      // `selected`; the regex body is masked (length preserved) so only
+      // string-literal contents are searched.
+      const argumentsText = maskRegexLiterals(call.argumentsText);
+      const tokenPattern = new RegExp(CLASS_TOKEN_SOURCE, 'g');
       let tokenMatch: RegExpExecArray | null;
-      while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null) {
+      while ((tokenMatch = tokenPattern.exec(argumentsText)) !== null) {
         // `classNames(node.classList.contains('sr-only') && 'selected')`
         // reads the class off another element; only `selected` can land.
-        if (isDomReadArgument(call.argumentsText.slice(0, tokenMatch.index))) continue;
+        if (isDomReadArgument(argumentsText.slice(0, tokenMatch.index))) continue;
         record(offset + call.startIndex + 1 + tokenMatch.index);
       }
     }

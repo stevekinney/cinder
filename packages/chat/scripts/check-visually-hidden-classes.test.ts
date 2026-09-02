@@ -985,3 +985,64 @@ describe('scanSource — sixth-round review findings', () => {
     expect(scanSource('[data-class~="sr-only"] { top: 0; }', 'css')).toHaveLength(0);
   });
 });
+
+describe('scanSource — seventh-round review findings', () => {
+  test('a class token is bounded by whitespace, not by punctuation', () => {
+    // HTML splits class values on whitespace only, so these are single tokens
+    // that never apply the bare class.
+    expect(scanSource('<div class="focus:sr-only">x</div>', 'svelte')).toHaveLength(0);
+    expect(scanSource('<div class="foo.sr-only">x</div>', 'svelte')).toHaveLength(0);
+    expect(
+      scanSource("classNames('focus:sr-only', active && 'foo.sr-only')", 'script'),
+    ).toHaveLength(0);
+    expect(scanSource("<div class={classNames('focus:sr-only')}>x</div>", 'svelte')).toHaveLength(
+      0,
+    );
+    // Whitespace and quotes are still boundaries.
+    expect(scanSource('<div class="focus:ring sr-only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource("classNames('sr-only', active && 'x')", 'script')).toHaveLength(1);
+    expect(scanSource('classNames(`sr-only ${x}`)', 'script')).toHaveLength(1);
+  });
+
+  test('a character reference in a static class value is decoded before matching', () => {
+    expect(scanSource('<div class="sr&#45;only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="sr&#x2D;only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="foo&#32;sr-only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="cinder&#45;sr-only">x</div>', 'svelte')).toHaveLength(0);
+  });
+
+  test('a CSS identifier escape in a selector is decoded before matching', () => {
+    expect(scanSource('.sr\\-only { position: absolute; }', 'css')).toHaveLength(1);
+    expect(scanSource('.sr\\2d only { position: absolute; }', 'css')).toHaveLength(1);
+    expect(scanSource('.sr\\00002donly { position: absolute; }', 'css')).toHaveLength(1);
+    expect(scanSource('.cinder\\-sr-only { position: absolute; }', 'css')).toHaveLength(0);
+    expect(scanSource('<style>\n  .sr\\-only { top: 0; }\n</style>', 'svelte')[0]?.lineNumber).toBe(
+      2,
+    );
+  });
+
+  test('a parenthesized {@html} reference still follows its string binding', () => {
+    const script = '<script>\n  const html = \'<span class="sr-only">x</span>\';\n</script>\n';
+    // The hit is the binding's line, so each reference form is checked alone.
+    expect(scanSource(`${script}{@html (html)}`, 'svelte')).toHaveLength(1);
+    expect(scanSource(`${script}{@html ( ( html ) )}`, 'svelte')).toHaveLength(1);
+    expect(scanSource(`${script}{@html (other)}`, 'svelte')).toHaveLength(0);
+  });
+
+  test('a comment inside a class expression is not scanned', () => {
+    expect(
+      scanSource("<div class={condition /* 'sr-only' */ ? 'selected' : ''}>x</div>", 'svelte'),
+    ).toHaveLength(0);
+    expect(
+      scanSource("<div class={condition // 'sr-only'\n ? 'selected' : ''}>x</div>", 'svelte'),
+    ).toHaveLength(0);
+    expect(
+      scanSource("<div class={condition /* note */ ? 'sr-only' : ''}>x</div>", 'svelte'),
+    ).toHaveLength(1);
+  });
+
+  test('a regex literal inside classNames arguments is not a class', () => {
+    expect(scanSource("classNames(/sr-only/.test(value) && 'selected')", 'script')).toHaveLength(0);
+    expect(scanSource("classNames(/sr-only/.test(value) && 'sr-only')", 'script')).toHaveLength(1);
+  });
+});
