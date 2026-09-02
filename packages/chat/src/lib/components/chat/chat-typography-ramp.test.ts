@@ -22,6 +22,15 @@ describe('Chat scoped typography ramp', () => {
     ]);
     expect(chatCss).toContain('--cinder-chat-font-size: 1rem');
 
+    // The readability cap is registered, not declared on the component root:
+    // a root declaration would beat a consumer's `:root` or wrapper override
+    // (inheritance never wins against a declaration on the element itself),
+    // so the default has to come from `@property`'s `initial-value`.
+    expect(chatCss).toMatch(
+      /@property --cinder-chat-message-max-width \{\s*syntax: '<length-percentage>';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
+    );
+    expect(chatCss).not.toMatch(/--cinder-chat-message-max-width:\s*[^;]+;/);
+
     for (const step of ['4xs', '3xs', 'xs', 'sm', 'base', 'lg']) {
       const declaration = chatCss.match(
         new RegExp(`--_cinder-chat-text-${step}:\\s*([^;]+);`),
