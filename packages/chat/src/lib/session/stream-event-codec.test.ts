@@ -17,6 +17,23 @@ describe('chat stream event codec', () => {
     expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
   });
 
+  test('round-trips a tool_result carrying an error field', () => {
+    const event = {
+      type: 'tool_result' as const,
+      callId: 'call-1',
+      outcome: 'error' as const,
+      content: null,
+      error: {
+        code: 'TIMEOUT',
+        category: 'timeout' as const,
+        retryable: true,
+        message: 'timed out',
+        details: { elapsedMs: 5000 },
+      },
+    };
+    expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+  });
+
   test('preserves a JSON-safe signed pending approval extension', () => {
     const event = {
       type: 'tool_result' as const,
@@ -374,6 +391,41 @@ describe('chat stream event codec', () => {
         sequence: 5,
       };
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('round-trips stream:complete with an activeBlock', () => {
+      const block = {
+        id: 'block-1',
+        type: 'text' as const,
+        index: 0,
+        content: 'he',
+        complete: false,
+      };
+      const event = {
+        type: 'stream:complete' as const,
+        state: {
+          blocks: [block],
+          activeBlock: block,
+          textContent: 'he',
+          toolCalls: [],
+          complete: false,
+        },
+        wireVersion: 1 as const,
+        sequence: 5,
+      };
+      expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('rejects stream:block-delta when delta is not a string', () => {
+      expect(() =>
+        decodeChatStreamEvent({
+          type: 'stream:block-delta',
+          block: { id: 'block-1', type: 'text', index: 0, content: '', complete: false },
+          delta: 42,
+          wireVersion: 1,
+          sequence: 0,
+        }),
+      ).toThrow('Invalid chat stream event');
     });
 
     test('round-trips stream:usage', () => {
@@ -834,6 +886,216 @@ describe('chat stream event codec', () => {
         'Invalid chat stream event: stream:tool-call-complete.arguments contains a non-finite number',
       );
     });
+
+    test('rejects encoding a non-finite number nested in tool_result content', () => {
+      const event = {
+        type: 'tool_result',
+        callId: 'call-1',
+        outcome: 'success',
+        content: { score: Number.POSITIVE_INFINITY },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool result content contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding a non-finite number nested in a tool result error.details', () => {
+      const event = {
+        type: 'tool_result',
+        callId: 'call-1',
+        outcome: 'error',
+        content: null,
+        error: {
+          code: 'TIMEOUT',
+          category: 'timeout',
+          retryable: true,
+          message: 'timed out',
+          details: { elapsedMs: Number.NaN },
+        },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool result error.details contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding a non-finite number nested in a tool result action.schema', () => {
+      const event = {
+        type: 'tool_result',
+        callId: 'call-1',
+        outcome: 'action_required',
+        content: 'confirm?',
+        action: {
+          type: 'approval',
+          message: 'confirm?',
+          schema: { threshold: Number.POSITIVE_INFINITY },
+        },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool result action.schema contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding a non-finite number nested in a tool result pendingApproval', () => {
+      const event = {
+        type: 'tool_result',
+        callId: 'call-approval',
+        outcome: 'action_required',
+        content: 'confirm?',
+        pendingApproval: { callId: 'call-approval', arguments: { weight: Number.NaN } },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool result pendingApproval contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding a stream block with a negative index', () => {
+      const event = {
+        type: 'stream:block-start',
+        block: { id: 'block-1', type: 'text', index: -1, content: '', complete: false },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: block index must be a non-negative safe integer',
+      );
+    });
+
+    test('rejects encoding a nested stream:complete block with a non-finite index', () => {
+      const event = {
+        type: 'stream:complete',
+        state: {
+          blocks: [
+            { id: 'block-1', type: 'text', index: Number.NaN, content: '', complete: false },
+          ],
+          textContent: '',
+          toolCalls: [],
+          complete: true,
+        },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: block index must be a non-negative safe integer',
+      );
+    });
+
+    test('rejects encoding a non-finite stream:usage value', () => {
+      const event = {
+        type: 'stream:usage',
+        usage: { prompt: 1, completion: Number.NaN, total: 1 },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: usage is not a valid TokenUsage',
+      );
+    });
+
+    test('rejects encoding a non-finite run.completed usage value', () => {
+      const event = {
+        type: 'run.completed',
+        conversation: {
+          schemaVersion: 1,
+          id: 'conversation-1',
+          status: 'active',
+          metadata: {},
+          ids: [],
+          messages: {},
+          createdAt: '2026-01-01T00:00:00.000Z',
+          updatedAt: '2026-01-01T00:00:00.000Z',
+        },
+        content: 'Done.',
+        usage: { prompt: 1, completion: 1, total: Number.POSITIVE_INFINITY },
+        finishReason: 'stop-condition',
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: usage is not a valid TokenUsage',
+      );
+    });
+
+    test('rejects encoding a non-finite number nested in stream:error.error', () => {
+      const event = {
+        type: 'stream:error',
+        error: { message: 'provider failed', code: Number.NaN },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: stream:error.error contains a non-finite number',
+      );
+    });
+
+    test('rejects encoding a non-finite number nested in tool.error.error', () => {
+      const event = {
+        type: 'tool.error',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        error: { message: 'boom', retryAfterMs: Number.POSITIVE_INFINITY },
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool.error.error contains a non-finite number',
+      );
+    });
+
+    test('never decodes extra properties smuggled onto a nested stream:block-start block', () => {
+      const decoded = decodeChatStreamEvent({
+        type: 'stream:block-start',
+        block: {
+          id: 'block-1',
+          type: 'text',
+          index: 0,
+          content: '',
+          complete: false,
+          providerSecret: 'should-never-survive-decode',
+        },
+        wireVersion: 1,
+        sequence: 0,
+      });
+      expect(decoded).toEqual({
+        type: 'stream:block-start',
+        block: { id: 'block-1', type: 'text', index: 0, content: '', complete: false },
+        wireVersion: 1,
+        sequence: 0,
+      });
+    });
+
+    test('never decodes extra properties smuggled onto nested stream:complete blocks', () => {
+      const decoded = decodeChatStreamEvent({
+        type: 'stream:complete',
+        state: {
+          blocks: [
+            {
+              id: 'block-1',
+              type: 'text',
+              index: 0,
+              content: 'hi',
+              complete: true,
+              providerSecret: 'should-never-survive-decode',
+            },
+          ],
+          textContent: 'hi',
+          toolCalls: [],
+          complete: true,
+        },
+        wireVersion: 1,
+        sequence: 0,
+      });
+      expect(decoded).toEqual({
+        type: 'stream:complete',
+        state: {
+          blocks: [{ id: 'block-1', type: 'text', index: 0, content: 'hi', complete: true }],
+          textContent: 'hi',
+          toolCalls: [],
+          complete: true,
+        },
+        wireVersion: 1,
+        sequence: 0,
+      });
+    });
   });
 
   describe('decodeChatStreamEvents stream-level invariants (CIN-507)', () => {
@@ -937,6 +1199,30 @@ describe('chat stream event codec', () => {
         }) + encodeChatStreamEvent({ type: 'run.aborted', wireVersion: 1, sequence: 1 });
       const events = await Array.fromAsync(decodeChatStreamEvents(ndjson));
       expect(events).toHaveLength(2);
+    });
+
+    test('rejects any frame that follows the terminal frame', async () => {
+      const ndjson =
+        encodeChatStreamEvent({ type: 'run.aborted', wireVersion: 1, sequence: 0 }) +
+        encodeChatStreamEvent({
+          type: 'stream:text-delta',
+          content: 'h',
+          accumulated: 'h',
+          wireVersion: 1,
+          sequence: 1,
+        });
+      await expect(Array.fromAsync(decodeChatStreamEvents(ndjson))).rejects.toThrow(
+        'Invalid chat stream event: frame arrived after the terminal frame',
+      );
+    });
+
+    test('rejects a second terminal frame following the first', async () => {
+      const ndjson =
+        encodeChatStreamEvent({ type: 'run.aborted', wireVersion: 1, sequence: 0 }) +
+        encodeChatStreamEvent({ type: 'run.aborted', wireVersion: 1, sequence: 1 });
+      await expect(Array.fromAsync(decodeChatStreamEvents(ndjson))).rejects.toThrow(
+        'Invalid chat stream event: frame arrived after the terminal frame',
+      );
     });
 
     test('accepts a wholly legacy (bare) stream with no terminal frame at all', async () => {

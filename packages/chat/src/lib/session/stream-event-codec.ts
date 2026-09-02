@@ -220,13 +220,39 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
   const projected: Record<string, unknown> = {
     callId: result.callId,
     outcome: result.outcome,
-    content: result.content,
+    content: assertFiniteJSONValue(result.content, 'tool result content'),
   };
-  if (result.error !== undefined) projected['error'] = result.error;
-  if (result.action !== undefined) projected['action'] = result.action;
+  if (result.error !== undefined) {
+    const projectedError: Record<string, unknown> = {
+      code: result.error.code,
+      category: result.error.category,
+      retryable: result.error.retryable,
+      message: result.error.message,
+    };
+    if (result.error.details !== undefined)
+      projectedError['details'] = assertFiniteJSONValue(
+        result.error.details,
+        'tool result error.details',
+      );
+    projected['error'] = projectedError;
+  }
+  if (result.action !== undefined) {
+    const projectedAction: Record<string, unknown> = { type: result.action.type };
+    if (result.action.message !== undefined) projectedAction['message'] = result.action.message;
+    if (result.action.schema !== undefined)
+      projectedAction['schema'] = assertFiniteJSONValue(
+        result.action.schema,
+        'tool result action.schema',
+      );
+    projected['action'] = projectedAction;
+  }
   if (result.inputDigest !== undefined) projected['inputDigest'] = result.inputDigest;
   if (result.outputDigest !== undefined) projected['outputDigest'] = result.outputDigest;
-  if (result.pendingApproval !== undefined) projected['pendingApproval'] = result.pendingApproval;
+  if (result.pendingApproval !== undefined)
+    projected['pendingApproval'] = assertFiniteJSONValue(
+      result.pendingApproval,
+      'tool result pendingApproval',
+    );
   return projected;
 }
 
@@ -235,9 +261,14 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
  * in through a variable is only structurally checked by TypeScript, so an
  * Operative-derived object carrying provider-only metadata could otherwise
  * ride along unnoticed — the same risk `projectChatToolResult` closes for
- * tool results.
+ * tool results. Also validates `index` the same way the decoder does
+ * (non-negative safe integer), so a caller-constructed block can't produce
+ * a frame the decoder would then reject or that `JSON.stringify` would
+ * silently corrupt (a non-finite `index` serializes to `null`).
  */
 function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown> {
+  if (!isNonNegativeSafeInteger(block.index))
+    throw new Error('Invalid chat stream event: block index must be a non-negative safe integer');
   const projected: Record<string, unknown> = {
     id: block.id,
     type: block.type,
@@ -247,6 +278,28 @@ function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown>
   };
   if (block.toolName !== undefined) projected['toolName'] = block.toolName;
   if (block.partialArguments !== undefined) projected['partialArguments'] = block.partialArguments;
+  return projected;
+}
+
+/**
+ * Whitelists exactly `TokenUsage`'s declared fields, validated the same way
+ * the decoder's `isTokenUsage` guard does — which, since it checks
+ * `Number.isInteger` on every field, already rejects `NaN`/`Infinity`
+ * (`Number.isInteger` is false for both). Reusing that guard here means a
+ * non-finite usage value throws before encoding rather than silently
+ * becoming `null` and failing the decoder's own check downstream.
+ */
+function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
+  if (!isTokenUsage(usage))
+    throw new Error('Invalid chat stream event: usage is not a valid TokenUsage');
+  const projected: Record<string, unknown> = {
+    prompt: usage.prompt,
+    completion: usage.completion,
+    total: usage.total,
+  };
+  if (usage.cacheCreationTokens !== undefined)
+    projected['cacheCreationTokens'] = usage.cacheCreationTokens;
+  if (usage.cacheReadTokens !== undefined) projected['cacheReadTokens'] = usage.cacheReadTokens;
   return projected;
 }
 
@@ -260,7 +313,7 @@ function projectChatStreamState(state: ChatStreamState): Record<string, unknown>
   };
   if (state.activeBlock !== undefined)
     projected['activeBlock'] = projectChatStreamBlock(state.activeBlock);
-  if (state.usage !== undefined) projected['usage'] = state.usage;
+  if (state.usage !== undefined) projected['usage'] = projectTokenUsage(state.usage);
   return projected;
 }
 
@@ -388,11 +441,15 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         ...envelope,
       };
     case 'stream:usage':
-      return { type: 'stream:usage', usage: event.usage, ...envelope };
+      return { type: 'stream:usage', usage: projectTokenUsage(event.usage), ...envelope };
     case 'stream:complete':
       return { type: 'stream:complete', state: projectChatStreamState(event.state), ...envelope };
     case 'stream:error':
-      return { type: 'stream:error', error: event.error, ...envelope };
+      return {
+        type: 'stream:error',
+        error: assertFiniteJSONValue(event.error, 'stream:error.error'),
+        ...envelope,
+      };
     case 'tool.started':
       return {
         type: 'tool.started',
@@ -440,7 +497,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         type: 'tool.error',
         toolCallId: event.toolCallId,
         toolName: event.toolName,
-        error: event.error,
+        error: assertFiniteJSONValue(event.error, 'tool.error.error'),
         ...envelope,
       };
     case 'tool.policy-denied': {
@@ -457,7 +514,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         type: 'run.completed',
         conversation: event.conversation,
         content: event.content,
-        usage: event.usage,
+        usage: projectTokenUsage(event.usage),
         finishReason: event.finishReason,
         ...envelope,
       };
@@ -529,29 +586,75 @@ function isChatStreamBlockType(value: unknown): value is ChatStreamBlockType {
   return value === 'text' || value === 'tool-call' || value === 'thinking' || value === 'metadata';
 }
 
-function isChatStreamBlock(value: unknown): value is ChatStreamBlock {
-  if (!isRecord(value)) return false;
-  if (typeof value['id'] !== 'string') return false;
-  if (!isChatStreamBlockType(value['type'])) return false;
-  if (!isNonNegativeSafeInteger(value['index'])) return false;
-  if (typeof value['content'] !== 'string') return false;
-  if (typeof value['complete'] !== 'boolean') return false;
-  if (value['toolName'] !== undefined && typeof value['toolName'] !== 'string') return false;
+/**
+ * Validates and rebuilds a `ChatStreamBlock`-shaped value into exactly its
+ * declared fields. Rebuilding rather than returning the parsed value as-is
+ * is what stops an untrusted producer's extra enumerable properties from
+ * surviving decode — the guard below validates the fields it cares about,
+ * but a hand-rolled guard (unlike the `.strict()` Zod schemas Conversationalist
+ * uses for `tool_result`/`run.completed`) doesn't reject unknown keys on
+ * its own.
+ */
+function toChatStreamBlock(value: unknown): ChatStreamBlock | undefined {
+  if (!isRecord(value)) return undefined;
+  if (typeof value['id'] !== 'string') return undefined;
+  if (!isChatStreamBlockType(value['type'])) return undefined;
+  if (!isNonNegativeSafeInteger(value['index'])) return undefined;
+  if (typeof value['content'] !== 'string') return undefined;
+  if (typeof value['complete'] !== 'boolean') return undefined;
+  if (value['toolName'] !== undefined && typeof value['toolName'] !== 'string') return undefined;
   if (value['partialArguments'] !== undefined && typeof value['partialArguments'] !== 'string')
-    return false;
-  return true;
+    return undefined;
+  const block: ChatStreamBlock = {
+    id: value['id'],
+    type: value['type'],
+    index: value['index'],
+    content: value['content'],
+    complete: value['complete'],
+  };
+  if (typeof value['toolName'] === 'string') block.toolName = value['toolName'];
+  if (typeof value['partialArguments'] === 'string')
+    block.partialArguments = value['partialArguments'];
+  return block;
 }
 
-function isChatStreamState(value: unknown): value is ChatStreamState {
-  if (!isRecord(value)) return false;
-  if (!Array.isArray(value['blocks']) || !value['blocks'].every(isChatStreamBlock)) return false;
-  if (value['activeBlock'] !== undefined && !isChatStreamBlock(value['activeBlock'])) return false;
-  if (typeof value['textContent'] !== 'string') return false;
-  if (!Array.isArray(value['toolCalls']) || !value['toolCalls'].every(isChatStreamBlock))
-    return false;
-  if (typeof value['complete'] !== 'boolean') return false;
-  if (value['usage'] !== undefined && !isTokenUsage(value['usage'])) return false;
-  return true;
+/** Rebuilds a `ChatStreamBlock[]` from an unknown array, or `undefined` if any entry is invalid. */
+function toChatStreamBlockArray(value: unknown): ChatStreamBlock[] | undefined {
+  if (!Array.isArray(value)) return undefined;
+  const blocks: ChatStreamBlock[] = [];
+  for (const entry of value) {
+    const block = toChatStreamBlock(entry);
+    if (block === undefined) return undefined;
+    blocks.push(block);
+  }
+  return blocks;
+}
+
+/** Validates and rebuilds a `ChatStreamState`-shaped value the same way {@link toChatStreamBlock} does for blocks, including its nested block arrays. */
+function toChatStreamState(value: unknown): ChatStreamState | undefined {
+  if (!isRecord(value)) return undefined;
+  const blocks = toChatStreamBlockArray(value['blocks']);
+  if (blocks === undefined) return undefined;
+  let activeBlock: ChatStreamBlock | undefined;
+  if (value['activeBlock'] !== undefined) {
+    activeBlock = toChatStreamBlock(value['activeBlock']);
+    if (activeBlock === undefined) return undefined;
+  }
+  if (typeof value['textContent'] !== 'string') return undefined;
+  const toolCalls = toChatStreamBlockArray(value['toolCalls']);
+  if (toolCalls === undefined) return undefined;
+  if (typeof value['complete'] !== 'boolean') return undefined;
+  const usage = value['usage'];
+  if (usage !== undefined && !isTokenUsage(usage)) return undefined;
+  const state: ChatStreamState = {
+    blocks,
+    textContent: value['textContent'],
+    toolCalls,
+    complete: value['complete'],
+  };
+  if (activeBlock !== undefined) state.activeBlock = activeBlock;
+  if (usage !== undefined && isTokenUsage(usage)) state.usage = usage;
+  return state;
 }
 
 function isChatAgentRunErrorKind(value: unknown): value is ChatAgentRunErrorKind {
@@ -645,22 +748,20 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   // requires a fully-present wire envelope.
   const required = requireWireEnvelope(envelope);
 
-  if (eventType === 'stream:block-start' && isChatStreamBlock(parsed['block']))
-    return { type: 'stream:block-start', block: parsed['block'], ...required };
-  if (
-    eventType === 'stream:block-delta' &&
-    isChatStreamBlock(parsed['block']) &&
-    typeof parsed['delta'] === 'string'
-  ) {
-    return {
-      type: 'stream:block-delta',
-      block: parsed['block'],
-      delta: parsed['delta'],
-      ...required,
-    };
+  if (eventType === 'stream:block-start') {
+    const block = toChatStreamBlock(parsed['block']);
+    if (block) return { type: 'stream:block-start', block, ...required };
   }
-  if (eventType === 'stream:block-complete' && isChatStreamBlock(parsed['block']))
-    return { type: 'stream:block-complete', block: parsed['block'], ...required };
+  if (eventType === 'stream:block-delta') {
+    const block = toChatStreamBlock(parsed['block']);
+    if (block && typeof parsed['delta'] === 'string') {
+      return { type: 'stream:block-delta', block, delta: parsed['delta'], ...required };
+    }
+  }
+  if (eventType === 'stream:block-complete') {
+    const block = toChatStreamBlock(parsed['block']);
+    if (block) return { type: 'stream:block-complete', block, ...required };
+  }
   if (
     eventType === 'stream:text-delta' &&
     typeof parsed['content'] === 'string' &&
@@ -715,8 +816,10 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   }
   if (eventType === 'stream:usage' && isTokenUsage(parsed['usage']))
     return { type: 'stream:usage', usage: parsed['usage'], ...required };
-  if (eventType === 'stream:complete' && isChatStreamState(parsed['state']))
-    return { type: 'stream:complete', state: parsed['state'], ...required };
+  if (eventType === 'stream:complete') {
+    const state = toChatStreamState(parsed['state']);
+    if (state) return { type: 'stream:complete', state, ...required };
+  }
   if (eventType === 'stream:error' && isJSONValue(parsed['error']))
     return { type: 'stream:error', error: parsed['error'], ...required };
 
@@ -873,6 +976,14 @@ function isTerminalChatStreamEvent(event: ChatStreamEvent): boolean {
  * envelope mode for the whole stream.
  */
 function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState): void {
+  // Exactly one terminal frame is written when the connection remains
+  // available, and the server closes the stream immediately after it
+  // (reference architecture, "Stream wire contract"). A frame arriving
+  // after a terminal one already did is a protocol violation, not just a
+  // late-arriving no-op — reject it rather than silently accepting it.
+  if (guard.sawTerminal)
+    throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
+
   const frameMode: 'bare' | 'versioned' = event.wireVersion === undefined ? 'bare' : 'versioned';
   if (guard.mode === undefined) guard.mode = frameMode;
   else if (guard.mode !== frameMode)
