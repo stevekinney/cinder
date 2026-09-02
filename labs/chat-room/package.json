@@ -30,7 +30,7 @@
 		"@milkdown/kit": "^7.17.3",
 		"@milkdown/prose": "^7.17.3",
 		"armorer": "^2.1.0",
-		"conversationalist": "^1.0.0",
+		"conversationalist": "^1.1.0",
 		"lucide-svelte": "0.577.0",
 		"prosemirror-inputrules": "^1.5.1",
 		"prosemirror-model": "^1.25.4",
