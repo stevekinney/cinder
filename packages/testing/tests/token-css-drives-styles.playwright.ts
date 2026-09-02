@@ -298,8 +298,12 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect.poll(gapOf).toBe(before);
     expect(before).not.toBe('3px');
 
-    // The component property itself remains overridable, which is the supported escape hatch.
-    await item.evaluate((element) => {
+    // The component property itself remains overridable, which is the supported escape
+    // hatch. Set on the PARENT, matching the ActionRow test above: `item` is located by
+    // `:not([style*="--cinder-accordion-item-trigger-gap"])`, so writing that property
+    // inline on the item makes it stop matching, and the lazy locator silently re-resolves
+    // to a different accordion item still showing the default gap.
+    await item.locator('..').evaluate((element) => {
       (element as HTMLElement).style.setProperty('--cinder-accordion-item-trigger-gap', '5px');
     });
     await expect.poll(gapOf).toBe('5px');
