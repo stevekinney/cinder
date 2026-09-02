@@ -292,6 +292,23 @@ const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`^class:${BARE_TOKEN_SOURCE
  */
 const SPREAD_CLASS_PROPERTY_PATTERN = /(?<![\w$.])(?:class|['"]class['"])\s*:\s*/g;
 
+/**
+ * Tells whether a `SPREAD_CLASS_PROPERTY_PATTERN` match at `index` of the raw
+ * expression is a real property key, by looking at the same offset in the
+ * string-masked expression: a bare `class` is a key only if it survived
+ * masking (it was not inside a quoted value), and a quoted `'class'` is a key
+ * only if the mask shows exactly that string literal there (an opening quote
+ * followed by five blanked characters and the closing quote) rather than a
+ * fragment of a longer string.
+ */
+export function isSpreadClassKey(maskedExpression: string, index: number): boolean {
+  const quote = maskedExpression[index];
+  if (quote === "'" || quote === '"') {
+    return maskedExpression.slice(index, index + 7) === `${quote}     ${quote}`;
+  }
+  return maskedExpression.startsWith('class', index);
+}
+
 /** Matches a bare token inside a quoted string literal (single, double, or template). */
 const QUOTED_TOKEN_PATTERN = new RegExp(
   String.raw`(["'\`])(?:(?!\1)[\s\S])*${BARE_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
@@ -747,15 +764,20 @@ export function scanSource(
       if (attribute.kind === 'spread') {
         // Only a top-level property of the spread object lands on this
         // element: `{...{ config: { class: 'sr-only' } }}` passes `config`
-        // along and applies no class here. The pattern therefore runs over
-        // the string-masked expression (so `class:` inside a quoted value is
-        // blank) and a match only counts when exactly one object literal
-        // encloses it — `(hidden ? { class } : {})` still qualifies, a
-        // nested object or an array element does not.
+        // along and applies no class here. The pattern runs over the raw
+        // expression so a quoted key (`{ 'class': 'sr-only' }`) is still
+        // visible, and each match is checked against the string-masked
+        // expression: a bare `class` must survive masking (so `class:` inside
+        // a quoted value is skipped) and a quoted key must be exactly the
+        // string literal `class` (so `"'class': x"` inside a larger string is
+        // skipped). A match then only counts when exactly one object literal
+        // encloses it — `(hidden ? { class } : {})` still qualifies, a nested
+        // object or an array element does not.
         const maskedExpression = maskStringLiterals(attribute.expression);
         SPREAD_CLASS_PROPERTY_PATTERN.lastIndex = 0;
         let property: RegExpExecArray | null;
-        while ((property = SPREAD_CLASS_PROPERTY_PATTERN.exec(maskedExpression)) !== null) {
+        while ((property = SPREAD_CLASS_PROPERTY_PATTERN.exec(attribute.expression)) !== null) {
+          if (!isSpreadClassKey(maskedExpression, property.index)) continue;
           if (enclosingObjectLiterals(maskedExpression, property.index) !== 1) continue;
           // The property value runs to the next `,` or `}` at depth zero of
           // the string-masked expression, so a comma inside a quoted class

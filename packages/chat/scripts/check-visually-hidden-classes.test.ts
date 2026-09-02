@@ -484,6 +484,19 @@ describe('scanSource — opening tags are read attribute by attribute', () => {
     expect(scanSource('<Widget {...{ example: "{ class: \'sr-only\' }" }} />')).toHaveLength(0);
   });
 
+  test('flags a quoted class key in a spread object', () => {
+    expect(scanSource("<span {...{ 'class': 'sr-only' }}>x</span>")).toHaveLength(1);
+    expect(scanSource('<span {...{ "class": "sr-only", id }}>x</span>')).toHaveLength(1);
+    expect(scanSource("<span {...{ id, 'class': hidden ? 'sr-only' : '' }}>x</span>")).toHaveLength(
+      1,
+    );
+  });
+
+  test('a quoted class key inside a longer spread string is not a hit', () => {
+    expect(scanSource("<Widget {...{ example: \"'class': 'sr-only'\" }} />")).toHaveLength(0);
+    expect(scanSource('<Widget {...{ example: \'"class": "sr-only"\' }} />')).toHaveLength(0);
+  });
+
   test('a top-level class key behind a conditional spread is still a hit', () => {
     expect(scanSource("<span {...(hidden ? { class: 'sr-only' } : {})}>x</span>")).toHaveLength(1);
   });
