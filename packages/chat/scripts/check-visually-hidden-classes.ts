@@ -239,7 +239,7 @@ function regexCanStartAt(before: string, next: string | undefined): boolean {
   if (trimmed.endsWith('}')) return !closesObjectLiteral(trimmed);
   if (trimmed.endsWith(')')) return closesControlFlowCondition(trimmed);
   if (/(?:[(,=:[!&|?{;]|=>)$/.test(trimmed)) return true;
-  return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(trimmed);
+  return /(?:^|[^\w$])(?:return|throw|typeof|case|do|else|in|of|yield|await)$/.test(trimmed);
 }
 
 /**
@@ -644,13 +644,20 @@ const ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(BARE_TOKEN_SOURCE, 'g');
  */
 const NAMED_CHARACTER_REFERENCES: Record<string, string> = {
   amp: '&',
+  AMP: '&',
   lt: '<',
+  LT: '<',
   gt: '>',
+  GT: '>',
   quot: '"',
+  QUOT: '"',
   apos: "'",
   nbsp: '\u00a0',
-  tab: '\t',
-  newline: '\n',
+  NonBreakingSpace: '\u00a0',
+  // The whitespace references are spelled `&Tab;` and `&NewLine;` in the HTML
+  // standard — casing matters, and both decode to a real class separator.
+  Tab: '\t',
+  NewLine: '\n',
 };
 export function decodeCharacterReferences(value: string): string {
   return value.replace(
@@ -746,7 +753,24 @@ export function decodeCssIdentifierEscapes(cssText: string): string {
  * form, which is what rejects `content: '[class~="sr-only"]'`.
  */
 const CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN =
-  /\[\s*class\s*[~|^$*]?=\s*(?:"([^"\]]*)"|'([^'\]]*)'|([^\s"'\]]+))\s*(?:[iIsS]\s*)?\]/g;
+  /\[\s*class\s*([~|^$*]?)=\s*(?:"([^"\]]*)"|'([^'\]]*)'|([^\s"'\]]+))\s*(?:[iIsS]\s*)?\]/g;
+
+/**
+ * Whether an attribute selector with this operator and value can select an
+ * element carrying the bare class. `~=` compares whole whitespace-delimited
+ * tokens and `=`/`|=` compare the whole attribute value, so all three need a
+ * whole-token match — `[class~="focus:sr-only"]` selects only `focus:sr-only`.
+ * `*=`, `^=`, and `$=` compare substrings of the attribute value, so any
+ * occurrence of the bare token counts.
+ */
+function classAttributeSelectorMatches(operator: string, value: string): boolean {
+  const pattern =
+    operator === '*' || operator === '^' || operator === '$'
+      ? ATTRIBUTE_VALUE_TOKEN_PATTERN
+      : CLASS_ATTRIBUTE_VALUE_TOKEN_PATTERN;
+  pattern.lastIndex = 0;
+  return pattern.test(value);
+}
 
 /**
  * True when a `.sr-only` match sits in a CSS *selector* position rather than
@@ -914,7 +938,23 @@ export function extractOpeningTagSpans(text: string): Array<{ start: number; tex
     const character = text[index];
     if (character === '{') {
       if (/^\{\s*@html\b/.test(text.slice(index, index + 8))) {
-        index++;
+        // The expression's strings are injected as markup, so tags inside
+        // them are real elements — but the expression is still JavaScript, and
+        // its comments and regex bodies render nothing. Walk a copy with those
+        // blanked (both maskers preserve length, so offsets still line up) and
+        // leave the string literals intact.
+        const length = balancedExpressionLength(text, index);
+        const inner = text.slice(index, index + length);
+        // The `{@html` prefix is blanked first so the maskers see an
+        // expression start: a regex literal is legal as the very first token,
+        // and `@html` is not a name a regex could follow.
+        const expression = inner.replace(/^\{\s*@html\b/, (match) => ' '.repeat(match.length));
+        for (const span of extractOpeningTagSpans(
+          maskRegexLiterals(maskScriptComments(expression)),
+        )) {
+          spans.push({ start: index + span.start, text: span.text });
+        }
+        index += length;
         continue;
       }
       index += balancedExpressionLength(text, index);
@@ -1466,9 +1506,8 @@ export function scanSource(
     CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN.lastIndex = 0;
     let attributeMatch: RegExpExecArray | null;
     while ((attributeMatch = CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN.exec(text)) !== null) {
-      const value = attributeMatch[1] ?? attributeMatch[2] ?? attributeMatch[3] ?? '';
-      ATTRIBUTE_VALUE_TOKEN_PATTERN.lastIndex = 0;
-      if (!ATTRIBUTE_VALUE_TOKEN_PATTERN.test(value)) continue;
+      const value = attributeMatch[2] ?? attributeMatch[3] ?? attributeMatch[4] ?? '';
+      if (!classAttributeSelectorMatches(attributeMatch[1] ?? '', value)) continue;
       if (isCssSelectorContext(cssText, attributeMatch.index + attributeMatch[0].length))
         record(offset + attributeMatch.index);
     }

@@ -1046,3 +1046,42 @@ describe('scanSource — seventh-round review findings', () => {
     expect(scanSource("classNames(/sr-only/.test(value) && 'sr-only')", 'script')).toHaveLength(1);
   });
 });
+
+describe('scanSource — eighth-round review findings', () => {
+  test('the whitespace character references are decoded with their standard casing', () => {
+    expect(scanSource('<div class="foo&Tab;sr-only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="foo&NewLine;sr-only">x</div>', 'svelte')).toHaveLength(1);
+    // Still a single token when the reference decodes to something else.
+    expect(scanSource('<div class="foo&amp;sr-only">x</div>', 'svelte')).toHaveLength(0);
+  });
+
+  test('a class attribute selector matches by its own operator', () => {
+    // `~=` and `=` compare whole tokens, so a prefixed token is not the bare class.
+    expect(scanSource('[class~="focus:sr-only"] { color: red; }', 'css')).toHaveLength(0);
+    expect(scanSource('[class="focus:sr-only"] { color: red; }', 'css')).toHaveLength(0);
+    expect(scanSource('[class|="focus:sr-only"] { color: red; }', 'css')).toHaveLength(0);
+    expect(scanSource('[class~="sr-only"] { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[class="foo sr-only"] { color: red; }', 'css')).toHaveLength(1);
+    // The substring operators still match a token embedded anywhere.
+    expect(scanSource('[class*="focus:sr-only"] { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[class^="sr-only"] { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[class$="sr-only"] { color: red; }', 'css')).toHaveLength(1);
+  });
+
+  test('a regex literal is recognized after `throw`', () => {
+    expect(scanSource("throw /'sr-only'/;", 'script')).toHaveLength(0);
+    expect(scanSource("throw new Error('sr-only');", 'script')).toHaveLength(1);
+  });
+
+  test('inert code inside an `{@html}` expression is not markup', () => {
+    expect(
+      scanSource(
+        "{@html condition /* '<span class=\"sr-only\">' */ ? '<span>a</span>' : '<span>b</span>'}",
+        'svelte',
+      ),
+    ).toHaveLength(0);
+    expect(scanSource('{@html /<span class="sr-only">/.source}', 'svelte')).toHaveLength(0);
+    // A string the expression can actually inject is still markup.
+    expect(scanSource('{@html \'<span class="sr-only">a</span>\'}', 'svelte')).toHaveLength(1);
+  });
+});
