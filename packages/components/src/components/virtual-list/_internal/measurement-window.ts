@@ -125,7 +125,16 @@ export function getDynamicVirtualWindow(options: {
     leadingIndex -= 1;
   }
   const startIndex = leadingIndex;
-  const endIndex = Math.min(count, visibleEndIndex + 1 + resolvedOverscan); // +1: endIndex is exclusive
+  // +1: endIndex is exclusive.
+  let trailingIndex = Math.min(count, visibleEndIndex + 1 + resolvedOverscan);
+  // The mirror of the leading-edge walk below. A zero-height row sitting exactly at
+  // the trailing boundary is otherwise excluded, and with overscan 0 it unmounts,
+  // loses its ResizeObserver, and its cached zero keeps it out of every later
+  // window — so nothing can ever expand it again.
+  while (trailingIndex < count && offsets[trailingIndex] === offsets[trailingIndex + 1]) {
+    trailingIndex += 1;
+  }
+  const endIndex = trailingIndex;
 
   const items = [];
   for (let index = startIndex; index < endIndex; index += 1) {

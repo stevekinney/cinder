@@ -362,4 +362,31 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/some-entry`);
   });
+
+  test('flags a no-substitution template-literal dynamic import in shipped source', () => {
+    // Valid syntax that a quote-only scanner ignores entirely, so an undeclared
+    // package could ship while the guard stayed green.
+    const source = 'const helper = await import(`some-dev-only-package`);';
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('skips an interpolated template-literal import rather than guessing', () => {
+    // Not statically resolvable by any grep-based scanner. Reporting the raw
+    // interpolation text as a package name would be a false positive.
+    const source = 'const helper = await import(`some-${name}-package`);';
+
+    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toEqual([]);
+  });
+
+  test('does not read backticked prose after the word from as an import', () => {
+    // A static import declaration cannot take a template literal, so accepting
+    // backticks there matches nothing real and misreads ordinary JSDoc — which in
+    // this codebase writes "from `some-file.ts`" constantly.
+    const source = '// re-exported from `fixed-virtual-window.ts` for convenience';
+
+    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toEqual([]);
+  });
 });

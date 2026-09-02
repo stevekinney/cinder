@@ -567,3 +567,30 @@ describe('round-four engine regressions', () => {
     expect(result.items.find((item) => item.index === 2)?.size).toBe(0);
   });
 });
+
+describe('round-five engine regressions', () => {
+  test('keeps a zero-height row mounted at the TRAILING window edge', () => {
+    // The mirror of the leading-edge case. A collapsed row at the trailing
+    // boundary is otherwise excluded, and with overscan 0 it unmounts, loses its
+    // observer, and its cached zero keeps it out of every later window.
+    const measured = new Map<number, number>([[3, 0]]);
+    const offsets = buildVirtualOffsets({
+      itemCount: 6,
+      estimateSize: 10,
+      getKey: (index) => index,
+      measuredSizes: measured,
+    });
+
+    // Offsets: [0, 10, 20, 30, 30, 40, 50] — index 3 is the collapsed row.
+    const result = getDynamicVirtualWindow({
+      offsets,
+      getKey: (index) => index,
+      scrollOffset: 20,
+      viewportSize: 10,
+      overscan: 0,
+    });
+
+    expect(result.items.some((item) => item.index === 3)).toBe(true);
+    expect(result.items.find((item) => item.index === 3)?.size).toBe(0);
+  });
+});

@@ -73,6 +73,12 @@ export const FORBIDDEN_SPECIFIER = '@tanstack/virtual-core';
  * not) and from a bare side-effect `import '<specifier>'`. Applied per line,
  * matching `check-no-cycle-imports.ts`'s grep-based approach.
  *
+ * Quote-delimited only, deliberately. A static import declaration cannot take a
+ * template literal — `import x from ` + backtick + `pkg` + backtick + ` is a syntax error — so accepting
+ * backticks here would match nothing real and would misread ordinary prose,
+ * where "from `some-file.ts`" appears constantly in this codebase's JSDoc.
+ * Only {@link DYNAMIC_IMPORT_PATTERN} accepts them.
+ *
  * Dynamic `import('<specifier>')` calls are matched too — see
  * {@link DYNAMIC_IMPORT_PATTERN} for how they are judged.
  */
@@ -94,10 +100,24 @@ const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"\n]+)\1/g;
  * them. Nothing in a test file ships, so the undeclared-import risk does not apply;
  * the `@tanstack/virtual-core` ban still does.
  */
-const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"])([^'"\n]+)\1/g;
+const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"`])([^'"`\n]+)\1/g;
 
 /** Files whose imports never ship, so the undeclared-bare-import rule does not apply to them. */
 const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?tsx?$/u;
+
+/**
+ * Whether a matched specifier can be judged at all.
+ *
+ * A no-substitution template literal is exactly equivalent to a quoted string and
+ * is scanned like one. An INTERPOLATED template is not statically resolvable by
+ * any grep-based scanner, so it is skipped rather than guessed at: reporting the
+ * raw interpolation text as a bare package name would be a false positive, and
+ * pretending to resolve it would be worse. A documented, narrow limit of a
+ * grep-based guard, not an oversight.
+ */
+function isStaticallyResolvableSpecifier(specifier: string): boolean {
+  return !specifier.includes('${');
+}
 
 /**
  * Whether a specifier resolves to the forbidden package, root or subpath.
@@ -218,6 +238,7 @@ export function findDependencyViolations(
     const specifier = match[2];
     if (specifier === undefined) continue;
     seenOffsets.add(match.index);
+    if (!isStaticallyResolvableSpecifier(specifier)) continue;
     record(
       specifier,
       specifierOffset(match),
@@ -231,6 +252,7 @@ export function findDependencyViolations(
   while ((match = DYNAMIC_IMPORT_PATTERN.exec(content)) !== null) {
     const specifier = match[2];
     if (specifier === undefined) continue;
+    if (!isStaticallyResolvableSpecifier(specifier)) continue;
     // A static `import ... from` match starting at the same offset was already
     // reported above; do not report the same occurrence twice.
     if (seenOffsets.has(match.index)) continue;
