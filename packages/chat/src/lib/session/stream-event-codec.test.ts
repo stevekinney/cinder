@@ -661,6 +661,26 @@ describe('chat stream event codec', () => {
       if (decoded.type === 'tool.settled') expect(decoded.result.callId).toBe('call-1');
     });
 
+    test('encodes the tool.progress percent it validated when a getter answers differently per read', () => {
+      const answers = [40, Number.NaN];
+      const event = {
+        type: 'tool.progress',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1,
+        sequence: 2,
+      } as Record<string, unknown>;
+      Object.defineProperty(event, 'percent', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      const decoded = decodeChatStreamEvent(
+        encodeChatStreamEvent(event as unknown as ChatStreamEvent),
+      );
+      expect(decoded.type).toBe('tool.progress');
+      if (decoded.type === 'tool.progress') expect(decoded.percent).toBe(40);
+    });
+
     test('round-trips tool.error with JSONValue-narrowed error', () => {
       const event = {
         type: 'tool.error' as const,
@@ -738,6 +758,50 @@ describe('chat stream event codec', () => {
         sequence: 9,
       };
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('encodes the run.error fields it validated when a getter answers differently per read', () => {
+      const answers = ['AgentRunError', undefined];
+      const error = {
+        message: 'The model call failed.',
+        kind: 'generate',
+        code: 'UNKNOWN',
+      } as Record<string, unknown>;
+      Object.defineProperty(error, 'name', {
+        enumerable: true,
+        get: () => answers.shift(),
+      });
+      const event = {
+        type: 'run.error',
+        error,
+        wireVersion: 1,
+        sequence: 4,
+      } as unknown as ChatStreamEvent;
+      // Without a single snapshot the guard sees the string, the returned
+      // frame drops `name` entirely, and the decoder rejects it.
+      const decoded = decodeChatStreamEvent(encodeChatStreamEvent(event));
+      expect(decoded.type).toBe('run.error');
+      if (decoded.type === 'run.error') expect(decoded.error.name).toBe('AgentRunError');
+    });
+
+    test('validates the already-decoded event fields it returns when a getter answers differently per read', () => {
+      const answers = [40, Number.NaN];
+      const event = {
+        type: 'tool.progress',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1,
+        sequence: 2,
+      } as Record<string, unknown>;
+      Object.defineProperty(event, 'percent', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      // The already-decoded transport path hands the guard the producer's own
+      // object, so the predicate and the returned event must see one value.
+      const decoded = decodeChatStreamEvent(event);
+      expect(decoded.type).toBe('tool.progress');
+      if (decoded.type === 'tool.progress') expect(decoded.percent).toBe(40);
     });
 
     test('strips a `cause` field from run.error rather than forwarding it', () => {

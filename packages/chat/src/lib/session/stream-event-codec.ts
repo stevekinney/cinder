@@ -417,13 +417,17 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
   // non-string `name`/`message`. The decoder validates all four with these
   // same guards, so without this the encoder could emit a frame its own
   // decoder rejects — after the bad payload had already crossed the wire.
-  if (typeof error.name !== 'string' || typeof error.message !== 'string')
+  //
+  // Every field is read once up front, so an accessor cannot answer the
+  // guards with one value and the returned frame with another.
+  const { name, message, kind, code } = error;
+  if (typeof name !== 'string' || typeof message !== 'string')
     throw new Error('Invalid chat stream event: run error name and message must be strings');
-  if (!isChatAgentRunErrorKind(error.kind))
-    throw new Error(`Invalid chat stream event: unsupported run error kind ${String(error.kind)}`);
-  if (!isChatAgentRunErrorCode(error.code))
-    throw new Error(`Invalid chat stream event: unsupported run error code ${String(error.code)}`);
-  return { name: error.name, message: error.message, kind: error.kind, code: error.code };
+  if (!isChatAgentRunErrorKind(kind))
+    throw new Error(`Invalid chat stream event: unsupported run error kind ${String(kind)}`);
+  if (!isChatAgentRunErrorCode(code))
+    throw new Error(`Invalid chat stream event: unsupported run error code ${String(code)}`);
+  return { name, message, kind, code };
 }
 
 /**
@@ -636,14 +640,16 @@ function projectChatStreamEventBody(
         toolCallId: requireString(event.toolCallId, 'toolCallId'),
         toolName: requireString(event.toolName, 'toolName'),
       };
-      if (event.percent !== undefined) {
-        // JSON.stringify serializes a non-finite number (NaN, Infinity) as
-        // `null`, which the decoder's own `percent` predicate then rejects
-        // — silently turning a valid-looking ChatStreamEvent into malformed
-        // wire data. Reject it here instead, before it ever reaches the wire.
-        if (!Number.isFinite(event.percent))
+      // Read `percent` once: JSON.stringify serializes a non-finite number
+      // (NaN, Infinity) as `null`, which the decoder's own `percent` predicate
+      // then rejects — silently turning a valid-looking ChatStreamEvent into
+      // malformed wire data. Reject it here instead, before it ever reaches
+      // the wire, and encode the very value that passed the check.
+      const percent = event.percent;
+      if (percent !== undefined) {
+        if (!Number.isFinite(percent))
           throw new Error('Invalid chat stream event: tool.progress percent must be finite');
-        projected['percent'] = event.percent;
+        projected['percent'] = percent;
       }
       if (event.message !== undefined)
         projected['message'] = requireString(event.message, 'message');
@@ -923,11 +929,18 @@ function toChatSerializedRunError(value: unknown): ChatSerializedRunError | unde
 
 /** Decodes and validates one provider-neutral stream event. */
 export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
-  const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
+  const raw = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
   // Own key only, like the envelope: an inherited `type` would let an object
   // that serializes without a discriminator decode as a (terminal) frame.
-  if (!isRecord(parsed) || !Object.hasOwn(parsed, 'type') || typeof parsed['type'] !== 'string')
-    throw new Error('Invalid chat stream event');
+  if (!isRecord(raw) || !Object.hasOwn(raw, 'type')) throw new Error('Invalid chat stream event');
+  // An already-decoded transport hands the guard the producer's own object,
+  // not a JSON.parse result, so its fields can be accessors that answer
+  // differently per read — passing a guard with one value and reaching the
+  // returned event with another. Copying the own enumerable fields once
+  // freezes what every check below validates. (A non-enumerable own field is
+  // dropped, which is correct: nothing on the wire can produce one.)
+  const parsed: Record<string, unknown> = { ...raw };
+  if (typeof parsed['type'] !== 'string') throw new Error('Invalid chat stream event');
   const eventType = parsed['type'];
   const envelope = readWireEnvelope(parsed);
 
