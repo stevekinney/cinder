@@ -97,6 +97,7 @@
   let previousTotalSize = 0;
   let previousViewportWidth = 0;
   let previousEstimate = 0;
+  let pendingReanchor: { index: number; offsetWithinRow: number } | null = null;
   let pendingScrollTarget: number | null = $state(null);
   let isDestroyed = false;
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
@@ -317,6 +318,15 @@
     const currentOffsets = offsets?.offsets;
     const currentEstimate = resolvedItemHeight;
 
+    // Restore the reader's position after a width reset rebuilt the table from
+    // estimates. Runs before the estimate-change branch below because a reset has
+    // already discarded the geometry that branch compares against.
+    if (pendingReanchor !== null && currentOffsets) {
+      const { index, offsetWithinRow } = pendingReanchor;
+      pendingReanchor = null;
+      pendingScrollTarget = Math.max(0, (currentOffsets[index] ?? 0) + offsetWithinRow);
+    }
+
     // An `itemHeight` change re-sizes every UNMEASURED row at once. No
     // ResizeObserver fires for that — the rows did not change, the estimate did —
     // so no correction is queued, and because this mode disables native scroll
@@ -437,6 +447,21 @@
       previousViewportWidth > 0 &&
       measuredWidth !== previousViewportWidth
     ) {
+      // Capture where the reader is BEFORE discarding the cache. The reset rebuilds
+      // every row from the estimate and drops `previousOffsets`, so the correction
+      // effect would have no old geometry to anchor against — and with native
+      // anchoring disabled, an unchanged scrollTop then resolves to a different row
+      // and stays there until the rows above happen to be measured again, which for
+      // offscreen rows may be never.
+      const table = offsets?.offsets;
+      if (table) {
+        const liveScrollOffset = Math.max(0, element.scrollTop);
+        const anchorIndex = findOffsetIndex(table, liveScrollOffset);
+        pendingReanchor = {
+          index: anchorIndex,
+          offsetWithinRow: liveScrollOffset - (table[anchorIndex] ?? 0),
+        };
+      }
       measurementStore.reset();
       previousOffsets = undefined;
     }
