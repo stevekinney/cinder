@@ -74,9 +74,11 @@ import {
   formatBuildLogs,
   isPageServerRenderers,
   isShellServerRendererModule,
+  loadPageServerRenderer,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
+  resetPageServerRendererPromise,
   resolveRendererLoad,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
@@ -2080,6 +2082,38 @@ describe('/page/:name server-rendering surfaces', () => {
     // page's.
     expect(preview.length).toBeLessThan(canonical.length / 2);
   }, 60_000);
+});
+
+describe('loadPageServerRenderer memo identity', () => {
+  /**
+   * The targeted reset compares promise IDENTITY, so the loader must hand callers
+   * the exact promise it memoizes. An `async` wrapper would instead return a fresh
+   * promise that merely adopts the stored one, `expected` could never match, every
+   * targeted reset would be silently suppressed, and a rejected or last-good memo
+   * would never clear. This runs the REAL loader and reset together -- a stubbed
+   * reset cannot observe this, which is how the bug shipped the first time.
+   */
+  it('returns the memoized promise itself, so a targeted reset can match it', async () => {
+    resetPageServerRendererPromise();
+    const first = loadPageServerRenderer();
+    const second = loadPageServerRenderer();
+    try {
+      expect(second).toBe(first);
+
+      // Discarding a DIFFERENT promise must leave the memo alone...
+      resetPageServerRendererPromise(Promise.resolve() as never);
+      expect(loadPageServerRenderer()).toBe(first);
+
+      // ...and discarding the memoized one must clear it.
+      resetPageServerRendererPromise(first);
+      const third = loadPageServerRenderer();
+      expect(third).not.toBe(first);
+      await Promise.allSettled([third]);
+    } finally {
+      resetPageServerRendererPromise();
+      await Promise.allSettled([first]);
+    }
+  });
 });
 
 describe('warmPageServerRenderer', () => {

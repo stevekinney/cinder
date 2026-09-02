@@ -236,7 +236,14 @@ export function rendererWarmupAttemptDecision(
  * transient compile error during development serves the previous good renderer
  * instead of a 500.
  */
-export async function loadPageServerRenderer(): Promise<PageServerRendererLoadResult> {
+/*
+ * Deliberately NOT `async`. An async wrapper returns a fresh promise that merely
+ * ADOPTS the memoized one, so a caller could never hold the identity that
+ * `resetPageServerRendererPromise(expected)` compares against -- every targeted
+ * reset would be suppressed and a rejected or last-good memo would never clear.
+ * Every `await` here lives inside the IIFE, so nothing needs the wrapper.
+ */
+export function loadPageServerRenderer(): Promise<PageServerRendererLoadResult> {
   if (pageServerRendererPromise !== null) return pageServerRendererPromise;
 
   pageServerRendererPromise = (async () => {
