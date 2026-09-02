@@ -3716,8 +3716,8 @@ async function readmeUsageExamplesSmoke(): Promise<void> {
 }
 
 /**
- * Cheap PR gate for packed-artifact consistency: the manifest/export fixture and
- * the token-registry fixture, both pure Node resolution against one shared pack.
+ * Cheap PR gate for packed-artifact consistency: the `manifest-consumer` and
+ * `tokens-consumer` fixtures, both pure Node resolution against one shared pack.
  * No browser, no SvelteKit.
  *
  * `tokens-consumer` is here because it once ran ONLY on the release path. PR
