@@ -185,9 +185,9 @@ describe('Chat package ownership boundary', () => {
     // The source barrels are side-effectful only inside the workspace; a
     // consumer resolves the published `dist/` barrels, which must keep the
     // marker or Vite drops the component stylesheet (CIN-514).
-    expect(chatManifest.sideEffects).toContain('./src/lib/components/*/index.ts');
+    expect(chatManifest.sideEffects).toContain('src/lib/components/*/index.ts');
     const published = buildPublishedManifest(chatManifest);
-    expect(published.sideEffects).toEqual(['**/*.css', './dist/components/*/index.js']);
+    expect(published.sideEffects).toEqual(['**/*.css', 'dist/components/*/index.js']);
   });
 
   test('rewrites browser-aware Chat exports to packed dist files', () => {

@@ -182,7 +182,9 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
   // workspace, where `svelte`/`import` resolve to `./src/`; the tarball
   // ships `dist/` alone, so only the dist glob (and the stylesheets) remain.
   if (Array.isArray(source.sideEffects))
-    published.sideEffects = source.sideEffects.filter((pattern) => !pattern.startsWith('./src/'));
+    published.sideEffects = source.sideEffects.filter(
+      (pattern) => !/^(?:\.\/)?src\//.test(pattern),
+    );
 
   // `dependencies` is retained so a host application does not need to
   // declare Chat's implementation dependencies itself.
