@@ -26,6 +26,16 @@ type WireEnvelope = {
   sequence: number;
 };
 
+/**
+ * A legacy member either carries no envelope at all, or the complete one —
+ * never half of it. `Partial<WireEnvelope>` would let a TypeScript consumer
+ * legally construct `{ type: 'text', text: 'x', wireVersion: 1 }` (no
+ * `sequence`) with no cast required, even though `encodeChatStreamEvent`
+ * throws on it and the decoder rejects it — this union keeps the public
+ * type honest about the runtime contract.
+ */
+type WithOptionalEnvelope<T> = T | (T & WireEnvelope);
+
 /** The one supported wire version. Any other value is rejected outright. */
 const SUPPORTED_WIRE_VERSION = 1;
 
@@ -108,9 +118,9 @@ type ChatSerializedRunError = {
 
 /** Provider-neutral events emitted by a chat response stream. */
 export type ChatStreamEvent =
-  | ({ type: 'text'; text: string } & Partial<WireEnvelope>)
-  | ({ type: 'tool_call'; id: string; name: string; arguments: JSONValue } & Partial<WireEnvelope>)
-  | ({ type: 'tool_result' } & ChatToolResult & Partial<WireEnvelope>)
+  | WithOptionalEnvelope<{ type: 'text'; text: string }>
+  | WithOptionalEnvelope<{ type: 'tool_call'; id: string; name: string; arguments: JSONValue }>
+  | WithOptionalEnvelope<{ type: 'tool_result' } & ChatToolResult>
   // Operative's raw stream event vocabulary, mirrored field-for-field.
   | ({ type: 'stream:block-start'; block: ChatStreamBlock } & WireEnvelope)
   | ({ type: 'stream:block-delta'; block: ChatStreamBlock; delta: string } & WireEnvelope)
@@ -196,18 +206,23 @@ export type ChatStreamEvent =
  * telling anyone, which makes a producer bug invisible until decode fails
  * downstream (or, worse, doesn't).
  */
-function projectWireEnvelope(event: Partial<WireEnvelope>): Partial<WireEnvelope> {
-  const hasWireVersion = event.wireVersion !== undefined;
-  const hasSequence = event.sequence !== undefined;
+function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
+  // `WithOptionalEnvelope` means a legacy member may not have these keys at
+  // all (not merely `undefined`-valued), so read them through `in` checks
+  // rather than direct property access.
+  const wireVersion = 'wireVersion' in event ? event.wireVersion : undefined;
+  const sequence = 'sequence' in event ? event.sequence : undefined;
+  const hasWireVersion = wireVersion !== undefined;
+  const hasSequence = sequence !== undefined;
   if (!hasWireVersion && !hasSequence) return {};
   if (
     hasWireVersion !== hasSequence ||
-    event.wireVersion !== SUPPORTED_WIRE_VERSION ||
-    !isNonNegativeSafeInteger(event.sequence)
+    wireVersion !== SUPPORTED_WIRE_VERSION ||
+    !isNonNegativeSafeInteger(sequence)
   ) {
     throw new Error('Invalid chat stream event: cannot encode a malformed wire envelope');
   }
-  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence: event.sequence };
+  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence };
 }
 
 /**
@@ -338,19 +353,21 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
  * (most importantly, tool call arguments: a corrupted argument means the
  * tool executes with different input than the caller intended).
  */
-function isFiniteJSONValue(value: JSONValue): boolean {
-  if (typeof value === 'number') return Number.isFinite(value);
-  if (Array.isArray(value)) return value.every(isFiniteJSONValue);
-  if (value !== null && typeof value === 'object') {
-    return Object.values(value).every((entry) => isFiniteJSONValue(entry));
-  }
-  return true;
-}
-
-/** Throws if `value` (identified by `context` for the error message) contains a non-finite number anywhere. */
+/**
+ * Throws if `value` (identified by `context` for the error message) isn't a
+ * genuinely valid `JSONValue`. `value`'s static type is already `JSONValue`,
+ * but that's only a compile-time guarantee — a caller routing a non-JSON
+ * value (`undefined`, a function, a class instance, or a non-finite number)
+ * through an `unknown` cast bypasses it, and `JSON.stringify` would then
+ * silently drop or rewrite the offending value instead of failing loudly.
+ * Conversationalist's `isJSONValue` guard already rejects `NaN`/`Infinity`
+ * (its number branch requires `Number.isFinite`), so this single check
+ * covers both "not JSON-shaped at all" and "contains a non-finite number" —
+ * the two ways `JSON.stringify` can silently corrupt a value here.
+ */
 function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
-  if (!isFiniteJSONValue(value))
-    throw new Error(`Invalid chat stream event: ${context} contains a non-finite number`);
+  if (!isJSONValue(value))
+    throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
   return value;
 }
 
@@ -510,6 +527,20 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       return { ...projected, ...envelope };
     }
     case 'run.completed':
+      // `isConversationHistory` uses Conversationalist's `.strict()` Zod
+      // schemas at every nested level (message, tool result, etc.), so
+      // reusing it here doesn't just validate the shape — it rejects
+      // outright anything carrying extra enumerable properties, the same
+      // protection `projectTokenUsage`/`projectChatToolResult` give their
+      // fields. A hand-rolled field-by-field rebuild of `ConversationHistory`
+      // would have to reimplement that entire schema (messages, multimodal
+      // content, tool calls/results, ...); reusing the guard is the
+      // maintainable way to get the same guarantee.
+      if (!isConversationHistory(event.conversation)) {
+        throw new Error(
+          'Invalid chat stream event: conversation is not a valid ConversationHistory',
+        );
+      }
       return {
         type: 'run.completed',
         conversation: event.conversation,
@@ -984,13 +1015,14 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
   if (guard.sawTerminal)
     throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
 
-  const frameMode: 'bare' | 'versioned' = event.wireVersion === undefined ? 'bare' : 'versioned';
+  const wireVersion = 'wireVersion' in event ? event.wireVersion : undefined;
+  const frameMode: 'bare' | 'versioned' = wireVersion === undefined ? 'bare' : 'versioned';
   if (guard.mode === undefined) guard.mode = frameMode;
   else if (guard.mode !== frameMode)
     throw new Error('Invalid chat stream event: envelope mode changed mid-stream');
 
   if (frameMode === 'versioned') {
-    const sequence = event.sequence;
+    const sequence = 'sequence' in event ? event.sequence : undefined;
     if (sequence === undefined) throw new Error('Invalid chat stream event: missing sequence');
     if (guard.lastSequence !== undefined && sequence <= guard.lastSequence)
       throw new Error('Invalid chat stream event: sequence did not increase');

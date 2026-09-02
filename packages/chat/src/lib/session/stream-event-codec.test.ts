@@ -678,6 +678,43 @@ describe('chat stream event codec', () => {
   });
 
   describe('encode-time field projection (CIN-507)', () => {
+    test('rejects encoding a non-JSON value smuggled into tool_call arguments', () => {
+      const event = {
+        type: 'tool_call',
+        id: 'call-1',
+        name: 'lookup',
+        arguments: { handler: () => {} },
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: tool_call.arguments is not a valid JSON value',
+      );
+    });
+
+    test('rejects encoding a bare legacy member with a half-formed envelope smuggled via a cast', () => {
+      // `WithOptionalEnvelope` no longer makes this constructible without a
+      // cast — this pins that the runtime check still catches a caller who
+      // bypasses the type anyway.
+      const event = { type: 'text', text: 'hi', wireVersion: 1 } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: cannot encode a malformed wire envelope',
+      );
+    });
+
+    test('rejects encoding run.completed when conversation is not a valid ConversationHistory', () => {
+      const event = {
+        type: 'run.completed',
+        conversation: { id: 'conversation-1', providerSecret: 'leak' },
+        content: 'Done.',
+        usage: { prompt: 1, completion: 1, total: 2 },
+        finishReason: 'stop-condition',
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      expect(() => encodeChatStreamEvent(event)).toThrow(
+        'Invalid chat stream event: conversation is not a valid ConversationHistory',
+      );
+    });
+
     test('never encodes a `cause` a caller smuggled onto a run.error at runtime', () => {
       // TypeScript's static type has no `cause` field — that's the whole
       // point of ChatSerializedRunError — but the type doesn't exist at
@@ -869,7 +906,7 @@ describe('chat stream event codec', () => {
         arguments: { weights: [1, Number.POSITIVE_INFINITY] },
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool_call.arguments contains a non-finite number',
+        'Invalid chat stream event: tool_call.arguments is not a valid JSON value',
       );
     });
 
@@ -883,7 +920,7 @@ describe('chat stream event codec', () => {
         sequence: 0,
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: stream:tool-call-complete.arguments contains a non-finite number',
+        'Invalid chat stream event: stream:tool-call-complete.arguments is not a valid JSON value',
       );
     });
 
@@ -895,7 +932,7 @@ describe('chat stream event codec', () => {
         content: { score: Number.POSITIVE_INFINITY },
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool result content contains a non-finite number',
+        'Invalid chat stream event: tool result content is not a valid JSON value',
       );
     });
 
@@ -914,7 +951,7 @@ describe('chat stream event codec', () => {
         },
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool result error.details contains a non-finite number',
+        'Invalid chat stream event: tool result error.details is not a valid JSON value',
       );
     });
 
@@ -931,7 +968,7 @@ describe('chat stream event codec', () => {
         },
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool result action.schema contains a non-finite number',
+        'Invalid chat stream event: tool result action.schema is not a valid JSON value',
       );
     });
 
@@ -944,7 +981,7 @@ describe('chat stream event codec', () => {
         pendingApproval: { callId: 'call-approval', arguments: { weight: Number.NaN } },
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool result pendingApproval contains a non-finite number',
+        'Invalid chat stream event: tool result pendingApproval is not a valid JSON value',
       );
     });
 
@@ -1023,7 +1060,7 @@ describe('chat stream event codec', () => {
         sequence: 0,
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: stream:error.error contains a non-finite number',
+        'Invalid chat stream event: stream:error.error is not a valid JSON value',
       );
     });
 
@@ -1037,7 +1074,7 @@ describe('chat stream event codec', () => {
         sequence: 0,
       } as unknown as ChatStreamEvent;
       expect(() => encodeChatStreamEvent(event)).toThrow(
-        'Invalid chat stream event: tool.error.error contains a non-finite number',
+        'Invalid chat stream event: tool.error.error is not a valid JSON value',
       );
     });
 
