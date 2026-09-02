@@ -82,7 +82,7 @@ describe('StatisticGroup', () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
     const cardsBlock =
       css.match(
-        /\.cinder-statistic-group\[data-cinder-variant='cards'\]\s*>\s*\.cinder-statistic\s*\{[^}]*\}/,
+        /\.cinder-statistic-group\[data-cinder-variant='cards'\]\s*>\s*\.cinder-statistic-group__grid\s*>\s*\.cinder-statistic\s*\{[^}]*\}/,
       )?.[0] ?? '';
 
     expect(cardsBlock).toContain('border: 1px solid var(--cinder-border)');
@@ -122,12 +122,12 @@ describe('StatisticGroup', () => {
     expect(singleColumnDividers).not.toContain('border-inline-end:');
 
     // The enabler is enumerated per fixed count rather than written as one
-    // `:not():not()` rule, so it carries the same (0,5,0) specificity as the
+    // `:not():not()` rule, so it carries the same (0,6,0) specificity as the
     // row-end suppressors and source order decides. See the CSS comment.
     for (const columnCount of [2, 3, 4]) {
       const enabler = blockAfter(
         normalized,
-        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic:not(:last-child)`,
+        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic-group__grid > .cinder-statistic:not(:last-child)`,
       );
       expect(enabler, `columns=${columnCount} enabler`).toBeDefined();
       expect(enabler).toContain('border-inline-end: 1px solid var(--cinder-border-muted)');
@@ -136,7 +136,7 @@ describe('StatisticGroup', () => {
     // Row ends, one rule per fixed count.
     for (const columnCount of [2, 3, 4]) {
       expect(normalized).toContain(
-        `[data-cinder-columns='${columnCount}'] > .cinder-statistic:nth-child(${columnCount}n)`,
+        `[data-cinder-columns='${columnCount}'] > .cinder-statistic-group__grid > .cinder-statistic:nth-child(${columnCount}n)`,
       );
     }
   });
@@ -145,7 +145,7 @@ describe('StatisticGroup', () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
 
     // The layout's collapse rules (30rem -> two tracks, 18rem -> one) fire because the
-    // group queries a wrapper element rather than itself. The dividers must describe the
+    // root, not the grid, is the query container. The dividers must describe the
     // grid that actually renders, so they mirror those exact thresholds: under 30rem a
     // declared 3 or 4 suppresses every 2nd cell; under 18rem every fixed count flips to
     // horizontal dividers. An earlier revision could not do this because the collapse
@@ -161,7 +161,7 @@ describe('StatisticGroup', () => {
     // Two-track band: 3 and 4 suppress every 2nd cell.
     for (const columnCount of [3, 4]) {
       expect(dividers).toContain(
-        `[data-cinder-columns='${columnCount}'] > .cinder-statistic:nth-child(2n)`,
+        `[data-cinder-columns='${columnCount}'] > .cinder-statistic-group__grid > .cinder-statistic:nth-child(2n)`,
       );
     }
     // One-track band: the inline divider is removed and a block divider takes over.
@@ -196,7 +196,7 @@ describe('StatisticGroup', () => {
     // And no rule may select an `auto` group's cells directly -- that is the shape every
     // reintroduced band would take.
     expect(declarations).not.toContain(
-      "[data-cinder-columns='auto'] > .cinder-statistic:not(:last-child)",
+      "[data-cinder-columns='auto'] > .cinder-statistic-group__grid > .cinder-statistic:not(:last-child)",
     );
   });
 
@@ -204,7 +204,7 @@ describe('StatisticGroup', () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
     const normalized = normalizeCss(css);
 
-    // ORDER IS LOAD-BEARING. Every divider rule is (0,5,0), so the cascade is
+    // ORDER IS LOAD-BEARING. Every divider rule is (0,6,0), so the cascade is
     // decided purely by source position: each fixed count's enabler must precede its
     // row-end suppressor, the two-track band must follow all declared-layout rules,
     // and the one-track band must follow the two-track band.
@@ -218,15 +218,15 @@ describe('StatisticGroup', () => {
     };
     for (const columnCount of [2, 3, 4]) {
       const enabler = at(
-        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic:not(:last-child)`,
+        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic-group__grid > .cinder-statistic:not(:last-child)`,
       );
       const rowEnd = at(
-        `[data-cinder-columns='${columnCount}'] > .cinder-statistic:nth-child(${columnCount}n)`,
+        `[data-cinder-columns='${columnCount}'] > .cinder-statistic-group__grid > .cinder-statistic:nth-child(${columnCount}n)`,
       );
       expect(rowEnd).toBeGreaterThan(enabler);
     }
     const lastDeclaredRule = at(
-      "[data-cinder-variant='default'][data-cinder-columns='1'] > .cinder-statistic:not(:last-child)",
+      "[data-cinder-variant='default'][data-cinder-columns='1'] > .cinder-statistic-group__grid > .cinder-statistic:not(:last-child)",
     );
     const twoTrackBand = at(
       '@container cinder-statistic-group (max-width: 30rem)',
@@ -235,6 +235,33 @@ describe('StatisticGroup', () => {
     const oneTrackBand = at('@container cinder-statistic-group (max-width: 18rem)', twoTrackBand);
     expect(twoTrackBand).toBeGreaterThan(lastDeclaredRule);
     expect(oneTrackBand).toBeGreaterThan(twoTrackBand);
+  });
+
+  test('the public root is the query container and the cells render in an inner grid', async () => {
+    // An element can never query itself, so the collapse rules need an ancestor
+    // container. That ancestor is the ROOT -- the element that receives `class`,
+    // `style`, and `...rest` -- not an extra wrapper above it, so a consumer that
+    // constrains the group's inline size constrains exactly what the queries
+    // measure (the P1 on cinder#1501).
+    const { container } = render(StatisticGroup, {
+      children: textSnippet('stat content'),
+      class: 'consumer-sizing',
+    });
+    const root = container.querySelector<HTMLElement>('.cinder-statistic-group');
+    expect(root).not.toBeNull();
+    expect(container.firstElementChild).toBe(root);
+    expect(root?.classList.contains('consumer-sizing')).toBe(true);
+    const grid = root?.firstElementChild;
+    expect(grid?.classList.contains('cinder-statistic-group__grid')).toBe(true);
+    expect(grid?.textContent).toContain('stat content');
+    expect(container.querySelector('.cinder-statistic-group__container')).toBeNull();
+
+    const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-statistic-group\s*\{[^}]*container-type:\s*inline-size;[^}]*container-name:\s*cinder-statistic-group;/,
+    );
+    expect(css).not.toMatch(/\.cinder-statistic-group__grid\s*\{[^}]*container-type/);
+    expect(css).toMatch(/\.cinder-statistic-group__grid\s*\{[^}]*display:\s*grid;/);
   });
 
   test('renders .cinder-statistic-group wrapping its children', () => {
@@ -361,7 +388,7 @@ describe('StatisticGroup', () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
 
     expect(css).toMatch(
-      /\.cinder-statistic-group\[data-cinder-columns='auto'\]\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(16rem,\s*100%\),\s*1fr\)\);/,
+      /\.cinder-statistic-group\[data-cinder-columns='auto'\]\s*>\s*\.cinder-statistic-group__grid\s*\{[^}]*grid-template-columns:\s*repeat\(auto-fit,\s*minmax\(min\(16rem,\s*100%\),\s*1fr\)\);/,
     );
   });
 

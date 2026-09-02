@@ -39,22 +39,24 @@
 </script>
 
 <!--
-  The outer element exists so the group can query its OWN inline size. An
-  element is never its own container -- a container query resolves against the
-  nearest ANCESTOR container -- so with `container-type` on the grid itself the
-  collapse rules could never fire for a standalone group (CIN-499). Every
-  attribute, the role, and consumer classes stay on the grid element below, so
-  nothing that targets `.cinder-statistic-group` changes.
+  The root is the query container and the grid is its child. An element is
+  never its own container -- a container query resolves against the nearest
+  ANCESTOR container -- so with `container-type` on the grid itself the
+  collapse rules could never fire for a standalone group (CIN-499). The
+  container sits on the public root rather than on an extra wrapper around it
+  so that `class`, `style`, and `...rest` land on the element the queries
+  measure: a consumer that constrains the group's inline size constrains
+  exactly what collapses.
 -->
-<div class="cinder-statistic-group__container">
-  <div
-    {...rest}
-    role={groupRole}
-    aria-label={groupAriaLabel}
-    class={classNames('cinder-statistic-group', customClassName)}
-    data-cinder-variant={variant}
-    data-cinder-columns={String(columns)}
-  >
+<div
+  {...rest}
+  role={groupRole}
+  aria-label={groupAriaLabel}
+  class={classNames('cinder-statistic-group', customClassName)}
+  data-cinder-variant={variant}
+  data-cinder-columns={String(columns)}
+>
+  <div class="cinder-statistic-group__grid">
     {@render children()}
   </div>
 </div>

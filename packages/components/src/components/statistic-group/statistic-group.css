@@ -1,39 +1,46 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../statistic/statistic.css';
 @layer cinder.components {
-  /* The container lives on a wrapper, not the grid: an element can never query
-     itself, so with `container-type` on `.cinder-statistic-group` the collapse
-     rules below never fired for a standalone group (CIN-499). The wrapper is the
-     group's own inline size, so fixed column counts collapse when the GROUP is
-     narrow -- even inside a wide viewport (RESPONSIVE-POLICY.md) -- and a group
-     nested inside another group queries its own width rather than the outer's. */
-  .cinder-statistic-group__container {
+  /* The root is the query container; the grid is its child. An element can
+     never query itself -- a container query resolves against the nearest
+     ANCESTOR container -- so with `container-type` on the grid the collapse
+     rules below never fired for a standalone group (CIN-499). The container
+     sits on the public root, not on an extra wrapper around it, so the root
+     stays the element that receives a consumer's `class`, `style`, and
+     `...rest`: constraining the group's inline size constrains exactly what
+     the queries measure, and a group nested inside another group queries its
+     own width rather than the outer's (RESPONSIVE-POLICY.md).
+
+     A size query measures the container's CONTENT box. The `default` variant
+     pads its root, so its 30rem and 18rem thresholds are the width the cells
+     actually share, not the group's outer width. */
+  .cinder-statistic-group {
     container-type: inline-size;
     container-name: cinder-statistic-group;
   }
 
-  .cinder-statistic-group {
+  .cinder-statistic-group__grid {
     display: grid;
     gap: var(--cinder-statistic-group-gap, var(--cinder-space-4, 1rem));
   }
 
-  .cinder-statistic-group[data-cinder-columns='auto'] {
+  .cinder-statistic-group[data-cinder-columns='auto'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='1'] {
+  .cinder-statistic-group[data-cinder-columns='1'] > .cinder-statistic-group__grid {
     grid-template-columns: 1fr;
   }
 
-  .cinder-statistic-group[data-cinder-columns='2'] {
+  .cinder-statistic-group[data-cinder-columns='2'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='3'] {
+  .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='4'] {
+  .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -42,16 +49,16 @@
      under 18rem, so values never crush. The `auto` mode already self-collapses
      via auto-fit, so it is intentionally excluded. */
   @container cinder-statistic-group (max-width: 30rem) {
-    .cinder-statistic-group[data-cinder-columns='3'],
-    .cinder-statistic-group[data-cinder-columns='4'] {
+    .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @container cinder-statistic-group (max-width: 18rem) {
-    .cinder-statistic-group[data-cinder-columns='2'],
-    .cinder-statistic-group[data-cinder-columns='3'],
-    .cinder-statistic-group[data-cinder-columns='4'] {
+    .cinder-statistic-group[data-cinder-columns='2'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
       grid-template-columns: 1fr;
     }
   }
@@ -83,30 +90,37 @@
    *
    * SPECIFICITY IS LOAD-BEARING. Every rule in this section is written as
    * `.cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='N']
-   *   > .cinder-statistic:<one pseudo-class>` -- exactly (0,5,0) -- so that source
-   * order alone decides the cascade and a later band can override an earlier one.
-   * An earlier revision enabled dividers with ONE generic rule carrying two
-   * `:not([data-cinder-columns=...])` clauses, which is (0,6,0): it out-ranked every
-   * row-end suppressor below it, so a multi-row group drew a divider at the end of
-   * every row but the last. Do not "simplify" the enablers back into one rule.
+   *   > .cinder-statistic-group__grid > .cinder-statistic:<one pseudo-class>` --
+   * exactly (0,6,0) -- so that source order alone decides the cascade and a later
+   * band can override an earlier one. An earlier revision enabled dividers with ONE
+   * generic rule carrying two `:not([data-cinder-columns=...])` clauses, which
+   * out-ranked every row-end suppressor below it, so a multi-row group drew a
+   * divider at the end of every row but the last. Do not "simplify" the enablers
+   * back into one rule.
    * ---------------------------------------- */
 
   /* --- Declared layout (wide): vertical dividers, row ends suppressed --- */
 
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child) {
     border-inline-end: 1px solid var(--cinder-border-muted);
   }
 
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(2n),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(3n),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(4n) {
     border-inline-end: none;
   }
@@ -114,6 +128,7 @@
   /* --- Single column (declared): horizontal dividers --- */
 
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='1']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child) {
     border-block-end: 1px solid var(--cinder-border-muted);
   }
@@ -122,15 +137,19 @@
 
   @container cinder-statistic-group (max-width: 30rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:not(:last-child),
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:not(:last-child) {
       border-inline-end: 1px solid var(--cinder-border-muted);
     }
 
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:nth-child(2n),
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:nth-child(2n) {
       border-inline-end: none;
     }
@@ -140,10 +159,13 @@
 
   @container cinder-statistic-group (max-width: 18rem) {
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:not(:last-child),
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:not(:last-child),
     .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
       > .cinder-statistic:not(:last-child) {
       border-inline-end: none;
       border-block-end: 1px solid var(--cinder-border-muted);
@@ -151,13 +173,17 @@
   }
 
   /* The final cell never has a neighbour in either axis, in any layout. */
-  .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:last-child {
+  .cinder-statistic-group[data-cinder-variant='default']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic:last-child {
     border-inline-end: none;
     border-block-end: none;
   }
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */
-  .cinder-statistic-group[data-cinder-variant='cards'] > .cinder-statistic {
+  .cinder-statistic-group[data-cinder-variant='cards']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -166,9 +192,10 @@
   }
 
   /*
- * variant: shared-borders — outer border on the container; 1px gap filled by the
- * container background acts as the divider between cells. Children paint over the
- * gap with the surface color, avoiding nth-child math for any column count.
+ * variant: shared-borders — outer border on the root; the 1px grid gap is filled by
+ * the root's background and acts as the divider between cells (the grid element is
+ * transparent and inherits the gap token). Children paint over the gap with the
+ * surface color, avoiding nth-child math for any column count.
  */
   .cinder-statistic-group[data-cinder-variant='shared-borders'] {
     --cinder-statistic-group-gap: 1px;
@@ -178,7 +205,9 @@
     background: var(--cinder-border);
   }
 
-  .cinder-statistic-group[data-cinder-variant='shared-borders'] > .cinder-statistic {
+  .cinder-statistic-group[data-cinder-variant='shared-borders']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic {
     padding: var(--cinder-statistic-group-shared-cell-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
   }
