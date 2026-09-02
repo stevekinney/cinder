@@ -7,6 +7,7 @@ import {
   maskStringLiterals,
   scan,
   scanSource,
+  splitSourceRegions,
 } from './check-visually-hidden-classes.ts';
 
 describe('scanSource — bare `sr-only` detection', () => {
@@ -310,5 +311,57 @@ describe('scanSource — underscore suffixes and string-literal awareness', () =
     expect(masked).toHaveLength(source.length);
     expect(masked.split('\n')).toHaveLength(2);
     expect(masked).not.toContain('xy');
+  });
+});
+
+describe('splitSourceRegions', () => {
+  test('separates markup, script, and style regions with correct offsets', () => {
+    const source =
+      '<script lang="ts">\n  const a = 1;\n</script>\n<p>x</p>\n<style>\n.a {}\n</style>\n';
+    const regions = splitSourceRegions(source);
+    expect(regions.map((region) => region.kind)).toEqual(['script', 'markup', 'style', 'markup']);
+    for (const region of regions) {
+      expect(source.slice(region.start, region.start + region.text.length)).toBe(region.text);
+    }
+    expect(regions[0]?.text).toBe('\n  const a = 1;\n');
+    expect(regions[2]?.text).toBe('\n.a {}\n');
+  });
+
+  test('treats a file without blocks as markup or code by content', () => {
+    expect(splitSourceRegions('<span class="a">x</span>')).toEqual([
+      { kind: 'markup', start: 0, text: '<span class="a">x</span>' },
+    ]);
+    expect(splitSourceRegions('.a { color: red; }')).toEqual([
+      { kind: 'code', start: 0, text: '.a { color: red; }' },
+    ]);
+  });
+});
+
+describe('scanSource — region-aware scanning', () => {
+  test('an apostrophe in markup prose does not hide a later selector', () => {
+    // Masking string literals across the whole file treated `don't` as an
+    // unterminated string and blanked the `<style>` block after it.
+    expect(scanSource("<p>don't render this</p>\n<style>\n.sr-only {}\n</style>")).toHaveLength(1);
+  });
+
+  test('a markup example stored in a script string is not a class usage', () => {
+    expect(
+      scanSource('<script>\n  const example = "<span class=\'sr-only\'>";\n</script>'),
+    ).toHaveLength(0);
+  });
+
+  test('a quoted closing brace does not end a class expression early', () => {
+    expect(scanSource("<span class={hidden ? '}' : 'sr-only'}>x</span>")).toHaveLength(1);
+  });
+
+  test('a classNames() call in markup is scanned as script', () => {
+    expect(scanSource("<div class={classNames('sr-only')}>x</div>")).toHaveLength(1);
+  });
+
+  test('reports line numbers relative to the whole file, not the region', () => {
+    const hits = scanSource(
+      '<script>\n  const a = 1;\n</script>\n<style>\n\n.sr-only {}\n</style>',
+    );
+    expect(hits).toEqual([{ lineNumber: 6, line: '.sr-only {}' }]);
   });
 });

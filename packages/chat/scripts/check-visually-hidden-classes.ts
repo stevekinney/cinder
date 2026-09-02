@@ -312,75 +312,142 @@ export function extractClassNamesCallArguments(
 }
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
+/** A lexical region of a Svelte file. Plain `.ts`/`.css` files are one `code` region. */
+export type SourceRegion = {
+  kind: 'markup' | 'script' | 'style' | 'code';
+  start: number;
+  text: string;
+};
+
+/**
+ * Splits a source file into `<script>`, `<style>`, and markup regions.
+ *
+ * This exists because a single set of regexes over a whole Svelte file cannot
+ * be right, and three rounds of review found three separate proofs of that:
+ * an apostrophe in ordinary prose (`don't`) read as a string delimiter and
+ * masked the rest of the file, hiding a real selector; a markup example
+ * stored in a script string reported a violation that does not exist; and a
+ * `}` inside a class expression closed the expression early.
+ *
+ * Each matcher is only meaningful in one kind of region. Class attributes and
+ * directives are markup. Selectors are CSS. `classNames()` is script. Running
+ * every matcher everywhere is what produced both the false positives and the
+ * false negatives, so the fix is to stop doing that rather than to add
+ * another compensating heuristic.
+ *
+ * A file with no `<script>` or `<style>` block is a single region: `markup` if
+ * it looks like markup, otherwise `code`, which keeps plain `.css` and `.ts`
+ * files working.
+ */
+export function splitSourceRegions(source: string): SourceRegion[] {
+  const blockPattern = /<(script|style)\b[^>]*>([\s\S]*?)<\/\1\s*>/g;
+  const regions: SourceRegion[] = [];
+  let cursor = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = blockPattern.exec(source)) !== null) {
+    if (match.index > cursor)
+      regions.push({ kind: 'markup', start: cursor, text: source.slice(cursor, match.index) });
+    const innerStart = match.index + match[0].indexOf('>') + 1;
+    regions.push({
+      kind: match[1] === 'script' ? 'script' : 'style',
+      start: innerStart,
+      text: match[2] ?? '',
+    });
+    cursor = match.index + match[0].length;
+  }
+
+  if (regions.length === 0) {
+    const looksLikeMarkup = /<[a-zA-Z][\s\S]*>/.test(source);
+    return [{ kind: looksLikeMarkup ? 'markup' : 'code', start: 0, text: source }];
+  }
+
+  if (cursor < source.length)
+    regions.push({ kind: 'markup', start: cursor, text: source.slice(cursor) });
+  return regions;
+}
+
+/** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
 export function scanSource(original: string): Array<{ lineNumber: number; line: string }> {
   const hits: Array<{ lineNumber: number; line: string }> = [];
-  // Match against comment-blanked text, but report from the original so the
-  // offending line reads as written. `maskComments` preserves offsets.
-  const source = maskComments(original);
+  const masked = maskComments(original);
   const lines = original.split('\n');
-  const lineNumberAt = (index: number): number => source.slice(0, index).split('\n').length;
   const record = (index: number): void => {
-    const lineNumber = lineNumberAt(index);
+    const lineNumber = masked.slice(0, index).split('\n').length;
     hits.push({ lineNumber, line: (lines[lineNumber - 1] ?? '').trim() });
   };
 
-  for (const pattern of [
-    STATIC_CLASS_ATTRIBUTE_PATTERN,
-    UNQUOTED_CLASS_ATTRIBUTE_PATTERN,
-    CLASS_DIRECTIVE_PATTERN,
-  ]) {
-    pattern.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = pattern.exec(source)) !== null) {
-      record(match.index);
+  const scanMarkup = (text: string, offset: number): void => {
+    for (const pattern of [
+      STATIC_CLASS_ATTRIBUTE_PATTERN,
+      UNQUOTED_CLASS_ATTRIBUTE_PATTERN,
+      CLASS_DIRECTIVE_PATTERN,
+    ]) {
+      pattern.lastIndex = 0;
+      let match: RegExpExecArray | null;
+      while ((match = pattern.exec(text)) !== null) record(offset + match.index);
     }
-  }
 
-  // CSS selectors are filtered by context: the same text appears in
-  // declaration values, url() paths, and script string literals, none of
-  // which define or apply a class.
-  // Run against string-masked text: a CSS-looking selector stored in a script
-  // (`const example = '.sr-only {'`) applies no class, and its brace would
-  // otherwise satisfy the selector-context scan.
-  const cssSource = maskStringLiterals(source);
-  CSS_SELECTOR_PATTERN.lastIndex = 0;
-  let cssMatch: RegExpExecArray | null;
-  while ((cssMatch = CSS_SELECTOR_PATTERN.exec(cssSource)) !== null) {
-    if (isCssSelectorContext(cssSource, cssMatch.index + cssMatch[0].length))
-      record(cssMatch.index);
-  }
-
-  // `classNames(...)` calls: flag a bare token quoted among the arguments.
-  for (const call of extractClassNamesCallArguments(source)) {
-    const tokenPattern = new RegExp(BARE_TOKEN_SOURCE, 'g');
-    let tokenMatch: RegExpExecArray | null;
-    while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null) {
-      record(call.startIndex + 1 + tokenMatch.index);
-    }
-  }
-
-  // Template-literal (or other quoted) class attribute expressions:
-  // `class={`... sr-only ...`}`. Scoped to `class={` so an unrelated quoted
-  // string elsewhere in the file (e.g. a test's `.contains('sr-only')`
-  // assertion) is never flagged.
-  const dynamicClassAttributePattern = /(?<![-\w:])class\s*=\s*\{/g;
-  let dynamicMatch: RegExpExecArray | null;
-  while ((dynamicMatch = dynamicClassAttributePattern.exec(source)) !== null) {
-    const openBraceIndex = dynamicMatch.index + dynamicMatch[0].length - 1;
-    let depth = 0;
-    let index = openBraceIndex;
-    for (; index < source.length; index++) {
-      if (source[index] === '{') depth++;
-      else if (source[index] === '}') {
-        depth--;
-        if (depth === 0) break;
+    // `class={...}` expressions are JavaScript, so quotes inside them ARE
+    // string delimiters and braces inside those strings must not close the
+    // expression. Balancing runs against a string-masked copy of the
+    // expression region only — never across free markup text, where an
+    // apostrophe is just an apostrophe.
+    const dynamicClassAttributePattern = /(?<![-\w:])class\s*=\s*\{/g;
+    let dynamicMatch: RegExpExecArray | null;
+    while ((dynamicMatch = dynamicClassAttributePattern.exec(text)) !== null) {
+      const openBraceIndex = dynamicMatch.index + dynamicMatch[0].length - 1;
+      const balance = maskStringLiterals(text.slice(openBraceIndex));
+      let depth = 0;
+      let relative = 0;
+      for (; relative < balance.length; relative++) {
+        if (balance[relative] === '{') depth++;
+        else if (balance[relative] === '}') {
+          depth--;
+          if (depth === 0) break;
+        }
       }
+      const expressionText = text.slice(openBraceIndex + 1, openBraceIndex + relative);
+      QUOTED_TOKEN_PATTERN.lastIndex = 0;
+      let quotedMatch: RegExpExecArray | null;
+      while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expressionText)) !== null)
+        record(offset + openBraceIndex + 1 + quotedMatch.index);
     }
-    const expressionText = source.slice(openBraceIndex + 1, index);
-    QUOTED_TOKEN_PATTERN.lastIndex = 0;
-    let quotedMatch: RegExpExecArray | null;
-    while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expressionText)) !== null) {
-      record(openBraceIndex + 1 + quotedMatch.index);
+  };
+
+  const scanStyle = (text: string, offset: number): void => {
+    // CSS strings are real strings, so masking is safe and necessary here:
+    // `content: '.sr-only'` applies no class.
+    const cssText = maskStringLiterals(text);
+    CSS_SELECTOR_PATTERN.lastIndex = 0;
+    let cssMatch: RegExpExecArray | null;
+    while ((cssMatch = CSS_SELECTOR_PATTERN.exec(cssText)) !== null) {
+      if (isCssSelectorContext(cssText, cssMatch.index + cssMatch[0].length))
+        record(offset + cssMatch.index);
+    }
+  };
+
+  const scanScript = (text: string, offset: number): void => {
+    // Only `classNames()` arguments. A class attribute written inside a script
+    // string is an example or a test assertion, not an applied class.
+    for (const call of extractClassNamesCallArguments(text)) {
+      const tokenPattern = new RegExp(BARE_TOKEN_SOURCE, 'g');
+      let tokenMatch: RegExpExecArray | null;
+      while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null)
+        record(offset + call.startIndex + 1 + tokenMatch.index);
+    }
+  };
+
+  for (const region of splitSourceRegions(masked)) {
+    if (region.kind === 'markup') scanMarkup(region.text, region.start);
+    else if (region.kind === 'style') scanStyle(region.text, region.start);
+    else if (region.kind === 'script') scanScript(region.text, region.start);
+    else {
+      // A plain `.ts` or `.css` file: no markup text to confuse the string
+      // scanner, so every matcher can run safely over the whole thing.
+      scanMarkup(region.text, region.start);
+      scanStyle(region.text, region.start);
+      scanScript(region.text, region.start);
     }
   }
 
