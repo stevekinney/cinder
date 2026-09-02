@@ -163,11 +163,11 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
       "import { createVirtualizer } from '@tanstack/virtual-core';",
     ].join('\n');
 
-    const violations = findDependencyViolations(source, 'fake-virtual-list.svelte', new Set());
+    const violations = findDependencyViolations(source, 'fake-virtual-list.ts', new Set());
 
     expect(violations).toEqual([
       {
-        filePath: 'fake-virtual-list.svelte',
+        filePath: 'fake-virtual-list.ts',
         lineNumber: 2,
         specifier: FORBIDDEN_SPECIFIER,
         line: "import { createVirtualizer } from '@tanstack/virtual-core';",
@@ -198,7 +198,7 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
     // A per-line scan misses every multiline form the language allows, which would
     // let shipped source import an undeclared package and still pass this guard.
     const source = ['const helper = await import(', "  'some-dev-only-package',", ');'].join('\n');
-    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe('some-dev-only-package');
@@ -207,7 +207,7 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
 
   test('flags a MULTILINE static import of the forbidden specifier', () => {
     const source = ['import { thing } from', `  '${FORBIDDEN_SPECIFIER}';`].join('\n');
-    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
@@ -233,7 +233,7 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
     // Exempting dynamic syntax from the undeclared-import rule would leave
     // exactly that hole open, so shipped source faces the full rule.
     const source = "const helper = await import('some-dev-only-package');";
-    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe('some-dev-only-package');
@@ -367,7 +367,7 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     // Valid syntax that a quote-only scanner ignores entirely, so an undeclared
     // package could ship while the guard stayed green.
     const source = 'const helper = await import(`some-dev-only-package`);';
-    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
 
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe('some-dev-only-package');
@@ -378,15 +378,54 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     // interpolation text as a package name would be a false positive.
     const source = 'const helper = await import(`some-${name}-package`);';
 
-    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toEqual([]);
   });
 
-  test('does not read backticked prose after the word from as an import', () => {
-    // A static import declaration cannot take a template literal, so accepting
-    // backticks there matches nothing real and misreads ordinary JSDoc — which in
-    // this codebase writes "from `some-file.ts`" constantly.
-    const source = '// re-exported from `fixed-virtual-window.ts` for convenience';
+  test('never mistakes prose in a comment for an import', () => {
+    // The regex scanner had to be taught, repeatedly, not to read comments as code.
+    // A parser cannot make the mistake in the first place.
+    const source = [
+      '// re-exported from `fixed-virtual-window.ts` for convenience',
+      "// see import 'some-dev-only-package' in the old implementation",
+      '/* from "@tanstack/virtual-core" originally */',
+    ].join('\n');
 
-    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toEqual([]);
+  });
+
+  test('sees through comments sitting between an import token and its specifier', () => {
+    // Valid syntax that a whitespace-only gap pattern misses entirely, which let
+    // shipped source bypass both rules.
+    const withBlockComment =
+      "const virtualizer = await import(/* webpackChunkName: 'x' */ '" +
+      FORBIDDEN_SPECIFIER +
+      "/sub');";
+    const withStaticComment =
+      "import { thing } from /* a comment */ '" + FORBIDDEN_SPECIFIER + "/sub';";
+
+    expect(findDependencyViolations(withBlockComment, 'virtual-list.ts', new Set())).toHaveLength(
+      1,
+    );
+    expect(findDependencyViolations(withStaticComment, 'virtual-list.ts', new Set())).toHaveLength(
+      1,
+    );
+  });
+
+  test('scans the script blocks of a real Svelte component', () => {
+    // Svelte files are not TypeScript, so their <script> bodies are extracted and
+    // parsed individually, with offsets mapped back to the original file.
+    const source = [
+      '<script lang="ts" module>',
+      "  export { thing } from 'some-dev-only-package';",
+      '</script>',
+      '',
+      '<div>markup that is not TypeScript at all</div>',
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+    expect(violations[0]?.lineNumber).toBe(2);
   });
 });

@@ -43,6 +43,8 @@ import { isBuiltin } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import ts from 'typescript';
+
 import { readJsonFile } from './lib/read-json-file.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -67,57 +69,8 @@ const SELF_TEST_RELATIVE_PATH = join('_internal', 'dependency-free.test.ts');
 /** The one specifier this guard bans outright, regardless of `dependencies`. */
 export const FORBIDDEN_SPECIFIER = '@tanstack/virtual-core';
 
-/**
- * Matches an import specifier from `from '<specifier>'` / `from "<specifier>"`
- * (covers both `import ... from '...'` and `export ... from '...'`, `type` or
- * not) and from a bare side-effect `import '<specifier>'`. Applied per line,
- * matching `check-no-cycle-imports.ts`'s grep-based approach.
- *
- * Quote-delimited only, deliberately. A static import declaration cannot take a
- * template literal — `import x from ` + backtick + `pkg` + backtick + ` is a syntax error — so accepting
- * backticks here would match nothing real and would misread ordinary prose,
- * where "from `some-file.ts`" appears constantly in this codebase's JSDoc.
- * Only {@link DYNAMIC_IMPORT_PATTERN} accepts them.
- *
- * Dynamic `import('<specifier>')` calls are matched too — see
- * {@link DYNAMIC_IMPORT_PATTERN} for how they are judged.
- */
-const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"\n]+)\1/g;
-
-/**
- * Matches a dynamic `import('<specifier>')` call.
- *
- * In SHIPPED SOURCE these face the same rule as static imports. A production file
- * that dynamically imports an installed devDependency resolves fine inside this
- * repository and then fails for a published consumer, which is precisely the
- * class of defect this guard exists to prevent, so exempting dynamic syntax there
- * would leave the hole open.
- *
- * In TEST FILES only {@link FORBIDDEN_SPECIFIER} is checked. Tests in this subtree
- * legitimately dynamic-import devDependencies at module scope — `virtual-list.test.ts`
- * does `await import('@testing-library/svelte')` — and this guard resolves bare
- * specifiers against `dependencies` alone, so the full rule would flag every one of
- * them. Nothing in a test file ships, so the undeclared-import risk does not apply;
- * the `@tanstack/virtual-core` ban still does.
- */
-const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"`])([^'"`\n]+)\1/g;
-
 /** Files whose imports never ship, so the undeclared-bare-import rule does not apply to them. */
 const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?tsx?$/u;
-
-/**
- * Whether a matched specifier can be judged at all.
- *
- * A no-substitution template literal is exactly equivalent to a quoted string and
- * is scanned like one. An INTERPOLATED template is not statically resolvable by
- * any grep-based scanner, so it is skipped rather than guessed at: reporting the
- * raw interpolation text as a bare package name would be a false positive, and
- * pretending to resolve it would be worse. A documented, narrow limit of a
- * grep-based guard, not an oversight.
- */
-function isStaticallyResolvableSpecifier(specifier: string): boolean {
-  return !specifier.includes('${');
-}
 
 /**
  * Whether a specifier resolves to the forbidden package, root or subpath.
@@ -200,82 +153,143 @@ export function classifySpecifier(
   );
 }
 
+/** One import specifier found by the parser, with the offset it was written at. */
+type ParsedSpecifier = {
+  readonly specifier: string;
+  readonly offset: number;
+  readonly isDynamic: boolean;
+};
+
 /**
- * Scans `content` for import/export-from specifiers and returns one
- * {@link DependencyViolation} per disallowed specifier found. Pure and
- * filesystem-free so it can be exercised directly against fabricated source
- * text (see `_internal/dependency-free.test.ts`).
+ * Extracts every `<script>` body from a Svelte component, with the offset each
+ * body starts at so positions can be mapped back to the original file.
+ */
+function extractScriptBlocks(content: string): Array<{ text: string; offset: number }> {
+  const blocks: Array<{ text: string; offset: number }> = [];
+  const openTag = /<script\b[^>]*>/g;
+  let match: RegExpExecArray | null;
+  while ((match = openTag.exec(content)) !== null) {
+    const bodyStart = match.index + match[0].length;
+    const bodyEnd = content.indexOf('</script>', bodyStart);
+    if (bodyEnd === -1) break;
+    blocks.push({ text: content.slice(bodyStart, bodyEnd), offset: bodyStart });
+    openTag.lastIndex = bodyEnd;
+  }
+  return blocks;
+}
+
+/**
+ * Collects import specifiers from one TypeScript source using the compiler's own
+ * parser.
+ *
+ * This replaced a regex scanner that was evaded four separate times — by
+ * multiline forms, by template literals, by package subpaths, and by comments
+ * sitting between the import token and its specifier. Each was a real bypass of a
+ * guard whose entire job is to be un-bypassable, and each fix invited the next
+ * variant. A parser ends the category: it sees exactly what the runtime sees, and
+ * comments, arbitrary whitespace, and string-literal form stop mattering.
+ */
+function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] {
+  const sourceFile = ts.createSourceFile(
+    'scan.tsx',
+    text,
+    ts.ScriptTarget.Latest,
+    /* setParentNodes */ true,
+    ts.ScriptKind.TSX,
+  );
+  const found: ParsedSpecifier[] = [];
+
+  const literalText = (node: ts.Node): string | undefined => {
+    if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
+    // A substituted template is not statically resolvable by any scanner; skip it
+    // rather than report the interpolation text as a package name.
+    return undefined;
+  };
+
+  const visit = (node: ts.Node): void => {
+    if (
+      (ts.isImportDeclaration(node) || ts.isExportDeclaration(node)) &&
+      node.moduleSpecifier !== undefined
+    ) {
+      const specifier = literalText(node.moduleSpecifier);
+      if (specifier !== undefined) {
+        found.push({
+          specifier,
+          offset: baseOffset + node.moduleSpecifier.getStart(sourceFile),
+          isDynamic: false,
+        });
+      }
+    }
+
+    if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
+      const [argument] = node.arguments;
+      if (argument !== undefined) {
+        const specifier = literalText(argument);
+        if (specifier !== undefined) {
+          found.push({
+            specifier,
+            offset: baseOffset + argument.getStart(sourceFile),
+            isDynamic: true,
+          });
+        }
+      }
+    }
+
+    ts.forEachChild(node, visit);
+  };
+
+  ts.forEachChild(sourceFile, visit);
+  return found;
+}
+
+/**
+ * Returns one {@link DependencyViolation} per disallowed specifier in `content`.
+ * Pure and filesystem-free so it can be exercised directly against fabricated
+ * source text (see `_internal/dependency-free.test.ts`).
+ *
+ * Shipped source faces the full rule. TEST FILES face only the forbidden-package
+ * ban: they legitimately reach for devDependencies at module scope — the real
+ * `virtual-list.test.ts` does `await import('@testing-library/svelte')` — and this
+ * guard resolves bare specifiers against `dependencies` alone, so the full rule
+ * would flag every one of them. Nothing in a test file ships, so the
+ * undeclared-import risk does not apply there; the `@tanstack/virtual-core` ban
+ * still does, subpaths included.
  */
 export function findDependencyViolations(
   content: string,
   filePath: string,
   declaredDependencyNames: ReadonlySet<string>,
 ): DependencyViolation[] {
-  const violations: DependencyViolation[] = [];
   const isTestFile = TEST_FILE_PATTERN.test(filePath);
   const lineStartOffsets = buildLineStartOffsets(content);
-  const seenOffsets = new Set<number>();
+  const lines = content.split('\n');
 
-  const record = (specifier: string, offset: number, reason: string | undefined): void => {
-    if (reason === undefined) return;
-    const lineNumber = lineNumberForOffset(lineStartOffsets, offset);
-    violations.push({
-      filePath,
-      lineNumber,
-      specifier,
-      line: (content.split('\n')[lineNumber - 1] ?? '').trim(),
-      reason,
-    });
-  };
+  const blocks = filePath.endsWith('.svelte')
+    ? extractScriptBlocks(content)
+    : [{ text: content, offset: 0 }];
 
-  // Both scans run over the WHOLE file rather than line by line. A per-line scan
-  // misses every multiline form the language allows — `import(\n  'pkg'\n)` and
-  // `from\n  'pkg'` among them — which would let shipped source import an
-  // undeclared package and still pass this guard.
-  IMPORT_SPECIFIER_PATTERN.lastIndex = 0;
-  let match: RegExpExecArray | null;
-  while ((match = IMPORT_SPECIFIER_PATTERN.exec(content)) !== null) {
-    const specifier = match[2];
-    if (specifier === undefined) continue;
-    seenOffsets.add(match.index);
-    if (!isStaticallyResolvableSpecifier(specifier)) continue;
-    record(
-      specifier,
-      specifierOffset(match),
-      classifySpecifier(specifier, declaredDependencyNames),
-    );
-  }
-
-  // Dynamic imports. Shipped source faces the full rule; test files only the
-  // forbidden-specifier ban. See DYNAMIC_IMPORT_PATTERN.
-  DYNAMIC_IMPORT_PATTERN.lastIndex = 0;
-  while ((match = DYNAMIC_IMPORT_PATTERN.exec(content)) !== null) {
-    const specifier = match[2];
-    if (specifier === undefined) continue;
-    if (!isStaticallyResolvableSpecifier(specifier)) continue;
-    // A static `import ... from` match starting at the same offset was already
-    // reported above; do not report the same occurrence twice.
-    if (seenOffsets.has(match.index)) continue;
-    const reason = isTestFile
-      ? isForbiddenSpecifier(specifier)
-        ? FORBIDDEN_SPECIFIER_REASON
-        : undefined
-      : classifySpecifier(specifier, declaredDependencyNames);
-    record(specifier, specifierOffset(match), reason);
+  const violations: DependencyViolation[] = [];
+  for (const block of blocks) {
+    for (const parsed of collectSpecifiers(block.text, block.offset)) {
+      const reason =
+        isTestFile && parsed.isDynamic
+          ? isForbiddenSpecifier(parsed.specifier)
+            ? FORBIDDEN_SPECIFIER_REASON
+            : undefined
+          : classifySpecifier(parsed.specifier, declaredDependencyNames);
+      if (reason === undefined) continue;
+      const lineNumber = lineNumberForOffset(lineStartOffsets, parsed.offset);
+      violations.push({
+        filePath,
+        lineNumber,
+        specifier: parsed.specifier,
+        line: (lines[lineNumber - 1] ?? '').trim(),
+        reason,
+      });
+    }
   }
 
   return violations.sort((left, right) => left.lineNumber - right.lineNumber);
-}
-
-/**
- * Offset of the SPECIFIER itself, not of the statement containing it.
- *
- * `import { thing } from\n  'pkg'` matches starting at `from` on the first line,
- * but the line a reader needs to open is the one holding `'pkg'`.
- */
-function specifierOffset(match: RegExpExecArray): number {
-  const specifier = match[2] ?? '';
-  return match.index + Math.max(0, match[0].lastIndexOf(specifier));
 }
 
 /** Byte offset at which each line starts, for mapping a match index to a line number. */
