@@ -420,6 +420,16 @@ describe('scanSource — attribute matchers only run inside opening tags', () =>
     ).toHaveLength(2);
   });
 
+  test('a tag-like string inside a markup expression is text, not a tag', () => {
+    expect(scanSource('<code>{`<span class="sr-only">`}</code>')).toHaveLength(0);
+    expect(scanSource('<code>{\'<span class="sr-only">\'}</code>')).toHaveLength(0);
+    expect(scanSource('<p>{#if shown}{example}{/if} <b class="sr-only">y</b></p>')).toHaveLength(1);
+  });
+
+  test('a tag inside an {@html} expression is rendered and still flagged', () => {
+    expect(scanSource('<div>{@html `<span class="sr-only">x</span>`}</div>')).toHaveLength(1);
+  });
+
   test('extractOpeningTagSpans keeps > inside quoted values and expressions', () => {
     const spans = extractOpeningTagSpans(
       "<a title=\"a > b\" class={count > 1 ? 'many' : 'one'}>text</a>",
@@ -462,6 +472,20 @@ describe('scanSource — opening tags are read attribute by attribute', () => {
       scanSource("<span {...{ class: 'cinder-sr-only', title: 'sr-only' }}>x</span>"),
     ).toHaveLength(0);
     expect(scanSource('<span {...rest}>x</span>')).toHaveLength(0);
+  });
+
+  test('a class key nested inside another spread property is not a hit', () => {
+    expect(scanSource("<Widget {...{ config: { class: 'sr-only' } }} />")).toHaveLength(0);
+    expect(scanSource("<Widget {...{ items: [{ class: 'sr-only' }] }} />")).toHaveLength(0);
+  });
+
+  test('a class key inside a quoted spread value is not a hit', () => {
+    expect(scanSource("<Widget {...{ title: 'class: sr-only' }} />")).toHaveLength(0);
+    expect(scanSource('<Widget {...{ example: "{ class: \'sr-only\' }" }} />')).toHaveLength(0);
+  });
+
+  test('a top-level class key behind a conditional spread is still a hit', () => {
+    expect(scanSource("<span {...(hidden ? { class: 'sr-only' } : {})}>x</span>")).toHaveLength(1);
   });
 
   test('a spread carrying the class through a variable is caught by the script scan', () => {

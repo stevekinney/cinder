@@ -468,39 +468,54 @@ export function splitSourceRegions(source: string, language?: SourceLanguage): S
  * a quoted attribute value or a `class={a > b ? ...}` expression stay inside
  * the tag. Brace balancing runs against a string-masked copy so a brace in a
  * quoted string cannot close the expression early.
+ *
+ * A `{...}` expression met between tags is text as far as the DOM is
+ * concerned — `<code>{`<span class="sr-only">`}</code>` renders the tag as
+ * characters — so the walk steps over it without looking for tags inside.
+ * The one exception is `{@html ...}`, whose string IS injected as markup, so
+ * a tag inside it is a real element and is scanned like any other.
  */
 export function extractOpeningTagSpans(text: string): Array<{ start: number; text: string }> {
   const spans: Array<{ start: number; text: string }> = [];
-  const tagStartPattern = /<[a-zA-Z][\w:.-]*/g;
-  let match: RegExpExecArray | null;
-  while ((match = tagStartPattern.exec(text)) !== null) {
-    let index = match.index + match[0].length;
+  const tagStartPattern = /^<[a-zA-Z][\w:.-]*/;
+  let index = 0;
+  while (index < text.length) {
+    const character = text[index];
+    if (character === '{') {
+      if (/^\{\s*@html\b/.test(text.slice(index, index + 8))) {
+        index++;
+        continue;
+      }
+      index += balancedExpressionLength(text, index);
+      continue;
+    }
+    if (character !== '<') {
+      index++;
+      continue;
+    }
+    const match = tagStartPattern.exec(text.slice(index));
+    if (!match) {
+      index++;
+      continue;
+    }
+    const start = index;
+    index += match[0].length;
     while (index < text.length) {
-      const character = text[index];
-      if (character === '>') break;
-      if (character === '"' || character === "'") {
-        const close = text.indexOf(character, index + 1);
+      const inner = text[index];
+      if (inner === '>') break;
+      if (inner === '"' || inner === "'") {
+        const close = text.indexOf(inner, index + 1);
         index = close === -1 ? text.length : close + 1;
         continue;
       }
-      if (character === '{') {
-        const balance = maskStringLiterals(text.slice(index));
-        let depth = 0;
-        let relative = 0;
-        for (; relative < balance.length; relative++) {
-          if (balance[relative] === '{') depth++;
-          else if (balance[relative] === '}') {
-            depth--;
-            if (depth === 0) break;
-          }
-        }
-        index += relative + 1;
+      if (inner === '{') {
+        index += balancedExpressionLength(text, index);
         continue;
       }
       index++;
     }
-    spans.push({ start: match.index, text: text.slice(match.index, index + 1) });
-    tagStartPattern.lastIndex = index + 1;
+    spans.push({ start, text: text.slice(start, index + 1) });
+    index++;
   }
   return spans;
 }
@@ -525,6 +540,21 @@ function balancedExpressionLength(text: string, openBraceIndex: number): number 
     }
   }
   return relative + 1;
+}
+
+/**
+ * Number of `{` object-literal openers still open at `text[index]`, ignoring
+ * `(` and `[` groups. Run it over a string-masked copy: a brace inside a
+ * quoted value is not an opener.
+ */
+export function enclosingObjectLiterals(text: string, index: number): number {
+  const stack: string[] = [];
+  for (let position = 0; position < index; position++) {
+    const character = text[position];
+    if (character === '{' || character === '(' || character === '[') stack.push(character);
+    else if (character === '}' || character === ')' || character === ']') stack.pop();
+  }
+  return stack.filter((opener) => opener === '{').length;
 }
 
 /**
@@ -715,14 +745,22 @@ export function scanSource(
   const scanOpeningTag = (text: string, offset: number): void => {
     for (const attribute of extractTagAttributes(text)) {
       if (attribute.kind === 'spread') {
+        // Only a top-level property of the spread object lands on this
+        // element: `{...{ config: { class: 'sr-only' } }}` passes `config`
+        // along and applies no class here. The pattern therefore runs over
+        // the string-masked expression (so `class:` inside a quoted value is
+        // blank) and a match only counts when exactly one object literal
+        // encloses it — `(hidden ? { class } : {})` still qualifies, a
+        // nested object or an array element does not.
+        const maskedExpression = maskStringLiterals(attribute.expression);
         SPREAD_CLASS_PROPERTY_PATTERN.lastIndex = 0;
         let property: RegExpExecArray | null;
-        while ((property = SPREAD_CLASS_PROPERTY_PATTERN.exec(attribute.expression)) !== null) {
+        while ((property = SPREAD_CLASS_PROPERTY_PATTERN.exec(maskedExpression)) !== null) {
+          if (enclosingObjectLiterals(maskedExpression, property.index) !== 1) continue;
           // The property value runs to the next `,` or `}` at depth zero of
           // the string-masked expression, so a comma inside a quoted class
           // list or a nested object does not end it early.
           const valueStart = property.index + property[0].length;
-          const maskedExpression = maskStringLiterals(attribute.expression);
           let depth = 0;
           let valueEnd = valueStart;
           for (; valueEnd < maskedExpression.length; valueEnd++) {
