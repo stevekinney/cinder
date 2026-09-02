@@ -1638,16 +1638,16 @@ describe('encoder mirrors every decoder guard', () => {
   });
 
   test('rejects sparse block arrays instead of serializing their holes as null', () => {
-    // A sparse array is assignable to `ChatStreamBlock[]` but has no element
+    // A sparse array is assignable to a block array but has no element
     // for `.map` to visit; `JSON.stringify` would turn the hole into `null`
     // and the decoder would then refuse the frame the encoder just produced.
     // Built by assigning `length` and by skipping an index, because the
     // literal forms (`new Array(n)`, `[a, , b]`) are lint errors — which is
     // the point: production code cannot write one on purpose, so this guards
     // runtime casts, not authored literals.
-    const holes: ChatStreamBlock[] = [];
+    const holes: Array<typeof block> = [];
     holes.length = 1;
-    const middleHole: ChatStreamBlock[] = [];
+    const middleHole: Array<typeof block> = [];
     middleHole[0] = block;
     middleHole[2] = block;
     const sparseBlocks = {
