@@ -22,6 +22,20 @@ Grid container that lays out multiple stat tiles with consistent spacing and ali
 The leaf remains importable individually for à-la-carte builds — see
 `@lostgradient/cinder/statistic`.
 
+## Rendering and customization
+
+The root `.cinder-statistic-group` receives `class`, `style`, and every other
+prop, carries `data-cinder-variant` and `data-cinder-columns`, and is the
+container that the column-collapse queries measure — so sizing the root
+(`style="inline-size: 20rem"`, a `max-inline-size` class) is what makes a
+fixed column count collapse. The cells render inside an inner
+`.cinder-statistic-group__grid`, which owns `display: grid`, the column
+template, and the gap. Target that element for layout overrides such as
+`grid-template-columns`; a `gap` override on the root does not reach it, but
+`--cinder-statistic-group-gap` set on the root does. Cells are
+`.cinder-statistic` inside the grid, so a direct-child selector reads
+`.cinder-statistic-group > .cinder-statistic-group__grid > .cinder-statistic`.
+
 ## Props
 
 <!-- generated:props:start -->
