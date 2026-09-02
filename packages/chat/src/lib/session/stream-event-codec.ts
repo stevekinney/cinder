@@ -389,6 +389,19 @@ function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
   return value;
 }
 
+/**
+ * Throws unless `value` is genuinely a string. The declared types already say
+ * so, but a JavaScript caller or a runtime-cast value can supply anything,
+ * and the decoder checks these fields — so without this the encoder could
+ * emit a frame its own decoder rejects, which is the one thing the projection
+ * layer exists to prevent.
+ */
+function requireString(value: unknown, context: string): string {
+  if (typeof value !== 'string')
+    throw new Error(`Invalid chat stream event: ${context} must be a string`);
+  return value;
+}
+
 function isLegacyChatStreamEventType(
   type: ChatStreamEvent['type'],
 ): type is 'text' | 'tool_call' | 'tool_result' {
@@ -419,8 +432,8 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
     case 'tool_call':
       return {
         type: 'tool_call',
-        id: event.id,
-        name: event.name,
+        id: requireString(event.id, 'id'),
+        name: requireString(event.name, 'name'),
         arguments: assertFiniteJSONValue(event.arguments, 'tool_call.arguments'),
         ...envelope,
       };
@@ -436,7 +449,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       return {
         type: 'stream:block-delta',
         block: projectChatStreamBlock(event.block),
-        delta: event.delta,
+        delta: requireString(event.delta, 'delta'),
         ...envelope,
       };
     case 'stream:block-complete':
@@ -448,30 +461,30 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
     case 'stream:text-delta':
       return {
         type: 'stream:text-delta',
-        content: event.content,
-        accumulated: event.accumulated,
+        content: requireString(event.content, 'content'),
+        accumulated: requireString(event.accumulated, 'accumulated'),
         ...envelope,
       };
     case 'stream:tool-call-start':
       return {
         type: 'stream:tool-call-start',
-        toolName: event.toolName,
-        blockId: event.blockId,
+        toolName: requireString(event.toolName, 'toolName'),
+        blockId: requireString(event.blockId, 'blockId'),
         ...envelope,
       };
     case 'stream:tool-call-delta':
       return {
         type: 'stream:tool-call-delta',
-        toolName: event.toolName,
-        blockId: event.blockId,
-        partialArguments: event.partialArguments,
+        toolName: requireString(event.toolName, 'toolName'),
+        blockId: requireString(event.blockId, 'blockId'),
+        partialArguments: requireString(event.partialArguments, 'partialArguments'),
         ...envelope,
       };
     case 'stream:tool-call-complete':
       return {
         type: 'stream:tool-call-complete',
-        toolName: event.toolName,
-        blockId: event.blockId,
+        toolName: requireString(event.toolName, 'toolName'),
+        blockId: requireString(event.blockId, 'blockId'),
         arguments: assertFiniteJSONValue(event.arguments, 'stream:tool-call-complete.arguments'),
         ...envelope,
       };
@@ -488,15 +501,15 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
     case 'tool.started':
       return {
         type: 'tool.started',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolName: requireString(event.toolName, 'toolName'),
         ...envelope,
       };
     case 'tool.progress': {
       const projected: Record<string, unknown> = {
         type: 'tool.progress',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolName: requireString(event.toolName, 'toolName'),
       };
       if (event.percent !== undefined) {
         // JSON.stringify serializes a non-finite number (NaN, Infinity) as
@@ -507,7 +520,8 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
           throw new Error('Invalid chat stream event: tool.progress percent must be finite');
         projected['percent'] = event.percent;
       }
-      if (event.message !== undefined) projected['message'] = event.message;
+      if (event.message !== undefined)
+        projected['message'] = requireString(event.message, 'message');
       return { ...projected, ...envelope };
     }
     case 'tool.settled':
@@ -522,26 +536,26 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       }
       return {
         type: 'tool.settled',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolName: requireString(event.toolName, 'toolName'),
         result: projectChatToolResult(event.result),
         ...envelope,
       };
     case 'tool.error':
       return {
         type: 'tool.error',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolName: requireString(event.toolName, 'toolName'),
         error: assertFiniteJSONValue(event.error, 'tool.error.error'),
         ...envelope,
       };
     case 'tool.policy-denied': {
       const projected: Record<string, unknown> = {
         type: 'tool.policy-denied',
-        toolCallId: event.toolCallId,
-        toolName: event.toolName,
+        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolName: requireString(event.toolName, 'toolName'),
       };
-      if (event.reason !== undefined) projected['reason'] = event.reason;
+      if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
       return { ...projected, ...envelope };
     }
     case 'run.completed':
@@ -569,9 +583,9 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         // add no guarantee, and reimplementing the message schema to do it
         // properly would be a maintenance liability.
         conversation: event.conversation,
-        content: event.content,
+        content: requireString(event.content, 'content'),
         usage: projectTokenUsage(event.usage),
-        finishReason: event.finishReason,
+        finishReason: requireString(event.finishReason, 'finishReason'),
         ...envelope,
       };
     case 'run.error':
@@ -584,7 +598,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       };
     case 'run.aborted': {
       const projected: Record<string, unknown> = { type: 'run.aborted' };
-      if (event.reason !== undefined) projected['reason'] = event.reason;
+      if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
       return { ...projected, ...envelope };
     }
     default: {
@@ -1079,6 +1093,22 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
  * blocks but never reaches this code, so a deliberate client cancellation
  * is correctly exempt without any extra bookkeeping.
  */
+/**
+ * Every versioned frame ends with a newline (reference architecture, "Stream
+ * wire contract"), so a non-empty buffer left over at EOF means the response
+ * was cut mid-frame. The leftover may still PARSE — a stream truncated
+ * immediately after a terminal frame's closing brace decodes cleanly — which
+ * is exactly why the terminal-frame check alone is not enough to tell a
+ * complete response from a severed one.
+ *
+ * Bare (legacy) streams are exempt: they predate the newline requirement and
+ * a trailing frame without one has always been accepted.
+ */
+function assertStreamFramed(buffer: string, guard: StreamGuardState): void {
+  if (guard.mode === 'versioned' && buffer.trim())
+    throw new Error('Invalid chat stream event: stream ended mid-frame without a newline');
+}
+
 function assertStreamTerminated(guard: StreamGuardState): void {
   if (guard.mode === 'versioned' && !guard.sawTerminal)
     throw new Error('Invalid chat stream event: stream ended without a terminal frame');
@@ -1126,6 +1156,7 @@ export async function* decodeChatStreamEvents(
       // buffer looks empty and a genuinely truncated stream is accepted.
       buffer += decoder.decode();
       if (buffer.trim()) yield decodeAndTrack(buffer.trim());
+      assertStreamFramed(buffer, guard);
       assertStreamTerminated(guard);
       completed = true;
     } finally {
@@ -1147,6 +1178,7 @@ export async function* decodeChatStreamEvents(
   // this makes a truncated stream look like a clean one.
   buffer += decoder.decode();
   if (buffer.trim()) yield decodeAndTrack(buffer.trim());
+  assertStreamFramed(buffer, guard);
   assertStreamTerminated(guard);
 }
 

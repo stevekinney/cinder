@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { createConversationHistory } from 'conversationalist';
+import {
+  appendToolCall,
+  appendToolResult,
+  appendUserMessage,
+  createConversationHistory,
+  isConversationHistory,
+} from 'conversationalist';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
 import {
   decodeChatStreamEvent,
@@ -1430,5 +1436,153 @@ describe('legacy envelope is all-or-nothing at the type level', () => {
 
     expect(() => encodeChatStreamEvent(halfVersion)).toThrow();
     expect(() => encodeChatStreamEvent(halfSequence)).toThrow();
+  });
+});
+
+describe('encoder validates primitive fields', () => {
+  const envelope = { wireVersion: 1 as const, sequence: 1 };
+
+  test('rejects a non-string content on stream:text-delta', () => {
+    const event = {
+      type: 'stream:text-delta',
+      content: 42,
+      accumulated: 'hello',
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).toThrow(/content must be a string/);
+  });
+
+  test('rejects an undefined toolName on stream:tool-call-start', () => {
+    const event = {
+      type: 'stream:tool-call-start',
+      toolName: undefined,
+      blockId: 'b1',
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).toThrow(/toolName must be a string/);
+  });
+});
+
+describe('versioned streams must be newline-framed', () => {
+  const frame = (sequence: number, extra: Record<string, unknown>): string =>
+    JSON.stringify({ wireVersion: 1, sequence, ...extra });
+
+  test('rejects a versioned stream cut immediately after a terminal frame', async () => {
+    // The leftover parses cleanly and the terminal-frame guard is satisfied,
+    // so only the missing newline distinguishes a complete response from a
+    // severed one.
+    const terminal = frame(1, {
+      type: 'run.aborted',
+      reason: 'stopped',
+    });
+
+    async function* chunks(): AsyncGenerator<string> {
+      yield terminal; // deliberately no trailing newline
+    }
+
+    const collect = async (): Promise<void> => {
+      for await (const _event of decodeChatStreamEvents(chunks())) {
+        // Drain.
+      }
+    };
+
+    await expect(collect()).rejects.toThrow(/ended mid-frame without a newline/);
+  });
+
+  test('accepts the same stream when the terminal frame is newline-framed', async () => {
+    async function* chunks(): AsyncGenerator<string> {
+      yield `${frame(1, { type: 'run.aborted', reason: 'stopped' })}\n`;
+    }
+
+    const seen: ChatStreamEvent[] = [];
+    for await (const event of decodeChatStreamEvents(chunks())) seen.push(event);
+    expect(seen).toHaveLength(1);
+  });
+
+  test('still accepts a bare legacy frame without a trailing newline', async () => {
+    async function* chunks(): AsyncGenerator<string> {
+      yield JSON.stringify({ type: 'text', text: 'hi' });
+    }
+
+    const seen: ChatStreamEvent[] = [];
+    for await (const event of decodeChatStreamEvents(chunks())) seen.push(event);
+    expect(seen).toEqual([{ type: 'text', text: 'hi' }]);
+  });
+});
+
+describe('a paused-approval history still encodes as run.completed', () => {
+  // Raised on review: `ChatToolResult` carries `pendingApproval`, and the
+  // session controller passes the whole result to `appendToolResult` — so the
+  // concern was that a controller-owned history contains that extension,
+  // which the strict conversation guard would reject, preventing a paused
+  // approval run from ever delivering its terminal history.
+  //
+  // It does not, and this pins why: conversationalist strips `pendingApproval`
+  // when it materialises the result into the transcript. The descriptor lives
+  // on the wire `tool_result` frame and in the client's own pending-approval
+  // map, never in `ConversationHistory`. If that ever changes, this test fails
+  // and the projection question genuinely reopens.
+  test('conversationalist does not persist pendingApproval into the transcript', () => {
+    const history = appendToolCall(
+      appendUserMessage(createConversationHistory({ id: 'c1' }), 'hi'),
+      {
+        id: 'call_1',
+        name: 'remember_note',
+        arguments: { text: 'x' },
+      } as never,
+    );
+
+    const withResult = appendToolResult(history, {
+      callId: 'call_1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'Save this note?' },
+      pendingApproval: {
+        toolName: 'remember_note',
+        arguments: { text: 'x' },
+        approvalToken: 'a'.repeat(64),
+      },
+    } as never);
+
+    expect(isConversationHistory(withResult)).toBe(true);
+    expect(JSON.stringify(withResult)).not.toContain('approvalToken');
+  });
+
+  test('encodes run.completed for that history without throwing', () => {
+    const history = appendToolCall(
+      appendUserMessage(createConversationHistory({ id: 'c1' }), 'hi'),
+      {
+        id: 'call_1',
+        name: 'remember_note',
+        arguments: { text: 'x' },
+      } as never,
+    );
+
+    const withResult = appendToolResult(history, {
+      callId: 'call_1',
+      outcome: 'action_required',
+      content: null,
+      action: { type: 'approval', message: 'Save this note?' },
+      pendingApproval: {
+        toolName: 'remember_note',
+        arguments: { text: 'x' },
+        approvalToken: 'a'.repeat(64),
+      },
+    } as never);
+
+    const event = {
+      type: 'run.completed',
+      conversation: withResult,
+      content: 'paused',
+      usage: { prompt: 1, completion: 1, total: 2 },
+      finishReason: 'stop',
+      wireVersion: 1,
+      sequence: 1,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).not.toThrow();
+    expect(encodeChatStreamEvent(event)).not.toContain('approvalToken');
   });
 });
