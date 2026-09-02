@@ -67,8 +67,18 @@ async function runAndCollect(
 
 	const agent = createChatAgent({ generate, toolbox, requestContext, eventTarget });
 	const run = startChatRun(agent, conversationWith('hello'));
-	const envelope = await pumpChatRun(run, (frame) => frames.push(frame));
-	return { frames, envelope };
+	try {
+		const envelope = await pumpChatRun(run, (frame) => frames.push(frame));
+		return { frames, envelope };
+	} finally {
+		// The route disposes every run best-effort once the pump settles; the
+		// harness does the same so listeners never outlive a test.
+		try {
+			run[Symbol.dispose]();
+		} catch {
+			// Nothing to attach a disposal failure to once the pump has settled.
+		}
+	}
 }
 
 describe('pumpChatRun: completed success', () => {

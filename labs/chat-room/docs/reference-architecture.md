@@ -31,7 +31,7 @@ That target is Operative owning multi-step continuation inside a single request,
 
 The browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to the chat route. The server validates that boundary before passing the value to the run.
 
-Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy; on run completion the client reconciles the serialized final conversation as the authority for that turn.
+Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy, and today that is the whole story: the route emits only text and tool frames followed by EOF, so the browser reconstructs the turn from those frames. Reconciling a serialized final conversation as the authority for the turn is target state only — it needs the terminal run frame described above, which the wire vocabulary does not yet carry.
 
 System instructions belong to the module-scoped agent definition. They are not appended again when resuming from `{ conversation }` — the posted history already carries the accumulated context.
 

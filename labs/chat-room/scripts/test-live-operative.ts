@@ -73,7 +73,19 @@ async function main(): Promise<void> {
 	);
 
 	const run = startChatRun(agent, conversation);
-	const envelope = await pumpChatRun(run, (frame) => frames.push(frame));
+	let envelope: Awaited<ReturnType<typeof pumpChatRun>>;
+	try {
+		envelope = await pumpChatRun(run, (frame) => frames.push(frame));
+	} finally {
+		// Same best-effort teardown the route performs, so this check exercises
+		// production's cleanup path too and never leaves provider-side resources
+		// hanging on a failed run.
+		try {
+			run[Symbol.dispose]();
+		} catch {
+			// The run is ending either way; a disposal failure has nothing left to attach to.
+		}
+	}
 
 	if (!envelope.ok) {
 		console.error(
