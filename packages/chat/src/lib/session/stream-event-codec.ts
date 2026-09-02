@@ -241,7 +241,21 @@ function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
  * object built by spreading a provider payload — which could carry extra
  * properties — can't ride along onto the wire unnoticed.
  */
-function projectChatToolResult(result: ChatToolResult): Record<string, unknown> {
+/**
+ * A record's own enumerable fields, copied once. Every projector starts here:
+ * a producer can hand over `Object.create({ id: 'secret', … })`, whose fields
+ * live on its prototype, and encoding those would put data the object does
+ * not carry onto the wire — in a frame the decoder, which projects to own
+ * keys before validating, would then reject. Copying also reads any accessor
+ * exactly once, so a guard and the projection that follows it cannot see
+ * different values.
+ */
+function ownFields<T>(value: T): T {
+  return isRecord(value) ? ({ ...value } as T) : value;
+}
+
+function projectChatToolResult(rawResult: ChatToolResult): Record<string, unknown> {
+  const result = ownFields(rawResult);
   const projected: Record<string, unknown> = {
     callId: result.callId,
     outcome: result.outcome,
@@ -310,7 +324,8 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
  * a frame the decoder would then reject or that `JSON.stringify` would
  * silently corrupt (a non-finite `index` serializes to `null`).
  */
-function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown> {
+function projectChatStreamBlock(rawBlock: ChatStreamBlock): Record<string, unknown> {
+  const block = ownFields(rawBlock);
   // Mirrors `toChatStreamBlock`'s checks field-for-field. Validating only
   // `index` left every other field free to be whatever a runtime-cast
   // producer supplied, so the encoder could still emit a block its own
@@ -345,7 +360,8 @@ function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown>
  * non-finite usage value throws before encoding rather than silently
  * becoming `null` and failing the decoder's own check downstream.
  */
-function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
+function projectTokenUsage(rawUsage: TokenUsage): Record<string, unknown> {
+  const usage = ownFields(rawUsage);
   // Read each field once and validate the snapshot, so a stateful accessor
   // cannot pass the guard and then hand the projection a different value.
   const snapshot: Record<string, unknown> = {
@@ -389,7 +405,8 @@ function projectChatStreamBlockArray(
 }
 
 /** Whitelists exactly `ChatStreamState`'s declared fields, including its nested block arrays. */
-function projectChatStreamState(state: ChatStreamState): Record<string, unknown> {
+function projectChatStreamState(rawState: ChatStreamState): Record<string, unknown> {
+  const state = ownFields(rawState);
   const projected: Record<string, unknown> = {
     blocks: projectChatStreamBlockArray(state.blocks, 'state.blocks'),
     textContent: requireString(state.textContent, 'state.textContent'),
@@ -411,7 +428,8 @@ function projectChatStreamState(state: ChatStreamState): Record<string, unknown>
  * bare `JSON.stringify`. Rebuilding here, not just at decode, is what
  * actually stops that: nothing re-attaches `cause` by construction.
  */
-function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSerializedRunError {
+function projectChatSerializedRunError(rawError: ChatSerializedRunError): ChatSerializedRunError {
+  const error = ownFields(rawError);
   // Rebuilding alone only drops `cause`; it does not stop a runtime-cast
   // producer supplying a `kind`/`code` outside the published vocabulary, or
   // non-string `name`/`message`. The decoder validates all four with these

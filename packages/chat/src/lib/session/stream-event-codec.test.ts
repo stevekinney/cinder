@@ -884,6 +884,24 @@ describe('chat stream event codec', () => {
       expect(seen).toHaveLength(1);
     });
 
+    test('does not encode nested fields that live only on the prototype', () => {
+      const block = Object.create({
+        id: 'secret',
+        type: 'text',
+        index: 0,
+        content: '',
+        complete: false,
+      }) as Record<string, unknown>;
+      expect(() =>
+        encodeChatStreamEvent({
+          type: 'stream:block-start',
+          block,
+          wireVersion: 1,
+          sequence: 0,
+        } as unknown as ChatStreamEvent),
+      ).toThrow('Invalid chat stream event');
+    });
+
     test('rejects an array carrying frame-shaped properties', () => {
       // It spreads into an ordinary frame but serializes to `[]`, so the
       // typed-transport path would accept what the NDJSON path rejects.
