@@ -121,13 +121,17 @@ describe('StatisticGroup', () => {
     );
     expect(singleColumnDividers).not.toContain('border-inline-end:');
 
-    const fixedMultiColumn = blockAfter(
-      normalized,
-      "[data-cinder-variant='default']:not([data-cinder-columns='1']):not([data-cinder-columns='auto'])",
-    );
-    expect(fixedMultiColumn).toBeDefined();
-    expect(fixedMultiColumn).toContain('border-inline-end: 1px solid var(--cinder-border-muted)');
-    expect(fixedMultiColumn).not.toContain('border-block-end:');
+    // The enabler is enumerated per fixed count rather than written as one
+    // `:not():not()` rule, so it carries the same (0,5,0) specificity as the
+    // row-end suppressors and source order decides. See the CSS comment.
+    for (const columnCount of [2, 3, 4]) {
+      const enabler = blockAfter(
+        normalized,
+        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic:not(:last-child)`,
+      );
+      expect(enabler, `columns=${columnCount} enabler`).toBeDefined();
+      expect(enabler).toContain('border-inline-end: 1px solid var(--cinder-border-muted)');
+    }
 
     // Row ends, one rule per fixed count.
     for (const columnCount of [2, 3, 4]) {
@@ -137,30 +141,33 @@ describe('StatisticGroup', () => {
     }
   });
 
-  test('divider rules use no container queries', async () => {
+  test('divider rules mirror the layout collapse thresholds', async () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
 
-    // The layout's own collapse rules (30rem, 18rem) are inert: their subject is
-    // `.cinder-statistic-group`, which IS the named query container, and an element is
-    // never its own container -- a container query resolves against the nearest ANCESTOR
-    // container. So a fixed `columns` count renders that many tracks at every width.
-    //
-    // The dividers must describe the grid that actually renders. An earlier revision
-    // mirrored those thresholds and so flipped to horizontal dividers at narrow widths
-    // while the grid still showed its full column count. With the thresholds gone,
-    // `nth-child(Nn)` needs no width bands, and any reintroduced `@container` in this
-    // section would be reintroducing the mismatch.
-    // Assert the sentinels resolve before slicing between them. Unchecked, a renamed
-    // marker gives indexOf -1, and the resulting slice is an unrelated fragment that
-    // trivially contains no '@container' -- the guard would pass for the wrong reason,
-    // which is the exact failure mode it exists to prevent.
+    // The layout's collapse rules (30rem -> two tracks, 18rem -> one) fire because the
+    // group queries a wrapper element rather than itself. The dividers must describe the
+    // grid that actually renders, so they mirror those exact thresholds: under 30rem a
+    // declared 3 or 4 suppresses every 2nd cell; under 18rem every fixed count flips to
+    // horizontal dividers. An earlier revision could not do this because the collapse
+    // never fired for a standalone group and the dividers were kept width-blind.
     const sectionStart = css.indexOf('default-variant dividers');
     const sectionEnd = css.indexOf('variant: cards');
     expect(sectionStart).toBeGreaterThan(-1);
     expect(sectionEnd).toBeGreaterThan(sectionStart);
+    const dividers = normalizeCss(css.slice(sectionStart, sectionEnd));
 
-    const dividerSection = css.slice(sectionStart, sectionEnd);
-    expect(dividerSection).not.toContain('@container');
+    expect(dividers).toContain('@container cinder-statistic-group (max-width: 30rem)');
+    expect(dividers).toContain('@container cinder-statistic-group (max-width: 18rem)');
+    // Two-track band: 3 and 4 suppress every 2nd cell.
+    for (const columnCount of [3, 4]) {
+      expect(dividers).toContain(
+        `[data-cinder-columns='${columnCount}'] > .cinder-statistic:nth-child(2n)`,
+      );
+    }
+    // One-track band: the inline divider is removed and a block divider takes over.
+    const oneTrack = dividers.slice(dividers.indexOf('(max-width: 18rem)'));
+    expect(oneTrack).toContain('border-inline-end: none');
+    expect(oneTrack).toContain('border-block-end: 1px solid var(--cinder-border-muted)');
   });
 
   test("columns='auto' carries no per-cell divider rules at any width", async () => {
@@ -193,33 +200,41 @@ describe('StatisticGroup', () => {
     );
   });
 
-  test('row-end and single-column resets follow the generic multi-column rule', async () => {
+  test('divider bands follow the declared-layout rules in source order', async () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
-
-    // Every divider rule carries the same specificity -- one class, one attribute, one
-    // pseudo-class -- so source order alone decides the cascade. The resets that turn
-    // `border-inline-end` OFF must come AFTER the generic rule that turns it on. When
-    // they came first, that rule re-applied a vertical border underneath them and a
-    // narrow group rendered BOTH dividers at once.
-    //
-    // Order is the entire fix, and nothing else here would catch a regression: both
-    // orderings parse, and every content assertion above passes either way.
     const normalized = normalizeCss(css);
-    const genericMultiColumn = normalized.indexOf(
-      "[data-cinder-variant='default']:not([data-cinder-columns='1']):not([data-cinder-columns='auto'])",
-    );
-    const rowEndReset = normalized.indexOf(
-      "[data-cinder-columns='2'] > .cinder-statistic:nth-child(2n)",
-    );
-    const lastChildReset = normalized.indexOf(
-      "[data-cinder-variant='default'] > .cinder-statistic:last-child",
-    );
 
-    expect(genericMultiColumn).toBeGreaterThan(-1);
-    expect(rowEndReset).toBeGreaterThan(-1);
-    expect(lastChildReset).toBeGreaterThan(-1);
-    expect(rowEndReset).toBeGreaterThan(genericMultiColumn);
-    expect(lastChildReset).toBeGreaterThan(genericMultiColumn);
+    // ORDER IS LOAD-BEARING. Every divider rule is (0,5,0), so the cascade is
+    // decided purely by source position: each fixed count's enabler must precede its
+    // row-end suppressor, the two-track band must follow all declared-layout rules,
+    // and the one-track band must follow the two-track band.
+    // `from` matters: the same `@container … (max-width: 30rem)` header opens the
+    // LAYOUT collapse block near the top of the file, so a band must be looked for
+    // after the divider rules it is supposed to follow, not from the start.
+    const at = (needle: string, from = 0): number => {
+      const index = normalized.indexOf(needle, from);
+      expect(index, `expected divider rule after ${from}: ${needle}`).toBeGreaterThan(-1);
+      return index;
+    };
+    for (const columnCount of [2, 3, 4]) {
+      const enabler = at(
+        `[data-cinder-variant='default'][data-cinder-columns='${columnCount}'] > .cinder-statistic:not(:last-child)`,
+      );
+      const rowEnd = at(
+        `[data-cinder-columns='${columnCount}'] > .cinder-statistic:nth-child(${columnCount}n)`,
+      );
+      expect(rowEnd).toBeGreaterThan(enabler);
+    }
+    const lastDeclaredRule = at(
+      "[data-cinder-variant='default'][data-cinder-columns='1'] > .cinder-statistic:not(:last-child)",
+    );
+    const twoTrackBand = at(
+      '@container cinder-statistic-group (max-width: 30rem)',
+      lastDeclaredRule,
+    );
+    const oneTrackBand = at('@container cinder-statistic-group (max-width: 18rem)', twoTrackBand);
+    expect(twoTrackBand).toBeGreaterThan(lastDeclaredRule);
+    expect(oneTrackBand).toBeGreaterThan(twoTrackBand);
   });
 
   test('renders .cinder-statistic-group wrapping its children', () => {
