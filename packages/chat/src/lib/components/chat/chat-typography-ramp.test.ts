@@ -5,8 +5,16 @@ const chatCss = await Bun.file(`${import.meta.dir}/chat.css`).text();
 
 describe('Chat scoped typography ramp', () => {
   test('publishes one rem-based control that drives a clamped multi-step ramp', () => {
+    // Exact-equality on the whole generated list, not just the ramp's own
+    // entries: this doubles as a review gate on the component's public
+    // variable surface, so adding a `--cinder-`-prefixed custom property to
+    // chat.css trips it and has to be acknowledged here deliberately.
+    // `--cinder-chat-message-max-width` is the shared transcript readability
+    // cap, added when the grouped tool-call row was brought under the same
+    // measure as every other row.
     expect(variables).toEqual([
       '--cinder-chat-font-size',
+      '--cinder-chat-message-max-width',
       '--cinder-text-base',
       '--cinder-text-lg',
       '--cinder-text-sm',

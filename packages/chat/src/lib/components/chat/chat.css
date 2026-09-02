@@ -25,6 +25,23 @@
   }
 
   .cinder-chat.chat-container {
+    /* Readability cap shared by every transcript row — chat bubbles
+     * (chat-message.svelte's .chat-message-wrapper) and grouped tool-call
+     * cards (tool-call-timeline.svelte's .chat-tool-call-timeline) both read
+     * this one token, so the two can never drift apart.
+     *
+     * Declared HERE rather than beside the density tokens in chat.svelte's
+     * scoped <style>, deliberately: the component-artifact generator reads
+     * the built CSS sidecars (scripts/build.ts), so a token declared only in
+     * a nested Svelte <style> never reaches `chat.variables.json`, the
+     * generated README, or MCP tooling. The changeset advertises this token
+     * by name, so it has to be genuinely discoverable rather than merely
+     * present. Every consuming rule still carries a `, 48rem` fallback, so a
+     * consumer who does not import `@lostgradient/chat/styles` gets the same
+     * measure. Being inside `@layer cinder.components` also makes it easier
+     * to override, since unlayered author CSS beats a layered declaration. */
+    --cinder-chat-message-max-width: 48rem;
+
     /* One host-facing control drives the complete chat type ramp. The lower
      * clamps keep labels and metadata legible when Chat is embedded in a
      * narrow side panel; rem units preserve browser text zoom. These scoped
