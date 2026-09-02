@@ -101,11 +101,21 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
   'g',
 );
 
-/** Matches a `.sr-only`-prefixed CSS class selector. */
-const CSS_SELECTOR_PATTERN = new RegExp(
-  String.raw`(?<![\w-])\.sr-only(?:-[a-zA-Z]+)*(?![\w-])`,
-  'g',
-);
+/**
+ * Matches a `.sr-only`-prefixed CSS class selector.
+ *
+ * Deliberately does NOT reuse `BARE_TOKEN_SOURCE`. That source carries a
+ * `(?<![\w-])` lookbehind so a bare token cannot match inside
+ * `cinder-sr-only`, which is necessary where the token appears with no
+ * punctuation in front of it (a class attribute, a `classNames()` argument).
+ * Here the literal `\.` already does that job: `.cinder-sr-only` contains no
+ * `.sr-only` substring at all. Keeping the lookbehind as well was an active
+ * bug — it required the character before the dot to be a non-word character,
+ * so the chained selector `.foo.sr-only` slipped past the guard entirely,
+ * which is a common enough CSS shape to be a real bypass rather than a
+ * theoretical one.
+ */
+const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:-[a-zA-Z]+)*(?![\w-])`, 'g');
 
 /**
  * Extracts the argument text of every `classNames(...)` call in `source`,

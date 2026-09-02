@@ -33,6 +33,23 @@ describe('scanSource — bare `sr-only` detection', () => {
     expect(scanSource('.sr-only:focus {\n  clip: auto;\n}')).toHaveLength(1);
   });
 
+  // The chained form is the shape that slipped past the first version of this
+  // guard: its lookbehind required a non-word character before the dot, which
+  // `.foo` does not provide. Pinned because a guard with a silent bypass is
+  // worse than no guard — it reports clean while the defect it exists to catch
+  // walks straight through.
+  test('flags a bare .sr-only selector chained onto another class', () => {
+    expect(scanSource('.foo.sr-only {\n  position: absolute;\n}')).toHaveLength(1);
+  });
+
+  test('does not flag the design system utility, chained or otherwise', () => {
+    expect(scanSource('.cinder-sr-only {\n  position: absolute;\n}')).toHaveLength(0);
+    expect(scanSource('.foo.cinder-sr-only {\n  position: absolute;\n}')).toHaveLength(0);
+    expect(scanSource('.cinder-sr-only-focusable:focus-visible {\n  width: auto;\n}')).toHaveLength(
+      0,
+    );
+  });
+
   test('reports the correct 1-based line number', () => {
     const source = 'line one\nline two\n<span class="sr-only">three</span>\nline four';
     const hits = scanSource(source);
