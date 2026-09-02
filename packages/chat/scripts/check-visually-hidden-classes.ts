@@ -74,17 +74,27 @@ export type VisuallyHiddenClassFlag = {
  * a `.test.svelte` fixture or a `.test.css` file is as much a test source as
  * a `.test.ts`, and both are reachable by the walk.
  */
+/**
+ * Mirrors the fixture exclusions in `packages/chat/package.json`'s `files`
+ * field. Update both together, or the guard and the published artifact will
+ * disagree about what counts as production code.
+ */
+const FIXTURE_PATH_PATTERN = /(?:\.fixture\.|-fixture\.|-fixtures\.)[^/]*$/;
+
 export function isTestPath(relativePath: string): boolean {
-  // `*.test-fixture.svelte` is this repository's name for markup that exists
-  // only to be mounted by a test — `chat-composer-popover.test-fixture.svelte`
-  // is the current example. A fixture deliberately reproducing the broken
-  // class to pin a regression must not fail the authoring audit.
+  // Fixtures are test-only markup, and `packages/chat/package.json` is the
+  // authority on that rather than this script's opinion: its `files` field
+  // excludes `!dist/**/*.fixture.*`, `!dist/**/*-fixture.*`, and
+  // `!dist/**/*-fixtures.*`, and `npm pack --dry-run` confirms zero fixture
+  // files reach the published tarball. Keeping this list in step with that
+  // one is what makes the exemption defensible: anything the package refuses
+  // to publish is not production authoring surface.
   //
-  // Deliberately NOT the looser `*-fixture.svelte`. Files like
-  // `chat-history-pagination-fixture.svelte` are built into `dist/` and ship
-  // to consumers, so exempting them would create exactly the blind spot this
-  // guard exists to close.
-  if (relativePath.endsWith('.test-fixture.svelte')) return true;
+  // An earlier version of this guard exempted only `*.test-fixture.svelte`,
+  // on the mistaken belief that the other fixture files shipped because they
+  // appear in the local `dist/` build. `dist/` is the build output; `files`
+  // decides what is actually published, and it excludes them.
+  if (FIXTURE_PATH_PATTERN.test(relativePath)) return true;
   return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
 }
 

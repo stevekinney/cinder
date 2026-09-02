@@ -208,10 +208,20 @@ describe('isTestPath', () => {
       expect(isTestPath(path)).toBe(false);
   });
 
-  // These ship in dist/ and reach consumers, so exempting them would create
-  // the blind spot this guard exists to close.
-  test('does not exempt shipped -fixture.svelte components', () => {
-    for (const path of ['chat-history-pagination-fixture.svelte', 'a-fixture.svelte'])
+  // Mirrors package.json's own `files` exclusions, which are the authority on
+  // what is production surface: `npm pack --dry-run` ships zero fixture files.
+  test('exempts every fixture pattern the package refuses to publish', () => {
+    for (const path of [
+      'chat-composer-popover.test-fixture.svelte',
+      'chat-history-pagination-fixture.svelte',
+      'chat-private-harness.fixture.svelte',
+      'chat-thing-fixtures.svelte',
+    ])
+      expect(isTestPath(path)).toBe(true);
+  });
+
+  test('does not exempt ordinary components with fixture-ish names', () => {
+    for (const path of ['fixture-gallery.svelte', 'chat-fixtureless.svelte'])
       expect(isTestPath(path)).toBe(false);
   });
 });
