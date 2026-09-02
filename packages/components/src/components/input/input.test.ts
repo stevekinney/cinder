@@ -706,6 +706,13 @@ describe('Input group (leading/trailing addons)', () => {
     expect(css).toMatch(
       /\.cinder-input-host\[data-disabled\]\s*\{[^}]*border-color:\s*var\(--cinder-border-muted\);/,
     );
+    // And the reverse direction: the grouped input drops its border with
+    // `border-style`, not the `border` shorthand, so its computed border-color
+    // is unchanged when the addon is removed and its border returns.
+    const groupedInputRule = css.match(/\.cinder-input-group > \.cinder-input\s*\{[^}]*\}/u)?.[0];
+    expect(groupedInputRule).toBeDefined();
+    expect(groupedInputRule).toMatch(/border-style:\s*none;/);
+    expect(groupedInputRule).not.toMatch(/\bborder:\s*none;/);
   });
 
   test('group with leading only — wrapper has data-leading, leading span present, trailing absent', () => {

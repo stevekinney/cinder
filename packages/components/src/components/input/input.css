@@ -238,9 +238,15 @@
       box-shadow var(--cinder-duration-fast) var(--cinder-ease-standard);
   }
 
-  /* Inner input: strip its own chrome, inherit the group's */
+  /* Inner input: strip its own chrome, inherit the group's. `border-style`
+     rather than the `border` shorthand: the shorthand would reset the input's
+     computed border-color to `currentcolor`, and because the input is the
+     same element before and after an addon is removed, its own border-color
+     transition would then run from the text colour when its border comes
+     back. Leaving the colour alone keeps it equal on both sides of the swap,
+     for the invalid and disabled states too. */
   .cinder-input-group > .cinder-input {
-    border: none;
+    border-style: none;
     border-radius: 0;
     background: transparent;
     flex: 1 1 auto;
