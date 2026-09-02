@@ -751,9 +751,18 @@ function projectChatStreamEventBody(
   }
 }
 
-/** Encodes one event as a newline-delimited JSON frame. */
+/**
+ * Encodes one event as a newline-delimited JSON frame.
+ *
+ * The projected frame is rebuilt as plain data before serialization: what
+ * `JSON.stringify` actually consults is any reachable `toJSON`, and the
+ * frame's own object literals inherit whatever `Object.prototype` carries.
+ * A hook there would replace the field-by-field projection wholesale, so
+ * `projectPlainJSON` rejects it — and returns null-prototype objects, which
+ * cannot pick one up again.
+ */
 export function encodeChatStreamEvent(event: ChatStreamEvent): string {
-  return `${JSON.stringify(projectChatStreamEvent(event))}\n`;
+  return `${JSON.stringify(projectPlainJSON(projectChatStreamEvent(event), 'frame'))}\n`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -932,7 +941,12 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   const raw = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
   // Own key only, like the envelope: an inherited `type` would let an object
   // that serializes without a discriminator decode as a (terminal) frame.
-  if (!isRecord(raw) || !Object.hasOwn(raw, 'type')) throw new Error('Invalid chat stream event');
+  // An array is `typeof 'object'` too, and one carrying named properties
+  // (`Object.assign([], { type: 'run.aborted' })`) would spread into a
+  // perfectly ordinary frame here — while serializing to `[]`, which the
+  // NDJSON path rejects. The two paths have to agree, so it is rejected.
+  if (!isRecord(raw) || Array.isArray(raw) || !Object.hasOwn(raw, 'type'))
+    throw new Error('Invalid chat stream event');
   // An already-decoded transport hands the guard the producer's own object,
   // not a JSON.parse result, so its fields can be accessors that answer
   // differently per read — passing a guard with one value and reaching the

@@ -681,6 +681,25 @@ describe('chat stream event codec', () => {
       if (decoded.type === 'tool.progress') expect(decoded.percent).toBe(40);
     });
 
+    test('rejects a frame whose serialization hook is reachable through the prototype chain', () => {
+      const event = {
+        type: 'tool.progress' as const,
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1 as const,
+        sequence: 2,
+      };
+      const objectPrototype = Object.prototype as { toJSON?: unknown };
+      objectPrototype.toJSON = () => ({ type: 'run.aborted' });
+      try {
+        // JSON.stringify would consult the hook and emit something other than
+        // the projection every field above was validated into.
+        expect(() => encodeChatStreamEvent(event)).toThrow('toJSON');
+      } finally {
+        delete objectPrototype.toJSON;
+      }
+    });
+
     test('round-trips tool.error with JSONValue-narrowed error', () => {
       const event = {
         type: 'tool.error' as const,
@@ -782,6 +801,16 @@ describe('chat stream event codec', () => {
       const decoded = decodeChatStreamEvent(encodeChatStreamEvent(event));
       expect(decoded.type).toBe('run.error');
       if (decoded.type === 'run.error') expect(decoded.error.name).toBe('AgentRunError');
+    });
+
+    test('rejects an array carrying frame-shaped properties', () => {
+      // It spreads into an ordinary frame but serializes to `[]`, so the
+      // typed-transport path would accept what the NDJSON path rejects.
+      expect(() =>
+        decodeChatStreamEvent(
+          Object.assign([], { type: 'run.aborted', wireVersion: 1, sequence: 0 }),
+        ),
+      ).toThrow('Invalid chat stream event');
     });
 
     test('validates the already-decoded event fields it returns when a getter answers differently per read', () => {
