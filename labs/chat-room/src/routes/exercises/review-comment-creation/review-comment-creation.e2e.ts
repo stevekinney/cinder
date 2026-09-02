@@ -204,9 +204,10 @@ async function submitSelectionComment(page: Page, body: string): Promise<void> {
  * focus): when the key landed inside that window the caret move was overwritten
  * by the restored range, nothing ever collapsed, and the popover stayed — the
  * WebKit flake in CIN-515. Nothing is pressed here any more; the count is the
- * whole assertion.
+ * whole assertion — hence the name: this waits for the popover to be gone, it
+ * does not make it go.
  */
-async function dismissSelectionPopover(page: Page): Promise<void> {
+async function expectSelectionPopoverGone(page: Page): Promise<void> {
 	await expect(page.locator('#creation-editor .ProseMirror')).toBeFocused();
 	await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 }
@@ -605,7 +606,7 @@ test.describe('review-comment-creation: applying the events', () => {
 		await expect(commentsToggle).toHaveAccessibleName('Open comments sidebar (1 comment)');
 
 		// And the sidebar lists it, quote and body.
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 		await commentsToggle.click();
 		const sidebar = page.locator('#creation-editor-sidebar');
 		await expect(sidebar).toBeVisible();
@@ -621,7 +622,7 @@ test.describe('review-comment-creation: applying the events', () => {
 		await selectCreationParagraph(page);
 		await submitSelectionComment(page, 'Ship this earlier.');
 		await expect(page.locator('#creation-editor .comment-anchor')).toHaveCount(1);
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 
 		// Clicking an anchor decoration opens the thread popover for that thread.
 		await page.locator('#creation-editor .comment-anchor').click();
@@ -726,7 +727,7 @@ test.describe('review-comment-creation: document-level comments', () => {
 		await selectCreationParagraph(page);
 		await submitSelectionComment(page, 'Text-anchored note.');
 		await expect(page.getByTestId('thread-count')).toHaveText('threads: 1');
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 
 		const creationHost = page.getByTestId('creation-host');
 		await creationHost.getByRole('button', { name: /comments sidebar/ }).click();
@@ -814,7 +815,7 @@ test.describe('review-comment-creation: mentions', () => {
 		// The body is stored verbatim. There is no linkification and no mention
 		// autocomplete anywhere in the package — `mentions` is metadata for the
 		// host to act on, not a rendering feature.
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 		const anchor = page.locator('#creation-editor .comment-anchor');
 		await expect(anchor).toHaveCount(1);
 		await anchor.click();
