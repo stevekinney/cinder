@@ -275,34 +275,40 @@
   let consumedSelection: { from: number; to: number } | null = null;
 
   /**
-   * Keys that cannot move the caret or edit the document: the modifiers,
-   * which only qualify the next keystroke (`Shift` is how a keyboard
-   * selection *starts*, so it arrives before any selection exists), and the
-   * keys that leave the selection exactly where it was — `Tab` moves focus,
-   * `Escape` dismisses, the function and lock keys do nothing to it. None of
-   * them starts a new selection, so none releases {@link consumedSelection}:
-   * the range ProseMirror restores on a later refocus is still the one whose
-   * comment was submitted.
+   * The keys that can move the caret or edit the document — navigation, the
+   * editing keys, and typing. Everything else keeps
+   * {@link consumedSelection}: a modifier held on its own (`Shift` is how a
+   * keyboard selection *starts*, so it arrives before any selection exists),
+   * `Tab` and `Escape`, the function and lock keys, and a shortcut such as
+   * `Ctrl`/`Cmd`+C that neither moves the selection nor edits the document.
    */
-  const NON_SELECTING_KEYS = new Set([
-    'Alt',
-    'AltGraph',
-    'CapsLock',
-    'ContextMenu',
-    'Control',
-    'Escape',
-    'Fn',
-    'Insert',
-    'Meta',
-    'NumLock',
-    'Pause',
-    'PrintScreen',
-    'ScrollLock',
-    'Shift',
-    'Symbol',
-    'Tab',
-    ...Array.from({ length: 24 }, (_, index) => `F${index + 1}`),
+  const SELECTION_AFFECTING_KEYS = new Set([
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'ArrowUp',
+    'Backspace',
+    'Delete',
+    'End',
+    'Enter',
+    'Home',
+    'PageDown',
+    'PageUp',
   ]);
+
+  /** The shortcut letters that select, edit, or restore document text. */
+  const SELECTION_AFFECTING_SHORTCUTS = new Set(['a', 'v', 'x', 'y', 'z']);
+
+  function movesSelection(event: KeyboardEvent): boolean {
+    if (SELECTION_AFFECTING_KEYS.has(event.key)) return true;
+    // A single character is a keystroke that types — unless a shortcut
+    // modifier turns it into a command, and only some of those touch the
+    // selection or the document.
+    if (event.key.length !== 1) return false;
+    return event.ctrlKey || event.metaKey
+      ? SELECTION_AFFECTING_SHORTCUTS.has(event.key.toLowerCase())
+      : true;
+  }
 
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
@@ -951,10 +957,10 @@
     // the browser and ProseMirror write while focus returns after a submit.
     //
     // Only a key that can move the caret or edit the document counts; see
-    // {@link NON_SELECTING_KEYS} for the ones that cannot and why.
+    // {@link movesSelection} for which those are and why the rest do not.
     function releaseConsumedSelection(event: Event) {
       if (!consumedSelection) return;
-      if (event instanceof KeyboardEvent && NON_SELECTING_KEYS.has(event.key)) return;
+      if (event instanceof KeyboardEvent && !movesSelection(event)) return;
       const editorDom = editorRef?.getView()?.dom;
       if (editorDom && event.target instanceof Node && editorDom.contains(event.target)) {
         consumedSelection = null;

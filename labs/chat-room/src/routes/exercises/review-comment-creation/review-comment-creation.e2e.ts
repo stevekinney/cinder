@@ -556,7 +556,9 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 
 		// A key that cannot move the caret does not release the hold — `Shift` is
 		// how a keyboard selection starts, so it arrives before the selection
-		// exists, and `Tab` only moves focus.
+		// exists, `Tab` only moves focus, and copying neither moves the selection
+		// nor edits the document.
+		await page.keyboard.press('ControlOrMeta+c');
 		await page.keyboard.press('Shift');
 		await page.keyboard.press('Tab');
 		await reselectParagraph();
