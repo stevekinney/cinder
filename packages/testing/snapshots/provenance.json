@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["inline-confirm"],
-  "renderedSourceSha": "a42ec23175d31355ca1410c14ea22b55891a9c6d",
+  "componentScope": ["statistic-group"],
+  "renderedSourceSha": "b83a13d48ddf7ebec39376a56254d9ba1cf0632f",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
-  "architecture": "arm64",
+  "architecture": "x64",
   "dockerImageTag": "cinder-playwright:1.60.0"
 }

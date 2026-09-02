@@ -94,6 +94,13 @@
       isInvalid && 'cinder-input-group--invalid',
     ),
   );
+  // One class string for the control wrapper in both of its states. The
+  // wrapper itself is always rendered — see the comment on it in the template.
+  const hostClass = $derived(
+    hasGroupWrapper
+      ? classNames('cinder-input-group', groupClassName, groupModifiers)
+      : 'cinder-input-host',
+  );
   let inputNode: HTMLInputElement | undefined = $state();
   let resetSyncTimeout: ReturnType<typeof setTimeout> | undefined;
 
@@ -174,51 +181,6 @@
   />
 {/snippet}
 
-{#snippet control()}
-  {#if hasGroupWrapper}
-    <div
-      class={classNames('cinder-input-group', groupClassName, groupModifiers)}
-      data-leading={leading ? '' : undefined}
-      data-trailing={hasTrailing ? '' : undefined}
-      data-native-date={rendersNativeDateIcon ? '' : undefined}
-      data-disabled={resolvedDisabled ? '' : undefined}
-      data-invalid={isInvalid ? '' : undefined}
-      data-cinder-full-width
-    >
-      {#if leading}
-        <span
-          class={classNames(
-            'cinder-input-group__leading',
-            !leadingInteractive && 'cinder-_truncate',
-          )}
-          aria-hidden={leadingInteractive ? undefined : 'true'}>{@render leading()}</span
-        >
-      {/if}
-
-      {@render inputElement()}
-
-      {#if trailing}
-        <span
-          class={classNames(
-            'cinder-input-group__trailing',
-            !trailingInteractive && 'cinder-_truncate',
-          )}
-          aria-hidden={trailingInteractive ? undefined : 'true'}>{@render trailing()}</span
-        >
-      {:else if rendersNativeDateIcon}
-        <span
-          class="cinder-input-group__trailing cinder-input-group__date-icon cinder-_truncate"
-          aria-hidden="true"
-        >
-          {@render calendarIcon()}
-        </span>
-      {/if}
-    </div>
-  {:else}
-    {@render inputElement()}
-  {/if}
-{/snippet}
-
 {#snippet leadingAdornment()}
   {#if leading}
     <span
@@ -241,6 +203,31 @@
   {/if}
 {/snippet}
 
+{#snippet control()}
+  <!-- Always one wrapper, so the native <input> has one stable position in the
+       tree. Rendering the wrapper only when an addon is present would switch
+       `{#if}` arms when the addon appears or disappears, and Svelte would
+       destroy and recreate the element — losing focus, the selection range,
+       any IME composition, and the scroll position of a long value. Without
+       addons the wrapper is `.cinder-input-host` (`display: contents`), which
+       contributes no box, so an unadorned input lays out exactly as the bare
+       element did. The state attributes stay on the wrapper in both states so
+       the two differ only by class. -->
+  <div
+    class={hostClass}
+    data-leading={leading ? '' : undefined}
+    data-trailing={hasTrailing ? '' : undefined}
+    data-native-date={rendersNativeDateIcon ? '' : undefined}
+    data-disabled={resolvedDisabled ? '' : undefined}
+    data-invalid={isInvalid ? '' : undefined}
+    data-cinder-full-width
+  >
+    {@render leadingAdornment()}
+    {@render inputElement()}
+    {@render trailingAdornment()}
+  </div>
+{/snippet}
+
 {#if context}
   {#if label || description || error}
     <FormFieldFrame
@@ -259,16 +246,14 @@
       descriptionId={field.ownDescriptionId}
       errorId={field.ownErrorId}
       control={inputElement}
-      controlClass={hasGroupWrapper
-        ? classNames('cinder-input-group', groupClassName, groupModifiers)
-        : undefined}
+      controlClass={hostClass}
       controlLeading={!!leading}
       controlTrailing={hasTrailing}
       controlNativeDate={rendersNativeDateIcon}
       controlDisabled={resolvedDisabled}
       controlInvalid={isInvalid}
-      before={hasGroupWrapper ? leadingAdornment : undefined}
-      after={hasGroupWrapper ? trailingAdornment : undefined}
+      before={leadingAdornment}
+      after={trailingAdornment}
     />
   {:else}
     {@render control()}
@@ -288,15 +273,13 @@
     descriptionClass="cinder-input-field__description"
     errorClass="cinder-input-field__error"
     control={inputElement}
-    controlClass={hasGroupWrapper
-      ? classNames('cinder-input-group', groupClassName, groupModifiers)
-      : undefined}
+    controlClass={hostClass}
     controlLeading={!!leading}
     controlTrailing={hasTrailing}
     controlNativeDate={rendersNativeDateIcon}
     controlDisabled={resolvedDisabled}
     controlInvalid={isInvalid}
-    before={hasGroupWrapper ? leadingAdornment : undefined}
-    after={hasGroupWrapper ? trailingAdornment : undefined}
+    before={leadingAdornment}
+    after={trailingAdornment}
   />
 {/if}

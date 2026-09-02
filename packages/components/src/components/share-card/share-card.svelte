@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import Check from 'lucide-svelte/icons/check';
@@ -115,6 +116,17 @@
   // the actions render OUTSIDE the field instead, as a normal full-width
   // sibling row (the pre-existing layout this redesign started from).
   const hasLabelSnippetAction = $derived(!!actions?.some((action) => !!action.labelSnippet));
+
+  // The value field's addon, typed against the `InputProps` leading/trailing
+  // union so it can be spread onto ONE `<Input>` (see the template comment).
+  // Takes the actions row as a parameter because template snippets are not in
+  // scope here.
+  type ValueFieldAddon =
+    | { trailing: Snippet; trailingInteractive: true }
+    | { trailing?: never; trailingInteractive?: never };
+  function valueFieldAddon(row: Snippet): ValueFieldAddon {
+    return hasLabelSnippetAction ? {} : { trailing: row, trailingInteractive: true };
+  }
 
   // Track which action is in the "copied" state by its key.
   let copiedKey = $state<string | null>(null);
@@ -358,52 +370,29 @@
        is present, `Input`'s trailing slot is too narrow for rich content
        (`max-inline-size: 40%`), so the actions render OUTSIDE the field as
        a normal full-width row instead of being clipped inside it. -->
-  <!-- Two `Input` arms rather than one call site with the addon applied conditionally.
-       That would be preferable — a review rightly noted that switching arms tears the
-       value field down, so a parent reactively updating `actions` across the
-       `labelSnippet` boundary drops the user's focus and selection. Both alternatives
-       were tried and neither works here:
-
-       A conditional spread (`{...cond ? {} : { trailing, trailingInteractive }}`) does
-       not typecheck: `InputProps` pairs `leading`/`trailing` in a union that requires
-       both, and spreading widens `trailing` to optional, which no longer satisfies
-       either branch under `exactOptionalPropertyTypes`.
-
-       And it would not have fixed the teardown regardless: `Input` wraps its `<input>`
-       in `.cinder-input-group` only when `trailing` is set (input.svelte's
-       `{#if hasGroupWrapper}`), so the element is recreated INSIDE `Input` when the
-       addon appears or disappears, whatever this file does. Preserving it across that
-       switch is a change to the shared primitive, affecting every consumer, and is
-       tracked separately. -->
+  <!-- One `Input` call site. `Input` keeps its native element when an addon
+       appears or disappears (CIN-500), so moving the actions between the trailing
+       addon and the sibling row is a prop update on the same instance, and a parent
+       reactively changing `actions` across the `labelSnippet` boundary no longer
+       drops the user's focus and selection in the value field. The addon is built by
+       `valueFieldAddon`, whose return type is already narrowed to the `InputProps`
+       leading/trailing union; a conditional spread written inline would widen
+       `trailing` to optional first and fail `exactOptionalPropertyTypes`. -->
+  <Input
+    id={valueFieldId}
+    {value}
+    readonly
+    variant="code"
+    class="cinder-share-card__value"
+    title={value}
+    aria-label={valueRegionLabel}
+    inputAttachment={valueFieldAttachment}
+    oncopy={handleFieldCopy}
+    onfocus={(event) => event.currentTarget.select()}
+    {...valueFieldAddon(actionsRow)}
+  />
   {#if hasLabelSnippetAction}
-    <Input
-      id={valueFieldId}
-      {value}
-      readonly
-      variant="code"
-      class="cinder-share-card__value"
-      title={value}
-      aria-label={valueRegionLabel}
-      inputAttachment={valueFieldAttachment}
-      oncopy={handleFieldCopy}
-      onfocus={(event) => event.currentTarget.select()}
-    />
     {@render actionsRow()}
-  {:else}
-    <Input
-      id={valueFieldId}
-      {value}
-      readonly
-      variant="code"
-      class="cinder-share-card__value"
-      title={value}
-      aria-label={valueRegionLabel}
-      inputAttachment={valueFieldAttachment}
-      oncopy={handleFieldCopy}
-      onfocus={(event) => event.currentTarget.select()}
-      trailing={actionsRow}
-      trailingInteractive
-    />
   {/if}
 </div>
 
