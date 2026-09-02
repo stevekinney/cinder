@@ -269,55 +269,26 @@
    * focus back to the editor, and ProseMirror re-writes its stored (still
    * non-collapsed) selection into the DOM on focus; the resulting
    * `selectionchange` would otherwise re-open the popover over the text that
-   * was just commented on. A different selection, or a pointer or key pressed
-   * inside the editor, clears this.
+   * was just commented on. It is cleared once the user has pressed a key or a
+   * pointer inside the editor AND the editor's own selection has settled
+   * somewhere else — see {@link consumedSelectionReleaseArmed}.
    */
   let consumedSelection: { from: number; to: number } | null = null;
 
   /**
-   * The keys that begin a new selection: caret movement and the keys that
-   * replace the selected text. Everything else keeps
-   * {@link consumedSelection}, which is deliberately conservative — the
-   * latch suppresses one specific range, so a key that leaves the selection
-   * where it is has no reason to release it. That includes a modifier held
-   * on its own (`Shift` is how a keyboard selection *starts*, so it arrives
-   * before any selection exists), `Tab` and `Escape`, the function and lock
-   * keys, and every shortcut outside {@link SELECTION_AFFECTING_SHORTCUTS} —
-   * a formatting command such as `Mod`+B edits the document but keeps its
-   * selection, so the latch still applies to it.
+   * Whether the user has since done something inside the editor that could
+   * start a new selection — a key or a pointer press. It arms the release of
+   * {@link consumedSelection} without performing it: the release itself waits
+   * until the editor's selection has actually settled somewhere else.
+   *
+   * Both halves are load-bearing. Releasing on the keystroke alone loses to
+   * ProseMirror's deferred `selectionToDOM`, which can restore the old range
+   * after the key has collapsed the DOM selection. Releasing on the settled
+   * selection alone misfires during the hand-off back from the composer,
+   * where ProseMirror briefly reports a caret at the top of the document
+   * before restoring the range — no user input, so nothing is armed.
    */
-  const SELECTION_AFFECTING_KEYS = new Set([
-    'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
-    'ArrowUp',
-    'Backspace',
-    'Delete',
-    'End',
-    'Enter',
-    'Home',
-    'PageDown',
-    'PageUp',
-  ]);
-
-  /**
-   * The shortcut letters that replace what is selected, and so leave a
-   * different selection behind: select-all, paste, cut, undo, redo. Other
-   * shortcuts are not listed even when they change the document, because
-   * they leave the selection alone — see {@link SELECTION_AFFECTING_KEYS}.
-   */
-  const SELECTION_AFFECTING_SHORTCUTS = new Set(['a', 'v', 'x', 'y', 'z']);
-
-  function movesSelection(event: KeyboardEvent): boolean {
-    if (SELECTION_AFFECTING_KEYS.has(event.key)) return true;
-    // A single character is a keystroke that types over the selection —
-    // unless a shortcut modifier turns it into a command, and only the
-    // listed commands leave a different selection behind.
-    if (event.key.length !== 1) return false;
-    return event.ctrlKey || event.metaKey
-      ? SELECTION_AFFECTING_SHORTCUTS.has(event.key.toLowerCase())
-      : true;
-  }
+  let consumedSelectionReleaseArmed = false;
 
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
@@ -903,16 +874,23 @@
       }
 
       // If selection is collapsed, hide popover immediately and reset all popover state
-      if (!browserSelection || browserSelection.isCollapsed) {
+      const collapsed = !browserSelection || browserSelection.isCollapsed;
+      if (collapsed) {
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
-        return;
+        // Fall through to the debounce: a collapsed caret is how the editor's
+        // own selection moves off {@link consumedSelection}, and that is what
+        // releases the latch. Releasing on the KEYSTROKE instead would
+        // reintroduce the original race — a caret key pressed inside
+        // ProseMirror's ~20ms focus window collapses the DOM selection, the
+        // pending `selectionToDOM` then restores the old range, and the
+        // popover would reopen over the text just commented on.
       }
 
       // Check if selection is within the actual editor DOM (not front matter controls,
       // sidebar, or toolbar content).
-      const anchorNode = browserSelection.anchorNode;
+      const anchorNode = browserSelection?.anchorNode;
       const editorDom = editorRef?.getView()?.dom;
       if (!editorDom || !anchorNode || !editorDom.contains(anchorNode)) {
         selectionPopoverPosition = null;
@@ -924,6 +902,21 @@
       // Debounce position calculation to let rapid selection events settle
       selectionTimeoutId = setTimeout(() => {
         selectionTimeoutId = null;
+
+        // The latch is released here, once the editor's own selection has
+        // settled somewhere other than the range whose comment was just
+        // submitted. Debouncing is what makes that reliable: ProseMirror
+        // syncs its state from the DOM asynchronously, and a restore that
+        // lands inside the window simply reschedules this callback, so what
+        // it reads is where the selection actually ended up.
+        const settledView = editorRef?.getView();
+        if (consumedSelection && consumedSelectionReleaseArmed && settledView?.hasFocus()) {
+          const settled = settledView.state.selection;
+          if (settled.from !== consumedSelection.from || settled.to !== consumedSelection.to) {
+            consumedSelection = null;
+            consumedSelectionReleaseArmed = false;
+          }
+        }
 
         // Re-check selection after debounce
         const sel = window.getSelection();
@@ -945,10 +938,11 @@
           const view = editorRef?.getView();
           if (view) {
             const { from, to } = view.state.selection;
-            if (consumedSelection) {
-              if (consumedSelection.from === from && consumedSelection.to === to) return;
-              consumedSelection = null;
-            }
+            // Still the range whose comment was just submitted: this is
+            // ProseMirror restoring its stored selection on refocus, not the
+            // user asking to comment on that text again.
+            if (consumedSelection && consumedSelection.from === from && consumedSelection.to === to)
+              return;
             if (from !== to) {
               capturedSelectionForPopover = { from, to };
               // Only show popover when we have a valid captured selection
@@ -960,40 +954,33 @@
       }, SELECTION_DEBOUNCE_MS);
     }
 
-    // A pointer or key pressed inside the editor is the user starting a new
-    // selection, so the consumed range no longer applies. Selection changes
-    // alone cannot tell that apart from the collapsed caret and restored range
-    // the browser and ProseMirror write while focus returns after a submit.
-    //
-    // Only a key that can move the caret or edit the document counts; see
-    // {@link movesSelection} for which those are and why the rest do not.
-    function releaseConsumedSelection(event: Event) {
+    // Input inside the editor ARMS the release; see
+    // {@link consumedSelectionReleaseArmed} for why it does not perform it.
+    function armConsumedSelectionRelease(event: Event) {
       if (!consumedSelection) return;
-      if (event instanceof KeyboardEvent && !movesSelection(event)) return;
       const editorDom = editorRef?.getView()?.dom;
-      if (editorDom && event.target instanceof Node && editorDom.contains(event.target)) {
-        consumedSelection = null;
-      }
+      if (editorDom && event.target instanceof Node && editorDom.contains(event.target))
+        consumedSelectionReleaseArmed = true;
     }
 
     // `pointerdown` covers mouse, touch, and pen in one listener; the
     // `mousedown`/`touchstart` pair is the fallback for a browser without
     // Pointer Events, matching how the components package handles this.
-    const supportsPointerEvents = typeof window.PointerEvent !== 'undefined';
-    const pointerEventNames = supportsPointerEvents
-      ? (['pointerdown'] as const)
-      : (['mousedown', 'touchstart'] as const);
+    const pointerEventNames =
+      typeof window.PointerEvent !== 'undefined'
+        ? (['pointerdown'] as const)
+        : (['mousedown', 'touchstart'] as const);
 
     document.addEventListener('selectionchange', handleBrowserSelectionChange);
     for (const eventName of pointerEventNames)
-      document.addEventListener(eventName, releaseConsumedSelection, true);
-    document.addEventListener('keydown', releaseConsumedSelection, true);
+      document.addEventListener(eventName, armConsumedSelectionRelease, true);
+    document.addEventListener('keydown', armConsumedSelectionRelease, true);
 
     return () => {
       document.removeEventListener('selectionchange', handleBrowserSelectionChange);
       for (const eventName of pointerEventNames)
-        document.removeEventListener(eventName, releaseConsumedSelection, true);
-      document.removeEventListener('keydown', releaseConsumedSelection, true);
+        document.removeEventListener(eventName, armConsumedSelectionRelease, true);
+      document.removeEventListener('keydown', armConsumedSelectionRelease, true);
       if (selectionTimeoutId !== null) {
         clearTimeout(selectionTimeoutId);
         selectionTimeoutId = null;
@@ -1615,6 +1602,7 @@
     // Clear state. Remember the range so the selection ProseMirror restores on
     // refocus does not re-open the popover over the text just commented on.
     consumedSelection = { from, to };
+    consumedSelectionReleaseArmed = false;
     capturedSelectionForPopover = null;
     selectionPopoverPosition = null;
     selectionPopoverExpanded = false;

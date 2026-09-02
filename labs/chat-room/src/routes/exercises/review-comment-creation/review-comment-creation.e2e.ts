@@ -555,22 +555,23 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// A key that cannot move the caret does not release the hold — `Shift` is
-		// how a keyboard selection starts, so it arrives before the selection
-		// exists, `Tab` only moves focus, and copying neither moves the selection
-		// nor edits the document.
+		// A keystroke that leaves the selection where it is does not release the
+		// hold — the release is driven by where the editor's selection SETTLES,
+		// not by the key that was pressed. (Releasing on the keystroke would
+		// reintroduce the original race: a caret key inside ProseMirror's focus
+		// window collapses the DOM selection, the pending restore puts the old
+		// range back, and the popover would reopen.)
 		await page.keyboard.press('ControlOrMeta+c');
 		await page.keyboard.press('Shift');
-		await page.keyboard.press('Tab');
 		await reselectParagraph();
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// The hold is not permanent: a pointer press inside the editor is the user
-		// starting a new selection, so it releases the hold and selecting the same
-		// paragraph again offers a comment as usual. (`Tab` above moved focus out
-		// of the editor, so the pointer is what brings it back.)
-		await editor.click();
+		// The hold is not permanent: once the selection settles somewhere else —
+		// here a caret placed by ArrowRight — it is released, and selecting the
+		// same paragraph again offers a comment as usual.
+		await page.keyboard.press('ArrowRight');
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await reselectParagraph();
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
