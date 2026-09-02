@@ -394,14 +394,6 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
 }
 
 /**
- * Recursively checks a `JSONValue` for a non-finite number (`NaN`,
- * `Infinity`, `-Infinity`). `JSONValue`'s `number` member admits these —
- * TypeScript can't express "finite number" — but `JSON.stringify` silently
- * rewrites each one to `null`, which corrupts the value it's attached to
- * (most importantly, tool call arguments: a corrupted argument means the
- * tool executes with different input than the caller intended).
- */
-/**
  * Throws if `value` (identified by `context` for the error message) isn't a
  * genuinely valid `JSONValue`. `value`'s static type is already `JSONValue`,
  * but that's only a compile-time guarantee — a caller routing a non-JSON
@@ -1120,16 +1112,6 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
 }
 
 /**
- * A versioned stream that reaches EOF without ever emitting one of the
- * `run.*` terminal frames is a truncated response, not success (reference
- * architecture, "Stream wire contract" and "Cancellation contract"). This
- * only runs when the generator's body resumes normally past its last
- * `yield` — a consumer that stops iterating early instead calls the
- * generator's `return()`, which unwinds through any enclosing `finally`
- * blocks but never reaches this code, so a deliberate client cancellation
- * is correctly exempt without any extra bookkeeping.
- */
-/**
  * Every versioned frame ends with a newline (reference architecture, "Stream
  * wire contract"), so a non-empty buffer left over at EOF means the response
  * was cut mid-frame. The leftover may still PARSE — a stream truncated
@@ -1145,6 +1127,16 @@ function assertStreamFramed(buffer: string, guard: StreamGuardState): void {
     throw new Error('Invalid chat stream event: stream ended mid-frame without a newline');
 }
 
+/**
+ * A versioned stream that reaches EOF without ever emitting one of the
+ * `run.*` terminal frames is a truncated response, not success (reference
+ * architecture, "Stream wire contract" and "Cancellation contract"). This
+ * only runs when the generator's body resumes normally past its last
+ * `yield` — a consumer that stops iterating early instead calls the
+ * generator's `return()`, which unwinds through any enclosing `finally`
+ * blocks but never reaches this code, so a deliberate client cancellation
+ * is correctly exempt without any extra bookkeeping.
+ */
 function assertStreamTerminated(guard: StreamGuardState): void {
   if (guard.mode === 'versioned' && !guard.sawTerminal)
     throw new Error('Invalid chat stream event: stream ended without a terminal frame');
