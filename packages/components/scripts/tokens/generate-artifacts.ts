@@ -41,6 +41,7 @@ import babelPlugin from 'prettier/plugins/babel';
 import estreePlugin from 'prettier/plugins/estree';
 import markdownPlugin from 'prettier/plugins/markdown';
 import typescriptPlugin from 'prettier/plugins/typescript';
+import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
 import {
   buildGeneratedOutputs,
@@ -911,6 +912,7 @@ export async function renderDocTable(
     return `| ${toCodeSpan(cssProperty)} | ${value} | ${description} |`;
   });
   const raw = `${header}${rows.join('\n')}\n`;
+  assertPrettierResolvesToRoot();
   return format(raw, { ...PRETTIER_OPTIONS, parser: 'markdown', plugins: MARKDOWN_PLUGINS });
 }
 
@@ -1051,6 +1053,7 @@ export async function buildTokensDocMarkdown(
   // committed file and the generator's output can never agree: lint-staged
   // reformats on commit, `tokens:generate -- --check` regenerates without
   // that formatting, and CI reports drift on a file nobody edited.
+  assertPrettierResolvesToRoot();
   return format(rewritten, {
     ...PRETTIER_OPTIONS,
     parser: 'markdown',
@@ -1246,6 +1249,7 @@ export type ColorTokenGroup = {
 
 export const COLOR_TOKEN_GROUPS = ${groupsLiteral} as const;
 `;
+  assertPrettierResolvesToRoot();
   return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
 }
 
@@ -1326,6 +1330,7 @@ export const TOKEN_REGISTRY: TokenRegistry = ${serializeTokenRegistry(registry)}
 
 export default TOKEN_REGISTRY;
 `;
+  assertPrettierResolvesToRoot();
   return format(source, { ...PRETTIER_OPTIONS, parser: 'typescript', plugins: TYPESCRIPT_PLUGINS });
 }
 
@@ -1363,6 +1368,7 @@ async function buildTokenIndex(
       subpath: `@lostgradient/cinder/tokens/resolved/${name}`,
     })),
   };
+  assertPrettierResolvesToRoot();
   return format(JSON.stringify(index), {
     ...PRETTIER_OPTIONS,
     parser: 'json',
@@ -1389,6 +1395,8 @@ async function buildAllGeneratedOutputs(): Promise<Map<string, string>> {
   validateDocSections(registry);
 
   const existingDocMarkdown = await readFile(tokensDocPath, 'utf8');
+  // Guards every formatter in the Promise.all below, at a statement boundary.
+  assertPrettierResolvesToRoot();
   const [docMarkdown, registryJson, colorTokenRegistryModule, registryModule, tokenIndex] =
     await Promise.all([
       buildTokensDocMarkdown(existingDocMarkdown, baseIndex, baseResolveReferences),

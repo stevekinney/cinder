@@ -12,6 +12,8 @@ import { dirname, join } from 'node:path';
 
 import * as prettier from 'prettier';
 
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
+
 import {
   discoverComponentDirectories,
   type DiscoveredComponent,
@@ -48,8 +50,15 @@ const prettierConfigurationCache = new Map<string, Promise<prettier.Options | nu
 
 /**
  * Run prettier over generated content using the repo's prettier configuration.
+ *
+ * Failures are NOT swallowed. An earlier version returned `content` unformatted
+ * on any error, so a formatter that failed to load -- or a version that could not
+ * parse a generated file -- produced artifacts that `components:check` flagged as
+ * drifted with no hint of the actual cause. A formatting error now names the file
+ * and where prettier was resolved from.
  */
 export async function formatGenerated(content: string, filepath: string): Promise<string> {
+  assertPrettierResolvesToRoot();
   try {
     const configurationDirectory = dirname(filepath);
     let optionsPromise = prettierConfigurationCache.get(configurationDirectory);
@@ -59,8 +68,16 @@ export async function formatGenerated(content: string, filepath: string): Promis
     }
     const options = await optionsPromise;
     return await prettier.format(content, { ...options, filepath });
-  } catch {
-    return content;
+  } catch (error) {
+    // The underlying message rides in the string as well as in `cause`:
+    // `components:check` catches stage-1 failures and logs only `err.message`,
+    // so a parser error would otherwise be lost from CI output.
+    const reason = error instanceof Error ? error.message : String(error);
+    throw new Error(
+      `formatGenerated: prettier ${prettier.version} (${import.meta.resolve('prettier')}) ` +
+        `failed to format ${filepath}: ${reason}`,
+      { cause: error },
+    );
   }
 }
 
