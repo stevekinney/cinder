@@ -344,6 +344,41 @@ describe('chat session controller', () => {
     expect(signal?.aborted).toBe(true);
   });
 
+  test('aborts the transport before awaiting its cleanup when a frame is invalid', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    let signal: AbortSignal | undefined;
+    let cleanupSawAbort = false;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async (request) => {
+        signal = request.signal;
+        // A transport whose cleanup waits on the signal — the shape that
+        // deadlocks if the abort cannot be raised until the rejection has
+        // already propagated through this `finally`.
+        return (async function* () {
+          try {
+            yield { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 } as ChatStreamEvent;
+            yield { type: 'text', text: 'bare' } as ChatStreamEvent;
+          } finally {
+            cleanupSawAbort = request.signal.aborted;
+            await new Promise<void>((resolve) => {
+              if (request.signal.aborted) resolve();
+              else request.signal.addEventListener('abort', () => resolve(), { once: true });
+            });
+          }
+        })();
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event');
+    expect(cleanupSawAbort).toBe(true);
+    expect(signal?.aborted).toBe(true);
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({

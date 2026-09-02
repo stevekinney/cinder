@@ -1297,6 +1297,7 @@ function assertStreamTerminated(guard: StreamGuardState): void {
  */
 export async function* guardChatStreamEvents(
   events: AsyncIterable<ChatStreamEvent>,
+  options?: ChatStreamDecodeOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
   for await (const event of events) {
@@ -1304,23 +1305,55 @@ export async function* guardChatStreamEvents(
     // a transport built in JavaScript (or through a cast) can yield a frame
     // the wire decoder would refuse — `sequence: NaN`, a non-string `text` —
     // and the stream guard below assumes each frame is already well-formed.
-    const decoded = decodeChatStreamEvent(event);
-    noteDecodedStreamEvent(decoded, guard);
+    const decoded = reportProtocolError(options, () => {
+      const value = decodeChatStreamEvent(event);
+      noteDecodedStreamEvent(value, guard);
+      return value;
+    });
     yield decoded;
   }
-  assertStreamTerminated(guard);
+  reportProtocolError(options, () => assertStreamTerminated(guard));
+}
+
+/** Options both decoding entry points accept. */
+export type ChatStreamDecodeOptions = {
+  /**
+   * Called with the rejection the moment a frame fails validation — at the
+   * throw site, before the generator unwinds and before any producer cleanup
+   * (`return()`, `reader.cancel()`) is awaited. A consumer whose transport
+   * needs its signal aborted to finish cleaning up would otherwise deadlock:
+   * it cannot abort until the rejection reaches it, and the rejection cannot
+   * reach it until the cleanup that is waiting on the abort completes.
+   */
+  onProtocolError?: (error: unknown) => void;
+};
+
+/** Runs `validate`, handing a rejection to `onProtocolError` before it propagates. */
+function reportProtocolError<T>(
+  options: ChatStreamDecodeOptions | undefined,
+  validate: () => T,
+): T {
+  if (!options?.onProtocolError) return validate();
+  try {
+    return validate();
+  } catch (error) {
+    options.onProtocolError(error);
+    throw error;
+  }
 }
 
 /** Decodes newline-delimited events from a string or an async byte stream. */
 export async function* decodeChatStreamEvents(
   source: string | AsyncIterable<string | Uint8Array> | ReadableStream<Uint8Array>,
+  options?: ChatStreamDecodeOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
-  const decodeAndTrack = (line: string): ChatStreamEvent => {
-    const event = decodeChatStreamEvent(line);
-    noteDecodedStreamEvent(event, guard);
-    return event;
-  };
+  const decodeAndTrack = (line: string): ChatStreamEvent =>
+    reportProtocolError(options, () => {
+      const event = decodeChatStreamEvent(line);
+      noteDecodedStreamEvent(event, guard);
+      return event;
+    });
   // Decodes one batch of complete lines lazily, EXCEPT once a terminal frame
   // is reached: everything already buffered after it is validated before the
   // terminal is yielded. A consumer that stops iterating on the terminal
@@ -1351,12 +1384,12 @@ export async function* decodeChatStreamEvents(
   const finishStream = function* (leftover: string): Generator<ChatStreamEvent> {
     if (leftover.trim()) {
       const event = decodeAndTrack(leftover.trim());
-      assertStreamFramed(leftover, guard);
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
       yield event;
     } else {
-      assertStreamFramed(leftover, guard);
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
     }
-    assertStreamTerminated(guard);
+    reportProtocolError(options, () => assertStreamTerminated(guard));
   };
   if (typeof source === 'string') {
     // Same framing rule as the byte paths below. A versioned stream that is
@@ -1405,7 +1438,9 @@ export async function* decodeChatStreamEvents(
       // consumer that stops on the terminal would otherwise never learn of
       // it because EOF handling is skipped.
       if (buffer.trim() || decodeBytes().length > 0)
-        throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
+        reportProtocolError(options, () => {
+          throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
+        });
     });
   };
   if (source instanceof ReadableStream) {
