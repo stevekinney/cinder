@@ -3625,7 +3625,7 @@
   "modal.backdrop": {
     "$type": "color",
     "$value": { "colorSpace": "oklch", "components": [0.2, 0.03, 245], "alpha": 0.5 },
-    "$description": "`::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability.",
+    "$description": "`::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-modal-backdrop",

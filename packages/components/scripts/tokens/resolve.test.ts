@@ -1,5 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { mergeDocuments, resolveDocument } from './resolve.ts';
+import {
+  createValueResolver,
+  mergeAndExpandExtends,
+  mergeDocuments,
+  resolveDocument,
+  tokenPathFromReference,
+} from './resolve.ts';
 import { TokenValidationError, type TokenDocument } from './types.ts';
 import { assertValidTokenDocument } from './validate.ts';
 
@@ -41,6 +47,15 @@ describe('DTCG resolver', () => {
     });
   });
 
+  test('resolves a property-level $value pointer through a later-declared target alias', () => {
+    const resolved = resolveDocument({
+      copy: { $type: 'number', $value: '#/source/$value/value' },
+      source: { $type: 'dimension', $value: '#/late/$value' },
+      late: { $type: 'dimension', $value: { value: 3, unit: 'px' } },
+    });
+    expect(resolved['copy']?.$value).toBe(3);
+  });
+
   test('resolves a $ref pointer into token metadata other than $value', () => {
     // The earlier property-level fix only special-cased a remainder starting
     // with `$value`; any other reserved token property ($description here,
@@ -61,6 +76,15 @@ describe('DTCG resolver', () => {
     expect(resolved['copy']?.$value).toBe('the document root token');
   });
 
+  test('resolves document-root group metadata without requiring an explicit $root segment', () => {
+    const resolved = resolveDocument({
+      $description: 'document group metadata',
+      $root: { $type: 'number', $value: 1, $description: 'document root token metadata' },
+      copy: { $type: 'string', $ref: '#/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('document group metadata');
+  });
+
   test("resolves a $ref pointer into another alias token's own $ref, reading it before resolution deletes it", () => {
     // resolveRefToken deletes `$ref` from its token once resolved (so a
     // resolved token never carries a leftover alias pointer). Reading
@@ -77,24 +101,20 @@ describe('DTCG resolver', () => {
     expect(resolved['alias']).toMatchObject({ $type: 'number', $value: 1 });
   });
 
-  test('CIN-474 (known gap, not fixed here): a $ref into a dotted vendor extension key does not yet resolve', () => {
+  test('resolves a $ref into a dotted vendor extension key', () => {
     // `tokenPathFromReference` dot-joins the pointer and `resolveReference`
     // re-splits on '.' to walk the remainder -- lossy for a pointer segment
     // that itself contains a literal dot, which vendor extension keys always
     // do by convention ("com.lostgradient.cinder"). This test PINS today's
-    // known-limited behavior (throws) rather than the eventually-correct one,
-    // so CIN-474 landing is a deliberate, visible test change, not a silent
-    // behavior shift discovered later.
-    expect(() =>
-      resolveDocument({
-        base: {
-          $type: 'color',
-          $value: { colorSpace: 'oklch', components: [0, 0, 0] },
-          $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-base' } },
-        },
-        copy: { $type: 'string', $ref: '#/base/$extensions/com.lostgradient.cinder/cssProperty' },
-      }),
-    ).toThrow(/has no requested property/);
+    const resolved = resolveDocument({
+      base: {
+        $type: 'color',
+        $value: { colorSpace: 'oklch', components: [0, 0, 0] },
+        $extensions: { 'com.lostgradient.cinder': { cssProperty: '--test-base' } },
+      },
+      copy: { $type: 'string', $ref: '#/base/$extensions/com.lostgradient.cinder/cssProperty' },
+    });
+    expect(resolved['copy']?.$value).toBe('--test-base');
   });
 
   test('resolves JSON Pointer aliases', () => {
@@ -143,6 +163,175 @@ describe('DTCG resolver', () => {
       copy: { $value: '#/$root/$value' },
     });
     expect(resolved['copy']?.$value).toBe(1);
+  });
+
+  test('rejects a bare JSON Pointer fragment instead of treating it as the document root', () => {
+    expect(() => resolveDocument({ $root: { $value: 1 }, copy: { $ref: '#/' } })).toThrow(
+      /reference target does not exist/,
+    );
+  });
+
+  test('rejects a bare JSON Pointer fragment when normalizing a generator path', () => {
+    expect(() => tokenPathFromReference('#/')).toThrow(/reference target does not exist/);
+  });
+
+  test('resolves an inferred alias type before a metadata pointer reads it', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 2 },
+      copy: { $type: 'string', $value: '#/alias/$type' },
+      alias: { $ref: '#/base' },
+    });
+
+    expect(resolved['copy']?.$value).toBe('number');
+  });
+
+  test('resolves an inferred document-root alias type before a metadata pointer reads it', () => {
+    const resolved = resolveDocument({
+      base: { $type: 'number', $value: 2 },
+      $root: { $ref: '#/base' },
+      copy: { $type: 'string', $value: '#/$root/$type' },
+    });
+
+    expect(resolved['copy']?.$value).toBe('number');
+  });
+
+  test('rejects a group pointer that omits the explicit $root segment', () => {
+    expect(() =>
+      resolveDocument({ group: { $root: { $value: 1 } }, copy: { $ref: '#/group' } }),
+    ).toThrow(/reference target group must name \$root explicitly/);
+  });
+
+  test('rejects a group-root pointer that omits the $value property segment', () => {
+    expect(() =>
+      resolveDocument({
+        group: { $root: { value: 7 } },
+        copy: { $ref: '#/group/$root/value' },
+      }),
+    ).toThrow(/has no requested property/);
+  });
+
+  test('allows a token to point at its own metadata without circular-alias failure', () => {
+    const resolved = resolveDocument({
+      copy: { $type: 'string', $ref: '#/copy/$description', $description: 'metadata' },
+    });
+    expect(resolved['copy']?.$value).toBe('metadata');
+  });
+
+  test('resolves metadata on a rootless group', () => {
+    const resolved = resolveDocument({
+      group: { $description: 'group metadata', child: { $value: 1 } },
+      copy: { $type: 'string', $ref: '#/group/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('group metadata');
+  });
+
+  test('resolves effective inherited $type on a rootless group', () => {
+    const resolved = resolveDocument({
+      group: { $type: 'number', child: { $description: 'child metadata' } },
+      copy: { $type: 'string', $ref: '#/group/child/$type' },
+    });
+    expect(resolved['copy']?.$value).toBe('number');
+  });
+
+  test('resolves effective inherited $deprecated on a rootless group', () => {
+    const resolved = resolveDocument({
+      group: { $deprecated: 'legacy', child: { $description: 'child metadata' } },
+      copy: { $type: 'string', $ref: '#/group/child/$deprecated' },
+    });
+    expect(resolved['copy']?.$value).toBe('legacy');
+  });
+
+  test('resolves inherited $deprecated alongside an explicit local $type', () => {
+    const resolved = resolveDocument({
+      group: {
+        $deprecated: 'legacy',
+        child: { $type: 'number', $description: 'child metadata' },
+      },
+      copy: { $type: 'string', $ref: '#/group/child/$deprecated' },
+    });
+    expect(resolved['copy']?.$value).toBe('legacy');
+  });
+
+  test('prefers group metadata when a group and its $root share an indexed path', () => {
+    const resolved = resolveDocument({
+      group: {
+        $description: 'group metadata',
+        $root: { $type: 'number', $value: 1, $description: 'root metadata' },
+      },
+      copy: { $type: 'string', $ref: '#/group/$description' },
+    });
+    expect(resolved['copy']?.$value).toBe('group metadata');
+  });
+
+  test('does not re-resolve a metadata value when its token is reached later', () => {
+    const resolved = resolveDocument({
+      alias: { $ref: '#/base', $description: 'base' },
+      copy: { $type: 'string', $ref: '#/alias/$ref' },
+      trigger: { $value: '{copy}' },
+      base: { $type: 'string', $value: 'literal' },
+    });
+    expect(resolved['copy']?.$value).toBe('#/base');
+  });
+
+  test('keeps completion state across createValueResolver calls', () => {
+    const resolver = createValueResolver([
+      {
+        base: { $type: 'string', $value: 'literal' },
+        alias: { $ref: '#/base' },
+        copy: { $type: 'string', $ref: '#/alias/$ref' },
+        trigger: { $value: '{copy}' },
+      },
+    ]);
+    expect(resolver('{trigger}')).toBe('#/base');
+    expect(resolver('{copy}')).toBe('#/base');
+  });
+
+  test('preserves lookup-scope deprecation through a shadowing group', () => {
+    const merged = mergeAndExpandExtends(
+      [{ outer: { other: { $value: 1 } }, derived: { $extends: '{outer.base}' } }],
+      [{ outer: { $deprecated: 'legacy', base: { value: { $value: 1 } } } }],
+    );
+    expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
+  });
+
+  test('resolves lookup ancestor extends before inheriting deprecation through a shadowing wrapper', () => {
+    const merged = mergeAndExpandExtends(
+      [{ outer: { wrapper: { marker: { $value: 1 } } }, derived: { $extends: '{outer.base}' } }],
+      [{ outer: { base: { $extends: '{legacy}' } }, legacy: { $deprecated: 'legacy' } }],
+    );
+    expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
+  });
+
+  test('resolves ancestor extends before inheriting deprecation', () => {
+    const merged = mergeAndExpandExtends([
+      {
+        $deprecated: false,
+        derived: { $extends: '{outer.child}' },
+        outer: { $extends: '{legacy}', child: { grandchild: { $value: 1 } } },
+        legacy: { $deprecated: 'legacy', marker: { $value: true } },
+      },
+    ]);
+    expect((merged['derived'] as Record<string, unknown>)['$deprecated']).toBe('legacy');
+  });
+
+  test('does not report a false circular extends when a nested target is under an active ancestor', () => {
+    const resolved = resolveDocument({
+      base: { child: { value: { $value: 1 } } },
+      outer: { $extends: '{base}', child: { value: { $value: 2 } } },
+      derived: { $extends: '{outer.child}' },
+    });
+    expect(resolved['derived.value']?.$value).toBe(2);
+  });
+
+  test('traverses nested wrappers after registering groups inherited by an outer extends', () => {
+    const resolved = resolveDocument({
+      base: { child: { value: { $value: 1 } } },
+      outer: {
+        $extends: '{base}',
+        wrapper: { derived: { $extends: '{outer.child}' } },
+      },
+    });
+    expect(resolved['outer.wrapper.derived.value']?.$value).toBe(1);
   });
 
   test('rejects a $root pointer into an ordinary token that has no $root member', () => {

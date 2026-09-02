@@ -1,11 +1,42 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path';
 
-import { DOCUMENTATION_CINDER_COMPONENTS } from './documentation-styles.ts';
 import { COMPOUND_COMPONENT_PARENTS } from './shell-app/compound-families.ts';
 
 const PLAYGROUND_ROOT = dirname(import.meta.dirname);
 const PACKAGES_ROOT = join(PLAYGROUND_ROOT, '..');
+
+export const DOCUMENTATION_CINDER_COMPONENTS = [
+  'accordion',
+  'alert',
+  'badge',
+  'button',
+  'callout',
+  'code-block',
+  'collapsible',
+  'color-picker',
+  'color-swatch-picker',
+  'copy-button',
+  'kbd',
+  'input',
+  'popover',
+  'status-dot',
+  'table',
+  'toggle',
+  'tooltip',
+] as const;
+
+export const LANDING_CINDER_COMPONENTS = [
+  'button',
+  'code-block',
+  'color-picker',
+  'color-swatch-picker',
+  'copy-button',
+  'form-field',
+  'input',
+  'popover',
+  'tooltip',
+] as const;
 
 const CHAT_IMPORT_PATHS: Readonly<Record<string, string>> = {
   chat: '@lostgradient/chat',

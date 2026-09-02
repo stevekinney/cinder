@@ -255,8 +255,6 @@
 
   @media (width < 640px) {
     .cinder-card[data-cinder-edge-to-edge-mobile] {
-      --cinder-card-mobile-bleed: var(--cinder-space-4);
-
       inline-size: calc(100% + (var(--cinder-card-mobile-bleed) * 2));
       margin-inline: calc(var(--cinder-card-mobile-bleed) * -1);
       border-inline: 0;

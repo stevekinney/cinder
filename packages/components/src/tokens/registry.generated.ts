@@ -2678,7 +2678,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: false,
       deprecated: false,
       description:
-        '`::backdrop` fill color override point. See modal.css for why this is declared once, non-self-referentially, on `.cinder-modal` -- a consumer override must target `::backdrop` directly for cross-engine reliability.',
+        '`::backdrop` fill color override point. A consumer override should target `::backdrop` directly for cross-engine reliability.',
     },
     {
       path: 'selectable-row.padding-block',

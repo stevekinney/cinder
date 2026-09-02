@@ -43,7 +43,7 @@ import { readFile } from 'node:fs/promises';
 import { describe, expect, test } from 'bun:test';
 
 import { readRootTokenNames } from '../../src/test/token-introspection.ts';
-import { loadCorpus, tokensBaseCssPath } from './generate.ts';
+import { isRootDeclaredEntry, loadCorpus, tokensBaseCssPath } from './generate.ts';
 import { buildBaseIndex } from './registry.ts';
 
 describe('tokens-base.css / corpus completeness', () => {
@@ -57,6 +57,7 @@ describe('tokens-base.css / corpus completeness', () => {
     const baseIndex = buildBaseIndex(resolver, documentsByPath);
     const corpusPropertyNames = new Set(
       [...baseIndex.values()]
+        .filter(isRootDeclaredEntry)
         .map((entry) => entry.cssProperty)
         .filter((name): name is string => typeof name === 'string'),
     );

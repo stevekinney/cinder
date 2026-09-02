@@ -1,11 +1,6 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @layer cinder.components {
   .cinder-file-upload {
-    --cinder-file-upload-border-color: var(--cinder-border);
-    --cinder-file-upload-background: var(--cinder-surface);
-    --cinder-file-upload-progress-background: var(--cinder-surface-inset);
-    --cinder-file-upload-progress-fill: var(--cinder-accent-solid);
-
     display: grid;
     gap: var(--cinder-space-3);
   }

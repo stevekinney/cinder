@@ -17,6 +17,9 @@ setupHappyDom();
 const { cleanup, fireEvent, render } = await import('@testing-library/svelte');
 const { default: KanbanBoard } = await import('./kanban-board.svelte');
 const kanbanBoardCss = await Bun.file(new URL('./kanban-board.css', import.meta.url)).text();
+const tokensBaseCss = await Bun.file(
+  new URL('../../styles/tokens-base.css', import.meta.url),
+).text();
 const sortableListCss = await Bun.file(
   new URL('../sortable-list/sortable-list.css', import.meta.url),
 ).text();
@@ -213,7 +216,7 @@ describe('kanban board styles', () => {
   });
 
   test('scroll edges use a translucent theme-aware foreground mix', () => {
-    expect(kanbanBoardCss).toContain('--cinder-kanban-board-scroll-edge: color-mix(');
+    expect(tokensBaseCss).toContain('--cinder-kanban-board-scroll-edge: color-mix(');
     expect(kanbanBoardCss).toContain('var(--cinder-kanban-board-scroll-edge)');
     expect(kanbanBoardCss).not.toMatch(
       /linear-gradient\([^)]*var\(--cinder-surface-raised\), transparent\)/,

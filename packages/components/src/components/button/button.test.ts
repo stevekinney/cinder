@@ -496,6 +496,16 @@ describe('Button icon-only ghost CSS contract', () => {
 });
 
 describe('Button secondary surface states', () => {
+  test('uses the public component variables for its resting surface', () => {
+    const block = readCssRuleBlock(
+      readButtonSource(),
+      ".cinder-button[data-cinder-variant='secondary']",
+    );
+    expectDeclaration(block, 'background', 'var(--cinder-button-background)');
+    expectDeclaration(block, 'color', 'var(--cinder-button-foreground)');
+    expectDeclaration(block, 'border-color', 'var(--cinder-button-border)');
+  });
+
   test('derives hover and pressed feedback from the raised resting fill', () => {
     const source = readButtonSource();
     expect(source).toMatch(

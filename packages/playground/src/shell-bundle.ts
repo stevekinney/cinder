@@ -6,6 +6,7 @@ import {
   PUBLIC_PATH_BY_FAMILY,
   SHARED_BUILD_OPTIONS,
   collectBuildArtifacts,
+  coordinatedBuild,
   shellArtifactByPath,
 } from './build-artifacts-shared.ts';
 import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
@@ -66,11 +67,13 @@ export async function compileShellBundleArtifacts(): Promise<{
   try {
     await Bun.write(entryTempPath, shim);
 
-    const result = await Bun.build({
-      entrypoints: [entryTempPath],
-      publicPath: PUBLIC_PATH_BY_FAMILY.shell,
-      ...SHARED_BUILD_OPTIONS,
-    });
+    const result = await coordinatedBuild(() =>
+      Bun.build({
+        entrypoints: [entryTempPath],
+        publicPath: PUBLIC_PATH_BY_FAMILY.shell,
+        ...SHARED_BUILD_OPTIONS,
+      }),
+    );
 
     if (!result.success) {
       console.error('[playground] shell bundle failed:', result.logs);

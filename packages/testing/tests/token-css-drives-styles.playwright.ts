@@ -237,4 +237,47 @@ test.describe('generated token CSS drives visible styles', () => {
     await expect.poll(radiusOf).toBe('2px');
     expect(before).not.toBe('2px');
   });
+
+  test('a scoped ancestor override reaches a consume-only component token', async ({ page }) => {
+    await gotoDocumentationPage(page, '/page/action-row');
+
+    // The documentation page also contains a condensed example that sets this
+    // token directly on the row. That local declaration correctly outranks an
+    // ancestor override, so select a consume-only row with no local claimant.
+    const row = page
+      .locator('.cinder-action-row:not([style*="--cinder-action-row-padding-block"])')
+      .first();
+    await expect(row).toBeVisible();
+    const parent = row.locator('..');
+    const paddingOf = async (): Promise<string> =>
+      row.evaluate((element) => getComputedStyle(element).paddingTop);
+
+    const before = await paddingOf();
+    await parent.evaluate((element) => {
+      (element as HTMLElement).style.setProperty('--cinder-action-row-padding-block', '1px');
+    });
+
+    await expect.poll(paddingOf).toBe('1px');
+    expect(before).not.toBe('1px');
+  });
+
+  test('a scoped foundation override reaches a deferred component alias', async ({ page }) => {
+    await gotoDocumentationPage(page, '/page/accordion');
+
+    const item = page
+      .locator('.cinder-accordion-item:not([style*="--cinder-accordion-item-trigger-gap"])')
+      .first();
+    const trigger = item.locator('.cinder-accordion-item__trigger');
+    await expect(trigger).toBeVisible();
+    const gapOf = async (): Promise<string> =>
+      trigger.evaluate((element) => getComputedStyle(element).columnGap);
+
+    const before = await gapOf();
+    await item.evaluate((element) => {
+      (element as HTMLElement).style.setProperty('--cinder-space-4', '3px');
+    });
+
+    await expect.poll(gapOf).toBe('3px');
+    expect(before).not.toBe('3px');
+  });
 });

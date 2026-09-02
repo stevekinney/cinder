@@ -22,7 +22,7 @@
     },
     "labs/chat-room": {
       "name": "@cinder/chat-room-lab",
-      "version": "0.0.3",
+      "version": "0.0.4",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.116.0",
         "@lasercat/homogenaize": "^1.2.41",
@@ -96,7 +96,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.25.0",
+      "version": "0.25.1",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -227,7 +227,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.14",
+      "version": "0.1.15",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },

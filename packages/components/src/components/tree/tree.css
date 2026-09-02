@@ -116,9 +116,6 @@
     outline: none;
     cursor: default;
     border-radius: var(--cinder-radius-sm);
-    --cinder-tree-drop-line-color: var(--cinder-accent-solid);
-    --cinder-tree-drop-line-thickness: 2px;
-    --cinder-tree-item-dragging-opacity: 0.55;
   }
 
   /* Tree items are full-bleed rows whose first/last siblings sit flush against

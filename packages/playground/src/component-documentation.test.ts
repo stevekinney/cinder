@@ -58,7 +58,7 @@ describe('buildComponentDocumentation', () => {
     expect(payload.rawArtifacts.examples).toBe(payload.examples);
   });
 
-  it('returns AvatarGroup variables', async () => {
+  it('returns corpus-owned component tokens through public variable discovery', async () => {
     const payload = await buildComponentDocumentation(
       'avatar-group',
       await componentManifest('avatar-group'),
