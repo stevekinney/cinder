@@ -164,6 +164,86 @@ export function maskStringLiterals(source: string): string {
   return output;
 }
 
+/**
+ * Blanks regular-expression literals the same way `maskStringLiterals` blanks
+ * strings — delimiters kept, contents spaced out, offsets preserved — while
+ * leaving string literals VISIBLE, so the class-shaped-literal pass can run
+ * over the result and still see `'sr-only'` in code but not in
+ * `/classNames\('sr-only'\)/`. The walk steps over strings without touching
+ * them, which is also what stops a `/` inside a string from being read as a
+ * regex delimiter.
+ *
+ * A regex literal is only recognised where an expression can START (after
+ * `(`, `,`, `=`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}`, `;`, `return`, or at
+ * the very beginning), so `a / b / c` is division and stays visible. The
+ * heuristic is the classic one every non-parsing tokenizer uses; it is
+ * exactly as good as it needs to be for the two consumers here.
+ */
+export function maskRegexLiterals(source: string): string {
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    const character = source[index] ?? '';
+    if (character === '"' || character === "'" || character === '`') {
+      output += character;
+      index += 1;
+      while (index < source.length) {
+        const inner = source[index] ?? '';
+        output += inner;
+        index += 1;
+        if (inner === '\\') {
+          output += source[index] ?? '';
+          index += 1;
+          continue;
+        }
+        if (inner === character) break;
+      }
+      continue;
+    }
+    if (character !== '/' || !regexCanStartAt(source, index)) {
+      output += character;
+      index += 1;
+      continue;
+    }
+    output += character;
+    index += 1;
+    let inClass = false;
+    while (index < source.length) {
+      const inner = source[index] ?? '';
+      if (inner === '\n') break;
+      if (inner === '\\') {
+        output += '  ';
+        index += 2;
+        continue;
+      }
+      if (inner === '[') inClass = true;
+      else if (inner === ']') inClass = false;
+      else if (inner === '/' && !inClass) {
+        output += inner;
+        index += 1;
+        break;
+      }
+      output += ' ';
+      index += 1;
+    }
+  }
+  return output;
+}
+
+function regexCanStartAt(source: string, slashIndex: number): boolean {
+  const next = source[slashIndex + 1];
+  if (next === '/' || next === '*' || next === undefined) return false;
+  const before = source.slice(0, slashIndex).replace(/\s+$/, '');
+  if (before === '') return true;
+  if (/[(,=:[!&|?{};]$/.test(before)) return true;
+  return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(before);
+}
+
+/** Strings and regex literals blanked together — the view a script scanner locates syntax in. */
+export function maskScriptLiterals(source: string): string {
+  return maskStringLiterals(maskRegexLiterals(source));
+}
+
 export function maskComments(source: string): string {
   return source
     .replace(/<!--[\s\S]*?-->/g, blank)
@@ -272,13 +352,17 @@ export function extractClassNamesCallArguments(
   const calls: Array<{ startIndex: number; argumentsText: string }> = [];
   const callPattern = /classNames\s*\(/g;
   let match: RegExpExecArray | null;
-  // Balance parentheses against string-masked text so a `)` inside a quoted
-  // argument — `classNames(format(')'), 'sr-only')` — cannot close the call
-  // early and truncate the extracted arguments before the token. Offsets are
+  // Locate calls AND balance parentheses against the literal-masked text.
+  // Balancing there is what keeps a `)` inside a quoted argument —
+  // `classNames(format(')'), 'sr-only')` — from closing the call early and
+  // truncating the arguments before the token. Locating there is what keeps
+  // `"classNames('sr-only')"` (a documented example) and
+  // `/classNames\('sr-only'\)/` (a test pattern) from being read as calls at
+  // all: text inside a string or a regex applies no class. Offsets are
   // preserved by the mask, so slices still come from the original source.
-  const balanceSource = maskStringLiterals(source);
+  const balanceSource = maskScriptLiterals(source);
 
-  while ((match = callPattern.exec(source)) !== null) {
+  while ((match = callPattern.exec(balanceSource)) !== null) {
     const openParenIndex = match.index + match[0].length - 1;
     let depth = 0;
     let index = openParenIndex;
@@ -552,6 +636,43 @@ const CLASS_LIST_LITERAL_SHAPE = /^[\w\s:\-/.[\]%#!@]*$/;
  */
 const DOM_READ_CALL_PATTERN =
   /(?:contains|matches|closest|querySelector|querySelectorAll|getElementsByClassName)\s*\(\s*$/;
+/**
+ * Replaces every `${...}` placeholder with a single space, balancing braces
+ * so a placeholder that contains its own object or arrow body —
+ * `` `${condition ? classes({ active: true }) : ''} sr-only` `` — is removed
+ * whole. A `[^}]*` regex stopped at the inner object's first `}`, left
+ * punctuation behind, and failed the shape test for the entire literal, so
+ * the token after it was never seen. Braces are counted on the string-masked
+ * placeholder so a `}` inside a nested quote cannot end it early. Offsets
+ * inside the result are NOT preserved (the token position is what matters,
+ * and it moves left by the placeholder's length), so callers report the
+ * literal's start, which is unaffected.
+ */
+export function blankTemplatePlaceholders(content: string): string {
+  const masked = maskStringLiterals(content);
+  let output = '';
+  let index = 0;
+  while (index < content.length) {
+    if (content[index] === '$' && content[index + 1] === '{') {
+      let depth = 0;
+      let end = index + 1;
+      for (; end < content.length; end++) {
+        if (masked[end] === '{') depth++;
+        else if (masked[end] === '}') {
+          depth--;
+          if (depth === 0) break;
+        }
+      }
+      output += ' ';
+      index = end + 1;
+      continue;
+    }
+    output += content[index];
+    index++;
+  }
+  return output;
+}
+
 const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]\w+)*(?=\s|$)`, 'g');
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
@@ -576,11 +697,19 @@ export function scanSource(
   // JavaScript, so quotes inside them ARE string delimiters. Only a quoted
   // literal carrying the token counts — `class={hiddenClass}` routes through
   // a variable, which the script scan's class-shaped-literal pass catches.
+  //
+  // A quoted token that is the argument of a DOM read —
+  // `class={node.classList.contains('sr-only') ? 'selected' : ''}` — asks
+  // whether some OTHER element has the class; only the branches can land on
+  // this one. The script pass already exempts those reads, and the same
+  // filter applies here for the same reason.
   const scanClassExpression = (expression: string, offset: number): void => {
     QUOTED_TOKEN_PATTERN.lastIndex = 0;
     let quotedMatch: RegExpExecArray | null;
-    while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null)
+    while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null) {
+      if (DOM_READ_CALL_PATTERN.test(expression.slice(0, quotedMatch.index))) continue;
       record(offset + quotedMatch.index);
+    }
   };
 
   const scanOpeningTag = (text: string, offset: number): void => {
@@ -659,12 +788,16 @@ export function scanSource(
     // through a variable is still a usage site. A class attribute or selector
     // written inside a script string is an example or a test assertion, not
     // an applied class, and fails the shape test.
+    //
+    // Runs over the regex-masked text so a quote inside a regex literal —
+    // `/classNames\\('sr-only'\\)/` — is not mistaken for a string.
     const literalPattern = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
+    const literalSource = maskRegexLiterals(text);
     let literalMatch: RegExpExecArray | null;
-    while ((literalMatch = literalPattern.exec(text)) !== null) {
-      if (DOM_READ_CALL_PATTERN.test(text.slice(0, literalMatch.index))) continue;
+    while ((literalMatch = literalPattern.exec(literalSource)) !== null) {
+      if (DOM_READ_CALL_PATTERN.test(literalSource.slice(0, literalMatch.index))) continue;
       const content = literalMatch[2] ?? '';
-      const shape = content.replace(/\$\{[^}]*\}/g, ' ');
+      const shape = blankTemplatePlaceholders(content);
       if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
       CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
@@ -697,12 +830,19 @@ export function scanSource(
     .toSorted((a, b) => a.lineNumber - b.lineNumber);
 }
 
-/** Scans every `.svelte` and `.css` file under `sourceRoot` for bare `sr-only`-prefixed usage. */
+/**
+ * Scans every production source file under `sourceRoot` for bare
+ * `sr-only`-prefixed usage: `.css`, `.svelte`, and every script extension
+ * `languageForPath` knows. Script files are in the walk because a class can
+ * be authored there and only BOUND in a component — `export const hidden =
+ * 'sr-only'` in a `.svelte.ts` module, then `class={hidden}` — and the
+ * markup scan of the component sees nothing but an identifier.
+ */
 export async function scan(
   sourceRoot: string = defaultSourceRoot,
 ): Promise<VisuallyHiddenClassFlag[]> {
   const flags: VisuallyHiddenClassFlag[] = [];
-  const glob = new Glob('**/*.{css,svelte}');
+  const glob = new Glob('**/*.{css,svelte,ts,mts,cts,js,mjs,cjs}');
 
   for await (const relativePath of glob.scan({ cwd: sourceRoot })) {
     if (isTestPath(relativePath)) continue;

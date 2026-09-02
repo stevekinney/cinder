@@ -10,6 +10,7 @@ import {
   isCssSelectorContext,
   isTestPath,
   languageForPath,
+  maskRegexLiterals,
   maskStringLiterals,
   scan,
   scanSource,
@@ -509,5 +510,61 @@ describe('language is taken from the file extension, not guessed from contents',
     } finally {
       await rm(root, { recursive: true, force: true });
     }
+  });
+});
+
+describe('scanSource — script-side review findings', () => {
+  test('scan() visits production script files, not only .css and .svelte', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'visually-hidden-'));
+    try {
+      await writeFile(join(root, 'classes.ts'), "export const hidden = 'sr-only';\n");
+      await writeFile(join(root, 'state.svelte.ts'), "export const live = 'sr-only live';\n");
+      await writeFile(join(root, 'classes.test.ts'), "export const hidden = 'sr-only';\n");
+      const flags = await scan(root);
+      expect(flags.map((flag) => flag.filePath)).toEqual([
+        'src/lib/classes.ts',
+        'src/lib/state.svelte.ts',
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('balances nested braces inside a template placeholder before the shape test', () => {
+    const source =
+      "<script>\nconst hidden = `${condition ? classes({ active: true }) : ''} sr-only`;\n</script>\n" +
+      '<div class={hidden}></div>';
+    expect(scanSource(source, 'svelte').map((hit) => hit.lineNumber)).toEqual([2]);
+  });
+
+  test('a classNames() call quoted inside a script string is documentation, not a call', () => {
+    expect(scanSource(`<script>const example = "classNames('sr-only')";</script>`)).toHaveLength(0);
+    expect(
+      scanSource("<script>const pattern = /classNames\\('sr-only'\\)/;</script>"),
+    ).toHaveLength(0);
+  });
+
+  test('still flags a real classNames() call next to a quoted decoy', () => {
+    expect(
+      scanSource(
+        `<script>const example = "classNames('sr-only')";\nconst c = classNames('sr-only');</script>`,
+      ).map((hit) => hit.lineNumber),
+    ).toEqual([2]);
+  });
+
+  test('maskRegexLiterals blanks regexes, keeps strings, and leaves division alone', () => {
+    expect(maskRegexLiterals("const a = /x'y/; const b = 'p/q'; const c = n / 2 / m;")).toBe(
+      "const a = /   /; const b = 'p/q'; const c = n / 2 / m;",
+    );
+    expect(maskRegexLiterals('x.replace(/[/]a/, "b")')).toBe('x.replace(/    /, "b")');
+  });
+
+  test('a DOM read inside a class expression is not an applied class', () => {
+    expect(
+      scanSource(`<div class={node.classList.contains('sr-only') ? 'selected' : ''}></div>`),
+    ).toHaveLength(0);
+    expect(
+      scanSource(`<div class={node.classList.contains('sr-only') ? 'sr-only' : ''}></div>`),
+    ).toHaveLength(1);
   });
 });
