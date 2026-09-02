@@ -184,6 +184,70 @@ describe('Editor package ownership boundary', () => {
     expect(published.peerDependencies).toEqual(editorManifest.peerDependencies);
   });
 
+  /**
+   * CIN-459. A subpath that resolves to `src` under Bun but to `dist` under
+   * Vite's `browser`/`svelte` conditions gives a workspace consumer two module
+   * instances of the same file -- and identity-keyed state (a ProseMirror
+   * `PluginKey`, an `instanceof`, a module-level registry) silently fails to
+   * cross that boundary. #1425 hit it for real: `anchorPluginKey` imported from
+   * `./anchor-decorations` (dist) could not read the plugin state installed by
+   * `ReviewEditor` (src). That one subpath was fixed; its siblings carried the
+   * same hazard, invisible until the next shared identity crossed it.
+   *
+   * The invariant: any export that points at `./src/` for Bun must resolve to
+   * that same source under `browser` and `svelte` too. Entries without a `bun`
+   * source condition (e.g. `./review-editor/styles`) are not part of the split
+   * and are left alone.
+   */
+  test('every src-resolving export also resolves to src under browser and svelte', () => {
+    const violations: string[] = [];
+    for (const [subpath, entry] of Object.entries(editorManifest.exports)) {
+      if (typeof entry !== 'object' || entry === null) continue;
+      const conditions = entry as Record<string, unknown>;
+      const bun = conditions['bun'];
+      if (typeof bun !== 'string' || !bun.startsWith('./src/')) continue;
+      const keys = Object.keys(conditions);
+      const problems: string[] = [];
+      if (conditions['browser'] !== bun) problems.push(`browser=${String(conditions['browser'])}`);
+      if (conditions['svelte'] !== bun) problems.push(`svelte=${String(conditions['svelte'])}`);
+      // Conditional exports resolve to the FIRST matching key, so value equality is
+      // not enough: `browser`/`svelte` sinking below `import`/`default` would hand
+      // Vite the dist entry again while the values still matched. Pin the order.
+      const firstDistKey = Math.min(
+        ...['import', 'default'].map((k) => keys.indexOf(k)).filter((i) => i >= 0),
+      );
+      for (const sourceKey of ['bun', 'browser', 'svelte']) {
+        const at = keys.indexOf(sourceKey);
+        if (at === -1 || (Number.isFinite(firstDistKey) && at > firstDistKey)) {
+          problems.push(`${sourceKey} must precede import/default`);
+        }
+      }
+      if (problems.length > 0)
+        violations.push(`${subpath} [${keys.join(', ')}]: ${problems.join('; ')}`);
+    }
+    expect(violations).toEqual([]);
+  });
+
+  test('rewrites a src-resolving utility export to packed dist files', () => {
+    // The published artifact must stay dist-only even though the source manifest
+    // now names `./src/` under `browser`/`svelte` for utility subpaths too.
+    const published = buildPublishedManifest(editorManifest);
+    expect(published.exports['./comments']).toEqual({
+      types: './dist/comments/index.d.ts',
+      browser: './dist/comments/index.js',
+      svelte: './dist/comments/index.js',
+      import: './dist/comments/index.js',
+      default: './dist/comments/index.js',
+    });
+    expect(published.exports['.']).toEqual({
+      types: './dist/index.d.ts',
+      browser: './dist/index.js',
+      svelte: './dist/index.js',
+      import: './dist/index.js',
+      default: './dist/index.js',
+    });
+  });
+
   test('rewrites browser-aware Editor exports to packed dist files', () => {
     const published = buildPublishedManifest(editorManifest);
     const exportKeys = (entry: unknown): string[] => {
