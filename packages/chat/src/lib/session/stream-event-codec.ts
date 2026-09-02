@@ -464,7 +464,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
   }
   switch (event.type) {
     case 'text':
-      return { type: 'text', text: event.text, ...envelope };
+      return { type: 'text', text: requireString(event.text, 'text'), ...envelope };
     case 'tool_call':
       return {
         type: 'tool_call',

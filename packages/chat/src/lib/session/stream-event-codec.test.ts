@@ -1440,6 +1440,13 @@ describe('legacy envelope is all-or-nothing at the type level', () => {
 });
 
 describe('encoder validates primitive fields', () => {
+  test('rejects a non-string text on the legacy text member', () => {
+    const event = { type: 'text', text: 42 } as unknown as ChatStreamEvent;
+    expect(() => encodeChatStreamEvent(event)).toThrow(
+      'Invalid chat stream event: text must be a string',
+    );
+  });
+
   const envelope = { wireVersion: 1 as const, sequence: 1 };
 
   test('rejects a non-string content on stream:text-delta', () => {
