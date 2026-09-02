@@ -25,7 +25,7 @@
 		"@lostgradient/cinder": "workspace:*",
 		"@lostgradient/editor": "workspace:*",
 		"@lostgradient/markdown": "workspace:*",
-		"@lostgradient/operative": "0.7.0",
+		"@lostgradient/operative": "0.8.0",
 		"@milkdown/ctx": "^7.17.3",
 		"@milkdown/kit": "^7.17.3",
 		"@milkdown/prose": "^7.17.3",
