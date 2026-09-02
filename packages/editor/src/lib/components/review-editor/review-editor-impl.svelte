@@ -264,6 +264,16 @@
       }
     | undefined;
 
+  /**
+   * The ProseMirror range whose comment was just submitted. Submitting hands
+   * focus back to the editor, and ProseMirror re-writes its stored (still
+   * non-collapsed) selection into the DOM on focus; the resulting
+   * `selectionchange` would otherwise re-open the popover over the text that
+   * was just commented on. A different selection, or a pointer or key pressed
+   * inside the editor, clears this.
+   */
+  let consumedSelection: { from: number; to: number } | null = null;
+
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
     activeView === 'editor' &&
@@ -890,6 +900,10 @@
           const view = editorRef?.getView();
           if (view) {
             const { from, to } = view.state.selection;
+            if (consumedSelection) {
+              if (consumedSelection.from === from && consumedSelection.to === to) return;
+              consumedSelection = null;
+            }
             if (from !== to) {
               capturedSelectionForPopover = { from, to };
               // Only show popover when we have a valid captured selection
@@ -901,10 +915,26 @@
       }, SELECTION_DEBOUNCE_MS);
     }
 
+    // A pointer or key pressed inside the editor is the user starting a new
+    // selection, so the consumed range no longer applies. Selection changes
+    // alone cannot tell that apart from the collapsed caret and restored range
+    // the browser and ProseMirror write while focus returns after a submit.
+    function releaseConsumedSelection(event: Event) {
+      if (!consumedSelection) return;
+      const editorDom = editorRef?.getView()?.dom;
+      if (editorDom && event.target instanceof Node && editorDom.contains(event.target)) {
+        consumedSelection = null;
+      }
+    }
+
     document.addEventListener('selectionchange', handleBrowserSelectionChange);
+    document.addEventListener('mousedown', releaseConsumedSelection, true);
+    document.addEventListener('keydown', releaseConsumedSelection, true);
 
     return () => {
       document.removeEventListener('selectionchange', handleBrowserSelectionChange);
+      document.removeEventListener('mousedown', releaseConsumedSelection, true);
+      document.removeEventListener('keydown', releaseConsumedSelection, true);
       if (selectionTimeoutId !== null) {
         clearTimeout(selectionTimeoutId);
         selectionTimeoutId = null;
@@ -1523,7 +1553,9 @@
     };
     onthreadcreate?.(event);
 
-    // Clear state
+    // Clear state. Remember the range so the selection ProseMirror restores on
+    // refocus does not re-open the popover over the text just commented on.
+    consumedSelection = { from, to };
     capturedSelectionForPopover = null;
     selectionPopoverPosition = null;
     selectionPopoverExpanded = false;
