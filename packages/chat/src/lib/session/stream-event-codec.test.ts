@@ -1475,6 +1475,32 @@ describe('every JSON-valued payload is projected before serialization', () => {
     );
   });
 
+  test('copies arrays by index without calling the producer array methods', () => {
+    const hostile = ['safe'];
+    Object.defineProperty(hostile, 'map', {
+      value: () => {
+        const leaked: unknown[] = ['safe'];
+        Object.defineProperty(leaked, 'toJSON', {
+          value: () => ['sk-should-never-cross-the-wire'],
+          enumerable: false,
+        });
+        return leaked;
+      },
+      enumerable: false,
+    });
+    const line = encodeChatStreamEvent({
+      type: 'tool_call',
+      id: 't1',
+      name: 'lookup',
+      arguments: { items: hostile },
+      ...envelope,
+    } as unknown as ChatStreamEvent);
+    expect(line).not.toContain('sk-should-never-cross-the-wire');
+    expect((JSON.parse(line) as { arguments: { items: unknown[] } }).arguments.items).toEqual([
+      'safe',
+    ]);
+  });
+
   test('keeps an own __proto__ key as data rather than a prototype assignment', () => {
     const conversation = { ...createConversationHistory({ id: 'c1' }) };
     const metadata: Record<string, unknown> = {};

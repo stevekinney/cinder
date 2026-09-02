@@ -442,8 +442,8 @@ function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
 
 /**
  * Rebuilds an already schema-validated value as plain JSON data: own
- * enumerable string keys copied onto null-prototype-free plain objects,
- * arrays by index, primitives as they are. Anything with a `toJSON` in reach
+ * enumerable string keys copied onto null-prototype objects, arrays by
+ * index, primitives as they are. Anything with a `toJSON` in reach
  * — own, non-enumerable, or inherited — is rejected rather than neutralized
  * silently, because a producer that attached one intended the wire to carry
  * something other than what the schema validated.
@@ -460,11 +460,20 @@ function projectPlainJSON(value: unknown, context: string): JSONValue {
   if (typeof (value as { toJSON?: unknown }).toJSON === 'function')
     throw new Error(`Invalid chat stream event: ${context} carries a toJSON serialization hook`);
   // `undefined` follows JSON.stringify: dropped from objects, `null` in arrays.
-  if (Array.isArray(value))
-    return value.map((item, index) =>
-      item === undefined ? null : projectPlainJSON(item, `${context}[${index}]`),
-    );
-  const projected: Record<string, JSONValue> = {};
+  // The copy is built by index into an intrinsic array — never through the
+  // input's own `map`, which a producer could override (or redirect via
+  // `Symbol.species`) to hand back an array carrying a hook of its own.
+  if (Array.isArray(value)) {
+    const items: JSONValue[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const item: unknown = value[index];
+      items.push(item === undefined ? null : projectPlainJSON(item, `${context}[${index}]`));
+    }
+    return items;
+  }
+  // Null-prototype so the result inherits nothing — not a `toJSON`, not a
+  // polluted `Object.prototype` key; only the copied own keys reach the wire.
+  const projected: Record<string, JSONValue> = Object.create(null);
   for (const [key, item] of Object.entries(value)) {
     if (item === undefined) continue;
     // Defined as an own data property rather than assigned: a `__proto__`
