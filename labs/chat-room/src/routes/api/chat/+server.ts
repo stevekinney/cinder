@@ -83,9 +83,25 @@ export const POST: RequestHandler = async ({ request }) => {
 	// through one try/catch and always resolves rather than rejecting, and
 	// the `finally` below always disposes the run — that pair is what keeps
 	// any such failure from ever becoming an unhandled rejection.
+	// Assigned once `start(controller)` runs, so `onRequestAbort` can reach the
+	// controller it would otherwise have no reference to. It stays `undefined`
+	// only in the window before `start`, and a signal that aborted in that
+	// window is handled by the already-aborted guard inside `start` instead.
+	let closeStream: (() => void) | undefined;
+
 	function onRequestAbort(): void {
+		if (settled) return;
 		settled = true;
 		run?.abort('request aborted');
+		// Closing here is load-bearing, not belt-and-braces. Setting `settled`
+		// is precisely what stops the async pump's terminal branch from running
+		// (`if (settled) return;` sits ahead of its `controller.close()`), so
+		// without this the stream would never reach a terminal state at all on a
+		// request-signal abort — it would sit open for the rest of the process's
+		// life. `cancel()` deliberately does NOT do this: there the consumer has
+		// already torn the readable down, and closing a cancelled controller
+		// throws.
+		closeStream?.();
 	}
 
 	const stream = new ReadableStream<Uint8Array>({
@@ -100,6 +116,19 @@ export const POST: RequestHandler = async ({ request }) => {
 				controller.close();
 				return;
 			}
+
+			closeStream = () => {
+				// A terminal transition can still race: the consumer may cancel
+				// between `settled = true` and this call. `close()` on an already
+				// terminal controller throws, and this runs inside an event-listener
+				// callback where a throw is unhandled, so it is swallowed — the
+				// stream is ending either way.
+				try {
+					controller.close();
+				} catch {
+					// Already terminal; nothing to do.
+				}
+			};
 
 			function enqueueFrame(frame: ChatStreamFrame): void {
 				if (settled) return;

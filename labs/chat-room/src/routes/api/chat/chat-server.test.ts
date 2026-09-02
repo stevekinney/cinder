@@ -14,6 +14,22 @@ describe('chat stream cancellation guard', () => {
 		expect(source).toContain("run?.abort('request aborted')");
 	});
 
+	// A request-signal abort is the one path where nothing else transitions the
+	// stream: `settled = true` is exactly what stops the async pump's terminal
+	// branch from running, so the handler has to close the controller itself or
+	// the stream never reaches a terminal state at all. `cancel()` deliberately
+	// does not, because there the consumer has already torn the readable down.
+	test('closes the stream from the request-abort handler but not from cancel()', () => {
+		expect(source).toMatch(
+			/function onRequestAbort\(\): void \{[\s\S]*?run\?\.abort\('request aborted'\);[\s\S]*?closeStream\?\.\(\);[\s\S]*?\n\t\}/
+		);
+		expect(source).toMatch(/cancel\(\) \{\s+settled = true;\s+run\?\.abort\('client cancelled'\);\s+\}/);
+	});
+
+	test('guards the abort handler as a one-shot', () => {
+		expect(source).toMatch(/function onRequestAbort\(\): void \{\s+if \(settled\) return;/);
+	});
+
 	test('removes the request-signal listener and disposes the run on every terminal path', () => {
 		expect(source).toMatch(/request\.signal\.removeEventListener\('abort', onRequestAbort\);/);
 		expect(source).toMatch(/try \{\s+activeRun\[Symbol\.dispose\]\(\);\s+\} catch \{/);
