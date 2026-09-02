@@ -59,11 +59,17 @@ describe('chat-room Playwright refuses a web server it did not start', () => {
 	let child: ReturnType<typeof Bun.spawn> | undefined;
 
 	afterEach(async () => {
-		child?.kill();
-		child = undefined;
+		if (child) {
+			child.kill();
+			await child.exited;
+			child = undefined;
+		}
 		if (fake) {
-			await new Promise<void>((resolve) => fake?.close(() => resolve()));
+			const server = fake;
 			fake = undefined;
+			// Only a listening server can be closed; when `listenOrExplain()` failed the
+			// real error must surface rather than an ERR_SERVER_NOT_RUNNING from here.
+			if (server.listening) await new Promise<void>((resolve) => server.close(() => resolve()));
 		}
 	});
 
