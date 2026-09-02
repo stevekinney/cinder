@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { injectStrippedStyles } from '../../test/css.ts';
@@ -10,7 +10,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; the shared document.body otherwise leaks
+// activeElement and nodes into later files (check:test-cleanup).
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 const { default: Input } = await import('./input.svelte');
 const { default: InputFormResetFixture } =
   await import('../../test/fixtures/input-form-reset-fixture.svelte');
@@ -705,6 +712,14 @@ describe('Input group (leading/trailing addons)', () => {
     );
     expect(css).toMatch(
       /\.cinder-input-host\[data-disabled\]\s*\{[^}]*border-color:\s*var\(--cinder-border-muted\);/,
+    );
+    // Hover too: an addon can appear while the pointer is over the input, and
+    // the host is hovered whenever its input is.
+    expect(css).toMatch(
+      /\.cinder-input-host:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--cinder-border-strong\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*oklch\(from var\(--cinder-status-danger-solid\) calc\(l - 0\.06\) c h\);/,
     );
     // And the reverse direction: the grouped input drops its border with
     // `border-style`, not the `border` shorthand, so its computed border-color

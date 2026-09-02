@@ -214,8 +214,23 @@
        state rules, so disabled wins over invalid here too. */
     border-color: var(--cinder-border);
   }
+  /* The host is hovered whenever the input inside it is (`:hover` matches an
+     ancestor of the hovered element even when that ancestor has no box), so
+     the hover colours are mirrored too — with the same precedence as the
+     group's rules below: invalid beats resting, hover beats both, disabled
+     beats everything. Sticky-hover suppression on touch, as for the group. */
+  @media (hover: hover) {
+    .cinder-input-host:hover:not([data-disabled]) {
+      border-color: var(--cinder-border-strong);
+    }
+  }
   .cinder-input-host[data-invalid] {
     border-color: var(--cinder-status-danger-solid);
+  }
+  @media (hover: hover) {
+    .cinder-input-host[data-invalid]:hover:not([data-disabled]) {
+      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
+    }
   }
   .cinder-input-host[data-disabled] {
     border-color: var(--cinder-border-muted);
