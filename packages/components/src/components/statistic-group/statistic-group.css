@@ -88,15 +88,20 @@
    * `default` read as deliberate rather than unstyled (CIN-113); the dividers are an
    * enhancement applied where they can be drawn correctly.
    *
-   * SPECIFICITY IS LOAD-BEARING. Every rule in this section is written as
+   * SPECIFICITY IS LOAD-BEARING. Every enabler, row-end suppressor, and band rule
+   * in this section is written as
    * `.cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='N']
    *   > .cinder-statistic-group__grid > .cinder-statistic:<one pseudo-class>` --
-   * exactly (0,6,0) -- so that source order alone decides the cascade and a later
-   * band can override an earlier one. An earlier revision enabled dividers with ONE
-   * generic rule carrying two `:not([data-cinder-columns=...])` clauses, which
-   * out-ranked every row-end suppressor below it, so a multi-row group drew a
-   * divider at the end of every row but the last. Do not "simplify" the enablers
-   * back into one rule.
+   * exactly (0,6,0) -- so that among them source order alone decides the cascade
+   * and a later band can override an earlier one. The one exception is the
+   * final-cell reset at the end, which drops `[data-cinder-columns]` and is (0,5,0):
+   * it only ever matches `:last-child`, which every enabler excludes with
+   * `:not(:last-child)`, and the row-end suppressors that can also match the last
+   * cell set the same `none`, so it never competes with a higher-specificity rule.
+   * An earlier revision enabled dividers with ONE generic rule carrying two
+   * `:not([data-cinder-columns=...])` clauses, which out-ranked every row-end
+   * suppressor below it, so a multi-row group drew a divider at the end of every
+   * row but the last. Do not "simplify" the enablers back into one rule.
    * ---------------------------------------- */
 
   /* --- Declared layout (wide): vertical dividers, row ends suppressed --- */

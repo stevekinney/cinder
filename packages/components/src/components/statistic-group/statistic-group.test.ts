@@ -123,7 +123,8 @@ describe('StatisticGroup', () => {
 
     // The enabler is enumerated per fixed count rather than written as one
     // `:not():not()` rule, so it carries the same (0,6,0) specificity as the
-    // row-end suppressors and source order decides. See the CSS comment.
+    // row-end suppressors and the bands, and source order decides among them.
+    // See the CSS comment (the final-cell reset is deliberately lower).
     for (const columnCount of [2, 3, 4]) {
       const enabler = blockAfter(
         normalized,
@@ -204,10 +205,12 @@ describe('StatisticGroup', () => {
     const css = await Bun.file(new URL('./statistic-group.css', import.meta.url)).text();
     const normalized = normalizeCss(css);
 
-    // ORDER IS LOAD-BEARING. Every divider rule is (0,6,0), so the cascade is
-    // decided purely by source position: each fixed count's enabler must precede its
-    // row-end suppressor, the two-track band must follow all declared-layout rules,
-    // and the one-track band must follow the two-track band.
+    // ORDER IS LOAD-BEARING. Every enabler, row-end suppressor, and band rule is
+    // (0,6,0), so among them the cascade is decided purely by source position: each
+    // fixed count's enabler must precede its row-end suppressor, the two-track band
+    // must follow all declared-layout rules, and the one-track band must follow the
+    // two-track band. (The final-cell `:last-child` reset is (0,5,0) on purpose; it
+    // never overlaps the `:not(:last-child)` rules, so it is outside this ordering.)
     // `from` matters: the same `@container … (max-width: 30rem)` header opens the
     // LAYOUT collapse block near the top of the file, so a band must be looked for
     // after the divider rules it is supposed to follow, not from the start.
