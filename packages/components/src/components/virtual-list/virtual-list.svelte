@@ -96,6 +96,7 @@
   let previousOffsets: readonly number[] | undefined;
   let previousTotalSize = 0;
   let previousViewportWidth = 0;
+  let previousEstimate = 0;
   let pendingScrollTarget: number | null = $state(null);
   let isDestroyed = false;
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
@@ -314,6 +315,30 @@
     void measurementStore.pendingCorrectionsVersion;
     const corrections = measurementStore.consumePendingCorrections();
     const currentOffsets = offsets?.offsets;
+    const currentEstimate = resolvedItemHeight;
+
+    // An `itemHeight` change re-sizes every UNMEASURED row at once. No
+    // ResizeObserver fires for that — the rows did not change, the estimate did —
+    // so no correction is queued, and because this mode disables native scroll
+    // anchoring nothing else holds the position either. The same scrollTop then
+    // resolves to a completely different row: with a 20px estimate, offset 10,000
+    // is index 500; at 40px it is index 250, and the reader is silently teleported.
+    //
+    // Re-anchoring on the row the reader is actually looking at, and on how far into
+    // it they are, keeps them there across the rebuild.
+    if (
+      previousEstimate > 0 &&
+      currentEstimate !== previousEstimate &&
+      scrollElement &&
+      previousOffsets &&
+      currentOffsets
+    ) {
+      const liveScrollOffset = Math.max(0, scrollElement.scrollTop);
+      const anchorIndex = findOffsetIndex(previousOffsets, liveScrollOffset);
+      const offsetWithinAnchor = liveScrollOffset - (previousOffsets[anchorIndex] ?? 0);
+      pendingScrollTarget = Math.max(0, (currentOffsets[anchorIndex] ?? 0) + offsetWithinAnchor);
+    }
+    previousEstimate = currentEstimate;
 
     if (corrections.length > 0 && scrollElement && previousOffsets) {
       // Live, not the `scrollOffset` state: during a smooth scroll, after an
@@ -400,7 +425,12 @@
     // width is now wrong. Offscreen rows would keep those stale heights until they
     // happened to remount, leaving the spacer and every scroll target off by the
     // accumulated difference. Dropping the cache forces re-measurement.
-    const measuredWidth = rect.width || element.clientWidth || 0;
+    // clientWidth first: it is the width actually available to rows, excluding the
+    // scrollbar. A measurement that makes the list start or stop overflowing adds or
+    // removes a non-overlay scrollbar and re-wraps every row while the border-box
+    // width never changes — so comparing rect.width would miss it entirely and leave
+    // offscreen rows holding heights measured at the other width.
+    const measuredWidth = element.clientWidth || rect.width || 0;
     if (
       dynamicSize &&
       measuredWidth > 0 &&

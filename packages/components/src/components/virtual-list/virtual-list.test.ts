@@ -1126,4 +1126,33 @@ describe('VirtualList — dynamicSize', () => {
 
     expect(list.scrollTop).toBe(100);
   });
+
+  test('keeps the reader on the same row when the itemHeight estimate changes', async () => {
+    // An estimate change re-sizes every unmeasured row at once. No ResizeObserver
+    // fires — the rows did not change, the estimate did — so nothing queues a
+    // correction, and this mode disables native scroll anchoring. Without
+    // re-anchoring, the same scrollTop resolves to a different row entirely.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(1000),
+      height: '200px',
+      dynamicSize: true,
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, { ...base, itemHeight: 20, row: rowSnippet() });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    // At a 20px estimate, offset 10000 puts the reader at index 500.
+    list.scrollTop = 10_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await view.rerender({ ...base, itemHeight: 40, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    // Index 500 now starts at 500 * 40 = 20000. Holding scrollTop would have left
+    // the reader at index 250 instead.
+    expect(list.scrollTop).toBe(20_000);
+  });
 });
