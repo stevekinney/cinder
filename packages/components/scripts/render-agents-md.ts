@@ -19,6 +19,7 @@
 import { file, write } from 'bun';
 import { resolve } from 'node:path';
 import * as prettier from 'prettier';
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 import { readJsonFile } from './lib/read-json-file.ts';
 
 const PACKAGE_ROOT = resolve(import.meta.dir, '..');
@@ -220,6 +221,7 @@ async function main(): Promise<void> {
   const rendered = replaceBlock(existing, body);
   // Format with Prettier so the generated tables match the repository-wide
   // markdown style and `bun run format:check` stays green after a regenerate.
+  assertPrettierResolvesToRoot();
   const prettierConfig = (await prettier.resolveConfig(AGENTS_PATH)) ?? {};
   const next = await prettier.format(rendered, { ...prettierConfig, filepath: AGENTS_PATH });
 
