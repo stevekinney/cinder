@@ -76,7 +76,7 @@ export const FORBIDDEN_SPECIFIER = '@tanstack/virtual-core';
  * Dynamic `import('<specifier>')` calls are matched too — see
  * {@link DYNAMIC_IMPORT_PATTERN} for how they are judged.
  */
-const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"]+)\1/g;
+const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"\n]+)\1/g;
 
 /**
  * Matches a dynamic `import('<specifier>')` call.
@@ -94,7 +94,7 @@ const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"]+)\1/g;
  * them. Nothing in a test file ships, so the undeclared-import risk does not apply;
  * the `@tanstack/virtual-core` ban still does.
  */
-const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"])([^'"]+)\1/g;
+const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"])([^'"\n]+)\1/g;
 
 /** Files whose imports never ship, so the undeclared-bare-import rule does not apply to them. */
 const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?tsx?$/u;
@@ -176,45 +176,94 @@ export function findDependencyViolations(
   declaredDependencyNames: ReadonlySet<string>,
 ): DependencyViolation[] {
   const violations: DependencyViolation[] = [];
-  const lines = content.split('\n');
   const isTestFile = TEST_FILE_PATTERN.test(filePath);
+  const lineStartOffsets = buildLineStartOffsets(content);
+  const seenOffsets = new Set<number>();
 
-  for (const [index, line] of lines.entries()) {
-    const seenSpecifiers = new Set<string>();
+  const record = (specifier: string, offset: number, reason: string | undefined): void => {
+    if (reason === undefined) return;
+    const lineNumber = lineNumberForOffset(lineStartOffsets, offset);
+    violations.push({
+      filePath,
+      lineNumber,
+      specifier,
+      line: (content.split('\n')[lineNumber - 1] ?? '').trim(),
+      reason,
+    });
+  };
 
-    IMPORT_SPECIFIER_PATTERN.lastIndex = 0;
-    let match: RegExpExecArray | null;
-    while ((match = IMPORT_SPECIFIER_PATTERN.exec(line)) !== null) {
-      const specifier = match[2];
-      if (specifier === undefined) continue;
-      seenSpecifiers.add(specifier);
-      const reason = classifySpecifier(specifier, declaredDependencyNames);
-      if (reason !== undefined) {
-        violations.push({ filePath, lineNumber: index + 1, specifier, line: line.trim(), reason });
-      }
-    }
-
-    // Dynamic imports. Shipped source faces the full rule; test files only the
-    // forbidden-specifier ban. See DYNAMIC_IMPORT_PATTERN.
-    DYNAMIC_IMPORT_PATTERN.lastIndex = 0;
-    while ((match = DYNAMIC_IMPORT_PATTERN.exec(line)) !== null) {
-      const specifier = match[2];
-      if (specifier === undefined) continue;
-      // A static import of the same specifier on this line was already reported
-      // above; do not report it twice.
-      if (seenSpecifiers.has(specifier)) continue;
-      const reason = isTestFile
-        ? specifier === FORBIDDEN_SPECIFIER
-          ? FORBIDDEN_SPECIFIER_REASON
-          : undefined
-        : classifySpecifier(specifier, declaredDependencyNames);
-      if (reason !== undefined) {
-        violations.push({ filePath, lineNumber: index + 1, specifier, line: line.trim(), reason });
-      }
-    }
+  // Both scans run over the WHOLE file rather than line by line. A per-line scan
+  // misses every multiline form the language allows — `import(\n  'pkg'\n)` and
+  // `from\n  'pkg'` among them — which would let shipped source import an
+  // undeclared package and still pass this guard.
+  IMPORT_SPECIFIER_PATTERN.lastIndex = 0;
+  let match: RegExpExecArray | null;
+  while ((match = IMPORT_SPECIFIER_PATTERN.exec(content)) !== null) {
+    const specifier = match[2];
+    if (specifier === undefined) continue;
+    seenOffsets.add(match.index);
+    record(
+      specifier,
+      specifierOffset(match),
+      classifySpecifier(specifier, declaredDependencyNames),
+    );
   }
 
-  return violations;
+  // Dynamic imports. Shipped source faces the full rule; test files only the
+  // forbidden-specifier ban. See DYNAMIC_IMPORT_PATTERN.
+  DYNAMIC_IMPORT_PATTERN.lastIndex = 0;
+  while ((match = DYNAMIC_IMPORT_PATTERN.exec(content)) !== null) {
+    const specifier = match[2];
+    if (specifier === undefined) continue;
+    // A static `import ... from` match starting at the same offset was already
+    // reported above; do not report the same occurrence twice.
+    if (seenOffsets.has(match.index)) continue;
+    const reason = isTestFile
+      ? specifier === FORBIDDEN_SPECIFIER
+        ? FORBIDDEN_SPECIFIER_REASON
+        : undefined
+      : classifySpecifier(specifier, declaredDependencyNames);
+    record(specifier, specifierOffset(match), reason);
+  }
+
+  return violations.sort((left, right) => left.lineNumber - right.lineNumber);
+}
+
+/**
+ * Offset of the SPECIFIER itself, not of the statement containing it.
+ *
+ * `import { thing } from\n  'pkg'` matches starting at `from` on the first line,
+ * but the line a reader needs to open is the one holding `'pkg'`.
+ */
+function specifierOffset(match: RegExpExecArray): number {
+  const specifier = match[2] ?? '';
+  return match.index + Math.max(0, match[0].lastIndexOf(specifier));
+}
+
+/** Byte offset at which each line starts, for mapping a match index to a line number. */
+function buildLineStartOffsets(content: string): number[] {
+  const offsets = [0];
+  for (let index = 0; index < content.length; index += 1) {
+    if (content[index] === '\n') offsets.push(index + 1);
+  }
+  return offsets;
+}
+
+/** 1-indexed line number containing `offset`, by binary search over line starts. */
+function lineNumberForOffset(lineStartOffsets: readonly number[], offset: number): number {
+  let low = 0;
+  let high = lineStartOffsets.length - 1;
+  let result = 0;
+  while (low <= high) {
+    const middle = (low + high) >> 1;
+    if ((lineStartOffsets[middle] ?? 0) <= offset) {
+      result = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return result + 1;
 }
 
 type PackageManifest = { dependencies?: Record<string, string> };

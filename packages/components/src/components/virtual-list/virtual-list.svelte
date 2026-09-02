@@ -194,10 +194,46 @@
    * geometry until its ResizeObserver reported again.
    */
   $effect(() => {
-    if (!dynamicSize) return;
+    // Depends on `items` and `dynamicSize` only. Reading the cache through
+    // `sizes` would register the version counter and re-run this whole O(n) walk
+    // after every measurement; `measuredCount` reads the same Map without
+    // subscribing, so the walk happens when the list changes and not before
+    // anything has been measured at all.
+    const currentItems = items;
+    if (!dynamicSize || measurementStore.measuredCount === 0) return;
     const validKeys = new Set<VirtualListKey>();
-    for (let index = 0; index < items.length; index += 1) validKeys.add(keyAt(index));
+    for (let index = 0; index < currentItems.length; index += 1) validKeys.add(keyAt(index));
     measurementStore.prune(validKeys);
+  });
+
+  /**
+   * Drops cached sizes when dynamic mode is switched off.
+   *
+   * Rows are no longer observed while fixed mode runs, so a row that changes
+   * height in the meantime — an offscreen one especially — would otherwise be
+   * rebuilt from its stale cached size the moment dynamic mode came back, and an
+   * offscreen row may never be re-observed to correct it.
+   *
+   * Note this deliberately does NOT touch `rowResizeObserver`. Observer lifetime
+   * is keyed to component teardown alone; keying it to a prop is what previously
+   * let a re-render disconnect it permanently.
+   */
+  $effect(() => {
+    if (dynamicSize) return;
+    measurementStore.reset();
+    previousOffsets = undefined;
+  });
+
+  /**
+   * Releases the bottom pin whenever the option is off.
+   *
+   * `handleScroll` only maintains the flag while `stickToBottom` is true, so a
+   * pin taken before the option was disabled would survive scrolling away and
+   * re-enabling the option later would jump the viewport to the bottom with no
+   * append having happened.
+   */
+  $effect(() => {
+    if (!stickToBottom) isPinnedToBottom = false;
   });
 
   $effect(() => {
@@ -486,7 +522,11 @@
         locator: currentLocator(),
         totalSize: currentTotalSize(),
         viewportSize: viewportHeight,
-        currentScrollOffset: scrollOffset,
+        // Read live from the element, not from `scrollOffset` state. During a
+        // smooth scroll, a throttled scroll event, or an external write, the state
+        // lags the real position — and `align: 'auto'` decides whether to move at
+        // all by comparing against it.
+        currentScrollOffset: Math.max(0, element.scrollTop),
         align,
       });
 
@@ -512,7 +552,11 @@
         locator: currentLocator(),
         totalSize: currentTotalSize(),
         viewportSize: viewportHeight,
-        currentScrollOffset: scrollOffset,
+        // Read live from the element, not from `scrollOffset` state. During a
+        // smooth scroll, a throttled scroll event, or an external write, the state
+        // lags the real position — and `align: 'auto'` decides whether to move at
+        // all by comparing against it.
+        currentScrollOffset: Math.max(0, element.scrollTop),
         align,
       });
       if (Math.abs(settled - scrollOffset) <= SCROLL_TO_INDEX_SETTLED_EPSILON) return;

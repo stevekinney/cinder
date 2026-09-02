@@ -896,4 +896,69 @@ describe('VirtualList — dynamicSize', () => {
     // The second call wins: index 100 at the 20px estimate.
     expect(list.scrollTop).toBe(2000);
   });
+
+  test('releases the bottom pin while stickToBottom is disabled', async () => {
+    // handleScroll only maintains the flag while the option is on, so a pin taken
+    // before it was disabled would survive scrolling away — and re-enabling the
+    // option would then jump the viewport to the bottom with no append at all.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(50),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, { ...base, stickToBottom: true });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 800;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Disable the option, then scroll away from the bottom.
+    await view.rerender({ ...base, stickToBottom: false, row: rowSnippet() });
+    await tick();
+    list.scrollTop = 100;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Re-enabling must not treat the stale pin as still valid.
+    await view.rerender({ ...base, stickToBottom: true, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    expect(list.scrollTop).toBe(100);
+  });
+
+  test('drops cached measurements when dynamicSize is turned off', async () => {
+    // Rows stop being observed in fixed mode, so a row that changes height in the
+    // meantime would be rebuilt from its stale cached size the moment dynamic mode
+    // came back — and an offscreen row may never be re-observed to correct it.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, { ...base, dynamicSize: true, row: rowSnippet() });
+
+    await waitFor(() => expect(renderedRows(view.container).length).toBeGreaterThan(0));
+    const spacer = view.container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
+
+    reportRowSizes(new Map([[0, 60]]));
+    await tick();
+    expect(spacer.style.height).toBe('2040px');
+
+    await view.rerender({ ...base, dynamicSize: false, row: rowSnippet() });
+    await tick();
+    expect(spacer.style.height).toBe('2000px');
+
+    // Back on: the stale 60px measurement must be gone, not reused.
+    await view.rerender({ ...base, dynamicSize: true, row: rowSnippet() });
+    await tick();
+    expect(spacer.style.height).toBe('2000px');
+  });
 });

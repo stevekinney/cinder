@@ -194,6 +194,39 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
     expect(findDependencyViolations(source, 'fake.ts', new Set())).toEqual([]);
   });
 
+  test('flags a MULTILINE dynamic import of an undeclared bare specifier in shipped source', () => {
+    // A per-line scan misses every multiline form the language allows, which would
+    // let shipped source import an undeclared package and still pass this guard.
+    const source = ['const helper = await import(', "  'some-dev-only-package',", ');'].join('\n');
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('flags a MULTILINE static import of the forbidden specifier', () => {
+    const source = ['import { thing } from', `  '${FORBIDDEN_SPECIFIER}';`].join('\n');
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('does not treat prose spanning two lines as an import specifier', () => {
+    // Scanning the whole file at once means the specifier character class must
+    // exclude newlines, or a comment containing the word "import" followed by an
+    // unclosed quote swallows the next line and reports it as a bare import.
+    const source = [
+      '// left a stale',
+      '// node with the old content" — bare import "left a stale',
+      '// node still attached"',
+    ].join('\n');
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+  });
+
   test('flags a dynamic import of an undeclared bare specifier in SHIPPED source', () => {
     // A production file that dynamically imports an installed devDependency
     // resolves inside this repository and then fails for a published consumer.

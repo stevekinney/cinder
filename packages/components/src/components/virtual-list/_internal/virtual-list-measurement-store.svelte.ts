@@ -45,6 +45,18 @@ export class VirtualListMeasurementStore {
     return this.#pendingCorrectionsVersion;
   }
 
+  /**
+   * How many rows have been measured, read WITHOUT touching the version counter.
+   *
+   * Deliberately non-reactive: it exists so a caller can cheaply skip work when
+   * nothing has been measured yet. Reading {@link sizes} for that would register a
+   * dependency on every measurement and re-run the caller on each one, which is
+   * the opposite of the intent.
+   */
+  get measuredCount(): number {
+    return this.#sizes.size;
+  }
+
   /** Live, read-only view of the measured-size cache, keyed by row key. */
   get sizes(): ReadonlyMap<VirtualListKey, number> {
     // Touch #version so a $derived that reads only `.sizes` (never `.version`
