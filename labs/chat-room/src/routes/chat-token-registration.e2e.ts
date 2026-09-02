@@ -45,7 +45,8 @@ test.describe('chat measure token registration', () => {
 			.toBe('48rem');
 		expect(
 			await page.evaluate(
-				(token) => getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
+				(token) =>
+					getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
 				TOKEN
 			)
 		).toBe('48rem');
@@ -59,7 +60,8 @@ test.describe('chat measure token registration', () => {
 		await expect
 			.poll(() =>
 				page.evaluate(
-					(token) => getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
+					(token) =>
+						getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
 					TOKEN
 				)
 			)
