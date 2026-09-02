@@ -14,12 +14,21 @@
  * four original tests in `page.svelte.e2e.ts` cannot cover progressive
  * rendering even in principle. Standing in one layer further out leaves the
  * entire production path unmocked: the real SvelteKit endpoint, the real
- * Anthropic SDK stream, the real per-`text`-event ndjson re-encode, the real
- * `toolbox.execute` (so the real approval signature), and the real browser
- * `ReadableStream` read. The app reaches this file only because
- * `new Anthropic({ apiKey })` leaves `baseURL` to `readEnv('ANTHROPIC_BASE_URL')`
- * at construction time, so pointing the preview server's environment here
- * changes no application code at all.
+ * Operative provider stream, the real per-`text`-event ndjson re-encode, the
+ * real `toolbox.execute` (so the real approval signature), and the real
+ * browser `ReadableStream` read.
+ *
+ * HOW THE APP REACHES THIS FILE, AND WHY THAT IS NOW LOAD-BEARING APP CODE.
+ * `/api/chat` forwards `env.ANTHROPIC_BASE_URL` into
+ * `createAnthropicProviderStream({ baseURL })` explicitly, and that forwarding
+ * is the only thing that points the preview server here. It used to be
+ * implicit: the raw `new Anthropic({ apiKey })` resolved `baseURL` from
+ * `readEnv('ANTHROPIC_BASE_URL')` itself, so this file was reachable with no
+ * application support at all. Operative's provider does not read the
+ * environment, so that option is now ordinary application code and must stay.
+ * Delete it and every spec here silently retargets the real Anthropic API —
+ * the `expectFixtureHandled` assertions fail, and they fail only *after*
+ * making live billed calls.
  *
  * WHY GATES, NOT DELAYS. A fixture that spaces chunks by `setTimeout(200)` and
  * a test that waits 100ms are the same guess wearing different hats, and this

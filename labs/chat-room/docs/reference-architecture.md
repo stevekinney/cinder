@@ -15,9 +15,15 @@ Two owners, on purpose:
 - The browser owns the authoritative `ConversationHistory` value it renders.
 - The server owns an ephemeral `AgentRun` for exactly one HTTP request, plus all authority needed to execute it.
 
-Operative owns the loop _within_ a request. The browser does not re-POST after every tool result and does not enforce a second client-side step cap; `createAgent({ maximumSteps, stopWhen, ... })` owns loop limits. The final run event returns the authoritative post-run history, which the browser reconciles before treating the turn as complete.
+Operative owns the limits _within_ a run: `createAgent({ maximumSteps, stopWhen, ... })` decides when one `AgentRun` stops. Because the route ends each run after a tool call (see below), that per-run limit resets on every request, so it does not bound the turn. The published chat session controller does: it defaults `maxContinuationTurns` to 5, re-POSTs at most that many times for one user turn, and fails the turn when the limit is reached. Today the browser cap is therefore the effective turn-wide bound, and a host configuring loop limits must set it on the controller rather than on the agent alone. That is a consequence of the current continuation regime, not the target: once Operative drives continuation inside a single request, `maximumSteps` becomes the turn-wide bound and the client cap becomes redundant.
 
-This is stateless in the server-persistence sense, not the execution sense. One request may contain several model and tool steps. A new request starts a new run from the full client-owned history.
+Who drives continuation _between_ tool results is a different question, and the honest answer today is the browser. The published chat session controller re-POSTs whenever it observes a resolved, non-approval tool result, so a host that also let Operative continue within the same request would produce two continuations for one tool call. The route therefore stops after any tool call, and the client's existing loop carries the turn forward.
+
+So today a request contains **one** model step, plus the tool executions that step triggered. The stateless claim below is about server persistence, not about execution: a new request always starts a new run from the full client-owned history, and the server keeps nothing between them.
+
+Reconciliation of the authoritative post-run history is part of the target state rather than current behaviour. It requires a terminal run frame carrying that history, which the wire vocabulary does not yet include — the browser reconstructs the turn from the frames it receives instead.
+
+That target is Operative owning multi-step continuation inside a single request, with a terminal frame closing it. Reaching it requires the client controller to stop re-POSTing first. Until that lands, a host MUST match whichever side actually drives the loop rather than assuming this document's end state, and the stop condition in the route is the authority on which regime is in force.
 
 <a id="conversation-ownership"></a>
 
