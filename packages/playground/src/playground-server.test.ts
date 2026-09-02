@@ -80,6 +80,8 @@ import {
   resolveRendererLoad,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
+  type PageServerRendererLoadResult,
+  type PageServerRenderers,
 } from './ssr-renderer.ts';
 
 describe('eagerPrebuildComponents', () => {
@@ -2081,6 +2083,15 @@ describe('/page/:name server-rendering surfaces', () => {
 });
 
 describe('warmPageServerRenderer', () => {
+  /**
+   * Minimal renderers matching the real `PageServerRenderers` shape. Typed rather
+   * than `{}` so a stub cannot drift from the loader's contract undetected.
+   */
+  const renderers = {
+    renderComponentPageBody: () => ({ body: '', head: '' }),
+    renderLandingBody: () => ({ body: '', head: '' }),
+  } as unknown as PageServerRenderers;
+
   /** Runs the work and reports a stable generation, like an undisturbed startup. */
   const stable = async <T>(
     work: () => Promise<T>,
@@ -2105,7 +2116,7 @@ describe('warmPageServerRenderer', () => {
     await warmPageServerRenderer(
       async () => {
         loadCalls += 1;
-        return {};
+        return { renderers, usedFallback: false };
       },
       () => {
         resetCalls += 1;
@@ -2135,7 +2146,7 @@ describe('warmPageServerRenderer', () => {
     await warmPageServerRenderer(
       async () => {
         loadCalls += 1;
-        return {};
+        return { renderers, usedFallback: false };
       },
       () => {
         resetCalls += 1;
@@ -2162,7 +2173,7 @@ describe('warmPageServerRenderer', () => {
     let resetCalls = 0;
 
     await warmPageServerRenderer(
-      async () => ({ renderers: {}, usedFallback: true }),
+      async () => ({ renderers, usedFallback: true }),
       () => {
         resetCalls += 1;
       },
@@ -2170,6 +2181,30 @@ describe('warmPageServerRenderer', () => {
     );
 
     expect(resetCalls).toBe(1);
+  });
+
+  /**
+   * A discard must target THIS load. A concurrent `/page/:name` request can install a
+   * newer promise in the memo while the warmup is still in flight; resetting
+   * unconditionally would throw away that newer build and leave the first crawl request
+   * to start a third one — reintroducing the cold compile this warmup exists to remove.
+   */
+  it('discards only its own load, passing the promise it installed', async () => {
+    let seen: unknown = 'not-called';
+    let installed: unknown;
+
+    await warmPageServerRenderer(
+      () => {
+        installed = Promise.resolve({ renderers, usedFallback: true });
+        return installed as Promise<PageServerRendererLoadResult>;
+      },
+      (expected) => {
+        seen = expected;
+      },
+      stable,
+    );
+
+    expect(seen).toBe(installed);
   });
 
   /**

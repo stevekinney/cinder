@@ -123,6 +123,7 @@ import {
   resetShellRendererWarmupState,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
+  type PageServerRendererLoadResult,
   type ShellServerRendererLoadResult,
 } from './ssr-renderer.ts';
 import {
@@ -1397,23 +1398,33 @@ export async function runGenerationCheckedWarmup<T>(
  * earlier, it never makes a broken build worse.
  */
 export async function warmPageServerRenderer(
-  loadRenderer: () => Promise<unknown> = loadPageServerRenderer,
-  resetRenderer: () => void = resetPageServerRendererPromise,
+  loadRenderer: () => Promise<PageServerRendererLoadResult> = loadPageServerRenderer,
+  resetRenderer: (
+    expected?: Promise<PageServerRendererLoadResult>,
+  ) => void = resetPageServerRendererPromise,
   runChecked: <T>(work: () => Promise<T>) => Promise<{
     value: T;
     instabilityReasons: string[];
   }> = runGenerationCheckedWarmup,
 ): Promise<void> {
+  // Held so a discard can target THIS load specifically. A concurrent `/page/:name`
+  // request can install a newer promise in the memo while this warmup is in flight;
+  // resetting unconditionally would throw away that newer build and force the first
+  // crawl request to start a third one.
+  let pending: Promise<PageServerRendererLoadResult> | undefined;
   let instabilityReasons: string[];
-  let value: unknown;
+  let value: PageServerRendererLoadResult;
   try {
-    ({ value, instabilityReasons } = await runChecked(loadRenderer));
+    ({ value, instabilityReasons } = await runChecked(() => {
+      pending = loadRenderer();
+      return pending;
+    }));
   } catch (error) {
     console.warn(
       '[playground] page server renderer warmup failed; the first /page request will retry:',
       error,
     );
-    resetRenderer();
+    resetRenderer(pending);
     return;
   }
   // A last-good fallback RESOLVES rather than rejects, so the catch above never sees
@@ -1422,11 +1433,11 @@ export async function warmPageServerRenderer(
   // last-good -- contradicting this function's own contract that a failure leaves the
   // first request to rebuild. Reachable because the HTTP server listens (answering /ping
   // with 503) before the warmup runs, so a request can populate the memo first.
-  if ((value as { usedFallback?: unknown } | undefined)?.usedFallback === true) {
+  if (value.usedFallback) {
     console.warn(
       '[playground] page server renderer warmup fell back to the last-good renderer; the first /page request will rebuild',
     );
-    resetRenderer();
+    resetRenderer(pending);
     return;
   }
   if (instabilityReasons.length === 0) return;
@@ -1438,7 +1449,7 @@ export async function warmPageServerRenderer(
   // real correctness guarantee for a latency optimisation, and AGENTS.md forbids
   // adding a retry budget outright. An unwarmed page renderer costs one cold
   // compile on the first request, which is exactly the pre-existing behaviour.
-  resetRenderer();
+  resetRenderer(pending);
   console.warn(
     `[playground] page renderer warmup invalidated (${instabilityReasons.join('; ')}); the first /page request will rebuild`,
   );

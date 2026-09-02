@@ -184,7 +184,15 @@ export function resetShellRendererWarmupState(): void {
  * (unrelated) call site in `startServer`'s renderer-warmup retry loop must
  * not also reset the page-server renderer.
  */
-export function resetPageServerRendererPromise(): void {
+export function resetPageServerRendererPromise(
+  expected?: Promise<PageServerRendererLoadResult>,
+): void {
+  // A caller discarding a specific load must not clobber a NEWER one. The startup
+  // warmup can be invalidated while a concurrent `/page/:name` request has already
+  // installed a fresh promise here; nulling that unconditionally would throw away a
+  // build already in flight and force the next request to start yet another one.
+  // Passing no argument keeps the unconditional behaviour the file watcher relies on.
+  if (expected !== undefined && pageServerRendererPromise !== expected) return;
   pageServerRendererPromise = null;
 }
 
