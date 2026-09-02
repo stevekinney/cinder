@@ -1416,13 +1416,18 @@ export async function* decodeChatStreamEvents(
   // parses as JSON, so without this the stream would complete "successfully"
   // with silently corrupted text, tool arguments, or history.
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  const decodeBytes = (chunk?: Uint8Array): string => {
-    try {
-      return chunk === undefined ? decoder.decode() : decoder.decode(chunk, { stream: true });
-    } catch {
-      throw new Error('Invalid chat stream event: response bytes are not valid UTF-8');
-    }
-  };
+  // Routed through `reportProtocolError` like every other rejection: invalid
+  // UTF-8 (or a retained partial sequence) is a protocol failure, and the
+  // consumer has to be able to abort its transport before this generator
+  // unwinds into `reader.cancel()`.
+  const decodeBytes = (chunk?: Uint8Array): string =>
+    reportProtocolError(options, () => {
+      try {
+        return chunk === undefined ? decoder.decode() : decoder.decode(chunk, { stream: true });
+      } catch {
+        throw new Error('Invalid chat stream event: response bytes are not valid UTF-8');
+      }
+    });
   let buffer = '';
   const appendChunk = function* (chunk: string | Uint8Array): Generator<ChatStreamEvent> {
     // A source that mixes chunk types must not hand over a string while the

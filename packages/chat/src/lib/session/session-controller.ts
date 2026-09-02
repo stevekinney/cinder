@@ -247,7 +247,12 @@ export function createChatSessionController(
               attachments,
             }),
             () => {
-              protocolFailure = true;
+              // A frame can fail validation after the user has already
+              // stopped: the transport may still deliver a queued malformed
+              // frame. That is a cancellation, not a protocol failure — the
+              // command must still resolve cleanly — so the cause is only
+              // recorded when nothing had aborted this turn yet.
+              if (!controller.signal.aborted) protocolFailure = true;
               controller.abort();
             },
           );

@@ -379,6 +379,25 @@ describe('chat session controller', () => {
     expect(signal?.aborted).toBe(true);
   });
 
+  test('a malformed frame arriving after stopGenerating is still a cancellation', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        (async function* () {
+          yield { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 } as ChatStreamEvent;
+          // The user stops while this queued frame is already in flight; it
+          // fails validation, but the turn was cancelled, not broken.
+          void controller.adapter.stopGenerating?.('user');
+          yield { type: 'text', text: 'bare' } as ChatStreamEvent;
+        })(),
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({
