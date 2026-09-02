@@ -69,9 +69,13 @@ export async function formatGenerated(content: string, filepath: string): Promis
     const options = await optionsPromise;
     return await prettier.format(content, { ...options, filepath });
   } catch (error) {
+    // The underlying message rides in the string as well as in `cause`:
+    // `components:check` catches stage-1 failures and logs only `err.message`,
+    // so a parser error would otherwise be lost from CI output.
+    const reason = error instanceof Error ? error.message : String(error);
     throw new Error(
       `formatGenerated: prettier ${prettier.version} (${import.meta.resolve('prettier')}) ` +
-        `failed to format ${filepath}`,
+        `failed to format ${filepath}: ${reason}`,
       { cause: error },
     );
   }

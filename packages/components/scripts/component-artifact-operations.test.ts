@@ -61,6 +61,20 @@ describe('formatGenerated prettier resolution', () => {
     await expect(attempt).rejects.toThrow(
       /prettier \d+\.\d+\.\d+ \(file:.*\/node_modules\/prettier\//,
     );
+    // The underlying error's own message is in the string, not only in `cause`,
+    // because components:check logs only `err.message` for a stage failure.
+    // (Under the test harness that underlying error is the standalone build's
+    // missing `resolveConfig`, not a parser error -- the guard on the message
+    // shape is what matters, not which failure it carried.)
+    const thrown: unknown = await attempt.catch((error: unknown) => error);
+    expect(thrown).toBeInstanceOf(Error);
+    if (!(thrown instanceof Error)) return;
+    expect(thrown.cause).toBeInstanceOf(Error);
+    if (!(thrown.cause instanceof Error)) return;
+    expect(thrown.cause.message.length).toBeGreaterThan(0);
+    expect(thrown.message).toEndWith(
+      `failed to format /generated/broken.ts: ${thrown.cause.message}`,
+    );
   });
 
   test('does not return unformatted content on failure', async () => {
