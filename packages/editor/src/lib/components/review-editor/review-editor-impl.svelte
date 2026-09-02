@@ -275,20 +275,33 @@
   let consumedSelection: { from: number; to: number } | null = null;
 
   /**
-   * Keys that only modify the next keystroke. Pressing one starts no
-   * selection of its own, so it must not release {@link consumedSelection}.
+   * Keys that cannot move the caret or edit the document: the modifiers,
+   * which only qualify the next keystroke (`Shift` is how a keyboard
+   * selection *starts*, so it arrives before any selection exists), and the
+   * keys that leave the selection exactly where it was — `Tab` moves focus,
+   * `Escape` dismisses, the function and lock keys do nothing to it. None of
+   * them starts a new selection, so none releases {@link consumedSelection}:
+   * the range ProseMirror restores on a later refocus is still the one whose
+   * comment was submitted.
    */
-  const MODIFIER_KEYS = new Set([
+  const NON_SELECTING_KEYS = new Set([
     'Alt',
     'AltGraph',
     'CapsLock',
+    'ContextMenu',
     'Control',
+    'Escape',
     'Fn',
+    'Insert',
     'Meta',
     'NumLock',
+    'Pause',
+    'PrintScreen',
     'ScrollLock',
     'Shift',
     'Symbol',
+    'Tab',
+    ...Array.from({ length: 24 }, (_, index) => `F${index + 1}`),
   ]);
 
   /** Whether the selection popover should be visible */
@@ -937,13 +950,11 @@
     // alone cannot tell that apart from the collapsed caret and restored range
     // the browser and ProseMirror write while focus returns after a submit.
     //
-    // A modifier held on its own is excluded: `Shift` is how a keyboard
-    // selection begins, so it arrives before any selection exists, and
-    // releasing on it would reopen the popover over the range just commented
-    // on. The key that actually moves the caret releases the latch.
+    // Only a key that can move the caret or edit the document counts; see
+    // {@link NON_SELECTING_KEYS} for the ones that cannot and why.
     function releaseConsumedSelection(event: Event) {
       if (!consumedSelection) return;
-      if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
+      if (event instanceof KeyboardEvent && NON_SELECTING_KEYS.has(event.key)) return;
       const editorDom = editorRef?.getView()?.dom;
       if (editorDom && event.target instanceof Node && editorDom.contains(event.target)) {
         consumedSelection = null;

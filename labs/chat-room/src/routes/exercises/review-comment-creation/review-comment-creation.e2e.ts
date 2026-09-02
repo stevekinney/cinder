@@ -489,6 +489,11 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 
 	test('submitting closes the composer and hands focus back to the editor', async ({ page }) => {
 		await ready(page);
+		// The popover's absence below is a negative assertion about a debounced
+		// timer, so the timer is driven rather than waited on: with the clock
+		// installed, `runFor` advances past the editor's 20ms selection debounce
+		// deterministically instead of sleeping for a multiple of it.
+		await page.clock.install();
 		await selectCreationParagraph(page);
 
 		const popover = page.locator('#creation-editor-selection-popover');
@@ -537,22 +542,25 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 			});
 		await reselectParagraph();
 		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(false);
-		await page.waitForTimeout(100);
+		await page.clock.runFor(100);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// A modifier held on its own does not release the hold — `Shift` is how a
-		// keyboard selection starts, so it arrives before the selection exists.
+		// A key that cannot move the caret does not release the hold — `Shift` is
+		// how a keyboard selection starts, so it arrives before the selection
+		// exists, and `Tab` only moves focus.
 		await page.keyboard.press('Shift');
+		await page.keyboard.press('Tab');
 		await reselectParagraph();
-		await page.waitForTimeout(100);
+		await page.clock.runFor(100);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
-		// The hold is not permanent: the key (or pointer) that actually moves the
-		// caret releases it, so selecting the same paragraph again afterwards
-		// offers a comment as usual.
-		await page.keyboard.press('ArrowRight');
-		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(true);
+		// The hold is not permanent: a pointer press inside the editor is the user
+		// starting a new selection, so it releases the hold and selecting the same
+		// paragraph again offers a comment as usual. (`Tab` above moved focus out
+		// of the editor, so the pointer is what brings it back.)
+		await editor.click();
 		await reselectParagraph();
+		await page.clock.runFor(100);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
 	});
 });
