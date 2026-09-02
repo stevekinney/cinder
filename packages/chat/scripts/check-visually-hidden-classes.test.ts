@@ -6,6 +6,7 @@ import { join } from 'node:path';
 
 import {
   blankTemplatePlaceholders,
+  decodeStringEscapes,
   extractClassNamesCallArguments,
   extractOpeningTagSpans,
   extractStringBindings,
@@ -923,5 +924,64 @@ describe('scanSource — fifth-round review findings', () => {
       { name: 'a', content: 'x', contentStart: 11 },
       { name: 'c', content: 'z', contentStart: 45 },
     ]);
+  });
+});
+
+describe('scanSource — sixth-round review findings', () => {
+  test('a brace inside a regex literal does not end a template placeholder', () => {
+    expect(scanSource("const x = `${/}/.test(value) ? 'sr-only' : ''}`;", 'script')).toHaveLength(
+      1,
+    );
+    expect(
+      scanSource("<div class={`${/}/.test(value) ? 'sr-only' : ''}`}>x</div>", 'svelte'),
+    ).toHaveLength(1);
+    expect(templatePlaceholders("a ${/}/.test(v) ? 'b' : ''} c")).toEqual([
+      { start: 4, text: "/}/.test(v) ? 'b' : ''" },
+    ]);
+    // A `/` that is division inside a placeholder is still just division.
+    expect(templatePlaceholders('${a / b} ${c}')).toEqual([
+      { start: 2, text: 'a / b' },
+      { start: 11, text: 'c' },
+    ]);
+  });
+
+  test('a regex literal that opens a statement after a control-flow condition is a regex', () => {
+    expect(scanSource("if (enabled) /'sr-only'/.test(value);", 'script')).toHaveLength(0);
+    expect(scanSource("while (busy) /'sr-only'/.test(value);", 'script')).toHaveLength(0);
+    expect(scanSource("for (const item of items) /'sr-only'/.test(item);", 'script')).toHaveLength(
+      0,
+    );
+    expect(maskRegexLiterals('if (a) /x/.test(b)')).toBe('if (a) / /.test(b)');
+    // A call result divided by something is still division.
+    expect(maskRegexLiterals('total(a) / 2 / count')).toBe('total(a) / 2 / count');
+    expect(scanSource("const n = f(a) / 2; const s = 'sr-only';", 'script')).toHaveLength(1);
+  });
+
+  test('escaped whitespace inside a string literal separates class tokens', () => {
+    expect(scanSource("const hidden = 'foo\\nsr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("const hidden = 'foo\\tsr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("const hidden = 'foo\\x20sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("const hidden = 'foo\\u0020sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("const hidden = 'foo\\u{20}sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("<div class={'foo\\nsr-only'}>x</div>", 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class={`foo\\n${x} sr-only`}>x</div>', 'svelte')).toHaveLength(1);
+    // A literal backslash-n is not whitespace, and an escaped quote is still a quote.
+    expect(scanSource("const hidden = 'foo\\\\nsr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("const hidden = 'it\\'s sr-only';", 'script')).toHaveLength(0);
+    expect(decodeStringEscapes('foo\\nsr-only')).toBe('foo\nsr-only ');
+    expect(decodeStringEscapes('a\\u{1F600}b')).toBe('a😀b       ');
+  });
+
+  test('a class attribute selector in CSS is a usage site', () => {
+    expect(scanSource('[class~="sr-only"] { position: absolute; }', 'css')).toHaveLength(1);
+    expect(scanSource("[class='sr-only'] { position: absolute; }", 'css')).toHaveLength(1);
+    expect(scanSource('[class="foo sr-only"] { position: absolute; }', 'css')).toHaveLength(1);
+    expect(scanSource('div[class ~= sr-only i] { position: absolute; }', 'css')).toHaveLength(1);
+    expect(
+      scanSource('<style>\n  [class~="sr-only"] { top: 0; }\n</style>', 'svelte'),
+    ).toHaveLength(1);
+    expect(scanSource('[class~="cinder-sr-only"] { position: absolute; }', 'css')).toHaveLength(0);
+    expect(scanSource('div { content: \'[class~="sr-only"]\'; }', 'css')).toHaveLength(0);
+    expect(scanSource('[data-class~="sr-only"] { top: 0; }', 'css')).toHaveLength(0);
   });
 });

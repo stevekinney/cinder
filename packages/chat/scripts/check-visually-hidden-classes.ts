@@ -237,6 +237,7 @@ function regexCanStartAt(before: string, next: string | undefined): boolean {
   const trimmed = before.replace(/\s+$/, '');
   if (trimmed === '') return true;
   if (trimmed.endsWith('}')) return !closesObjectLiteral(trimmed);
+  if (trimmed.endsWith(')')) return closesControlFlowCondition(trimmed);
   if (/(?:[(,=:[!&|?{;]|=>)$/.test(trimmed)) return true;
   return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(trimmed);
 }
@@ -262,6 +263,28 @@ function closesObjectLiteral(text: string): boolean {
   if (index < 0) return false;
   const opener = masked.slice(0, index).replace(/\s+$/, '');
   return /(?:[(,=:[!&|?]|(?:^|[^\w$])(?:return|typeof|case|in|of|yield|await))$/.test(opener);
+}
+
+/**
+ * Whether the `)` that ends `text` closes the condition of an `if`, `while`,
+ * `for`, or `with` statement. A statement follows such a condition, so an
+ * expression — and therefore a regex literal — can start right after it:
+ * `if (enabled) /x/.test(value)`. After any other `)` (a call, a grouped
+ * expression) an operator follows and a `/` is division.
+ */
+function closesControlFlowCondition(text: string): boolean {
+  const masked = maskStringLiterals(text);
+  let depth = 0;
+  let index = masked.length - 1;
+  for (; index >= 0; index--) {
+    if (masked[index] === ')') depth++;
+    else if (masked[index] === '(') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  if (index < 0) return false;
+  return /(?:^|[^\w$.])(?:if|while|for|with)\s*$/.test(masked.slice(0, index));
 }
 
 /** Strings and regex literals blanked together — the view a script scanner locates syntax in. */
@@ -433,12 +456,26 @@ function stringLiteralEnd(source: string, openIndex: number): number {
 function templatePlaceholderEnd(source: string, openBraceIndex: number): number {
   let depth = 0;
   let index = openBraceIndex;
+  // The placeholder text walked so far, with its strings blanked, so the
+  // regex-start heuristic sees the same view `maskRegexLiterals` would.
+  let walked = '';
   while (index < source.length) {
-    const character = source[index];
+    const character = source[index] ?? '';
     if (character === '"' || character === "'" || character === '`') {
-      index = stringLiteralEnd(source, index);
+      const end = stringLiteralEnd(source, index);
+      walked += character + blank(source.slice(index + 1, end));
+      index = end;
       continue;
     }
+    // A `}` inside a regex literal — `${/}/.test(value) ? 'a' : ''}` — is
+    // part of the pattern, not the placeholder's closer.
+    if (character === '/' && regexCanStartAt(walked, source[index + 1])) {
+      const end = regexLiteralEnd(source, index);
+      walked += blank(source.slice(index, end));
+      index = end;
+      continue;
+    }
+    walked += character;
     if (character === '{') depth++;
     else if (character === '}') {
       depth--;
@@ -637,6 +674,18 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * theoretical one.
  */
 const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]+\w+)*(?![\w-])`, 'g');
+
+/**
+ * Matches a `[class...]` attribute selector, capturing its value so the bare
+ * token can be looked for inside it. `[class~="sr-only"]` (and `=`, `^=`,
+ * `|=`, `*=`, `$=`) selects the same elements `.sr-only` does, so a
+ * stylesheet can reintroduce a rule for the bare class through it without
+ * ever writing the dot form. The value is read before string masking blanks
+ * it; the match is then held to the same selector-context test as the dot
+ * form, which is what rejects `content: '[class~="sr-only"]'`.
+ */
+const CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN =
+  /\[\s*class\s*[~|^$*]?=\s*(?:"([^"\]]*)"|'([^'\]]*)'|([^\s"'\]]+))\s*(?:[iIsS]\s*)?\]/g;
 
 /**
  * True when a `.sr-only` match sits in a CSS *selector* position rather than
@@ -1051,6 +1100,91 @@ export function blankTemplatePlaceholders(content: string): string {
   return output + content.slice(index);
 }
 
+const STRING_ESCAPE_PATTERN =
+  /\\(?:u\{([0-9A-Fa-f]+)\}|u([0-9A-Fa-f]{4})|x([0-9A-Fa-f]{2})|\r\n|[\s\S])/g;
+const SIMPLE_ESCAPES: Readonly<Record<string, string>> = {
+  n: '\n',
+  t: '\t',
+  r: '\r',
+  v: '\v',
+  f: '\f',
+  b: '\b',
+  '0': '\0',
+};
+
+/**
+ * Decodes the escape sequences of a string literal's content the way the
+ * JavaScript runtime would, so `'foo\\nsr-only'` is seen as the two class
+ * tokens it produces rather than one token glued to an `n`. The result is
+ * padded with trailing spaces back to the input's length: an escape is never
+ * shorter than what it decodes to, and keeping the length means an offset
+ * into the decoded text still lands on the same line of the original. A
+ * line continuation (backslash-newline) decodes to nothing; an unknown
+ * escape decodes to the escaped character itself.
+ */
+export function decodeStringEscapes(content: string): string {
+  const decoded = content.replace(
+    STRING_ESCAPE_PATTERN,
+    (
+      match: string,
+      braced: string | undefined,
+      unicode: string | undefined,
+      hex: string | undefined,
+    ) => {
+      const code = braced ?? unicode ?? hex;
+      if (code !== undefined) {
+        const codePoint = Number.parseInt(code, 16);
+        return codePoint <= 0x10ffff ? String.fromCodePoint(codePoint) : match;
+      }
+      const escaped = match.slice(1);
+      if (escaped === '\n' || escaped === '\r\n' || escaped === '\r') return '';
+      return SIMPLE_ESCAPES[escaped] ?? escaped;
+    },
+  );
+  return decoded + ' '.repeat(Math.max(0, content.length - decoded.length));
+}
+
+/**
+ * Decodes the escapes of every string literal inside a JavaScript expression
+ * in place — each literal's content is replaced by its decoded, same-length
+ * form, and a template literal's placeholders are left untouched because
+ * they are code, not text. Offsets into the result are offsets into the
+ * input.
+ */
+export function decodeExpressionStringEscapes(expression: string): string {
+  let output = '';
+  let index = 0;
+  while (index < expression.length) {
+    const quote = expression[index] ?? '';
+    if (quote !== '"' && quote !== "'" && quote !== '`') {
+      output += quote;
+      index += 1;
+      continue;
+    }
+    const end = stringLiteralEnd(expression, index);
+    const closed = end > index + 1 && expression[end - 1] === quote;
+    const content = expression.slice(index + 1, closed ? end - 1 : end);
+    output += quote + decodeTemplateTextEscapes(content, quote === '`') + (closed ? quote : '');
+    index = end;
+  }
+  return output;
+}
+
+/** Decodes escapes in a literal's text segments only, leaving `${...}` placeholders as written. */
+function decodeTemplateTextEscapes(content: string, isTemplate: boolean): string {
+  if (!isTemplate) return decodeStringEscapes(content);
+  let output = '';
+  let index = 0;
+  for (const placeholder of templatePlaceholders(content)) {
+    const placeholderEnd = placeholder.start + placeholder.text.length + 1;
+    output +=
+      decodeStringEscapes(content.slice(index, placeholder.start - 2)) +
+      content.slice(placeholder.start - 2, placeholderEnd);
+    index = placeholderEnd;
+  }
+  return output + decodeStringEscapes(content.slice(index));
+}
+
 /**
  * Every `${...}` placeholder body inside a template literal's content, with
  * the offset of the body's first character. Braces are balanced on the
@@ -1058,7 +1192,6 @@ export function blankTemplatePlaceholders(content: string): string {
  * placeholder early; an unterminated placeholder runs to the end.
  */
 export function templatePlaceholders(content: string): Array<{ start: number; text: string }> {
-  const masked = maskStringLiterals(content);
   const placeholders: Array<{ start: number; text: string }> = [];
   let index = 0;
   while (index < content.length) {
@@ -1066,15 +1199,13 @@ export function templatePlaceholders(content: string): Array<{ start: number; te
       index += 1;
       continue;
     }
-    let depth = 0;
-    let end = index + 1;
-    for (; end < content.length; end++) {
-      if (masked[end] === '{') depth++;
-      else if (masked[end] === '}') {
-        depth--;
-        if (depth === 0) break;
-      }
-    }
+    // `templatePlaceholderEnd` balances braces with strings and regex
+    // literals stepped over — the same walk `stringLiteralEnd` uses to
+    // find the outer literal's closer, so the two can never disagree about
+    // where a placeholder ends.
+    const closerEnd = templatePlaceholderEnd(content, index + 1);
+    const end =
+      closerEnd === content.length && content[closerEnd - 1] !== '}' ? closerEnd : closerEnd - 1;
     placeholders.push({ start: index + 2, text: content.slice(index + 2, end) });
     index = end + 1;
   }
@@ -1181,7 +1312,11 @@ export function scanSource(
   // whether some OTHER element has the class; only the branches can land on
   // this one. The script pass already exempts those reads, and the same
   // filter applies here for the same reason.
-  const scanClassExpression = (expression: string, offset: number): void => {
+  const scanClassExpression = (rawExpression: string, offset: number): void => {
+    // Escapes are decoded first so `'foo\\nsr-only'` carries the two class
+    // tokens the runtime would apply; the decode keeps every literal's
+    // length, so offsets still map onto the original text.
+    const expression = decodeExpressionStringEscapes(rawExpression);
     QUOTED_TOKEN_PATTERN.lastIndex = 0;
     let quotedMatch: RegExpExecArray | null;
     while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null) {
@@ -1261,6 +1396,18 @@ export function scanSource(
     // CSS strings are real strings, so masking is safe and necessary here:
     // `content: '.sr-only'` applies no class.
     const cssText = maskStringLiterals(text);
+    // A class attribute selector's value IS a string, so it is read from the
+    // unmasked text and then held to the selector-context test on the masked
+    // text, where a quoted selector inside a declaration is followed by `;`.
+    CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN.lastIndex = 0;
+    let attributeMatch: RegExpExecArray | null;
+    while ((attributeMatch = CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN.exec(text)) !== null) {
+      const value = attributeMatch[1] ?? attributeMatch[2] ?? attributeMatch[3] ?? '';
+      ATTRIBUTE_VALUE_TOKEN_PATTERN.lastIndex = 0;
+      if (!ATTRIBUTE_VALUE_TOKEN_PATTERN.test(value)) continue;
+      if (isCssSelectorContext(cssText, attributeMatch.index + attributeMatch[0].length))
+        record(offset + attributeMatch.index);
+    }
     CSS_SELECTOR_PATTERN.lastIndex = 0;
     let cssMatch: RegExpExecArray | null;
     while ((cssMatch = CSS_SELECTOR_PATTERN.exec(cssText)) !== null) {
@@ -1324,7 +1471,10 @@ export function scanSource(
             contentOffset + placeholder.start,
           );
       }
-      const shape = blankTemplatePlaceholders(content);
+      // Escapes are decoded after the placeholders are blanked, so an
+      // escaped whitespace separates class tokens the way it does at runtime
+      // while a placeholder's code is never read as text.
+      const shape = decodeStringEscapes(blankTemplatePlaceholders(content));
       if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
       CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
