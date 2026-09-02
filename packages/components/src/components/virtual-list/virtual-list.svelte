@@ -244,11 +244,15 @@
     if (!stickToBottom || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
+      // Measure first. An update that appends AND shrinks `height` in one go would
+      // otherwise compute the bottom from the pre-patch viewport and land short —
+      // and in fixed mode there is no re-pin effect afterwards to rescue it.
+      const currentViewportHeight = syncViewport(element);
       element.scrollTop = maxScrollOffset(
         dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight,
-        viewportHeight,
+        currentViewportHeight,
       );
-      syncViewport(element);
+      scrollOffset = Math.max(0, element.scrollTop);
       shouldStickAfterAppend = false;
       isPinnedToBottom = true;
     });
@@ -317,6 +321,12 @@
     const target = pendingScrollTarget;
     pendingScrollTarget = null;
     if (!element) return;
+    // The bottom pin wins. A batch containing resizes both above and below the
+    // anchor makes the two mechanisms disagree: the pin moves to the new total
+    // using every delta, while this correction accounts only for the ones before
+    // the anchor. Writing it afterwards would land short of the bottom and the
+    // resulting scroll event could disarm the pin entirely.
+    if (isPinnedToBottom) return;
     // Never animated: a smooth correction would visibly show the jump it exists to hide.
     element.scrollTop = Math.max(0, target);
     scrollOffset = Math.max(0, element.scrollTop);
@@ -362,11 +372,18 @@
     return parsePixelLength(value) ?? resolvedRowHeight * 10;
   }
 
-  function syncViewport(element: HTMLElement): void {
+  /**
+   * Re-reads the container's size and scroll position, and returns the size it
+   * measured so a caller acting in the same turn can use the fresh value rather
+   * than the `viewportHeight` derived, which still holds the pre-patch number.
+   */
+  function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
-    measuredViewportHeight =
+    const measured =
       rect.height || element.clientHeight || parsePixelLength(height) || resolvedItemHeight * 10;
+    measuredViewportHeight = measured;
     scrollOffset = Math.max(0, element.scrollTop);
+    return measured;
   }
 
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {

@@ -997,4 +997,85 @@ describe('VirtualList — dynamicSize', () => {
 
     expect(list.scrollTop).toBe(820);
   });
+
+  test('measures the viewport before computing the append pin target', async () => {
+    // Source-shape assertion, deliberately, because a behavioral one cannot
+    // distinguish the two orderings in this harness: happy-dom's
+    // getBoundingClientRect returns zero, so syncViewport falls through to parsing
+    // the `height` prop — and the general viewport effect re-reads that prop on
+    // change anyway, refreshing the measurement before the pin runs. In a real
+    // browser the ordering is load-bearing: an update that appends AND shrinks
+    // `height` computes the bottom from the pre-patch viewport and lands short,
+    // with no re-pin effect in fixed mode to rescue it.
+    //
+    // Pinning the shape here keeps a refactor from silently reintroducing the
+    // stale read. The real behavior is browser-verified in the Playwright suite.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+
+    const pinBody = source.slice(
+      source.indexOf('shouldStickAfterAppend || !element) return;'),
+      source.indexOf('isPinnedToBottom = true;'),
+    );
+
+    const measureIndex = pinBody.indexOf('syncViewport(element)');
+    const writeIndex = pinBody.indexOf('element.scrollTop = maxScrollOffset');
+
+    expect(measureIndex).toBeGreaterThan(-1);
+    expect(writeIndex).toBeGreaterThan(-1);
+    // The measurement must come first, and its result — not the derived
+    // viewportHeight — must be what the target is computed from.
+    expect(measureIndex).toBeLessThan(writeIndex);
+    expect(pinBody).toContain('const currentViewportHeight = syncViewport(element);');
+    expect(pinBody).toContain('currentViewportHeight,');
+  });
+
+  test('lets the bottom pin win over an anchor correction in a mixed measurement batch', async () => {
+    // A batch with resizes both above and below the anchor makes the two
+    // mechanisms disagree: the pin targets the new total using every delta, the
+    // correction only the deltas before the anchor. The correction must yield.
+    installFakeResizeObserver();
+    const view = render(VirtualList, {
+      items: makeItems(50),
+      itemHeight: 20,
+      height: '200px',
+      stickToBottom: true,
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 800;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await view.rerender({
+      items: makeItems(51),
+      itemHeight: 20,
+      height: '200px',
+      stickToBottom: true,
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+    await tick();
+    await tick();
+    expect(list.scrollTop).toBe(820);
+
+    // Row 38 sits BEFORE the anchor (index 41 at offset 820) so it queues a real
+    // correction, and row 50 is the newest edge. Total becomes 1020 + 20 + 60 =
+    // 1100, so the bottom is 900 — while the correction alone would target 840.
+    reportRowSizes(
+      new Map([
+        [38, 40],
+        [50, 80],
+      ]),
+    );
+    await tick();
+    await tick();
+
+    expect(list.scrollTop).toBe(900);
+  });
 });
