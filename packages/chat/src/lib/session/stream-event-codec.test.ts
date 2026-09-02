@@ -11,6 +11,7 @@ import {
   decodeChatStreamEvent,
   decodeChatStreamEvents,
   encodeChatStreamEvent,
+  guardChatStreamEvents,
 } from './stream-event-codec.ts';
 
 describe('chat stream event codec', () => {
@@ -1427,6 +1428,118 @@ describe('encoder refuses to emit frames its decoder would reject', () => {
   });
 });
 
+describe('every JSON-valued payload is projected before serialization', () => {
+  const envelope = { wireVersion: 1, sequence: 1 } as const;
+  const hooked = (): Record<string, unknown> => {
+    const value: Record<string, unknown> = { safe: true };
+    Object.defineProperty(value, 'toJSON', {
+      value: () => ({ leaked: 'sk-should-never-cross-the-wire' }),
+      enumerable: false,
+    });
+    return value;
+  };
+
+  test.each([
+    ['tool_call.arguments', { type: 'tool_call', id: 't1', name: 'lookup', arguments: hooked() }],
+    [
+      'tool result content',
+      { type: 'tool_result', callId: 't1', outcome: 'success', content: hooked() },
+    ],
+    [
+      'stream:tool-call-complete.arguments',
+      { type: 'stream:tool-call-complete', toolName: 'lookup', blockId: 'b1', arguments: hooked() },
+    ],
+    ['stream:error.error', { type: 'stream:error', error: hooked() }],
+    [
+      'tool.error.error',
+      { type: 'tool.error', toolCallId: 't1', toolName: 'lookup', error: hooked() },
+    ],
+  ] as const)('refuses a toJSON hook reachable through %s', (context, event) => {
+    expect(() =>
+      encodeChatStreamEvent({ ...event, ...envelope } as unknown as ChatStreamEvent),
+    ).toThrow(`Invalid chat stream event: ${context} carries a toJSON serialization hook`);
+  });
+
+  test('refuses a toJSON hook nested in a pending approval', () => {
+    expect(() =>
+      encodeChatStreamEvent({
+        type: 'tool_result',
+        callId: 't1',
+        outcome: 'success',
+        content: 'ok',
+        pendingApproval: { arguments: hooked() },
+        ...envelope,
+      } as unknown as ChatStreamEvent),
+    ).toThrow(
+      'Invalid chat stream event: tool result pendingApproval.arguments carries a toJSON serialization hook',
+    );
+  });
+
+  test('keeps an own __proto__ key as data rather than a prototype assignment', () => {
+    const conversation = { ...createConversationHistory({ id: 'c1' }) };
+    const metadata: Record<string, unknown> = {};
+    Object.defineProperty(metadata, '__proto__', {
+      value: { polluted: true },
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+    (conversation as { metadata: unknown }).metadata = metadata;
+    const line = encodeChatStreamEvent({
+      type: 'run.completed',
+      conversation,
+      content: 'done',
+      usage: { prompt: 1, completion: 1, total: 2 },
+      finishReason: 'stop',
+      ...envelope,
+    } as unknown as ChatStreamEvent);
+    const parsed = JSON.parse(line) as { conversation: { metadata: Record<string, unknown> } };
+    expect(Object.hasOwn(parsed.conversation.metadata, '__proto__')).toBe(true);
+    expect(parsed.conversation.metadata['__proto__']).toEqual({ polluted: true });
+  });
+});
+
+describe('typed event iterables are validated frame by frame', () => {
+  const collect = async (events: AsyncIterable<ChatStreamEvent>): Promise<ChatStreamEvent[]> => {
+    const seen: ChatStreamEvent[] = [];
+    for await (const event of guardChatStreamEvents(events)) seen.push(event);
+    return seen;
+  };
+
+  test('rejects a typed event whose sequence is NaN', async () => {
+    async function* events(): AsyncGenerator<ChatStreamEvent> {
+      yield { wireVersion: 1, sequence: Number.NaN, type: 'text', text: 'hi' };
+      yield { wireVersion: 1, sequence: 1, type: 'run.aborted' };
+    }
+    await expect(collect(events())).rejects.toThrow(/Invalid chat stream event/);
+  });
+
+  test('rejects a typed event that would not decode from the wire', async () => {
+    async function* events(): AsyncGenerator<ChatStreamEvent> {
+      yield { wireVersion: 1, sequence: 0, type: 'text', text: 42 } as unknown as ChatStreamEvent;
+      yield { wireVersion: 1, sequence: 1, type: 'run.aborted' };
+    }
+    await expect(collect(events())).rejects.toThrow(/Invalid chat stream event/);
+  });
+
+  test('passes a well-formed typed stream through unchanged', async () => {
+    async function* events(): AsyncGenerator<ChatStreamEvent> {
+      yield { wireVersion: 1, sequence: 0, type: 'text', text: 'hi' };
+      yield {
+        wireVersion: 1,
+        sequence: 1,
+        type: 'run.completed',
+        conversation: createConversationHistory({ id: 'c1' }),
+        content: 'hi',
+        usage: { prompt: 1, completion: 1, total: 2 },
+        finishReason: 'stop',
+      };
+    }
+    const seen = await collect(events());
+    expect(seen.map((event) => event.type)).toEqual(['text', 'run.completed']);
+  });
+});
+
 describe('decoder byte handling at EOF', () => {
   test('rejects a stream truncated mid-multibyte after a terminal frame', async () => {
     // The terminal frame and its newline are complete, so the guard is
@@ -1910,6 +2023,32 @@ describe('frames buffered after a terminal frame are rejected before it is yield
     await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
       'Invalid chat stream event: frame arrived after the terminal frame',
     );
+  });
+
+  test('a chunked source rejects retained multibyte bytes following the terminal frame', async () => {
+    // The trailing bytes are the start of a multibyte sequence, so TextDecoder
+    // retains them instead of surfacing them in the line buffer. A consumer
+    // stopping on the terminal frame never reaches EOF, so the residue has
+    // to be checked before the terminal is yielded.
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield new Uint8Array([...new TextEncoder().encode(`${terminal}\n`), 0xe2, 0x82]);
+    }
+    await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      /Invalid chat stream event/,
+    );
+  });
+
+  test('a multibyte character split across chunks before the terminal still decodes', async () => {
+    const encoded = new TextEncoder().encode(
+      `${JSON.stringify({ wireVersion: 1, sequence: 0, type: 'text', text: '€' })}\n${terminal}\n`,
+    );
+    const split = encoded.indexOf(0xe2) + 1;
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield encoded.slice(0, split);
+      yield encoded.slice(split);
+    }
+    const seen = await consumeUntilTerminal(decodeChatStreamEvents(chunks()));
+    expect(seen.map((event) => event.type)).toEqual(['text', 'run.aborted']);
   });
 
   test('a clean terminal frame is still yielded to a consumer that stops on it', async () => {

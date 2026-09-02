@@ -435,7 +435,9 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
 function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
   if (!isJSONValue(value))
     throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
-  return value;
+  // The guard only proves the shape. What `JSON.stringify` actually consults
+  // is any reachable `toJSON`, so the value is rebuilt as plain data too.
+  return projectPlainJSON(value, context);
 }
 
 /**
@@ -464,7 +466,15 @@ function projectPlainJSON(value: unknown, context: string): JSONValue {
     );
   const projected: Record<string, JSONValue> = {};
   for (const [key, item] of Object.entries(value)) {
-    if (item !== undefined) projected[key] = projectPlainJSON(item, `${context}.${key}`);
+    if (item === undefined) continue;
+    // Defined as an own data property rather than assigned: a `__proto__`
+    // key would otherwise hit the prototype setter and vanish from the wire.
+    Object.defineProperty(projected, key, {
+      value: projectPlainJSON(item, `${context}.${key}`),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
   }
   return projected;
 }
@@ -1213,8 +1223,13 @@ export async function* guardChatStreamEvents(
 ): AsyncGenerator<ChatStreamEvent> {
   const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
   for await (const event of events) {
-    noteDecodedStreamEvent(event, guard);
-    yield event;
+    // Per-frame validation first: the static type says `ChatStreamEvent`, but
+    // a transport built in JavaScript (or through a cast) can yield a frame
+    // the wire decoder would refuse — `sequence: NaN`, a non-string `text` —
+    // and the stream guard below assumes each frame is already well-formed.
+    const decoded = decodeChatStreamEvent(event);
+    noteDecodedStreamEvent(decoded, guard);
+    yield decoded;
   }
   assertStreamTerminated(guard);
 }
@@ -1301,8 +1316,12 @@ export async function* decodeChatStreamEvents(
     yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
       // The server closes the stream immediately after the terminal frame,
       // so bytes already buffered past it are a violation even before they
-      // form a complete line.
-      if (buffer.trim())
+      // form a complete line. Bytes still inside the decoder count too: the
+      // start of a multibyte sequence never reaches `buffer`, so the decoder
+      // is flushed here — a partial sequence fails the fatal decode, and a
+      // consumer that stops on the terminal would otherwise never learn of
+      // it because EOF handling is skipped.
+      if (buffer.trim() || decodeBytes().length > 0)
         throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
     });
   };
