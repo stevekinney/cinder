@@ -7,10 +7,12 @@ import { join } from 'node:path';
 import {
   extractClassNamesCallArguments,
   extractOpeningTagSpans,
+  extractStringBindings,
   isCssSelectorContext,
   isTestPath,
   languageForPath,
   maskRegexLiterals,
+  maskScriptComments,
   maskStringLiterals,
   scan,
   scanSource,
@@ -649,5 +651,68 @@ describe('scanSource — third-round review findings', () => {
   test('a real CSS comment still hides a documented selector', () => {
     expect(scanSource('/* never write .sr-only { } */\n.ok { }\n', 'css')).toHaveLength(0);
     expect(scanSource('a { content: "it\'s"; }\n/* .sr-only { } */\n', 'css')).toHaveLength(0);
+  });
+});
+
+describe('scanSource — fourth-round review findings', () => {
+  test('comment delimiters inside script strings do not hide a literal between them', () => {
+    const source = "const open = '/*';\nconst hidden = 'sr-only';\nconst close = '*/';";
+    const hits = scanSource(source, 'script');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.lineNumber).toBe(2);
+    expect(
+      scanSource(`<script>${source}</script><div class={hidden}></div>`, 'svelte'),
+    ).toHaveLength(1);
+    expect(
+      scanSource('const url = "http://x/*";\nconst hidden = "sr-only";', 'script'),
+    ).toHaveLength(1);
+  });
+
+  test('real script comments still hide a documented literal, anywhere on the line', () => {
+    expect(scanSource("const a = 1; // const hidden = 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("const a = 1; /* const hidden = 'sr-only'; */", 'script')).toHaveLength(0);
+    expect(scanSource("const a = 1;\n/*\n  const hidden = 'sr-only';\n*/", 'script')).toHaveLength(
+      0,
+    );
+  });
+
+  test('maskScriptComments steps over strings and regex literals', () => {
+    expect(maskScriptComments("const a = '/*'; const b = 1; // c\nconst d = '*/';")).toBe(
+      "const a = '/*'; const b = 1;     \nconst d = '*/';",
+    );
+    expect(maskScriptComments("const r = /'/; const s = 'x'; /* y */")).toBe(
+      "const r = /'/; const s = 'x';        ",
+    );
+    expect(maskScriptComments('const t = `a\n//b`; // c')).toBe('const t = `a\n//b`;     ');
+  });
+
+  test('follows an {@html} reference to a string literal bound in the script', () => {
+    const source =
+      '<script>\n  const html = \'<span class="sr-only">x</span>\';\n</script>\n{@html html}';
+    const hits = scanSource(source, 'svelte');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.lineNumber).toBe(2);
+    expect(scanSource(source.replace('{@html html}', '{html}'), 'svelte')).toHaveLength(0);
+    expect(scanSource(source.replace('{@html html}', '{@html other}'), 'svelte')).toHaveLength(0);
+    expect(
+      scanSource(
+        '<script lang="ts">\n  let markup: string = `<b class="sr-only">y</b>`;\n</script>\n<div>{@html markup}</div>',
+        'svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('extractStringBindings reads only single-literal initializers', () => {
+    expect(extractStringBindings('const a = \'x\'; let b: string = "y"; var c = `z`;')).toEqual([
+      { name: 'a', content: 'x', contentStart: 11 },
+      { name: 'b', content: 'y', contentStart: 32 },
+      { name: 'c', content: 'z', contentStart: 45 },
+    ]);
+    expect(extractStringBindings("const a = 'unterminated\nconst b = 'x';")).toEqual([
+      { name: 'b', content: 'x', contentStart: 35 },
+    ]);
+    expect(extractStringBindings("const a = /const b = '/; const c = 'x';")).toEqual([
+      { name: 'c', content: 'x', contentStart: 36 },
+    ]);
   });
 });

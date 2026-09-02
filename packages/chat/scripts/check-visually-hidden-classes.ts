@@ -244,20 +244,131 @@ export function maskScriptLiterals(source: string): string {
   return maskStringLiterals(maskRegexLiterals(source));
 }
 
-export function maskComments(source: string): string {
-  return source
-    .replace(/<!--[\s\S]*?-->/g, blank)
-    .replace(/\/\*[\s\S]*?\*\//g, blank)
-    .replace(/^[ \t]*\/\/[^\n]*/gm, blank);
+/**
+ * Blanks every comment in a file while stepping over string literals, so a
+ * comment delimiter quoted in code (`const open = '/*'`) cannot open a
+ * comment that swallows the real class literal between it and the next
+ * quoted `*\/`. Which delimiters count depends on the region: HTML comments
+ * are blanked everywhere first (they are the only comment markup has), then
+ * each script region is walked by `maskScriptComments` and each style region
+ * by `maskCssComments`. Both walkers preserve length and newlines, so the
+ * region offsets `splitSourceRegions` computed on the HTML-masked text still
+ * line up with the fully masked result.
+ */
+export function maskComments(source: string, language?: SourceLanguage): string {
+  const htmlMasked = source.replace(/<!--[\s\S]*?-->/g, blank);
+  let output = '';
+  let cursor = 0;
+  for (const region of splitSourceRegions(htmlMasked, language)) {
+    output += htmlMasked.slice(cursor, region.start);
+    if (region.kind === 'style') output += maskCssComments(region.text);
+    else if (region.kind === 'markup') output += region.text;
+    else output += maskScriptComments(region.text);
+    cursor = region.start + region.text.length;
+  }
+  return output + htmlMasked.slice(cursor);
+}
+
+/**
+ * Index just past the string literal that opens at `source[openIndex]`. A
+ * backslash escapes the next character. A single- or double-quoted literal
+ * that reaches a newline unterminated is a syntax error in both CSS and
+ * JavaScript, so the walk ends there rather than treating the rest of the
+ * file as text; a template literal legitimately spans lines and only ends at
+ * its closing backtick.
+ */
+function stringLiteralEnd(source: string, openIndex: number): number {
+  const quote = source[openIndex];
+  const endsAtNewline = quote !== '`';
+  let index = openIndex + 1;
+  while (index < source.length) {
+    const inner = source[index];
+    if (inner === '\\') {
+      index += 2;
+      continue;
+    }
+    index += 1;
+    if (inner === quote || (endsAtNewline && inner === '\n')) break;
+  }
+  return Math.min(index, source.length);
+}
+
+/**
+ * Index just past the regex literal that opens at `source[openIndex]`, with
+ * the same escape and character-class rules `maskRegexLiterals` applies: a
+ * `/` inside `[...]` does not close the literal, and a newline ends it
+ * because a regex cannot span lines.
+ */
+function regexLiteralEnd(source: string, openIndex: number): number {
+  let index = openIndex + 1;
+  let inClass = false;
+  while (index < source.length) {
+    const inner = source[index] ?? '';
+    if (inner === '\n') return index;
+    if (inner === '\\') {
+      index += 2;
+      continue;
+    }
+    index += 1;
+    if (inner === '[') inClass = true;
+    else if (inner === ']') inClass = false;
+    else if (inner === '/' && !inClass) return index;
+  }
+  return source.length;
+}
+
+/**
+ * Blanks `//` and `/* ... *\/` comments in JavaScript or TypeScript while
+ * stepping over string and regex literals, so a delimiter inside either —
+ * `'/*'`, `"*\/"`, `/\/\//` — is never read as a comment boundary. A
+ * `//` is only a comment outside a string, so unlike the earlier line-start
+ * regex this also blanks a trailing comment while leaving `'http://x'`
+ * intact.
+ */
+export function maskScriptComments(source: string): string {
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    const character = source[index] ?? '';
+    if (character === '"' || character === "'" || character === '`') {
+      const end = stringLiteralEnd(source, index);
+      output += source.slice(index, end);
+      index = end;
+      continue;
+    }
+    if (character === '/' && source[index + 1] === '/') {
+      const newline = source.indexOf('\n', index);
+      const stop = newline === -1 ? source.length : newline;
+      output += blank(source.slice(index, stop));
+      index = stop;
+      continue;
+    }
+    if (character === '/' && source[index + 1] === '*') {
+      const end = source.indexOf('*/', index + 2);
+      const stop = end === -1 ? source.length : end + 2;
+      output += blank(source.slice(index, stop));
+      index = stop;
+      continue;
+    }
+    if (character === '/' && regexCanStartAt(source, index)) {
+      const end = regexLiteralEnd(source, index);
+      output += source.slice(index, end);
+      index = end;
+      continue;
+    }
+    output += character;
+    index += 1;
+  }
+  return output;
 }
 
 /**
  * Blanks `/* ... *\/` comments in a stylesheet while stepping over string
  * literals, so `content: "/*"` cannot open a comment that swallows every
- * rule up to the next `content: "*\/"`. CSS strings end at their quote or at
- * an unescaped newline and have no other nesting, which is why a hand-rolled
- * walk is enough here where the script side leans on regexes. A comment is
- * still blanked when it contains an apostrophe.
+ * rule up to the next `content: "*\/"`. CSS has no line comments and no
+ * regex literals, which is all that separates this walk from
+ * `maskScriptComments`. A comment is still blanked when it contains an
+ * apostrophe.
  */
 export function maskCssComments(source: string): string {
   let output = '';
@@ -265,19 +376,9 @@ export function maskCssComments(source: string): string {
   while (index < source.length) {
     const character = source[index] ?? '';
     if (character === '"' || character === "'") {
-      output += character;
-      index += 1;
-      while (index < source.length) {
-        const inner = source[index] ?? '';
-        output += inner;
-        index += 1;
-        if (inner === '\\') {
-          output += source[index] ?? '';
-          index += 1;
-          continue;
-        }
-        if (inner === character || inner === '\n') break;
-      }
+      const end = stringLiteralEnd(source, index);
+      output += source.slice(index, end);
+      index = end;
       continue;
     }
     if (character === '/' && source[index + 1] === '*') {
@@ -769,6 +870,39 @@ export function blankTemplatePlaceholders(content: string): string {
   return output;
 }
 
+/** An `{@html identifier}` tag — the one markup form that follows a script binding. */
+const HTML_REFERENCE_PATTERN = /\{\s*@html\s+([A-Za-z_$][\w$]*)\s*\}/g;
+
+/**
+ * Every `const`, `let`, or `var` in a script whose initializer is a single
+ * string literal, with the literal's content and where that content starts.
+ * A type annotation between the name and the `=` is stepped over. The walk
+ * runs on the regex-masked text so a declaration-shaped sequence inside a
+ * regex is not mistaken for one, but reads the literal from the original so
+ * its content survives.
+ */
+export function extractStringBindings(
+  text: string,
+): Array<{ name: string; content: string; contentStart: number }> {
+  const bindings: Array<{ name: string; content: string; contentStart: number }> = [];
+  const declarationPattern =
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[\w$<>[\]|.]+\s*)?=\s*(?=["'`])/g;
+  const masked = maskRegexLiterals(text);
+  let declaration: RegExpExecArray | null;
+  while ((declaration = declarationPattern.exec(masked)) !== null) {
+    const openIndex = declaration.index + declaration[0].length;
+    const end = stringLiteralEnd(text, openIndex);
+    const closed = end > openIndex + 1 && text[end - 1] === text[openIndex];
+    if (!closed) continue;
+    bindings.push({
+      name: declaration[1] ?? '',
+      content: text.slice(openIndex + 1, end - 1),
+      contentStart: openIndex + 1,
+    });
+  }
+  return bindings;
+}
+
 const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]\w+)*(?=\s|$)`, 'g');
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
@@ -777,16 +911,40 @@ export function scanSource(
   language?: SourceLanguage,
 ): Array<{ lineNumber: number; line: string }> {
   const hits: Array<{ lineNumber: number; line: string }> = [];
-  const masked = language === 'css' ? maskCssComments(original) : maskComments(original);
+  const masked = maskComments(original, language);
   const lines = original.split('\n');
   const record = (index: number): void => {
     const lineNumber = masked.slice(0, index).split('\n').length;
     hits.push({ lineNumber, line: (lines[lineNumber - 1] ?? '').trim() });
   };
 
+  // `{@html x}` injects whatever string `x` holds as real markup, so when
+  // `x` is bound to a string literal in a script region of this file, the
+  // literal's tags are elements of this component and are scanned like the
+  // ones written inline. Only a binding that resolves statically to one
+  // literal is followed; anything computed is opaque to a text scanner.
+  const regions = splitSourceRegions(masked, language);
+  const htmlBindings = new Map<string, { content: string; offset: number }>();
+  for (const region of regions) {
+    if (region.kind !== 'script' && region.kind !== 'code') continue;
+    for (const binding of extractStringBindings(region.text))
+      htmlBindings.set(binding.name, {
+        content: binding.content,
+        offset: region.start + binding.contentStart,
+      });
+  }
+
   const scanMarkup = (region: string, regionOffset: number): void => {
     for (const span of extractOpeningTagSpans(region))
       scanOpeningTag(span.text, regionOffset + span.start);
+    HTML_REFERENCE_PATTERN.lastIndex = 0;
+    let reference: RegExpExecArray | null;
+    while ((reference = HTML_REFERENCE_PATTERN.exec(region)) !== null) {
+      const binding = htmlBindings.get(reference[1] ?? '');
+      if (!binding) continue;
+      for (const span of extractOpeningTagSpans(binding.content))
+        scanOpeningTag(span.text, binding.offset + span.start);
+    }
   };
 
   // A `class={...}` expression and a spread's `class:` property value are
@@ -915,7 +1073,7 @@ export function scanSource(
     }
   };
 
-  for (const region of splitSourceRegions(masked, language)) {
+  for (const region of regions) {
     if (region.kind === 'markup') scanMarkup(region.text, region.start);
     else if (region.kind === 'style') scanStyle(region.text, region.start);
     else if (region.kind === 'script') scanScript(region.text, region.start);
