@@ -95,6 +95,7 @@
   let rowResizeObserver: ResizeObserver | undefined;
   let previousOffsets: readonly number[] | undefined;
   let previousTotalSize = 0;
+  let previousViewportWidth = 0;
   let pendingScrollTarget: number | null = $state(null);
   let isDestroyed = false;
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
@@ -315,9 +316,14 @@
     const currentOffsets = offsets?.offsets;
 
     if (corrections.length > 0 && scrollElement && previousOffsets) {
-      const anchorIndex = findOffsetIndex(previousOffsets, scrollOffset);
+      // Live, not the `scrollOffset` state: during a smooth scroll, after an
+      // external write, or before a throttled scroll event lands, the state trails
+      // the real position — and resolving the anchor from a stale offset picks the
+      // wrong row, so the correction moves content the reader is looking at.
+      const liveScrollOffset = Math.max(0, scrollElement.scrollTop);
+      const anchorIndex = findOffsetIndex(previousOffsets, liveScrollOffset);
       const delta = resolveMeasurementCorrectionDelta(corrections, anchorIndex);
-      if (delta !== 0) pendingScrollTarget = scrollOffset + delta;
+      if (delta !== 0) pendingScrollTarget = liveScrollOffset + delta;
     }
 
     previousOffsets = currentOffsets;
@@ -389,6 +395,23 @@
     const rect = element.getBoundingClientRect();
     const measured =
       rect.height || element.clientHeight || parsePixelLength(height) || resolvedItemHeight * 10;
+
+    // A width change re-wraps every row, so every cached height taken at the old
+    // width is now wrong. Offscreen rows would keep those stale heights until they
+    // happened to remount, leaving the spacer and every scroll target off by the
+    // accumulated difference. Dropping the cache forces re-measurement.
+    const measuredWidth = rect.width || element.clientWidth || 0;
+    if (
+      dynamicSize &&
+      measuredWidth > 0 &&
+      previousViewportWidth > 0 &&
+      measuredWidth !== previousViewportWidth
+    ) {
+      measurementStore.reset();
+      previousOffsets = undefined;
+    }
+    if (measuredWidth > 0) previousViewportWidth = measuredWidth;
+
     measuredViewportHeight = measured;
     scrollOffset = Math.max(0, element.scrollTop);
     return measured;
@@ -589,7 +612,11 @@
         currentScrollOffset: Math.max(0, element.scrollTop),
         align,
       });
-      if (Math.abs(settled - scrollOffset) <= SCROLL_TO_INDEX_SETTLED_EPSILON) return;
+      // Compared against the element, not the state, for the same reason the target
+      // is computed from it: the state lags a smooth or externally-driven scroll,
+      // which both wastes retries and can stop retrying while still in flight.
+      const settledScrollOffset = Math.max(0, element.scrollTop);
+      if (Math.abs(settled - settledScrollOffset) <= SCROLL_TO_INDEX_SETTLED_EPSILON) return;
     }
   }
 </script>

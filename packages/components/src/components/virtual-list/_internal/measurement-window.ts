@@ -9,6 +9,7 @@
 
 import type {
   FixedVirtualWindow,
+  FixedVirtualWindowItem,
   VirtualListKey,
 } from '../../../utilities/fixed-virtual-window.ts';
 import { resolveVirtualOverscan } from '../../../utilities/fixed-virtual-window.ts';
@@ -136,7 +137,7 @@ export function getDynamicVirtualWindow(options: {
   }
   const endIndex = trailingIndex;
 
-  const items = [];
+  const items: FixedVirtualWindowItem[] = [];
   for (let index = startIndex; index < endIndex; index += 1) {
     const start = offsets[index]!;
     items.push({ index, key: options.getKey(index), start, size: offsets[index + 1]! - start });
@@ -182,6 +183,10 @@ export function computeScrollToIndexOffset(options: {
   currentScrollOffset: number;
   align: VirtualListScrollAlign;
 }): number {
+  // An empty list has no index to resolve, and clamping would hand the locator -1
+  // rounded up to 0 — making this helper depend on every caller's locator tolerating
+  // an out-of-range read rather than being safe on its own.
+  if (options.itemCount <= 0) return 0;
   const clampedIndex = Math.max(0, Math.min(options.itemCount - 1, Math.floor(options.index)));
   const start = options.locator.getStart(clampedIndex);
   const size = options.locator.getSize(clampedIndex);
@@ -204,14 +209,19 @@ export function computeScrollToIndexOffset(options: {
       const viewportEnd = viewportStart + options.viewportSize;
       const overflowsAbove = start < viewportStart;
       const overflowsBelow = start + size > viewportEnd;
-      if (overflowsAbove && overflowsBelow) {
-        // A row taller than the viewport fails BOTH visibility checks at once, and
-        // the viewport is already inside it. Preferring either edge unconditionally
-        // makes the settle loop alternate — start, then end, then start — so the
-        // final position would depend on the attempt cap and would visibly jitter
-        // under smooth scrolling. Staying put is the stable answer: the reader is
-        // already looking at the row, and no offset can show all of it.
-        target = options.currentScrollOffset;
+      if (size >= options.viewportSize) {
+        // A row at least as tall as the viewport can never satisfy both edge checks,
+        // so edge-preference alternates forever: align its start and the end now
+        // overflows, align its end and the start does. The loop would oscillate and
+        // the final position would depend on the attempt cap.
+        //
+        // Keyed on the row's SIZE rather than on both overflow flags, because at the
+        // exact boundary reached after scrolling to an initially offscreen row only
+        // one flag is true and the earlier both-flags form fell through to edge
+        // alignment again. Overlapping means the reader is already inside the row, so
+        // hold; otherwise bring its start into view, after which holding takes over.
+        const overlapsViewport = start < viewportEnd && start + size > viewportStart;
+        target = overlapsViewport ? options.currentScrollOffset : start;
       } else if (overflowsAbove) target = start;
       else if (overflowsBelow) target = start + size - options.viewportSize;
       else target = options.currentScrollOffset;

@@ -66,10 +66,12 @@ export class VirtualListMeasurementStore {
   }
 
   /**
-   * Records a ResizeObserver measurement. No-ops (no version bump, no queued
-   * correction) when the rounded size is unchanged from what's cached — this
-   * is what stops a measurement feedback loop, since writing the corrected
-   * scroll offset re-lays-out rows that then report the same size back.
+   * Records a ResizeObserver measurement. Sizes are stored at FULL PRECISION;
+   * nothing is rounded. A report within {@link MEASUREMENT_EPSILON} of the cached
+   * value is treated as unchanged and no-ops (no version bump, no queued
+   * correction) — which is what stops a measurement feedback loop, since writing
+   * the corrected scroll offset re-lays-out rows that then report the same size
+   * back. The epsilon governs change DETECTION only, never what is stored.
    *
    * The queued correction's delta is measured against whatever the offsets
    * table already assumed for this row: `estimateSize` on a first

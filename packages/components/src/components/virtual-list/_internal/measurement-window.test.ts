@@ -594,3 +594,77 @@ describe('round-five engine regressions', () => {
     expect(result.items.find((item) => item.index === 3)?.size).toBe(0);
   });
 });
+
+describe('round-eleven engine regressions', () => {
+  test('computeScrollToIndexOffset never touches the locator for an empty list', () => {
+    // Clamping turns index -1 into 0, so without an explicit guard the helper reads
+    // a locator at an index that does not exist and depends on every caller's
+    // locator tolerating that.
+    let locatorCalls = 0;
+    const locator = {
+      getStart: () => {
+        locatorCalls += 1;
+        return 0;
+      },
+      getSize: () => {
+        locatorCalls += 1;
+        return 0;
+      },
+    };
+
+    const target = computeScrollToIndexOffset({
+      index: 0,
+      itemCount: 0,
+      locator,
+      totalSize: 0,
+      viewportSize: 200,
+      currentScrollOffset: 0,
+      align: 'start',
+    });
+
+    expect(target).toBe(0);
+    expect(locatorCalls).toBe(0);
+  });
+
+  test('auto alignment is idempotent for an oversized row approached from outside', () => {
+    // The row is taller than the viewport and starts entirely below it. Aligning its
+    // start puts the viewport exactly at its boundary, where only the OPPOSITE
+    // overflow check is true — so an edge-preference rule flips to the end, then
+    // back, and the final position depends on the attempt cap.
+    const locator = { getStart: () => 500, getSize: () => 400 };
+    const shared = {
+      index: 0,
+      itemCount: 1,
+      locator,
+      totalSize: 2000,
+      viewportSize: 200,
+      align: 'auto' as const,
+    };
+
+    const first = computeScrollToIndexOffset({ ...shared, currentScrollOffset: 0 });
+    expect(first).toBe(500);
+
+    // Feeding the result back must not move again, and must stay put thereafter.
+    const second = computeScrollToIndexOffset({ ...shared, currentScrollOffset: first });
+    expect(second).toBe(first);
+    const third = computeScrollToIndexOffset({ ...shared, currentScrollOffset: second });
+    expect(third).toBe(second);
+  });
+
+  test('auto alignment is idempotent for an oversized row approached from below', () => {
+    const locator = { getStart: () => 500, getSize: () => 400 };
+    const shared = {
+      index: 0,
+      itemCount: 1,
+      locator,
+      totalSize: 2000,
+      viewportSize: 200,
+      align: 'auto' as const,
+    };
+
+    // Viewport well past the row: its start is above, so bring the start into view.
+    const first = computeScrollToIndexOffset({ ...shared, currentScrollOffset: 1200 });
+    expect(first).toBe(500);
+    expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: first })).toBe(first);
+  });
+});
