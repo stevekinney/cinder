@@ -535,6 +535,8 @@ describe('ShareCard Input composition', () => {
     expect(field()).toHaveLength(1);
     expect(field()[0]).toBe(before);
     expect(document.activeElement).toBe(before);
+    expect(before.selectionStart).toBe(8);
+    expect(before.selectionEnd).toBe(19);
     expect(
       container.querySelector('.cinder-input-group__trailing .cinder-share-card__actions'),
     ).not.toBeNull();
