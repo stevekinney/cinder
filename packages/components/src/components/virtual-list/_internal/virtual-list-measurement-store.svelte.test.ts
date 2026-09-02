@@ -12,29 +12,44 @@ describe('VirtualListMeasurementStore', () => {
     expect(store.consumePendingCorrections()).toEqual([]);
   });
 
-  test('record() rounds the incoming size before storing it', () => {
+  test('record() stores the measured size at full precision', () => {
+    // Quantizing here would compound down the offsets table: 5,000 rows measured
+    // at 20.4px and cached as 20px leaves the spacer ~2,000px short and every
+    // scrollToIndex target past the top of the list wrong.
     const store = new VirtualListMeasurementStore();
 
     store.record('a', 0, 40.4, 40);
-    expect(store.sizes.get('a')).toBe(40);
+    expect(store.sizes.get('a')).toBe(40.4);
 
     store.record('b', 1, 40.6, 40);
-    expect(store.sizes.get('b')).toBe(41);
+    expect(store.sizes.get('b')).toBe(40.6);
   });
 
-  test('record() rounds the incoming size before comparing it against the cached value', () => {
+  test('record() accumulates no drift across many fractional measurements', () => {
+    const store = new VirtualListMeasurementStore();
+    for (let index = 0; index < 5_000; index += 1) {
+      store.record(`row-${index}`, index, 20.4, 20);
+    }
+
+    let total = 0;
+    for (const size of store.sizes.values()) total += size;
+
+    expect(total).toBeCloseTo(102_000, 6);
+  });
+
+  test('record() ignores a re-measurement within the sub-pixel noise epsilon', () => {
     const store = new VirtualListMeasurementStore();
 
-    // First measurement rounds to 40 and matches the estimate exactly, so no
-    // correction is queued, but the cache itself changed (nothing was cached
-    // before), so version still bumps.
+    // First measurement equals the estimate exactly, so no correction is queued,
+    // but the cache itself changed (nothing was cached before), so version bumps.
     store.record('a', 0, 40, 40);
     expect(store.version).toBe(1);
     expect(store.pendingCorrectionsVersion).toBe(0);
 
-    // A re-measurement whose raw size differs but rounds to the SAME cached
-    // value must be treated as unchanged: no version bump, no correction.
-    store.record('a', 0, 40.49, 40);
+    // A re-measurement inside the epsilon is float jitter, not a resize: no
+    // version bump and no correction, which is what stops the correction ->
+    // relayout -> same-size-reported -> correction feedback loop.
+    store.record('a', 0, 40.005, 40);
     expect(store.version).toBe(1);
     expect(store.pendingCorrectionsVersion).toBe(0);
     expect(store.sizes.get('a')).toBe(40);

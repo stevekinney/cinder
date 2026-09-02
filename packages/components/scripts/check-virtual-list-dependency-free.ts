@@ -73,26 +73,34 @@ export const FORBIDDEN_SPECIFIER = '@tanstack/virtual-core';
  * not) and from a bare side-effect `import '<specifier>'`. Applied per line,
  * matching `check-no-cycle-imports.ts`'s grep-based approach.
  *
- * Dynamic `import('<specifier>')` calls are matched too, but they are judged
- * against a deliberately narrower rule — see {@link DYNAMIC_IMPORT_PATTERN}.
+ * Dynamic `import('<specifier>')` calls are matched too — see
+ * {@link DYNAMIC_IMPORT_PATTERN} for how they are judged.
  */
 const IMPORT_SPECIFIER_PATTERN = /(?:\bfrom\s*|\bimport\s+)(['"])([^'"]+)\1/g;
 
 /**
  * Matches a dynamic `import('<specifier>')` call.
  *
- * These are checked ONLY for {@link FORBIDDEN_SPECIFIER}, never for the
- * undeclared-bare-import rule that static imports face. Test files in this
- * subtree legitimately dynamic-import devDependencies at module scope
- * (`virtual-list.test.ts` does `await import('@testing-library/svelte')`), and
- * this guard resolves bare specifiers against `dependencies` only — so applying
- * the full rule here would flag every one of those as a violation.
+ * In SHIPPED SOURCE these face the same rule as static imports. A production file
+ * that dynamically imports an installed devDependency resolves fine inside this
+ * repository and then fails for a published consumer, which is precisely the
+ * class of defect this guard exists to prevent, so exempting dynamic syntax there
+ * would leave the hole open.
  *
- * Narrowing to the forbidden specifier keeps the invariant that actually matters
- * enforceable through either import syntax, without the false positives. A
- * dynamic `import('@tanstack/virtual-core')` is exactly the evasion this closes.
+ * In TEST FILES only {@link FORBIDDEN_SPECIFIER} is checked. Tests in this subtree
+ * legitimately dynamic-import devDependencies at module scope — `virtual-list.test.ts`
+ * does `await import('@testing-library/svelte')` — and this guard resolves bare
+ * specifiers against `dependencies` alone, so the full rule would flag every one of
+ * them. Nothing in a test file ships, so the undeclared-import risk does not apply;
+ * the `@tanstack/virtual-core` ban still does.
  */
 const DYNAMIC_IMPORT_PATTERN = /\bimport\s*\(\s*(['"])([^'"]+)\1/g;
+
+/** Files whose imports never ship, so the undeclared-bare-import rule does not apply to them. */
+const TEST_FILE_PATTERN = /\.(?:test|spec)\.[cm]?tsx?$/u;
+
+const FORBIDDEN_SPECIFIER_REASON =
+  'the virtual-list engine (CIN-204) must stay dependency-free of @tanstack/virtual-core';
 
 /** One disallowed import specifier found in a scanned virtual-list source file. */
 export type DependencyViolation = {
@@ -169,6 +177,7 @@ export function findDependencyViolations(
 ): DependencyViolation[] {
   const violations: DependencyViolation[] = [];
   const lines = content.split('\n');
+  const isTestFile = TEST_FILE_PATTERN.test(filePath);
 
   for (const [index, line] of lines.entries()) {
     const seenSpecifiers = new Set<string>();
@@ -185,23 +194,23 @@ export function findDependencyViolations(
       }
     }
 
-    // Dynamic imports: forbidden-specifier rule only. See DYNAMIC_IMPORT_PATTERN.
+    // Dynamic imports. Shipped source faces the full rule; test files only the
+    // forbidden-specifier ban. See DYNAMIC_IMPORT_PATTERN.
     DYNAMIC_IMPORT_PATTERN.lastIndex = 0;
     while ((match = DYNAMIC_IMPORT_PATTERN.exec(line)) !== null) {
       const specifier = match[2];
       if (specifier === undefined) continue;
-      if (specifier !== FORBIDDEN_SPECIFIER) continue;
-      // A static `import ... from '@tanstack/virtual-core'` on this same line was
-      // already reported above; do not report the same specifier twice.
+      // A static import of the same specifier on this line was already reported
+      // above; do not report it twice.
       if (seenSpecifiers.has(specifier)) continue;
-      violations.push({
-        filePath,
-        lineNumber: index + 1,
-        specifier,
-        line: line.trim(),
-        reason:
-          'the virtual-list engine (CIN-204) must stay dependency-free of @tanstack/virtual-core',
-      });
+      const reason = isTestFile
+        ? specifier === FORBIDDEN_SPECIFIER
+          ? FORBIDDEN_SPECIFIER_REASON
+          : undefined
+        : classifySpecifier(specifier, declaredDependencyNames);
+      if (reason !== undefined) {
+        violations.push({ filePath, lineNumber: index + 1, specifier, line: line.trim(), reason });
+      }
     }
   }
 

@@ -12,7 +12,7 @@ const schema = {
     dynamicSize: {
       type: 'boolean',
       description:
-        'Measure each rendered row with `ResizeObserver` and cache the result,\ninstead of assuming every row is exactly `itemHeight` tall. Use this when\nrows wrap, contain images, or otherwise vary in height.\n\nDefaults to `false`. While false, no measurement, caching, scroll\ncorrection, or `ResizeObserver` construction happens anywhere in the\ncomponent — the fixed-height path stays the fast path.',
+        'Measure each rendered row with `ResizeObserver` and cache the result,\ninstead of assuming every row is exactly `itemHeight` tall. Use this when\nrows wrap, contain images, or otherwise vary in height.\n\nDefaults to `false`. While false, no row is measured, no size is cached,\nand no scroll correction runs — the fixed-height path stays the fast path.\nThe component still observes its own scroll container to track viewport\nsize, as it always has; that is independent of this prop.',
     },
     overscan: {
       type: 'number',

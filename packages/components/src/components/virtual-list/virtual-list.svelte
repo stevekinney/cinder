@@ -78,6 +78,8 @@
 
   const SCROLL_TO_INDEX_MAX_ATTEMPTS = 3;
   const SCROLL_TO_INDEX_SETTLED_EPSILON = 1;
+  /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
+  const SCROLL_SETTLE_MAX_FRAMES = 30;
 
   let scrollElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
@@ -91,8 +93,12 @@
   let rowResizeObserver: ResizeObserver | undefined;
   let previousOffsets: readonly number[] | undefined;
   let previousDynamicTotalSize = 0;
+  let previousDynamicSizeMode = false;
   let pendingScrollTarget: number | null = $state(null);
   let isDestroyed = false;
+  // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
+  let isPinnedToBottom = $state(false);
+  let scrollToIndexGeneration = 0;
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
@@ -162,6 +168,12 @@
       stickToBottom &&
       element !== undefined &&
       itemCount > previousItemCount &&
+      // A run that both switches sizing mode and appends would be comparing the
+      // old scroll position against geometry measured in the other mode. In
+      // particular `previousDynamicTotalSize` stays 0 for as long as fixed mode is
+      // active, so switching to dynamic mid-append would make isAtBottom(…, 0, …)
+      // true for any position and yank a scrolled-up reader to the end.
+      dynamicSize === previousDynamicSizeMode &&
       isAtBottom(
         element,
         dynamicSize ? previousDynamicTotalSize : previousItemCount * resolvedItemHeight,
@@ -170,6 +182,22 @@
 
     previousItemCount = itemCount;
     previousDynamicTotalSize = offsets?.totalSize ?? 0;
+    previousDynamicSizeMode = dynamicSize;
+  });
+
+  /**
+   * Drops cached sizes for rows that are no longer in the list.
+   *
+   * Without this a long-lived feed that filters or rolls over its contents keeps
+   * every size it has ever measured, so memory tracks history rather than the
+   * current collection — and a key that comes back later would start from stale
+   * geometry until its ResizeObserver reported again.
+   */
+  $effect(() => {
+    if (!dynamicSize) return;
+    const validKeys = new Set<VirtualListKey>();
+    for (let index = 0; index < items.length; index += 1) validKeys.add(keyAt(index));
+    measurementStore.prune(validKeys);
   });
 
   $effect(() => {
@@ -184,7 +212,35 @@
       );
       syncViewport(element);
       shouldStickAfterAppend = false;
+      isPinnedToBottom = true;
     });
+  });
+
+  /**
+   * Holds the viewport at the bottom while an appended row is still being measured.
+   *
+   * Under `dynamicSize` the append pin above scrolls to the total as it is
+   * currently estimated. A row that then measures taller than `itemHeight` — the
+   * common case for the wrapping and media rows this mode exists for — grows the
+   * total without changing the item count, so nothing re-pins, and the anchor
+   * correction deliberately ignores it because it sits below the anchor. The
+   * viewport would sit short of the bottom, contradicting what `stickToBottom`
+   * promises. Re-pinning on total-size growth closes that window.
+   */
+  $effect(() => {
+    // Both reactive reads happen BEFORE any early return. Guarding first would
+    // skip them on the run where the pin is not yet armed, so the effect would
+    // never register the total size as a dependency and would never re-run when a
+    // measurement changed it — which is the entire case this exists to handle.
+    const totalSize = offsets?.totalSize ?? 0;
+    const currentViewportHeight = viewportHeight;
+    if (!stickToBottom || !dynamicSize || !isPinnedToBottom) return;
+    const element = scrollElement;
+    if (!element) return;
+    const target = maxScrollOffset(totalSize, currentViewportHeight);
+    if (Math.abs(element.scrollTop - target) <= 1) return;
+    element.scrollTop = target;
+    scrollOffset = Math.max(0, element.scrollTop);
   });
 
   /**
@@ -237,21 +293,26 @@
     };
   });
 
-  // No dependencies, so this cleanup runs exactly once, at teardown. The
-  // scroll-to-index settle loop awaits across frames and must not read derived
-  // state belonging to an effect that has since been destroyed.
+  /**
+   * The component's only teardown hook. Deliberately has NO dependencies, so its
+   * cleanup runs exactly once, when the component is actually destroyed.
+   *
+   * Tying this to `dynamicSize` instead is a trap worth naming: a parent that
+   * re-renders with an unchanged `dynamicSize` can still re-run the effect, whose
+   * cleanup would disconnect the shared row observer — and because the row
+   * attachments themselves did not change, nothing would ever re-observe. Every
+   * row then goes silently unmeasured while the component still looks healthy.
+   *
+   * Mode changes need no teardown here: when `dynamicSize` goes false each row's
+   * own attachment re-runs and unobserves itself, and keeping the observer and the
+   * size cache alive across a toggle avoids re-measuring rows that never changed.
+   */
   $effect(() => () => {
     isDestroyed = true;
-  });
-
-  $effect(() => {
-    if (!dynamicSize) return;
-    return () => {
-      rowResizeObserver?.disconnect();
-      rowResizeObserver = undefined;
-      measurementStore.reset();
-      previousOffsets = undefined;
-    };
+    rowResizeObserver?.disconnect();
+    rowResizeObserver = undefined;
+    measurementStore.reset();
+    previousOffsets = undefined;
   });
 
   function keyAt(index: number): VirtualListKey {
@@ -274,6 +335,8 @@
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
     scrollOffset = Math.max(0, element.scrollTop);
+    // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
+    if (stickToBottom) isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -298,7 +361,10 @@
       const index = Number.parseInt(rawIndex, 10);
       if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
       const blockSize = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
-      if (!Number.isFinite(blockSize) || blockSize <= 0) continue;
+      // Zero is a legitimate measurement — a row can collapse to nothing. Discarding
+      // it would leave the offsets table reserving space the row no longer occupies,
+      // shifting every later offset and scroll target until it grew again.
+      if (!Number.isFinite(blockSize) || blockSize < 0) continue;
       measurementStore.record(keyAt(index), index, blockSize, resolvedItemHeight);
     }
   }
@@ -315,7 +381,14 @@
   function observeRow(node: HTMLElement): (() => void) | undefined {
     if (!dynamicSize) return undefined;
     if (!rowResizeObserver) {
-      const ResizeObserverConstructor = globalThis.ResizeObserver;
+      // Resolved from the node's own document, matching `useResizeObserver`. A list
+      // mounted inside an iframe has its ResizeObserver on that document's window;
+      // the outer `globalThis` one is either absent or bound to the wrong document,
+      // either of which leaves every row silently unmeasured.
+      const ResizeObserverConstructor =
+        typeof document !== 'undefined' && node.ownerDocument === document
+          ? globalThis.ResizeObserver
+          : node.ownerDocument.defaultView?.ResizeObserver;
       if (typeof ResizeObserverConstructor !== 'function') return undefined;
       rowResizeObserver = new ResizeObserverConstructor(handleRowResize);
     }
@@ -357,6 +430,28 @@
     });
   }
 
+  /**
+   * Waits until the container's scroll position stops moving, bounded.
+   *
+   * A single frame is not enough: with `behavior: 'smooth'` the browser is still
+   * animating a frame later, so every retry would be spent mid-flight and the
+   * loop would give up before the destination rows ever mounted and measured.
+   * Waiting for the position to hold still covers both that and a late
+   * measurement, and the frame cap keeps a continuously-scrolling container
+   * (a user dragging, an ongoing animation) from holding the loop open.
+   */
+  async function waitForScrollSettled(element: HTMLElement): Promise<void> {
+    await tick();
+    let previousOffset = Number.NaN;
+    for (let frame = 0; frame < SCROLL_SETTLE_MAX_FRAMES; frame += 1) {
+      await nextAnimationFrame();
+      if (isDestroyed) return;
+      const currentOffset = element.scrollTop;
+      if (currentOffset === previousOffset) return;
+      previousOffset = currentOffset;
+    }
+  }
+
   function scrollToIndex(index: number, options?: VirtualListScrollToIndexOptions): void {
     void runScrollToIndex(index, options);
   }
@@ -374,10 +469,16 @@
     if (isDestroyed || items.length === 0) return;
     const align = options?.align ?? 'auto';
     const behavior = options?.behavior ?? 'auto';
+    // Each call supersedes any settle loop still running. Without this, two
+    // overlapping loops write competing targets and the older one can land last,
+    // finishing rapid navigation on the wrong item.
+    scrollToIndexGeneration += 1;
+    const generation = scrollToIndexGeneration;
 
     for (let attempt = 0; attempt < SCROLL_TO_INDEX_MAX_ATTEMPTS; attempt += 1) {
       const element = scrollElement;
       if (!element) return;
+      if (generation !== scrollToIndexGeneration) return;
 
       const target = computeScrollToIndexOffset({
         index,
@@ -399,11 +500,11 @@
       // Fixed rows never change size, so the first write always lands exactly.
       if (!dynamicSize) return;
 
-      await tick();
-      await nextAnimationFrame();
-      // The component can be torn down while those frames were pending. Reading
-      // any derived state past that point would be reading a destroyed effect's.
-      if (isDestroyed) return;
+      await waitForScrollSettled(element);
+      // The component can be torn down, or a newer call issued, while those frames
+      // were pending. Reading derived state past teardown would read a destroyed
+      // effect's, and continuing past a newer call would fight it.
+      if (isDestroyed || generation !== scrollToIndexGeneration) return;
 
       const settled = computeScrollToIndexOffset({
         index,

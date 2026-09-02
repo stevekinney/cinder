@@ -25,7 +25,7 @@ export type VirtualListScrollToIndexOptions = {
    */
   align?: VirtualListScrollAlign;
   /** Scroll behavior. Defaults to `'auto'`. */
-  behavior?: 'auto' | 'smooth';
+  behavior?: ScrollBehavior;
 };
 
 /**
@@ -58,9 +58,10 @@ export type VirtualListProps<Item = unknown> = Omit<
    * instead of assuming every row is exactly `itemHeight` tall. Use this when
    * rows wrap, contain images, or otherwise vary in height.
    *
-   * Defaults to `false`. While false, no measurement, caching, scroll
-   * correction, or `ResizeObserver` construction happens anywhere in the
-   * component — the fixed-height path stays the fast path.
+   * Defaults to `false`. While false, no row is measured, no size is cached,
+   * and no scroll correction runs — the fixed-height path stays the fast path.
+   * The component still observes its own scroll container to track viewport
+   * size, as it always has; that is independent of this prop.
    */
   dynamicSize?: boolean;
   /**

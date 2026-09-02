@@ -2,6 +2,23 @@ import type { VirtualListKey } from '../../../utilities/fixed-virtual-window.ts'
 import type { MeasurementCorrection } from './measurement-window.ts';
 
 /**
+ * Smallest size change treated as a real resize rather than sub-pixel noise.
+ *
+ * Measurements are cached at full precision — quantizing them would make the
+ * error compound down the offsets table, so a list of 5,000 rows measured at
+ * 20.4px each would come out roughly 2,000px short and every `scrollToIndex`
+ * target past the top of the list would be wrong.
+ *
+ * The epsilon governs change DETECTION only. It is what stops the feedback loop
+ * where writing a scroll correction relayouts rows, whose `ResizeObserver`
+ * reports the same size back, which queues another correction. Because sizes are
+ * stored exactly, a re-report is normally bit-identical and would be caught even
+ * at zero; the epsilon is margin against float jitter from device-pixel-ratio
+ * rounding, not a substitute for exact storage.
+ */
+const MEASUREMENT_EPSILON = 0.01;
+
+/**
  * Reactive cache of real, ResizeObserver-measured row sizes for `dynamicSize`
  * VirtualList mode, plus a queue of the scroll corrections those
  * measurements imply.
@@ -48,17 +65,16 @@ export class VirtualListMeasurementStore {
    * re-measurement.
    */
   record(key: VirtualListKey, index: number, size: number, estimateSize: number): void {
-    const roundedSize = Math.round(size);
     const previousSize = this.#sizes.get(key);
-    if (previousSize === roundedSize) return;
+    if (previousSize !== undefined && Math.abs(previousSize - size) < MEASUREMENT_EPSILON) return;
 
     const previousBaseline = previousSize ?? estimateSize;
-    const delta = roundedSize - previousBaseline;
+    const delta = size - previousBaseline;
 
-    this.#sizes.set(key, roundedSize);
+    this.#sizes.set(key, size);
     this.#version += 1;
 
-    if (delta !== 0) {
+    if (Math.abs(delta) >= MEASUREMENT_EPSILON) {
       this.#pendingCorrections.push({ index, delta });
       this.#pendingCorrectionsVersion += 1;
     }

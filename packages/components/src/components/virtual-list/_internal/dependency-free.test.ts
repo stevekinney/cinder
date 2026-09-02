@@ -194,6 +194,38 @@ describe('virtual-list dependency-free guard — findDependencyViolations (fabri
     expect(findDependencyViolations(source, 'fake.ts', new Set())).toEqual([]);
   });
 
+  test('flags a dynamic import of an undeclared bare specifier in SHIPPED source', () => {
+    // A production file that dynamically imports an installed devDependency
+    // resolves inside this repository and then fails for a published consumer.
+    // Exempting dynamic syntax from the undeclared-import rule would leave
+    // exactly that hole open, so shipped source faces the full rule.
+    const source = "const helper = await import('some-dev-only-package');";
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('allows a dynamic import of an undeclared bare specifier in a TEST file', () => {
+    // Tests legitimately reach for devDependencies at module scope — the real
+    // virtual-list.test.ts does `await import('@testing-library/svelte')` — and
+    // nothing in a test file ships, so the undeclared-import risk does not apply.
+    const source = "const testing = await import('@testing-library/svelte');";
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'measurement-window.spec.ts', new Set())).toEqual([]);
+  });
+
+  test('still flags the forbidden specifier dynamically imported from a TEST file', () => {
+    // The devDependency exemption is scoped to the undeclared-import rule only.
+    // The @tanstack/virtual-core ban applies everywhere in the subtree.
+    const source = "const virtualizer = await import('@tanstack/virtual-core');";
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
   test('flags a fabricated dynamic import() of the forbidden specifier', () => {
     const source = "const module = await import('@tanstack/virtual-core');";
     const violations = findDependencyViolations(source, 'fake.ts', new Set());
