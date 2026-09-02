@@ -789,3 +789,139 @@ describe('scanSource — fourth-round review findings', () => {
     ]);
   });
 });
+
+describe('scanSource — fifth-round review findings', () => {
+  test('a multi-extension test module is exempt', () => {
+    expect(isTestPath('widget.test.svelte.ts')).toBe(true);
+    expect(isTestPath('widget.spec.svelte.ts')).toBe(true);
+    expect(isTestPath('components/chat/chat.test.svelte.ts')).toBe(true);
+    expect(isTestPath('widget.svelte.ts')).toBe(false);
+    expect(isTestPath('widget.test-helpers.ts')).toBe(false);
+    expect(isTestPath('widget.test.svelte.md')).toBe(false);
+  });
+
+  test('a suffix separated by repeated hyphens or underscores is still a bare token', () => {
+    expect(scanSource('<span class="sr-only--focusable">x</span>', 'svelte')).toHaveLength(1);
+    expect(scanSource('.sr-only--focusable {}', 'css')).toHaveLength(1);
+    expect(scanSource("const hidden = 'sr-only__focusable';", 'script')).toHaveLength(1);
+    expect(scanSource("classNames('sr-only--x')", 'script')).toHaveLength(1);
+    expect(scanSource('<span class="cinder-sr-only--focusable">x</span>', 'svelte')).toHaveLength(
+      0,
+    );
+  });
+
+  test('a nested template literal inside a placeholder is parsed, not treated as the closer', () => {
+    const source = "const hidden = `${condition ? `sr-only` : ''}`;";
+    expect(scanSource(source, 'script')).toHaveLength(1);
+    expect(
+      scanSource(`<script>\n  ${source}\n</script>\n<span class={hidden}></span>`, 'svelte'),
+    ).toHaveLength(1);
+    // The literal after the nested template is still seen as its own literal.
+    expect(
+      scanSource("const a = `${flag ? `x` : 'y'}`; const b = 'sr-only';", 'script'),
+    ).toHaveLength(1);
+    expect(maskStringLiterals('`a ${`b`} c` + d')).toBe('`          ` + d');
+  });
+
+  test('comments and regex literals inside a placeholder are masked before scanning', () => {
+    expect(
+      scanSource("const x = `${condition ? (/* 'sr-only' */ 'selected') : ''}`;", 'script'),
+    ).toHaveLength(0);
+    expect(
+      scanSource("const x = `${condition // 'sr-only'\n  ? 'selected' : ''}`;", 'script'),
+    ).toHaveLength(0);
+    expect(scanSource("const x = `${/'sr-only'/.test(v) ? 'on' : ''}`;", 'script')).toHaveLength(0);
+    expect(
+      scanSource("const x = `${condition ? /* doc */ 'sr-only' : ''}`;", 'script'),
+    ).toHaveLength(1);
+  });
+
+  test('division after an object literal is not a regex start', () => {
+    const source =
+      "const n = { valueOf(){ return 4 } } / 2; const hidden = 'sr-only'; const r = /foo/;";
+    expect(scanSource(source, 'script')).toHaveLength(1);
+    expect(maskRegexLiterals('({ a: 1 }) / 2 / 3')).toBe('({ a: 1 }) / 2 / 3');
+    expect(maskRegexLiterals("x = { a: 1 } / 2; y = 'q'")).toBe("x = { a: 1 } / 2; y = 'q'");
+    // A regex after a block statement is still a regex.
+    expect(scanSource("if (a) { b() }\n/'sr-only'/.test(x)", 'script')).toHaveLength(0);
+    expect(maskRegexLiterals('if (a) { b }\n/x/.test(y)')).toBe('if (a) { b }\n/ /.test(y)');
+    expect(maskScriptComments("const n = { v: 1 } / 2; const s = 'sr-only'; // c")).toBe(
+      "const n = { v: 1 } / 2; const s = 'sr-only';     ",
+    );
+  });
+
+  test('a brace inside a regex literal does not close a class expression', () => {
+    expect(
+      scanSource("<div class={/}/.test(value) ? 'sr-only' : ''}>x</div>", 'svelte'),
+    ).toHaveLength(1);
+    expect(extractOpeningTagSpans("<div class={/}/.test(v) ? 'a' : ''}>x</div>")).toEqual([
+      { start: 0, text: "<div class={/}/.test(v) ? 'a' : ''}>" },
+    ]);
+  });
+
+  test('a block tag quoted inside a Svelte expression does not open a region', () => {
+    const source =
+      "<div title={'<script>'}>a</div>\n<span class=\"sr-only\">b</span>\n<div title={'</script>'}>c</div>";
+    expect(splitSourceRegions(source, 'svelte').map((region) => region.kind)).toEqual(['markup']);
+    const hits = scanSource(source, 'svelte');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.lineNumber).toBe(2);
+    expect(
+      scanSource(
+        "<div data-x={'<style>'}></div>\n<span class=\"sr-only\">b</span>\n<div data-x={'</style>'}></div>",
+        'svelte',
+      ),
+    ).toHaveLength(1);
+    // A real block after such an expression is still recognised.
+    expect(
+      splitSourceRegions(
+        "<div title={'<script>'}></div><script>const a = 1;</script>",
+        'svelte',
+      ).map((region) => region.kind),
+    ).toEqual(['markup', 'script']);
+  });
+
+  test('comparing an element class value against the token is a read, not a usage', () => {
+    expect(scanSource("const a = node.className === 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("if (node.classList.value !== 'sr-only') go();", 'script')).toHaveLength(0);
+    expect(
+      scanSource("const a = node.getAttribute('class') === 'sr-only';", 'script'),
+    ).toHaveLength(0);
+    expect(scanSource("const a = 'sr-only' === node.className;", 'script')).toHaveLength(0);
+    expect(scanSource("const a = 'sr-only' == el?.classList.value;", 'script')).toHaveLength(0);
+    expect(scanSource("const a = node.className.includes('sr-only');", 'script')).toHaveLength(0);
+    expect(
+      scanSource("<div class={node.className === 'sr-only' ? 'a' : ''}>x</div>", 'svelte'),
+    ).toHaveLength(0);
+    // Writes are still usage sites.
+    expect(scanSource("node.className = 'sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("node.setAttribute('class', 'sr-only');", 'script')).toHaveLength(1);
+  });
+
+  test('an {@html} binding resolves to the top-level declaration, not a nested shadow', () => {
+    const prohibited = 'const html = \'<span class="sr-only">x</span>\';';
+    const safe = "const html = '<span>safe</span>';";
+    expect(
+      scanSource(
+        `<script>\n  ${prohibited}\n  function helper() { ${safe} }\n</script>\n{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(1);
+    expect(
+      scanSource(
+        `<script>\n  function helper() { ${prohibited} }\n  ${safe}\n</script>\n{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(0);
+    expect(
+      scanSource(
+        `<script>\n  function helper() { ${prohibited} }\n</script>\n{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(0);
+    expect(extractStringBindings("const a = 'x'; { const b = 'y'; } const c = 'z';")).toEqual([
+      { name: 'a', content: 'x', contentStart: 11 },
+      { name: 'c', content: 'z', contentStart: 45 },
+    ]);
+  });
+});

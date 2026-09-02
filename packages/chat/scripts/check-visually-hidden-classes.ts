@@ -103,7 +103,10 @@ export function isTestPath(relativePath: string): boolean {
   // exempt for the same reason: a helper there never reaches the tarball.
   if (FIXTURE_PATH_PATTERN.test(relativePath)) return true;
   if (TEST_DIRECTORY_PATTERN.test(toPosixPath(relativePath))) return true;
-  return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
+  // Any extension chain after `.test.`/`.spec.` counts: a Svelte rune test
+  // module is `widget.test.svelte.ts`, and the package's `files` field
+  // excludes every `dist/**/*.test.*` artifact the same way.
+  return /\.(?:test|spec)\.(?:[\w-]+\.)*(?:[cm]?[jt]sx?|svelte|css)$/.test(relativePath);
 }
 
 /** Replaces every character except newlines with a space, preserving offsets. */
@@ -151,23 +154,15 @@ export function maskStringLiterals(source: string): string {
       index += 1;
       continue;
     }
-    output += character;
-    index += 1;
-    while (index < source.length) {
-      const inner = source[index] ?? '';
-      if (inner === '\\') {
-        output += '  ';
-        index += 2;
-        continue;
-      }
-      if (inner === character) {
-        output += inner;
-        index += 1;
-        break;
-      }
-      output += inner === '\n' ? '\n' : ' ';
-      index += 1;
-    }
+    // A template literal is blanked whole, placeholders included: the walk
+    // in `stringLiteralEnd` steps over a nested literal inside `${...}`, so
+    // the nested backtick is not mistaken for the outer literal's closer.
+    const end = stringLiteralEnd(source, index);
+    const last = source[end - 1] ?? '';
+    const closed = end > index + 1 && (last === character || last === '\n');
+    output +=
+      character + blank(source.slice(index + 1, closed ? end - 1 : end)) + (closed ? last : '');
+    index = end;
   }
   return output;
 }
@@ -182,10 +177,12 @@ export function maskStringLiterals(source: string): string {
  * regex delimiter.
  *
  * A regex literal is only recognised where an expression can START (after
- * `(`, `,`, `=`, `=>`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `}`, `;`, `return`,
- * or at the very beginning), so `a / b / c` is division and stays visible. The
- * heuristic is the classic one every non-parsing tokenizer uses; it is
- * exactly as good as it needs to be for the two consumers here.
+ * `(`, `,`, `=`, `=>`, `:`, `[`, `!`, `&`, `|`, `?`, `{`, `;`, `return`, a
+ * `}` that closes a block, or at the very beginning), so `a / b / c` is
+ * division and stays visible — as does `{ valueOf() {...} } / 2`, where the
+ * `}` closes an object literal. The heuristic is the classic one every
+ * non-parsing tokenizer uses; it is exactly as good as it needs to be for the
+ * two consumers here.
  */
 export function maskRegexLiterals(source: string): string {
   let output = '';
@@ -193,22 +190,12 @@ export function maskRegexLiterals(source: string): string {
   while (index < source.length) {
     const character = source[index] ?? '';
     if (character === '"' || character === "'" || character === '`') {
-      output += character;
-      index += 1;
-      while (index < source.length) {
-        const inner = source[index] ?? '';
-        output += inner;
-        index += 1;
-        if (inner === '\\') {
-          output += source[index] ?? '';
-          index += 1;
-          continue;
-        }
-        if (inner === character) break;
-      }
+      const end = stringLiteralEnd(source, index);
+      output += source.slice(index, end);
+      index = end;
       continue;
     }
-    if (character !== '/' || !regexCanStartAt(source, index)) {
+    if (character !== '/' || !regexCanStartAt(output, source[index + 1])) {
       output += character;
       index += 1;
       continue;
@@ -238,13 +225,43 @@ export function maskRegexLiterals(source: string): string {
   return output;
 }
 
-function regexCanStartAt(source: string, slashIndex: number): boolean {
-  const next = source[slashIndex + 1];
+/**
+ * Whether a `/` followed by `next` can open a regex literal given `before`,
+ * the text already walked (with whatever the caller has masked so far, so a
+ * quoted `}` or `=` has no say). A trailing `}` is the one ambiguous case:
+ * after a block statement an expression starts, after an object literal an
+ * operator does, and which it was depends on what opened the brace.
+ */
+function regexCanStartAt(before: string, next: string | undefined): boolean {
   if (next === '/' || next === '*' || next === undefined) return false;
-  const before = source.slice(0, slashIndex).replace(/\s+$/, '');
-  if (before === '') return true;
-  if (/(?:[(,=:[!&|?{};]|=>)$/.test(before)) return true;
-  return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(before);
+  const trimmed = before.replace(/\s+$/, '');
+  if (trimmed === '') return true;
+  if (trimmed.endsWith('}')) return !closesObjectLiteral(trimmed);
+  if (/(?:[(,=:[!&|?{;]|=>)$/.test(trimmed)) return true;
+  return /(?:^|[^\w$])(?:return|typeof|case|do|else|in|of|yield|await)$/.test(trimmed);
+}
+
+/**
+ * Whether the `}` that ends `text` closes an object literal. The matching
+ * `{` is found on the string-masked text; it opened an object literal when
+ * an expression was expected there — after `(`, `,`, `=`, `:`, `[`, an
+ * operator, or `return`-like keywords. An `=>` is NOT in that list: `=> {`
+ * opens an arrow body, and an arrow returning an object needs `=> ({`.
+ */
+function closesObjectLiteral(text: string): boolean {
+  const masked = maskStringLiterals(text);
+  let depth = 0;
+  let index = masked.length - 1;
+  for (; index >= 0; index--) {
+    if (masked[index] === '}') depth++;
+    else if (masked[index] === '{') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  if (index < 0) return false;
+  const opener = masked.slice(0, index).replace(/\s+$/, '');
+  return /(?:[(,=:[!&|?]|(?:^|[^\w$])(?:return|typeof|case|in|of|yield|await))$/.test(opener);
 }
 
 /** Strings and regex literals blanked together — the view a script scanner locates syntax in. */
@@ -274,40 +291,105 @@ export function maskComments(source: string, language?: SourceLanguage): string 
   if (language === undefined && !/<(?:[a-zA-Z][\s\S]*>|!--)/.test(source))
     return maskScriptComments(source);
 
-  const blockOpenPattern = /^<(script|style)\b[^>]*>/;
+  let output = '';
+  let cursor = 0;
+  for (const block of findBlockElements(source)) {
+    output += maskMarkupComments(source.slice(cursor, block.start));
+    const inner = source.slice(block.innerStart, block.innerEnd);
+    output +=
+      source.slice(block.start, block.innerStart) +
+      (block.tag === 'script' ? maskScriptComments(inner) : maskCssComments(inner)) +
+      source.slice(block.innerEnd, block.end);
+    cursor = block.end;
+  }
+  return output + maskMarkupComments(source.slice(cursor));
+}
+
+/**
+ * Blanks `<!-- ... -->` comments in a markup segment. A `{...}` expression is
+ * copied through untouched: its quotes are JavaScript strings, so a `'<!--'`
+ * inside one is text, not a comment opener.
+ */
+function maskMarkupComments(markup: string): string {
   let output = '';
   let index = 0;
+  while (index < markup.length) {
+    if (markup.startsWith('<!--', index)) {
+      const end = markup.indexOf('-->', index + 4);
+      const stop = end === -1 ? markup.length : end + 3;
+      output += blank(markup.slice(index, stop));
+      index = stop;
+      continue;
+    }
+    if (markup[index] === '{') {
+      const length = balancedExpressionLength(markup, index);
+      output += markup.slice(index, index + length);
+      index += length;
+      continue;
+    }
+    output += markup[index];
+    index += 1;
+  }
+  return output;
+}
+
+/** A `<script>` or `<style>` element located by `findBlockElements`. */
+type BlockElement = {
+  tag: 'script' | 'style';
+  /** Offset of the opening `<`. */
+  start: number;
+  /** Offset just past the opening tag's `>`. */
+  innerStart: number;
+  /** Offset of the closing tag's `<` (or the end of the source when unclosed). */
+  innerEnd: number;
+  /** Offset just past the closing tag (or the end of the source when unclosed). */
+  end: number;
+};
+
+/**
+ * Every `<script>` and `<style>` element in a Svelte file, in order. The
+ * walk steps over `{...}` expressions and `<!-- -->` comments before it
+ * looks for a tag, so `title={'<script>'}` and a block quoted in a comment
+ * open nothing — a raw regex over the file would take the quoted text as a
+ * real block and turn the production markup between two such attributes
+ * into a script region. Both `maskComments` and `splitSourceRegions` use
+ * this one walk so they cannot disagree about where a block is.
+ */
+function findBlockElements(source: string): BlockElement[] {
+  const blocks: BlockElement[] = [];
+  const openPattern = /^<(script|style)\b[^>]*>/;
+  let index = 0;
   while (index < source.length) {
-    if (source[index] !== '<') {
-      output += source[index];
+    const character = source[index];
+    if (character === '{') {
+      index += balancedExpressionLength(source, index);
+      continue;
+    }
+    if (character !== '<') {
       index += 1;
       continue;
     }
     if (source.startsWith('<!--', index)) {
       const end = source.indexOf('-->', index + 4);
-      const stop = end === -1 ? source.length : end + 3;
-      output += blank(source.slice(index, stop));
-      index = stop;
+      index = end === -1 ? source.length : end + 3;
       continue;
     }
-    const open = blockOpenPattern.exec(source.slice(index));
+    const open = openPattern.exec(source.slice(index));
     if (!open) {
-      output += '<';
       index += 1;
       continue;
     }
-    const tag = open[1] ?? '';
+    const tag = open[1] === 'script' ? 'script' : 'style';
     const closePattern = new RegExp(`</${tag}\\s*>`, 'g');
     closePattern.lastIndex = index + open[0].length;
     const close = closePattern.exec(source);
     const innerStart = index + open[0].length;
     const innerEnd = close ? close.index : source.length;
-    const inner = source.slice(innerStart, innerEnd);
-    output += open[0] + (tag === 'script' ? maskScriptComments(inner) : maskCssComments(inner));
-    output += close ? close[0] : '';
-    index = close ? close.index + close[0].length : source.length;
+    const end = close ? close.index + close[0].length : source.length;
+    blocks.push({ tag, start: index, innerStart, innerEnd, end });
+    index = end;
   }
-  return output;
+  return blocks;
 }
 
 /**
@@ -328,10 +410,43 @@ function stringLiteralEnd(source: string, openIndex: number): number {
       index += 2;
       continue;
     }
+    // A `${...}` placeholder is an expression that may hold a string of its
+    // own — including another template literal — so it is stepped over as
+    // a unit rather than letting its quotes end the enclosing literal.
+    if (quote === '`' && inner === '$' && source[index + 1] === '{') {
+      index = templatePlaceholderEnd(source, index + 1);
+      continue;
+    }
     index += 1;
     if (inner === quote || (endsAtNewline && inner === '\n')) break;
   }
   return Math.min(index, source.length);
+}
+
+/**
+ * Index just past the `}` that closes the template placeholder whose `{` is
+ * at `source[openBraceIndex]`. Braces are balanced with every nested string
+ * literal stepped over (recursively, so a template inside a placeholder
+ * inside a template still nests); an unterminated placeholder runs to the
+ * end of the source.
+ */
+function templatePlaceholderEnd(source: string, openBraceIndex: number): number {
+  let depth = 0;
+  let index = openBraceIndex;
+  while (index < source.length) {
+    const character = source[index];
+    if (character === '"' || character === "'" || character === '`') {
+      index = stringLiteralEnd(source, index);
+      continue;
+    }
+    if (character === '{') depth++;
+    else if (character === '}') {
+      depth--;
+      if (depth === 0) return index + 1;
+    }
+    index++;
+  }
+  return source.length;
 }
 
 /**
@@ -391,7 +506,7 @@ export function maskScriptComments(source: string): string {
       index = stop;
       continue;
     }
-    if (character === '/' && regexCanStartAt(source, index)) {
+    if (character === '/' && regexCanStartAt(output, source[index + 1])) {
       const end = regexLiteralEnd(source, index);
       output += source.slice(index, end);
       index = end;
@@ -451,12 +566,13 @@ export function toPosixPath(path: string): string {
  * in a CSS class, so `sr-only-v2` and `sr-only-legacy_2` are exactly as
  * broken as `sr-only-focusable` and must be caught the same way.
  *
- * The separator is `[-_]`, not just `-`, for the same reason. `sr-only_focusable`
+ * The separator is `[-_]+`, not just `-`, for the same reason. `sr-only_focusable`
  * is a single valid class name: with a hyphen-only separator the suffix group
  * matched nothing and the trailing `(?![\w-])` boundary then rejected the
- * underscore, so the token slipped through entirely.
+ * underscore, so the token slipped through entirely. BEM-style
+ * `sr-only--focusable` is one too, which is why the separator repeats.
  */
-const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]\w+)*(?![\w-])`;
+const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]+\w+)*(?![\w-])`;
 
 /**
  * Matches the bare token anywhere inside an attribute VALUE. The value has
@@ -520,7 +636,7 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * which is a common enough CSS shape to be a real bypass rather than a
  * theoretical one.
  */
-const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]\w+)*(?![\w-])`, 'g');
+const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]+\w+)*(?![\w-])`, 'g');
 
 /**
  * True when a `.sr-only` match sits in a CSS *selector* position rather than
@@ -637,21 +753,18 @@ export function languageForPath(path: string): SourceLanguage | undefined {
 export function splitSourceRegions(source: string, language?: SourceLanguage): SourceRegion[] {
   if (language === 'css') return [{ kind: 'style', start: 0, text: source }];
   if (language === 'script') return [{ kind: 'script', start: 0, text: source }];
-  const blockPattern = /<(script|style)\b[^>]*>([\s\S]*?)<\/\1\s*>/g;
   const regions: SourceRegion[] = [];
   let cursor = 0;
-  let match: RegExpExecArray | null;
 
-  while ((match = blockPattern.exec(source)) !== null) {
-    if (match.index > cursor)
-      regions.push({ kind: 'markup', start: cursor, text: source.slice(cursor, match.index) });
-    const innerStart = match.index + match[0].indexOf('>') + 1;
+  for (const block of findBlockElements(source)) {
+    if (block.start > cursor)
+      regions.push({ kind: 'markup', start: cursor, text: source.slice(cursor, block.start) });
     regions.push({
-      kind: match[1] === 'script' ? 'script' : 'style',
-      start: innerStart,
-      text: match[2] ?? '',
+      kind: block.tag,
+      start: block.innerStart,
+      text: source.slice(block.innerStart, block.innerEnd),
     });
-    cursor = match.index + match[0].length;
+    cursor = block.end;
   }
 
   if (regions.length === 0) {
@@ -735,9 +848,17 @@ export type TagAttribute =
   | { kind: 'boolean'; name: string }
   | { kind: 'spread'; expression: string; expressionStart: number };
 
-/** Length of the balanced `{...}` starting at `text[openBraceIndex]`, braces included. */
+/**
+ * Length of the balanced `{...}` starting at `text[openBraceIndex]`, braces
+ * included. Balanced on the literal-masked text, so neither a `}` in a
+ * quoted string nor one in a regex literal (`/}/.test(value)`) can close the
+ * expression early.
+ */
 function balancedExpressionLength(text: string, openBraceIndex: number): number {
-  const balance = maskStringLiterals(text.slice(openBraceIndex));
+  const body = text.slice(openBraceIndex);
+  // `{/if}` and `{/each}` close a Svelte block: that `/` opens no regex.
+  const lead = /^\{\s*\/[a-z]+\s*\}/.exec(body)?.[0].length ?? 0;
+  const balance = body.slice(0, lead) + maskScriptLiterals(body.slice(lead));
   let depth = 0;
   let relative = 0;
   for (; relative < balance.length; relative++) {
@@ -876,11 +997,37 @@ const DOM_READ_CALL_PATTERN =
   /(?:contains|matches|closest|querySelector|querySelectorAll|getElementsByClassName)\s*\(\s*["'`]?\.?$/;
 
 /**
- * Whether the text before a literal — or before a bare token inside one, so
- * `matches('.sr-only')` counts too — is a DOM read's opening call.
+ * An expression that reads an element's current class value: `className`,
+ * `classList.value`, or `getAttribute('class')`. Comparing one of these to a
+ * literal (`node.className === 'sr-only'`, in either order) or asking it a
+ * string question (`className.includes('sr-only')`) inspects a class that is
+ * already there; it applies nothing. A plain `=` is not in the comparison
+ * set on purpose — `node.className = 'sr-only'` is a write.
  */
-export function isDomReadArgument(prefix: string): boolean {
-  return DOM_READ_CALL_PATTERN.test(prefix);
+const CLASS_VALUE_READ_SOURCE = String.raw`(?:className|classList\s*\.\s*value|getAttribute\s*\(\s*["']class["']\s*\))`;
+const CLASS_VALUE_COMPARISON_PREFIX_PATTERN = new RegExp(
+  String.raw`${CLASS_VALUE_READ_SOURCE}\s*[!=]==?\s*["'\`]?\.?$`,
+);
+const CLASS_VALUE_STRING_READ_PATTERN = new RegExp(
+  String.raw`${CLASS_VALUE_READ_SOURCE}\s*\.\s*(?:includes|indexOf|startsWith|endsWith)\s*\(\s*["'\`]?\.?$`,
+);
+const CLASS_VALUE_COMPARISON_SUFFIX_PATTERN = new RegExp(
+  String.raw`^\.?["'\`]?\s*[!=]==?\s*(?:[\w$]+\s*\??\.\s*)*${CLASS_VALUE_READ_SOURCE}`,
+);
+
+/**
+ * Whether a literal — given the text before it and, optionally, the text
+ * after it — is a DOM read rather than an applied class: the argument of a
+ * read call (`matches('.sr-only')` counts, so a bare token inside the
+ * literal may be asked about too) or one side of a class-value comparison.
+ */
+export function isDomReadArgument(prefix: string, suffix = ''): boolean {
+  return (
+    DOM_READ_CALL_PATTERN.test(prefix) ||
+    CLASS_VALUE_COMPARISON_PREFIX_PATTERN.test(prefix) ||
+    CLASS_VALUE_STRING_READ_PATTERN.test(prefix) ||
+    CLASS_VALUE_COMPARISON_SUFFIX_PATTERN.test(suffix)
+  );
 }
 /**
  * Replaces every `${...}` placeholder with a single space, balancing braces
@@ -943,7 +1090,8 @@ const HTML_REFERENCE_PATTERN = /\{\s*@html\s+([A-Za-z_$][\w$]*)\s*\}/g;
  * A type annotation between the name and the `=` is stepped over. The walk
  * runs on the regex-masked text so a declaration-shaped sequence inside a
  * regex is not mistaken for one, but reads the literal from the original so
- * its content survives.
+ * its content survives. Only declarations at the top level of the text are
+ * returned — see the scope note inside.
  */
 export function extractStringBindings(
   text: string,
@@ -952,8 +1100,20 @@ export function extractStringBindings(
   const declarationPattern =
     /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[\w$<>[\]|.]+\s*)?=\s*(?=["'`])/g;
   const masked = maskRegexLiterals(text);
+  // Only a top-level declaration can be what the markup refers to: a
+  // binding inside a function or block is out of scope there, so it is
+  // neither registered nor allowed to shadow the top-level one. Depth is
+  // counted on the fully masked text so a brace in a literal is not a scope.
+  const structure = maskStringLiterals(masked);
+  let depth = 0;
+  let structureCursor = 0;
   let declaration: RegExpExecArray | null;
   while ((declaration = declarationPattern.exec(masked)) !== null) {
+    for (; structureCursor < declaration.index; structureCursor++) {
+      if (structure[structureCursor] === '{') depth++;
+      else if (structure[structureCursor] === '}') depth--;
+    }
+    if (depth !== 0) continue;
     const openIndex = declaration.index + declaration[0].length;
     const end = stringLiteralEnd(text, openIndex);
     const closed = end > openIndex + 1 && text[end - 1] === text[openIndex];
@@ -967,7 +1127,7 @@ export function extractStringBindings(
   return bindings;
 }
 
-const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]\w+)*(?=\s|$)`, 'g');
+const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]+\w+)*(?=\s|$)`, 'g');
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
 export function scanSource(
@@ -1025,7 +1185,9 @@ export function scanSource(
     QUOTED_TOKEN_PATTERN.lastIndex = 0;
     let quotedMatch: RegExpExecArray | null;
     while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null) {
-      if (isDomReadArgument(expression.slice(0, quotedMatch.index))) continue;
+      const literalEnd = quotedMatch.index + quotedMatch[0].length;
+      if (isDomReadArgument(expression.slice(0, quotedMatch.index), expression.slice(literalEnd)))
+        continue;
       record(offset + quotedMatch.index);
     }
   };
@@ -1134,16 +1296,33 @@ export function scanSource(
   // class built entirely inside one — `` `${condition ? 'sr-only' : ''}` ``
   // — is scanned the same way before the placeholder is blanked for the
   // outer literal's shape test.
+  //
+  // Literals are located with `stringLiteralEnd`, the same walk every mask
+  // uses, so a template literal nested inside a placeholder is part of the
+  // outer literal rather than its closer. A placeholder's expression is
+  // masked for comments and regex literals before the recursive scan, since
+  // the file-level masks stepped over the whole template as one string.
   const scanScriptLiterals = (literalSource: string, offset: number): void => {
-    const literalPattern = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
-    let literalMatch: RegExpExecArray | null;
-    while ((literalMatch = literalPattern.exec(literalSource)) !== null) {
-      if (isDomReadArgument(literalSource.slice(0, literalMatch.index))) continue;
-      const content = literalMatch[2] ?? '';
-      const contentOffset = offset + literalMatch.index + 1;
-      if (literalMatch[1] === '`') {
+    let index = 0;
+    while (index < literalSource.length) {
+      const quote = literalSource[index] ?? '';
+      if (quote !== '"' && quote !== "'" && quote !== '`') {
+        index += 1;
+        continue;
+      }
+      const start = index;
+      const end = stringLiteralEnd(literalSource, start);
+      index = end;
+      if (end <= start + 1 || literalSource[end - 1] !== quote) continue;
+      if (isDomReadArgument(literalSource.slice(0, start), literalSource.slice(end))) continue;
+      const content = literalSource.slice(start + 1, end - 1);
+      const contentOffset = offset + start + 1;
+      if (quote === '`') {
         for (const placeholder of templatePlaceholders(content))
-          scanScriptLiterals(placeholder.text, contentOffset + placeholder.start);
+          scanScriptLiterals(
+            maskRegexLiterals(maskScriptComments(placeholder.text)),
+            contentOffset + placeholder.start,
+          );
       }
       const shape = blankTemplatePlaceholders(content);
       if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
