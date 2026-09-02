@@ -69,6 +69,15 @@ const CREATION_PARAGRAPH = 'Export actions land in the second release.';
  */
 const KEY_INTERVAL_MS = 60;
 
+/**
+ * The review editor's own selection debounce (`SELECTION_DEBOUNCE_MS` in
+ * `review-editor-impl.svelte`). The specs that assert the selection popover
+ * did NOT appear run the installed clock past this window, so the assertion
+ * is made after the timer would have fired rather than before it.
+ */
+const SELECTION_DEBOUNCE_MS = 20;
+const SELECTION_DEBOUNCE_WINDOW_MS = SELECTION_DEBOUNCE_MS * 5;
+
 async function ready(page: Page): Promise<void> {
 	await gotoHydrated(page, ROUTE);
 	// Both live ProseMirror surfaces only exist after MarkdownEditor mounts inside
@@ -491,7 +500,7 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await ready(page);
 		// The popover's absence below is a negative assertion about a debounced
 		// timer, so the timer is driven rather than waited on: with the clock
-		// installed, `runFor` advances past the editor's 20ms selection debounce
+		// installed, `runFor` advances past the editor's selection debounce
 		// deterministically instead of sleeping for a multiple of it.
 		await page.clock.install();
 		await selectCreationParagraph(page);
@@ -542,7 +551,7 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 			});
 		await reselectParagraph();
 		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(false);
-		await page.clock.runFor(100);
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
 		// A key that cannot move the caret does not release the hold — `Shift` is
@@ -551,7 +560,7 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await page.keyboard.press('Shift');
 		await page.keyboard.press('Tab');
 		await reselectParagraph();
-		await page.clock.runFor(100);
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
 		// The hold is not permanent: a pointer press inside the editor is the user
@@ -560,7 +569,7 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		// of the editor, so the pointer is what brings it back.)
 		await editor.click();
 		await reselectParagraph();
-		await page.clock.runFor(100);
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
 	});
 });
