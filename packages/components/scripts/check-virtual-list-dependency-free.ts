@@ -148,8 +148,11 @@ export function classifySpecifier(
   specifier: string,
   declaredDependencyNames: ReadonlySet<string>,
 ): string | undefined {
-  if (specifier === FORBIDDEN_SPECIFIER) {
-    return 'the virtual-list engine (CIN-204) must stay dependency-free of @tanstack/virtual-core';
+  // Subpaths count. `@tanstack/virtual-core/some-entry` reduces to the package
+  // root, which IS a declared dependency of this package, so an exact-match check
+  // alone would wave a deep import straight through the CIN-204 boundary.
+  if (specifier === FORBIDDEN_SPECIFIER || specifier.startsWith(`${FORBIDDEN_SPECIFIER}/`)) {
+    return FORBIDDEN_SPECIFIER_REASON;
   }
   if (isRelativeSpecifier(specifier)) return undefined;
   if (isSvelteSpecifier(specifier)) return undefined;

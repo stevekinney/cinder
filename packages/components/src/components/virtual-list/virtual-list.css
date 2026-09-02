@@ -11,6 +11,24 @@
     contain: layout paint;
   }
 
+  /*
+   * Dynamic sizing anchors the viewport itself: when a measured row above the
+   * fold turns out to differ from its estimate, the component adds that delta to
+   * the scroll offset before paint.
+   *
+   * A browser with native scroll anchoring would ALSO adjust scrollTop to hold
+   * its own anchor when that row resizes, and the manual correction then applies
+   * the same delta on top of the browser's — over-scrolling by the row's size
+   * difference every time an image loads or a line wraps. Only one of the two can
+   * own the anchor, and this component owns it.
+   *
+   * Scoped to dynamic mode: fixed-height rows never resize, so native anchoring
+   * has nothing to act on there and the default is left alone.
+   */
+  .cinder-virtual-list[data-cinder-dynamic-size='true'] {
+    overflow-anchor: none;
+  }
+
   .cinder-virtual-list__spacer {
     position: relative;
     min-block-size: 100%;

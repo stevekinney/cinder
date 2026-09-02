@@ -333,4 +333,23 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     const names = await loadDeclaredDependencyNames(packageJsonPath);
     expect(names.has('@tanstack/virtual-core')).toBe(true);
   });
+
+  test('rejects a subpath import of the forbidden package', () => {
+    // packageNameFromSpecifier reduces a deep import to the package root, which IS
+    // a declared dependency of this package — so an exact-match check alone waves
+    // `@tanstack/virtual-core/some-entry` straight through the CIN-204 boundary.
+    const declared = new Set([FORBIDDEN_SPECIFIER]);
+
+    expect(classifySpecifier(FORBIDDEN_SPECIFIER, declared)).toBeDefined();
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}/some-entry`, declared)).toBeDefined();
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}/deep/nested`, declared)).toBeDefined();
+  });
+
+  test('does not reject a different package that merely shares the forbidden prefix', () => {
+    // The subpath rule must match on a `/` boundary, not a bare prefix, or a
+    // legitimately-declared neighbour gets caught by it.
+    const declared = new Set([`${FORBIDDEN_SPECIFIER}-adapter`]);
+
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}-adapter`, declared)).toBeUndefined();
+  });
 });

@@ -92,8 +92,7 @@
   const measurementStore = new VirtualListMeasurementStore();
   let rowResizeObserver: ResizeObserver | undefined;
   let previousOffsets: readonly number[] | undefined;
-  let previousDynamicTotalSize = 0;
-  let previousDynamicSizeMode = false;
+  let previousTotalSize = 0;
   let pendingScrollTarget: number | null = $state(null);
   let isDestroyed = false;
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
@@ -156,9 +155,14 @@
     const itemCount = items.length;
     const element = scrollElement;
 
+    // Captured under whichever mode is active RIGHT NOW, so the next run can
+    // evaluate the old scroll position against the geometry it was actually
+    // scrolled within — even if the mode changes in between.
+    const currentTotal = dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight;
+
     if (!hasObservedItemCount) {
       previousItemCount = itemCount;
-      previousDynamicTotalSize = offsets?.totalSize ?? 0;
+      previousTotalSize = currentTotal;
       hasObservedItemCount = true;
       shouldStickAfterAppend = false;
       return;
@@ -168,21 +172,17 @@
       stickToBottom &&
       element !== undefined &&
       itemCount > previousItemCount &&
-      // A run that both switches sizing mode and appends would be comparing the
-      // old scroll position against geometry measured in the other mode. In
-      // particular `previousDynamicTotalSize` stays 0 for as long as fixed mode is
-      // active, so switching to dynamic mid-append would make isAtBottom(…, 0, …)
-      // true for any position and yank a scrolled-up reader to the end.
-      dynamicSize === previousDynamicSizeMode &&
-      isAtBottom(
-        element,
-        dynamicSize ? previousDynamicTotalSize : previousItemCount * resolvedItemHeight,
-        viewportHeight,
-      );
+      // Against the PREVIOUS run's total, not a total re-derived under the mode
+      // that happens to be active now. Re-deriving reads the dynamic total as 0
+      // for as long as fixed mode was active, which yanks a scrolled-up reader to
+      // the end; and skipping the check whenever the mode changed — the obvious
+      // guard against that — instead drops the pin for a reader who genuinely was
+      // at the bottom. Carrying the real previous total is correct in both
+      // directions and needs no mode special-case at all.
+      isAtBottom(element, previousTotalSize, viewportHeight);
 
     previousItemCount = itemCount;
-    previousDynamicTotalSize = offsets?.totalSize ?? 0;
-    previousDynamicSizeMode = dynamicSize;
+    previousTotalSize = currentTotal;
   });
 
   /**

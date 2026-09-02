@@ -961,4 +961,40 @@ describe('VirtualList — dynamicSize', () => {
     await tick();
     expect(spacer.style.height).toBe('2000px');
   });
+
+  test('keeps the pin for an at-bottom reader when dynamicSize flips on during an append', async () => {
+    // The mirror of the scrolled-up case above. Guarding the bottom check on the
+    // mode being unchanged fixes the yank but silently drops the pin for a reader
+    // who genuinely was at the bottom; carrying the previous run's real total is
+    // what makes both directions correct.
+    installFakeResizeObserver();
+    const view = render(VirtualList, {
+      items: makeItems(50),
+      itemHeight: 20,
+      height: '200px',
+      stickToBottom: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    // 50 rows x 20px = 1000, minus a 200px viewport: 800 is the bottom.
+    list.scrollTop = 800;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await view.rerender({
+      items: makeItems(51),
+      itemHeight: 20,
+      height: '200px',
+      stickToBottom: true,
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+    await tick();
+    await tick();
+
+    expect(list.scrollTop).toBe(820);
+  });
 });
