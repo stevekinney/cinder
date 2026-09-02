@@ -78,8 +78,13 @@ describe('non-color component tokens', () => {
       'utf8',
     );
 
-    expect(chatCss).toContain('--cinder-chat-message-max-width: 48rem');
-    // Declared in the CSS sidecar rather than a scoped <style>, which is what
+    // Registered with `@property` (so ancestor overrides inherit) rather than
+    // declared on the component root, where a value would beat inheritance.
+    expect(chatCss).toMatch(
+      /@property --cinder-chat-message-max-width \{\s*syntax: '<length-percentage>';\s*inherits: true;\s*initial-value: 48rem;\s*\}/,
+    );
+    expect(chatCss).not.toMatch(/--cinder-chat-message-max-width:\s*[^;]+;/);
+    // Registered in the CSS sidecar rather than a scoped <style>, which is what
     // makes it reachable by the artifact generator at all.
     expect(chatVariables).toContain('--cinder-chat-message-max-width');
     expect(tokenDocumentation).toContain('`--cinder-chat-message-max-width`');
