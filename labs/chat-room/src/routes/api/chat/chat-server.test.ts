@@ -28,6 +28,15 @@ describe('chat stream cancellation guard', () => {
 		);
 	});
 
+	// The window between the two guards spans `startChatRun`, which opens a
+	// billed provider request — so an abort lost in it costs money as well as
+	// leaving the stream open.
+	test('re-checks the signal after attaching the listener', () => {
+		expect(source).toMatch(
+			/request\.signal\.addEventListener\('abort', onRequestAbort\);[\s\S]*?if \(request\.signal\.aborted\) \{\s+onRequestAbort\(\);\s+return;\s+\}/
+		);
+	});
+
 	test('guards the abort handler as a one-shot', () => {
 		expect(source).toMatch(/function onRequestAbort\(\): void \{\s+if \(settled\) return;/);
 	});

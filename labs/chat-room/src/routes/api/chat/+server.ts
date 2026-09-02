@@ -172,6 +172,20 @@ export const POST: RequestHandler = async ({ request }) => {
 			run = activeRun;
 			request.signal.addEventListener('abort', onRequestAbort);
 
+			// Close the gap between the already-aborted guard at the top of `start`
+			// and the listener above. Everything in between — building the provider,
+			// creating the agent, and `startChatRun` itself — takes real time, and
+			// `startChatRun` is the call that opens a BILLED provider request. A
+			// client that disconnects inside that window fires `abort` with nothing
+			// listening yet, so without this re-check the event is simply lost: the
+			// run keeps going and being billed, and the stream never reaches a
+			// terminal state. `onRequestAbort` is a one-shot, so calling it directly
+			// here is safe even if the listener also fires.
+			if (request.signal.aborted) {
+				onRequestAbort();
+				return;
+			}
+
 			void (async () => {
 				try {
 					const envelope = await pumpChatRun(activeRun, enqueueFrame);
