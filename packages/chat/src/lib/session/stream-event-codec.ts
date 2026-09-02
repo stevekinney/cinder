@@ -360,11 +360,18 @@ function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
  * the holes of a sparse array (`new Array(1)` is assignable to
  * `ChatStreamBlock[]`), `JSON.stringify` then writes each hole as `null`, and
  * the decoder rejects the frame — so the encoder has to refuse it first.
+ *
+ * The array check comes first for the same reason: a JavaScript caller can
+ * hand over `{}` where the type says array, and iterating its undefined
+ * `length` would silently project that to `[]` — a frame the decoder accepts
+ * with a different meaning than the caller sent.
  */
 function projectChatStreamBlockArray(
   blocks: readonly ChatStreamBlock[],
   label: string,
 ): Array<Record<string, unknown>> {
+  if (!Array.isArray(blocks))
+    throw new Error(`Invalid chat stream event: ${label} is not an array`);
   const projected: Array<Record<string, unknown>> = [];
   for (let index = 0; index < blocks.length; index += 1) {
     const block = blocks[index];

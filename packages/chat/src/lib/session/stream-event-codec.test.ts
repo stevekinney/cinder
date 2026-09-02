@@ -1664,6 +1664,32 @@ describe('encoder mirrors every decoder guard', () => {
     expect(() => encodeChatStreamEvent(sparseBlocks)).toThrow(/state.blocks\[0\] is missing/);
     expect(() => encodeChatStreamEvent(sparseToolCalls)).toThrow(/state.toolCalls\[1\] is missing/);
   });
+
+  test('rejects a non-array block collection instead of projecting it to []', () => {
+    // `{}` has no `length`, so a plain index loop runs zero times and would
+    // emit `blocks: []` — a well-formed frame that says something the caller
+    // never sent. The decoder already requires a real array; the encoder
+    // has to as well.
+    const objectBlocks = {
+      type: 'stream:complete',
+      state: { blocks: {}, textContent: '', toolCalls: [], complete: true },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+    const stringToolCalls = {
+      type: 'stream:complete',
+      state: { blocks: [], textContent: '', toolCalls: 'none', complete: true },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+    const arrayLikeBlocks = {
+      type: 'stream:complete',
+      state: { blocks: { length: 0 }, textContent: '', toolCalls: [], complete: true },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(objectBlocks)).toThrow(/state.blocks is not an array/);
+    expect(() => encodeChatStreamEvent(stringToolCalls)).toThrow(/state.toolCalls is not an array/);
+    expect(() => encodeChatStreamEvent(arrayLikeBlocks)).toThrow(/state.blocks is not an array/);
+  });
 });
 
 describe('framing is enforced identically for string and streamed sources', () => {
