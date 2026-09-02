@@ -373,12 +373,15 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     expect(violations[0]?.specifier).toBe('some-dev-only-package');
   });
 
-  test('skips an interpolated template-literal import rather than guessing', () => {
-    // Not statically resolvable by any grep-based scanner. Reporting the raw
-    // interpolation text as a package name would be a false positive.
+  test('rejects an interpolated template-literal import in shipped source', () => {
+    // Round five skipped these as "unresolvable, so do not guess". That was the
+    // wrong call for shipped code: an unresolvable specifier is precisely how a
+    // forbidden or undeclared package walks past a static guard. Shipped source may
+    // not contain one at all; a test file, which never ships, still may.
     const source = 'const helper = await import(`some-${name}-package`);';
 
-    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toHaveLength(1);
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
   });
 
   test('never mistakes prose in a comment for an import', () => {
@@ -427,5 +430,45 @@ describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', (
     expect(violations).toHaveLength(1);
     expect(violations[0]?.specifier).toBe('some-dev-only-package');
     expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('rejects a nonliteral dynamic import in shipped source', () => {
+    // `await import(packageName)` is unresolvable by any static scanner, so
+    // permitting it would leave an opening wide enough to drive the whole guard
+    // through — both the forbidden package and any undeclared one.
+    const fromVariable = [
+      "const packageName = '@tanstack/virtual-core';",
+      'const virtualizer = await import(packageName);',
+    ].join('\n');
+    const fromTemplate = 'const virtualizer = await import(`@tanstack/${name}`);';
+
+    expect(findDependencyViolations(fromVariable, 'virtual-list.ts', new Set())).toHaveLength(1);
+    expect(findDependencyViolations(fromTemplate, 'virtual-list.ts', new Set())).toHaveLength(1);
+  });
+
+  test('allows a nonliteral dynamic import in a test file', () => {
+    // Nothing in a test file ships, so an unresolvable specifier there cannot
+    // reach a consumer.
+    const source = 'const helper = await import(packageName);';
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+  });
+
+  test('exempts a STATIC devDependency import in a test file', () => {
+    // The exemption is about the file never shipping, not about the import syntax.
+    // Applying it only to dynamic imports meant an ordinary static test import of a
+    // devDependency was reported as missing from production dependencies.
+    const source = "import { render } from '@testing-library/svelte';";
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'measurement-window.spec.ts', new Set())).toEqual([]);
+  });
+
+  test('still bans the forbidden package statically imported from a test file', () => {
+    const source = `import { thing } from '${FORBIDDEN_SPECIFIER}/sub';`;
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/sub`);
   });
 });

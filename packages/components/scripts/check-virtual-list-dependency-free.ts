@@ -153,11 +153,18 @@ export function classifySpecifier(
   );
 }
 
-/** One import specifier found by the parser, with the offset it was written at. */
+/** One import found by the parser, with the offset it was written at. */
 type ParsedSpecifier = {
+  /** The resolved specifier, or the raw argument text when it is not a literal. */
   readonly specifier: string;
   readonly offset: number;
   readonly isDynamic: boolean;
+  /**
+   * False for a dynamic `import()` whose argument is not a string literal — a
+   * variable, a concatenation, an interpolated template. Nothing can resolve those
+   * statically, so shipped source is not allowed to contain them here.
+   */
+  readonly isLiteral: boolean;
 };
 
 /**
@@ -201,8 +208,6 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
 
   const literalText = (node: ts.Node): string | undefined => {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) return node.text;
-    // A substituted template is not statically resolvable by any scanner; skip it
-    // rather than report the interpolation text as a package name.
     return undefined;
   };
 
@@ -217,6 +222,7 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
           specifier,
           offset: baseOffset + node.moduleSpecifier.getStart(sourceFile),
           isDynamic: false,
+          isLiteral: true,
         });
       }
     }
@@ -225,13 +231,12 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
       const [argument] = node.arguments;
       if (argument !== undefined) {
         const specifier = literalText(argument);
-        if (specifier !== undefined) {
-          found.push({
-            specifier,
-            offset: baseOffset + argument.getStart(sourceFile),
-            isDynamic: true,
-          });
-        }
+        found.push({
+          specifier: specifier ?? argument.getText(sourceFile),
+          offset: baseOffset + argument.getStart(sourceFile),
+          isDynamic: true,
+          isLiteral: specifier !== undefined,
+        });
       }
     }
 
@@ -242,18 +247,46 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
   return found;
 }
 
+const NONLITERAL_DYNAMIC_IMPORT_REASON =
+  'a dynamic import() in shipped virtual-list source must take a string literal, so this ' +
+  'guard can verify what it resolves to; a variable or interpolated argument cannot be ' +
+  'checked and would bypass both the @tanstack/virtual-core ban and the declared-dependency rule';
+
+/**
+ * Decides whether one parsed import is a violation.
+ *
+ * TEST FILES face ONLY the forbidden-package ban, for every import shape. They
+ * legitimately reach for devDependencies — `import { render } from
+ * '@testing-library/svelte'` as much as the dynamic form — and this guard resolves
+ * bare specifiers against `dependencies` alone, so the full rule would flag every
+ * one of them. Nothing in a test file ships, so the undeclared-import risk does
+ * not apply there.
+ *
+ * SHIPPED SOURCE faces the full rule, and additionally may not use a dynamic
+ * `import()` with a non-literal argument at all: `await import(packageName)` is
+ * unresolvable by any static scanner, so permitting it would leave an opening
+ * wide enough to drive the whole guard through.
+ */
+function resolveViolationReason(
+  parsed: ParsedSpecifier,
+  isTestFile: boolean,
+  declaredDependencyNames: ReadonlySet<string>,
+): string | undefined {
+  if (isTestFile) {
+    return parsed.isLiteral && isForbiddenSpecifier(parsed.specifier)
+      ? FORBIDDEN_SPECIFIER_REASON
+      : undefined;
+  }
+  if (!parsed.isLiteral) return NONLITERAL_DYNAMIC_IMPORT_REASON;
+  return classifySpecifier(parsed.specifier, declaredDependencyNames);
+}
+
 /**
  * Returns one {@link DependencyViolation} per disallowed specifier in `content`.
  * Pure and filesystem-free so it can be exercised directly against fabricated
  * source text (see `_internal/dependency-free.test.ts`).
  *
- * Shipped source faces the full rule. TEST FILES face only the forbidden-package
- * ban: they legitimately reach for devDependencies at module scope — the real
- * `virtual-list.test.ts` does `await import('@testing-library/svelte')` — and this
- * guard resolves bare specifiers against `dependencies` alone, so the full rule
- * would flag every one of them. Nothing in a test file ships, so the
- * undeclared-import risk does not apply there; the `@tanstack/virtual-core` ban
- * still does, subpaths included.
+ * See {@link resolveViolationReason} for the shipped-source versus test-file rules.
  */
 export function findDependencyViolations(
   content: string,
@@ -271,12 +304,7 @@ export function findDependencyViolations(
   const violations: DependencyViolation[] = [];
   for (const block of blocks) {
     for (const parsed of collectSpecifiers(block.text, block.offset)) {
-      const reason =
-        isTestFile && parsed.isDynamic
-          ? isForbiddenSpecifier(parsed.specifier)
-            ? FORBIDDEN_SPECIFIER_REASON
-            : undefined
-          : classifySpecifier(parsed.specifier, declaredDependencyNames);
+      const reason = resolveViolationReason(parsed, isTestFile, declaredDependencyNames);
       if (reason === undefined) continue;
       const lineNumber = lineNumberForOffset(lineStartOffsets, parsed.offset);
       violations.push({
