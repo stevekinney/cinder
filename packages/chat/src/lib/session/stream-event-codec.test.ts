@@ -850,6 +850,18 @@ describe('chat stream event codec', () => {
         expect((decoded.conversation as { id: string }).id).toBe('conversation-1');
     });
 
+    test('does not read a payload field inherited from a polluted prototype', () => {
+      const objectPrototype = Object.prototype as { text?: unknown };
+      objectPrototype.text = 'inherited';
+      try {
+        // `{"type":"text"}` carries no own `text`, so it is not a text frame —
+        // whatever the prototype offers.
+        expect(() => decodeChatStreamEvent('{"type":"text"}')).toThrow('Invalid chat stream event');
+      } finally {
+        delete objectPrototype.text;
+      }
+    });
+
     test('rejects an array carrying frame-shaped properties', () => {
       // It spreads into an ordinary frame but serializes to `[]`, so the
       // typed-transport path would accept what the NDJSON path rejects.

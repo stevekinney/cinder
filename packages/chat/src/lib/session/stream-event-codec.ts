@@ -950,17 +950,22 @@ export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   // NDJSON path rejects. The two paths have to agree, so it is rejected.
   if (!isRecord(raw) || Array.isArray(raw) || !Object.hasOwn(raw, 'type'))
     throw new Error('Invalid chat stream event');
-  // An already-decoded transport hands the guard the producer's own object,
-  // not a JSON.parse result, so its fields — at every depth — can be
-  // accessors that answer differently per read, or carry a `toJSON` that
-  // would rewrite them on their way back out. Rebuilding the whole frame as
-  // plain data first is exactly "what this value would be if it had crossed
-  // the wire", which is the guarantee the typed path owes the NDJSON one:
-  // every read below sees one frozen snapshot, a hook anywhere in the graph
-  // is refused, and an array smuggled in as a nested object arrives as the
-  // `[]` it would serialize to. A parsed JSON string is already plain data,
-  // so the hot streaming path skips the copy.
-  const projected = typeof value === 'string' ? raw : projectPlainJSON(raw, 'frame');
+  // Rebuild the whole frame as plain data before any guard runs — exactly
+  // "what this value would be if it had crossed the wire". An already-decoded
+  // transport hands the guard the producer's own object, whose fields at
+  // every depth can be accessors that answer differently per read or carry a
+  // `toJSON` that would rewrite them on the way back out; every read below
+  // sees one frozen snapshot instead, a hook anywhere in the graph is
+  // refused, and an array smuggled in as a nested object arrives as the `[]`
+  // it would serialize to.
+  //
+  // A `JSON.parse` result gets the same treatment, cost notwithstanding: it
+  // is a plain object, but it still INHERITS from `Object.prototype`, so a
+  // polluted prototype could supply a `text` or an `id` that the field checks
+  // below would read straight through `parsed['text']`. The copy takes own
+  // enumerable keys only, onto a null prototype, which is the same own-key
+  // rule already applied to `type` and the envelope.
+  const projected = projectPlainJSON(raw, 'frame');
   if (!isRecord(projected)) throw new Error('Invalid chat stream event');
   const parsed: Record<string, unknown> = projected;
   if (typeof parsed['type'] !== 'string') throw new Error('Invalid chat stream event');
