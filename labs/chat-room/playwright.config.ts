@@ -122,10 +122,28 @@ export default defineConfig({
 		// spec-owned server would be started once per worker and every copy after
 		// the first would fail to bind. One process for the whole run, with all
 		// per-test state keyed by a marker the test generates.
-		{ command: 'bun src/routes/streaming-fixture.ts', port: 4599 },
+		//
+		// `reuseExistingServer: false` on every entry, written down rather than left
+		// to the default it already equals (CIN-509). Playwright's default for an
+		// UNSET option is `false`, which makes a held port a startup error
+		// (`http://localhost:4599 is already used …`) — the docs' `!process.env.CI`
+		// is a value they recommend setting, not what unset evaluates to. That
+		// matters here because this repository is worked in several git worktrees
+		// at once: with reuse on, a second worktree starting the suite while the
+		// first is running would adopt the first worktree's fixture and preview
+		// and report passes about the wrong tree, with nothing printed. Reuse also
+		// buys almost nothing: `bun run build` for this lab takes about six
+		// seconds, so a single-checkout rerun pays that plus preview startup.
+		// `scripts/playwright-collision-guard.test.ts` occupies a port with a
+		// server from "another checkout" and asserts the run refuses it, so this
+		// cannot drift to `!process.env.CI` unnoticed. `--strictPort` on the dev
+		// server below is not what protects it — under reuse the command never
+		// runs when the port is held — this setting is.
+		{ command: 'bun src/routes/streaming-fixture.ts', port: 4599, reuseExistingServer: false },
 		{
 			command: 'bun run build && bun run preview',
 			port: 4173,
+			reuseExistingServer: false,
 			// Same port as the fixture entry above. `streaming-fixture.ts` exports
 			// `FIXTURE_PORT` so the number has one home, but a `webServer` command is
 			// a string — this is the one place it has to be spelled again.
@@ -143,7 +161,7 @@ export default defineConfig({
 		//
 		// One pair of servers regardless of project count — the webServer plugins
 		// are built once from the top-level config in global setup, not per project.
-		{ command: 'bun run dev -- --port 5175 --strictPort', port: 5175 }
+		{ command: 'bun run dev -- --port 5175 --strictPort', port: 5175, reuseExistingServer: false }
 	],
 	testMatch: '**/*.e2e.{ts,js}'
 });
