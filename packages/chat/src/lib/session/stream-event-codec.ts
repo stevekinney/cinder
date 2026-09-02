@@ -220,8 +220,8 @@ function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
   // producer bug (a runtime cast, a spread of a partial object), and
   // treating it as "bare" would silently drop the sequence and terminal
   // enforcement that the versioned mode exists to provide.
-  const hasWireVersion = 'wireVersion' in event;
-  const hasSequence = 'sequence' in event;
+  const hasWireVersion = Object.hasOwn(event, 'wireVersion');
+  const hasSequence = Object.hasOwn(event, 'sequence');
   if (!hasWireVersion && !hasSequence) return {};
   const wireVersion = hasWireVersion ? event.wireVersion : undefined;
   const sequence = hasSequence ? event.sequence : undefined;
@@ -765,8 +765,10 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
  * could otherwise bypass `wireVersion` validation entirely.
  */
 function readWireEnvelope(parsed: Record<string, unknown>): Partial<WireEnvelope> {
-  const hasWireVersion = 'wireVersion' in parsed;
-  const hasSequence = 'sequence' in parsed;
+  // Own keys only: an inherited `wireVersion` (a polluted prototype, a
+  // non-plain object) is not part of the frame.
+  const hasWireVersion = Object.hasOwn(parsed, 'wireVersion');
+  const hasSequence = Object.hasOwn(parsed, 'sequence');
   if (!hasWireVersion && !hasSequence) return {};
   if (hasWireVersion !== hasSequence) throw new Error('Invalid chat stream event');
   // Read each field once: a typed transport can hand over an object whose
@@ -1188,14 +1190,14 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
   if (guard.sawTerminal)
     throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
 
-  const wireVersion = 'wireVersion' in event ? event.wireVersion : undefined;
+  const wireVersion = Object.hasOwn(event, 'wireVersion') ? event.wireVersion : undefined;
   const frameMode: 'bare' | 'versioned' = wireVersion === undefined ? 'bare' : 'versioned';
   if (guard.mode === undefined) guard.mode = frameMode;
   else if (guard.mode !== frameMode)
     throw new Error('Invalid chat stream event: envelope mode changed mid-stream');
 
   if (frameMode === 'versioned') {
-    const sequence = 'sequence' in event ? event.sequence : undefined;
+    const sequence = Object.hasOwn(event, 'sequence') ? event.sequence : undefined;
     if (sequence === undefined) throw new Error('Invalid chat stream event: missing sequence');
     if (guard.lastSequence !== undefined && sequence <= guard.lastSequence)
       throw new Error('Invalid chat stream event: sequence did not increase');

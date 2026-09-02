@@ -199,6 +199,21 @@ describe('chat stream event codec', () => {
       ).toThrow('Invalid chat stream event');
     });
 
+    test('an inherited envelope key is not part of the frame', () => {
+      // `in` would see a polluted prototype's `wireVersion`; only own keys count.
+      const frame = Object.create({ wireVersion: 1, sequence: 0 }) as Record<string, unknown>;
+      frame['type'] = 'text';
+      frame['text'] = 'hi';
+      const decoded = decodeChatStreamEvent(frame);
+      expect(decoded.type).toBe('text');
+      expect(Object.hasOwn(decoded, 'wireVersion')).toBe(false);
+      expect(Object.hasOwn(decoded, 'sequence')).toBe(false);
+      // The encoder applies the same rule, so the frame round-trips as bare.
+      expect(encodeChatStreamEvent(frame as unknown as ChatStreamEvent)).toBe(
+        '{"type":"text","text":"hi"}\n',
+      );
+    });
+
     test('returns the sequence it validated when a getter answers differently per read', () => {
       const answers = [0, Number.NaN];
       const frame = { type: 'text', text: 'hi', wireVersion: 1 } as Record<string, unknown>;
