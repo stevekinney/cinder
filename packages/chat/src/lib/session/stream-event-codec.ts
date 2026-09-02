@@ -533,7 +533,16 @@ function isLegacyChatStreamEventType(
  * handed in — this makes the encoder symmetric with the field-by-field
  * decoder above instead of trusting the static type at runtime.
  */
-function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown> {
+function projectChatStreamEvent(rawEvent: ChatStreamEvent): Record<string, unknown> {
+  // Own enumerable fields only, the same rule the decoder applies: a caller
+  // can hand over `Object.create({ type: 'text', text: 'secret' })`, whose
+  // fields all live on its prototype, and reading through would put data the
+  // object does not actually carry — polluted or merely unintended — onto the
+  // wire, in a frame the decoder would then reject. The copy is shallow: each
+  // field's own projection below is what validates its contents, and it is
+  // also what reads any nested accessor exactly once.
+  if (!isRecord(rawEvent)) throw new Error('Invalid chat stream event');
+  const event = { ...rawEvent } as ChatStreamEvent;
   const envelope = projectWireEnvelope(event);
   const projected = projectChatStreamEventBody(event, envelope);
   // The decoder requires a complete envelope on every CIN-507 member (only
@@ -1405,7 +1414,7 @@ export async function* decodeChatStreamEvents(
     yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
       // The whole string is already buffered, so the final fragment is
       // checked before the terminal frame is handed over, too.
-      assertStreamFramed(leftover, guard);
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
       if (leftover.trim()) decodeAndTrack(leftover.trim());
     });
     yield* finishStream(leftover);

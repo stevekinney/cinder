@@ -862,6 +862,28 @@ describe('chat stream event codec', () => {
       }
     });
 
+    test('does not encode frame fields that live only on the prototype', () => {
+      // Every field is inherited, so the object itself carries no frame at
+      // all — the decoder already rejects it, and the encoder must not
+      // materialize it onto the wire.
+      expect(() =>
+        encodeChatStreamEvent(Object.create({ type: 'text', text: 'secret' }) as ChatStreamEvent),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('reports a string framing failure through the protocol hook', async () => {
+      const seen: unknown[] = [];
+      const events = decodeChatStreamEvents(
+        '{"type":"run.aborted","wireVersion":1,"sequence":0}\nleftover',
+        { onProtocolError: (error) => seen.push(error) },
+      );
+      // The same content delivered as bytes notifies; this representation
+      // must notify too, or a consumer's cleanup depends on how the caller
+      // happened to deliver the stream.
+      await expect(events.next()).rejects.toThrow('Invalid chat stream event');
+      expect(seen).toHaveLength(1);
+    });
+
     test('rejects an array carrying frame-shaped properties', () => {
       // It spreads into an ordinary frame but serializes to `[]`, so the
       // typed-transport path would accept what the NDJSON path rejects.
