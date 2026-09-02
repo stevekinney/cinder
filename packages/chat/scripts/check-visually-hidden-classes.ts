@@ -115,6 +115,55 @@ const blank = (match: string): string => match.replace(/[^\n]/g, ' ');
  * real `class="sr-only"`. A false negative there is worse than the false
  * positive it would avoid.
  */
+/**
+ * Blanks the CONTENTS of string literals — double, single, and template —
+ * preserving length and newlines so offsets and line numbers still line up.
+ * The delimiters themselves are kept, so a quoted region remains visible as a
+ * quoted region.
+ *
+ * Two separate findings needed this. A CSS-looking selector stored in a
+ * script (`const example = '.sr-only {'`) satisfied the selector-context scan
+ * at the brace inside the string, and a `)` inside a `classNames()` argument
+ * (`classNames(format(')'), 'sr-only')`) unbalanced the paren tracker and
+ * truncated the extracted arguments before the token. Both are "the scanner
+ * cannot tell code from text", and masking is the smallest honest fix short
+ * of parsing.
+ *
+ * Applied ONLY where quoted text should be inert. The passes that
+ * deliberately look inside strings — the quoted-token and `classNames()`
+ * scanners — still run against the unmasked source.
+ */
+export function maskStringLiterals(source: string): string {
+  let output = '';
+  let index = 0;
+  while (index < source.length) {
+    const character = source[index] ?? '';
+    if (character !== '"' && character !== "'" && character !== '`') {
+      output += character;
+      index += 1;
+      continue;
+    }
+    output += character;
+    index += 1;
+    while (index < source.length) {
+      const inner = source[index] ?? '';
+      if (inner === '\\') {
+        output += '  ';
+        index += 2;
+        continue;
+      }
+      if (inner === character) {
+        output += inner;
+        index += 1;
+        break;
+      }
+      output += inner === '\n' ? '\n' : ' ';
+      index += 1;
+    }
+  }
+  return output;
+}
+
 export function maskComments(source: string): string {
   return source
     .replace(/<!--[\s\S]*?-->/g, blank)
@@ -137,8 +186,13 @@ export function toPosixPath(path: string): string {
  * Suffix segments use `\w`, not `[a-zA-Z]`: digits and underscores are legal
  * in a CSS class, so `sr-only-v2` and `sr-only-legacy_2` are exactly as
  * broken as `sr-only-focusable` and must be caught the same way.
+ *
+ * The separator is `[-_]`, not just `-`, for the same reason. `sr-only_focusable`
+ * is a single valid class name: with a hyphen-only separator the suffix group
+ * matched nothing and the trailing `(?![\w-])` boundary then rejected the
+ * underscore, so the token slipped through entirely.
  */
-const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:-\w+)*(?![\w-])`;
+const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]\w+)*(?![\w-])`;
 
 /**
  * Matches a static `class="..."` / `class='...'` attribute containing the
@@ -190,7 +244,7 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * which is a common enough CSS shape to be a real bypass rather than a
  * theoretical one.
  */
-const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:-\w+)*(?![\w-])`, 'g');
+const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]\w+)*(?![\w-])`, 'g');
 
 /**
  * True when a `.sr-only` match sits in a CSS *selector* position rather than
@@ -230,14 +284,19 @@ export function extractClassNamesCallArguments(
   const calls: Array<{ startIndex: number; argumentsText: string }> = [];
   const callPattern = /classNames\s*\(/g;
   let match: RegExpExecArray | null;
+  // Balance parentheses against string-masked text so a `)` inside a quoted
+  // argument — `classNames(format(')'), 'sr-only')` — cannot close the call
+  // early and truncate the extracted arguments before the token. Offsets are
+  // preserved by the mask, so slices still come from the original source.
+  const balanceSource = maskStringLiterals(source);
 
   while ((match = callPattern.exec(source)) !== null) {
     const openParenIndex = match.index + match[0].length - 1;
     let depth = 0;
     let index = openParenIndex;
     for (; index < source.length; index++) {
-      if (source[index] === '(') depth++;
-      else if (source[index] === ')') {
+      if (balanceSource[index] === '(') depth++;
+      else if (balanceSource[index] === ')') {
         depth--;
         if (depth === 0) break;
       }
@@ -280,10 +339,15 @@ export function scanSource(original: string): Array<{ lineNumber: number; line: 
   // CSS selectors are filtered by context: the same text appears in
   // declaration values, url() paths, and script string literals, none of
   // which define or apply a class.
+  // Run against string-masked text: a CSS-looking selector stored in a script
+  // (`const example = '.sr-only {'`) applies no class, and its brace would
+  // otherwise satisfy the selector-context scan.
+  const cssSource = maskStringLiterals(source);
   CSS_SELECTOR_PATTERN.lastIndex = 0;
   let cssMatch: RegExpExecArray | null;
-  while ((cssMatch = CSS_SELECTOR_PATTERN.exec(source)) !== null) {
-    if (isCssSelectorContext(source, cssMatch.index + cssMatch[0].length)) record(cssMatch.index);
+  while ((cssMatch = CSS_SELECTOR_PATTERN.exec(cssSource)) !== null) {
+    if (isCssSelectorContext(cssSource, cssMatch.index + cssMatch[0].length))
+      record(cssMatch.index);
   }
 
   // `classNames(...)` calls: flag a bare token quoted among the arguments.

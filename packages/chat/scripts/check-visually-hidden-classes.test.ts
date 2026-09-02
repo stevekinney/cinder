@@ -4,6 +4,7 @@ import {
   extractClassNamesCallArguments,
   isCssSelectorContext,
   isTestPath,
+  maskStringLiterals,
   scan,
   scanSource,
 } from './check-visually-hidden-classes.ts';
@@ -267,5 +268,47 @@ describe('scan — live packages/chat source tree', () => {
   test('finds zero bare sr-only usage sites in src/lib (CIN-505 regression guard)', async () => {
     const flags = await scan();
     expect(flags).toEqual([]);
+  });
+});
+
+// A third round of review findings, all of the same family: the scanner could
+// not tell code from text, in three different places.
+describe('scanSource — underscore suffixes and string-literal awareness', () => {
+  test('flags an underscore-separated suffix', () => {
+    expect(scanSource('<span class="sr-only_focusable">x</span>')).toHaveLength(1);
+    expect(scanSource('.sr-only_focusable {\n  position: absolute;\n}')).toHaveLength(1);
+  });
+
+  test('still ignores the prefixed utility with an underscore suffix', () => {
+    expect(scanSource('<span class="cinder-sr-only_focusable">x</span>')).toHaveLength(0);
+  });
+
+  test('does not flag a CSS-looking selector stored in a script string', () => {
+    expect(scanSource("<script>\n  const example = '.sr-only {';\n</script>")).toHaveLength(0);
+    expect(scanSource('const template = `.sr-only { position: absolute; }`;')).toHaveLength(0);
+  });
+
+  test('still flags a real selector in a file that also contains such a string', () => {
+    expect(
+      scanSource(
+        "<script>\n  const example = '.sr-only {';\n</script>\n<style>\n.sr-only { position: absolute; }\n</style>",
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('balances classNames parentheses across a quoted closing paren', () => {
+    // The `)` inside the quoted argument used to close the call early, so the
+    // extractor never reached the bare token that followed it.
+    const source = "const hidden = classNames(format(')'), 'sr-only');";
+    expect(extractClassNamesCallArguments(source)[0]?.argumentsText).toContain('sr-only');
+    expect(scanSource(source)).toHaveLength(1);
+  });
+
+  test('maskStringLiterals preserves offsets and newlines', () => {
+    const source = "a = 'xy';\nb = 2;";
+    const masked = maskStringLiterals(source);
+    expect(masked).toHaveLength(source.length);
+    expect(masked.split('\n')).toHaveLength(2);
+    expect(masked).not.toContain('xy');
   });
 });
