@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { createConversationHistory } from 'conversationalist';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
 import {
   decodeChatStreamEvent,
@@ -1297,5 +1298,137 @@ describe('chat stream event codec', () => {
         'Invalid chat stream event',
       );
     });
+  });
+});
+
+// Every case below was raised on review. They share a theme worth naming: the
+// encoder's job is to refuse to produce a frame its own decoder would reject,
+// because by the time the decoder sees a bad frame the payload has already
+// crossed the wire.
+describe('encoder refuses to emit frames its decoder would reject', () => {
+  const envelope = { wireVersion: 1 as const, sequence: 1 };
+
+  test('rejects an unsupported discriminator instead of emitting "undefined"', () => {
+    // A JavaScript caller, or any runtime-cast value, can arrive with a type
+    // the union does not contain. Falling through the switch returned
+    // `undefined`, and `JSON.stringify(undefined)` is `undefined` — so the
+    // encoder emitted the literal frame `undefined\n`.
+    const smuggled = { type: 'run.exploded', ...envelope } as unknown as ChatStreamEvent;
+    expect(() => encodeChatStreamEvent(smuggled)).toThrow(/unsupported type run\.exploded/);
+  });
+
+  test('rejects a run error whose kind or code is outside the vocabulary', () => {
+    const base = { name: 'AgentRunError', message: 'boom' };
+    const badKind = {
+      type: 'run.error',
+      error: { ...base, kind: 'meltdown', code: 'UNKNOWN' },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+    const badCode = {
+      type: 'run.error',
+      error: { ...base, kind: 'generate', code: 'KABOOM' },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(badKind)).toThrow(/unsupported run error kind meltdown/);
+    expect(() => encodeChatStreamEvent(badCode)).toThrow(/unsupported run error code KABOOM/);
+  });
+
+  test('rejects a run error whose name or message is not a string', () => {
+    const event = {
+      type: 'run.error',
+      error: { name: 'AgentRunError', message: 42, kind: 'generate', code: 'UNKNOWN' },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).toThrow(/name and message must be strings/);
+  });
+
+  test('refuses a completed conversation carrying extra top-level fields', () => {
+    const conversation = {
+      ...createConversationHistory({ id: 'c1' }),
+      // Structural typing lets this ride along on an assigned variable.
+      providerTrace: { apiKeyHint: 'sk-should-never-cross-the-wire' },
+    };
+    const event = {
+      type: 'run.completed',
+      conversation,
+      content: 'done',
+      usage: { prompt: 1, completion: 1, total: 2 },
+      finishReason: 'stop',
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    // `isConversationHistory` rejects extra top-level keys, not just missing
+    // required ones, so validating IS the projection here — the frame never
+    // gets built and the metadata never reaches the wire.
+    expect(() => encodeChatStreamEvent(event)).toThrow(/not a valid ConversationHistory/);
+
+    const clean = {
+      ...event,
+      conversation: createConversationHistory({ id: 'c1' }),
+    } as unknown as ChatStreamEvent;
+    expect(encodeChatStreamEvent(clean)).toContain('"id":"c1"');
+  });
+});
+
+describe('decoder byte handling at EOF', () => {
+  test('rejects a stream truncated mid-multibyte after a terminal frame', async () => {
+    // The terminal frame and its newline are complete, so the guard is
+    // satisfied — but the stream then ends partway through a multibyte
+    // character. Those bytes sit inside TextDecoder, not in the line buffer,
+    // so without a final flush the truncation is invisible and the stream is
+    // accepted as a clean, complete response.
+    const terminal = `${JSON.stringify({
+      type: 'run.completed',
+      conversation: createConversationHistory({ id: 'c1' }),
+      content: 'done',
+      usage: { prompt: 1, completion: 1, total: 2 },
+      finishReason: 'stop',
+      wireVersion: 1,
+      sequence: 1,
+    })}\n`;
+
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield new TextEncoder().encode(terminal);
+      // First two bytes of a three-byte UTF-8 sequence (U+20AC EURO SIGN).
+      yield new Uint8Array([0xe2, 0x82]);
+    }
+
+    const collect = async (): Promise<void> => {
+      for await (const _event of decodeChatStreamEvents(chunks())) {
+        // Drain; the failure is expected at EOF, after the terminal frame.
+      }
+    };
+
+    // The retained bytes surface as a replacement character, which is not
+    // valid JSON — the point is that EOF is rejected rather than silently
+    // accepted as a clean, complete stream.
+    await expect(collect()).rejects.toThrow();
+  });
+});
+
+describe('legacy envelope is all-or-nothing at the type level', () => {
+  test('accepts a bare legacy member and a fully-enveloped one', () => {
+    const bare: ChatStreamEvent = { type: 'text', text: 'x' };
+    const enveloped: ChatStreamEvent = { type: 'text', text: 'x', wireVersion: 1, sequence: 1 };
+
+    expect(encodeChatStreamEvent(bare)).toContain('"text":"x"');
+    expect(encodeChatStreamEvent(enveloped)).toContain('"wireVersion":1');
+  });
+
+  test('rejects a half-envelope at compile time', () => {
+    // A plain `T` branch would ACCEPT this: excess-property checking does not
+    // reject `wireVersion`, because that property is known to another member
+    // of the same union. The `?: never` keys on the bare branch are what make
+    // it match neither branch. If this stops erroring, the runtime contract
+    // and the public type have silently diverged again.
+    // @ts-expect-error — `wireVersion` without `sequence` is not a valid frame.
+    const halfVersion: ChatStreamEvent = { type: 'text', text: 'x', wireVersion: 1 };
+    // @ts-expect-error — `sequence` without `wireVersion` is not a valid frame.
+    const halfSequence: ChatStreamEvent = { type: 'text', text: 'x', sequence: 1 };
+
+    expect(() => encodeChatStreamEvent(halfVersion)).toThrow();
+    expect(() => encodeChatStreamEvent(halfSequence)).toThrow();
   });
 });

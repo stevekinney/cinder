@@ -33,8 +33,15 @@ type WireEnvelope = {
  * `sequence`) with no cast required, even though `encodeChatStreamEvent`
  * throws on it and the decoder rejects it — this union keeps the public
  * type honest about the runtime contract.
+ *
+ * The `?: never` keys on the bare branch are load-bearing. A plain `T` there
+ * is not enough: excess-property checking does not reject `wireVersion`,
+ * because the property IS known to another member of the same union, so
+ * `{ type: 'text', text: 'x', wireVersion: 1 }` would typecheck against the
+ * bare branch even under `exactOptionalPropertyTypes`. Declaring the keys as
+ * optional-`never` makes that half-envelope match neither branch.
  */
-type WithOptionalEnvelope<T> = T | (T & WireEnvelope);
+type WithOptionalEnvelope<T> = (T & { wireVersion?: never; sequence?: never }) | (T & WireEnvelope);
 
 /** The one supported wire version. Any other value is rejected outright. */
 const SUPPORTED_WIRE_VERSION = 1;
@@ -342,6 +349,17 @@ function projectChatStreamState(state: ChatStreamState): Record<string, unknown>
  * actually stops that: nothing re-attaches `cause` by construction.
  */
 function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSerializedRunError {
+  // Rebuilding alone only drops `cause`; it does not stop a runtime-cast
+  // producer supplying a `kind`/`code` outside the published vocabulary, or
+  // non-string `name`/`message`. The decoder validates all four with these
+  // same guards, so without this the encoder could emit a frame its own
+  // decoder rejects — after the bad payload had already crossed the wire.
+  if (typeof error.name !== 'string' || typeof error.message !== 'string')
+    throw new Error('Invalid chat stream event: run error name and message must be strings');
+  if (!isChatAgentRunErrorKind(error.kind))
+    throw new Error(`Invalid chat stream event: unsupported run error kind ${String(error.kind)}`);
+  if (!isChatAgentRunErrorCode(error.code))
+    throw new Error(`Invalid chat stream event: unsupported run error code ${String(error.code)}`);
   return { name: error.name, message: error.message, kind: error.kind, code: error.code };
 }
 
@@ -543,6 +561,13 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       }
       return {
         type: 'run.completed',
+        // Passed through under the guard's warrant, deliberately not rebuilt.
+        // `isConversationHistory` rejects a value carrying EXTRA top-level
+        // keys, not merely one missing required ones — verified against the
+        // installed package — so the validation above already refuses a
+        // conversation with provider-only metadata attached. Rebuilding would
+        // add no guarantee, and reimplementing the message schema to do it
+        // properly would be a maintenance liability.
         conversation: event.conversation,
         content: event.content,
         usage: projectTokenUsage(event.usage),
@@ -561,6 +586,18 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       const projected: Record<string, unknown> = { type: 'run.aborted' };
       if (event.reason !== undefined) projected['reason'] = event.reason;
       return { ...projected, ...envelope };
+    }
+    default: {
+      // TypeScript proves this switch exhaustive, so `unsupported` is `never`
+      // — but a JavaScript caller or a runtime-cast value can still arrive
+      // with an unknown `type`. Falling through returned `undefined`, and
+      // `JSON.stringify(undefined)` is `undefined`, so the encoder emitted
+      // the literal frame `undefined\n`: malformed NDJSON, produced silently,
+      // and diagnosed far from the producer that caused it.
+      const unsupported: never = event;
+      throw new Error(
+        `Invalid chat stream event: unsupported type ${String((unsupported as { type?: unknown }).type)}`,
+      );
     }
   }
 }
@@ -1083,6 +1120,11 @@ export async function* decodeChatStreamEvents(
         if (done) break;
         yield* appendChunk(value);
       }
+      // Flush any bytes the decoder retained. A stream ending mid-multibyte
+      // sequence leaves them inside `TextDecoder`, not in `buffer`, so
+      // without this final `decode()` the truncation is invisible: the
+      // buffer looks empty and a genuinely truncated stream is accepted.
+      buffer += decoder.decode();
       if (buffer.trim()) yield decodeAndTrack(buffer.trim());
       assertStreamTerminated(guard);
       completed = true;
@@ -1100,6 +1142,10 @@ export async function* decodeChatStreamEvents(
   } else {
     for await (const chunk of source) yield* appendChunk(chunk);
   }
+  // Same flush as the ReadableStream branch above: bytes retained mid
+  // multibyte sequence live inside TextDecoder, not in `buffer`, so skipping
+  // this makes a truncated stream look like a clean one.
+  buffer += decoder.decode();
   if (buffer.trim()) yield decodeAndTrack(buffer.trim());
   assertStreamTerminated(guard);
 }
