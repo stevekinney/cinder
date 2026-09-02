@@ -199,6 +199,17 @@ describe('chat stream event codec', () => {
       ).toThrow('Invalid chat stream event');
     });
 
+    test('returns the sequence it validated when a getter answers differently per read', () => {
+      const answers = [0, Number.NaN];
+      const frame = { type: 'text', text: 'hi', wireVersion: 1 } as Record<string, unknown>;
+      Object.defineProperty(frame, 'sequence', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      const decoded = decodeChatStreamEvent(frame);
+      expect(decoded.sequence).toBe(0);
+    });
+
     test('rejects a legacy member carrying only wireVersion', () => {
       expect(() => decodeChatStreamEvent({ type: 'text', text: 'hi', wireVersion: 1 })).toThrow(
         'Invalid chat stream event',
@@ -890,6 +901,22 @@ describe('chat stream event codec', () => {
       expect(() => encodeChatStreamEvent(event)).toThrow(
         'Invalid chat stream event: stream:text-delta requires a wire envelope',
       );
+    });
+
+    test('reads the discriminator once so a stateful type getter cannot dodge the envelope check', () => {
+      // A getter that answers `text` to the legacy check and `run.aborted`
+      // to the switch would otherwise encode a bare new-vocabulary frame
+      // that the decoder then rejects.
+      const answers: Array<ChatStreamEvent['type']> = ['text', 'run.aborted'];
+      const event = { text: 'hi' } as Record<string, unknown>;
+      Object.defineProperty(event, 'type', {
+        enumerable: true,
+        get: () => answers.shift() ?? 'run.aborted',
+      });
+      // Whichever answer the encoder acts on, the frame it emits must be one
+      // its own decoder accepts — a bare `run.aborted` frame is not.
+      const frame = encodeChatStreamEvent(event as unknown as ChatStreamEvent);
+      expect(decodeChatStreamEvent(frame).type).toBe('text');
     });
 
     test('rejects encoding tool.settled when result.callId disagrees with toolCallId', () => {

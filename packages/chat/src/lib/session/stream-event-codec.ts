@@ -525,12 +525,27 @@ function isLegacyChatStreamEventType(
  */
 function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown> {
   const envelope = projectWireEnvelope(event);
+  const projected = projectChatStreamEventBody(event, envelope);
   // The decoder requires a complete envelope on every CIN-507 member (only
   // the three legacy members tolerate a bare frame) — the encoder must
-  // refuse to produce a frame its own decoder would then reject.
-  if (!isLegacyChatStreamEventType(event.type) && envelope.wireVersion === undefined) {
-    throw new Error(`Invalid chat stream event: ${event.type} requires a wire envelope`);
+  // refuse to produce a frame its own decoder would then reject. The check
+  // runs against the `type` the switch below actually wrote, not a second
+  // read of `event.type`: an accessor-backed discriminator could otherwise
+  // answer a legacy name here and a new-vocabulary name to the switch,
+  // slipping a bare frame past this guard.
+  if (!isLegacyChatStreamEventType(projected.type) && envelope.wireVersion === undefined) {
+    throw new Error(`Invalid chat stream event: ${projected.type} requires a wire envelope`);
   }
+  return projected;
+}
+
+/** A projected frame whose `type` is the literal the encoder itself wrote. */
+type ProjectedChatStreamEvent = Record<string, unknown> & { type: ChatStreamEvent['type'] };
+
+function projectChatStreamEventBody(
+  event: ChatStreamEvent,
+  envelope: Partial<WireEnvelope>,
+): ProjectedChatStreamEvent {
   switch (event.type) {
     case 'text':
       return { type: 'text', text: requireString(event.text, 'text'), ...envelope };
@@ -612,7 +627,6 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       };
     case 'tool.progress': {
       const projected: Record<string, unknown> = {
-        type: 'tool.progress',
         toolCallId: requireString(event.toolCallId, 'toolCallId'),
         toolName: requireString(event.toolName, 'toolName'),
       };
@@ -627,7 +641,7 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       }
       if (event.message !== undefined)
         projected['message'] = requireString(event.message, 'message');
-      return { ...projected, ...envelope };
+      return { type: 'tool.progress', ...projected, ...envelope };
     }
     case 'tool.settled':
       // Mirrors the decoder's callId/toolCallId agreement check — a
@@ -656,12 +670,11 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       };
     case 'tool.policy-denied': {
       const projected: Record<string, unknown> = {
-        type: 'tool.policy-denied',
         toolCallId: requireString(event.toolCallId, 'toolCallId'),
         toolName: requireString(event.toolName, 'toolName'),
       };
       if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
-      return { ...projected, ...envelope };
+      return { type: 'tool.policy-denied', ...projected, ...envelope };
     }
     case 'run.completed':
       // `isConversationHistory` uses Conversationalist's `.strict()` Zod
@@ -702,9 +715,9 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         ...envelope,
       };
     case 'run.aborted': {
-      const projected: Record<string, unknown> = { type: 'run.aborted' };
+      const projected: Record<string, unknown> = {};
       if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
-      return { ...projected, ...envelope };
+      return { type: 'run.aborted', ...projected, ...envelope };
     }
     default: {
       // TypeScript proves this switch exhaustive, so `unsupported` is `never`
@@ -756,10 +769,14 @@ function readWireEnvelope(parsed: Record<string, unknown>): Partial<WireEnvelope
   const hasSequence = 'sequence' in parsed;
   if (!hasWireVersion && !hasSequence) return {};
   if (hasWireVersion !== hasSequence) throw new Error('Invalid chat stream event');
-  if (parsed['wireVersion'] !== SUPPORTED_WIRE_VERSION)
-    throw new Error('Invalid chat stream event');
-  if (!isNonNegativeSafeInteger(parsed['sequence'])) throw new Error('Invalid chat stream event');
-  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence: parsed['sequence'] };
+  // Read each field once: a typed transport can hand over an object whose
+  // accessors answer differently per read, and the value returned here must
+  // be the one that was validated.
+  const wireVersion = parsed['wireVersion'];
+  const sequence = parsed['sequence'];
+  if (wireVersion !== SUPPORTED_WIRE_VERSION) throw new Error('Invalid chat stream event');
+  if (!isNonNegativeSafeInteger(sequence)) throw new Error('Invalid chat stream event');
+  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence };
 }
 
 /** A fully-present wire envelope, required on every new (CIN-507) member. */
