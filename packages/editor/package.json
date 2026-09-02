@@ -31,6 +31,8 @@
     ".": {
       "types": "./dist/index.d.ts",
       "bun": "./src/lib/index.ts",
+      "browser": "./src/lib/index.ts",
+      "svelte": "./src/lib/index.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
@@ -120,66 +122,88 @@
     "./anchoring": {
       "types": "./dist/anchoring.d.ts",
       "bun": "./src/lib/anchoring.ts",
+      "browser": "./src/lib/anchoring.ts",
+      "svelte": "./src/lib/anchoring.ts",
       "import": "./dist/anchoring.js",
       "default": "./dist/anchoring.js"
     },
     "./comments": {
       "types": "./dist/comments/index.d.ts",
       "bun": "./src/lib/comments/index.ts",
+      "browser": "./src/lib/comments/index.ts",
+      "svelte": "./src/lib/comments/index.ts",
       "import": "./dist/comments/index.js",
       "default": "./dist/comments/index.js"
     },
     "./comments/types": {
       "types": "./dist/comments/types.d.ts",
       "bun": "./src/lib/comments/types.ts",
+      "browser": "./src/lib/comments/types.ts",
+      "svelte": "./src/lib/comments/types.ts",
       "import": "./dist/comments/types.js",
       "default": "./dist/comments/types.js"
     },
     "./export": {
       "types": "./dist/export/index.d.ts",
       "bun": "./src/lib/export/index.ts",
+      "browser": "./src/lib/export/index.ts",
+      "svelte": "./src/lib/export/index.ts",
       "import": "./dist/export/index.js",
       "default": "./dist/export/index.js"
     },
     "./export/types": {
       "types": "./dist/export/types.d.ts",
       "bun": "./src/lib/export/types.ts",
+      "browser": "./src/lib/export/types.ts",
+      "svelte": "./src/lib/export/types.ts",
       "import": "./dist/export/types.js",
       "default": "./dist/export/types.js"
     },
     "./session": {
       "types": "./dist/session/index.d.ts",
       "bun": "./src/lib/session/index.ts",
+      "browser": "./src/lib/session/index.ts",
+      "svelte": "./src/lib/session/index.ts",
       "import": "./dist/session/index.js",
       "default": "./dist/session/index.js"
     },
     "./session/types": {
       "types": "./dist/session/types.d.ts",
       "bun": "./src/lib/session/types.ts",
+      "browser": "./src/lib/session/types.ts",
+      "svelte": "./src/lib/session/types.ts",
       "import": "./dist/session/types.js",
       "default": "./dist/session/types.js"
     },
     "./shared/anchor-types": {
       "types": "./dist/shared/anchor-types.d.ts",
       "bun": "./src/lib/shared/anchor-types.ts",
+      "browser": "./src/lib/shared/anchor-types.ts",
+      "svelte": "./src/lib/shared/anchor-types.ts",
       "import": "./dist/shared/anchor-types.js",
       "default": "./dist/shared/anchor-types.js"
     },
     "./editor": {
       "types": "./dist/editor/index.d.ts",
       "bun": "./src/lib/editor/index.ts",
+      "browser": "./src/lib/editor/index.ts",
+      "svelte": "./src/lib/editor/index.ts",
       "import": "./dist/editor/index.js",
       "default": "./dist/editor/index.js"
     },
     "./editor/component-runtime": {
       "types": "./dist/editor/component-runtime.d.ts",
       "bun": "./src/lib/editor/component-runtime.ts",
+      "browser": "./src/lib/editor/component-runtime.ts",
+      "svelte": "./src/lib/editor/component-runtime.ts",
       "import": "./dist/editor/component-runtime.js",
       "default": "./dist/editor/component-runtime.js"
     },
     "./editor/test-utilities": {
       "types": "./dist/editor/test-utilities.d.ts",
       "bun": "./src/lib/editor/test-utilities.ts",
+      "browser": "./src/lib/editor/test-utilities.ts",
+      "svelte": "./src/lib/editor/test-utilities.ts",
       "import": "./dist/editor/test-utilities.js",
       "default": "./dist/editor/test-utilities.js"
     }

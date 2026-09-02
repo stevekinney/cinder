@@ -119,9 +119,11 @@ import {
   loadShellServerRenderer,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
+  resetPageServerRendererPromise,
   resetShellRendererWarmupState,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
+  type PageServerRendererLoadResult,
   type ShellServerRendererLoadResult,
 } from './ssr-renderer.ts';
 import {
@@ -437,7 +439,9 @@ async function renderComponentPage(
       console.error(`[playground] featured example SSR failed for ${componentName}:`, error);
     }
     try {
-      const { renderComponentPageBody } = await loadPageServerRenderer();
+      const {
+        renderers: { renderComponentPageBody },
+      } = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({
         componentName,
         documentation,
@@ -1353,6 +1357,104 @@ export async function runGenerationCheckedWarmup<T>(
   };
 }
 
+/**
+ * Compile the documentation-page server renderer before readiness is advertised.
+ *
+ * `startServer`'s warmup already prepares the SHELL renderer, whose own comment
+ * promises requests "must never pay the cold Svelte server compilation cost on
+ * the first navigation". That guarantee did not actually cover `GET /page/:name`:
+ * {@link loadPageServerRenderer} is memoized only on its first CALL, and its one
+ * call site is the request handler itself. So `/ping` answered 200 -- flipping
+ * `startupReady` -- while `page-server-entry.ts` was still uncompiled, and the
+ * first page request paid a full uncached `Bun.build()` of that entry.
+ *
+ * That is a latency gap, not a correctness one, but `validate-playground.ts`
+ * crawls every route under a fixed 5s `AbortSignal.timeout` with no warmup and
+ * no retry, so the alphabetically-first component absorbed the entire compile
+ * and intermittently blew the budget -- turning main red after a merge, since
+ * that crawl runs only on main and never on pull requests.
+ *
+ * Runs behind the same generation/pending-rebuild validation the shell renderer
+ * uses. Awaiting the load alone is not enough: if a watched source changes while
+ * the build is in flight, `invalidateCachesForChange` advances the generation and
+ * clears the memo slot, and `loadPageServerRenderer` then declines to publish its
+ * now-stale result as last-good -- but still RESOLVES this await. Readiness would
+ * be advertised behind an empty (or superseded) memo, and the first request would
+ * recompile, reproducing the exact timeout this exists to prevent. Only a build
+ * that ends on the generation it started is known to still be in the memo.
+ *
+ * An invalidated warmup is NOT retried. Retrying would buy a warm memo in the
+ * racy case at the cost of a retry budget, which AGENTS.md forbids adding, and
+ * the racy case is not the one this fixes: CI starts the server against a static
+ * checkout, so the first attempt is stable there. Dropping the memo instead keeps
+ * the correctness guarantee (readiness never sits behind a stale renderer) and
+ * costs, at worst, the single cold compile that was the status quo.
+ *
+ * Failure is deliberately NOT fatal. `loadPageServerRenderer` already resolves
+ * build errors against its last-good renderer, and at startup there is no
+ * last-good, so a genuine failure rejects. Caching that rejection would poison
+ * every later request, so the memo slot is dropped and the first real request
+ * retries exactly as it does today -- this only moves a successful compile
+ * earlier, it never makes a broken build worse.
+ */
+export async function warmPageServerRenderer(
+  loadRenderer: () => Promise<PageServerRendererLoadResult> = loadPageServerRenderer,
+  resetRenderer: (
+    expected?: Promise<PageServerRendererLoadResult>,
+  ) => void = resetPageServerRendererPromise,
+  runChecked: <T>(work: () => Promise<T>) => Promise<{
+    value: T;
+    instabilityReasons: string[];
+  }> = runGenerationCheckedWarmup,
+): Promise<void> {
+  // Held so a discard can target THIS load specifically. A concurrent `/page/:name`
+  // request can install a newer promise in the memo while this warmup is in flight;
+  // resetting unconditionally would throw away that newer build and force the first
+  // crawl request to start a third one.
+  let pending: Promise<PageServerRendererLoadResult> | undefined;
+  let instabilityReasons: string[];
+  let value: PageServerRendererLoadResult;
+  try {
+    ({ value, instabilityReasons } = await runChecked(() => {
+      pending = loadRenderer();
+      return pending;
+    }));
+  } catch (error) {
+    console.warn(
+      '[playground] page server renderer warmup failed; the first /page request will retry:',
+      error,
+    );
+    resetRenderer(pending);
+    return;
+  }
+  // A last-good fallback RESOLVES rather than rejects, so the catch above never sees
+  // it. Without this check a failed warmup build is indistinguishable from a successful
+  // one, and readiness would be advertised behind whatever renderer happened to be
+  // last-good -- contradicting this function's own contract that a failure leaves the
+  // first request to rebuild. Reachable because the HTTP server listens (answering /ping
+  // with 503) before the warmup runs, so a request can populate the memo first.
+  if (value.usedFallback) {
+    console.warn(
+      '[playground] page server renderer warmup fell back to the last-good renderer; the first /page request will rebuild',
+    );
+    resetRenderer(pending);
+    return;
+  }
+  if (instabilityReasons.length === 0) return;
+  // The build raced a source change, so the memo either was cleared outright by
+  // `invalidateCachesForChange` or still holds a renderer compiled against a
+  // superseded generation. Drop it rather than advertise readiness behind it: a
+  // stale memo is worse than an empty one, because the request path would serve
+  // it instead of rebuilding. Deliberately NOT retried -- retrying would trade a
+  // real correctness guarantee for a latency optimisation, and AGENTS.md forbids
+  // adding a retry budget outright. An unwarmed page renderer costs one cold
+  // compile on the first request, which is exactly the pre-existing behaviour.
+  resetRenderer(pending);
+  console.warn(
+    `[playground] page renderer warmup invalidated (${instabilityReasons.join('; ')}); the first /page request will rebuild`,
+  );
+}
+
 /** Start the playground server on the given port. Returns a handle with dispose() to stop everything. */
 export async function startServer(port: number = PORT): Promise<PlaygroundServer> {
   startupReady = false;
@@ -1508,6 +1610,7 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
     await dispose();
     throw new Error('[playground] shell renderer invalidated repeatedly; refusing readiness');
   }
+  await warmPageServerRenderer();
   startupReady = true;
   return {
     port: actualPort,

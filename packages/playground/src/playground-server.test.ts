@@ -62,6 +62,7 @@ import {
   rewriteRepositoryRelativeReadmeLinks,
   runConcurrentStartupWarmup,
   runGenerationCheckedWarmup,
+  warmPageServerRenderer,
   warmupInstabilityReasons,
 } from './playground-server.ts';
 import { configureRequestIdleTimeout } from './port-scanner.ts';
@@ -73,12 +74,16 @@ import {
   formatBuildLogs,
   isPageServerRenderers,
   isShellServerRendererModule,
+  loadPageServerRenderer,
   rendererWarmupAttemptDecision,
   rendererWarmupNeedsCacheInvalidation,
   rendererWarmupNeedsPrebuild,
+  resetPageServerRendererPromise,
   resolveRendererLoad,
   setPreparedShellServerRenderer,
   shellBuildSucceeded,
+  type PageServerRendererLoadResult,
+  type PageServerRenderers,
 } from './ssr-renderer.ts';
 
 describe('eagerPrebuildComponents', () => {
@@ -2077,4 +2082,186 @@ describe('/page/:name server-rendering surfaces', () => {
     // page's.
     expect(preview.length).toBeLessThan(canonical.length / 2);
   }, 60_000);
+});
+
+describe('loadPageServerRenderer memo identity', () => {
+  /**
+   * The targeted reset compares promise IDENTITY, so the loader must hand callers
+   * the exact promise it memoizes. An `async` wrapper would instead return a fresh
+   * promise that merely adopts the stored one, `expected` could never match, every
+   * targeted reset would be silently suppressed, and a rejected or last-good memo
+   * would never clear. This runs the REAL loader and reset together -- a stubbed
+   * reset cannot observe this, which is how the bug shipped the first time.
+   */
+  it('returns the memoized promise itself, so a targeted reset can match it', async () => {
+    resetPageServerRendererPromise();
+    const first = loadPageServerRenderer();
+    const second = loadPageServerRenderer();
+    try {
+      expect(second).toBe(first);
+
+      // Discarding a DIFFERENT promise must leave the memo alone...
+      resetPageServerRendererPromise(Promise.resolve() as never);
+      expect(loadPageServerRenderer()).toBe(first);
+
+      // ...and discarding the memoized one must clear it.
+      resetPageServerRendererPromise(first);
+      const third = loadPageServerRenderer();
+      expect(third).not.toBe(first);
+      await Promise.allSettled([third]);
+    } finally {
+      resetPageServerRendererPromise();
+      await Promise.allSettled([first]);
+    }
+  });
+});
+
+describe('warmPageServerRenderer', () => {
+  /**
+   * Minimal renderers matching the real `PageServerRenderers` shape. Typed rather
+   * than `{}` so a stub cannot drift from the loader's contract undetected.
+   */
+  const renderers = {
+    renderComponentPageBody: () => ({ body: '', head: '' }),
+    renderLandingBody: () => ({ body: '', head: '' }),
+  } as unknown as PageServerRenderers;
+
+  /** Runs the work and reports a stable generation, like an undisturbed startup. */
+  const stable = async <T>(
+    work: () => Promise<T>,
+  ): Promise<{ value: T; instabilityReasons: string[] }> => ({
+    value: await work(),
+    instabilityReasons: [],
+  });
+
+  /**
+   * `startServer`'s warmup prepared only the SHELL renderer, so `/ping` reported
+   * ready while `page-server-entry.ts` was still uncompiled and the first
+   * `GET /page/:name` paid a full uncached `Bun.build()`. `validate-playground.ts`
+   * crawls every route under a fixed 5s timeout with no warmup and no retry, so
+   * the alphabetically-first component absorbed that compile and intermittently
+   * blew the budget — turning main red after a merge, since that crawl runs only
+   * on main and never on pull requests.
+   */
+  it('compiles the page server renderer so the first request does not pay for it', async () => {
+    let loadCalls = 0;
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => {
+        loadCalls += 1;
+        return { renderers, usedFallback: false };
+      },
+      () => {
+        resetCalls += 1;
+      },
+      stable,
+    );
+
+    expect(loadCalls).toBe(1);
+    expect(resetCalls).toBe(0);
+  });
+
+  /**
+   * Awaiting the load proves nothing about the memo. If a watched source changes
+   * mid-build, `invalidateCachesForChange` advances the generation and clears the
+   * memo slot, and `loadPageServerRenderer` declines to publish its stale result
+   * as last-good — but still RESOLVES the await. Accepting that would advertise
+   * readiness behind an empty or superseded memo, and a superseded one is worse
+   * than none: the request path would serve it instead of rebuilding.
+   *
+   * Dropped rather than retried — a retry budget is forbidden by AGENTS.md, and
+   * the cost of not retrying is one cold compile, which was the status quo.
+   */
+  it('drops the memo when the build raced a source change, rather than accepting it', async () => {
+    let loadCalls = 0;
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => {
+        loadCalls += 1;
+        return { renderers, usedFallback: false };
+      },
+      () => {
+        resetCalls += 1;
+      },
+      async (work) => ({
+        value: await work(),
+        instabilityReasons: ['source changed during warmup'],
+      }),
+    );
+
+    expect(loadCalls).toBe(1);
+    expect(resetCalls).toBe(1);
+  });
+
+  /**
+   * `loadPageServerRenderer` resolves a build failure against its last-good renderer
+   * instead of rejecting, so the catch never fires. The HTTP server listens (answering
+   * /ping with 503) before the warmup runs, so a request can populate the memo first and
+   * make that last-good exist. Treating the fallback as a successful warmup would
+   * advertise readiness behind a stale renderer and silently contradict the contract that
+   * a failed warmup leaves the first request to rebuild.
+   */
+  it('treats a last-good fallback as an unsuccessful warmup and drops the memo', async () => {
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => ({ renderers, usedFallback: true }),
+      () => {
+        resetCalls += 1;
+      },
+      stable,
+    );
+
+    expect(resetCalls).toBe(1);
+  });
+
+  /**
+   * A discard must target THIS load. A concurrent `/page/:name` request can install a
+   * newer promise in the memo while the warmup is still in flight; resetting
+   * unconditionally would throw away that newer build and leave the first crawl request
+   * to start a third one — reintroducing the cold compile this warmup exists to remove.
+   */
+  it('discards only its own load, passing the promise it installed', async () => {
+    let seen: unknown = 'not-called';
+    let installed: unknown;
+
+    await warmPageServerRenderer(
+      () => {
+        installed = Promise.resolve({ renderers, usedFallback: true });
+        return installed as Promise<PageServerRendererLoadResult>;
+      },
+      (expected) => {
+        seen = expected;
+      },
+      stable,
+    );
+
+    expect(seen).toBe(installed);
+  });
+
+  /**
+   * A warmup failure must not be fatal and must not be cached. `loadPageServerRenderer`
+   * resolves build errors against its last-good renderer, and at startup there is no
+   * last-good — so a genuine failure rejects. Caching that rejected promise would
+   * poison every later request, so the memo slot is dropped and the first real request
+   * retries exactly as it did before this warmup existed.
+   */
+  it('drops the memo slot on failure instead of caching a rejection, and does not throw', async () => {
+    let resetCalls = 0;
+
+    const warmup = warmPageServerRenderer(
+      async () => {
+        throw new Error('page server bundle failed');
+      },
+      () => {
+        resetCalls += 1;
+      },
+      stable,
+    );
+
+    await expect(warmup).resolves.toBeUndefined();
+    expect(resetCalls).toBe(1);
+  });
 });
