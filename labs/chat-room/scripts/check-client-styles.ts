@@ -19,9 +19,30 @@ import { join } from 'node:path';
 
 export type StyleMarker = { marker: string; source: string };
 
+/**
+ * One marker per `@lostgradient/chat` component stylesheet the lab reaches —
+ * every barrel under `packages/chat/src/lib/components` that imports its own
+ * `.css` sidecar is listed, because each one is bypassed the same way when its
+ * `sideEffects` marker is lost. The `chat.css` markers are two because the
+ * `@property` registration is what the token-override Playwright spec proves.
+ */
 export const REQUIRED_STYLE_MARKERS: readonly StyleMarker[] = [
 	{ marker: '.cinder-chat .message-content-preview', source: '@lostgradient/chat chat.css' },
-	{ marker: '@property --cinder-chat-message-max-width', source: '@lostgradient/chat chat.css' }
+	{ marker: '@property --cinder-chat-message-max-width', source: '@lostgradient/chat chat.css' },
+	{
+		marker: '.cinder-command-menu.chat-composer-popover',
+		source: '@lostgradient/chat chat-composer-popover.css'
+	},
+	{
+		marker: '.cinder-chat-conversation-header__main',
+		source: '@lostgradient/chat chat-conversation-header.css'
+	},
+	{
+		marker: '.cinder-chat-conversation-list__items',
+		source: '@lostgradient/chat chat-conversation-list.css'
+	},
+	{ marker: '.chat-navigation-rail-row', source: '@lostgradient/chat chat-navigation-rail.css' },
+	{ marker: '.chat-sub-session-viewport', source: '@lostgradient/chat chat-sub-session.css' }
 ];
 
 export const CLIENT_ASSETS_DIRECTORY = '.svelte-kit/output/client/_app/immutable/assets';

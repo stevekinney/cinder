@@ -12,6 +12,13 @@ name: labs-chat-room
 # is not in the required set, so the path filter cannot strand a PR at
 # "Expected".
 #
+# The one exception is `packages/chat/**`: the production-bundle stylesheet
+# guard (CIN-514) has to see a Chat change, because the defect it catches — a
+# component barrel losing its `sideEffects` marker or its CSS import — is
+# made in the package and only observable in a consumer's client build. A
+# Chat-only change therefore runs the lightweight `client-styles` job alone;
+# the full `validate` matrix still waits for a change to the lab itself.
+#
 # The lab consumes the workspace packages via `workspace:*`, so its deps must
 # be built before svelte-check or Playwright run — `turbo run build` on chat,
 # editor, and cinder-mcp pulls cinder and markdown in through `^build`.
@@ -20,12 +27,14 @@ on:
   pull_request:
     paths:
       - 'labs/chat-room/**'
+      - 'packages/chat/**'
       - '.github/workflows/labs-chat-room.yaml'
   push:
     branches:
       - main
     paths:
       - 'labs/chat-room/**'
+      - 'packages/chat/**'
       - '.github/workflows/labs-chat-room.yaml'
   workflow_dispatch: {}
 
@@ -40,7 +49,71 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  scope:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      lab_changed: ${{ steps.decide.outputs.lab_changed }}
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - id: decide
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != "pull_request" ]; then
+            echo 'lab_changed=true' >> "$GITHUB_OUTPUT"
+          elif git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq '^(labs/chat-room/|\.github/workflows/labs-chat-room\.yaml$)'; then
+            echo 'lab_changed=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'lab_changed=false' >> "$GITHUB_OUTPUT"
+          fi
+
+  # Builds the lab's production client bundle and checks that every workspace
+  # stylesheet survived tree-shaking (CIN-514). Runs for Chat changes as well
+  # as lab changes, and is deliberately separate from the Playwright matrix so
+  # a Chat-only PR pays for one build, not seven browser shards.
+  client-styles:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      ANTHROPIC_API_KEY: test-key
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v7
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: ${{ env.BUN_VERSION }}
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Build workspace packages
+        run: bunx turbo run build --filter=@lostgradient/chat --filter=@lostgradient/editor --filter=@lostgradient/cinder-mcp
+
+      # The production client bundle is what `preview` and a deploy serve, and
+      # it is the only place a tree-shaken stylesheet goes missing (CIN-514):
+      # the dev server never tree-shakes, and the Playwright matrix only
+      # notices a dropped stylesheet where a spec happens to depend on one of
+      # its rules. This reads the emitted assets directly instead.
+      - name: Build the production bundle
+        run: bun run build
+        working-directory: labs/chat-room
+
+      - name: Check the client bundle carries every workspace stylesheet
+        run: bun run check:client-styles
+        working-directory: labs/chat-room
+
   validate:
+    needs: scope
+    if: needs.scope.outputs.lab_changed == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     env:
@@ -76,19 +149,6 @@ jobs:
 
       - name: Unit tests
         run: bun run test:unit
-        working-directory: labs/chat-room
-
-      # The production client bundle is what `preview` and a deploy serve, and
-      # it is the only place a tree-shaken stylesheet goes missing (CIN-514):
-      # the dev server never tree-shakes, and the Playwright matrix below only
-      # notices a dropped stylesheet where a spec happens to depend on one of
-      # its rules. This reads the emitted assets directly instead.
-      - name: Build the production bundle
-        run: bun run build
-        working-directory: labs/chat-room
-
-      - name: Check the client bundle carries every workspace stylesheet
-        run: bun run check:client-styles
         working-directory: labs/chat-room
 
       - name: Run the Playwright matrix
