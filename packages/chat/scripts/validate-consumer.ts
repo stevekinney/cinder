@@ -1,4 +1,4 @@
-import { Glob } from 'bun';
+import { Glob, type BuildArtifact } from 'bun';
 import { existsSync, realpathSync } from 'node:fs';
 import { mkdir, mkdtemp, rename, rm, symlink } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -12,6 +12,7 @@ import {
   parsePackageManifest,
   type PackageManifest,
 } from './pack-for-publish.ts';
+import { findMissingStyleMarkers } from './style-markers.ts';
 
 const packageRoot = join(import.meta.dir, '..');
 const workspaceRoot = resolve(packageRoot, '../..');
@@ -252,6 +253,29 @@ function scopedCssTokenForClass(source: string, className: string, artifactLabel
   return token;
 }
 
+/**
+ * The packed client build must carry every global stylesheet that the chat
+ * barrels import for their side effects. A dist barrel that drops its CSS
+ * import, or a `sideEffects` list that lets the bundler prune it, would ship a
+ * consumer with unstyled chat surfaces while every module-level check still
+ * passes. The marker list is shared with the chat-room lab's built-output
+ * guard so the two gates cannot drift apart.
+ */
+async function assertPackedClientStylesheet(outputs: readonly BuildArtifact[]): Promise<void> {
+  const stylesheets = outputs.filter((output) => output.path.endsWith('.css'));
+  if (stylesheets.length === 0) fail('packed client build emitted no stylesheet');
+  const contents = await Promise.all(stylesheets.map((output) => output.text()));
+  const css = contents.join('\n');
+  const missing = findMissingStyleMarkers(new Map([['packed-client', css]]));
+  if (missing.length > 0) {
+    fail(
+      `packed client build dropped required stylesheet markers:\n${missing
+        .map(({ marker, source }) => `  ${marker} (${source})`)
+        .join('\n')}`,
+    );
+  }
+}
+
 async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   const clientEntryPath = join(fixture.root, 'client.ts');
   const serverEntryPath = join(fixture.root, 'server.ts');
@@ -261,7 +285,9 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
       `import ChatComposerPopover from '@lostgradient/chat/composer-popover';\n` +
       `import ChatConversationHeader from '@lostgradient/chat/conversation-header';\n` +
       `import ChatConversationList from '@lostgradient/chat/conversation-list';\n` +
-      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList].every(Boolean)) throw new Error('missing Chat export');\n` +
+      `import ChatNavigationRail from '@lostgradient/chat/navigation-rail';\n` +
+      `import ChatSubSession from '@lostgradient/chat/sub-session';\n` +
+      `if (![Chat, ArtifactPanel, ChatComposerPopover, ChatConversationHeader, ChatConversationList, ChatNavigationRail, ChatSubSession].every(Boolean)) throw new Error('missing Chat export');\n` +
       `if (![appendToolCall, appendToolCalls, appendToolResult, appendToolResultAsync, appendToolResults, appendToolResultsAsync].every((builder) => typeof builder === 'function')) throw new Error('missing tool transcript builder export');\n` +
       `if (pairToolCallsWithResults([]).length !== 0) throw new Error('expected no tool-call pairs');\n` +
       `if (decodeChatStreamEvent(encodeChatStreamEvent({ type: 'text', text: 'ok' })).text !== 'ok') throw new Error('missing stream codec export');\n` +
@@ -284,8 +310,9 @@ async function buildConsumerEntries(fixture: ValidationFixture): Promise<void> {
   });
   if (!clientResult.success)
     fail(`client consumer build failed:\n${formatBuildLogs(clientResult.logs)}`);
-  const clientArtifact = clientResult.outputs[0];
+  const clientArtifact = clientResult.outputs.find((output) => output.kind === 'entry-point');
   if (clientArtifact === undefined) fail('client consumer build emitted no entry artifact');
+  await assertPackedClientStylesheet(clientResult.outputs);
 
   const serverOutput = join(fixture.root, 'server-output');
   const serverResult = await Bun.build({

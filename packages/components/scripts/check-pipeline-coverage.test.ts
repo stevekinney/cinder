@@ -9,6 +9,7 @@ import {
   extractRunStepBodies,
   loadParsedSources,
   resolveScriptChain,
+  scopeRunBodyToPackage,
   type DeclarationRow,
 } from './check-pipeline-coverage.ts';
 
@@ -256,6 +257,57 @@ describe('extractRunStepBodies', () => {
   it('returns an empty string when the workflow has no jobs', () => {
     expect(extractRunStepBodies('name: empty\non: push\n')).toBe('');
   });
+
+  it('scopes a working-directory step to the workspace package that owns that directory', () => {
+    // CIN-514: the lab's stylesheet guard runs as `bun run check:client-styles`
+    // inside `labs/chat-room`. Resolved through the root manifest it exists
+    // nowhere and the gate would be invisible to the coverage map.
+    const workflowYaml = [
+      'name: example',
+      'on: push',
+      'jobs:',
+      '  client-styles:',
+      '    steps:',
+      '      - name: Check the client bundle carries every workspace stylesheet',
+      '        run: bun run check:client-styles',
+      '        working-directory: labs/chat-room',
+      '      - name: Root-scoped step',
+      '        run: bun run lint',
+      '',
+    ].join('\n');
+
+    const runText = extractRunStepBodies(workflowYaml);
+
+    expect(runText).toContain('bun run --filter=@cinder/chat-room-lab check:client-styles');
+    expect(runText).toContain('\nbun run lint');
+    expect(runText).not.toContain('--filter=@cinder/chat-room-lab lint');
+  });
+
+  it('leaves a working-directory outside the workspace map unscoped', () => {
+    const workflowYaml = [
+      'name: example',
+      'on: push',
+      'jobs:',
+      '  other:',
+      '    steps:',
+      '      - run: bun run lint',
+      '        working-directory: tools/somewhere-else',
+      '',
+    ].join('\n');
+
+    expect(extractRunStepBodies(workflowYaml)).toBe('bun run lint');
+  });
+});
+
+describe('scopeRunBodyToPackage', () => {
+  it('rewrites every unfiltered bun run invocation and leaves explicit filters alone', () => {
+    const body =
+      'bun run lint && bun run --filter=@lostgradient/chat build && bunx playwright test';
+
+    expect(scopeRunBodyToPackage(body, '@cinder/chat-room-lab')).toBe(
+      'bun run --filter=@cinder/chat-room-lab lint && bun run --filter=@lostgradient/chat build && bunx playwright test',
+    );
+  });
 });
 
 describe('checkPipelineCoverage', () => {
@@ -283,6 +335,7 @@ describe('checkPipelineCoverage', () => {
           release: '',
           'changeset-guard': '',
           'main-red-watch': '',
+          'labs-chat-room': '',
         },
         hookText: {},
       },
@@ -339,6 +392,7 @@ describe('checkPipelineCoverage', () => {
         release: 'bun run validate',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -371,6 +425,7 @@ describe('checkPipelineCoverage', () => {
         release: 'bun run --filter=@lostgradient/chat validate:consumer',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -403,6 +458,7 @@ describe('checkPipelineCoverage', () => {
         release: '',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -431,6 +487,7 @@ describe('checkPipelineCoverage', () => {
         release: 'bun run --filter=@lostgradient/cinder validate:consumer',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -461,6 +518,7 @@ describe('checkPipelineCoverage', () => {
         release: 'bun run validate',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -488,6 +546,7 @@ describe('checkPipelineCoverage', () => {
         release: '',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -509,6 +568,7 @@ describe('checkPipelineCoverage', () => {
         release: '',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -539,6 +599,7 @@ describe('checkPipelineCoverage', () => {
         release: '',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -567,6 +628,7 @@ describe('checkPipelineCoverage', () => {
         release: '',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -594,6 +656,7 @@ describe('checkPipelineCoverage', () => {
         release: 'bun run validate',
         'changeset-guard': '',
         'main-red-watch': '',
+        'labs-chat-room': '',
       },
       hookText: {},
     });
@@ -610,6 +673,7 @@ describe('checkPipelineCoverage', () => {
     release: '',
     'changeset-guard': '',
     'main-red-watch': '',
+    'labs-chat-room': '',
   };
 
   it('flags a hook-layer mismatch as a warning, not a violation, when the hook script is present', () => {
