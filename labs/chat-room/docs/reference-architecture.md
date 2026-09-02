@@ -15,7 +15,7 @@ Two owners, on purpose:
 - The browser owns the authoritative `ConversationHistory` value it renders.
 - The server owns an ephemeral `AgentRun` for exactly one HTTP request, plus all authority needed to execute it.
 
-Operative owns loop limits: `createAgent({ maximumSteps, stopWhen, ... })` decides when a run stops, and the browser never enforces a second client-side step cap of its own.
+Operative owns the limits _within_ a run: `createAgent({ maximumSteps, stopWhen, ... })` decides when one `AgentRun` stops. Because the route ends each run after a tool call (see below), that per-run limit resets on every request, so it does not bound the turn. The published chat session controller does: it defaults `maxContinuationTurns` to 5, re-POSTs at most that many times for one user turn, and fails the turn when the limit is reached. Today the browser cap is therefore the effective turn-wide bound, and a host configuring loop limits must set it on the controller rather than on the agent alone. That is a consequence of the current continuation regime, not the target: once Operative drives continuation inside a single request, `maximumSteps` becomes the turn-wide bound and the client cap becomes redundant.
 
 Who drives continuation _between_ tool results is a different question, and the honest answer today is the browser. The published chat session controller re-POSTs whenever it observes a resolved, non-approval tool result, so a host that also let Operative continue within the same request would produce two continuations for one tool call. The route therefore stops after any tool call, and the client's existing loop carries the turn forward.
 
