@@ -1,9 +1,15 @@
 import { describe, expect, test } from 'bun:test';
 
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
 import {
   extractClassNamesCallArguments,
+  extractOpeningTagSpans,
   isCssSelectorContext,
   isTestPath,
+  languageForPath,
   maskStringLiterals,
   scan,
   scanSource,
@@ -363,5 +369,110 @@ describe('scanSource — region-aware scanning', () => {
       '<script>\n  const a = 1;\n</script>\n<style>\n\n.sr-only {}\n</style>',
     );
     expect(hits).toEqual([{ lineNumber: 6, line: '.sr-only {}' }]);
+  });
+});
+
+describe('scanSource — indirect class values in script', () => {
+  test('flags a class computed into a variable and bound later', () => {
+    expect(
+      scanSource(
+        "<script>\n  const hiddenClass = $derived(condition ? 'sr-only' : '');\n</script>\n<span class={hiddenClass}>x</span>",
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('flags a class-list literal with a template placeholder', () => {
+    expect(scanSource('<script>\n  const cls = `${base} sr-only`;\n</script>')).toHaveLength(1);
+  });
+
+  test('still ignores literals that are not class lists', () => {
+    expect(
+      scanSource(
+        '<script>\n  const prose = "use cinder-sr-only, not sr-only";\n  const selector = ".sr-only";\n  const example = "<span class=\'sr-only\'>";\n</script>',
+      ),
+    ).toHaveLength(0);
+  });
+
+  test('ignores a DOM read that merely asks whether the class is present', () => {
+    expect(
+      scanSource("<script>\n  const hidden = node.classList.contains('sr-only');\n</script>"),
+    ).toHaveLength(0);
+  });
+
+  test('still ignores the prefixed utility routed through a variable', () => {
+    expect(scanSource("<script>\n  const hiddenClass = 'cinder-sr-only';\n</script>")).toHaveLength(
+      0,
+    );
+  });
+});
+
+describe('scanSource — attribute matchers only run inside opening tags', () => {
+  test('does not flag rendered documentation of the prohibited syntax', () => {
+    expect(
+      scanSource('<p>Use <code>class="sr-only"</code> or <code>class:sr-only</code> here.</p>'),
+    ).toHaveLength(0);
+  });
+
+  test('still flags the same syntax inside a real opening tag', () => {
+    expect(
+      scanSource('<p><span class="sr-only">x</span>\nand <b class:sr-only>y</b></p>'),
+    ).toHaveLength(2);
+  });
+
+  test('extractOpeningTagSpans keeps > inside quoted values and expressions', () => {
+    const spans = extractOpeningTagSpans(
+      "<a title=\"a > b\" class={count > 1 ? 'many' : 'one'}>text</a>",
+    );
+    expect(spans).toHaveLength(1);
+    expect(spans[0]?.text).toBe("<a title=\"a > b\" class={count > 1 ? 'many' : 'one'}>");
+  });
+
+  test('extractOpeningTagSpans skips closing tags', () => {
+    expect(extractOpeningTagSpans('<div>x</div><br/>').map((span) => span.text)).toEqual([
+      '<div>',
+      '<br/>',
+    ]);
+  });
+});
+
+describe('language is taken from the file extension, not guessed from contents', () => {
+  const cssWithDataUrl =
+    '.icon {\n  background: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\'></svg>");\n}\n.sr-only {\n  position: absolute;\n}';
+
+  test('languageForPath maps the scanned extensions', () => {
+    expect(languageForPath('a/b.svelte')).toBe('svelte');
+    expect(languageForPath('a/b.css')).toBe('css');
+    expect(languageForPath('a/b.ts')).toBe('script');
+    expect(languageForPath('a/b.txt')).toBeUndefined();
+  });
+
+  test('a .css file containing HTML-looking text is still scanned as CSS', () => {
+    expect(scanSource(cssWithDataUrl, 'css')).toHaveLength(1);
+    expect(splitSourceRegions(cssWithDataUrl, 'css').map((region) => region.kind)).toEqual([
+      'style',
+    ]);
+  });
+
+  test('a .svelte file with no blocks is markup even when it has no tags', () => {
+    expect(splitSourceRegions('just text', 'svelte').map((region) => region.kind)).toEqual([
+      'markup',
+    ]);
+    expect(splitSourceRegions('const a = 1;', 'script').map((region) => region.kind)).toEqual([
+      'script',
+    ]);
+  });
+
+  test('scan() passes the extension through for on-disk files', async () => {
+    const root = await mkdtemp(join(tmpdir(), 'visually-hidden-'));
+    try {
+      await mkdir(join(root, 'nested'), { recursive: true });
+      await writeFile(join(root, 'nested', 'icon.css'), cssWithDataUrl);
+      const flags = await scan(root);
+      expect(flags).toEqual([
+        { filePath: 'src/lib/nested/icon.css', lineNumber: 4, line: '.sr-only {' },
+      ]);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
   });
 });

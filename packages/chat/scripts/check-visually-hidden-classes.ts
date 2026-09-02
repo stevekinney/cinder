@@ -319,6 +319,17 @@ export type SourceRegion = {
   text: string;
 };
 
+/** The language a scanned file is known to be, from its extension. */
+export type SourceLanguage = 'svelte' | 'css' | 'script';
+
+/** Maps a file path to the language the scanner should assume for it. */
+export function languageForPath(path: string): SourceLanguage | undefined {
+  if (path.endsWith('.svelte')) return 'svelte';
+  if (path.endsWith('.css')) return 'css';
+  if (/\.[cm]?[jt]sx?$/.test(path)) return 'script';
+  return undefined;
+}
+
 /**
  * Splits a source file into `<script>`, `<style>`, and markup regions.
  *
@@ -335,11 +346,17 @@ export type SourceRegion = {
  * false negatives, so the fix is to stop doing that rather than to add
  * another compensating heuristic.
  *
- * A file with no `<script>` or `<style>` block is a single region: `markup` if
- * it looks like markup, otherwise `code`, which keeps plain `.css` and `.ts`
- * files working.
+ * When the caller knows the language from the file extension it says so, and
+ * a `.css` file is one `style` region no matter what its values contain — an
+ * inline SVG data URL is HTML-looking text inside a CSS string, not markup,
+ * and guessing from contents would have skipped the selector scan for the
+ * whole file. Only a caller with no extension to go on (a unit test handing
+ * over a snippet) falls back to inference: `markup` if the snippet looks like
+ * markup, otherwise `code`, where every matcher runs.
  */
-export function splitSourceRegions(source: string): SourceRegion[] {
+export function splitSourceRegions(source: string, language?: SourceLanguage): SourceRegion[] {
+  if (language === 'css') return [{ kind: 'style', start: 0, text: source }];
+  if (language === 'script') return [{ kind: 'script', start: 0, text: source }];
   const blockPattern = /<(script|style)\b[^>]*>([\s\S]*?)<\/\1\s*>/g;
   const regions: SourceRegion[] = [];
   let cursor = 0;
@@ -358,6 +375,7 @@ export function splitSourceRegions(source: string): SourceRegion[] {
   }
 
   if (regions.length === 0) {
+    if (language === 'svelte') return [{ kind: 'markup', start: 0, text: source }];
     const looksLikeMarkup = /<[a-zA-Z][\s\S]*>/.test(source);
     return [{ kind: looksLikeMarkup ? 'markup' : 'code', start: 0, text: source }];
   }
@@ -367,8 +385,84 @@ export function splitSourceRegions(source: string): SourceRegion[] {
   return regions;
 }
 
+/**
+ * Returns the span of every opening tag in a markup region, from `<` through
+ * its closing `>`. Attributes only exist inside opening tags, so the
+ * attribute and directive matchers run over these spans and nothing else —
+ * rendered documentation such as `<code>class="sr-only"</code>` is text, and
+ * text applies no class.
+ *
+ * Walking the tag by hand rather than with a regex is what lets a `>` inside
+ * a quoted attribute value or a `class={a > b ? ...}` expression stay inside
+ * the tag. Brace balancing runs against a string-masked copy so a brace in a
+ * quoted string cannot close the expression early.
+ */
+export function extractOpeningTagSpans(text: string): Array<{ start: number; text: string }> {
+  const spans: Array<{ start: number; text: string }> = [];
+  const tagStartPattern = /<[a-zA-Z][\w:.-]*/g;
+  let match: RegExpExecArray | null;
+  while ((match = tagStartPattern.exec(text)) !== null) {
+    let index = match.index + match[0].length;
+    while (index < text.length) {
+      const character = text[index];
+      if (character === '>') break;
+      if (character === '"' || character === "'") {
+        const close = text.indexOf(character, index + 1);
+        index = close === -1 ? text.length : close + 1;
+        continue;
+      }
+      if (character === '{') {
+        const balance = maskStringLiterals(text.slice(index));
+        let depth = 0;
+        let relative = 0;
+        for (; relative < balance.length; relative++) {
+          if (balance[relative] === '{') depth++;
+          else if (balance[relative] === '}') {
+            depth--;
+            if (depth === 0) break;
+          }
+        }
+        index += relative + 1;
+        continue;
+      }
+      index++;
+    }
+    spans.push({ start: match.index, text: text.slice(match.index, index + 1) });
+    tagStartPattern.lastIndex = index + 1;
+  }
+  return spans;
+}
+
+/**
+ * Matches a string literal whose whole content is a class list — tokens made
+ * of class-name characters separated by whitespace, with nothing that would
+ * make it prose, a selector, or markup (`,`, `<`, `{`, `;`, ...). A script
+ * that computes a class through a variable, `const hiddenClass = condition ?
+ * 'sr-only' : ''` followed by `class={hiddenClass}`, applies the class just
+ * as surely as a `classNames()` call does, and the markup scan sees only the
+ * identifier. Scanning class-shaped literals catches that without tracing
+ * assignments, while a CSS-looking `'.sr-only {'` or a markup example
+ * `"<span class='sr-only'>"` still stays inert. Template placeholders are
+ * dropped before the shape test so `` `${base} sr-only` `` still qualifies.
+ */
+const CLASS_LIST_LITERAL_SHAPE = /^[\w\s:\-/.[\]%#!@]*$/;
+
+/**
+ * A class-shaped literal that is the argument of a DOM *read* — `classList.
+ * contains('sr-only')`, `matches(...)`, `getElementsByClassName(...)` — asks
+ * whether a class is present rather than putting it on an element, so it is
+ * not a usage site. `classList.add(...)` and friends are writes and are not
+ * in this list on purpose.
+ */
+const DOM_READ_CALL_PATTERN =
+  /(?:contains|matches|closest|querySelector|querySelectorAll|getElementsByClassName)\s*\(\s*$/;
+const CLASS_LIST_TOKEN_PATTERN = new RegExp(String.raw`(?<=^|\s)sr-only(?:[-_]\w+)*(?=\s|$)`, 'g');
+
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
-export function scanSource(original: string): Array<{ lineNumber: number; line: string }> {
+export function scanSource(
+  original: string,
+  language?: SourceLanguage,
+): Array<{ lineNumber: number; line: string }> {
   const hits: Array<{ lineNumber: number; line: string }> = [];
   const masked = maskComments(original);
   const lines = original.split('\n');
@@ -377,7 +471,12 @@ export function scanSource(original: string): Array<{ lineNumber: number; line: 
     hits.push({ lineNumber, line: (lines[lineNumber - 1] ?? '').trim() });
   };
 
-  const scanMarkup = (text: string, offset: number): void => {
+  const scanMarkup = (region: string, regionOffset: number): void => {
+    for (const span of extractOpeningTagSpans(region))
+      scanOpeningTag(span.text, regionOffset + span.start);
+  };
+
+  const scanOpeningTag = (text: string, offset: number): void => {
     for (const pattern of [
       STATIC_CLASS_ATTRIBUTE_PATTERN,
       UNQUOTED_CLASS_ATTRIBUTE_PATTERN,
@@ -428,17 +527,32 @@ export function scanSource(original: string): Array<{ lineNumber: number; line: 
   };
 
   const scanScript = (text: string, offset: number): void => {
-    // Only `classNames()` arguments. A class attribute written inside a script
-    // string is an example or a test assertion, not an applied class.
     for (const call of extractClassNamesCallArguments(text)) {
       const tokenPattern = new RegExp(BARE_TOKEN_SOURCE, 'g');
       let tokenMatch: RegExpExecArray | null;
       while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null)
         record(offset + call.startIndex + 1 + tokenMatch.index);
     }
+
+    // Class-shaped string literals anywhere in the script, so a class routed
+    // through a variable is still a usage site. A class attribute or selector
+    // written inside a script string is an example or a test assertion, not
+    // an applied class, and fails the shape test.
+    const literalPattern = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
+    let literalMatch: RegExpExecArray | null;
+    while ((literalMatch = literalPattern.exec(text)) !== null) {
+      if (DOM_READ_CALL_PATTERN.test(text.slice(0, literalMatch.index))) continue;
+      const content = literalMatch[2] ?? '';
+      const shape = content.replace(/\$\{[^}]*\}/g, ' ');
+      if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
+      CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
+      let tokenMatch: RegExpExecArray | null;
+      while ((tokenMatch = CLASS_LIST_TOKEN_PATTERN.exec(shape)) !== null)
+        record(offset + literalMatch.index + 1 + tokenMatch.index);
+    }
   };
 
-  for (const region of splitSourceRegions(masked)) {
+  for (const region of splitSourceRegions(masked, language)) {
     if (region.kind === 'markup') scanMarkup(region.text, region.start);
     else if (region.kind === 'style') scanStyle(region.text, region.start);
     else if (region.kind === 'script') scanScript(region.text, region.start);
@@ -474,7 +588,7 @@ export async function scan(
     const filePath = `src/lib/${toPosixPath(relativePath)}`;
     const source = await Bun.file(join(sourceRoot, relativePath)).text();
 
-    for (const hit of scanSource(source)) {
+    for (const hit of scanSource(source, languageForPath(relativePath))) {
       flags.push({ filePath, lineNumber: hit.lineNumber, line: hit.line });
     }
   }
