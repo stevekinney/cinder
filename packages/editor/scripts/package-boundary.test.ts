@@ -206,11 +206,24 @@ describe('Editor package ownership boundary', () => {
       const conditions = entry as Record<string, unknown>;
       const bun = conditions['bun'];
       if (typeof bun !== 'string' || !bun.startsWith('./src/')) continue;
-      if (conditions['browser'] !== bun || conditions['svelte'] !== bun) {
-        violations.push(
-          `${subpath}: bun=${bun} browser=${String(conditions['browser'])} svelte=${String(conditions['svelte'])}`,
-        );
+      const keys = Object.keys(conditions);
+      const problems: string[] = [];
+      if (conditions['browser'] !== bun) problems.push(`browser=${String(conditions['browser'])}`);
+      if (conditions['svelte'] !== bun) problems.push(`svelte=${String(conditions['svelte'])}`);
+      // Conditional exports resolve to the FIRST matching key, so value equality is
+      // not enough: `browser`/`svelte` sinking below `import`/`default` would hand
+      // Vite the dist entry again while the values still matched. Pin the order.
+      const firstDistKey = Math.min(
+        ...['import', 'default'].map((k) => keys.indexOf(k)).filter((i) => i >= 0),
+      );
+      for (const sourceKey of ['bun', 'browser', 'svelte']) {
+        const at = keys.indexOf(sourceKey);
+        if (at === -1 || (Number.isFinite(firstDistKey) && at > firstDistKey)) {
+          problems.push(`${sourceKey} must precede import/default`);
+        }
       }
+      if (problems.length > 0)
+        violations.push(`${subpath} [${keys.join(', ')}]: ${problems.join('; ')}`);
     }
     expect(violations).toEqual([]);
   });
