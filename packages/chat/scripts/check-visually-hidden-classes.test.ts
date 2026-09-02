@@ -435,6 +435,41 @@ describe('scanSource — attribute matchers only run inside opening tags', () =>
   });
 });
 
+describe('scanSource — opening tags are read attribute by attribute', () => {
+  test('ignores class-shaped text inside an unrelated attribute value', () => {
+    expect(scanSource('<div data-example="class=sr-only">x</div>')).toHaveLength(0);
+    expect(scanSource('<div data-example=\'class="sr-only"\'>x</div>')).toHaveLength(0);
+    expect(scanSource('<div title="class:sr-only">x</div>')).toHaveLength(0);
+  });
+
+  test('ignores an sr-only token inside a non-class attribute', () => {
+    expect(scanSource('<div aria-label="sr-only" id="sr-only">x</div>')).toHaveLength(0);
+  });
+
+  test('still flags the class attribute when it sits after an unrelated attribute', () => {
+    expect(scanSource('<div data-example="class=sr-only" class="sr-only">x</div>')).toHaveLength(1);
+  });
+
+  test('flags a class applied through a Svelte spread', () => {
+    expect(scanSource("<span {...{ class: 'sr-only' }}>x</span>")).toHaveLength(1);
+    expect(scanSource('<span {...{ class: "label sr-only", id }}>x</span>')).toHaveLength(1);
+    expect(scanSource("<span {...{ class: hidden ? 'sr-only' : '' }}>x</span>")).toHaveLength(1);
+  });
+
+  test('a spread whose class has no sr-only token is not a hit', () => {
+    expect(
+      scanSource("<span {...{ class: 'cinder-sr-only', title: 'sr-only' }}>x</span>"),
+    ).toHaveLength(0);
+    expect(scanSource('<span {...rest}>x</span>')).toHaveLength(0);
+  });
+
+  test('a spread carrying the class through a variable is caught by the script scan', () => {
+    const source =
+      '<script lang="ts">\n  const attributes = { class: \'sr-only\' };\n</script>\n<span {...attributes}>x</span>';
+    expect(scanSource(source, 'svelte')).toHaveLength(1);
+  });
+});
+
 describe('language is taken from the file extension, not guessed from contents', () => {
   const cssWithDataUrl =
     '.icon {\n  background: url("data:image/svg+xml,<svg xmlns=\'http://www.w3.org/2000/svg\'></svg>");\n}\n.sr-only {\n  position: absolute;\n}';

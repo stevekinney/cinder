@@ -195,34 +195,22 @@ export function toPosixPath(path: string): string {
 const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]\w+)*(?![\w-])`;
 
 /**
- * Matches a static `class="..."` / `class='...'` attribute containing the
- * bare token.
- *
- * The `(?<![-\w:])` guard anchors the match to the attribute actually named
- * `class`. Without it any attribute whose name merely ends in `class` —
- * `data-class`, `wrapperclass`, a framework's `activeClass` — would match and
- * report a usage site that does not exist.
+ * Matches the bare token anywhere inside an attribute VALUE. The value has
+ * already been isolated by `extractTagAttributes`, so this runs over `sr-only
+ * label` rather than over the whole tag — a `class=sr-only` substring inside
+ * `data-example="..."` never reaches it.
  */
-const STATIC_CLASS_ATTRIBUTE_PATTERN = new RegExp(
-  String.raw`(?<![-\w:])class\s*=\s*(["'])(?:(?!\1)[\s\S])*${BARE_TOKEN_SOURCE}(?:(?!\1)[\s\S])*\1`,
-  'g',
-);
+const ATTRIBUTE_VALUE_TOKEN_PATTERN = new RegExp(BARE_TOKEN_SOURCE, 'g');
+
+/** Matches a Svelte class directive NAME: `class:sr-only` (with or without `={expr}`). */
+const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`^class:${BARE_TOKEN_SOURCE}$`);
 
 /**
- * Matches an UNQUOTED class attribute value: `<span class=sr-only>`.
- *
- * Valid HTML, and valid Svelte, and invisible to the quoted matcher above —
- * which made it a silent bypass of exactly the kind this guard exists to
- * prevent. An unquoted value ends at whitespace or `>`, so the token is
- * bounded by `[^\s>]*` on either side rather than by a quote pair.
+ * Matches a `class` property inside a spread object — `{...{ class: 'sr-only' }}`.
+ * Only the property's value is scanned afterwards, so `title: 'sr-only'` in
+ * the same object is not a hit.
  */
-const UNQUOTED_CLASS_ATTRIBUTE_PATTERN = new RegExp(
-  String.raw`(?<![-\w:])class\s*=\s*(?!["'{])[^\s>]*${BARE_TOKEN_SOURCE}[^\s>]*`,
-  'g',
-);
-
-/** Matches a Svelte class directive: `class:sr-only` or `class:sr-only={expr}`. */
-const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`class:${BARE_TOKEN_SOURCE}`, 'g');
+const SPREAD_CLASS_PROPERTY_PATTERN = /(?<![\w$.])(?:class|['"]class['"])\s*:\s*/g;
 
 /** Matches a bare token inside a quoted string literal (single, double, or template). */
 const QUOTED_TOKEN_PATTERN = new RegExp(
@@ -433,6 +421,114 @@ export function extractOpeningTagSpans(text: string): Array<{ start: number; tex
   return spans;
 }
 
+/** One attribute (or spread) read out of an opening tag by `extractTagAttributes`. */
+export type TagAttribute =
+  | { kind: 'attribute'; name: string; value: string; valueStart: number; quoted: boolean }
+  | { kind: 'expression'; name: string; expression: string; expressionStart: number }
+  | { kind: 'boolean'; name: string }
+  | { kind: 'spread'; expression: string; expressionStart: number };
+
+/** Length of the balanced `{...}` starting at `text[openBraceIndex]`, braces included. */
+function balancedExpressionLength(text: string, openBraceIndex: number): number {
+  const balance = maskStringLiterals(text.slice(openBraceIndex));
+  let depth = 0;
+  let relative = 0;
+  for (; relative < balance.length; relative++) {
+    if (balance[relative] === '{') depth++;
+    else if (balance[relative] === '}') {
+      depth--;
+      if (depth === 0) break;
+    }
+  }
+  return relative + 1;
+}
+
+/**
+ * Reads an opening tag attribute by attribute: `name="value"`, `name='value'`,
+ * `name=value`, `name={expression}`, a bare boolean `name`, and a Svelte
+ * `{...spread}`. Each value is returned on its own, with its offset into the
+ * tag text, so a matcher can look at the value of the attribute actually
+ * named `class` and nothing else — `data-example="class=sr-only"` is data,
+ * not a class.
+ */
+export function extractTagAttributes(tagText: string): TagAttribute[] {
+  const attributes: TagAttribute[] = [];
+  const tagName = /^<[a-zA-Z][\w:.-]*/.exec(tagText);
+  let index = tagName ? tagName[0].length : 1;
+  const end = tagText.endsWith('>') ? tagText.length - 1 : tagText.length;
+
+  while (index < end) {
+    const character = tagText[index] ?? '';
+    if (/\s|\//.test(character)) {
+      index++;
+      continue;
+    }
+
+    if (character === '{') {
+      const length = balancedExpressionLength(tagText, index);
+      const inner = tagText.slice(index + 1, index + length - 1);
+      const spread = /^\s*\.\.\./.exec(inner);
+      if (spread)
+        attributes.push({
+          kind: 'spread',
+          expression: inner.slice(spread[0].length),
+          expressionStart: index + 1 + spread[0].length,
+        });
+      index += length;
+      continue;
+    }
+
+    const nameMatch = /^[^\s=/>{]+/.exec(tagText.slice(index, end));
+    if (!nameMatch) {
+      index++;
+      continue;
+    }
+    const name = nameMatch[0];
+    index += name.length;
+
+    const equals = /^\s*=\s*/.exec(tagText.slice(index, end));
+    if (!equals) {
+      attributes.push({ kind: 'boolean', name });
+      continue;
+    }
+    index += equals[0].length;
+
+    const opener = tagText[index] ?? '';
+    if (opener === '"' || opener === "'") {
+      const close = tagText.indexOf(opener, index + 1);
+      const valueEnd = close === -1 ? end : close;
+      attributes.push({
+        kind: 'attribute',
+        name,
+        value: tagText.slice(index + 1, valueEnd),
+        valueStart: index + 1,
+        quoted: true,
+      });
+      index = close === -1 ? end : close + 1;
+      continue;
+    }
+
+    if (opener === '{') {
+      const length = balancedExpressionLength(tagText, index);
+      attributes.push({
+        kind: 'expression',
+        name,
+        expression: tagText.slice(index + 1, index + length - 1),
+        expressionStart: index + 1,
+      });
+      index += length;
+      continue;
+    }
+
+    const unquoted = /^[^\s>]*/.exec(tagText.slice(index, end));
+    const value = unquoted?.[0] ?? '';
+    attributes.push({ kind: 'attribute', name, value, valueStart: index, quoted: false });
+    index += Math.max(value.length, 1);
+  }
+
+  return attributes;
+}
+
 /**
  * Matches a string literal whose whole content is a class list — tokens made
  * of class-name characters separated by whitespace, with nothing that would
@@ -476,41 +572,66 @@ export function scanSource(
       scanOpeningTag(span.text, regionOffset + span.start);
   };
 
-  const scanOpeningTag = (text: string, offset: number): void => {
-    for (const pattern of [
-      STATIC_CLASS_ATTRIBUTE_PATTERN,
-      UNQUOTED_CLASS_ATTRIBUTE_PATTERN,
-      CLASS_DIRECTIVE_PATTERN,
-    ]) {
-      pattern.lastIndex = 0;
-      let match: RegExpExecArray | null;
-      while ((match = pattern.exec(text)) !== null) record(offset + match.index);
-    }
+  // A `class={...}` expression and a spread's `class:` property value are
+  // JavaScript, so quotes inside them ARE string delimiters. Only a quoted
+  // literal carrying the token counts — `class={hiddenClass}` routes through
+  // a variable, which the script scan's class-shaped-literal pass catches.
+  const scanClassExpression = (expression: string, offset: number): void => {
+    QUOTED_TOKEN_PATTERN.lastIndex = 0;
+    let quotedMatch: RegExpExecArray | null;
+    while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null)
+      record(offset + quotedMatch.index);
+  };
 
-    // `class={...}` expressions are JavaScript, so quotes inside them ARE
-    // string delimiters and braces inside those strings must not close the
-    // expression. Balancing runs against a string-masked copy of the
-    // expression region only — never across free markup text, where an
-    // apostrophe is just an apostrophe.
-    const dynamicClassAttributePattern = /(?<![-\w:])class\s*=\s*\{/g;
-    let dynamicMatch: RegExpExecArray | null;
-    while ((dynamicMatch = dynamicClassAttributePattern.exec(text)) !== null) {
-      const openBraceIndex = dynamicMatch.index + dynamicMatch[0].length - 1;
-      const balance = maskStringLiterals(text.slice(openBraceIndex));
-      let depth = 0;
-      let relative = 0;
-      for (; relative < balance.length; relative++) {
-        if (balance[relative] === '{') depth++;
-        else if (balance[relative] === '}') {
-          depth--;
-          if (depth === 0) break;
+  const scanOpeningTag = (text: string, offset: number): void => {
+    for (const attribute of extractTagAttributes(text)) {
+      if (attribute.kind === 'spread') {
+        SPREAD_CLASS_PROPERTY_PATTERN.lastIndex = 0;
+        let property: RegExpExecArray | null;
+        while ((property = SPREAD_CLASS_PROPERTY_PATTERN.exec(attribute.expression)) !== null) {
+          // The property value runs to the next `,` or `}` at depth zero of
+          // the string-masked expression, so a comma inside a quoted class
+          // list or a nested object does not end it early.
+          const valueStart = property.index + property[0].length;
+          const maskedExpression = maskStringLiterals(attribute.expression);
+          let depth = 0;
+          let valueEnd = valueStart;
+          for (; valueEnd < maskedExpression.length; valueEnd++) {
+            const character = maskedExpression[valueEnd];
+            if (character === '{' || character === '(' || character === '[') depth++;
+            else if (character === '}' || character === ')' || character === ']') {
+              if (depth === 0) break;
+              depth--;
+            } else if (character === ',' && depth === 0) break;
+          }
+          scanClassExpression(
+            attribute.expression.slice(valueStart, valueEnd),
+            offset + attribute.expressionStart + valueStart,
+          );
         }
+        continue;
       }
-      const expressionText = text.slice(openBraceIndex + 1, openBraceIndex + relative);
-      QUOTED_TOKEN_PATTERN.lastIndex = 0;
-      let quotedMatch: RegExpExecArray | null;
-      while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expressionText)) !== null)
-        record(offset + openBraceIndex + 1 + quotedMatch.index);
+
+      if (attribute.kind === 'boolean') {
+        if (CLASS_DIRECTIVE_PATTERN.test(attribute.name))
+          record(offset + text.indexOf(attribute.name));
+        continue;
+      }
+
+      if (attribute.kind === 'expression') {
+        if (CLASS_DIRECTIVE_PATTERN.test(attribute.name)) {
+          record(offset + text.lastIndexOf(attribute.name, attribute.expressionStart));
+        } else if (attribute.name === 'class') {
+          scanClassExpression(attribute.expression, offset + attribute.expressionStart);
+        }
+        continue;
+      }
+
+      if (attribute.name !== 'class') continue;
+      ATTRIBUTE_VALUE_TOKEN_PATTERN.lastIndex = 0;
+      let tokenMatch: RegExpExecArray | null;
+      while ((tokenMatch = ATTRIBUTE_VALUE_TOKEN_PATTERN.exec(attribute.value)) !== null)
+        record(offset + attribute.valueStart + tokenMatch.index);
     }
   };
 
