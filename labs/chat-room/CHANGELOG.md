@@ -1,5 +1,12 @@
 # @cinder/chat-room-lab
 
+## 0.0.4
+
+### Patch Changes
+
+- Updated dependencies [[`a5da0de`](https://github.com/stevekinney/cinder/commit/a5da0deff25d30d206d7176ee9021403942acfcf)]:
+  - @lostgradient/cinder@0.25.1
+
 ## 0.0.3
 
 ### Patch Changes

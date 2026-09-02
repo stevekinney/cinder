@@ -1,5 +1,11 @@
 # @lostgradient/cinder
 
+## 0.25.1
+
+### Patch Changes
+
+- [#1484](https://github.com/stevekinney/cinder/pull/1484) [`a5da0de`](https://github.com/stevekinney/cinder/commit/a5da0deff25d30d206d7176ee9021403942acfcf) Thanks [@stevekinney](https://github.com/stevekinney)! - Complete the DTCG 2025.10 token migration with stricter reference, modifier, and CSS generation validation, and make component token overrides inherit from the generated corpus.
+
 ## 0.25.0
 
 ### Minor Changes
