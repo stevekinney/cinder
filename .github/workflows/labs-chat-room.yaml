@@ -68,7 +68,15 @@ jobs:
           set -euo pipefail
           if [ "$EVENT_NAME" != "pull_request" ]; then
             echo 'lab_changed=true' >> "$GITHUB_OUTPUT"
-          elif git diff --name-only "origin/${BASE_REF}...HEAD" | grep -Eq '^(labs/chat-room/|\.github/workflows/labs-chat-room\.yaml$)'; then
+            exit 0
+          fi
+          # Write the diff to a file before grepping it — no pipe at all. Under
+          # `pipefail`, a quiet `grep -q` that exits on its first match can leave
+          # `git diff` writing into a closed pipe (SIGPIPE, status 141) on a
+          # large PR, which would read as "no lab change" and skip validate.
+          changed_files="$RUNNER_TEMP/labs-chat-room-changed-files"
+          git diff --name-only "origin/${BASE_REF}...HEAD" > "$changed_files"
+          if grep -Eq '^(labs/chat-room/|\.github/workflows/labs-chat-room\.yaml$)' "$changed_files"; then
             echo 'lab_changed=true' >> "$GITHUB_OUTPUT"
           else
             echo 'lab_changed=false' >> "$GITHUB_OUTPUT"
