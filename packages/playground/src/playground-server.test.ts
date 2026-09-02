@@ -2151,6 +2151,28 @@ describe('warmPageServerRenderer', () => {
   });
 
   /**
+   * `loadPageServerRenderer` resolves a build failure against its last-good renderer
+   * instead of rejecting, so the catch never fires. The HTTP server listens (answering
+   * /ping with 503) before the warmup runs, so a request can populate the memo first and
+   * make that last-good exist. Treating the fallback as a successful warmup would
+   * advertise readiness behind a stale renderer and silently contradict the contract that
+   * a failed warmup leaves the first request to rebuild.
+   */
+  it('treats a last-good fallback as an unsuccessful warmup and drops the memo', async () => {
+    let resetCalls = 0;
+
+    await warmPageServerRenderer(
+      async () => ({ renderers: {}, usedFallback: true }),
+      () => {
+        resetCalls += 1;
+      },
+      stable,
+    );
+
+    expect(resetCalls).toBe(1);
+  });
+
+  /**
    * A warmup failure must not be fatal and must not be cached. `loadPageServerRenderer`
    * resolves build errors against its last-good renderer, and at startup there is no
    * last-good — so a genuine failure rejects. Caching that rejected promise would

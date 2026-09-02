@@ -85,7 +85,18 @@ export function isPageServerRenderers(value: unknown): value is PageServerRender
   );
 }
 
-let pageServerRendererPromise: Promise<PageServerRenderers> | null = null;
+/**
+ * Mirrors {@link ShellServerRendererLoadResult}. `usedFallback` matters to the
+ * startup warmup: a fallback RESOLVES rather than rejects, so without this flag a
+ * failed warmup build is indistinguishable from a successful one and readiness
+ * would be advertised behind a stale renderer.
+ */
+export type PageServerRendererLoadResult = {
+  renderers: PageServerRenderers;
+  usedFallback: boolean;
+};
+
+let pageServerRendererPromise: Promise<PageServerRendererLoadResult> | null = null;
 let lastGoodPageServerRenderer: PageServerRenderers | null = null;
 
 export function shellBuildSucceeded(code: string | null, usedFallback: boolean): boolean {
@@ -217,7 +228,7 @@ export function rendererWarmupAttemptDecision(
  * transient compile error during development serves the previous good renderer
  * instead of a 500.
  */
-export async function loadPageServerRenderer(): Promise<PageServerRenderers> {
+export async function loadPageServerRenderer(): Promise<PageServerRendererLoadResult> {
   if (pageServerRendererPromise !== null) return pageServerRendererPromise;
 
   pageServerRendererPromise = (async () => {
@@ -256,13 +267,16 @@ export async function loadPageServerRenderer(): Promise<PageServerRenderers> {
       if (generationAtStart === getRebuildGeneration()) {
         lastGoodPageServerRenderer = renderer;
       }
-      return renderer;
+      return { renderers: renderer, usedFallback: false };
     } catch (error) {
       console.error(
         '[playground] page server rebuild failed; serving the last-good renderer:',
         error,
       );
-      return fallbackToLastGood(lastGoodPageServerRenderer, error);
+      return {
+        renderers: fallbackToLastGood(lastGoodPageServerRenderer, error),
+        usedFallback: true,
+      };
     }
   })();
 

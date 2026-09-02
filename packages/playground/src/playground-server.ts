@@ -438,7 +438,9 @@ async function renderComponentPage(
       console.error(`[playground] featured example SSR failed for ${componentName}:`, error);
     }
     try {
-      const { renderComponentPageBody } = await loadPageServerRenderer();
+      const {
+        renderers: { renderComponentPageBody },
+      } = await loadPageServerRenderer();
       const rendered = renderComponentPageBody({
         componentName,
         documentation,
@@ -1403,12 +1405,26 @@ export async function warmPageServerRenderer(
   }> = runGenerationCheckedWarmup,
 ): Promise<void> {
   let instabilityReasons: string[];
+  let value: unknown;
   try {
-    ({ instabilityReasons } = await runChecked(loadRenderer));
+    ({ value, instabilityReasons } = await runChecked(loadRenderer));
   } catch (error) {
     console.warn(
       '[playground] page server renderer warmup failed; the first /page request will retry:',
       error,
+    );
+    resetRenderer();
+    return;
+  }
+  // A last-good fallback RESOLVES rather than rejects, so the catch above never sees
+  // it. Without this check a failed warmup build is indistinguishable from a successful
+  // one, and readiness would be advertised behind whatever renderer happened to be
+  // last-good -- contradicting this function's own contract that a failure leaves the
+  // first request to rebuild. Reachable because the HTTP server listens (answering /ping
+  // with 503) before the warmup runs, so a request can populate the memo first.
+  if ((value as { usedFallback?: unknown } | undefined)?.usedFallback === true) {
+    console.warn(
+      '[playground] page server renderer warmup fell back to the last-good renderer; the first /page request will rebuild',
     );
     resetRenderer();
     return;
