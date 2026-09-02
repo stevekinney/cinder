@@ -1190,3 +1190,67 @@ describe('scanSource — tenth-round review findings', () => {
     expect(scanSource(source, 'svelte')).toHaveLength(1);
   });
 });
+
+describe('scanSource — eleventh-round review findings', () => {
+  test('a functional pseudo-class still opens a rule', () => {
+    expect(scanSource('.sr-only:not(.disabled) { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[class~="sr-only"]:has(svg) { color: red; }', 'css')).toHaveLength(1);
+    // The `@supports selector()` condition itself still styles nothing.
+    expect(
+      scanSource('@supports selector(.sr-only) { .safe { color: red; } }', 'css'),
+    ).toHaveLength(0);
+  });
+
+  test('a class attribute selector is matched whatever its case', () => {
+    expect(scanSource('[CLASS~="sr-only"] { color: red; }', 'css')).toHaveLength(1);
+    expect(scanSource('[Class="sr-only"] { color: red; }', 'css')).toHaveLength(1);
+  });
+
+  test('a component prop keeps its case, an HTML attribute does not', () => {
+    expect(scanSource('<Widget Class="sr-only" />', 'svelte')).toHaveLength(0);
+    expect(scanSource('<Widget class="sr-only" />', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div CLASS="sr-only">x</div>', 'svelte')).toHaveLength(1);
+  });
+
+  test('a bound `{@html}` literal is followed through a full type annotation', () => {
+    expect(
+      scanSource(
+        `<script>const html: string | null = '<span class="sr-only">x</span>';</script>{@html html}`,
+        'svelte',
+      ),
+    ).toHaveLength(1);
+  });
+
+  test('a type-only string literal applies no class', () => {
+    expect(scanSource("export type LegacyClass = 'sr-only' | 'visible';", 'script')).toHaveLength(
+      0,
+    );
+    expect(scanSource("interface Options { className: 'sr-only' }", 'script')).toHaveLength(0);
+    expect(scanSource("export const cls = 'sr-only';", 'script')).toHaveLength(1);
+  });
+
+  test('a class write is scanned whatever else its value contains', () => {
+    expect(scanSource("node.className = 'state(active) sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource(`node.setAttribute('class', 'foo+bar sr-only');`, 'script')).toHaveLength(1);
+    expect(scanSource("node.title = 'state(active) sr-only';", 'script')).toHaveLength(0);
+  });
+
+  test('an inline handler that writes a class is a usage site', () => {
+    expect(
+      scanSource(`<button onclick={() => target.classList.add('sr-only')}>x</button>`, 'svelte'),
+    ).toHaveLength(1);
+    expect(scanSource(`<button title={'sr-only'}>x</button>`, 'svelte')).toHaveLength(0);
+  });
+
+  test('a token ending in a separator is still the prohibited variant', () => {
+    expect(scanSource('<div class="sr-only-">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="sr-only__">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('.sr-only- { color: red; }', 'css')).toHaveLength(1);
+  });
+
+  test('an escaped dot belongs to the identifier before it', () => {
+    expect(scanSource(String.raw`#foo\.sr-only { color: red; }`, 'css')).toHaveLength(0);
+    expect(scanSource(String.raw`.foo\.sr-only { color: red; }`, 'css')).toHaveLength(0);
+    expect(scanSource('#foo .sr-only { color: red; }', 'css')).toHaveLength(1);
+  });
+});

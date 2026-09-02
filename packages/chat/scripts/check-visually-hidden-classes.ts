@@ -609,7 +609,7 @@ export function toPosixPath(path: string): string {
  * underscore, so the token slipped through entirely. BEM-style
  * `sr-only--focusable` is one too, which is why the separator repeats.
  */
-const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]+\w+)*(?![\w-])`;
+const BARE_TOKEN_SOURCE = String.raw`(?<![\w-])sr-only(?:[-_]+\w+)*[-_]*(?![\w-])`;
 
 /**
  * The five characters HTML splits a class attribute on — tab, line feed,
@@ -627,7 +627,7 @@ const HTML_ASCII_WHITESPACE = String.raw`\t\n\f\r `;
  * (the edge of a string literal in a `classNames()` argument or a class
  * expression), or the edge of the text — not arbitrary punctuation.
  */
-const CLASS_TOKEN_SOURCE = String.raw`(?<![^${HTML_ASCII_WHITESPACE}"'\`])sr-only(?:[-_]+\w+)*(?![^${HTML_ASCII_WHITESPACE}"'\`])`;
+const CLASS_TOKEN_SOURCE = String.raw`(?<![^${HTML_ASCII_WHITESPACE}"'\`])sr-only(?:[-_]+\w+)*[-_]*(?![^${HTML_ASCII_WHITESPACE}"'\`])`;
 
 /**
  * The bare token as a whole class token of an already-isolated VALUE — a
@@ -636,7 +636,7 @@ const CLASS_TOKEN_SOURCE = String.raw`(?<![^${HTML_ASCII_WHITESPACE}"'\`])sr-onl
  * a quote inside such a value is an ordinary class-name character (it can
  * only have come from an escape), not the edge of a literal.
  */
-const CLASS_VALUE_TOKEN_SOURCE = String.raw`(?<![^${HTML_ASCII_WHITESPACE}])sr-only(?:[-_]+\w+)*(?![^${HTML_ASCII_WHITESPACE}])`;
+const CLASS_VALUE_TOKEN_SOURCE = String.raw`(?<![^${HTML_ASCII_WHITESPACE}])sr-only(?:[-_]+\w+)*[-_]*(?![^${HTML_ASCII_WHITESPACE}])`;
 
 /**
  * Matches the bare token as a whole class token inside a `class` attribute
@@ -728,7 +728,12 @@ export function isSpreadClassKey(maskedExpression: string, index: number): boole
  * which is a common enough CSS shape to be a real bypass rather than a
  * theoretical one.
  */
-const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:[-_]+\w+)*(?![\w-])`, 'g');
+const CSS_SELECTOR_PATTERN = new RegExp(
+  // `(?<!\\)` so `#foo\.sr-only` — where the dot is escaped INTO the id — is
+  // not read as a class selector.
+  String.raw`(?<!\\)\.sr-only(?:[-_]+\w+)*[-_]*(?![\w-])`,
+  'g',
+);
 
 /**
  * Decodes CSS identifier escapes inside class selectors so `.sr\-only`,
@@ -740,8 +745,15 @@ export function decodeCssIdentifierEscapes(cssText: string): string {
   return cssText.replace(/\.(?:[\w-]|\\(?:[0-9a-fA-F]{1,6} ?|[^\n0-9a-fA-F]))+/g, (identifier) => {
     const decoded = identifier.replace(
       /\\(?:([0-9a-fA-F]{1,6}) ?|([^\n0-9a-fA-F]))/g,
-      (_match, hex: string | undefined, literal: string | undefined) =>
-        hex !== undefined ? String.fromCodePoint(Number.parseInt(hex, 16)) : (literal ?? ''),
+      (_match, hex: string | undefined, literal: string | undefined) => {
+        const character =
+          hex !== undefined ? String.fromCodePoint(Number.parseInt(hex, 16)) : (literal ?? '');
+        // An escaped delimiter is part of the identifier, not a new selector:
+        // `.foo\.sr-only` is the single class `foo.sr-only`. Decoding it to a
+        // literal `.` would invent a class boundary, so anything that is not
+        // a class-name character becomes one.
+        return /^[\w-]$/.test(character) ? character : 'a';
+      },
     );
     return decoded.padEnd(identifier.length, ' ');
   });
@@ -757,7 +769,7 @@ export function decodeCssIdentifierEscapes(cssText: string): string {
  * form, which is what rejects `content: '[class~="sr-only"]'`.
  */
 const CSS_CLASS_ATTRIBUTE_SELECTOR_PATTERN =
-  /\[\s*class\s*([~|^$*]?)=\s*(?:"([^"\]]*)"|'([^'\]]*)'|([^\s"'\]]+))\s*([iIsS]\s*)?\]/g;
+  /\[\s*class\s*([~|^$*]?)=\s*(?:"([^"\]]*)"|'([^'\]]*)'|([^\s"'\]]+))\s*([iIsS]\s*)?\]/gi;
 
 /**
  * Whether an attribute selector with this operator and value can select an
@@ -814,14 +826,35 @@ export function decodeCssValueEscapes(value: string): string {
  * without parsing.
  */
 export function isCssSelectorContext(source: string, matchEnd: number): boolean {
+  // `@supports selector(.sr-only) { … }` asks the parser whether it
+  // understands the selector; it styles nothing, so the `{` that follows
+  // opens a rule for the selectors INSIDE it, not for this one. Only that
+  // condition is excluded — a functional pseudo-class (`.sr-only:not(.x)`,
+  // `[class~="sr-only"]:has(svg)`) closes parens on its way to a real rule.
+  if (isInsideSupportsSelector(source, matchEnd)) return false;
   for (let index = matchEnd; index < source.length; index++) {
     const character = source[index];
-    // `@supports selector(.sr-only) { … }` asks the parser whether it
-    // understands the selector; it styles nothing, so the `{` that follows
-    // opens a rule for the selectors INSIDE it, not for this one.
-    if (character === ')') return false;
     if (character === '{') return true;
     if (character === ';' || character === '}') return false;
+  }
+  return false;
+}
+
+/**
+ * Whether the match ending at `matchEnd` sits inside the parentheses of an
+ * `@supports selector(...)` condition. The opening paren is found by walking
+ * back at depth zero; the condition counts only when `selector` and
+ * `@supports` precede it.
+ */
+function isInsideSupportsSelector(source: string, matchEnd: number): boolean {
+  let depth = 0;
+  for (let index = matchEnd - 1; index >= 0; index--) {
+    const character = source[index];
+    if (character === ')') depth++;
+    else if (character === '(') {
+      if (depth === 0) return /@supports[\s\S]*\bselector\s*$/.test(source.slice(0, index));
+      depth--;
+    } else if (character === '{' || character === '}' || character === ';') return false;
   }
   return false;
 }
@@ -831,8 +864,18 @@ export function isCssSelectorContext(source: string, matchEnd: number): boolean 
  * case-insensitive in HTML, so `<div CLASS="sr-only">` carries the same
  * class the lowercase spelling would.
  */
-function isClassAttributeName(name: string): boolean {
-  return name.toLowerCase() === 'class';
+function isClassAttributeName(name: string, tagName: string): boolean {
+  // Attribute names are case-insensitive on an HTML element, so
+  // `<div CLASS="sr-only">` carries the class. A Svelte component's props are
+  // case-SENSITIVE identifiers, so `<Widget Class="sr-only" />` is a prop
+  // named `Class` and applies nothing here. Components are the capitalized
+  // (or dotted, or `svelte:`-namespaced) tag names.
+  return isComponentTagName(tagName) ? name === 'class' : name.toLowerCase() === 'class';
+}
+
+/** Whether a tag name names a Svelte component rather than an HTML element. */
+function isComponentTagName(tagName: string): boolean {
+  return /^[A-Z]/.test(tagName) || tagName.includes('.') || tagName.includes(':');
 }
 
 /**
@@ -878,6 +921,60 @@ export function extractClassNamesCallArguments(
   }
 
   return calls;
+}
+
+/**
+ * Whether the text before a literal makes it a class WRITE — the argument of
+ * `classList.add`/`remove`/`toggle`/`replace`, the right-hand side of a
+ * `className`/`class` assignment, or the value passed to
+ * `setAttribute('class', …)`. Such a literal IS the class list the element
+ * receives, whatever else it contains: HTML splits it on whitespace, so
+ * `'state(active) sr-only'` applies the bare class even though the other
+ * token is nothing a class-shaped literal would carry.
+ */
+export function isClassWriteArgument(prefix: string): boolean {
+  return (
+    /(?:^|[^\w$])classList\s*\.\s*(?:add|remove|toggle|replace)\s*\(\s*(?:["'`][^"'`]*["'`]\s*,\s*)*$/.test(
+      prefix,
+    ) ||
+    /(?:^|[^\w$])class(?:Name)?\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])setAttribute\s*\(\s*["'`]class["'`]\s*,\s*$/i.test(prefix)
+  );
+}
+
+/**
+ * Blanks TypeScript declarations that are erased at compile time — `type X =
+ * …` and `interface X { … }` — so a string LITERAL TYPE inside one is not
+ * read as an applied class. Length is preserved, so offsets still map onto
+ * the original text. A `type` alias runs to the terminating `;` or newline
+ * at brace depth zero; an `interface` runs to its balanced closing brace.
+ */
+export function maskTypeDeclarations(source: string): string {
+  const masked = maskStringLiterals(source);
+  let output = '';
+  let index = 0;
+  const pattern = /(?<![\w$.])(?:type\s+[A-Za-z_$][\w$]*\s*[=<]|interface\s+[A-Za-z_$][\w$]*)/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(masked)) !== null) {
+    if (match.index < index) continue;
+    let cursor = match.index + match[0].length;
+    let depth = 0;
+    for (; cursor < masked.length; cursor++) {
+      const character = masked[cursor];
+      if (character === '{') depth++;
+      else if (character === '}') {
+        depth--;
+        if (depth <= 0) {
+          cursor++;
+          break;
+        }
+      } else if (depth === 0 && (character === ';' || character === '\n')) break;
+    }
+    output += source.slice(index, match.index) + ' '.repeat(cursor - match.index);
+    index = cursor;
+    pattern.lastIndex = cursor;
+  }
+  return output + source.slice(index);
 }
 
 /** Scans one file's text for bare `sr-only`-prefixed class usage sites. */
@@ -1383,8 +1480,13 @@ export function extractStringBindings(
   text: string,
 ): Array<{ name: string; content: string; contentStart: number }> {
   const bindings: Array<{ name: string; content: string; contentStart: number }> = [];
+  // The optional TypeScript annotation is matched as "anything up to the
+  // `=`", not as a whitelist of type characters: `const html: string | null =`
+  // and `const html: Record<string, string>[] =` are both ordinary
+  // declarations, and a narrow character class silently stopped following
+  // them. `[^=;\n]` keeps the match on one declaration.
   const declarationPattern =
-    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::\s*[\w$<>[\]|.]+\s*)?=\s*(?=["'`])/g;
+    /\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)\s*(?::[^=;\n]+)?=\s*(?=["'`])/g;
   // Declarations are located on a view with the strings blanked, so
   // declaration-shaped TEXT inside a string (a doc comment's example) cannot
   // register a binding — or shadow the real one. The literal each surviving
@@ -1418,7 +1520,7 @@ export function extractStringBindings(
 }
 
 const CLASS_LIST_TOKEN_PATTERN = new RegExp(
-  String.raw`(?<=^|[${HTML_ASCII_WHITESPACE}])sr-only(?:[-_]+\w+)*(?=[${HTML_ASCII_WHITESPACE}]|$)`,
+  String.raw`(?<=^|[${HTML_ASCII_WHITESPACE}])sr-only(?:[-_]+\w+)*[-_]*(?=[${HTML_ASCII_WHITESPACE}]|$)`,
   'g',
 );
 
@@ -1545,7 +1647,37 @@ export function scanSource(
     }
   };
 
+  /**
+   * Records the class tokens of every literal that an expression hands to a
+   * class write. Unlike {@link scanScriptLiterals} this looks at nothing
+   * else, so an ordinary value in the same expression stays inert.
+   */
+  const scanClassWrites = (rawExpression: string, offset: number): void => {
+    const expression = maskRegexLiterals(maskScriptComments(rawExpression));
+    let index = 0;
+    while (index < expression.length) {
+      const quote = expression[index] ?? '';
+      if (quote !== '"' && quote !== "'" && quote !== '`') {
+        index += 1;
+        continue;
+      }
+      const start = index;
+      const end = stringLiteralEnd(expression, start);
+      index = end;
+      if (end <= start + 1 || expression[end - 1] !== quote) continue;
+      if (!isClassWriteArgument(expression.slice(0, start))) continue;
+      const content = decodeStringEscapes(
+        blankTemplatePlaceholders(expression.slice(start + 1, end - 1)),
+      );
+      CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
+      let tokenMatch: RegExpExecArray | null;
+      while ((tokenMatch = CLASS_LIST_TOKEN_PATTERN.exec(content)) !== null)
+        record(offset + start + 1 + tokenMatch.index);
+    }
+  };
+
   const scanOpeningTag = (text: string, offset: number): void => {
+    const tagName = /^<([^\s/>]+)/.exec(text)?.[1] ?? '';
     for (const attribute of extractTagAttributes(text)) {
       if (attribute.kind === 'spread') {
         // Only a top-level property of the spread object lands on this
@@ -1600,13 +1732,18 @@ export function scanSource(
       if (attribute.kind === 'expression') {
         if (CLASS_DIRECTIVE_PATTERN.test(attribute.name)) {
           record(offset + text.lastIndexOf(attribute.name, attribute.expressionStart));
-        } else if (isClassAttributeName(attribute.name)) {
+        } else if (isClassAttributeName(attribute.name, tagName)) {
           scanClassExpression(attribute.expression, offset + attribute.expressionStart);
+        } else {
+          // Another attribute's expression is not a class — `title={'sr-only'}`
+          // applies nothing — but its code can still write one:
+          // `onclick={() => target.classList.add('sr-only')}`.
+          scanClassWrites(attribute.expression, offset + attribute.expressionStart);
         }
         continue;
       }
 
-      if (!isClassAttributeName(attribute.name)) continue;
+      if (!isClassAttributeName(attribute.name, tagName)) continue;
       // A quoted value can still interpolate: `class="foo {cond ? 'x' : ''}"`.
       // The expression is JavaScript and is scanned as such — its comments
       // apply no class, its literals can — while the surrounding text keeps
@@ -1661,7 +1798,12 @@ export function scanSource(
     }
   };
 
-  const scanScript = (text: string, offset: number): void => {
+  const scanScript = (rawText: string, offset: number): void => {
+    // A `type`/`interface` declaration is erased before anything runs, so a
+    // string literal inside one is a TYPE, not a class: `type Legacy =
+    // 'sr-only' | 'visible'` applies nothing. Blanking them keeps every
+    // offset (the mask is length-preserving).
+    const text = maskTypeDeclarations(rawText);
     for (const call of extractClassNamesCallArguments(text)) {
       // `classNames(/sr-only/.test(value) && 'selected')` can only apply
       // `selected`; the regex body is masked (length preserved) so only
@@ -1724,7 +1866,14 @@ export function scanSource(
       // escaped whitespace separates class tokens the way it does at runtime
       // while a placeholder's code is never read as text.
       const shape = decodeStringEscapes(blankTemplatePlaceholders(content));
-      if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
+      // The shape test is what separates a class list routed through a
+      // variable from prose or a markup example. A literal handed straight to
+      // a class write needs no such inference — it IS the class list.
+      if (
+        !CLASS_LIST_LITERAL_SHAPE.test(shape) &&
+        !isClassWriteArgument(literalSource.slice(0, start))
+      )
+        continue;
       CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
       while ((tokenMatch = CLASS_LIST_TOKEN_PATTERN.exec(shape)) !== null)
