@@ -214,14 +214,17 @@ export type ChatStreamEvent =
  * downstream (or, worse, doesn't).
  */
 function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
-  // `WithOptionalEnvelope` means a legacy member may not have these keys at
-  // all (not merely `undefined`-valued), so read them through `in` checks
-  // rather than direct property access.
-  const wireVersion = 'wireVersion' in event ? event.wireVersion : undefined;
-  const sequence = 'sequence' in event ? event.sequence : undefined;
-  const hasWireVersion = wireVersion !== undefined;
-  const hasSequence = sequence !== undefined;
+  // Presence, not value, decides whether an envelope was attempted — the
+  // same rule `readWireEnvelope` applies on decode. A legacy member has no
+  // envelope keys at all; a key that is present but `undefined` is a
+  // producer bug (a runtime cast, a spread of a partial object), and
+  // treating it as "bare" would silently drop the sequence and terminal
+  // enforcement that the versioned mode exists to provide.
+  const hasWireVersion = 'wireVersion' in event;
+  const hasSequence = 'sequence' in event;
   if (!hasWireVersion && !hasSequence) return {};
+  const wireVersion = hasWireVersion ? event.wireVersion : undefined;
+  const sequence = hasSequence ? event.sequence : undefined;
   if (
     hasWireVersion !== hasSequence ||
     wireVersion !== SUPPORTED_WIRE_VERSION ||
@@ -356,9 +359,9 @@ function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
 function projectChatStreamState(state: ChatStreamState): Record<string, unknown> {
   const projected: Record<string, unknown> = {
     blocks: state.blocks.map(projectChatStreamBlock),
-    textContent: state.textContent,
+    textContent: requireString(state.textContent, 'state.textContent'),
     toolCalls: state.toolCalls.map(projectChatStreamBlock),
-    complete: state.complete,
+    complete: requireBoolean(state.complete, 'state.complete'),
   };
   if (state.activeBlock !== undefined)
     projected['activeBlock'] = projectChatStreamBlock(state.activeBlock);
@@ -1157,26 +1160,46 @@ export async function* decodeChatStreamEvents(
     noteDecodedStreamEvent(event, guard);
     return event;
   };
+  // Decode-then-validate-then-yield for whatever is left after the final
+  // newline. An unterminated frame is not a valid frame; yielding it before
+  // `assertStreamFramed` runs would hand the consumer data the contract calls
+  // truncated — and a consumer that stops iterating on a terminal frame
+  // returns the generator before any assertion placed after the yield.
+  const finishStream = function* (leftover: string): Generator<ChatStreamEvent> {
+    if (leftover.trim()) {
+      const event = decodeAndTrack(leftover.trim());
+      assertStreamFramed(leftover, guard);
+      yield event;
+    } else {
+      assertStreamFramed(leftover, guard);
+    }
+    assertStreamTerminated(guard);
+  };
   if (typeof source === 'string') {
-    for (const line of source
-      .split('\n')
-      .map((item) => item.trim())
-      .filter(Boolean))
-      yield decodeAndTrack(line);
     // Same framing rule as the byte paths below. A versioned stream that is
     // accepted as a string but rejected when streamed would make the format's
     // validity depend on how the caller happened to deliver it.
-    assertStreamFramed(
-      source.endsWith('\n') ? '' : source.slice(source.lastIndexOf('\n') + 1),
-      guard,
-    );
-    assertStreamTerminated(guard);
+    const lines = source.split('\n');
+    const leftover = lines.pop() ?? '';
+    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
+    yield* finishStream(leftover);
     return;
   }
-  const decoder = new TextDecoder();
+  // `fatal` so an invalid byte sequence rejects the stream instead of being
+  // replaced with U+FFFD: a replaced byte inside a quoted payload field still
+  // parses as JSON, so without this the stream would complete "successfully"
+  // with silently corrupted text, tool arguments, or history.
+  const decoder = new TextDecoder('utf-8', { fatal: true });
+  const decodeBytes = (chunk?: Uint8Array): string => {
+    try {
+      return chunk === undefined ? decoder.decode() : decoder.decode(chunk, { stream: true });
+    } catch {
+      throw new Error('Invalid chat stream event: response bytes are not valid UTF-8');
+    }
+  };
   let buffer = '';
   const appendChunk = function* (chunk: string | Uint8Array): Generator<ChatStreamEvent> {
-    buffer += typeof chunk === 'string' ? chunk : decoder.decode(chunk, { stream: true });
+    buffer += typeof chunk === 'string' ? chunk : decodeBytes(chunk);
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
     for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
@@ -1194,21 +1217,8 @@ export async function* decodeChatStreamEvents(
       // sequence leaves them inside `TextDecoder`, not in `buffer`, so
       // without this final `decode()` the truncation is invisible: the
       // buffer looks empty and a genuinely truncated stream is accepted.
-      buffer += decoder.decode();
-      // The leftover has to be DECODED before framing can be judged — `mode` is
-      // only known once a frame has been seen, and a single-frame stream has
-      // seen none yet. But it must not be YIELDED before framing is judged: an
-      // unterminated frame is not a valid frame, and handing it to the consumer
-      // first would deliver data the contract calls truncated. Decode, validate,
-      // then yield.
-      if (buffer.trim()) {
-        const leftover = decodeAndTrack(buffer.trim());
-        assertStreamFramed(buffer, guard);
-        yield leftover;
-      } else {
-        assertStreamFramed(buffer, guard);
-      }
-      assertStreamTerminated(guard);
+      buffer += decodeBytes();
+      yield* finishStream(buffer);
       completed = true;
     } finally {
       try {
@@ -1227,21 +1237,8 @@ export async function* decodeChatStreamEvents(
   // Same flush as the ReadableStream branch above: bytes retained mid
   // multibyte sequence live inside TextDecoder, not in `buffer`, so skipping
   // this makes a truncated stream look like a clean one.
-  buffer += decoder.decode();
-  // The leftover has to be DECODED before framing can be judged — `mode` is
-  // only known once a frame has been seen, and a single-frame stream has
-  // seen none yet. But it must not be YIELDED before framing is judged: an
-  // unterminated frame is not a valid frame, and handing it to the consumer
-  // first would deliver data the contract calls truncated. Decode, validate,
-  // then yield.
-  if (buffer.trim()) {
-    const leftover = decodeAndTrack(buffer.trim());
-    assertStreamFramed(buffer, guard);
-    yield leftover;
-  } else {
-    assertStreamFramed(buffer, guard);
-  }
-  assertStreamTerminated(guard);
+  buffer += decodeBytes();
+  yield* finishStream(buffer);
 }
 
 /** Short aliases for applications that already call their wire format `StreamEvent`. */

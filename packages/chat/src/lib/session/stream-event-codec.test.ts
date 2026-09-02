@@ -1709,3 +1709,116 @@ describe('framing on the ReadableStream path', () => {
     expect(seen).toHaveLength(2);
   });
 });
+
+describe('encoder validates stream:complete scalar fields', () => {
+  const stateEvent = (overrides: Record<string, unknown>): ChatStreamEvent =>
+    ({
+      type: 'stream:complete',
+      state: { blocks: [], textContent: 'hi', toolCalls: [], complete: true, ...overrides },
+      wireVersion: 1,
+      sequence: 0,
+    }) as unknown as ChatStreamEvent;
+
+  test('rejects an undefined textContent', () => {
+    expect(() => encodeChatStreamEvent(stateEvent({ textContent: undefined }))).toThrow(
+      'Invalid chat stream event: state.textContent must be a string',
+    );
+  });
+
+  test('rejects a non-boolean complete', () => {
+    expect(() => encodeChatStreamEvent(stateEvent({ complete: 'yes' }))).toThrow(
+      'Invalid chat stream event: state.complete must be a boolean',
+    );
+  });
+});
+
+describe('encoder treats present envelope keys as an attempted envelope', () => {
+  test('rejects a legacy event whose envelope keys are present but undefined', () => {
+    // A runtime cast or a spread of a partial object can leave both keys
+    // present with `undefined` values. `readWireEnvelope` rejects that frame
+    // on key presence, so the encoder must not quietly downgrade it to bare.
+    const event = {
+      type: 'text',
+      text: 'hi',
+      wireVersion: undefined,
+      sequence: undefined,
+    } as unknown as ChatStreamEvent;
+    expect(() => encodeChatStreamEvent(event)).toThrow(
+      'Invalid chat stream event: cannot encode a malformed wire envelope',
+    );
+  });
+
+  test('still encodes a legacy event with no envelope keys at all', () => {
+    const encoded = encodeChatStreamEvent({ type: 'text', text: 'hi' });
+    expect(JSON.parse(encoded)).toEqual({ type: 'text', text: 'hi' });
+  });
+});
+
+describe('string sources validate the final fragment before yielding it', () => {
+  test('an unterminated terminal frame is never yielded, even if the consumer stops early', async () => {
+    const source = `${JSON.stringify({ wireVersion: 1, sequence: 1, type: 'text', text: 'a' })}\n${JSON.stringify({ wireVersion: 1, sequence: 2, type: 'run.aborted' })}`;
+
+    const seen: ChatStreamEvent[] = [];
+    await expect(
+      (async () => {
+        for await (const event of decodeChatStreamEvents(source)) {
+          seen.push(event);
+          // A consumer that stops on the first terminal frame it sees.
+          if (event.type === 'run.aborted') break;
+        }
+      })(),
+    ).rejects.toThrow(/ended mid-frame without a newline/);
+
+    expect(seen).toHaveLength(1);
+  });
+});
+
+describe('decoder rejects invalid UTF-8 instead of replacing bytes', () => {
+  const encoder = new TextEncoder();
+  const corrupt = (): Uint8Array[] => {
+    const frame = encoder.encode(
+      `${JSON.stringify({ wireVersion: 1, sequence: 1, type: 'text', text: 'ab' })}\n`,
+    );
+    // Replace the `a` inside the quoted payload with a lone continuation byte.
+    const corrupted = new Uint8Array(frame);
+    corrupted[frame.indexOf(0x61)] = 0x80;
+    const terminal = encoder.encode(
+      `${JSON.stringify({ wireVersion: 1, sequence: 2, type: 'run.aborted' })}\n`,
+    );
+    return [corrupted, terminal];
+  };
+
+  test('on the async-iterable path', async () => {
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      for (const chunk of corrupt()) yield chunk;
+    }
+    await expect(Array.fromAsync(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      'Invalid chat stream event: response bytes are not valid UTF-8',
+    );
+  });
+
+  test('on the ReadableStream path', async () => {
+    const stream = new ReadableStream<Uint8Array>({
+      start(controller) {
+        for (const chunk of corrupt()) controller.enqueue(chunk);
+        controller.close();
+      },
+    });
+    await expect(Array.fromAsync(decodeChatStreamEvents(stream))).rejects.toThrow(
+      'Invalid chat stream event: response bytes are not valid UTF-8',
+    );
+  });
+
+  test('a stream cut mid-multibyte sequence is rejected at EOF', async () => {
+    const euro = encoder.encode('€'); // three bytes
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield encoder.encode(
+        `${JSON.stringify({ wireVersion: 1, sequence: 1, type: 'run.aborted' })}\n`,
+      );
+      yield euro.slice(0, 2);
+    }
+    await expect(Array.fromAsync(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      'Invalid chat stream event',
+    );
+  });
+});
