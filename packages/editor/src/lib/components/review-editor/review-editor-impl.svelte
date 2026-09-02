@@ -275,12 +275,16 @@
   let consumedSelection: { from: number; to: number } | null = null;
 
   /**
-   * The keys that can move the caret or edit the document — navigation, the
-   * editing keys, and typing. Everything else keeps
-   * {@link consumedSelection}: a modifier held on its own (`Shift` is how a
-   * keyboard selection *starts*, so it arrives before any selection exists),
-   * `Tab` and `Escape`, the function and lock keys, and a shortcut such as
-   * `Ctrl`/`Cmd`+C that neither moves the selection nor edits the document.
+   * The keys that begin a new selection: caret movement and the keys that
+   * replace the selected text. Everything else keeps
+   * {@link consumedSelection}, which is deliberately conservative — the
+   * latch suppresses one specific range, so a key that leaves the selection
+   * where it is has no reason to release it. That includes a modifier held
+   * on its own (`Shift` is how a keyboard selection *starts*, so it arrives
+   * before any selection exists), `Tab` and `Escape`, the function and lock
+   * keys, and every shortcut outside {@link SELECTION_AFFECTING_SHORTCUTS} —
+   * a formatting command such as `Mod`+B edits the document but keeps its
+   * selection, so the latch still applies to it.
    */
   const SELECTION_AFFECTING_KEYS = new Set([
     'ArrowDown',
@@ -296,14 +300,19 @@
     'PageUp',
   ]);
 
-  /** The shortcut letters that select, edit, or restore document text. */
+  /**
+   * The shortcut letters that replace what is selected, and so leave a
+   * different selection behind: select-all, paste, cut, undo, redo. Other
+   * shortcuts are not listed even when they change the document, because
+   * they leave the selection alone — see {@link SELECTION_AFFECTING_KEYS}.
+   */
   const SELECTION_AFFECTING_SHORTCUTS = new Set(['a', 'v', 'x', 'y', 'z']);
 
   function movesSelection(event: KeyboardEvent): boolean {
     if (SELECTION_AFFECTING_KEYS.has(event.key)) return true;
-    // A single character is a keystroke that types — unless a shortcut
-    // modifier turns it into a command, and only some of those touch the
-    // selection or the document.
+    // A single character is a keystroke that types over the selection —
+    // unless a shortcut modifier turns it into a command, and only the
+    // listed commands leave a different selection behind.
     if (event.key.length !== 1) return false;
     return event.ctrlKey || event.metaKey
       ? SELECTION_AFFECTING_SHORTCUTS.has(event.key.toLowerCase())
