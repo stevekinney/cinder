@@ -16,6 +16,7 @@
 </script>
 
 <script lang="ts">
+  import type { Snippet } from 'svelte';
   import type { Attachment } from 'svelte/attachments';
 
   import Check from 'lucide-svelte/icons/check';
@@ -115,6 +116,17 @@
   // the actions render OUTSIDE the field instead, as a normal full-width
   // sibling row (the pre-existing layout this redesign started from).
   const hasLabelSnippetAction = $derived(!!actions?.some((action) => !!action.labelSnippet));
+
+  // The value field's addon, typed against the `InputProps` leading/trailing
+  // union so it can be spread onto ONE `<Input>` (see the template comment).
+  // Takes the actions row as a parameter because template snippets are not in
+  // scope here.
+  type ValueFieldAddon =
+    | { trailing: Snippet; trailingInteractive: true }
+    | { trailing?: never; trailingInteractive?: never };
+  function valueFieldAddon(row: Snippet): ValueFieldAddon {
+    return hasLabelSnippetAction ? {} : { trailing: row, trailingInteractive: true };
+  }
 
   // Track which action is in the "copied" state by its key.
   let copiedKey = $state<string | null>(null);
@@ -358,49 +370,29 @@
        is present, `Input`'s trailing slot is too narrow for rich content
        (`max-inline-size: 40%`), so the actions render OUTSIDE the field as
        a normal full-width row instead of being clipped inside it. -->
-  <!-- Two `Input` arms rather than one call site with the addon applied conditionally.
-       Switching arms tears the value field down — two `<Input>` instances are two
-       native elements — so a parent reactively updating `actions` across the
-       `labelSnippet` boundary drops the user's focus and selection.
-
-       `Input` itself no longer recreates its `<input>` when an addon appears or
-       disappears (CIN-500: the control wrapper is always rendered), so a single call
-       site WOULD now preserve the element. The remaining obstacle is typing: a
-       conditional spread (`{...cond ? {} : { trailing, trailingInteractive }}`) does
-       not typecheck against `InputProps`' leading/trailing union under
-       `exactOptionalPropertyTypes`, because the conditional's type is widened before
-       the spread. A spread of a `$derived` object whose type is already narrowed to
-       the union does typecheck (CIN-500's fixture does exactly that). Collapsing to
-       that form is tracked as CIN-512. -->
+  <!-- One `Input` call site. `Input` keeps its native element when an addon
+       appears or disappears (CIN-500), so moving the actions between the trailing
+       addon and the sibling row is a prop update on the same instance, and a parent
+       reactively changing `actions` across the `labelSnippet` boundary no longer
+       drops the user's focus and selection in the value field. The addon is built by
+       `valueFieldAddon`, whose return type is already narrowed to the `InputProps`
+       leading/trailing union; a conditional spread written inline would widen
+       `trailing` to optional first and fail `exactOptionalPropertyTypes`. -->
+  <Input
+    id={valueFieldId}
+    {value}
+    readonly
+    variant="code"
+    class="cinder-share-card__value"
+    title={value}
+    aria-label={valueRegionLabel}
+    inputAttachment={valueFieldAttachment}
+    oncopy={handleFieldCopy}
+    onfocus={(event) => event.currentTarget.select()}
+    {...valueFieldAddon(actionsRow)}
+  />
   {#if hasLabelSnippetAction}
-    <Input
-      id={valueFieldId}
-      {value}
-      readonly
-      variant="code"
-      class="cinder-share-card__value"
-      title={value}
-      aria-label={valueRegionLabel}
-      inputAttachment={valueFieldAttachment}
-      oncopy={handleFieldCopy}
-      onfocus={(event) => event.currentTarget.select()}
-    />
     {@render actionsRow()}
-  {:else}
-    <Input
-      id={valueFieldId}
-      {value}
-      readonly
-      variant="code"
-      class="cinder-share-card__value"
-      title={value}
-      aria-label={valueRegionLabel}
-      inputAttachment={valueFieldAttachment}
-      oncopy={handleFieldCopy}
-      onfocus={(event) => event.currentTarget.select()}
-      trailing={actionsRow}
-      trailingInteractive
-    />
   {/if}
 </div>
 
