@@ -65,13 +65,25 @@ const repositoryRoot = resolve(import.meta.dirname, '../../..');
  * at the root is not a false positive while a shadow copy nested under this
  * package is.
  */
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null;
+}
+
+/** `JSON.parse` returns `any`; narrow it before trusting `.version`. */
+function readManifestVersion(manifestPath: string): string {
+  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
+  if (!isRecord(parsed) || typeof parsed['version'] !== 'string') {
+    throw new Error(`${manifestPath} has no string "version" field`);
+  }
+  return parsed['version'];
+}
+
 export function assertPrettierResolvesToRoot(): { version: string; resolvedFrom: string } {
   const resolvedFrom = import.meta.resolve('prettier');
   const rootPrettierManifest = join(repositoryRoot, 'node_modules', 'prettier', 'package.json');
   let rootVersion: string;
   try {
-    rootVersion = (JSON.parse(readFileSync(rootPrettierManifest, 'utf8')) as { version: string })
-      .version;
+    rootVersion = readManifestVersion(rootPrettierManifest);
   } catch (error) {
     throw new Error(
       `formatGenerated: cannot read the root prettier at ${rootPrettierManifest}; ` +

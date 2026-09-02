@@ -26,11 +26,14 @@ describe('formatGenerated prettier resolution', () => {
    * touched `packages/components`. The pipeline must format with the root's copy.
    */
   test('resolves prettier to the version the repository root locks', () => {
-    const rootVersion = (
-      JSON.parse(
-        readFileSync(join(repositoryRoot, 'node_modules', 'prettier', 'package.json'), 'utf8'),
-      ) as { version: string }
-    ).version;
+    const parsed: unknown = JSON.parse(
+      readFileSync(join(repositoryRoot, 'node_modules', 'prettier', 'package.json'), 'utf8'),
+    );
+    if (typeof parsed !== 'object' || parsed === null || !('version' in parsed)) {
+      throw new Error('root prettier package.json has no version');
+    }
+    const rootVersion = parsed.version;
+    expect(typeof rootVersion).toBe('string');
 
     const { version, resolvedFrom } = assertPrettierResolvesToRoot();
 
