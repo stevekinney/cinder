@@ -671,7 +671,11 @@ const NAMED_CHARACTER_REFERENCES: Record<string, string> = {
 };
 export function decodeCharacterReferences(value: string): string {
   return value.replace(
-    /&(?:#x([0-9a-fA-F]+)|#([0-9]+)|([a-zA-Z]+));/g,
+    // The semicolon is optional on a NUMERIC reference: browsers decode
+    // `&#45only` to `-only`, so `class="sr&#45only"` really is the bare
+    // class. A named reference without its semicolon is not decoded here,
+    // matching the standard's much narrower legacy list.
+    /&(?:#x([0-9a-fA-F]+);?|#([0-9]+);?|([a-zA-Z]+);)/g,
     (match: string, hex: string | undefined, decimal: string | undefined, name: string) => {
       if (hex !== undefined) return String.fromCodePoint(Number.parseInt(hex, 16));
       if (decimal !== undefined) return String.fromCodePoint(Number.parseInt(decimal, 10));
@@ -924,6 +928,16 @@ export function extractClassNamesCallArguments(
 }
 
 /**
+ * Whether the text before a literal makes it a module specifier —
+ * `import … from '…'`, `export … from '…'`, a bare `import '…'`, a dynamic
+ * `import('…')`, or `require('…')`. A specifier names a module, never a DOM
+ * class, however class-shaped it happens to look.
+ */
+export function isModuleSpecifier(prefix: string): boolean {
+  return /(?:^|[^\w$])(?:from|import|require)\s*\(?\s*$/.test(prefix);
+}
+
+/**
  * Whether the text before a literal makes it a class WRITE — the argument of
  * `classList.add`/`remove`/`toggle`/`replace`, the right-hand side of a
  * `className`/`class` assignment, or the value passed to
@@ -953,7 +967,8 @@ export function maskTypeDeclarations(source: string): string {
   const masked = maskStringLiterals(source);
   let output = '';
   let index = 0;
-  const pattern = /(?<![\w$.])(?:type\s+[A-Za-z_$][\w$]*\s*[=<]|interface\s+[A-Za-z_$][\w$]*)/g;
+  const pattern =
+    /(?<![\w$.])(?:type\s+[A-Za-z_$][\w$]*\s*[=<]|interface\s+[A-Za-z_$][\w$]*|declare\s)/g;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(masked)) !== null) {
     if (match.index < index) continue;
@@ -973,6 +988,38 @@ export function maskTypeDeclarations(source: string): string {
     output += source.slice(index, match.index) + ' '.repeat(cursor - match.index);
     index = cursor;
     pattern.lastIndex = cursor;
+  }
+  return maskTypeExpressions(output + source.slice(index));
+}
+
+/**
+ * Blanks the erased TYPE positions that are not whole declarations: an `as`
+ * or `satisfies` assertion, a parameter or variable annotation. A literal in
+ * one of them is a type, never a class. Only the literal is blanked, and its
+ * length is kept, so everything around it still maps onto the original text.
+ *
+ * A variable annotation is bounded by the `=` that starts its initializer; a
+ * parameter annotation by the `,` or `)` that ends it. An object literal's
+ * `key: 'value'` is a VALUE and is deliberately not matched — it is a
+ * property, not an annotation, and the two are told apart by what encloses
+ * them, which is why only annotations inside a parameter list qualify.
+ */
+function maskTypeExpressions(source: string): string {
+  const masked = maskStringLiterals(source);
+  let output = '';
+  let index = 0;
+  // `as`/`satisfies` take a type directly; a `(name: 'literal'` is a
+  // parameter annotation; a `const name: 'literal'` a variable one.
+  const pattern =
+    /(?:(?<![\w$.])(?:as|satisfies)\s+|[(,]\s*[A-Za-z_$][\w$]*\??\s*:\s*|(?<![\w$.])(?:const|let|var)\s+[A-Za-z_$][\w$]*\s*:\s*)(["'`])/g;
+  let match: RegExpExecArray | null;
+  while ((match = pattern.exec(masked)) !== null) {
+    const quoteIndex = match.index + match[0].length - 1;
+    if (quoteIndex < index) continue;
+    const end = stringLiteralEnd(masked, quoteIndex);
+    output += source.slice(index, quoteIndex) + ' '.repeat(end - quoteIndex);
+    index = end;
+    pattern.lastIndex = end;
   }
   return output + source.slice(index);
 }
@@ -1852,7 +1899,9 @@ export function scanSource(
       const end = stringLiteralEnd(literalSource, start);
       index = end;
       if (end <= start + 1 || literalSource[end - 1] !== quote) continue;
-      if (isDomReadArgument(literalSource.slice(0, start), literalSource.slice(end))) continue;
+      const literalPrefix = literalSource.slice(0, start);
+      if (isDomReadArgument(literalPrefix, literalSource.slice(end))) continue;
+      if (isModuleSpecifier(literalPrefix)) continue;
       const content = literalSource.slice(start + 1, end - 1);
       const contentOffset = offset + start + 1;
       if (quote === '`') {
@@ -1869,11 +1918,7 @@ export function scanSource(
       // The shape test is what separates a class list routed through a
       // variable from prose or a markup example. A literal handed straight to
       // a class write needs no such inference — it IS the class list.
-      if (
-        !CLASS_LIST_LITERAL_SHAPE.test(shape) &&
-        !isClassWriteArgument(literalSource.slice(0, start))
-      )
-        continue;
+      if (!CLASS_LIST_LITERAL_SHAPE.test(shape) && !isClassWriteArgument(literalPrefix)) continue;
       CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
       while ((tokenMatch = CLASS_LIST_TOKEN_PATTERN.exec(shape)) !== null)

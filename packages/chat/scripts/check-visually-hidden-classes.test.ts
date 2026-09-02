@@ -1254,3 +1254,27 @@ describe('scanSource — eleventh-round review findings', () => {
     expect(scanSource('#foo .sr-only { color: red; }', 'css')).toHaveLength(1);
   });
 });
+
+describe('scanSource — twelfth-round review findings', () => {
+  test('a numeric character reference decodes without its semicolon', () => {
+    expect(scanSource('<div class="sr&#45only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="foo&#32sr-only">x</div>', 'svelte')).toHaveLength(1);
+    expect(scanSource('<div class="sr&#x2Donly">x</div>', 'svelte')).toHaveLength(1);
+  });
+
+  test('an erased type position applies no class', () => {
+    expect(scanSource("function accepts(cls: 'sr-only') {}", 'script')).toHaveLength(0);
+    expect(scanSource("declare const cls: 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("const cls = value as 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("const cls: 'sr-only' = other;", 'script')).toHaveLength(0);
+    // An object property is a value, not an annotation.
+    expect(scanSource("const attributes = { class: 'sr-only' };", 'script')).toHaveLength(1);
+  });
+
+  test('a module specifier is not a class', () => {
+    expect(scanSource("import styles from 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("export { styles } from 'sr-only';", 'script')).toHaveLength(0);
+    expect(scanSource("const styles = await import('sr-only');", 'script')).toHaveLength(0);
+    expect(scanSource("const cls = 'sr-only';", 'script')).toHaveLength(1);
+  });
+});
