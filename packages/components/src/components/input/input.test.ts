@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { describe, expect, spyOn, test } from 'bun:test';
+import { afterEach, describe, expect, spyOn, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { injectStrippedStyles } from '../../test/css.ts';
@@ -10,7 +10,14 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 // so we register happy-dom's globals first and then dynamic-import testing-library below.
 setupHappyDom();
 
-const { render, fireEvent, waitFor } = await import('@testing-library/svelte');
+const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+
+// Unmount renders between tests; the shared document.body otherwise leaks
+// activeElement and nodes into later files (check:test-cleanup).
+afterEach(() => {
+  cleanup();
+  document.body.replaceChildren();
+});
 const { default: Input } = await import('./input.svelte');
 const { default: InputFormResetFixture } =
   await import('../../test/fixtures/input-form-reset-fixture.svelte');
@@ -18,6 +25,8 @@ const { default: FormFieldInputFixture } =
   await import('../../test/fixtures/form-field-input-fixture.svelte');
 const { default: FormFieldIdMismatchFixture } =
   await import('../../test/fixtures/form-field-id-mismatch-fixture.svelte');
+const { default: InputAddonToggleFixture } =
+  await import('../../test/fixtures/input-addon-toggle-fixture.svelte');
 
 function textSnippet(text: string) {
   return createRawSnippet(() => ({
@@ -675,6 +684,67 @@ describe('Input group (leading/trailing addons)', () => {
     expect(container.querySelector('.cinder-input')).not.toBeNull();
   });
 
+  test('without addons the input sits in a boxless host, not a group', async () => {
+    const { container } = render(Input, {
+      props: { id: 'hosted', value: '' },
+    });
+    const host = container.querySelector('.cinder-input-host');
+    expect(host).not.toBeNull();
+    expect(host?.classList.contains('cinder-input-group')).toBe(false);
+    const hostedInputs = Array.from(host?.children ?? []).filter((child) =>
+      child.matches('input.cinder-input'),
+    );
+    expect(hostedInputs).toHaveLength(1);
+    // The host is the frame's direct child and carries the full-width marker,
+    // which is what access-gate.css's
+    // `:has(> .cinder-form-field > [data-cinder-full-width])` keys on.
+    expect(host?.parentElement?.classList.contains('cinder-form-field')).toBe(true);
+    expect(host?.hasAttribute('data-cinder-full-width')).toBe(true);
+
+    const css = await Bun.file(new URL('./input.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-input-host\s*\{[^}]*display:\s*contents;[^}]*border-color:\s*var\(--cinder-border\);[^}]*\}/,
+    );
+    // The host and the group are the same element, so the group's border-color
+    // transition would otherwise run from `currentcolor` when an addon appears.
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-invalid\]\s*\{[^}]*border-color:\s*var\(--cinder-status-danger-solid\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-disabled\]\s*\{[^}]*border-color:\s*var\(--cinder-border-muted\);/,
+    );
+    // Hover too: an addon can appear while the pointer is over the input, and
+    // the host is hovered whenever its input is.
+    expect(css).toMatch(
+      /\.cinder-input-host:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--cinder-border-strong\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*oklch\(from var\(--cinder-status-danger-solid\) calc\(l - 0\.06\) c h\);/,
+    );
+    // And the reverse direction: the grouped input drops its border with
+    // `border-style`, not the `border` shorthand, so its computed border-color
+    // is unchanged when the addon is removed and its border returns.
+    const groupedInputRule = css.match(/\.cinder-input-group > \.cinder-input\s*\{[^}]*\}/u)?.[0];
+    expect(groupedInputRule).toBeDefined();
+    expect(groupedInputRule).toMatch(/border-style:\s*none;/);
+    expect(groupedInputRule).not.toMatch(/\bborder:\s*none;/);
+    // Focus ring: the grouped input keeps its ring VALUE and clips it, and the
+    // host pins its focus-within box-shadow to the group's ring, so ring
+    // ownership moves between the input and the wrapper without a transition.
+    expect(groupedInputRule).toMatch(/clip-path:\s*inset\(0\);/);
+    const groupedFocusRule = css.match(
+      /\.cinder-input-group > \.cinder-input:focus-visible\s*\{[^}]*\}/u,
+    )?.[0];
+    expect(groupedFocusRule).toBeDefined();
+    expect(groupedFocusRule).not.toMatch(/box-shadow:\s*none/);
+    expect(css).toMatch(
+      /\.cinder-input-host:focus-within\s*\{[^}]*box-shadow:\s*0 0 0 var\(--cinder-ring-offset\) var\(--cinder-ring-offset-color\),\s*0 0 0 calc\(var\(--cinder-ring-offset\) \+ var\(--cinder-ring-width\)\)\s*var\(--_cinder-input-ring, var\(--cinder-ring-color\)\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-invalid\]\s*\{[^}]*--_cinder-input-ring:\s*var\(--cinder-status-danger-solid\);/,
+    );
+  });
+
   test('group with leading only — wrapper has data-leading, leading span present, trailing absent', () => {
     const { container } = render(Input, {
       props: {
@@ -900,5 +970,106 @@ describe('Input — required marker', () => {
       props: { id: 'opt-input', value: '', label: 'Name' },
     });
     expect(container.querySelector('.cinder-_required-marker')).toBeNull();
+  });
+});
+
+describe('Input keeps its native element across addon toggles', () => {
+  const hosts = ['bare', 'field', 'field-with-own-label'] as const;
+
+  function nativeInput(container: Element): HTMLInputElement {
+    const inputs = container.querySelectorAll<HTMLInputElement>('input.cinder-input');
+    // Exactly one, not just "the first": under happy-dom a torn-down `{#if}`
+    // arm can leave its nodes connected, so an identity check alone would pass
+    // against the stale element while a second, freshly created <input> sits
+    // beside it. (A real browser removes the old arm and recreates the input;
+    // the Vite-served Playwright probe in the PR is the authoritative check.)
+    expect(inputs).toHaveLength(1);
+    const input = inputs[0];
+    if (!input) throw new Error('expected the native <input> to be rendered');
+    return input;
+  }
+
+  test('control: a rerender that touches no addon keeps the same element', async () => {
+    // Proves the harness first: if `rerender` remounted the tree, every
+    // identity assertion below would fail for a reason that has nothing to do
+    // with Input, and a green run after the fix would prove nothing.
+    const { container, rerender } = render(InputAddonToggleFixture, {
+      props: { id: 'control', host: 'bare' },
+    });
+    const before = nativeInput(container);
+    await rerender({ error: 'Required' });
+    expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+      'Required',
+    );
+    expect(nativeInput(container)).toBe(before);
+  });
+
+  for (const host of hosts) {
+    test(`${host}: toggling trailing on and off keeps the same <input>`, async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: `trailing-${host}`, host },
+      });
+      const before = nativeInput(container);
+      expect(container.querySelector('.cinder-input-group')).toBeNull();
+
+      await rerender({ trailing: textSnippet('.com') });
+      expect(container.querySelector('.cinder-input-group')).not.toBeNull();
+      expect(container.querySelector('.cinder-input-group__trailing')?.textContent).toContain(
+        '.com',
+      );
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ trailing: undefined });
+      expect(container.querySelector('.cinder-input-group')).toBeNull();
+      expect(nativeInput(container)).toBe(before);
+    });
+
+    test(`${host}: toggling leading on and off keeps the same <input>`, async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: `leading-${host}`, host },
+      });
+      const before = nativeInput(container);
+
+      await rerender({ leading: textSnippet('https://') });
+      expect(container.querySelector('.cinder-input-group__leading')?.textContent).toContain(
+        'https://',
+      );
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ leading: undefined });
+      expect(container.querySelector('.cinder-input-group')).toBeNull();
+      expect(nativeInput(container)).toBe(before);
+    });
+
+    test(`${host}: switching type to date (which adds the calendar affordance) keeps the same <input>`, async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: `date-${host}`, host },
+      });
+      const before = nativeInput(container);
+
+      await rerender({ type: 'date' });
+      expect(container.querySelector('.cinder-input-group__date-icon')).not.toBeNull();
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ type: 'text' });
+      expect(container.querySelector('.cinder-input-group')).toBeNull();
+      expect(nativeInput(container)).toBe(before);
+    });
+  }
+
+  test('focus and the selection range survive the trailing addon appearing', async () => {
+    const { container, rerender } = render(InputAddonToggleFixture, {
+      props: { id: 'selection', host: 'bare' },
+    });
+    const input = nativeInput(container);
+    input.focus();
+    input.setSelectionRange(2, 5);
+    expect(document.activeElement).toBe(input);
+
+    await rerender({ trailing: textSnippet('.com') });
+    expect(nativeInput(container)).toBe(input);
+    expect(document.activeElement).toBe(input);
+    expect(input.selectionStart).toBe(2);
+    expect(input.selectionEnd).toBe(5);
   });
 });

@@ -1,32 +1,46 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
 @import '../statistic/statistic.css';
 @layer cinder.components {
+  /* The root is the query container; the grid is its child. An element can
+     never query itself -- a container query resolves against the nearest
+     ANCESTOR container -- so with `container-type` on the grid the collapse
+     rules below never fired for a standalone group (CIN-499). The container
+     sits on the public root, not on an extra wrapper around it, so the root
+     stays the element that receives a consumer's `class`, `style`, and
+     `...rest`: constraining the group's inline size constrains exactly what
+     the queries measure, and a group nested inside another group queries its
+     own width rather than the outer's (RESPONSIVE-POLICY.md).
+
+     A size query measures the container's CONTENT box. The `default` variant
+     pads its root, so its 30rem and 18rem thresholds are the width the cells
+     actually share, not the group's outer width. */
   .cinder-statistic-group {
-    display: grid;
-    gap: var(--cinder-statistic-group-gap, var(--cinder-space-4, 1rem));
-    /* Query the group's own inline size so fixed column counts can collapse when
-       the group is narrow — even inside a wide viewport (RESPONSIVE-POLICY.md). */
     container-type: inline-size;
     container-name: cinder-statistic-group;
   }
 
-  .cinder-statistic-group[data-cinder-columns='auto'] {
+  .cinder-statistic-group__grid {
+    display: grid;
+    gap: var(--cinder-statistic-group-gap, var(--cinder-space-4, 1rem));
+  }
+
+  .cinder-statistic-group[data-cinder-columns='auto'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(auto-fit, minmax(min(16rem, 100%), 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='1'] {
+  .cinder-statistic-group[data-cinder-columns='1'] > .cinder-statistic-group__grid {
     grid-template-columns: 1fr;
   }
 
-  .cinder-statistic-group[data-cinder-columns='2'] {
+  .cinder-statistic-group[data-cinder-columns='2'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='3'] {
+  .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
 
-  .cinder-statistic-group[data-cinder-columns='4'] {
+  .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
     grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
@@ -35,16 +49,16 @@
      under 18rem, so values never crush. The `auto` mode already self-collapses
      via auto-fit, so it is intentionally excluded. */
   @container cinder-statistic-group (max-width: 30rem) {
-    .cinder-statistic-group[data-cinder-columns='3'],
-    .cinder-statistic-group[data-cinder-columns='4'] {
+    .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
       grid-template-columns: repeat(2, minmax(0, 1fr));
     }
   }
 
   @container cinder-statistic-group (max-width: 18rem) {
-    .cinder-statistic-group[data-cinder-columns='2'],
-    .cinder-statistic-group[data-cinder-columns='3'],
-    .cinder-statistic-group[data-cinder-columns='4'] {
+    .cinder-statistic-group[data-cinder-columns='2'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='3'] > .cinder-statistic-group__grid,
+    .cinder-statistic-group[data-cinder-columns='4'] > .cinder-statistic-group__grid {
       grid-template-columns: 1fr;
     }
   }
@@ -62,86 +76,119 @@
    * default-variant dividers
    *
    * A divider belongs BETWEEN two adjacent cells, so a divider rule is only correct
-   * where the effective column count is knowable.
-   *
-   * For the fixed counts it is the declared count, at every width, for a STANDALONE
-   * group. The collapse rules above (30rem, 18rem) look like they change that, but for
-   * a standalone group they never fire: their subject is `.cinder-statistic-group`,
-   * which is itself the named query container, and an element is never its own
-   * container -- a container query resolves against the nearest ANCESTOR container.
-   *
-   * They are not universally inert, though: a group NESTED inside another
-   * StatisticGroup does have an ancestor container, so there the collapse fires and
-   * resolves against the OUTER group's width. See the note on the row-end rules below
-   * for what that means for dividers. Either way this is a pre-existing layout defect,
-   * tracked separately; fixing it needs a wrapper element so the group can query
-   * something other than itself, which is a markup change this PR is not making.
-   *
-   * What matters here is that the dividers must describe the grid that actually
-   * renders. An earlier revision of this block mirrored the collapse thresholds, so at
-   * narrow widths it flipped to horizontal dividers while the grid was still showing
-   * its full column count -- dividers drawn across a layout that had not changed. With
-   * the thresholds gone, `nth-child(Nn)` needs no width bands at all.
+   * where the effective column count is knowable. For the fixed counts that is the
+   * declared count at wide widths, then the collapsed count under the same 30rem and
+   * 18rem thresholds the layout rules use above -- the dividers must describe the
+   * grid that actually renders, so they mirror those thresholds exactly.
    *
    * For `columns='auto'` the count is not knowable: `repeat(auto-fit, ...)` renders
    * however many 16rem tracks fit, without an upper bound, and CSS cannot select "the
-   * last cell in a row" without that number. Enumerating width bands only moves the
-   * failure outward -- a previous revision covered twelve columns and justified the cap
-   * by claiming 203rem was past any real display, which is false. So `auto` carries no
-   * per-cell dividers, keeping the variant's resting border, inset surface, and gap.
-   * That is what makes `default` read as deliberate rather than unstyled (CIN-113); the
-   * dividers are an enhancement applied where they can be drawn correctly.
+   * last cell in a row" without that number. So `auto` carries no per-cell dividers,
+   * keeping the variant's resting border, inset surface, and gap. That is what makes
+   * `default` read as deliberate rather than unstyled (CIN-113); the dividers are an
+   * enhancement applied where they can be drawn correctly.
    *
-   * ORDER IS LOAD-BEARING. Every rule carries the same specificity, so source order
-   * alone decides the cascade: the row-end and single-column resets must follow the
-   * generic rule that turns `border-inline-end` on.
+   * SPECIFICITY IS LOAD-BEARING. Every enabler, row-end suppressor, and band rule
+   * in this section is written as
+   * `.cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='N']
+   *   > .cinder-statistic-group__grid > .cinder-statistic:<one pseudo-class>` --
+   * exactly (0,6,0) -- so that among them source order alone decides the cascade
+   * and a later band can override an earlier one. The one exception is the
+   * final-cell reset at the end, which drops `[data-cinder-columns]` and is (0,5,0):
+   * it only ever matches `:last-child`, which every enabler excludes with
+   * `:not(:last-child)`, and the row-end suppressors that can also match the last
+   * cell set the same `none`, so it never competes with a higher-specificity rule.
+   * An earlier revision enabled dividers with ONE generic rule carrying two
+   * `:not([data-cinder-columns=...])` clauses, which out-ranked every row-end
+   * suppressor below it, so a multi-row group drew a divider at the end of every
+   * row but the last. Do not "simplify" the enablers back into one rule.
    * ---------------------------------------- */
 
-  /* --- Fixed multi-column counts: vertical dividers --- */
+  /* --- Declared layout (wide): vertical dividers, row ends suppressed --- */
 
-  .cinder-statistic-group[data-cinder-variant='default']:not([data-cinder-columns='1']):not(
-      [data-cinder-columns='auto']
-    )
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic:not(:last-child),
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic:not(:last-child),
+  .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child) {
     border-inline-end: 1px solid var(--cinder-border-muted);
   }
 
-  /* Row ends: the last cell of each row has no neighbour to its right. No container
-     query needed -- for a standalone group, a fixed count renders that many tracks at
-     every width, because the collapse rules above never fire (see the note above).
-
-     One case does diverge: a group nested INSIDE another StatisticGroup. The inner
-     group still cannot query itself, but it now has an ancestor container, so the
-     collapse rules DO resolve -- against the outer group's width. An inner
-     `columns={3}` inside a 20rem outer group therefore renders two tracks while these
-     rules still suppress every third divider. That is the same inert-collapse defect
-     seen from the other side, and it cannot be fixed here: while the collapse fires for
-     some groups and not others, no divider rule is correct for both. It resolves when
-     the layout gets a wrapper element to query, tracked with that fix. */
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(2n),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(3n),
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:nth-child(4n) {
     border-inline-end: none;
   }
 
-  /* --- Single column: horizontal dividers --- */
+  /* --- Single column (declared): horizontal dividers --- */
 
   .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='1']
+    > .cinder-statistic-group__grid
     > .cinder-statistic:not(:last-child) {
     border-block-end: 1px solid var(--cinder-border-muted);
   }
 
+  /* --- Collapsed to two tracks (<= 30rem): 3 and 4 behave as 2 --- */
+
+  @container cinder-statistic-group (max-width: 30rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:not(:last-child),
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:not(:last-child) {
+      border-inline-end: 1px solid var(--cinder-border-muted);
+    }
+
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:nth-child(2n),
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:nth-child(2n) {
+      border-inline-end: none;
+    }
+  }
+
+  /* --- Collapsed to one track (<= 18rem): 2, 3 and 4 behave as 1 --- */
+
+  @container cinder-statistic-group (max-width: 18rem) {
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='2']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:not(:last-child),
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='3']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:not(:last-child),
+    .cinder-statistic-group[data-cinder-variant='default'][data-cinder-columns='4']
+      > .cinder-statistic-group__grid
+      > .cinder-statistic:not(:last-child) {
+      border-inline-end: none;
+      border-block-end: 1px solid var(--cinder-border-muted);
+    }
+  }
+
   /* The final cell never has a neighbour in either axis, in any layout. */
-  .cinder-statistic-group[data-cinder-variant='default'] > .cinder-statistic:last-child {
+  .cinder-statistic-group[data-cinder-variant='default']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic:last-child {
     border-inline-end: none;
     border-block-end: none;
   }
 
   /* variant: cards — each stat gets a card-style border, background, and shadow */
-  .cinder-statistic-group[data-cinder-variant='cards'] > .cinder-statistic {
+  .cinder-statistic-group[data-cinder-variant='cards']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic {
     padding: var(--cinder-statistic-group-card-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
     border: 1px solid var(--cinder-border);
@@ -150,9 +197,10 @@
   }
 
   /*
- * variant: shared-borders — outer border on the container; 1px gap filled by the
- * container background acts as the divider between cells. Children paint over the
- * gap with the surface color, avoiding nth-child math for any column count.
+ * variant: shared-borders — outer border on the root; the 1px grid gap is filled by
+ * the root's background and acts as the divider between cells (the grid element is
+ * transparent and inherits the gap token). Children paint over the gap with the
+ * surface color, avoiding nth-child math for any column count.
  */
   .cinder-statistic-group[data-cinder-variant='shared-borders'] {
     --cinder-statistic-group-gap: 1px;
@@ -162,7 +210,9 @@
     background: var(--cinder-border);
   }
 
-  .cinder-statistic-group[data-cinder-variant='shared-borders'] > .cinder-statistic {
+  .cinder-statistic-group[data-cinder-variant='shared-borders']
+    > .cinder-statistic-group__grid
+    > .cinder-statistic {
     padding: var(--cinder-statistic-group-shared-cell-padding, var(--cinder-space-4, 1rem));
     background: var(--cinder-surface-raised);
   }
