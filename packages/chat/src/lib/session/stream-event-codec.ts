@@ -275,6 +275,25 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
       result.pendingApproval,
       'tool result pendingApproval',
     );
+
+  // Structural check LAST, against the projected object rather than the input.
+  // The decoder admits a tool result only if `isToolResult` accepts it, so the
+  // encoder applies the same guard instead of trusting the static type — a
+  // runtime-cast producer could otherwise ship a malformed `callId`,
+  // `outcome`, `error`, or `action` and only find out at the far end.
+  //
+  // Last, not first, so the per-field JSON assertions above report their own
+  // specific failure (`tool result action.schema`, say) rather than being
+  // masked by a generic shape error. And on the PROJECTION, so the guard sees
+  // exactly the fields that will be written to the wire.
+  //
+  // `pendingApproval` is excluded exactly as the decoder excludes it: it is a
+  // Chat extension rather than part of conversationalist's `ToolResult`, so
+  // that guard rejects any result carrying one. It is validated on its own
+  // above.
+  const { pendingApproval: _pendingApproval, ...toolResultCandidate } = projected;
+  if (!isToolResult(toolResultCandidate))
+    throw new Error('Invalid chat stream event: tool result is not a valid ChatToolResult');
   return projected;
 }
 
@@ -289,17 +308,25 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
  * silently corrupt (a non-finite `index` serializes to `null`).
  */
 function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown> {
+  // Mirrors `toChatStreamBlock`'s checks field-for-field. Validating only
+  // `index` left every other field free to be whatever a runtime-cast
+  // producer supplied, so the encoder could still emit a block its own
+  // decoder rejects — the exact failure this projection layer exists to stop.
   if (!isNonNegativeSafeInteger(block.index))
     throw new Error('Invalid chat stream event: block index must be a non-negative safe integer');
+  if (!isChatStreamBlockType(block.type))
+    throw new Error(`Invalid chat stream event: unsupported block type ${String(block.type)}`);
   const projected: Record<string, unknown> = {
-    id: block.id,
+    id: requireString(block.id, 'block.id'),
     type: block.type,
     index: block.index,
-    content: block.content,
-    complete: block.complete,
+    content: requireString(block.content, 'block.content'),
+    complete: requireBoolean(block.complete, 'block.complete'),
   };
-  if (block.toolName !== undefined) projected['toolName'] = block.toolName;
-  if (block.partialArguments !== undefined) projected['partialArguments'] = block.partialArguments;
+  if (block.toolName !== undefined)
+    projected['toolName'] = requireString(block.toolName, 'block.toolName');
+  if (block.partialArguments !== undefined)
+    projected['partialArguments'] = requireString(block.partialArguments, 'block.partialArguments');
   return projected;
 }
 
@@ -399,6 +426,12 @@ function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
 function requireString(value: unknown, context: string): string {
   if (typeof value !== 'string')
     throw new Error(`Invalid chat stream event: ${context} must be a string`);
+  return value;
+}
+
+function requireBoolean(value: unknown, context: string): boolean {
+  if (typeof value !== 'boolean')
+    throw new Error(`Invalid chat stream event: ${context} must be a boolean`);
   return value;
 }
 
@@ -1130,6 +1163,13 @@ export async function* decodeChatStreamEvents(
       .map((item) => item.trim())
       .filter(Boolean))
       yield decodeAndTrack(line);
+    // Same framing rule as the byte paths below. A versioned stream that is
+    // accepted as a string but rejected when streamed would make the format's
+    // validity depend on how the caller happened to deliver it.
+    assertStreamFramed(
+      source.endsWith('\n') ? '' : source.slice(source.lastIndexOf('\n') + 1),
+      guard,
+    );
     assertStreamTerminated(guard);
     return;
   }
@@ -1155,8 +1195,22 @@ export async function* decodeChatStreamEvents(
       // without this final `decode()` the truncation is invisible: the
       // buffer looks empty and a genuinely truncated stream is accepted.
       buffer += decoder.decode();
-      if (buffer.trim()) yield decodeAndTrack(buffer.trim());
-      assertStreamFramed(buffer, guard);
+      // Framing is checked BEFORE the leftover is yielded: an unterminated
+      // frame is not a valid frame, so handing it to the consumer first and
+      // throwing afterwards would deliver data the contract says is truncated.
+      // The leftover has to be DECODED before framing can be judged — `mode` is
+      // only known once a frame has been seen, and a single-frame stream has
+      // seen none yet. But it must not be YIELDED before framing is judged: an
+      // unterminated frame is not a valid frame, and handing it to the consumer
+      // first would deliver data the contract calls truncated. Decode, validate,
+      // then yield.
+      if (buffer.trim()) {
+        const leftover = decodeAndTrack(buffer.trim());
+        assertStreamFramed(buffer, guard);
+        yield leftover;
+      } else {
+        assertStreamFramed(buffer, guard);
+      }
       assertStreamTerminated(guard);
       completed = true;
     } finally {
@@ -1177,8 +1231,19 @@ export async function* decodeChatStreamEvents(
   // multibyte sequence live inside TextDecoder, not in `buffer`, so skipping
   // this makes a truncated stream look like a clean one.
   buffer += decoder.decode();
-  if (buffer.trim()) yield decodeAndTrack(buffer.trim());
-  assertStreamFramed(buffer, guard);
+  // The leftover has to be DECODED before framing can be judged — `mode` is
+  // only known once a frame has been seen, and a single-frame stream has
+  // seen none yet. But it must not be YIELDED before framing is judged: an
+  // unterminated frame is not a valid frame, and handing it to the consumer
+  // first would deliver data the contract calls truncated. Decode, validate,
+  // then yield.
+  if (buffer.trim()) {
+    const leftover = decodeAndTrack(buffer.trim());
+    assertStreamFramed(buffer, guard);
+    yield leftover;
+  } else {
+    assertStreamFramed(buffer, guard);
+  }
   assertStreamTerminated(guard);
 }
 

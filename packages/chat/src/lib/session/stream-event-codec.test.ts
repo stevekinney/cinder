@@ -1586,3 +1586,88 @@ describe('a paused-approval history still encodes as run.completed', () => {
     expect(encodeChatStreamEvent(event)).not.toContain('approvalToken');
   });
 });
+
+describe('encoder mirrors every decoder guard', () => {
+  const envelope = { wireVersion: 1 as const, sequence: 1 };
+  const block = { id: 'b1', type: 'text', index: 0, content: 'hi', complete: false };
+
+  test('rejects a tool result the decoder would refuse', () => {
+    const event = {
+      type: 'tool_result',
+      callId: 42,
+      outcome: 'success',
+      content: null,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).toThrow(/not a valid ChatToolResult/);
+  });
+
+  test('reports the specific nested failure rather than a generic shape error', () => {
+    // The structural guard runs last precisely so this message survives.
+    const event = {
+      type: 'tool_result',
+      callId: 'c1',
+      outcome: 'success',
+      content: { value: Number.POSITIVE_INFINITY },
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(event)).toThrow(/tool result content/);
+  });
+
+  test('rejects block fields the decoder would refuse', () => {
+    const badType = {
+      type: 'stream:block-start',
+      block: { ...block, type: 'hologram' },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+    const badComplete = {
+      type: 'stream:block-start',
+      block: { ...block, complete: 'yes' },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(badType)).toThrow(/unsupported block type hologram/);
+    expect(() => encodeChatStreamEvent(badComplete)).toThrow(/block.complete must be a boolean/);
+  });
+});
+
+describe('framing is enforced identically for string and streamed sources', () => {
+  const terminal = JSON.stringify({
+    wireVersion: 1,
+    sequence: 1,
+    type: 'run.aborted',
+    reason: 'stopped',
+  });
+
+  test('a string source missing its final newline is rejected', async () => {
+    const collect = async (): Promise<void> => {
+      for await (const _event of decodeChatStreamEvents(terminal)) {
+        // Drain.
+      }
+    };
+    await expect(collect()).rejects.toThrow(/ended mid-frame without a newline/);
+  });
+
+  test('the same string source is accepted when newline-framed', async () => {
+    const seen: ChatStreamEvent[] = [];
+    for await (const event of decodeChatStreamEvents(`${terminal}\n`)) seen.push(event);
+    expect(seen).toHaveLength(1);
+  });
+
+  test('an unterminated leftover is never yielded before framing is judged', async () => {
+    async function* chunks(): AsyncGenerator<string> {
+      yield `${JSON.stringify({ wireVersion: 1, sequence: 1, type: 'text', text: 'a' })}\n`;
+      yield JSON.stringify({ wireVersion: 1, sequence: 2, type: 'run.aborted' });
+    }
+
+    const seen: ChatStreamEvent[] = [];
+    await expect(
+      (async () => {
+        for await (const event of decodeChatStreamEvents(chunks())) seen.push(event);
+      })(),
+    ).rejects.toThrow(/ended mid-frame without a newline/);
+
+    // The complete first frame is delivered; the truncated second is not.
+    expect(seen).toHaveLength(1);
+  });
+});
