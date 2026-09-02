@@ -1376,6 +1376,55 @@ describe('encoder refuses to emit frames its decoder would reject', () => {
     } as unknown as ChatStreamEvent;
     expect(encodeChatStreamEvent(clean)).toContain('"id":"c1"');
   });
+
+  const completedWith = (conversation: unknown): ChatStreamEvent =>
+    ({
+      type: 'run.completed',
+      conversation,
+      content: 'done',
+      usage: { prompt: 1, completion: 1, total: 2 },
+      finishReason: 'stop',
+      ...envelope,
+    }) as unknown as ChatStreamEvent;
+
+  test('refuses a completed conversation carrying a non-enumerable toJSON hook', () => {
+    // A non-enumerable own property is invisible to the strict key check but
+    // is exactly what JSON.stringify consults, so the wire would carry the
+    // hook's return value instead of the validated history. (Histories are
+    // frozen, so the hook goes on an unfrozen structural copy.)
+    const conversation = { ...createConversationHistory({ id: 'c1' }) };
+    Object.defineProperty(conversation, 'toJSON', {
+      value: () => ({ leaked: 'sk-should-never-cross-the-wire' }),
+      enumerable: false,
+    });
+    expect(() => encodeChatStreamEvent(completedWith(conversation))).toThrow(
+      'Invalid chat stream event: conversation carries a toJSON serialization hook',
+    );
+  });
+
+  test('refuses a completed conversation whose prototype carries a toJSON hook', () => {
+    const conversation = Object.assign(
+      Object.create({ toJSON: () => ({ leaked: 'sk-should-never-cross-the-wire' }) }),
+      createConversationHistory({ id: 'c1' }),
+    );
+    // Either the schema guard (which insists on a plain object) or the
+    // projection refuses it — what matters is that the hook never runs.
+    expect(() => encodeChatStreamEvent(completedWith(conversation))).toThrow(
+      /not a valid ConversationHistory|carries a toJSON serialization hook/,
+    );
+  });
+
+  test('refuses a toJSON hook nested inside a completed conversation', () => {
+    const history = createConversationHistory({ id: 'c1' });
+    const conversation = { ...history, metadata: { ...history.metadata } };
+    Object.defineProperty(conversation.metadata, 'toJSON', {
+      value: () => ({ leaked: 'sk-should-never-cross-the-wire' }),
+      enumerable: false,
+    });
+    expect(() => encodeChatStreamEvent(completedWith(conversation))).toThrow(
+      'Invalid chat stream event: conversation.metadata carries a toJSON serialization hook',
+    );
+  });
 });
 
 describe('decoder byte handling at EOF', () => {
@@ -1812,6 +1861,60 @@ describe('encoder treats present envelope keys as an attempted envelope', () => 
   test('still encodes a legacy event with no envelope keys at all', () => {
     const encoded = encodeChatStreamEvent({ type: 'text', text: 'hi' });
     expect(JSON.parse(encoded)).toEqual({ type: 'text', text: 'hi' });
+  });
+});
+
+describe('frames buffered after a terminal frame are rejected before it is yielded', () => {
+  const text = (sequence: number): string =>
+    JSON.stringify({ wireVersion: 1, sequence, type: 'text', text: 'late' });
+  const terminal = JSON.stringify({ wireVersion: 1, sequence: 1, type: 'run.aborted' });
+
+  // A consumer that stops on the terminal frame calls the generator's
+  // `return()`, so anything decoded lazily after it is never seen.
+  const consumeUntilTerminal = async (
+    stream: AsyncIterable<ChatStreamEvent>,
+  ): Promise<ChatStreamEvent[]> => {
+    const seen: ChatStreamEvent[] = [];
+    for await (const event of stream) {
+      seen.push(event);
+      if (event.type === 'run.aborted') break;
+    }
+    return seen;
+  };
+
+  test('a string source rejects a complete line following the terminal frame', async () => {
+    await expect(
+      consumeUntilTerminal(decodeChatStreamEvents(`${terminal}\n${text(2)}\n`)),
+    ).rejects.toThrow('Invalid chat stream event: frame arrived after the terminal frame');
+  });
+
+  test('a string source rejects a partial fragment following the terminal frame', async () => {
+    await expect(
+      consumeUntilTerminal(decodeChatStreamEvents(`${terminal}\n${text(2)}`)),
+    ).rejects.toThrow(/ended mid-frame without a newline/);
+  });
+
+  test('a chunked source rejects a complete line following the terminal frame in the same chunk', async () => {
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield new TextEncoder().encode(`${terminal}\n${text(2)}\n`);
+    }
+    await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      'Invalid chat stream event: frame arrived after the terminal frame',
+    );
+  });
+
+  test('a chunked source rejects partial bytes following the terminal frame in the same chunk', async () => {
+    async function* chunks(): AsyncGenerator<Uint8Array> {
+      yield new TextEncoder().encode(`${terminal}\n${text(2)}`);
+    }
+    await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      'Invalid chat stream event: frame arrived after the terminal frame',
+    );
+  });
+
+  test('a clean terminal frame is still yielded to a consumer that stops on it', async () => {
+    const seen = await consumeUntilTerminal(decodeChatStreamEvents(`${text(0)}\n${terminal}\n`));
+    expect(seen.map((event) => event.type)).toEqual(['text', 'run.aborted']);
   });
 });
 

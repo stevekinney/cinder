@@ -439,6 +439,37 @@ function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
 }
 
 /**
+ * Rebuilds an already schema-validated value as plain JSON data: own
+ * enumerable string keys copied onto null-prototype-free plain objects,
+ * arrays by index, primitives as they are. Anything with a `toJSON` in reach
+ * — own, non-enumerable, or inherited — is rejected rather than neutralized
+ * silently, because a producer that attached one intended the wire to carry
+ * something other than what the schema validated.
+ */
+function projectPlainJSON(value: unknown, context: string): JSONValue {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value))
+      throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
+    return value;
+  }
+  if (typeof value !== 'object')
+    throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
+  if (typeof (value as { toJSON?: unknown }).toJSON === 'function')
+    throw new Error(`Invalid chat stream event: ${context} carries a toJSON serialization hook`);
+  // `undefined` follows JSON.stringify: dropped from objects, `null` in arrays.
+  if (Array.isArray(value))
+    return value.map((item, index) =>
+      item === undefined ? null : projectPlainJSON(item, `${context}[${index}]`),
+    );
+  const projected: Record<string, JSONValue> = {};
+  for (const [key, item] of Object.entries(value)) {
+    if (item !== undefined) projected[key] = projectPlainJSON(item, `${context}.${key}`);
+  }
+  return projected;
+}
+
+/**
  * Throws unless `value` is genuinely a string. The declared types already say
  * so, but a JavaScript caller or a runtime-cast value can supply anything,
  * and the decoder checks these fields — so without this the encoder could
@@ -630,14 +661,14 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       }
       return {
         type: 'run.completed',
-        // Passed through under the guard's warrant, deliberately not rebuilt.
-        // `isConversationHistory` rejects a value carrying EXTRA top-level
-        // keys, not merely one missing required ones — verified against the
-        // installed package — so the validation above already refuses a
-        // conversation with provider-only metadata attached. Rebuilding would
-        // add no guarantee, and reimplementing the message schema to do it
-        // properly would be a maintenance liability.
-        conversation: event.conversation,
+        // The guard proves the SHAPE, and `isConversationHistory` rejects a
+        // value carrying extra enumerable keys at every level — but a
+        // serialization hook is neither: a non-enumerable or inherited
+        // `toJSON` passes the strict schema and is still what
+        // `JSON.stringify` would call, replacing the validated history with
+        // whatever the hook returns. Project to plain JSON data (own
+        // enumerable keys only, no prototype) and refuse any hook outright.
+        conversation: projectPlainJSON(event.conversation, 'conversation'),
         content: requireString(event.content, 'content'),
         usage: projectTokenUsage(event.usage),
         finishReason: requireString(event.finishReason, 'finishReason'),
@@ -1169,6 +1200,25 @@ function assertStreamTerminated(guard: StreamGuardState): void {
     throw new Error('Invalid chat stream event: stream ended without a terminal frame');
 }
 
+/**
+ * Applies the stream-level guard to events that arrive already decoded — a
+ * `ChatSessionTransport` returning `AsyncIterable<ChatStreamEvent>` rather
+ * than bytes. Without this, a typed iterable that ends without a terminal
+ * frame, runs its sequence backwards, or switches envelope mode mid-stream
+ * is accepted while the identical NDJSON response is rejected, so the
+ * contract's validity would depend on the transport's representation.
+ */
+export async function* guardChatStreamEvents(
+  events: AsyncIterable<ChatStreamEvent>,
+): AsyncGenerator<ChatStreamEvent> {
+  const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
+  for await (const event of events) {
+    noteDecodedStreamEvent(event, guard);
+    yield event;
+  }
+  assertStreamTerminated(guard);
+}
+
 /** Decodes newline-delimited events from a string or an async byte stream. */
 export async function* decodeChatStreamEvents(
   source: string | AsyncIterable<string | Uint8Array> | ReadableStream<Uint8Array>,
@@ -1178,6 +1228,28 @@ export async function* decodeChatStreamEvents(
     const event = decodeChatStreamEvent(line);
     noteDecodedStreamEvent(event, guard);
     return event;
+  };
+  // Decodes one batch of complete lines lazily, EXCEPT once a terminal frame
+  // is reached: everything already buffered after it is validated before the
+  // terminal is yielded. A consumer that stops iterating on the terminal
+  // frame calls the generator's `return()`, which skips every later line —
+  // so a terminal followed by a higher-sequence mutation that arrived in the
+  // same chunk (or the same string) would otherwise be accepted rather than
+  // rejected as a frame after the terminal. `afterTerminal` lets each source
+  // path check its own residue (the string's final fragment, a chunk's
+  // partial buffer) at the same moment.
+  const decodeBatch = function* (
+    lines: string[],
+    afterTerminal: () => void,
+  ): Generator<ChatStreamEvent> {
+    for (let index = 0; index < lines.length; index++) {
+      const event = decodeAndTrack(lines[index] ?? '');
+      if (guard.sawTerminal) {
+        for (const trailing of lines.slice(index + 1)) decodeAndTrack(trailing);
+        afterTerminal();
+      }
+      yield event;
+    }
   };
   // Decode-then-validate-then-yield for whatever is left after the final
   // newline. An unterminated frame is not a valid frame; yielding it before
@@ -1200,7 +1272,12 @@ export async function* decodeChatStreamEvents(
     // validity depend on how the caller happened to deliver it.
     const lines = source.split('\n');
     const leftover = lines.pop() ?? '';
-    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
+    yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
+      // The whole string is already buffered, so the final fragment is
+      // checked before the terminal frame is handed over, too.
+      assertStreamFramed(leftover, guard);
+      if (leftover.trim()) decodeAndTrack(leftover.trim());
+    });
     yield* finishStream(leftover);
     return;
   }
@@ -1221,7 +1298,13 @@ export async function* decodeChatStreamEvents(
     buffer += typeof chunk === 'string' ? chunk : decodeBytes(chunk);
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
-    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
+    yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
+      // The server closes the stream immediately after the terminal frame,
+      // so bytes already buffered past it are a violation even before they
+      // form a complete line.
+      if (buffer.trim())
+        throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
+    });
   };
   if (source instanceof ReadableStream) {
     const reader = source.getReader();

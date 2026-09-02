@@ -277,6 +277,49 @@ describe('chat session controller', () => {
     void rejectStream;
   });
 
+  test('holds a typed event iterable to the same stream guard as NDJSON bytes', async () => {
+    const make = (transport: () => Promise<AsyncIterable<ChatStreamEvent>>) => {
+      let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+      return createChatSessionController({
+        getConversation: () => conversation,
+        setConversation: (next) => {
+          conversation = next;
+        },
+        transport,
+      });
+    };
+
+    // A versioned stream that ends without a terminal frame.
+    const unterminated = make(async () =>
+      events([{ type: 'text', text: 'hello', wireVersion: 1, sequence: 0 }]),
+    );
+    await expect(
+      unterminated.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event: stream ended without a terminal frame');
+
+    // A frame after the terminal frame.
+    const afterTerminal = make(async () =>
+      events([
+        { type: 'run.aborted', wireVersion: 1, sequence: 0 },
+        { type: 'text', text: 'late', wireVersion: 1, sequence: 1 },
+      ]),
+    );
+    await expect(
+      afterTerminal.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event: frame arrived after the terminal frame');
+
+    // A bare frame following a versioned one.
+    const mixed = make(async () =>
+      events([
+        { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 },
+        { type: 'text', text: 'bare' },
+      ]),
+    );
+    await expect(mixed.adapter.sendMessage({ role: 'user', content: 'hi' }, [])).rejects.toThrow(
+      'Invalid chat stream event',
+    );
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({

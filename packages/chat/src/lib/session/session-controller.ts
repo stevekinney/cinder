@@ -27,7 +27,7 @@ import type {
 } from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
-import { decodeChatStreamEvents } from './stream-event-codec.ts';
+import { decodeChatStreamEvents, guardChatStreamEvents } from './stream-event-codec.ts';
 
 /** Request passed to an injected transport for each assistant turn. */
 export type ChatSessionRequest = {
@@ -201,7 +201,10 @@ export function createChatSessionController(
       return decodeChatStreamEvents(result.body);
     }
     if (result instanceof ReadableStream) return decodeChatStreamEvents(result);
-    return result;
+    // Already-decoded events still get the request-local stream guard, so a
+    // typed transport is held to the same terminal, sequence, and envelope
+    // rules as an NDJSON one.
+    return guardChatStreamEvents(result);
   };
   const run = async (userMessageId: string, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
