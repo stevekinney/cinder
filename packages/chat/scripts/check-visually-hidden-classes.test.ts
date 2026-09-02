@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   extractClassNamesCallArguments,
+  isCssSelectorContext,
   isTestPath,
   scan,
   scanSource,
@@ -198,9 +199,57 @@ describe('isTestPath', () => {
       expect(isTestPath(path)).toBe(true);
   });
 
+  test('covers the repository test-fixture convention', () => {
+    expect(isTestPath('chat-composer-popover.test-fixture.svelte')).toBe(true);
+  });
+
   test('does not treat ordinary sources as tests', () => {
     for (const path of ['a.ts', 'a.svelte', 'a.css', 'attested.ts', 'a.test.md'])
       expect(isTestPath(path)).toBe(false);
+  });
+
+  // These ship in dist/ and reach consumers, so exempting them would create
+  // the blind spot this guard exists to close.
+  test('does not exempt shipped -fixture.svelte components', () => {
+    for (const path of ['chat-history-pagination-fixture.svelte', 'a-fixture.svelte'])
+      expect(isTestPath(path)).toBe(false);
+  });
+});
+
+describe('scanSource — context and syntax coverage', () => {
+  test('flags an unquoted class attribute value', () => {
+    expect(scanSource('<span class=sr-only>x</span>')).toHaveLength(1);
+    expect(scanSource('<span class=sr-only-focusable>x</span>')).toHaveLength(1);
+  });
+
+  test('does not mistake an unquoted decoy attribute for class', () => {
+    expect(scanSource('<span data-class=sr-only>x</span>')).toHaveLength(0);
+  });
+
+  test('still ignores the prefixed utility unquoted', () => {
+    expect(scanSource('<span class=cinder-sr-only>x</span>')).toHaveLength(0);
+  });
+
+  // The CSS pattern runs over whole Svelte files, so it sees declaration
+  // values, url() paths, and script strings. None of those define or apply a
+  // class, and flagging them would fail the audit over harmless text.
+  test('does not flag .sr-only outside a selector position', () => {
+    expect(scanSource('.foo::after {\n  content: ".sr-only";\n}')).toHaveLength(0);
+    expect(scanSource('.foo {\n  background: url("./sr-only.svg");\n}')).toHaveLength(0);
+    expect(scanSource('.foo {\n  background: url(./sr-only.svg);\n}')).toHaveLength(0);
+  });
+
+  test('still flags a real selector in the same file as a decoy value', () => {
+    expect(
+      scanSource('.foo::after {\n  content: ".sr-only";\n}\n.sr-only {\n  position: absolute;\n}'),
+    ).toHaveLength(1);
+  });
+
+  test('isCssSelectorContext separates selectors from declaration values', () => {
+    const selector = '.sr-only { position: absolute; }';
+    expect(isCssSelectorContext(selector, selector.indexOf(' {'))).toBe(true);
+    const value = '.foo { content: ".sr-only"; }';
+    expect(isCssSelectorContext(value, value.indexOf('";'))).toBe(false);
   });
 });
 

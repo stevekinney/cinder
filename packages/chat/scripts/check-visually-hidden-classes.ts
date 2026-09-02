@@ -75,6 +75,16 @@ export type VisuallyHiddenClassFlag = {
  * a `.test.ts`, and both are reachable by the walk.
  */
 export function isTestPath(relativePath: string): boolean {
+  // `*.test-fixture.svelte` is this repository's name for markup that exists
+  // only to be mounted by a test — `chat-composer-popover.test-fixture.svelte`
+  // is the current example. A fixture deliberately reproducing the broken
+  // class to pin a regression must not fail the authoring audit.
+  //
+  // Deliberately NOT the looser `*-fixture.svelte`. Files like
+  // `chat-history-pagination-fixture.svelte` are built into `dist/` and ship
+  // to consumers, so exempting them would create exactly the blind spot this
+  // guard exists to close.
+  if (/\.test-fixture\.svelte$/.test(relativePath)) return true;
   return /\.(?:test|spec)\.(?:[cm]?tsx?|svelte|css)$/.test(relativePath);
 }
 
@@ -134,6 +144,19 @@ const STATIC_CLASS_ATTRIBUTE_PATTERN = new RegExp(
   'g',
 );
 
+/**
+ * Matches an UNQUOTED class attribute value: `<span class=sr-only>`.
+ *
+ * Valid HTML, and valid Svelte, and invisible to the quoted matcher above —
+ * which made it a silent bypass of exactly the kind this guard exists to
+ * prevent. An unquoted value ends at whitespace or `>`, so the token is
+ * bounded by `[^\s>]*` on either side rather than by a quote pair.
+ */
+const UNQUOTED_CLASS_ATTRIBUTE_PATTERN = new RegExp(
+  String.raw`(?<![-\w:])class\s*=\s*(?!["'{])[^\s>]*${BARE_TOKEN_SOURCE}[^\s>]*`,
+  'g',
+);
+
 /** Matches a Svelte class directive: `class:sr-only` or `class:sr-only={expr}`. */
 const CLASS_DIRECTIVE_PATTERN = new RegExp(String.raw`class:${BARE_TOKEN_SOURCE}`, 'g');
 
@@ -158,6 +181,30 @@ const QUOTED_TOKEN_PATTERN = new RegExp(
  * theoretical one.
  */
 const CSS_SELECTOR_PATTERN = new RegExp(String.raw`\.sr-only(?:-\w+)*(?![\w-])`, 'g');
+
+/**
+ * True when a `.sr-only` match sits in a CSS *selector* position rather than
+ * inside a declaration value, a string, or an import path.
+ *
+ * The pattern above runs over whole Svelte files, so it also sees things like
+ * `content: '.sr-only'`, `url('./sr-only.svg')`, and TypeScript string
+ * literals. None of those define or apply a class, and flagging them would
+ * fail the audit over harmless text.
+ *
+ * The discriminator is cheap and reliable enough for CSS: a selector is
+ * followed by `{` before any `;` or `}`, because a selector's job is to open
+ * a rule. A declaration value is followed by `;` or `}` first. Scanning
+ * forward for whichever of the three appears first therefore separates them
+ * without parsing.
+ */
+export function isCssSelectorContext(source: string, matchEnd: number): boolean {
+  for (let index = matchEnd; index < source.length; index++) {
+    const character = source[index];
+    if (character === '{') return true;
+    if (character === ';' || character === '}') return false;
+  }
+  return false;
+}
 
 /**
  * Extracts the argument text of every `classNames(...)` call in `source`,
@@ -210,14 +257,23 @@ export function scanSource(original: string): Array<{ lineNumber: number; line: 
 
   for (const pattern of [
     STATIC_CLASS_ATTRIBUTE_PATTERN,
+    UNQUOTED_CLASS_ATTRIBUTE_PATTERN,
     CLASS_DIRECTIVE_PATTERN,
-    CSS_SELECTOR_PATTERN,
   ]) {
     pattern.lastIndex = 0;
     let match: RegExpExecArray | null;
     while ((match = pattern.exec(source)) !== null) {
       record(match.index);
     }
+  }
+
+  // CSS selectors are filtered by context: the same text appears in
+  // declaration values, url() paths, and script string literals, none of
+  // which define or apply a class.
+  CSS_SELECTOR_PATTERN.lastIndex = 0;
+  let cssMatch: RegExpExecArray | null;
+  while ((cssMatch = CSS_SELECTOR_PATTERN.exec(source)) !== null) {
+    if (isCssSelectorContext(source, cssMatch.index + cssMatch[0].length)) record(cssMatch.index);
   }
 
   // `classNames(...)` calls: flag a bare token quoted among the arguments.
