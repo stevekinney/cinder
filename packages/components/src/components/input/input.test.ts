@@ -728,6 +728,21 @@ describe('Input group (leading/trailing addons)', () => {
     expect(groupedInputRule).toBeDefined();
     expect(groupedInputRule).toMatch(/border-style:\s*none;/);
     expect(groupedInputRule).not.toMatch(/\bborder:\s*none;/);
+    // Focus ring: the grouped input keeps its ring VALUE and clips it, and the
+    // host pins its focus-within box-shadow to the group's ring, so ring
+    // ownership moves between the input and the wrapper without a transition.
+    expect(groupedInputRule).toMatch(/clip-path:\s*inset\(0\);/);
+    const groupedFocusRule = css.match(
+      /\.cinder-input-group > \.cinder-input:focus-visible\s*\{[^}]*\}/u,
+    )?.[0];
+    expect(groupedFocusRule).toBeDefined();
+    expect(groupedFocusRule).not.toMatch(/box-shadow:\s*none/);
+    expect(css).toMatch(
+      /\.cinder-input-host:focus-within\s*\{[^}]*box-shadow:\s*0 0 0 var\(--cinder-ring-offset\) var\(--cinder-ring-offset-color\),\s*0 0 0 calc\(var\(--cinder-ring-offset\) \+ var\(--cinder-ring-width\)\)\s*var\(--_cinder-input-ring, var\(--cinder-ring-color\)\);/,
+    );
+    expect(css).toMatch(
+      /\.cinder-input-host\[data-invalid\]\s*\{[^}]*--_cinder-input-ring:\s*var\(--cinder-status-danger-solid\);/,
+    );
   });
 
   test('group with leading only — wrapper has data-leading, leading span present, trailing absent', () => {

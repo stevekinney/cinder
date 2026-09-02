@@ -225,6 +225,7 @@
     }
   }
   .cinder-input-host[data-invalid] {
+    --_cinder-input-ring: var(--cinder-status-danger-solid);
     border-color: var(--cinder-status-danger-solid);
   }
   @media (hover: hover) {
@@ -234,6 +235,17 @@
   }
   .cinder-input-host[data-disabled] {
     border-color: var(--cinder-border-muted);
+  }
+  /* Ring ownership moves from the input to the wrapper when an addon appears.
+     The host is boxless and paints nothing, but its computed box-shadow is
+     what the group's box-shadow transition would start from, so pin it to the
+     group's ring while the input inside is focused — the same token math as
+     `.cinder-input-group:focus-within` below. */
+  .cinder-input-host:focus-within {
+    box-shadow:
+      0 0 0 var(--cinder-ring-offset) var(--cinder-ring-offset-color),
+      0 0 0 calc(var(--cinder-ring-offset) + var(--cinder-ring-width))
+        var(--_cinder-input-ring, var(--cinder-ring-color));
   }
 
   /* ----------------------------------------
@@ -267,6 +279,15 @@
     flex: 1 1 auto;
     min-width: 0;
     padding-inline: var(--cinder-space-3);
+    /* The input keeps its own focus ring VALUE inside the group and the clip
+       hides it, rather than setting `box-shadow: none`: the input is the same
+       element before and after an addon is removed, and a value change would
+       run its box-shadow transition — the ring fading in while the group's
+       ring vanished. With the value unchanged and only the clip toggling
+       (not a transitioned property), ring ownership moves between the input
+       and the wrapper without any animation. The clip is the border box, so
+       nothing the input paints itself is affected. */
+    clip-path: inset(0);
   }
 
   /* When an addon is present on a given side, the input trims its padding on
@@ -283,9 +304,9 @@
   }
 
   .cinder-input-group > .cinder-input:focus-visible {
-    box-shadow: none;
     /* cinder-focus-ring-owner: parent — the .cinder-input-group wrapper paints
-       the ring for the whole grouped control. */
+       the ring for the whole grouped control; the input's own ring is clipped
+       away above, not zeroed, so the swap does not animate it. */
     outline: none;
   }
 
