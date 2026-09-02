@@ -255,8 +255,12 @@ test.describe('tool call group: readability cap (CIN-506)', () => {
 			const timelineStyle = getComputedStyle(timelineElement);
 			const paddingLeft = Number.parseFloat(timelineStyle.paddingLeft);
 			const paddingRight = Number.parseFloat(timelineStyle.paddingRight);
+			// `clientWidth` rather than `getBoundingClientRect().width`: the
+			// timeline is the scroll container, and the bounding rect includes a
+			// vertical scrollbar's width while the row can only fill the content
+			// box beside it.
 			return {
-				availableWidth: timelineElement.getBoundingClientRect().width - paddingLeft - paddingRight,
+				availableWidth: timelineElement.clientWidth - paddingLeft - paddingRight,
 				rowWidth: rowElement.getBoundingClientRect().width
 			};
 		});
