@@ -553,6 +553,27 @@ describe('chat stream event codec', () => {
       ).toThrow('Invalid chat stream event');
     });
 
+    test('encodes the usage it validated when a getter answers differently per read', () => {
+      const answers = [15, Number.NaN];
+      const usage = { prompt: 10, completion: 5 } as Record<string, unknown>;
+      Object.defineProperty(usage, 'total', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      const event = {
+        type: 'stream:usage',
+        usage,
+        wireVersion: 1,
+        sequence: 3,
+      } as unknown as ChatStreamEvent;
+      // Without a single snapshot the guard sees 15, the projection copies
+      // NaN, JSON.stringify rewrites it to null, and the decoder rejects the
+      // encoder's own frame.
+      const decoded = decodeChatStreamEvent(encodeChatStreamEvent(event));
+      expect(decoded.type).toBe('stream:usage');
+      if (decoded.type === 'stream:usage') expect(decoded.usage.total).toBe(15);
+    });
+
     test('round-trips tool.settled with a paused result carrying an action descriptor', () => {
       const event = {
         type: 'tool.settled' as const,
@@ -594,6 +615,50 @@ describe('chat stream event codec', () => {
           sequence: 2,
         }),
       ).toThrow('Invalid chat stream event');
+    });
+
+    test('compares and encodes the same tool.settled result when a getter answers differently per read', () => {
+      const results = [
+        { callId: 'call-1', outcome: 'success', content: { ok: true } },
+        { callId: 'call-2', outcome: 'success', content: { ok: true } },
+      ];
+      const event = {
+        type: 'tool.settled',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1,
+        sequence: 2,
+      } as Record<string, unknown>;
+      Object.defineProperty(event, 'result', {
+        enumerable: true,
+        get: () => results.shift() ?? results[0],
+      });
+      // Without a single snapshot the agreement check sees call-1 and the
+      // projection encodes call-2, a frame the decoder then rejects.
+      expect(() => encodeChatStreamEvent(event as unknown as ChatStreamEvent)).not.toThrow();
+      const answers = ['call-1', 'call-2'];
+      const other = {
+        type: 'tool.settled',
+        toolCallId: 'call-1',
+        toolName: 'lookup',
+        wireVersion: 1,
+        sequence: 2,
+      } as Record<string, unknown>;
+      Object.defineProperty(other, 'result', {
+        enumerable: true,
+        get: () => ({
+          get callId() {
+            return answers.shift() ?? 'call-2';
+          },
+          outcome: 'success',
+          content: { ok: true },
+        }),
+      });
+      const decoded = decodeChatStreamEvent(
+        encodeChatStreamEvent(other as unknown as ChatStreamEvent),
+      );
+      expect(decoded.type).toBe('tool.settled');
+      if (decoded.type === 'tool.settled') expect(decoded.result.callId).toBe('call-1');
     });
 
     test('round-trips tool.error with JSONValue-narrowed error', () => {

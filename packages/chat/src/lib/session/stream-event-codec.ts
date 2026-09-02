@@ -346,17 +346,19 @@ function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown>
  * becoming `null` and failing the decoder's own check downstream.
  */
 function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
-  if (!isTokenUsage(usage))
-    throw new Error('Invalid chat stream event: usage is not a valid TokenUsage');
-  const projected: Record<string, unknown> = {
+  // Read each field once and validate the snapshot, so a stateful accessor
+  // cannot pass the guard and then hand the projection a different value.
+  const snapshot: Record<string, unknown> = {
     prompt: usage.prompt,
     completion: usage.completion,
     total: usage.total,
   };
   if (usage.cacheCreationTokens !== undefined)
-    projected['cacheCreationTokens'] = usage.cacheCreationTokens;
-  if (usage.cacheReadTokens !== undefined) projected['cacheReadTokens'] = usage.cacheReadTokens;
-  return projected;
+    snapshot['cacheCreationTokens'] = usage.cacheCreationTokens;
+  if (usage.cacheReadTokens !== undefined) snapshot['cacheReadTokens'] = usage.cacheReadTokens;
+  if (!isTokenUsage(snapshot))
+    throw new Error('Invalid chat stream event: usage is not a valid TokenUsage');
+  return snapshot;
 }
 
 /**
@@ -647,23 +649,28 @@ function projectChatStreamEventBody(
         projected['message'] = requireString(event.message, 'message');
       return { type: 'tool.progress', ...projected, ...envelope };
     }
-    case 'tool.settled':
+    case 'tool.settled': {
       // Mirrors the decoder's callId/toolCallId agreement check — a
       // mismatch here would encode a frame the decoder then rejects,
       // turning a producer bug into a downstream protocol failure instead
-      // of catching it at the source.
-      if (event.result.callId !== event.toolCallId) {
+      // of catching it at the source. The check and the projection read the
+      // same snapshots, so a stateful accessor cannot pass one and feed the
+      // other.
+      const toolCallId = requireString(event.toolCallId, 'toolCallId');
+      const result = projectChatToolResult(event.result);
+      if (result['callId'] !== toolCallId) {
         throw new Error(
           'Invalid chat stream event: tool.settled result.callId must equal toolCallId',
         );
       }
       return {
         type: 'tool.settled',
-        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolCallId,
         toolName: requireString(event.toolName, 'toolName'),
-        result: projectChatToolResult(event.result),
+        result,
         ...envelope,
       };
+    }
     case 'tool.error':
       return {
         type: 'tool.error',
