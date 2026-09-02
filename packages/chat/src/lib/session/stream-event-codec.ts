@@ -315,14 +315,18 @@ function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown>
   // `index` left every other field free to be whatever a runtime-cast
   // producer supplied, so the encoder could still emit a block its own
   // decoder rejects — the exact failure this projection layer exists to stop.
-  if (!isNonNegativeSafeInteger(block.index))
+  // Read each field once: a stateful accessor could otherwise answer the
+  // guard with one value and the projection with another.
+  const index = block.index;
+  const type = block.type;
+  if (!isNonNegativeSafeInteger(index))
     throw new Error('Invalid chat stream event: block index must be a non-negative safe integer');
-  if (!isChatStreamBlockType(block.type))
-    throw new Error(`Invalid chat stream event: unsupported block type ${String(block.type)}`);
+  if (!isChatStreamBlockType(type))
+    throw new Error(`Invalid chat stream event: unsupported block type ${String(type)}`);
   const projected: Record<string, unknown> = {
     id: requireString(block.id, 'block.id'),
-    type: block.type,
-    index: block.index,
+    type,
+    index,
     content: requireString(block.content, 'block.content'),
     complete: requireBoolean(block.complete, 'block.complete'),
   };
@@ -913,7 +917,9 @@ function toChatSerializedRunError(value: unknown): ChatSerializedRunError | unde
 /** Decodes and validates one provider-neutral stream event. */
 export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
   const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
-  if (!isRecord(parsed) || typeof parsed['type'] !== 'string')
+  // Own key only, like the envelope: an inherited `type` would let an object
+  // that serializes without a discriminator decode as a (terminal) frame.
+  if (!isRecord(parsed) || !Object.hasOwn(parsed, 'type') || typeof parsed['type'] !== 'string')
     throw new Error('Invalid chat stream event');
   const eventType = parsed['type'];
   const envelope = readWireEnvelope(parsed);
@@ -1338,6 +1344,12 @@ export async function* decodeChatStreamEvents(
   };
   let buffer = '';
   const appendChunk = function* (chunk: string | Uint8Array): Generator<ChatStreamEvent> {
+    // A source that mixes chunk types must not hand over a string while the
+    // decoder still holds the start of a multibyte sequence: a later byte
+    // chunk would complete that character *after* the intervening string,
+    // silently reordering text inside an otherwise valid frame. Flushing the
+    // fatal decoder rejects the pending partial sequence instead.
+    if (typeof chunk === 'string') decodeBytes();
     buffer += typeof chunk === 'string' ? chunk : decodeBytes(chunk);
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';

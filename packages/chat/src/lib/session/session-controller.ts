@@ -290,6 +290,12 @@ export function createChatSessionController(
             );
             return;
           }
+          // The transport's signal is the only way it learns the command
+          // failed. A stream-guard rejection (malformed frame, non-increasing
+          // sequence, mixed envelope) surfaces here while the transport's
+          // provider or background work may still be running on that signal,
+          // so abort it before rolling back and reporting.
+          controller.abort();
           update(
             markMessageDeliveryFailed(cancelStreamingMessage(committed, messageId), userMessageId),
           );

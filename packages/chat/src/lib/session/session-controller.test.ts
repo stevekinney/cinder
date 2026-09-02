@@ -320,6 +320,30 @@ describe('chat session controller', () => {
     );
   });
 
+  test('aborts the transport signal when the typed stream guard rejects', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    let signal: AbortSignal | undefined;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async (request) => {
+        signal = request.signal;
+        return events([
+          { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 },
+          { type: 'text', text: 'bare' },
+        ]);
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event');
+    // A transport whose provider work hangs off `request.signal` would otherwise
+    // keep running after the command has already failed.
+    expect(signal?.aborted).toBe(true);
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({

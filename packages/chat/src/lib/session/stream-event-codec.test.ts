@@ -225,6 +225,15 @@ describe('chat stream event codec', () => {
       expect(decoded.sequence).toBe(0);
     });
 
+    test('an inherited type discriminator is not a frame', () => {
+      // Serializing this object yields only the envelope, which the NDJSON
+      // path rejects; the typed path must not accept what the wire would not.
+      const frame = Object.create({ type: 'run.aborted' }) as Record<string, unknown>;
+      frame['wireVersion'] = 1;
+      frame['sequence'] = 0;
+      expect(() => decodeChatStreamEvent(frame)).toThrow('Invalid chat stream event');
+    });
+
     test('rejects a legacy member carrying only wireVersion', () => {
       expect(() => decodeChatStreamEvent({ type: 'text', text: 'hi', wireVersion: 1 })).toThrow(
         'Invalid chat stream event',
@@ -282,6 +291,29 @@ describe('chat stream event codec', () => {
         sequence: 0,
       };
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+    });
+
+    test('encodes the block index it validated when a getter answers differently per read', () => {
+      const answers = [0, Number.NaN];
+      const block = { id: 'block-1', type: 'text', content: '', complete: false } as Record<
+        string,
+        unknown
+      >;
+      Object.defineProperty(block, 'index', {
+        enumerable: true,
+        get: () => answers.shift() ?? Number.NaN,
+      });
+      const event = {
+        type: 'stream:block-start',
+        block,
+        wireVersion: 1,
+        sequence: 0,
+      } as unknown as ChatStreamEvent;
+      // Without a single snapshot the projection copies NaN, JSON.stringify
+      // rewrites it to null, and the decoder rejects the encoder's own frame.
+      const decoded = decodeChatStreamEvent(encodeChatStreamEvent(event));
+      expect(decoded.type).toBe('stream:block-start');
+      if (decoded.type === 'stream:block-start') expect(decoded.block.index).toBe(0);
     });
 
     test('rejects a block with a negative index', () => {
@@ -2103,6 +2135,26 @@ describe('frames buffered after a terminal frame are rejected before it is yield
     }
     await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
       /Invalid chat stream event/,
+    );
+  });
+
+  test('a string chunk arriving while bytes are pending rejects rather than reordering text', async () => {
+    // The byte chunk ends inside '€' (0xe2 0x82 0xac). Appending the string
+    // first and completing the character afterwards would move the 0xac
+    // tail behind the string, so the pending bytes are flushed (and fail the
+    // fatal decode) before the string is accepted.
+    const encoded = new TextEncoder().encode(
+      `${JSON.stringify({ wireVersion: 1, sequence: 0, type: 'text', text: '€' })}\n`,
+    );
+    const split = encoded.indexOf(0xe2) + 1;
+    async function* chunks(): AsyncGenerator<string | Uint8Array> {
+      yield encoded.slice(0, split);
+      yield new TextDecoder().decode(encoded.slice(split + 2));
+      yield encoded.slice(split, split + 2);
+      yield `${terminal}\n`;
+    }
+    await expect(consumeUntilTerminal(decodeChatStreamEvents(chunks()))).rejects.toThrow(
+      'Invalid chat stream event: response bytes are not valid UTF-8',
     );
   });
 
