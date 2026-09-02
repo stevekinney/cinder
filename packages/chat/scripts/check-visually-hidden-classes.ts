@@ -873,7 +873,15 @@ const CLASS_LIST_LITERAL_SHAPE = /^[\w\s:\-/.[\]%#!@]*$/;
  * in this list on purpose.
  */
 const DOM_READ_CALL_PATTERN =
-  /(?:contains|matches|closest|querySelector|querySelectorAll|getElementsByClassName)\s*\(\s*$/;
+  /(?:contains|matches|closest|querySelector|querySelectorAll|getElementsByClassName)\s*\(\s*["'`]?\.?$/;
+
+/**
+ * Whether the text before a literal — or before a bare token inside one, so
+ * `matches('.sr-only')` counts too — is a DOM read's opening call.
+ */
+export function isDomReadArgument(prefix: string): boolean {
+  return DOM_READ_CALL_PATTERN.test(prefix);
+}
 /**
  * Replaces every `${...}` placeholder with a single space, balancing braces
  * so a placeholder that contains its own object or arrow body —
@@ -887,28 +895,43 @@ const DOM_READ_CALL_PATTERN =
  * literal's start, which is unaffected.
  */
 export function blankTemplatePlaceholders(content: string): string {
-  const masked = maskStringLiterals(content);
   let output = '';
   let index = 0;
+  for (const placeholder of templatePlaceholders(content)) {
+    output += content.slice(index, placeholder.start - 2) + ' ';
+    index = placeholder.start + placeholder.text.length + 1;
+  }
+  return output + content.slice(index);
+}
+
+/**
+ * Every `${...}` placeholder body inside a template literal's content, with
+ * the offset of the body's first character. Braces are balanced on the
+ * string-masked content so a `}` inside a nested quote cannot end the
+ * placeholder early; an unterminated placeholder runs to the end.
+ */
+export function templatePlaceholders(content: string): Array<{ start: number; text: string }> {
+  const masked = maskStringLiterals(content);
+  const placeholders: Array<{ start: number; text: string }> = [];
+  let index = 0;
   while (index < content.length) {
-    if (content[index] === '$' && content[index + 1] === '{') {
-      let depth = 0;
-      let end = index + 1;
-      for (; end < content.length; end++) {
-        if (masked[end] === '{') depth++;
-        else if (masked[end] === '}') {
-          depth--;
-          if (depth === 0) break;
-        }
-      }
-      output += ' ';
-      index = end + 1;
+    if (content[index] !== '$' || content[index + 1] !== '{') {
+      index += 1;
       continue;
     }
-    output += content[index];
-    index++;
+    let depth = 0;
+    let end = index + 1;
+    for (; end < content.length; end++) {
+      if (masked[end] === '{') depth++;
+      else if (masked[end] === '}') {
+        depth--;
+        if (depth === 0) break;
+      }
+    }
+    placeholders.push({ start: index + 2, text: content.slice(index + 2, end) });
+    index = end + 1;
   }
-  return output;
+  return placeholders;
 }
 
 /** An `{@html identifier}` tag — the one markup form that follows a script binding. */
@@ -1002,7 +1025,7 @@ export function scanSource(
     QUOTED_TOKEN_PATTERN.lastIndex = 0;
     let quotedMatch: RegExpExecArray | null;
     while ((quotedMatch = QUOTED_TOKEN_PATTERN.exec(expression)) !== null) {
-      if (DOM_READ_CALL_PATTERN.test(expression.slice(0, quotedMatch.index))) continue;
+      if (isDomReadArgument(expression.slice(0, quotedMatch.index))) continue;
       record(offset + quotedMatch.index);
     }
   };
@@ -1088,29 +1111,46 @@ export function scanSource(
     for (const call of extractClassNamesCallArguments(text)) {
       const tokenPattern = new RegExp(BARE_TOKEN_SOURCE, 'g');
       let tokenMatch: RegExpExecArray | null;
-      while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null)
+      while ((tokenMatch = tokenPattern.exec(call.argumentsText)) !== null) {
+        // `classNames(node.classList.contains('sr-only') && 'selected')`
+        // reads the class off another element; only `selected` can land.
+        if (isDomReadArgument(call.argumentsText.slice(0, tokenMatch.index))) continue;
         record(offset + call.startIndex + 1 + tokenMatch.index);
+      }
     }
 
-    // Class-shaped string literals anywhere in the script, so a class routed
-    // through a variable is still a usage site. A class attribute or selector
-    // written inside a script string is an example or a test assertion, not
-    // an applied class, and fails the shape test.
-    //
-    // Runs over the regex-masked text so a quote inside a regex literal —
-    // `/classNames\\('sr-only'\\)/` — is not mistaken for a string.
+    scanScriptLiterals(maskRegexLiterals(text), offset);
+  };
+
+  // Class-shaped string literals anywhere in the script, so a class routed
+  // through a variable is still a usage site. A class attribute or selector
+  // written inside a script string is an example or a test assertion, not
+  // an applied class, and fails the shape test.
+  //
+  // Runs over the regex-masked text so a quote inside a regex literal —
+  // `/classNames\\('sr-only'\\)/` — is not mistaken for a string.
+  //
+  // A template literal's placeholders are expressions of their own, so a
+  // class built entirely inside one — `` `${condition ? 'sr-only' : ''}` ``
+  // — is scanned the same way before the placeholder is blanked for the
+  // outer literal's shape test.
+  const scanScriptLiterals = (literalSource: string, offset: number): void => {
     const literalPattern = /(["'`])((?:\\.|(?!\1)[^\\])*)\1/g;
-    const literalSource = maskRegexLiterals(text);
     let literalMatch: RegExpExecArray | null;
     while ((literalMatch = literalPattern.exec(literalSource)) !== null) {
-      if (DOM_READ_CALL_PATTERN.test(literalSource.slice(0, literalMatch.index))) continue;
+      if (isDomReadArgument(literalSource.slice(0, literalMatch.index))) continue;
       const content = literalMatch[2] ?? '';
+      const contentOffset = offset + literalMatch.index + 1;
+      if (literalMatch[1] === '`') {
+        for (const placeholder of templatePlaceholders(content))
+          scanScriptLiterals(placeholder.text, contentOffset + placeholder.start);
+      }
       const shape = blankTemplatePlaceholders(content);
       if (!CLASS_LIST_LITERAL_SHAPE.test(shape)) continue;
       CLASS_LIST_TOKEN_PATTERN.lastIndex = 0;
       let tokenMatch: RegExpExecArray | null;
       while ((tokenMatch = CLASS_LIST_TOKEN_PATTERN.exec(shape)) !== null)
-        record(offset + literalMatch.index + 1 + tokenMatch.index);
+        record(contentOffset + tokenMatch.index);
     }
   };
 

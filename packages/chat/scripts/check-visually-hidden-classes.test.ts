@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
+  blankTemplatePlaceholders,
   extractClassNamesCallArguments,
   extractOpeningTagSpans,
   extractStringBindings,
@@ -17,6 +18,7 @@ import {
   scan,
   scanSource,
   splitSourceRegions,
+  templatePlaceholders,
 } from './check-visually-hidden-classes.ts';
 
 describe('scanSource — bare `sr-only` detection', () => {
@@ -733,6 +735,44 @@ describe('scanSource — fourth-round review findings', () => {
     expect(
       scanSource('<style>\n  /* .sr-only {} */\n</style>\n<!-- .sr-only -->', 'svelte'),
     ).toHaveLength(0);
+  });
+
+  test('a class built entirely inside a template placeholder is still a usage site', () => {
+    const source =
+      "<script>\n  const hidden = `${condition ? 'sr-only' : ''}`;\n</script>\n<span class={hidden}></span>";
+    const hits = scanSource(source, 'svelte');
+    expect(hits).toHaveLength(1);
+    expect(hits[0]?.lineNumber).toBe(2);
+    // Nested one level further, and inside a placeholder that carries its own object.
+    expect(
+      scanSource("const x = `${flag ? `${inner ? 'sr-only' : ''}` : classes({ a: 1 })}`;"),
+    ).toHaveLength(1);
+    // A DOM read inside a placeholder is still a read.
+    expect(
+      scanSource("const x = `${node.classList.contains('sr-only') ? 'on' : ''}`;"),
+    ).toHaveLength(0);
+  });
+
+  test('a DOM read passed to classNames is not an applied class', () => {
+    expect(scanSource("classNames(node.classList.contains('sr-only') && 'selected')")).toHaveLength(
+      0,
+    );
+    expect(scanSource("classNames(node.matches('.sr-only') && 'selected')")).toHaveLength(0);
+    expect(scanSource("classNames(node.classList.contains('sr-only') && 'sr-only')")).toHaveLength(
+      1,
+    );
+    expect(scanSource("classNames(node.classList.add('sr-only') && 'x')")).toHaveLength(1);
+  });
+
+  test('templatePlaceholders reports balanced placeholder bodies with offsets', () => {
+    expect(templatePlaceholders('a ${b} c ${d({ e: 1 })} f')).toEqual([
+      { start: 4, text: 'b' },
+      { start: 11, text: 'd({ e: 1 })' },
+    ]);
+    expect(templatePlaceholders("${x('}')}")).toEqual([{ start: 2, text: "x('}')" }]);
+    expect(templatePlaceholders('${open')).toEqual([{ start: 2, text: 'open' }]);
+    expect(blankTemplatePlaceholders('a ${b} c ${d({ e: 1 })} f')).toBe('a   c   f');
+    expect(blankTemplatePlaceholders('${open')).toBe(' ');
   });
 
   test('extractStringBindings reads only single-literal initializers', () => {
