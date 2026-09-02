@@ -264,6 +264,17 @@ describe('StatisticGroup', () => {
     expect(css).toMatch(/\.cinder-statistic-group__grid\s*\{[^}]*display:\s*grid;/);
   });
 
+  test('the README documents the inner grid as the layout hook', async () => {
+    // The grid moved off the root, so a consumer's `grid-template-columns` or
+    // `gap` override written against `.cinder-statistic-group` no longer reaches
+    // the cells. The README has to say where layout overrides go now.
+    const readme = await readFile(new URL('./README.md', import.meta.url), 'utf8');
+    expect(readme).toContain('## Rendering and customization');
+    expect(readme).toContain('.cinder-statistic-group__grid');
+    expect(readme).toContain('--cinder-statistic-group-gap');
+    expect(readme).toContain('grid-template-columns');
+  });
+
   test('renders .cinder-statistic-group wrapping its children', () => {
     const { container } = render(StatisticGroup, {
       children: textSnippet('stat content'),
