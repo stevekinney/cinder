@@ -229,6 +229,29 @@ describe('classifyChatRunFailure', () => {
 		expect(envelope.error.code).toBe('INVALID_OUTPUT');
 	});
 
+	// The route branches on `error.kind === 'abort'` to choose between closing
+	// the stream cleanly and calling `controller.error(...)`. `0.7.0` resolves
+	// `result()` on abort, so this rejection path is not exercised today — but
+	// Operative documents `result()` as REJECTING on abort, so a version that
+	// follows its own documentation, or that surfaces the signal's own
+	// `DOMException` instead of an `AgentRunError`, must not turn a user
+	// pressing "stop generating" into an error banner they never caused.
+	test('classifies a non-AgentRunError rejection on the abort path as an abort', () => {
+		const envelope = classifyChatRunFailure(new Error('The operation was aborted'), 'aborted');
+		expect(envelope).toEqual({
+			ok: false,
+			status: 'aborted',
+			error: { kind: 'abort', code: 'ABORTED', message: 'The operation was aborted' }
+		});
+	});
+
+	test('classifies a non-Error rejection on the abort path as an abort', () => {
+		expect(classifyChatRunFailure('stopped', 'aborted')).toMatchObject({
+			status: 'aborted',
+			error: { kind: 'abort' }
+		});
+	});
+
 	test('falls back to kind: "generate" for a plain, unclassified error', () => {
 		const envelope = classifyChatRunFailure(new Error('network blip'), 'error');
 		expect(envelope).toEqual({

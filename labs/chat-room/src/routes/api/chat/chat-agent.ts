@@ -127,12 +127,26 @@ export function classifyChatRunFailure(error: unknown, fallbackStatus: string): 
 		};
 	}
 
+	// An abort that arrives as something other than an `AgentRunError` is still
+	// an abort, and the caller has already told us so through `fallbackStatus`.
+	//
+	// This matters because the abort path is the one place where misclassifying
+	// is user-visible. `0.7.0` observably RESOLVES `result()` on abort, carrying
+	// a real `AgentRunError`, so today every abort takes the branch above. But
+	// Operative documents `result()` as REJECTING on abort, and a version that
+	// follows its own documentation — or that rejects with the underlying
+	// signal's `DOMException` rather than an `AgentRunError` — lands here
+	// instead. Reporting `kind: 'generate'` then would make the route call
+	// `controller.error(...)` rather than closing cleanly, turning a user
+	// pressing "stop generating" into an error banner they never caused.
+	const aborted = fallbackStatus === 'aborted';
+
 	return {
 		ok: false,
 		status: fallbackStatus,
 		error: {
-			kind: 'generate',
-			code: 'UNKNOWN',
+			kind: aborted ? 'abort' : 'generate',
+			code: aborted ? 'ABORTED' : 'UNKNOWN',
 			message: error instanceof Error ? error.message : 'Unknown error'
 		}
 	};

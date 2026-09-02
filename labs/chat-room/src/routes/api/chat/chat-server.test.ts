@@ -23,7 +23,9 @@ describe('chat stream cancellation guard', () => {
 		expect(source).toMatch(
 			/function onRequestAbort\(\): void \{[\s\S]*?run\?\.abort\('request aborted'\);[\s\S]*?closeStream\?\.\(\);[\s\S]*?\n\t\}/
 		);
-		expect(source).toMatch(/cancel\(\) \{\s+settled = true;\s+run\?\.abort\('client cancelled'\);\s+\}/);
+		expect(source).toMatch(
+			/cancel\(\) \{\s+settled = true;\s+run\?\.abort\('client cancelled'\);\s+\}/
+		);
 	});
 
 	test('guards the abort handler as a one-shot', () => {
