@@ -1,4 +1,38 @@
-import { expect, test } from '@playwright/test';
+import { expect, type Locator, type Page, test } from '@playwright/test';
+
+/**
+ * `data-cinder-closing` exists ONLY for the duration of the real exit transition
+ * (~120ms for `--cinder-duration-fast`). Dismissing an overlay and then polling
+ * for the attribute races the transition it asserts on: under runner contention
+ * the poll's first sample can land after the transition has completed, and the
+ * assertion fails on a correctly-behaving overlay -- `element(s) not found` once
+ * it has unmounted, or `unexpected value "null"` once the attribute is gone
+ * (CIN-501; observed on PRs that touched none of this code).
+ *
+ * So the observation is armed BEFORE the dismissing action, and it is a
+ * `MutationObserver` rather than a Playwright `waitFor`: an observer records the
+ * attribute mutation the moment it happens, independent of any polling cadence,
+ * whereas `waitFor` still samples and can miss a window shorter than its
+ * interval. The observer writes a sentinel attribute onto `<html>` -- an element
+ * that outlives the overlay -- so the assertion has something stable to read
+ * even after the overlay has unmounted.
+ */
+async function armClosingObserver(target: Locator, sentinel: string): Promise<void> {
+  await target.evaluate((element, sentinelName) => {
+    document.documentElement.removeAttribute(sentinelName);
+    const observer = new MutationObserver(() => {
+      if (element.hasAttribute('data-cinder-closing')) {
+        document.documentElement.setAttribute(sentinelName, '');
+        observer.disconnect();
+      }
+    });
+    observer.observe(element, { attributes: true, attributeFilter: ['data-cinder-closing'] });
+  }, sentinel);
+}
+
+async function expectClosingObserved(page: Page, sentinel: string): Promise<void> {
+  await expect(page.locator('html')).toHaveAttribute(sentinel, '');
+}
 
 /**
  * CIN-376: every anchored overlay migrated onto the shared exit-transition
@@ -64,9 +98,10 @@ test('Popover renders data-cinder-closing during its exit transition, then unmou
   const panel = page.locator('.cinder-popover').first();
   await expect(panel).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  await armClosingObserver(panel, 'data-test-popover-closing-observed');
   await trigger.click();
 
-  await expect(panel).toHaveAttribute('data-cinder-closing', '');
+  await expectClosingObserved(page, 'data-test-popover-closing-observed');
   await expect(panel).toHaveCount(0);
 });
 
@@ -103,24 +138,12 @@ test('Tooltip renders data-cinder-closing during its exit transition, then hides
   const tip = page.locator(`[id="${tooltipId}"][role="tooltip"]`).first();
   await expect(tip).toHaveAttribute('data-cinder-position-ready', 'true');
 
-  await tip.evaluate((element) => {
-    document.documentElement.removeAttribute('data-test-tooltip-closing-observed');
-    const observer = new MutationObserver(() => {
-      if (element.hasAttribute('data-cinder-closing')) {
-        document.documentElement.setAttribute('data-test-tooltip-closing-observed', '');
-        observer.disconnect();
-      }
-    });
-    observer.observe(element, {
-      attributes: true,
-      attributeFilter: ['data-cinder-closing'],
-    });
-  });
+  await armClosingObserver(tip, 'data-test-tooltip-closing-observed');
 
   // Move away to trigger the hide/close path.
   await page.mouse.move(0, 0);
 
-  await expect(page.locator('html')).toHaveAttribute('data-test-tooltip-closing-observed', '');
+  await expectClosingObserved(page, 'data-test-tooltip-closing-observed');
   await expect(tip).toBeHidden();
 });
 
@@ -140,8 +163,9 @@ test('HoverCard renders data-cinder-closing during its exit transition, then unm
   const card = page.locator('.cinder-hover-card').first();
   await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
 
+  await armClosingObserver(card, 'data-test-hover-card-closing-observed');
   await page.mouse.move(0, 0);
-  await expect(card).toHaveAttribute('data-cinder-closing', '');
+  await expectClosingObserved(page, 'data-test-hover-card-closing-observed');
 
   // The reopen-mid-close defect itself (below) is NOT exercised with this
   // basic example: its default `openDelay` (300ms) is longer than the exit
@@ -223,14 +247,15 @@ test('NavigationBar mobile panel plays its exit transition instead of snapping v
     .first();
   await expect(panel).toBeVisible();
 
-  await toggle.click();
-
   // Previously this panel used an unconditional `visibility: hidden` on
   // `[data-open='false']`, hiding it (and its exit transition) the instant
   // the toggle closed. It now stays visible/focusable through the
-  // transition, keyed off `data-cinder-closing`.
-  const closingPanel = page.locator(
-    '.cinder-navigation-bar__items[data-cinder-mobile-panel][data-cinder-closing]',
-  );
-  await expect(closingPanel).toHaveCount(1);
+  // transition, keyed off `data-cinder-closing`. `panel` is located by
+  // `[data-open="true"]`, which flips off at the same moment the closing
+  // attribute lands -- so the observer is armed on the element while that
+  // locator still resolves, and the assertion reads the sentinel rather
+  // than re-resolving a selector the closing state itself invalidates.
+  await armClosingObserver(panel, 'data-test-navigation-bar-closing-observed');
+  await toggle.click();
+  await expectClosingObserved(page, 'data-test-navigation-bar-closing-observed');
 });

@@ -85,7 +85,18 @@ export function isPageServerRenderers(value: unknown): value is PageServerRender
   );
 }
 
-let pageServerRendererPromise: Promise<PageServerRenderers> | null = null;
+/**
+ * Mirrors {@link ShellServerRendererLoadResult}. `usedFallback` matters to the
+ * startup warmup: a fallback RESOLVES rather than rejects, so without this flag a
+ * failed warmup build is indistinguishable from a successful one and readiness
+ * would be advertised behind a stale renderer.
+ */
+export type PageServerRendererLoadResult = {
+  renderers: PageServerRenderers;
+  usedFallback: boolean;
+};
+
+let pageServerRendererPromise: Promise<PageServerRendererLoadResult> | null = null;
 let lastGoodPageServerRenderer: PageServerRenderers | null = null;
 
 export function shellBuildSucceeded(code: string | null, usedFallback: boolean): boolean {
@@ -173,7 +184,15 @@ export function resetShellRendererWarmupState(): void {
  * (unrelated) call site in `startServer`'s renderer-warmup retry loop must
  * not also reset the page-server renderer.
  */
-export function resetPageServerRendererPromise(): void {
+export function resetPageServerRendererPromise(
+  expected?: Promise<PageServerRendererLoadResult>,
+): void {
+  // A caller discarding a specific load must not clobber a NEWER one. The startup
+  // warmup can be invalidated while a concurrent `/page/:name` request has already
+  // installed a fresh promise here; nulling that unconditionally would throw away a
+  // build already in flight and force the next request to start yet another one.
+  // Passing no argument keeps the unconditional behaviour the file watcher relies on.
+  if (expected !== undefined && pageServerRendererPromise !== expected) return;
   pageServerRendererPromise = null;
 }
 
@@ -217,7 +236,14 @@ export function rendererWarmupAttemptDecision(
  * transient compile error during development serves the previous good renderer
  * instead of a 500.
  */
-export async function loadPageServerRenderer(): Promise<PageServerRenderers> {
+/*
+ * Deliberately NOT `async`. An async wrapper returns a fresh promise that merely
+ * ADOPTS the memoized one, so a caller could never hold the identity that
+ * `resetPageServerRendererPromise(expected)` compares against -- every targeted
+ * reset would be suppressed and a rejected or last-good memo would never clear.
+ * Every `await` here lives inside the IIFE, so nothing needs the wrapper.
+ */
+export function loadPageServerRenderer(): Promise<PageServerRendererLoadResult> {
   if (pageServerRendererPromise !== null) return pageServerRendererPromise;
 
   pageServerRendererPromise = (async () => {
@@ -256,13 +282,16 @@ export async function loadPageServerRenderer(): Promise<PageServerRenderers> {
       if (generationAtStart === getRebuildGeneration()) {
         lastGoodPageServerRenderer = renderer;
       }
-      return renderer;
+      return { renderers: renderer, usedFallback: false };
     } catch (error) {
       console.error(
         '[playground] page server rebuild failed; serving the last-good renderer:',
         error,
       );
-      return fallbackToLastGood(lastGoodPageServerRenderer, error);
+      return {
+        renderers: fallbackToLastGood(lastGoodPageServerRenderer, error),
+        usedFallback: true,
+      };
     }
   })();
 

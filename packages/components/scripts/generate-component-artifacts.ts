@@ -37,7 +37,21 @@ async function main(): Promise<void> {
     const { buildManifest } = await import('./generate-manifest.ts');
 
     // Stage 1: per-component schema/variables/README drift check.
-    const perComponentIssues = await checkComponentArtifacts();
+    //
+    // Isolated like every later stage. `formatGenerated` no longer swallows a
+    // formatter failure (it used to return content unformatted and let the
+    // drift report imply a mismatch), so a thrown error here would otherwise
+    // abort the run before constraints/examples/manifest/agents-md report --
+    // contradicting the contract above that all stages run in check mode.
+    let perComponentIssues: Awaited<ReturnType<typeof checkComponentArtifacts>> = [];
+    let artifactsStageFailed = false;
+    try {
+      perComponentIssues = await checkComponentArtifacts();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : String(err);
+      process.stderr.write(`components:check — artifacts stage failed: ${message}\n`);
+      artifactsStageFailed = true;
+    }
 
     // Stage 2: constraints drift check.
     let constraintIssues: DriftIssue[] = [];
@@ -144,6 +158,7 @@ async function main(): Promise<void> {
     // even when the on-disk artifacts match.
     const allIssues: string[] = [
       ...perComponentIssues.map((issue) => `${issue.component}/${issue.file} (${issue.reason})`),
+      ...(artifactsStageFailed ? ['artifacts: stage threw — see error above'] : []),
       ...constraintIssues.map(
         (issue) => `constraints: ${issue.component}/${issue.file} (${issue.reason})`,
       ),

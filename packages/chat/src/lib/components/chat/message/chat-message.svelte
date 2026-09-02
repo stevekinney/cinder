@@ -492,8 +492,10 @@
     flex-direction: column;
     position: relative;
     width: fit-content;
-    /* Cap at 80% of container OR 48rem (768px) for readability on wide screens */
-    max-width: min(80%, 48rem);
+    /* Cap at 80% of container OR the shared readability max-width (768px
+     * default) for wide screens. Same token tool-call-timeline.svelte's
+     * .chat-tool-call-timeline reads, so the two can never drift apart. */
+    max-width: min(80%, var(--cinder-chat-message-max-width, 48rem));
   }
 
   .chat-message-wrapper[data-cinder-rollback-discarded] {
@@ -585,7 +587,7 @@
 
   .chat-message-wrapper[data-role='system'] {
     margin-inline: auto;
-    max-width: min(90%, 48rem);
+    max-width: min(90%, var(--cinder-chat-message-max-width, 48rem));
   }
 
   .chat-message-wrapper[data-role='system'] .chat-message {
@@ -607,7 +609,7 @@
   .chat-message-wrapper[data-role='tool-result'] {
     margin-inline-end: auto;
     min-width: min(18rem, 100%);
-    max-width: min(100%, 48rem);
+    max-width: min(100%, var(--cinder-chat-message-max-width, 48rem));
   }
 
   .chat-message-wrapper[data-role='tool-call'] .chat-message,
@@ -624,7 +626,7 @@
    * their content, but a tool-call card is structural data that benefits
    * from horizontal room without stretching across the entire timeline. */
   .chat-message-wrapper[data-tool-pair] {
-    width: min(80%, 48rem);
+    width: min(80%, var(--cinder-chat-message-max-width, 48rem));
   }
 
   .chat-message-wrapper[data-tool-pair] .chat-message {
