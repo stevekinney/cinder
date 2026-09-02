@@ -5,9 +5,9 @@ import { conversationSchema } from 'conversationalist/schemas';
 import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic';
 
 import { requestContext, toolbox } from '$lib/toolbox';
-import { createChatAgent, pumpChatRun, startChatRun, type ChatStreamFrame } from './chat-agent';
+import { createChatAgent, createChatStreamWriter, pumpChatRun, startChatRun } from './chat-agent';
 
-import type { AgentRun, EnhancedStreamingOptions } from '@lostgradient/operative';
+import type { AgentRun } from '@lostgradient/operative';
 import type { RequestHandler } from './$types';
 
 const MODEL = 'claude-sonnet-5';
@@ -130,20 +130,13 @@ export const POST: RequestHandler = async ({ request }) => {
 				}
 			};
 
-			function enqueueFrame(frame: ChatStreamFrame): void {
+			// Request-local, never module-scoped: the writer owns this response's
+			// `sequence` counter, and `createChatAgent` builds a request-local
+			// event target around it — a shared one would deliver one request's
+			// frames to every other in-flight request.
+			const writer = createChatStreamWriter((line) => {
 				if (settled) return;
-				controller.enqueue(encoder.encode(`${JSON.stringify(frame)}\n`));
-			}
-
-			// Request-local, never module-scoped: `withEnhancedStreaming` dispatches
-			// on this target through plain `EventTarget.dispatchEvent`, and
-			// `EventTarget` dispatch is broadcast — a module-scoped target would
-			// deliver one request's text deltas to every other in-flight request.
-			const eventTarget = new EventTarget() as unknown as NonNullable<
-				EnhancedStreamingOptions['eventTarget']
-			>;
-			eventTarget.addEventListener('stream:text-delta', (event) => {
-				enqueueFrame({ type: 'text', text: event.detail.content });
+				controller.enqueue(encoder.encode(line));
 			});
 
 			const agent = createChatAgent({
@@ -160,7 +153,7 @@ export const POST: RequestHandler = async ({ request }) => {
 				}),
 				toolbox,
 				requestContext,
-				eventTarget
+				writer
 			});
 
 			// `activeRun` (not the outer, reassignable `run`) is what the async pump
@@ -196,7 +189,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			void (async () => {
 				try {
-					const envelope = await pumpChatRun(activeRun, enqueueFrame);
+					const envelope = await pumpChatRun(activeRun, writer);
 
 					if (settled) return;
 					settled = true;
@@ -207,6 +200,15 @@ export const POST: RequestHandler = async ({ request }) => {
 					// normal stop into an error the user never caused, so both success
 					// and a clean abort close the stream the same way; every other
 					// failure becomes a stream error the client's adapter can surface.
+					//
+					// The `run.error` frame `pumpChatRun` wrote is already on the wire
+					// by now, so a client that understands the typed vocabulary has
+					// the structured `{ kind, code, message }`. Today's
+					// `session-controller.ts` does not read `run.*` frames yet — it
+					// surfaces failures only through the reader rejecting — which is
+					// why `controller.error` still follows the frame. CIN-438 (the
+					// client-side `run.*` reducer) removes this and closes cleanly
+					// once the frame alone is enough.
 					if (envelope.ok || envelope.error.kind === 'abort') {
 						controller.close();
 						return;

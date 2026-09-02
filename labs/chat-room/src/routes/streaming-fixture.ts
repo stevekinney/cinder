@@ -71,8 +71,14 @@ export const FIXTURE_ORIGIN = `http://127.0.0.1:${FIXTURE_PORT}`;
  *   a user-initiated abort lands.
  * `approval` — a `remember_note` tool call on the first turn (the toolbox's
  *   only tool with an approval policy), plain text on every turn after it.
+ * `stepped` — three text chunks with a gate after each of the first two, so a
+ *   test can observe three distinct rendered states of one reply.
+ * `tool` — a `roll_dice` tool call on the first turn whose `input_json_delta`
+ *   is split around a gate, so the tool-use block is genuinely still open
+ *   (name known, arguments incomplete) while the test looks at the wire;
+ *   plain text on every turn after it.
  */
-export type FixtureScenario = 'gated' | 'hold' | 'approval';
+export type FixtureScenario = 'gated' | 'hold' | 'approval' | 'stepped' | 'tool';
 
 export const GATED_FIRST_CHUNK = 'Streaming first half.';
 export const GATED_SECOND_CHUNK = 'Streaming second half.';
@@ -80,6 +86,12 @@ export const HOLD_PARTIAL_TEXT = 'Partial answer before the stop.';
 export const APPROVAL_NOTE_TEXT = 'Ship the release notes';
 export const APPROVAL_FOLLOW_UP_TEXT = 'Saved that note.';
 export const DEFAULT_REPLY_TEXT = 'Fixture default reply.';
+export const STEPPED_CHUNKS = ['Step one.', 'Step two.', 'Step three.'] as const;
+export const TOOL_CALL_NAME = 'roll_dice';
+/** Split so the JSON is invalid at the gate — the arguments really are partial. */
+export const TOOL_ARGUMENTS_FIRST_HALF = '{"sides": 6';
+export const TOOL_ARGUMENTS_SECOND_HALF = ', "count": 1}';
+export const TOOL_FOLLOW_UP_TEXT = 'You rolled the dice.';
 
 /**
  * The scenario selector, embedded in the user's message.
@@ -93,7 +105,7 @@ export function fixtureMarker(scenario: FixtureScenario, marker: string): string
 	return `[fixture ${scenario} ${marker}]`;
 }
 
-const MARKER_PATTERN = /\[fixture (gated|hold|approval) ([A-Za-z0-9-]+)\]/;
+const MARKER_PATTERN = /\[fixture (gated|hold|approval|stepped|tool) ([A-Za-z0-9-]+)\]/;
 
 /** How many `/v1/messages` requests each marker has produced. */
 const requestCounts = new Map<string, number>();
@@ -251,6 +263,50 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 		return;
 	}
 
+	if (scenario === 'tool' && attempt === 1) {
+		sse(res, 'content_block_start', {
+			type: 'content_block_start',
+			index: 0,
+			content_block: { type: 'tool_use', id: `toolu_${marker}`, name: TOOL_CALL_NAME, input: {} }
+		});
+		sse(res, 'content_block_delta', {
+			type: 'content_block_delta',
+			index: 0,
+			delta: { type: 'input_json_delta', partial_json: TOOL_ARGUMENTS_FIRST_HALF }
+		});
+
+		if ((await gate(marker, res)) === 'disconnected') return;
+
+		sse(res, 'content_block_delta', {
+			type: 'content_block_delta',
+			index: 0,
+			delta: { type: 'input_json_delta', partial_json: TOOL_ARGUMENTS_SECOND_HALF }
+		});
+		sse(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
+		endMessage(res, 'tool_use');
+		return;
+	}
+
+	if (scenario === 'stepped') {
+		sse(res, 'content_block_start', {
+			type: 'content_block_start',
+			index: 0,
+			content_block: { type: 'text', text: '' }
+		});
+		for (const [index, text] of STEPPED_CHUNKS.entries()) {
+			sse(res, 'content_block_delta', {
+				type: 'content_block_delta',
+				index: 0,
+				delta: { type: 'text_delta', text: index === 0 ? text : ` ${text}` }
+			});
+			if (index === STEPPED_CHUNKS.length - 1) break;
+			if ((await gate(marker, res)) === 'disconnected') return;
+		}
+		sse(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
+		endMessage(res, 'end_turn');
+		return;
+	}
+
 	if (scenario === 'gated') {
 		sse(res, 'content_block_start', {
 			type: 'content_block_start',
@@ -293,7 +349,13 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 		return;
 	}
 
-	textBlock(res, [scenario === 'approval' ? APPROVAL_FOLLOW_UP_TEXT : DEFAULT_REPLY_TEXT]);
+	textBlock(res, [
+		scenario === 'approval'
+			? APPROVAL_FOLLOW_UP_TEXT
+			: scenario === 'tool'
+				? TOOL_FOLLOW_UP_TEXT
+				: DEFAULT_REPLY_TEXT
+	]);
 	endMessage(res, 'end_turn');
 }
 
@@ -337,6 +399,15 @@ async function handle(req: IncomingMessage, res: ServerResponse): Promise<void> 
 
 	if (url.pathname === '/__fixture/requests') {
 		jsonResponse(res, 200, { count: requestCounts.get(marker) ?? 0 });
+		return;
+	}
+
+	// Read-only sibling of `/__fixture/release`: is a response for this marker
+	// parked on a gate right now? A test that aborts mid-stream polls this to
+	// prove the abort propagated all the way upstream — `release` cannot be
+	// polled for that, because asking it is what un-parks the gate.
+	if (url.pathname === '/__fixture/held') {
+		jsonResponse(res, 200, { held: heldGates.has(marker) });
 		return;
 	}
 

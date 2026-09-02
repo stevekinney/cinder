@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { appendUserMessage, createConversationHistory } from 'conversationalist';
 import { gotoHydrated } from './exercises/hydration';
 import {
 	APPROVAL_FOLLOW_UP_TEXT,
@@ -7,6 +8,10 @@ import {
 	GATED_FIRST_CHUNK,
 	GATED_SECOND_CHUNK,
 	HOLD_PARTIAL_TEXT,
+	STEPPED_CHUNKS,
+	TOOL_ARGUMENTS_FIRST_HALF,
+	TOOL_CALL_NAME,
+	TOOL_FOLLOW_UP_TEXT,
 	fixtureMarker
 } from './streaming-fixture';
 
@@ -294,6 +299,12 @@ test.describe('production streaming path', () => {
 		return payload.count;
 	}
 
+	async function fixtureGateHeld(marker: string): Promise<boolean> {
+		const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/held?marker=${marker}`);
+		const payload = (await response.json()) as { held: boolean };
+		return payload.held;
+	}
+
 	async function releaseFixtureGate(marker: string): Promise<boolean> {
 		const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/release?marker=${marker}`, {
 			method: 'POST'
@@ -423,6 +434,164 @@ test.describe('production streaming path', () => {
 	// loses this test rather than this test plus everything declared after it.
 	// Tests in a file run in declaration order within a worker, and the two above
 	// share the preview server with it.
+	test('renders three distinct states of one reply, each while the response is still open', async ({
+		page
+	}) => {
+		const marker = newMarker();
+
+		await gotoHydrated(page, '/');
+		const log = page.getByRole('log', { name: 'Messages' });
+		await page
+			.getByRole('textbox', { name: 'Message' })
+			.fill(`Walk me through it ${fixtureMarker('stepped', marker)}`);
+		await page.getByRole('button', { name: 'Send message' }).click();
+
+		await expectFixtureHandled(marker);
+
+		// State one: the first chunk alone, with the fixture parked on gate one.
+		await expect(log).toContainText(STEPPED_CHUNKS[0]);
+		await expect(log).not.toContainText(STEPPED_CHUNKS[1]);
+		expect(await releaseFixtureGate(marker)).toBe(true);
+
+		// State two: two chunks, parked on gate two. `released: true` again is
+		// what proves the third chunk did not exist yet when two were on screen —
+		// three causally separated renders of one assistant message, not one
+		// render of a buffered whole.
+		await expect(log).toContainText(`${STEPPED_CHUNKS[0]} ${STEPPED_CHUNKS[1]}`);
+		await expect(log).not.toContainText(STEPPED_CHUNKS[2]);
+		expect(await releaseFixtureGate(marker)).toBe(true);
+
+		// State three: the complete reply, and the turn has unwound.
+		await expect(log).toContainText(STEPPED_CHUNKS.join(' '));
+		await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+		await expect(page.getByTestId('demo-error')).toBeEmpty();
+	});
+
+	test('typed stream:tool-call-start and -delta frames are on the wire before the tool block closes', async ({
+		page
+	}) => {
+		const marker = newMarker();
+		// The same shape `+page.svelte` POSTs — built with the same library —
+		// but read raw here, because the rendered UI cannot show a frame that
+		// `session-controller.ts` does not render yet (CIN-437/438 do that).
+		// This proves the server half of CIN-436's contract on its own.
+		const conversation = appendUserMessage(
+			createConversationHistory({ id: `wire-${marker}` }),
+			`Roll for me ${fixtureMarker('tool', marker)}`
+		);
+
+		await gotoHydrated(page, '/');
+
+		// Reads `/api/chat` line by line inside the page and resolves the moment a
+		// `stream:tool-call-delta` frame lands, leaving the reader open — the
+		// fixture is still parked mid-`input_json_delta` at that point, so the
+		// frames returned here were written while the tool-use block was open.
+		const framesWhileOpen = await page.evaluate(
+			async (body) => {
+				const response = await fetch('/api/chat', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify(body)
+				});
+				const reader = response.body!.getReader();
+				const decoder = new TextDecoder();
+				const frames: Array<Record<string, unknown>> = [];
+				let buffered = '';
+				let sawDelta = false;
+				const finished = (async () => {
+					for (;;) {
+						const { value, done } = await reader.read();
+						if (done) break;
+						buffered += decoder.decode(value, { stream: true });
+						let newline = buffered.indexOf('\n');
+						while (newline !== -1) {
+							frames.push(JSON.parse(buffered.slice(0, newline)) as Record<string, unknown>);
+							buffered = buffered.slice(newline + 1);
+							newline = buffered.indexOf('\n');
+						}
+						if (!sawDelta && frames.some((frame) => frame['type'] === 'stream:tool-call-delta')) {
+							sawDelta = true;
+							(window as unknown as { __wireSnapshot: unknown }).__wireSnapshot = [...frames];
+						}
+					}
+					return frames;
+				})();
+				(window as unknown as { __wireFinished: Promise<unknown> }).__wireFinished = finished;
+				// Poll the snapshot rather than racing `finished`: the response stays
+				// open until the fixture gate is released, which is the whole point.
+				for (;;) {
+					const snapshot = (window as unknown as { __wireSnapshot?: unknown }).__wireSnapshot;
+					if (snapshot) return snapshot as Array<Record<string, unknown>>;
+					await new Promise((resolve) => setTimeout(resolve, 10));
+				}
+			},
+			{ conversation }
+		);
+
+		// `released: true` is the causal claim: the fixture was still parked
+		// before `content_block_stop` when these frames had already been read.
+		expect(await releaseFixtureGate(marker)).toBe(true);
+
+		const types = framesWhileOpen.map((frame) => frame['type']);
+		expect(types).toContain('stream:tool-call-start');
+		expect(types).toContain('stream:tool-call-delta');
+		expect(types).not.toContain('stream:tool-call-complete');
+		expect(types).not.toContain('tool_call');
+		const start = framesWhileOpen.find((frame) => frame['type'] === 'stream:tool-call-start');
+		expect(start).toMatchObject({ toolName: TOOL_CALL_NAME, blockId: `toolu_${marker}` });
+		const delta = framesWhileOpen.find((frame) => frame['type'] === 'stream:tool-call-delta');
+		expect(delta).toMatchObject({
+			toolName: TOOL_CALL_NAME,
+			blockId: `toolu_${marker}`,
+			partialArguments: TOOL_ARGUMENTS_FIRST_HALF
+		});
+
+		// After release: the block completes, the tool runs, and exactly one
+		// terminal frame closes a strictly sequenced wire.
+		const allFrames = await page.evaluate(
+			() => (window as unknown as { __wireFinished: Promise<unknown> }).__wireFinished
+		);
+		const all = allFrames as Array<Record<string, unknown>>;
+		all.forEach((frame, index) => {
+			expect(frame['wireVersion']).toBe(1);
+			expect(frame['sequence']).toBe(index);
+		});
+		const allTypes = all.map((frame) => frame['type']);
+		expect(allTypes).toContain('stream:tool-call-complete');
+		expect(allTypes).toContain('tool.started');
+		expect(allTypes).toContain('tool.settled');
+		expect(allTypes).toContain('tool_call');
+		expect(allTypes).toContain('tool_result');
+		expect(allTypes.filter((type) => String(type).startsWith('run.'))).toEqual(['run.completed']);
+		expect(allTypes.at(-1)).toBe('run.completed');
+	});
+
+	test('a tool call streams through the UI to a follow-up reply', async ({ page }) => {
+		const marker = newMarker();
+
+		await gotoHydrated(page, '/');
+		const log = page.getByRole('log', { name: 'Messages' });
+		await page
+			.getByRole('textbox', { name: 'Message' })
+			.fill(`Roll for me ${fixtureMarker('tool', marker)}`);
+		await page.getByRole('button', { name: 'Send message' }).click();
+
+		await expectFixtureHandled(marker);
+
+		// The response is parked mid-arguments; nothing about the widened wire
+		// vocabulary may break the legacy-only client while it waits.
+		await expect(page.getByRole('button', { name: 'Stop generating' })).toBeVisible();
+		await expect(page.getByTestId('demo-error')).toBeEmpty();
+		expect(await releaseFixtureGate(marker)).toBe(true);
+
+		// The client's continuation loop re-POSTs after a resolved tool result,
+		// and the fixture answers the second turn with plain text.
+		await expect(log).toContainText(TOOL_FOLLOW_UP_TEXT);
+		await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+		await expect(page.getByTestId('demo-error')).toBeEmpty();
+		expect(await fixtureRequestCount(marker)).toBe(2);
+	});
+
 	test('stop generating keeps the partial reply that already streamed in', async ({ page }) => {
 		const marker = newMarker();
 
@@ -463,6 +632,50 @@ test.describe('production streaming path', () => {
 		// problem. It is a smoke check and not a proof of absence: it samples one
 		// moment, and a crash that lands after it would surface in the next test
 		// instead.
+		const alive = await page.request.get('/');
+		expect(alive.ok()).toBe(true);
+	});
+
+	test('stop generating mid tool call leaves no placeholder, no error, and a live server', async ({
+		page
+	}) => {
+		const marker = newMarker();
+
+		await gotoHydrated(page, '/');
+		const log = page.getByRole('log', { name: 'Messages' });
+		await page
+			.getByRole('textbox', { name: 'Message' })
+			.fill(`Roll for me ${fixtureMarker('tool', marker)}`);
+		await page.getByRole('button', { name: 'Send message' }).click();
+
+		await expectFixtureHandled(marker);
+		await expect(page.getByRole('button', { name: 'Stop generating' })).toBeVisible();
+
+		// Abort while the fixture is parked inside the tool-use block: the
+		// server has written `stream:tool-call-start`/`-delta` and nothing
+		// renderable. The abort must land as a silent stop — no banner, no
+		// dangling assistant placeholder — and the route's `run.aborted`
+		// terminal must not be mistaken for a failure.
+		await page.getByRole('button', { name: 'Stop generating' }).click();
+
+		await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Stop generating' })).toHaveCount(0);
+		await expect(page.getByTestId('demo-error')).toBeEmpty();
+		await expect(log.getByRole('article')).toHaveCount(1);
+
+		// The abort SHOULD reach the fixture — SvelteKit cancels the ndjson
+		// stream, the route aborts the run, Operative aborts the upstream
+		// request, the fixture's `gate` sees the socket close — and CIN-513 adds
+		// `await expect.poll(() => fixtureGateHeld(marker)).toBe(false)` here.
+		// Today it does not: Operative 0.8.0's Anthropic provider puts the abort
+		// signal in the request BODY instead of the SDK's `RequestOptions`
+		// (AB-189), so the upstream request stays parked. Read the probe for the
+		// trace, then release the gate so the leaked run can unwind instead of
+		// outliving the test.
+		const heldAfterAbort = await fixtureGateHeld(marker);
+		expect(typeof heldAfterAbort).toBe('boolean');
+		await releaseFixtureGate(marker);
+
 		const alive = await page.request.get('/');
 		expect(alive.ok()).toBe(true);
 	});

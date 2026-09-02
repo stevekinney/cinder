@@ -16,10 +16,12 @@ import { z } from 'zod';
 import {
 	classifyChatRunFailure,
 	createChatAgent,
+	createChatStreamWriter,
 	pumpChatRun,
-	startChatRun,
-	type ChatStreamFrame
+	startChatRun
 } from './chat-agent';
+
+import type { ChatStreamEvent } from '@lostgradient/chat';
 
 /**
  * Deterministic unit tests for the Operative-backed agent loop. Every
@@ -51,23 +53,67 @@ function conversationWith(userText: string) {
 	);
 }
 
+const LEGACY_TYPES = new Set(['text', 'tool_call', 'tool_result']);
+const TERMINAL_TYPES = new Set(['run.completed', 'run.error', 'run.tripwire', 'run.aborted']);
+
+/** Parses the NDJSON lines the writer produced back into frames. */
+function decodeLines(lines: string[]): ChatStreamEvent[] {
+	return lines.map((line) => {
+		if (!line.endsWith('\n')) throw new Error(`frame is not newline-terminated: ${line}`);
+		return JSON.parse(line) as ChatStreamEvent;
+	});
+}
+
+/** The three frames the client renders today, stripped of their envelope. */
+function legacyFrames(frames: ChatStreamEvent[]): Array<Record<string, unknown>> {
+	return frames
+		.filter((frame) => LEGACY_TYPES.has(frame.type))
+		.map((frame) => {
+			const stripped: Record<string, unknown> = { ...frame };
+			delete stripped['wireVersion'];
+			delete stripped['sequence'];
+			return stripped;
+		});
+}
+
+function ofType<T extends ChatStreamEvent['type']>(
+	frames: ChatStreamEvent[],
+	type: T
+): Array<Extract<ChatStreamEvent, { type: T }>> {
+	return frames.filter(
+		(frame): frame is Extract<ChatStreamEvent, { type: T }> => frame.type === type
+	);
+}
+
+/**
+ * Every frame carries the envelope, `sequence` is strictly increasing from
+ * zero, and exactly one terminal `run.*` frame closes the stream — the
+ * reference architecture's stream wire contract, asserted on every run.
+ */
+function expectWellFormedWire(frames: ChatStreamEvent[]): void {
+	frames.forEach((frame, index) => {
+		expect(frame.wireVersion).toBe(1);
+		expect(frame.sequence).toBe(index);
+	});
+	const terminals = frames.filter((frame) => TERMINAL_TYPES.has(frame.type));
+	expect(terminals).toHaveLength(1);
+	expect(frames.at(-1)).toBe(terminals[0]);
+}
+
 async function runAndCollect(
 	generate: StreamingGenerateFunction,
-	toolbox: AnyToolbox = createToolbox([])
-): Promise<{ frames: ChatStreamFrame[]; envelope: Awaited<ReturnType<typeof pumpChatRun>> }> {
-	// Mirrors the route: `createChatAgent` never wires the text-delta listener
-	// itself, so the caller attaches it to the exact `eventTarget` instance it
-	// hands to `createChatAgent` — the same request-local pattern `+server.ts`
-	// follows.
-	const eventTarget = freshEventTarget();
-	const frames: ChatStreamFrame[] = [];
-	eventTarget.addEventListener('stream:text-delta', (event) => {
-		frames.push({ type: 'text', text: event.detail.content });
-	});
-
-	const agent = createChatAgent({ generate, toolbox, requestContext, eventTarget });
+	toolbox: AnyToolbox = createToolbox([]),
+	lines: string[] = []
+): Promise<{ frames: ChatStreamEvent[]; envelope: Awaited<ReturnType<typeof pumpChatRun>> }> {
+	// Mirrors the route exactly: one request-local writer feeds both the
+	// `stream:*` forwarding `createChatAgent` installs and the `tool.*`/`run.*`
+	// frames `pumpChatRun` emits, so this collects the same bytes the wire sees.
+	const writer = createChatStreamWriter((line) => lines.push(line));
+	const agent = createChatAgent({ generate, toolbox, requestContext, writer });
 	const run = startChatRun(agent, conversationWith('hello'));
-	const envelope = await pumpChatRun(run, (frame) => frames.push(frame));
+	const envelope = await pumpChatRun(run, writer);
+	const frames = decodeLines(lines);
+	expectWellFormedWire(frames);
 	return { frames, envelope };
 }
 
@@ -88,11 +134,67 @@ describe('pumpChatRun: completed success', () => {
 
 		const { frames, envelope } = await runAndCollect(generate);
 
-		expect(frames).toEqual([
+		expect(legacyFrames(frames)).toEqual([
 			{ type: 'text', text: 'Hello ' },
 			{ type: 'text', text: 'there!' }
 		]);
 		expect(envelope).toEqual({ ok: true, status: 'completed', content: 'Hello there!' });
+	});
+
+	test('mirrors every text delta as a typed stream:text-delta frame with the accumulated text', async () => {
+		const generate: StreamingGenerateFunction = async ({ streaming }) => {
+			streaming.update('Hello ');
+			streaming.update('Hello there!');
+			return { content: 'Hello there!', toolCalls: [] };
+		};
+
+		const { frames } = await runAndCollect(generate);
+
+		expect(
+			ofType(frames, 'stream:text-delta').map(({ content, accumulated }) => ({
+				content,
+				accumulated
+			}))
+		).toEqual([
+			{ content: 'Hello ', accumulated: 'Hello ' },
+			{ content: 'there!', accumulated: 'Hello there!' }
+		]);
+		// The legacy `text` frame is written first so a client that renders only
+		// the legacy vocabulary sees the delta at the earliest sequence number.
+		const firstText = frames.findIndex((frame) => frame.type === 'text');
+		const firstDelta = frames.findIndex((frame) => frame.type === 'stream:text-delta');
+		expect(firstText).toBeLessThan(firstDelta);
+		// Block lifecycle and completion events ride along, field for field.
+		expect(ofType(frames, 'stream:block-start')).toHaveLength(1);
+		expect(ofType(frames, 'stream:block-complete')).toHaveLength(1);
+		expect(ofType(frames, 'stream:complete')[0]?.state.textContent).toBe('Hello there!');
+	});
+
+	test('closes with exactly one run.completed frame carrying the final conversation', async () => {
+		const generate: StreamingGenerateFunction = async ({ streaming }) => {
+			streaming.update('done');
+			return {
+				content: 'done',
+				toolCalls: [],
+				usage: { prompt: 3, completion: 1, total: 4 }
+			};
+		};
+
+		const { frames } = await runAndCollect(generate);
+
+		const completed = ofType(frames, 'run.completed');
+		expect(completed).toHaveLength(1);
+		const [frame] = completed;
+		expect(frame?.content).toBe('done');
+		expect(frame?.finishReason).toBe('stop-condition');
+		expect(frame?.usage).toEqual({ prompt: 3, completion: 1, total: 4 });
+		// The conversation is the plain `ConversationHistory` snapshot, not the
+		// `Conversation` class instance Operative hands back, and it already
+		// contains the assistant reply.
+		const history = frame?.conversation;
+		expect(history?.ids).toHaveLength(2);
+		const lastId = history?.ids.at(-1) ?? '';
+		expect(history?.messages[lastId]?.role).toBe('assistant');
 	});
 });
 
@@ -102,12 +204,42 @@ describe('pumpChatRun: provider failure', () => {
 			throw new Error('simulated provider failure');
 		};
 
-		const { envelope } = await runAndCollect(generate);
+		const { frames, envelope } = await runAndCollect(generate);
 
 		expect(envelope.ok).toBe(false);
 		if (envelope.ok) throw new Error('unreachable');
 		expect(envelope.error.kind).toBe('generate');
 		expect(envelope.error.message).toContain('simulated provider failure');
+
+		// One terminal frame, even though Operative fires `run.error` AND a
+		// `run.completed` (finishReason 'error') for the same failure — verified
+		// against 0.8.0 directly. The frame is a serialized run error with no
+		// `cause`: the reference architecture's error contract forbids forwarding
+		// it, since it can carry a credential-bearing provider response.
+		const [terminal] = ofType(frames, 'run.error');
+		expect(terminal?.error.kind).toBe('generate');
+		expect(terminal?.error.message).toContain('simulated provider failure');
+		expect(terminal?.error).not.toHaveProperty('cause');
+		expect(ofType(frames, 'run.completed')).toHaveLength(0);
+	});
+
+	test('a stream:error raised by the wrapper is forwarded with a JSON-safe error, never the cause', async () => {
+		// `withEnhancedStreaming` dispatches `stream:error` from its own catch
+		// when `generate` throws — with the thrown value itself as `error`.
+		// Model a provider failure whose `cause` is a credential-bearing
+		// response: neither it nor the stack may reach the wire.
+		const generate: StreamingGenerateFunction = async () => {
+			throw new Error('provider exploded', {
+				cause: { headers: { authorization: 'Bearer sk-secret' } }
+			});
+		};
+
+		const { frames } = await runAndCollect(generate);
+
+		const [streamError] = ofType(frames, 'stream:error');
+		expect(streamError?.error).toEqual({ name: 'Error', message: 'provider exploded' });
+		expect(JSON.stringify(frames)).not.toContain('sk-secret');
+		expect(ofType(frames, 'run.error')).toHaveLength(1);
 	});
 });
 
@@ -128,23 +260,24 @@ describe('pumpChatRun: aborted request', () => {
 				signalAbortListenerReady();
 			});
 
-		const agent = createChatAgent({
-			generate,
-			toolbox: createToolbox([]),
-			requestContext,
-			eventTarget: freshEventTarget()
-		});
+		const lines: string[] = [];
+		const writer = createChatStreamWriter((line) => lines.push(line));
+		const agent = createChatAgent({ generate, toolbox: createToolbox([]), requestContext, writer });
 		const run = startChatRun(agent, conversationWith('hello'));
 
 		await abortListenerReady;
 		run.abort('test abort');
 
-		const envelope = await pumpChatRun(run, () => {});
+		const envelope = await pumpChatRun(run, writer);
 
 		expect(envelope.ok).toBe(false);
 		if (envelope.ok) throw new Error('unreachable');
 		expect(envelope.error.kind).toBe('abort');
 		expect(envelope.error.code).toBe('ABORTED');
+
+		const frames = decodeLines(lines);
+		expectWellFormedWire(frames);
+		expect(frames.at(-1)).toMatchObject({ type: 'run.aborted' });
 	});
 });
 
@@ -178,7 +311,7 @@ describe('pumpChatRun: roll_dice tool path', () => {
 
 		const { frames, envelope } = await runAndCollect(generate, createToolbox([rollDice]));
 
-		expect(frames).toEqual([
+		expect(legacyFrames(frames)).toEqual([
 			{ type: 'tool_call', id: 'call-1', name: 'roll_dice', arguments: { sides: 6, count: 1 } },
 			{
 				type: 'tool_result',
@@ -189,6 +322,161 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		]);
 		expect(envelope).toEqual({ ok: true, status: 'completed', content: '' });
 		expect(calls).toBe(1);
+	});
+
+	test('emits tool.started then tool.settled keyed by toolCallId, with the result as a ChatToolResult', async () => {
+		const generate: StreamingGenerateFunction = async () => ({
+			content: '',
+			toolCalls: [{ id: 'call-1', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
+		});
+
+		const { frames } = await runAndCollect(generate, createToolbox([rollDice]));
+
+		expect(
+			ofType(frames, 'tool.started').map(({ toolCallId, toolName }) => ({ toolCallId, toolName }))
+		).toEqual([{ toolCallId: 'call-1', toolName: 'roll_dice' }]);
+		const settled = ofType(frames, 'tool.settled');
+		expect(settled).toHaveLength(1);
+		expect(settled[0]).toMatchObject({
+			toolCallId: 'call-1',
+			toolName: 'roll_dice',
+			result: { callId: 'call-1', outcome: 'success', content: { rolls: [4], total: 4 } }
+		});
+		const order = frames.map((frame) => frame.type);
+		expect(order.indexOf('tool.started')).toBeLessThan(order.indexOf('tool.settled'));
+		// The typed completion of the tool-call block rides along with parsed arguments.
+		expect(ofType(frames, 'stream:tool-call-complete')[0]).toMatchObject({
+			toolName: 'roll_dice',
+			arguments: { sides: 6, count: 1 }
+		});
+	});
+
+	test('forwards stream:tool-call-start/-delta the moment the generate function reports them', async () => {
+		const lines: string[] = [];
+		let liveFramesWhenReported = -1;
+		const generate: StreamingGenerateFunction = async ({ streaming }) => {
+			streaming.report?.({
+				type: 'stream:tool-call-start',
+				toolName: 'roll_dice',
+				blockId: 'toolu_1'
+			});
+			streaming.report?.({
+				type: 'stream:tool-call-delta',
+				toolName: 'roll_dice',
+				blockId: 'toolu_1',
+				partialArguments: '{"sides": 6'
+			});
+			// Captured BEFORE this function resolves: the frames are on the wire
+			// while the provider response is still open, which is the whole point
+			// of `liveToolCalls`.
+			liveFramesWhenReported = decodeLines(lines).filter((frame) =>
+				frame.type.startsWith('stream:tool-call-')
+			).length;
+			return {
+				content: '',
+				toolCalls: [{ id: 'toolu_1', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
+			};
+		};
+
+		const { frames } = await runAndCollect(generate, createToolbox([rollDice]), lines);
+
+		expect(liveFramesWhenReported).toBe(2);
+		expect(ofType(frames, 'stream:tool-call-start')[0]).toMatchObject({
+			toolName: 'roll_dice',
+			blockId: 'toolu_1'
+		});
+		expect(ofType(frames, 'stream:tool-call-delta')[0]).toMatchObject({
+			blockId: 'toolu_1',
+			partialArguments: '{"sides": 6'
+		});
+		// With live reporting the block id IS the provider's tool-call id, so the
+		// mid-stream frames and the later `tool.*` frames correlate directly.
+		expect(ofType(frames, 'tool.started')[0]?.toolCallId).toBe('toolu_1');
+	});
+
+	test('an invalid tool call settles as an error with a JSON-safe tool.error, never the raw cause', async () => {
+		const generate: StreamingGenerateFunction = async () => ({
+			content: '',
+			toolCalls: [{ id: 'call-bad', name: 'roll_dice', arguments: { sides: 'six' } }]
+		});
+
+		const { frames } = await runAndCollect(generate, createToolbox([rollDice]));
+
+		const [toolError] = ofType(frames, 'tool.error');
+		expect(toolError).toMatchObject({ toolCallId: 'call-bad', toolName: 'roll_dice' });
+		expect(toolError?.error).toMatchObject({ name: 'ZodError', message: expect.any(String) });
+		expect(ofType(frames, 'tool.settled')[0]).toMatchObject({
+			toolCallId: 'call-bad',
+			result: { callId: 'call-bad', outcome: 'error' }
+		});
+		expect(legacyFrames(frames).at(-1)).toMatchObject({ type: 'tool_result', outcome: 'error' });
+	});
+
+	test('an approval-gated call settles as action_required with the pending approval descriptor', async () => {
+		const rememberNote = createTool({
+			name: 'remember_note',
+			version: '1.0.0',
+			description: 'Save a note — approval-gated.',
+			input: z.object({ text: z.string() }),
+			policy: { beforeExecute: () => ({ status: 'needs_approval', reason: 'Save this note?' }) },
+			async execute({ text }) {
+				return { saved: true, text };
+			}
+		});
+		const generate: StreamingGenerateFunction = async () => ({
+			content: '',
+			toolCalls: [{ id: 'call-note', name: 'remember_note', arguments: { text: 'milk' } }]
+		});
+
+		const { frames } = await runAndCollect(
+			generate,
+			createToolbox([rememberNote], { approvalSecret: 'test-secret' })
+		);
+
+		// Operative never emits a `tool.settled` bubble for a paused call — the
+		// authoritative result only appears on `tools.executed` — so the frame
+		// has to be sourced from there, and this pins that it is.
+		const [settled] = ofType(frames, 'tool.settled');
+		expect(settled).toMatchObject({
+			toolCallId: 'call-note',
+			toolName: 'remember_note',
+			result: {
+				callId: 'call-note',
+				outcome: 'action_required',
+				action: { type: 'approval', message: 'Save this note?' }
+			}
+		});
+		expect(settled?.result.pendingApproval).toBeDefined();
+		expect(legacyFrames(frames).at(-1)).toMatchObject({
+			type: 'tool_result',
+			outcome: 'action_required'
+		});
+	});
+});
+
+describe('createChatStreamWriter', () => {
+	test('envelopes every frame with wireVersion 1 and a strictly increasing sequence', () => {
+		const lines: string[] = [];
+		const writer = createChatStreamWriter((line) => lines.push(line));
+		writer.write({ type: 'text', text: 'a' });
+		writer.write({ type: 'tool.started', toolCallId: 'c', toolName: 't' });
+		expect(decodeLines(lines)).toEqual([
+			{ type: 'text', text: 'a', wireVersion: 1, sequence: 0 },
+			{ type: 'tool.started', toolCallId: 'c', toolName: 't', wireVersion: 1, sequence: 1 }
+		]);
+	});
+
+	test('drops everything after the first terminal frame', () => {
+		const lines: string[] = [];
+		const writer = createChatStreamWriter((line) => lines.push(line));
+		writer.write({ type: 'run.aborted', reason: 'stop' });
+		expect(writer.terminated).toBe(true);
+		writer.write({ type: 'text', text: 'late' });
+		writer.write({
+			type: 'run.error',
+			error: { name: 'E', message: 'm', kind: 'generate', code: 'UNKNOWN' }
+		});
+		expect(decodeLines(lines).map((frame) => frame.type)).toEqual(['run.aborted']);
 	});
 });
 
