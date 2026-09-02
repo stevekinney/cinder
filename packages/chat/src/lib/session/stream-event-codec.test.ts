@@ -60,6 +60,19 @@ describe('chat stream event codec', () => {
     expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
   });
 
+  test('rejects a tool_result whose shape is wrong even though it is plain JSON', () => {
+    // Reaches the branch's own rejection rather than the plain-data rebuild's:
+    // every value here is JSON, the shape is simply not a `ChatToolResult`.
+    expect(() =>
+      decodeChatStreamEvent({
+        type: 'tool_result',
+        callId: 'call-1',
+        outcome: 'not-an-outcome',
+        content: null,
+      }),
+    ).toThrow('Invalid chat stream event');
+  });
+
   test('rejects a non-JSON pending approval extension', () => {
     expect(() =>
       decodeChatStreamEvent({
