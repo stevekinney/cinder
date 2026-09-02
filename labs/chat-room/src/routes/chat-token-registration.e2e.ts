@@ -23,7 +23,7 @@ test.describe('chat measure token registration', () => {
 		await expect
 			.poll(() =>
 				page.evaluate(
-					(token) => getComputedStyle(document.documentElement).getPropertyValue(token),
+					(token) => getComputedStyle(document.documentElement).getPropertyValue(token).trim(),
 					TOKEN
 				)
 			)
@@ -31,7 +31,7 @@ test.describe('chat measure token registration', () => {
 		expect(
 			await page.evaluate(
 				(token) =>
-					getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
+					getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token).trim(),
 				TOKEN
 			)
 		).toBe('48rem');
@@ -46,7 +46,9 @@ test.describe('chat measure token registration', () => {
 			.poll(() =>
 				page.evaluate(
 					(token) =>
-						getComputedStyle(document.querySelector('.cinder-chat')!).getPropertyValue(token),
+						getComputedStyle(document.querySelector('.cinder-chat')!)
+							.getPropertyValue(token)
+							.trim(),
 					TOKEN
 				)
 			)
