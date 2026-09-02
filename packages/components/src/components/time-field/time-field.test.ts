@@ -129,7 +129,7 @@ describe('TimeField', () => {
     expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).toBe(null);
   });
 
-  test('the bare time input stays a direct child of .cinder-time-field__controls for CSS sizing, even with a timezone select', () => {
+  test("the bare time input reaches .cinder-time-field__controls through Input's boxless host, so the CSS sizing still applies with a timezone select", async () => {
     const { container } = render(TimeField, {
       props: {
         id: 'reminder',
@@ -139,13 +139,23 @@ describe('TimeField', () => {
       },
     });
 
-    // Input renders bare (no `.cinder-input-field` wrapper), so the fixed
-    // control-row width (`.cinder-time-field__controls > .cinder-time-field__input`
-    // in time-field.css) must target the input directly or the timezone
-    // select gets pushed onto its own line by the input's own `width: 100%`.
+    // Input renders bare (no `.cinder-input-field` wrapper) but always inside
+    // its control wrapper; without addons that is `.cinder-input-host`, which
+    // is `display: contents` and contributes no box. The fixed control-row
+    // width (`.cinder-time-field__controls > .cinder-input-host >
+    // .cinder-time-field__input` in time-field.css) has to reach through that
+    // host, or the timezone select gets pushed onto its own line by the
+    // input's own `width: 100%`. Pin both the DOM path and the selector.
     const controls = container.querySelector<HTMLElement>('.cinder-time-field__controls');
     const input = getInput(container);
-    expect(input.parentElement).toBe(controls);
+    const host = input.parentElement;
+    expect(host?.classList.contains('cinder-input-host')).toBe(true);
+    expect(host?.parentElement).toBe(controls);
+
+    const css = await Bun.file(new URL('./time-field.css', import.meta.url)).text();
+    expect(css).toMatch(
+      /\.cinder-time-field__controls > \.cinder-input-host > \.cinder-time-field__input\s*\{[^}]*flex:\s*0 1 12rem;/,
+    );
   });
 
   test('keeps hidden serialization and timezone selection on native controls', () => {
