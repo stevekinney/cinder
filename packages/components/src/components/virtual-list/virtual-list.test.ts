@@ -660,4 +660,60 @@ describe('VirtualList — dynamicSize', () => {
     await tick();
     expect(listRef).toBeUndefined();
   });
+
+  test('starts observing already-mounted rows when dynamicSize flips on at runtime', async () => {
+    // `observeRow` is a single stable function reference so rows are not
+    // re-observed every render. That only works if Svelte re-runs the attachment
+    // when the `dynamicSize` it reads changes — if it does not, flipping the prop
+    // would leave every already-mounted row permanently unmeasured.
+    installFakeResizeObserver();
+    const view = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(view.container).length).toBeGreaterThan(0));
+    expect(observedRowElements()).toHaveLength(0);
+
+    await view.rerender({
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+    await tick();
+
+    expect(observedRowElements().length).toBe(renderedRows(view.container).length);
+  });
+
+  test('stops observing rows when dynamicSize flips back off', async () => {
+    installFakeResizeObserver();
+    const view = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(observedRowElements().length).toBeGreaterThan(0));
+
+    await view.rerender({
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: false,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+    await tick();
+
+    expect(observedRowElements()).toHaveLength(0);
+  });
 });
