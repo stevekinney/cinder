@@ -355,12 +355,32 @@ function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
   return projected;
 }
 
+/**
+ * Projects every element of a block array, visiting holes too. `.map` skips
+ * the holes of a sparse array (`new Array(1)` is assignable to
+ * `ChatStreamBlock[]`), `JSON.stringify` then writes each hole as `null`, and
+ * the decoder rejects the frame — so the encoder has to refuse it first.
+ */
+function projectChatStreamBlockArray(
+  blocks: readonly ChatStreamBlock[],
+  label: string,
+): Array<Record<string, unknown>> {
+  const projected: Array<Record<string, unknown>> = [];
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    if (block === undefined || !Object.hasOwn(blocks, index))
+      throw new Error(`Invalid chat stream event: ${label}[${index}] is missing`);
+    projected.push(projectChatStreamBlock(block));
+  }
+  return projected;
+}
+
 /** Whitelists exactly `ChatStreamState`'s declared fields, including its nested block arrays. */
 function projectChatStreamState(state: ChatStreamState): Record<string, unknown> {
   const projected: Record<string, unknown> = {
-    blocks: state.blocks.map(projectChatStreamBlock),
+    blocks: projectChatStreamBlockArray(state.blocks, 'state.blocks'),
     textContent: requireString(state.textContent, 'state.textContent'),
-    toolCalls: state.toolCalls.map(projectChatStreamBlock),
+    toolCalls: projectChatStreamBlockArray(state.toolCalls, 'state.toolCalls'),
     complete: requireBoolean(state.complete, 'state.complete'),
   };
   if (state.activeBlock !== undefined)

@@ -1636,6 +1636,34 @@ describe('encoder mirrors every decoder guard', () => {
     expect(() => encodeChatStreamEvent(badType)).toThrow(/unsupported block type hologram/);
     expect(() => encodeChatStreamEvent(badComplete)).toThrow(/block.complete must be a boolean/);
   });
+
+  test('rejects sparse block arrays instead of serializing their holes as null', () => {
+    // A sparse array is assignable to `ChatStreamBlock[]` but has no element
+    // for `.map` to visit; `JSON.stringify` would turn the hole into `null`
+    // and the decoder would then refuse the frame the encoder just produced.
+    // Built by assigning `length` and by skipping an index, because the
+    // literal forms (`new Array(n)`, `[a, , b]`) are lint errors — which is
+    // the point: production code cannot write one on purpose, so this guards
+    // runtime casts, not authored literals.
+    const holes: ChatStreamBlock[] = [];
+    holes.length = 1;
+    const middleHole: ChatStreamBlock[] = [];
+    middleHole[0] = block;
+    middleHole[2] = block;
+    const sparseBlocks = {
+      type: 'stream:complete',
+      state: { blocks: holes, textContent: '', toolCalls: [], complete: true },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+    const sparseToolCalls = {
+      type: 'stream:complete',
+      state: { blocks: [], textContent: '', toolCalls: middleHole, complete: true },
+      ...envelope,
+    } as unknown as ChatStreamEvent;
+
+    expect(() => encodeChatStreamEvent(sparseBlocks)).toThrow(/state.blocks\[0\] is missing/);
+    expect(() => encodeChatStreamEvent(sparseToolCalls)).toThrow(/state.toolCalls\[1\] is missing/);
+  });
 });
 
 describe('framing is enforced identically for string and streamed sources', () => {
