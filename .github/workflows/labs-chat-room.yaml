@@ -78,6 +78,19 @@ jobs:
         run: bun run test:unit
         working-directory: labs/chat-room
 
+      # The production client bundle is what `preview` and a deploy serve, and
+      # it is the only place a tree-shaken stylesheet goes missing (CIN-514):
+      # the dev server never tree-shakes, and the Playwright matrix below only
+      # notices a dropped stylesheet where a spec happens to depend on one of
+      # its rules. This reads the emitted assets directly instead.
+      - name: Build the production bundle
+        run: bun run build
+        working-directory: labs/chat-room
+
+      - name: Check the client bundle carries every workspace stylesheet
+        run: bun run check:client-styles
+        working-directory: labs/chat-room
+
       - name: Run the Playwright matrix
         run: bunx playwright test
         working-directory: labs/chat-room

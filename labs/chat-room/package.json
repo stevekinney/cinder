@@ -6,6 +6,7 @@
 	"scripts": {
 		"build": "vite build",
 		"check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
+		"check:client-styles": "bun scripts/check-client-styles.ts",
 		"check:upstream": "bun scripts/check-upstream-issues.ts",
 		"check:watch": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json --watch",
 		"dev": "vite dev",
@@ -15,7 +16,8 @@
 		"preview": "vite preview",
 		"test": "bun run test:unit",
 		"test:playwright": "playwright install && playwright test",
-		"test:unit": "bun test ./scripts/check-upstream-issues.test.ts ./scripts/playwright-collision-guard.test.ts ./src/routes/api/chat/chat-server.test.ts"
+		"test:unit": "bun test ./scripts/check-client-styles.test.ts ./scripts/check-upstream-issues.test.ts ./scripts/playwright-collision-guard.test.ts ./src/routes/api/chat/chat-server.test.ts",
+		"validate": "bun run lint && bun run check && bun run test:unit && bun run build && bun run check:client-styles"
 	},
 	"dependencies": {
 		"@anthropic-ai/sdk": "^0.116.0",

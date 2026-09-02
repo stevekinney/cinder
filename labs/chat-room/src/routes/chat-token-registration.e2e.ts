@@ -1,7 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { dirname, join } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
 import { expect, test } from '@playwright/test';
 
 // `--cinder-chat-message-max-width` is registered with `@property` in
@@ -9,19 +5,9 @@ import { expect, test } from '@playwright/test';
 // browser-side contract that the source-regex unit tests cannot see through:
 // a typed registration whose `initial-value` is not computationally
 // independent (a `rem` length, for one) is silently dropped by the engine,
-// and the token then has no default at all. This spec feeds the real sidecar
-// source to real engines and reads the computed result back.
-//
-// The stylesheet is injected rather than relied on from the bundle because
-// the lab's production client bundle currently drops the sidecar (CIN-514);
-// once that lands, the injection is redundant but still harmless.
-const CHAT_CSS = readFileSync(
-	join(
-		dirname(fileURLToPath(import.meta.url)),
-		'../../../../packages/chat/src/lib/components/chat/chat.css'
-	),
-	'utf8'
-);
+// and the token then has no default at all. This spec reads the computed
+// result back from the lab's real production bundle, so it also proves the
+// sidecar reached the client build at all (CIN-514).
 
 const TOKEN = '--cinder-chat-message-max-width';
 
@@ -29,7 +15,6 @@ test.describe('chat measure token registration', () => {
 	test.beforeEach(async ({ page }) => {
 		await page.goto('/');
 		await page.locator('.cinder-chat').first().waitFor();
-		await page.addStyleTag({ content: CHAT_CSS });
 	});
 
 	test('the @property registration is live and supplies the 48rem default', async ({ page }) => {
