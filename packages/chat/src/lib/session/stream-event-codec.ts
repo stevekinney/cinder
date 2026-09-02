@@ -1195,9 +1195,6 @@ export async function* decodeChatStreamEvents(
       // without this final `decode()` the truncation is invisible: the
       // buffer looks empty and a genuinely truncated stream is accepted.
       buffer += decoder.decode();
-      // Framing is checked BEFORE the leftover is yielded: an unterminated
-      // frame is not a valid frame, so handing it to the consumer first and
-      // throwing afterwards would deliver data the contract says is truncated.
       // The leftover has to be DECODED before framing can be judged — `mode` is
       // only known once a frame has been seen, and a single-frame stream has
       // seen none yet. But it must not be YIELDED before framing is judged: an
