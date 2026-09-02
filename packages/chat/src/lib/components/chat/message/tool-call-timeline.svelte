@@ -111,7 +111,16 @@
 
 <style>
   .chat-tool-call-timeline {
+    /* A grouped tool-call run is its own transcript row — chat.svelte renders
+     * it as a sibling of .chat-message-wrapper (chat-message.svelte), not
+     * inside one, so it never inherited that wrapper's readability cap. It
+     * carries the widest content in the transcript (serialized JSON
+     * arguments/results via ToolPayloadCode), so without a cap of its own it
+     * was the one row that stretched to the full timeline width. Fill the
+     * available width up to the same shared cap every other row respects —
+     * see chat-message.svelte's --cinder-chat-message-max-width usage. */
     inline-size: 100%;
+    max-inline-size: var(--cinder-chat-message-max-width, 48rem);
     padding: var(--cinder-space-3);
     border: 1px solid var(--cinder-border-muted);
     border-radius: var(--cinder-radius-md);
@@ -123,6 +132,16 @@
   }
   .presented-tool-calls {
     display: grid;
+    /* Without an explicit track, an implicit `auto` column sizes itself to
+     * its widest item's max-content contribution — computed BEFORE this
+     * grid's own width is definite, so a `ToolCallGroup` expanded onto a
+     * long, unbroken payload (tool-payload-code.svelte's ToolPayloadCode)
+     * blows the column past `.chat-tool-call-timeline`'s cap above instead
+     * of respecting it. `minmax(0, 1fr)` pins the column to the grid's own
+     * (already-capped) width so `.tool-call-group`'s `max-inline-size: 100%`
+     * has a definite value to resolve against, and the long line scrolls
+     * inside its own code block instead. */
+    grid-template-columns: minmax(0, 1fr);
     gap: var(--cinder-space-2);
   }
 </style>
