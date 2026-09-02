@@ -105,7 +105,26 @@ export const PRETTIER_OPTIONS = {
 /** The `json` parser lives in the babel plugin; `estree` supplies its printer. */
 export const JSON_PLUGINS = [babelPlugin, estreePlugin];
 const CSS_PLUGINS = [postcssPlugin];
-const DEFERRED_COMPONENT_ALIAS_FAMILIES = new Set(['accordion-item', 'action-row']);
+/**
+ * Component families whose bare-alias tokens are NOT declared on `:root`, so both
+ * the public component property and the foundation token it aliases stay
+ * responsive to a scoped ancestor override.
+ *
+ * Deliberately EMPTY. `accordion-item` and `action-row` were deferred here and had
+ * to be restored: `fixtures/tokens-consumer/check.mjs` asserts that every token the
+ * registry advertises as `public: true` is declared in the shipped CSS, and
+ * deferring 19 public tokens broke `validate:consumer`, failing the 0.25.1 release.
+ * That gate runs only on the release path, never on pull requests, so the breakage
+ * was invisible until publish time.
+ *
+ * Before adding a family back, the registry must first be able to express that a
+ * public token is not root-declared (and `check.mjs` must honour that), or the
+ * tokens must stop being advertised as public. Deferring a `public: true` token is
+ * an observable API change -- `getComputedStyle(root).getPropertyValue(...)` returns
+ * empty -- and the registry has no way to say so today. Adding a name here without
+ * that will fail the release, not the pull request.
+ */
+const DEFERRED_COMPONENT_ALIAS_FAMILIES = new Set<string>([]);
 
 // ---------------------------------------------------------------------------
 // Corpus tree walking. Collects every `$value`-bearing node in a merged
