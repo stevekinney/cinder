@@ -38,6 +38,7 @@ import { format } from 'prettier';
 import babelPlugin from 'prettier/plugins/babel';
 import estreePlugin from 'prettier/plugins/estree';
 import postcssPlugin from 'prettier/plugins/postcss';
+import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
 import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
 import {
@@ -1802,6 +1803,7 @@ ${forcedSystemDarkBlock}
 ${forcedSystemLightBlock}
 `;
 
+  assertPrettierResolvesToRoot();
   return format(css, { ...PRETTIER_OPTIONS, parser: 'css', plugins: CSS_PLUGINS });
 }
 
@@ -1965,6 +1967,7 @@ export async function buildResolvedContexts(
         delete resolved[path];
       }
     }
+    assertPrettierResolvesToRoot();
     const json = await format(JSON.stringify(resolved), {
       ...PRETTIER_OPTIONS,
       parser: 'json',

@@ -7,10 +7,12 @@
  * while the CLI entrypoint in `generate-component-artifacts.ts` stays thin.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { dirname, join, resolve } from 'node:path';
+import { existsSync } from 'node:fs';
+import { dirname, join } from 'node:path';
 
 import * as prettier from 'prettier';
+
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 import {
   discoverComponentDirectories,
@@ -46,65 +48,6 @@ const COMPOSE_ONLY_ACCESSIBILITY_DOCUMENTATION_EXEMPTIONS = new Set([
 
 const prettierConfigurationCache = new Map<string, Promise<prettier.Options | null>>();
 
-const repositoryRoot = resolve(import.meta.dirname, '../../..');
-
-/**
- * The generated-artifact contract ("committed artifacts match regeneration") is
- * implicitly parameterized by whichever prettier this module happens to resolve.
- * Nothing pins that. Adding a workspace member whose `prettier` range differed
- * (#1425, `labs/chat-room` at `^3.8.3`) made bun nest a fresh 3.9.x under each
- * package's own `node_modules`; this module then resolved 3.9.6 while the root
- * stayed locked at 3.8.1, and 3.9's markdown printer moved blank lines around the
- * `<!-- generated:variables:* -->` markers -- so `components:check` reported ~150
- * READMEs stale on a branch that never touched `packages/components`.
- *
- * The invariant is not "one prettier in the lockfile" (transitives such as
- * `@changesets/*` legitimately carry a nested 2.x) but "the artifact pipeline
- * uses the ROOT's prettier". Compare against the version the root actually
- * resolves rather than against a declared range, so a deliberate `bun update`
- * at the root is not a false positive while a shadow copy nested under this
- * package is.
- */
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/** `JSON.parse` returns `any`; narrow it before trusting `.version`. */
-function readManifestVersion(manifestPath: string): string {
-  const parsed: unknown = JSON.parse(readFileSync(manifestPath, 'utf8'));
-  if (!isRecord(parsed) || typeof parsed['version'] !== 'string') {
-    throw new Error(`${manifestPath} has no string "version" field`);
-  }
-  return parsed['version'];
-}
-
-export function assertPrettierResolvesToRoot(): { version: string; resolvedFrom: string } {
-  const resolvedFrom = import.meta.resolve('prettier');
-  const rootPrettierManifest = join(repositoryRoot, 'node_modules', 'prettier', 'package.json');
-  let rootVersion: string;
-  try {
-    rootVersion = readManifestVersion(rootPrettierManifest);
-  } catch (error) {
-    throw new Error(
-      `formatGenerated: cannot read the root prettier at ${rootPrettierManifest}; ` +
-        `the artifact pipeline must format with the root-locked prettier. ` +
-        `This module resolved prettier ${prettier.version} from ${resolvedFrom}.`,
-      { cause: error },
-    );
-  }
-  if (prettier.version !== rootVersion) {
-    throw new Error(
-      `formatGenerated: prettier resolved to ${prettier.version} from ${resolvedFrom}, ` +
-        `but the root locks ${rootVersion} (${rootPrettierManifest}). A nested copy is ` +
-        `shadowing the root's -- generated artifacts would silently track the wrong ` +
-        `formatter. Align the workspace's prettier ranges so bun dedupes to the root copy.`,
-    );
-  }
-  return { version: prettier.version, resolvedFrom };
-}
-
-let prettierResolutionChecked = false;
-
 /**
  * Run prettier over generated content using the repo's prettier configuration.
  *
@@ -115,10 +58,7 @@ let prettierResolutionChecked = false;
  * and where prettier was resolved from.
  */
 export async function formatGenerated(content: string, filepath: string): Promise<string> {
-  if (!prettierResolutionChecked) {
-    assertPrettierResolvesToRoot();
-    prettierResolutionChecked = true;
-  }
+  assertPrettierResolvesToRoot();
   try {
     const configurationDirectory = dirname(filepath);
     let optionsPromise = prettierConfigurationCache.get(configurationDirectory);

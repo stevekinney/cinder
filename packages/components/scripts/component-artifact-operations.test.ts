@@ -2,7 +2,8 @@ import { describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 
-import { assertPrettierResolvesToRoot, formatGenerated } from './component-artifact-operations.ts';
+import { formatGenerated } from './component-artifact-operations.ts';
+import { assertPrettierResolvesToRoot } from './lib/prettier-resolution.ts';
 
 const repositoryRoot = resolve(import.meta.dirname, '../../..');
 
@@ -29,11 +30,15 @@ describe('formatGenerated prettier resolution', () => {
     const parsed: unknown = JSON.parse(
       readFileSync(join(repositoryRoot, 'node_modules', 'prettier', 'package.json'), 'utf8'),
     );
-    if (typeof parsed !== 'object' || parsed === null || !('version' in parsed)) {
-      throw new Error('root prettier package.json has no version');
+    if (
+      typeof parsed !== 'object' ||
+      parsed === null ||
+      !('version' in parsed) ||
+      typeof parsed.version !== 'string'
+    ) {
+      throw new Error('root prettier package.json has no string version');
     }
-    const rootVersion = parsed.version;
-    expect(typeof rootVersion).toBe('string');
+    const rootVersion: string = parsed.version;
 
     const { version, resolvedFrom } = assertPrettierResolvesToRoot();
 
