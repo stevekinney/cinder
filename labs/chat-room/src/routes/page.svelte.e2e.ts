@@ -400,18 +400,23 @@ test.describe('production streaming path', () => {
 
 	// HEADS UP, and the most consequential thing this item turned up: this is the
 	// first test in the repo that aborts a REAL `/api/chat` request, and doing so
-	// kills the server process as things stand. The abort reaches the route's
-	// `cancel()`, which calls `anthropicStream.abort()`; the SDK routes an abort
-	// to its `'abort'` event, not `'error'`, and `+server.ts` listens only for
-	// `'error'`, so `MessageStream._emit` takes its "no listener, no awaited
-	// promise" branch and calls `Promise.reject(error)` on nobody's behalf. Under
-	// Node's default unhandled-rejection policy that terminates the process, and
-	// vite's own `unhandledRejection` guard is disabled when vite runs from
-	// `node_modules`, which is how it runs here.
+	// used to kill the server process. The original (pre-Operative) hazard was
+	// specific to the raw Anthropic SDK: the route's `cancel()` called
+	// `anthropicStream.abort()`, the SDK routed that to its `'abort'` event (not
+	// `'error'`), `+server.ts` listened only for `'error'`, and `MessageStream
+	// ._emit` took its "no listener, no awaited promise" branch and called
+	// `Promise.reject(error)` on nobody's behalf — an unhandled rejection that
+	// took the process down under Node's default policy, with vite's own
+	// `unhandledRejection` guard disabled when vite runs from `node_modules`
+	// (how it runs here).
 	//
-	// Reproduced outside the browser by replaying the route's stream and calling
-	// `reader.cancel()` (Node 26, exit code 1). One line in `+server.ts` —
-	// `anthropicStream.on('abort', () => { settled = true; })` — removes it. The
+	// `+server.ts` no longer talks to the Anthropic SDK directly (CIN-434
+	// migrated it onto `@lostgradient/operative`'s `AgentRun`), so that specific
+	// mechanism no longer applies — but the class of hazard is the same one
+	// `pumpChatRun`'s try/catch and the route's one-shot `settled` guard now
+	// guard against: an abort reaching `AgentRun.abort()` must never produce an
+	// unawaited rejection anywhere in the pump. This test is what would still
+	// catch a regression of that class, whatever the underlying mechanism. The
 	// liveness check at the end of this test is what attributes the failure here
 	// rather than to whichever test ran next.
 	//

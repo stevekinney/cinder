@@ -231,6 +231,38 @@ test.describe('tool call group: readability cap (CIN-506)', () => {
 		expect(width).toBeLessThanOrEqual((await readabilityCapInPixels(page)) + PIXEL_TOLERANCE);
 	});
 
+	test('a :root override of the width token inherits into the grouped tool-call row', async ({
+		page
+	}) => {
+		// Browser-level proof for the `@property` registration: the token is
+		// declared on the Chat root and read by the group row, and an ancestor's
+		// value must still win. The registration itself (and that the sidecar
+		// carrying it reaches the production bundle, CIN-514) is proven by
+		// chat-token-registration.e2e.ts; this spec proves the row follows it.
+		await page.setViewportSize({ width: 1440, height: 900 });
+		await gotoHydrated(page, '/exercises/tool-approval');
+		await page.addStyleTag({ content: ':root { --cinder-chat-message-max-width: 30rem; }' });
+
+		const row = page.locator(
+			'[data-testid="tool-approval-width-cap-wrapper"] .chat-tool-call-timeline'
+		);
+		await expect(row).toBeVisible();
+
+		await expect
+			.poll(() =>
+				row.evaluate((element) =>
+					getComputedStyle(element).getPropertyValue('--cinder-chat-message-max-width').trim()
+				)
+			)
+			.toBe('30rem');
+		const overriddenCap = await page.evaluate(
+			() => 30 * parseFloat(getComputedStyle(document.documentElement).fontSize)
+		);
+		const width = await row.evaluate((element) => element.getBoundingClientRect().width);
+		expect(width).toBeLessThanOrEqual(overriddenCap + PIXEL_TOLERANCE);
+		expect(width).toBeGreaterThan(overriddenCap - 64); // Actually narrowed to the override, not merely under it.
+	});
+
 	test('below the breakpoint, the grouped tool-call row still fills the available width instead of shrinking to fit-content', async ({
 		page
 	}) => {
