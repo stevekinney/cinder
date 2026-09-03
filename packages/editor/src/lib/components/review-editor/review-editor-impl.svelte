@@ -965,12 +965,28 @@
     }
 
     // Input inside the editor ARMS the release; see
-    // {@link consumedSelectionReleaseArmed} for why it does not perform it.
+    // {@link consumedSelectionReleaseArm} for why it does not perform it.
     function armConsumedSelectionRelease(event: Event) {
       if (!consumedSelection) return;
       const editorDom = editorRef?.getView()?.dom;
-      if (editorDom && event.target instanceof Node && editorDom.contains(event.target))
-        consumedSelectionReleaseArm = event.type === 'keydown' ? 'key' : 'pointer';
+      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target))
+        return;
+      // Select-all is released outright rather than armed. It cannot be
+      // confused with ProseMirror's restore — that is not a keystroke — and
+      // when the comment covered the whole document the range it selects is
+      // the consumed one, so waiting for the selection to settle elsewhere
+      // would strand a keyboard-only user; the browser may not even emit a
+      // `selectionchange` when everything is already selected.
+      if (
+        event instanceof KeyboardEvent &&
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 'a'
+      ) {
+        consumedSelection = null;
+        consumedSelectionReleaseArm = null;
+        return;
+      }
+      consumedSelectionReleaseArm = event.type === 'keydown' ? 'key' : 'pointer';
     }
 
     // `pointerdown` covers mouse, touch, and pen in one listener; the

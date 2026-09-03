@@ -567,6 +567,21 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
 		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 
+		// Select-all releases the hold outright, without waiting for the selection
+		// to settle elsewhere: a comment covering the whole document would leave
+		// a keyboard-only user unable to comment on it again, and the browser may
+		// emit no `selectionchange` at all when everything is already selected.
+		// The event is dispatched rather than typed for exactly that reason —
+		// this pins the release on the keystroke, not on a range that changed.
+		await page.evaluate(() => {
+			document
+				.querySelector('#creation-editor .ProseMirror')
+				?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true }));
+		});
+		await reselectParagraph();
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
+
 		// The hold is not permanent. A pointer press lands a caret of its own
 		// first, so whatever it selects next is the user's — including the very
 		// same paragraph, which is what a double-click on just-commented text
