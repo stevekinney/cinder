@@ -15,7 +15,7 @@
  * Layers:
  *   - `pre-commit` / `pre-push` — local git hooks (packages/components/scripts/husky/*.ts).
  *   - `unit-tests` / `browser-tests` / `main-green` / `release` / `changeset-guard`
- *     — GitHub Actions workflows under `.github/workflows/`.
+ *     / `labs-chat-room` — GitHub Actions workflows under `.github/workflows/`.
  *
  * Discovery resolves package.json script chains TRANSITIVELY: a command
  * doesn't have to be a literal workflow step to run in that layer — it can be
@@ -56,6 +56,25 @@ const chatPackageName = '@lostgradient/chat';
 const editorPackageName = '@lostgradient/editor';
 const mcpPackageName = '@lostgradient/cinder-mcp';
 const playgroundPackageName = '@cinder/playground';
+const chatRoomLabPackageName = '@cinder/chat-room-lab';
+
+/**
+ * Workflow steps that set `working-directory` run their `bun run <name>`
+ * against THAT directory's `package.json`, not the workspace root's. This map
+ * turns such a directory into the workspace package whose scripts the step
+ * actually resolves, so {@link extractRunStepBodies} can rewrite the step
+ * into the equivalent `--filter=<package>` form the resolver already models.
+ * A `working-directory` absent from this map is left alone and resolves
+ * through the root scope like any other step.
+ */
+const WORKSPACE_PACKAGE_BY_DIRECTORY: Readonly<Record<string, string>> = {
+  'packages/components': componentsPackageName,
+  'packages/chat': chatPackageName,
+  'packages/editor': editorPackageName,
+  'packages/mcp': mcpPackageName,
+  'packages/playground': playgroundPackageName,
+  'labs/chat-room': chatRoomLabPackageName,
+};
 
 export const LAYERS = [
   'pre-commit',
@@ -66,6 +85,7 @@ export const LAYERS = [
   'release',
   'changeset-guard',
   'main-red-watch',
+  'labs-chat-room',
 ] as const;
 
 /** Stylelint rule coverage is documented alongside the command-layer map. */
@@ -216,6 +236,18 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   'tokens:literals': {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',
+  },
+  'check:virtual-list-dependency-free': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — same layer set as its siblings. CIN-204: keeps ' +
+      'virtual-list/** and fixed-virtual-window.ts free of @tanstack/virtual-core and of any ' +
+      'undeclared bare import. The constraint is a deliberate architectural boundary (virtual-list ' +
+      'hand-rolls a small offset engine while tree/data-grid wrap @tanstack/virtual-core, which is ' +
+      'already a declared dependency of this package and therefore importable without any other ' +
+      'gate objecting), so nothing but a scoped scan can enforce it — oxlint has no per-glob ' +
+      'no-restricted-imports in this config. _internal/dependency-free.test.ts asserts the same ' +
+      'invariant independently so a local bun test catches a violation too.',
   },
   'check:component-variable-registry': {
     layers: ['unit-tests', 'main-green'],
@@ -407,10 +439,12 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'Chat generated metadata and exports are checked before merge and in the authoritative main gate.',
   },
   [`${chatPackageName}#build`]: {
-    layers: ['unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green', 'labs-chat-room'],
     reason:
       'The extracted public package builds before merge and on the authoritative main gate. ' +
-      "pre-push's touched-workspace pre-build step was removed along with its test dispatch.",
+      "pre-push's touched-workspace pre-build step was removed along with its test dispatch. " +
+      'The chat-room lab workflow also names it in its `turbo run build --filter=...` step: the ' +
+      'lab consumes Chat via `workspace:*`, so both of its jobs build Chat before the lab.',
   },
   [`${chatPackageName}#platform:audit`]: {
     layers: ['main-green'],
@@ -438,6 +472,44 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'The bare Chat suite. Not run by any layer by name — CI covers Chat coverage-producing tests ' +
       'via `test:coverage`, and pre-push no longer runs a touched-workspace test gate.',
   },
+  [`${chatRoomLabPackageName}#check:client-styles`]: {
+    layers: ['labs-chat-room'],
+    reason:
+      "The chat-room lab's production-bundle stylesheet guard (CIN-514). Runs in the lab " +
+      "workflow's `client-styles` job, which fires for Chat changes as well as lab changes " +
+      'because the defect it catches — a component barrel losing its `sideEffects` marker or ' +
+      "its CSS import — is made in `packages/chat` and only observable in a consumer's client " +
+      'build. Deliberately not part of any Cinder layer: it needs the lab built.',
+  },
+  [`${chatRoomLabPackageName}#build`]: {
+    layers: ['labs-chat-room'],
+    reason:
+      'The lab production build that `check:client-styles` reads. Also a step of the lab ' +
+      "workflow's `validate` job via its own gate; no Cinder layer builds the lab.",
+  },
+  [`${chatRoomLabPackageName}#lint`]: {
+    layers: ['unit-tests', 'main-green', 'labs-chat-room'],
+    reason:
+      "The lab's own lint. The lab is a root workspace member, so the root `lint` script's " +
+      "`turbo run lint` fan-out reaches it from unit-tests and main-green; the lab workflow's " +
+      '`validate` job runs it again directly.',
+  },
+  [`${chatRoomLabPackageName}#check`]: {
+    layers: ['labs-chat-room'],
+    reason: "The lab's svelte-check, run by the lab workflow's `validate` job only.",
+  },
+  [`${chatRoomLabPackageName}#test:unit`]: {
+    layers: ['labs-chat-room'],
+    reason:
+      "The lab's Bun unit suite (including the stylesheet guard's own tests), run by the lab " +
+      "workflow's `validate` job only.",
+  },
+  [`${chatRoomLabPackageName}#validate`]: {
+    layers: [],
+    reason:
+      "The lab's local all-in-one chain (lint, check, test:unit, build, check:client-styles). " +
+      'The lab workflow runs its members as separate steps rather than this aggregate.',
+  },
   [`${chatPackageName}#test:coverage`]: {
     layers: ['unit-tests', 'main-green'],
     reason:
@@ -459,14 +531,15 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'Editor generated metadata and exports are checked before merge and in the authoritative main gate, alongside Cinder and Chat.',
   },
   [`${editorPackageName}#build`]: {
-    layers: ['main-green'],
+    layers: ['main-green', 'labs-chat-room'],
     reason:
       "Explicit `bun run --filter=@lostgradient/editor build` in main-green's Editor source-audit " +
       'step. unit-tests never names this command literally — Editor still builds there (transitively, ' +
       "to satisfy Cinder's `^build` dependency and via the git-range-scoped `turbo run test " +
       '--filter=@lostgradient/editor...` step, whose own `test` task depends on `^build`) — but this ' +
       'guard checks for the literal command, matching how Markdown (which builds the same way, and has ' +
-      'no entry in this table at all) is handled.',
+      'no entry in this table at all) is handled. The chat-room lab workflow names it literally in ' +
+      'its `turbo run build --filter=...` step because the lab consumes Editor via `workspace:*`.',
   },
   [`${editorPackageName}#platform:audit`]: {
     layers: ['main-green'],
@@ -509,11 +582,12 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'cinder-mcp typecheck is owned by browser-tests and main-green (both run the root `typecheck` script, which turbo fans out to every package); pre-commit only formats staged files.',
   },
   [`${mcpPackageName}#build`]: {
-    layers: ['unit-tests', 'main-green'],
+    layers: ['unit-tests', 'main-green', 'labs-chat-room'],
     reason:
       'unit-tests\' "Build workspace (affected)" turbo step names `--filter=@lostgradient/cinder-mcp` ' +
       "literally, alongside Cinder and Chat. main-green's dedicated Node-runtime smoke step also builds " +
-      'it explicitly (it then runs the built `dist/bin.js` under real Node).',
+      'it explicitly (it then runs the built `dist/bin.js` under real Node). The chat-room lab ' +
+      'workflow names it too, alongside Chat and Editor, because the lab consumes it via `workspace:*`.',
   },
   [`${mcpPackageName}#test`]: {
     layers: ['unit-tests', 'main-green'],
@@ -606,7 +680,7 @@ function layerInvokesExternalBinary(
 type ParsedSources = {
   /** name -> resolved script body, packages/components/package.json scripts. */
   packageScripts: Record<string, string>;
-  /** Workspace package name -> package.json scripts. Includes Cinder, Chat, Editor, MCP, and Playground. */
+  /** Workspace package name -> package.json scripts. Includes Cinder, Chat, Editor, MCP, Playground, and the chat-room lab. */
   workspacePackageScripts?: Record<string, Record<string, string>>;
   /**
    * name -> resolved script body, the workspace ROOT package.json scripts.
@@ -961,9 +1035,18 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * job names, `if:` conditions, step `name:` fields, and `#` comments in the
  * raw YAML are excluded by construction, since `js-yaml` only returns
  * document structure (comments are never part of the parsed value, and
- * non-`run` fields are never read). Walks the parsed value with runtime type
- * guards rather than type assertions, since this is untrusted-shape YAML, not
- * a pipeline-owned JSON artifact.
+ * non-`run` fields are never read — except `working-directory`, see below).
+ * Walks the parsed value with runtime type guards rather than type
+ * assertions, since this is untrusted-shape YAML, not a pipeline-owned JSON
+ * artifact.
+ *
+ * A step whose `working-directory` names a workspace package (see
+ * {@link WORKSPACE_PACKAGE_BY_DIRECTORY}) resolves its unfiltered `bun run
+ * <name>` invocations against that package's scripts, so those are rewritten
+ * to `bun run --filter=<package> <name>` before the text is returned. Without
+ * this, `labs-chat-room.yaml`'s `bun run check:client-styles` (run inside
+ * `labs/chat-room`) would be looked up in the ROOT manifest, found nowhere,
+ * and the lab's guard would be invisible to the coverage map.
  */
 export function extractRunStepBodies(workflowYaml: string): string {
   const document: unknown = loadYaml(workflowYaml);
@@ -979,10 +1062,29 @@ export function extractRunStepBodies(workflowYaml: string): string {
     for (const step of steps) {
       if (!isRecord(step)) continue;
       const run = step['run'];
-      if (typeof run === 'string') runBodies.push(run);
+      if (typeof run !== 'string') continue;
+      const workingDirectory = step['working-directory'];
+      const packageName =
+        typeof workingDirectory === 'string'
+          ? WORKSPACE_PACKAGE_BY_DIRECTORY[workingDirectory.replace(/\/+$/u, '')]
+          : undefined;
+      runBodies.push(packageName === undefined ? run : scopeRunBodyToPackage(run, packageName));
     }
   }
   return runBodies.join('\n');
+}
+
+/**
+ * Rewrite every unfiltered `bun run <name>` in a step body into
+ * `bun run --filter=<packageName> <name>`. Invocations that already carry a
+ * `--filter` are left as written — an explicit cross-package filter inside a
+ * `working-directory` step still means what it says.
+ */
+export function scopeRunBodyToPackage(body: string, packageName: string): string {
+  return body.replace(
+    /\bbun\s+run\s+(?!--filter)([A-Za-z0-9:_.-]+)/gu,
+    (_match, name: string) => `bun run --filter=${packageName} ${name}`,
+  );
 }
 
 const WORKFLOW_FILE_BY_LAYER: Partial<Record<Layer, string>> = {
@@ -992,6 +1094,7 @@ const WORKFLOW_FILE_BY_LAYER: Partial<Record<Layer, string>> = {
   release: 'release.yaml',
   'changeset-guard': 'changeset-guard.yaml',
   'main-red-watch': 'main-red-watch.yaml',
+  'labs-chat-room': 'labs-chat-room.yaml',
 };
 
 async function loadWorkflowText(): Promise<Partial<Record<Layer, string>>> {
@@ -1033,6 +1136,7 @@ async function loadWorkspacePackageScripts(): Promise<Record<string, Record<stri
     [editorPackageName, join(repoRoot, 'packages', 'editor')],
     [mcpPackageName, join(repoRoot, 'packages', 'mcp')],
     [playgroundPackageName, join(repoRoot, 'packages', 'playground')],
+    [chatRoomLabPackageName, join(repoRoot, 'labs', 'chat-room')],
   ] as const;
   const entries = await Promise.all(
     packageRoots.map(

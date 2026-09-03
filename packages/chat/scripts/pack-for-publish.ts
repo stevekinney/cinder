@@ -22,6 +22,7 @@ export type PackageManifest = {
   peerDependencies?: Record<string, string>;
   optionalDependencies?: Record<string, string>;
   scripts?: Record<string, string>;
+  sideEffects?: boolean | string[];
   [key: string]: unknown;
 };
 
@@ -37,7 +38,7 @@ const STAGING_ROOT = join(PACKAGE_ROOT, 'node_modules', '.cache', 'publish-stagi
 // host apps never install or version-pick them directly.
 const REQUIRED_PEERS = new Set(['@lostgradient/cinder', '@lostgradient/markdown', 'svelte']);
 const REQUIRED_DEPENDENCIES: Record<string, string> = {
-  conversationalist: '^1.0.0',
+  conversationalist: '^1.1.0',
   'decode-named-character-reference': '^1.3.0',
   'micromark-util-decode-numeric-character-reference': '^2.0.0',
   zod: '4.4.3',
@@ -175,6 +176,15 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
       'README.md',
     ],
   };
+
+  // `sideEffects` names the component barrels whose CSS import must survive
+  // a bundler's tree-shaking (CIN-514). The source glob only matters to the
+  // workspace, where `svelte`/`import` resolve to `./src/`; the tarball
+  // ships `dist/` alone, so only the dist glob (and the stylesheets) remain.
+  if (Array.isArray(source.sideEffects))
+    published.sideEffects = source.sideEffects.filter(
+      (pattern) => !/^(?:\.\/)?src\//.test(pattern),
+    );
 
   // `dependencies` is retained so a host application does not need to
   // declare Chat's implementation dependencies itself.

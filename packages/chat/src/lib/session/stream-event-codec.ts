@@ -220,8 +220,8 @@ function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
   // producer bug (a runtime cast, a spread of a partial object), and
   // treating it as "bare" would silently drop the sequence and terminal
   // enforcement that the versioned mode exists to provide.
-  const hasWireVersion = 'wireVersion' in event;
-  const hasSequence = 'sequence' in event;
+  const hasWireVersion = Object.hasOwn(event, 'wireVersion');
+  const hasSequence = Object.hasOwn(event, 'sequence');
   if (!hasWireVersion && !hasSequence) return {};
   const wireVersion = hasWireVersion ? event.wireVersion : undefined;
   const sequence = hasSequence ? event.sequence : undefined;
@@ -241,34 +241,44 @@ function projectWireEnvelope(event: ChatStreamEvent): Partial<WireEnvelope> {
  * object built by spreading a provider payload — which could carry extra
  * properties — can't ride along onto the wire unnoticed.
  */
-function projectChatToolResult(result: ChatToolResult): Record<string, unknown> {
+/**
+ * A record's own enumerable fields, copied once. Every projector starts here:
+ * a producer can hand over `Object.create({ id: 'secret', … })`, whose fields
+ * live on its prototype, and encoding those would put data the object does
+ * not carry onto the wire — in a frame the decoder, which projects to own
+ * keys before validating, would then reject. Copying also reads any accessor
+ * exactly once, so a guard and the projection that follows it cannot see
+ * different values.
+ */
+function ownFields<T>(value: T): T {
+  return isRecord(value) ? ({ ...value } as T) : value;
+}
+
+function projectChatToolResult(rawResult: ChatToolResult): Record<string, unknown> {
+  const result = ownFields(rawResult);
   const projected: Record<string, unknown> = {
     callId: result.callId,
     outcome: result.outcome,
     content: assertFiniteJSONValue(result.content, 'tool result content'),
   };
   if (result.error !== undefined) {
+    const error = ownFields(result.error);
     const projectedError: Record<string, unknown> = {
-      code: result.error.code,
-      category: result.error.category,
-      retryable: result.error.retryable,
-      message: result.error.message,
+      code: error.code,
+      category: error.category,
+      retryable: error.retryable,
+      message: error.message,
     };
-    if (result.error.details !== undefined)
-      projectedError['details'] = assertFiniteJSONValue(
-        result.error.details,
-        'tool result error.details',
-      );
+    if (error.details !== undefined)
+      projectedError['details'] = assertFiniteJSONValue(error.details, 'tool result error.details');
     projected['error'] = projectedError;
   }
   if (result.action !== undefined) {
-    const projectedAction: Record<string, unknown> = { type: result.action.type };
-    if (result.action.message !== undefined) projectedAction['message'] = result.action.message;
-    if (result.action.schema !== undefined)
-      projectedAction['schema'] = assertFiniteJSONValue(
-        result.action.schema,
-        'tool result action.schema',
-      );
+    const action = ownFields(result.action);
+    const projectedAction: Record<string, unknown> = { type: action.type };
+    if (action.message !== undefined) projectedAction['message'] = action.message;
+    if (action.schema !== undefined)
+      projectedAction['schema'] = assertFiniteJSONValue(action.schema, 'tool result action.schema');
     projected['action'] = projectedAction;
   }
   if (result.inputDigest !== undefined) projected['inputDigest'] = result.inputDigest;
@@ -310,19 +320,24 @@ function projectChatToolResult(result: ChatToolResult): Record<string, unknown> 
  * a frame the decoder would then reject or that `JSON.stringify` would
  * silently corrupt (a non-finite `index` serializes to `null`).
  */
-function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown> {
+function projectChatStreamBlock(rawBlock: ChatStreamBlock): Record<string, unknown> {
+  const block = ownFields(rawBlock);
   // Mirrors `toChatStreamBlock`'s checks field-for-field. Validating only
   // `index` left every other field free to be whatever a runtime-cast
   // producer supplied, so the encoder could still emit a block its own
   // decoder rejects — the exact failure this projection layer exists to stop.
-  if (!isNonNegativeSafeInteger(block.index))
+  // Read each field once: a stateful accessor could otherwise answer the
+  // guard with one value and the projection with another.
+  const index = block.index;
+  const type = block.type;
+  if (!isNonNegativeSafeInteger(index))
     throw new Error('Invalid chat stream event: block index must be a non-negative safe integer');
-  if (!isChatStreamBlockType(block.type))
-    throw new Error(`Invalid chat stream event: unsupported block type ${String(block.type)}`);
+  if (!isChatStreamBlockType(type))
+    throw new Error(`Invalid chat stream event: unsupported block type ${String(type)}`);
   const projected: Record<string, unknown> = {
     id: requireString(block.id, 'block.id'),
-    type: block.type,
-    index: block.index,
+    type,
+    index,
     content: requireString(block.content, 'block.content'),
     complete: requireBoolean(block.complete, 'block.complete'),
   };
@@ -341,26 +356,57 @@ function projectChatStreamBlock(block: ChatStreamBlock): Record<string, unknown>
  * non-finite usage value throws before encoding rather than silently
  * becoming `null` and failing the decoder's own check downstream.
  */
-function projectTokenUsage(usage: TokenUsage): Record<string, unknown> {
-  if (!isTokenUsage(usage))
-    throw new Error('Invalid chat stream event: usage is not a valid TokenUsage');
-  const projected: Record<string, unknown> = {
+function projectTokenUsage(rawUsage: TokenUsage): Record<string, unknown> {
+  const usage = ownFields(rawUsage);
+  // Read each field once and validate the snapshot, so a stateful accessor
+  // cannot pass the guard and then hand the projection a different value.
+  const snapshot: Record<string, unknown> = {
     prompt: usage.prompt,
     completion: usage.completion,
     total: usage.total,
   };
   if (usage.cacheCreationTokens !== undefined)
-    projected['cacheCreationTokens'] = usage.cacheCreationTokens;
-  if (usage.cacheReadTokens !== undefined) projected['cacheReadTokens'] = usage.cacheReadTokens;
+    snapshot['cacheCreationTokens'] = usage.cacheCreationTokens;
+  if (usage.cacheReadTokens !== undefined) snapshot['cacheReadTokens'] = usage.cacheReadTokens;
+  if (!isTokenUsage(snapshot))
+    throw new Error('Invalid chat stream event: usage is not a valid TokenUsage');
+  return snapshot;
+}
+
+/**
+ * Projects every element of a block array, visiting holes too. `.map` skips
+ * the holes of a sparse array (`new Array(1)` is assignable to
+ * `ChatStreamBlock[]`), `JSON.stringify` then writes each hole as `null`, and
+ * the decoder rejects the frame — so the encoder has to refuse it first.
+ *
+ * The array check comes first for the same reason: a JavaScript caller can
+ * hand over `{}` where the type says array, and iterating its undefined
+ * `length` would silently project that to `[]` — a frame the decoder accepts
+ * with a different meaning than the caller sent.
+ */
+function projectChatStreamBlockArray(
+  blocks: readonly ChatStreamBlock[],
+  label: string,
+): Array<Record<string, unknown>> {
+  if (!Array.isArray(blocks))
+    throw new Error(`Invalid chat stream event: ${label} is not an array`);
+  const projected: Array<Record<string, unknown>> = [];
+  for (let index = 0; index < blocks.length; index += 1) {
+    const block = blocks[index];
+    if (block === undefined || !Object.hasOwn(blocks, index))
+      throw new Error(`Invalid chat stream event: ${label}[${index}] is missing`);
+    projected.push(projectChatStreamBlock(block));
+  }
   return projected;
 }
 
 /** Whitelists exactly `ChatStreamState`'s declared fields, including its nested block arrays. */
-function projectChatStreamState(state: ChatStreamState): Record<string, unknown> {
+function projectChatStreamState(rawState: ChatStreamState): Record<string, unknown> {
+  const state = ownFields(rawState);
   const projected: Record<string, unknown> = {
-    blocks: state.blocks.map(projectChatStreamBlock),
+    blocks: projectChatStreamBlockArray(state.blocks, 'state.blocks'),
     textContent: requireString(state.textContent, 'state.textContent'),
-    toolCalls: state.toolCalls.map(projectChatStreamBlock),
+    toolCalls: projectChatStreamBlockArray(state.toolCalls, 'state.toolCalls'),
     complete: requireBoolean(state.complete, 'state.complete'),
   };
   if (state.activeBlock !== undefined)
@@ -378,29 +424,26 @@ function projectChatStreamState(state: ChatStreamState): Record<string, unknown>
  * bare `JSON.stringify`. Rebuilding here, not just at decode, is what
  * actually stops that: nothing re-attaches `cause` by construction.
  */
-function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSerializedRunError {
+function projectChatSerializedRunError(rawError: ChatSerializedRunError): ChatSerializedRunError {
+  const error = ownFields(rawError);
   // Rebuilding alone only drops `cause`; it does not stop a runtime-cast
   // producer supplying a `kind`/`code` outside the published vocabulary, or
   // non-string `name`/`message`. The decoder validates all four with these
   // same guards, so without this the encoder could emit a frame its own
   // decoder rejects — after the bad payload had already crossed the wire.
-  if (typeof error.name !== 'string' || typeof error.message !== 'string')
+  //
+  // Every field is read once up front, so an accessor cannot answer the
+  // guards with one value and the returned frame with another.
+  const { name, message, kind, code } = error;
+  if (typeof name !== 'string' || typeof message !== 'string')
     throw new Error('Invalid chat stream event: run error name and message must be strings');
-  if (!isChatAgentRunErrorKind(error.kind))
-    throw new Error(`Invalid chat stream event: unsupported run error kind ${String(error.kind)}`);
-  if (!isChatAgentRunErrorCode(error.code))
-    throw new Error(`Invalid chat stream event: unsupported run error code ${String(error.code)}`);
-  return { name: error.name, message: error.message, kind: error.kind, code: error.code };
+  if (!isChatAgentRunErrorKind(kind))
+    throw new Error(`Invalid chat stream event: unsupported run error kind ${String(kind)}`);
+  if (!isChatAgentRunErrorCode(code))
+    throw new Error(`Invalid chat stream event: unsupported run error code ${String(code)}`);
+  return { name, message, kind, code };
 }
 
-/**
- * Recursively checks a `JSONValue` for a non-finite number (`NaN`,
- * `Infinity`, `-Infinity`). `JSONValue`'s `number` member admits these —
- * TypeScript can't express "finite number" — but `JSON.stringify` silently
- * rewrites each one to `null`, which corrupts the value it's attached to
- * (most importantly, tool call arguments: a corrupted argument means the
- * tool executes with different input than the caller intended).
- */
 /**
  * Throws if `value` (identified by `context` for the error message) isn't a
  * genuinely valid `JSONValue`. `value`'s static type is already `JSONValue`,
@@ -416,7 +459,57 @@ function projectChatSerializedRunError(error: ChatSerializedRunError): ChatSeria
 function assertFiniteJSONValue(value: JSONValue, context: string): JSONValue {
   if (!isJSONValue(value))
     throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
-  return value;
+  // The guard only proves the shape. What `JSON.stringify` actually consults
+  // is any reachable `toJSON`, so the value is rebuilt as plain data too.
+  return projectPlainJSON(value, context);
+}
+
+/**
+ * Rebuilds an already schema-validated value as plain JSON data: own
+ * enumerable string keys copied onto null-prototype objects, arrays by
+ * index, primitives as they are. Anything with a `toJSON` in reach
+ * — own, non-enumerable, or inherited — is rejected rather than neutralized
+ * silently, because a producer that attached one intended the wire to carry
+ * something other than what the schema validated.
+ */
+function projectPlainJSON(value: unknown, context: string): JSONValue {
+  if (value === null || typeof value === 'string' || typeof value === 'boolean') return value;
+  if (typeof value === 'number') {
+    if (!Number.isFinite(value))
+      throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
+    return value;
+  }
+  if (typeof value !== 'object')
+    throw new Error(`Invalid chat stream event: ${context} is not a valid JSON value`);
+  if (typeof (value as { toJSON?: unknown }).toJSON === 'function')
+    throw new Error(`Invalid chat stream event: ${context} carries a toJSON serialization hook`);
+  // `undefined` follows JSON.stringify: dropped from objects, `null` in arrays.
+  // The copy is built by index into an intrinsic array — never through the
+  // input's own `map`, which a producer could override (or redirect via
+  // `Symbol.species`) to hand back an array carrying a hook of its own.
+  if (Array.isArray(value)) {
+    const items: JSONValue[] = [];
+    for (let index = 0; index < value.length; index += 1) {
+      const item: unknown = value[index];
+      items.push(item === undefined ? null : projectPlainJSON(item, `${context}[${index}]`));
+    }
+    return items;
+  }
+  // Null-prototype so the result inherits nothing — not a `toJSON`, not a
+  // polluted `Object.prototype` key; only the copied own keys reach the wire.
+  const projected: Record<string, JSONValue> = Object.create(null);
+  for (const [key, item] of Object.entries(value)) {
+    if (item === undefined) continue;
+    // Defined as an own data property rather than assigned: a `__proto__`
+    // key would otherwise hit the prototype setter and vanish from the wire.
+    Object.defineProperty(projected, key, {
+      value: projectPlainJSON(item, `${context}.${key}`),
+      enumerable: true,
+      writable: true,
+      configurable: true,
+    });
+  }
+  return projected;
 }
 
 /**
@@ -454,14 +547,38 @@ function isLegacyChatStreamEventType(
  * handed in — this makes the encoder symmetric with the field-by-field
  * decoder above instead of trusting the static type at runtime.
  */
-function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown> {
+function projectChatStreamEvent(rawEvent: ChatStreamEvent): Record<string, unknown> {
+  // Own enumerable fields only, the same rule the decoder applies: a caller
+  // can hand over `Object.create({ type: 'text', text: 'secret' })`, whose
+  // fields all live on its prototype, and reading through would put data the
+  // object does not actually carry — polluted or merely unintended — onto the
+  // wire, in a frame the decoder would then reject. The copy is shallow: each
+  // field's own projection below is what validates its contents, and it is
+  // also what reads any nested accessor exactly once.
+  if (!isRecord(rawEvent)) throw new Error('Invalid chat stream event');
+  const event = { ...rawEvent } as ChatStreamEvent;
   const envelope = projectWireEnvelope(event);
+  const projected = projectChatStreamEventBody(event, envelope);
   // The decoder requires a complete envelope on every CIN-507 member (only
   // the three legacy members tolerate a bare frame) — the encoder must
-  // refuse to produce a frame its own decoder would then reject.
-  if (!isLegacyChatStreamEventType(event.type) && envelope.wireVersion === undefined) {
-    throw new Error(`Invalid chat stream event: ${event.type} requires a wire envelope`);
+  // refuse to produce a frame its own decoder would then reject. The check
+  // runs against the `type` the switch below actually wrote, not a second
+  // read of `event.type`: an accessor-backed discriminator could otherwise
+  // answer a legacy name here and a new-vocabulary name to the switch,
+  // slipping a bare frame past this guard.
+  if (!isLegacyChatStreamEventType(projected.type) && envelope.wireVersion === undefined) {
+    throw new Error(`Invalid chat stream event: ${projected.type} requires a wire envelope`);
   }
+  return projected;
+}
+
+/** A projected frame whose `type` is the literal the encoder itself wrote. */
+type ProjectedChatStreamEvent = Record<string, unknown> & { type: ChatStreamEvent['type'] };
+
+function projectChatStreamEventBody(
+  event: ChatStreamEvent,
+  envelope: Partial<WireEnvelope>,
+): ProjectedChatStreamEvent {
   switch (event.type) {
     case 'text':
       return { type: 'text', text: requireString(event.text, 'text'), ...envelope };
@@ -543,40 +660,46 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       };
     case 'tool.progress': {
       const projected: Record<string, unknown> = {
-        type: 'tool.progress',
         toolCallId: requireString(event.toolCallId, 'toolCallId'),
         toolName: requireString(event.toolName, 'toolName'),
       };
-      if (event.percent !== undefined) {
-        // JSON.stringify serializes a non-finite number (NaN, Infinity) as
-        // `null`, which the decoder's own `percent` predicate then rejects
-        // — silently turning a valid-looking ChatStreamEvent into malformed
-        // wire data. Reject it here instead, before it ever reaches the wire.
-        if (!Number.isFinite(event.percent))
+      // Read `percent` once: JSON.stringify serializes a non-finite number
+      // (NaN, Infinity) as `null`, which the decoder's own `percent` predicate
+      // then rejects — silently turning a valid-looking ChatStreamEvent into
+      // malformed wire data. Reject it here instead, before it ever reaches
+      // the wire, and encode the very value that passed the check.
+      const percent = event.percent;
+      if (percent !== undefined) {
+        if (!Number.isFinite(percent))
           throw new Error('Invalid chat stream event: tool.progress percent must be finite');
-        projected['percent'] = event.percent;
+        projected['percent'] = percent;
       }
       if (event.message !== undefined)
         projected['message'] = requireString(event.message, 'message');
-      return { ...projected, ...envelope };
+      return { type: 'tool.progress', ...projected, ...envelope };
     }
-    case 'tool.settled':
+    case 'tool.settled': {
       // Mirrors the decoder's callId/toolCallId agreement check — a
       // mismatch here would encode a frame the decoder then rejects,
       // turning a producer bug into a downstream protocol failure instead
-      // of catching it at the source.
-      if (event.result.callId !== event.toolCallId) {
+      // of catching it at the source. The check and the projection read the
+      // same snapshots, so a stateful accessor cannot pass one and feed the
+      // other.
+      const toolCallId = requireString(event.toolCallId, 'toolCallId');
+      const result = projectChatToolResult(event.result);
+      if (result['callId'] !== toolCallId) {
         throw new Error(
           'Invalid chat stream event: tool.settled result.callId must equal toolCallId',
         );
       }
       return {
         type: 'tool.settled',
-        toolCallId: requireString(event.toolCallId, 'toolCallId'),
+        toolCallId,
         toolName: requireString(event.toolName, 'toolName'),
-        result: projectChatToolResult(event.result),
+        result,
         ...envelope,
       };
+    }
     case 'tool.error':
       return {
         type: 'tool.error',
@@ -587,12 +710,11 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       };
     case 'tool.policy-denied': {
       const projected: Record<string, unknown> = {
-        type: 'tool.policy-denied',
         toolCallId: requireString(event.toolCallId, 'toolCallId'),
         toolName: requireString(event.toolName, 'toolName'),
       };
       if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
-      return { ...projected, ...envelope };
+      return { type: 'tool.policy-denied', ...projected, ...envelope };
     }
     case 'run.completed':
       // `isConversationHistory` uses Conversationalist's `.strict()` Zod
@@ -604,21 +726,28 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
       // would have to reimplement that entire schema (messages, multimodal
       // content, tool calls/results, ...); reusing the guard is the
       // maintainable way to get the same guarantee.
-      if (!isConversationHistory(event.conversation)) {
+      // Project FIRST, then validate what was projected. Reading once is not
+      // enough on its own: the projection walks the whole graph, so a nested
+      // accessor could answer the schema with a string and the projection
+      // with a number, and the encoder would emit a frame its own decoder
+      // rejects. Validating the projected data means the schema and the wire
+      // see the same bytes.
+      const conversation = projectPlainJSON(event.conversation, 'conversation');
+      if (!isConversationHistory(conversation)) {
         throw new Error(
           'Invalid chat stream event: conversation is not a valid ConversationHistory',
         );
       }
       return {
         type: 'run.completed',
-        // Passed through under the guard's warrant, deliberately not rebuilt.
-        // `isConversationHistory` rejects a value carrying EXTRA top-level
-        // keys, not merely one missing required ones — verified against the
-        // installed package — so the validation above already refuses a
-        // conversation with provider-only metadata attached. Rebuilding would
-        // add no guarantee, and reimplementing the message schema to do it
-        // properly would be a maintenance liability.
-        conversation: event.conversation,
+        // The guard proves the SHAPE, and `isConversationHistory` rejects a
+        // value carrying extra enumerable keys at every level — but a
+        // serialization hook is neither: a non-enumerable or inherited
+        // `toJSON` passes the strict schema and is still what
+        // `JSON.stringify` would call, replacing the validated history with
+        // whatever the hook returns. Project to plain JSON data (own
+        // enumerable keys only, no prototype) and refuse any hook outright.
+        conversation,
         content: requireString(event.content, 'content'),
         usage: projectTokenUsage(event.usage),
         finishReason: requireString(event.finishReason, 'finishReason'),
@@ -633,9 +762,9 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
         ...envelope,
       };
     case 'run.aborted': {
-      const projected: Record<string, unknown> = { type: 'run.aborted' };
+      const projected: Record<string, unknown> = {};
       if (event.reason !== undefined) projected['reason'] = requireString(event.reason, 'reason');
-      return { ...projected, ...envelope };
+      return { type: 'run.aborted', ...projected, ...envelope };
     }
     default: {
       // TypeScript proves this switch exhaustive, so `unsupported` is `never`
@@ -652,9 +781,18 @@ function projectChatStreamEvent(event: ChatStreamEvent): Record<string, unknown>
   }
 }
 
-/** Encodes one event as a newline-delimited JSON frame. */
+/**
+ * Encodes one event as a newline-delimited JSON frame.
+ *
+ * The projected frame is rebuilt as plain data before serialization: what
+ * `JSON.stringify` actually consults is any reachable `toJSON`, and the
+ * frame's own object literals inherit whatever `Object.prototype` carries.
+ * A hook there would replace the field-by-field projection wholesale, so
+ * `projectPlainJSON` rejects it — and returns null-prototype objects, which
+ * cannot pick one up again.
+ */
 export function encodeChatStreamEvent(event: ChatStreamEvent): string {
-  return `${JSON.stringify(projectChatStreamEvent(event))}\n`;
+  return `${JSON.stringify(projectPlainJSON(projectChatStreamEvent(event), 'frame'))}\n`;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -683,14 +821,20 @@ function isNonNegativeSafeInteger(value: unknown): value is number {
  * could otherwise bypass `wireVersion` validation entirely.
  */
 function readWireEnvelope(parsed: Record<string, unknown>): Partial<WireEnvelope> {
-  const hasWireVersion = 'wireVersion' in parsed;
-  const hasSequence = 'sequence' in parsed;
+  // Own keys only: an inherited `wireVersion` (a polluted prototype, a
+  // non-plain object) is not part of the frame.
+  const hasWireVersion = Object.hasOwn(parsed, 'wireVersion');
+  const hasSequence = Object.hasOwn(parsed, 'sequence');
   if (!hasWireVersion && !hasSequence) return {};
   if (hasWireVersion !== hasSequence) throw new Error('Invalid chat stream event');
-  if (parsed['wireVersion'] !== SUPPORTED_WIRE_VERSION)
-    throw new Error('Invalid chat stream event');
-  if (!isNonNegativeSafeInteger(parsed['sequence'])) throw new Error('Invalid chat stream event');
-  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence: parsed['sequence'] };
+  // Read each field once: a typed transport can hand over an object whose
+  // accessors answer differently per read, and the value returned here must
+  // be the one that was validated.
+  const wireVersion = parsed['wireVersion'];
+  const sequence = parsed['sequence'];
+  if (wireVersion !== SUPPORTED_WIRE_VERSION) throw new Error('Invalid chat stream event');
+  if (!isNonNegativeSafeInteger(sequence)) throw new Error('Invalid chat stream event');
+  return { wireVersion: SUPPORTED_WIRE_VERSION, sequence };
 }
 
 /** A fully-present wire envelope, required on every new (CIN-507) member. */
@@ -824,9 +968,34 @@ function toChatSerializedRunError(value: unknown): ChatSerializedRunError | unde
 
 /** Decodes and validates one provider-neutral stream event. */
 export function decodeChatStreamEvent(value: unknown): ChatStreamEvent {
-  const parsed = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
-  if (!isRecord(parsed) || typeof parsed['type'] !== 'string')
+  const raw = typeof value === 'string' ? (JSON.parse(value) as unknown) : value;
+  // Own key only, like the envelope: an inherited `type` would let an object
+  // that serializes without a discriminator decode as a (terminal) frame.
+  // An array is `typeof 'object'` too, and one carrying named properties
+  // (`Object.assign([], { type: 'run.aborted' })`) would spread into a
+  // perfectly ordinary frame here — while serializing to `[]`, which the
+  // NDJSON path rejects. The two paths have to agree, so it is rejected.
+  if (!isRecord(raw) || Array.isArray(raw) || !Object.hasOwn(raw, 'type'))
     throw new Error('Invalid chat stream event');
+  // Rebuild the whole frame as plain data before any guard runs — exactly
+  // "what this value would be if it had crossed the wire". An already-decoded
+  // transport hands the guard the producer's own object, whose fields at
+  // every depth can be accessors that answer differently per read or carry a
+  // `toJSON` that would rewrite them on the way back out; every read below
+  // sees one frozen snapshot instead, a hook anywhere in the graph is
+  // refused, and an array smuggled in as a nested object arrives as the `[]`
+  // it would serialize to.
+  //
+  // A `JSON.parse` result gets the same treatment, cost notwithstanding: it
+  // is a plain object, but it still INHERITS from `Object.prototype`, so a
+  // polluted prototype could supply a `text` or an `id` that the field checks
+  // below would read straight through `parsed['text']`. The copy takes own
+  // enumerable keys only, onto a null prototype, which is the same own-key
+  // rule already applied to `type` and the envelope.
+  const projected = projectPlainJSON(raw, 'frame');
+  if (!isRecord(projected)) throw new Error('Invalid chat stream event');
+  const parsed: Record<string, unknown> = projected;
+  if (typeof parsed['type'] !== 'string') throw new Error('Invalid chat stream event');
   const eventType = parsed['type'];
   const envelope = readWireEnvelope(parsed);
 
@@ -1102,14 +1271,14 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
   if (guard.sawTerminal)
     throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
 
-  const wireVersion = 'wireVersion' in event ? event.wireVersion : undefined;
+  const wireVersion = Object.hasOwn(event, 'wireVersion') ? event.wireVersion : undefined;
   const frameMode: 'bare' | 'versioned' = wireVersion === undefined ? 'bare' : 'versioned';
   if (guard.mode === undefined) guard.mode = frameMode;
   else if (guard.mode !== frameMode)
     throw new Error('Invalid chat stream event: envelope mode changed mid-stream');
 
   if (frameMode === 'versioned') {
-    const sequence = 'sequence' in event ? event.sequence : undefined;
+    const sequence = Object.hasOwn(event, 'sequence') ? event.sequence : undefined;
     if (sequence === undefined) throw new Error('Invalid chat stream event: missing sequence');
     if (guard.lastSequence !== undefined && sequence <= guard.lastSequence)
       throw new Error('Invalid chat stream event: sequence did not increase');
@@ -1119,16 +1288,6 @@ function noteDecodedStreamEvent(event: ChatStreamEvent, guard: StreamGuardState)
   if (isTerminalChatStreamEvent(event)) guard.sawTerminal = true;
 }
 
-/**
- * A versioned stream that reaches EOF without ever emitting one of the
- * `run.*` terminal frames is a truncated response, not success (reference
- * architecture, "Stream wire contract" and "Cancellation contract"). This
- * only runs when the generator's body resumes normally past its last
- * `yield` — a consumer that stops iterating early instead calls the
- * generator's `return()`, which unwinds through any enclosing `finally`
- * blocks but never reaches this code, so a deliberate client cancellation
- * is correctly exempt without any extra bookkeeping.
- */
 /**
  * Every versioned frame ends with a newline (reference architecture, "Stream
  * wire contract"), so a non-empty buffer left over at EOF means the response
@@ -1145,20 +1304,109 @@ function assertStreamFramed(buffer: string, guard: StreamGuardState): void {
     throw new Error('Invalid chat stream event: stream ended mid-frame without a newline');
 }
 
+/**
+ * A versioned stream that reaches EOF without ever emitting one of the
+ * `run.*` terminal frames is a truncated response, not success (reference
+ * architecture, "Stream wire contract" and "Cancellation contract"). This
+ * only runs when the generator's body resumes normally past its last
+ * `yield` — a consumer that stops iterating early instead calls the
+ * generator's `return()`, which unwinds through any enclosing `finally`
+ * blocks but never reaches this code, so a deliberate client cancellation
+ * is correctly exempt without any extra bookkeeping.
+ */
 function assertStreamTerminated(guard: StreamGuardState): void {
   if (guard.mode === 'versioned' && !guard.sawTerminal)
     throw new Error('Invalid chat stream event: stream ended without a terminal frame');
 }
 
+/**
+ * Applies the stream-level guard to events that arrive already decoded — a
+ * `ChatSessionTransport` returning `AsyncIterable<ChatStreamEvent>` rather
+ * than bytes. Without this, a typed iterable that ends without a terminal
+ * frame, runs its sequence backwards, or switches envelope mode mid-stream
+ * is accepted while the identical NDJSON response is rejected, so the
+ * contract's validity would depend on the transport's representation.
+ */
+export async function* guardChatStreamEvents(
+  events: AsyncIterable<ChatStreamEvent>,
+  options?: ChatStreamDecodeOptions,
+): AsyncGenerator<ChatStreamEvent> {
+  const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
+  for await (const event of events) {
+    // Per-frame validation first: the static type says `ChatStreamEvent`, but
+    // a transport built in JavaScript (or through a cast) can yield a frame
+    // the wire decoder would refuse — `sequence: NaN`, a non-string `text` —
+    // and the stream guard below assumes each frame is already well-formed.
+    const decoded = reportProtocolError(options, () => {
+      const value = decodeChatStreamEvent(event);
+      noteDecodedStreamEvent(value, guard);
+      return value;
+    });
+    yield decoded;
+  }
+  reportProtocolError(options, () => assertStreamTerminated(guard));
+}
+
+/** Options both decoding entry points accept. */
+export type ChatStreamDecodeOptions = {
+  /**
+   * Called with the rejection the moment a frame fails validation — at the
+   * throw site, before the generator unwinds and before any producer cleanup
+   * (`return()`, `reader.cancel()`) is awaited. A consumer whose transport
+   * needs its signal aborted to finish cleaning up would otherwise deadlock:
+   * it cannot abort until the rejection reaches it, and the rejection cannot
+   * reach it until the cleanup that is waiting on the abort completes.
+   */
+  onProtocolError?: (error: unknown) => void;
+};
+
+/** Runs `validate`, handing a rejection to `onProtocolError` before it propagates. */
+function reportProtocolError<T>(
+  options: ChatStreamDecodeOptions | undefined,
+  validate: () => T,
+): T {
+  if (!options?.onProtocolError) return validate();
+  try {
+    return validate();
+  } catch (error) {
+    options.onProtocolError(error);
+    throw error;
+  }
+}
+
 /** Decodes newline-delimited events from a string or an async byte stream. */
 export async function* decodeChatStreamEvents(
   source: string | AsyncIterable<string | Uint8Array> | ReadableStream<Uint8Array>,
+  options?: ChatStreamDecodeOptions,
 ): AsyncGenerator<ChatStreamEvent> {
   const guard: StreamGuardState = { mode: undefined, sawTerminal: false, lastSequence: undefined };
-  const decodeAndTrack = (line: string): ChatStreamEvent => {
-    const event = decodeChatStreamEvent(line);
-    noteDecodedStreamEvent(event, guard);
-    return event;
+  const decodeAndTrack = (line: string): ChatStreamEvent =>
+    reportProtocolError(options, () => {
+      const event = decodeChatStreamEvent(line);
+      noteDecodedStreamEvent(event, guard);
+      return event;
+    });
+  // Decodes one batch of complete lines lazily, EXCEPT once a terminal frame
+  // is reached: everything already buffered after it is validated before the
+  // terminal is yielded. A consumer that stops iterating on the terminal
+  // frame calls the generator's `return()`, which skips every later line —
+  // so a terminal followed by a higher-sequence mutation that arrived in the
+  // same chunk (or the same string) would otherwise be accepted rather than
+  // rejected as a frame after the terminal. `afterTerminal` lets each source
+  // path check its own residue (the string's final fragment, a chunk's
+  // partial buffer) at the same moment.
+  const decodeBatch = function* (
+    lines: string[],
+    afterTerminal: () => void,
+  ): Generator<ChatStreamEvent> {
+    for (let index = 0; index < lines.length; index++) {
+      const event = decodeAndTrack(lines[index] ?? '');
+      if (guard.sawTerminal) {
+        for (const trailing of lines.slice(index + 1)) decodeAndTrack(trailing);
+        afterTerminal();
+      }
+      yield event;
+    }
   };
   // Decode-then-validate-then-yield for whatever is left after the final
   // newline. An unterminated frame is not a valid frame; yielding it before
@@ -1168,12 +1416,12 @@ export async function* decodeChatStreamEvents(
   const finishStream = function* (leftover: string): Generator<ChatStreamEvent> {
     if (leftover.trim()) {
       const event = decodeAndTrack(leftover.trim());
-      assertStreamFramed(leftover, guard);
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
       yield event;
     } else {
-      assertStreamFramed(leftover, guard);
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
     }
-    assertStreamTerminated(guard);
+    reportProtocolError(options, () => assertStreamTerminated(guard));
   };
   if (typeof source === 'string') {
     // Same framing rule as the byte paths below. A versioned stream that is
@@ -1181,7 +1429,12 @@ export async function* decodeChatStreamEvents(
     // validity depend on how the caller happened to deliver it.
     const lines = source.split('\n');
     const leftover = lines.pop() ?? '';
-    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
+    yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
+      // The whole string is already buffered, so the final fragment is
+      // checked before the terminal frame is handed over, too.
+      reportProtocolError(options, () => assertStreamFramed(leftover, guard));
+      if (leftover.trim()) decodeAndTrack(leftover.trim());
+    });
     yield* finishStream(leftover);
     return;
   }
@@ -1190,19 +1443,42 @@ export async function* decodeChatStreamEvents(
   // parses as JSON, so without this the stream would complete "successfully"
   // with silently corrupted text, tool arguments, or history.
   const decoder = new TextDecoder('utf-8', { fatal: true });
-  const decodeBytes = (chunk?: Uint8Array): string => {
-    try {
-      return chunk === undefined ? decoder.decode() : decoder.decode(chunk, { stream: true });
-    } catch {
-      throw new Error('Invalid chat stream event: response bytes are not valid UTF-8');
-    }
-  };
+  // Routed through `reportProtocolError` like every other rejection: invalid
+  // UTF-8 (or a retained partial sequence) is a protocol failure, and the
+  // consumer has to be able to abort its transport before this generator
+  // unwinds into `reader.cancel()`.
+  const decodeBytes = (chunk?: Uint8Array): string =>
+    reportProtocolError(options, () => {
+      try {
+        return chunk === undefined ? decoder.decode() : decoder.decode(chunk, { stream: true });
+      } catch {
+        throw new Error('Invalid chat stream event: response bytes are not valid UTF-8');
+      }
+    });
   let buffer = '';
   const appendChunk = function* (chunk: string | Uint8Array): Generator<ChatStreamEvent> {
+    // A source that mixes chunk types must not hand over a string while the
+    // decoder still holds the start of a multibyte sequence: a later byte
+    // chunk would complete that character *after* the intervening string,
+    // silently reordering text inside an otherwise valid frame. Flushing the
+    // fatal decoder rejects the pending partial sequence instead.
+    if (typeof chunk === 'string') decodeBytes();
     buffer += typeof chunk === 'string' ? chunk : decodeBytes(chunk);
     const lines = buffer.split('\n');
     buffer = lines.pop() ?? '';
-    for (const line of lines.map((item) => item.trim()).filter(Boolean)) yield decodeAndTrack(line);
+    yield* decodeBatch(lines.map((item) => item.trim()).filter(Boolean), () => {
+      // The server closes the stream immediately after the terminal frame,
+      // so bytes already buffered past it are a violation even before they
+      // form a complete line. Bytes still inside the decoder count too: the
+      // start of a multibyte sequence never reaches `buffer`, so the decoder
+      // is flushed here — a partial sequence fails the fatal decode, and a
+      // consumer that stops on the terminal would otherwise never learn of
+      // it because EOF handling is skipped.
+      if (buffer.trim() || decodeBytes().length > 0)
+        reportProtocolError(options, () => {
+          throw new Error('Invalid chat stream event: frame arrived after the terminal frame');
+        });
+    });
   };
   if (source instanceof ReadableStream) {
     const reader = source.getReader();

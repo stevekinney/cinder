@@ -1,4 +1,40 @@
 @layer cinder.tokens, cinder.foundation, cinder.components, cinder.utilities;
+
+/* Readability cap shared by every transcript row — chat bubbles
+ * (chat-message.svelte's .chat-message-wrapper) and grouped tool-call cards
+ * (tool-call-timeline.svelte's .chat-tool-call-timeline) both read this one
+ * token, so the two can never drift apart.
+ *
+ * Registered with `@property` rather than declared on `.cinder-chat`, on
+ * purpose. A declaration on the component root would beat any value a
+ * consumer sets on `:root` or a wrapping element — inheritance never wins
+ * against a declaration on the element itself, whatever the layer — so only
+ * a rule aimed at the Chat element could customize it. The registration
+ * supplies the `48rem` default through `initial-value` and, with
+ * `inherits: true`, lets an ancestor override flow into Chat like any other
+ * inherited custom property.
+ *
+ * It also has to live in this sidecar rather than chat.svelte's scoped
+ * <style>: the component-artifact generator reads the built CSS sidecars
+ * (scripts/build.ts) and includes `@property --cinder-*` registrations, so
+ * this is what puts the token into `chat.variables.json`, the generated
+ * README, and MCP tooling. Every consuming rule still carries a `, 48rem`
+ * fallback, so a consumer who does not import `@lostgradient/chat/styles`
+ * gets the same measure.
+ *
+ * The syntax is the universal `*` rather than `<length-percentage>` on
+ * purpose: a typed registration's `initial-value` must be computationally
+ * independent, and a `rem` length is not (it resolves against the root font
+ * size), so browsers silently drop a typed `48rem` registration — the token
+ * then has no default at all. The universal syntax accepts the scalable
+ * default; the consuming rules' fallbacks cover a malformed override the
+ * same way they do for every other untyped cinder token. */
+@property --cinder-chat-message-max-width {
+  syntax: '*';
+  inherits: true;
+  initial-value: 48rem;
+}
+
 @layer cinder.components {
   .cinder-chat .message-content-preview {
     max-inline-size: var(--cinder-content-width-prose);

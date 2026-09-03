@@ -1,3 +1,4 @@
+import getReleasePlan from '@changesets/get-release-plan';
 import { describe, expect, test } from 'bun:test';
 import { join } from 'node:path';
 
@@ -20,6 +21,20 @@ const markdownManifest = JSON.parse(
   await Bun.file(join(workspaceRoot, 'packages', 'markdown', 'package.json')).text(),
 ) as PackageManifest;
 const editorReadme = await Bun.file(join(packageRoot, 'README.md')).text();
+
+/**
+ * The Cinder version this repository is about to publish, not the one already
+ * published. Mirrors Chat's guard deliberately: checking the CURRENT version lets
+ * a pending minor ship a peer range that excludes the very Cinder released beside
+ * it, which is exactly how Markdown 0.1.0 -> 0.2.0 shipped past a stale `^0.1.0`
+ * (see the comment on Chat's Markdown guard). `reconcile-internal-peers.ts` still
+ * rewrites both ranges at `changeset:version` time; this makes the intent visible
+ * in the pull request that introduces the minor rather than only at release.
+ */
+const releasePlan = await getReleasePlan(workspaceRoot);
+const plannedCinderVersion =
+  releasePlan.releases.find((release) => release.name === '@lostgradient/cinder')?.newVersion ??
+  cinderManifest.version;
 
 describe('Editor package ownership boundary', () => {
   test('keeps component tests serial without isolating the Svelte preload plugin', () => {
@@ -116,7 +131,7 @@ describe('Editor package ownership boundary', () => {
     ]);
   });
 
-  test('keeps Editor’s Cinder peer range covering the current Cinder version', () => {
+  test('keeps Editor’s Cinder peer range covering the planned Cinder release', () => {
     const cinderPeerRange = editorManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(
       cinderPeerRange,
@@ -126,8 +141,8 @@ describe('Editor package ownership boundary', () => {
 
     expect(cinderPeerRange).toMatch(/^\^\d+\.\d+\.\d+$/u);
     expect(
-      Bun.semver.satisfies(cinderManifest.version, cinderPeerRange),
-      'Editor’s Cinder peer range must cover the current Cinder version.',
+      Bun.semver.satisfies(plannedCinderVersion, cinderPeerRange),
+      'Editor’s Cinder peer range must cover the planned Cinder release.',
     ).toBe(true);
   });
 

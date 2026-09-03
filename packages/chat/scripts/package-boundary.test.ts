@@ -45,7 +45,7 @@ describe('Chat package ownership boundary', () => {
   test('keeps host-supplied runtime singletons peer-only and owns its conversation-model dependencies', () => {
     expect(() => assertSourceManifest(chatManifest)).not.toThrow();
     expect(chatManifest.dependencies).toEqual({
-      conversationalist: '^1.0.0',
+      conversationalist: '^1.1.0',
       'decode-named-character-reference': '^1.3.0',
       'micromark-util-decode-numeric-character-reference': '^2.0.0',
       zod: '4.4.3',
@@ -102,6 +102,10 @@ describe('Chat package ownership boundary', () => {
     ]);
   });
 
+  // Editor's guard checks the same thing against the same target (CIN-510). The two
+  // deliberately agree: a guard that checks the CURRENT version cannot see a pending
+  // minor about to exclude itself, and having one of each meant no single peer-range
+  // value satisfied both while a minor was pending.
   test('keeps Chat’s Cinder peer range covering the planned Cinder release', () => {
     const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(
@@ -179,6 +183,15 @@ describe('Chat package ownership boundary', () => {
     expect(serialized).not.toContain('workspace:');
     expect(serialized).not.toContain('./src/');
     expect(published.peerDependencies).toEqual(chatManifest.peerDependencies);
+  });
+
+  test('keeps the dist barrel side-effect markers and drops the source glob', () => {
+    // The source barrels are side-effectful only inside the workspace; a
+    // consumer resolves the published `dist/` barrels, which must keep the
+    // marker or Vite drops the component stylesheet (CIN-514).
+    expect(chatManifest.sideEffects).toContain('src/lib/components/*/index.ts');
+    const published = buildPublishedManifest(chatManifest);
+    expect(published.sideEffects).toEqual(['**/*.css', 'dist/components/*/index.js']);
   });
 
   test('rewrites browser-aware Chat exports to packed dist files', () => {

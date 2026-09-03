@@ -12,5 +12,11 @@ export type {
   FixedVirtualWindow,
   FixedVirtualWindowItem,
 } from '../../utilities/fixed-virtual-window.ts';
-export type { VirtualListProps, VirtualListRowContext } from './virtual-list.types.ts';
+export type {
+  VirtualListProps,
+  VirtualListRef,
+  VirtualListRowContext,
+  VirtualListScrollAlign,
+  VirtualListScrollToIndexOptions,
+} from './virtual-list.types.ts';
 export { VirtualList };
