@@ -1,7 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["statistic-group"],
-  "renderedSourceSha": "b83a13d48ddf7ebec39376a56254d9ba1cf0632f",
+  "componentScope": [
+    "virtual-list"
+  ],
+  "renderedSourceSha": "85cad04de52cff287cc95f8f7350fb7e7069f77a",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",

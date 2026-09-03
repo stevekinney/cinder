@@ -1,0 +1,558 @@
+/**
+ * Companion regression for CIN-204's `check-virtual-list-dependency-free.ts`.
+ *
+ * Two things are tested here, deliberately kept separate:
+ *
+ *   1. An INDEPENDENT scan of the real virtual-list source tree, written from
+ *      scratch in this file rather than by calling into the script's own
+ *      parsing logic — a bug shared between the script's regex and this
+ *      test's regex could otherwise hide a real `@tanstack/virtual-core`
+ *      regression from both. This is the check that makes a local `bun test`
+ *      run (no CI needed) catch the violation the script exists to prevent.
+ *   2. Direct, fabricated-input unit tests against the script's own exported
+ *      functions (`classifySpecifier`, `packageNameFromSpecifier`,
+ *      `findDependencyViolations`), so the script's failure path — flagging
+ *      an offending specifier — is exercised, not just its passing path
+ *      against an already-clean tree.
+ */
+
+import { Glob } from 'bun';
+import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { dirname, join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+import {
+  FORBIDDEN_SPECIFIER,
+  classifySpecifier,
+  collectScanTargets,
+  findDependencyViolations,
+  loadDeclaredDependencyNames,
+  packageNameFromSpecifier,
+} from '../../../../scripts/check-virtual-list-dependency-free.ts';
+
+const testDirectory = dirname(fileURLToPath(import.meta.url));
+const packageRoot = resolve(testDirectory, '..', '..', '..', '..');
+const virtualListRoot = join(packageRoot, 'src', 'components', 'virtual-list');
+const fixedVirtualWindowFile = join(packageRoot, 'src', 'utilities', 'fixed-virtual-window.ts');
+const packageJsonPath = join(packageRoot, 'package.json');
+
+/** This file's own absolute path, resolved the same way `collectScanTargets`
+ * resolves every other candidate — used only to exclude it below. */
+const thisTestFilePath = fileURLToPath(import.meta.url);
+
+/**
+ * Independently reproduces the ONE part of CIN-204 that matters most to catch
+ * without CI: does any real source file under `virtual-list/**` or
+ * `fixed-virtual-window.ts` contain the literal forbidden specifier text?
+ * This is a plain substring search, not a shared regex with the script.
+ *
+ * Excludes THIS file: it deliberately embeds `FORBIDDEN_SPECIFIER` as inert
+ * fabricated fixture text a few tests below, so a naive substring scan would
+ * otherwise flag its own test fixtures as if they were real imports — the
+ * same self-reference the script itself guards against via
+ * `SELF_TEST_RELATIVE_PATH`, reproduced independently here rather than by
+ * importing that constant.
+ */
+async function collectFilesReferencingForbiddenSpecifier(): Promise<string[]> {
+  const glob = new Glob('**/*.{ts,svelte}');
+  const filePaths: string[] = [];
+  for await (const relativePath of glob.scan({ cwd: virtualListRoot })) {
+    filePaths.push(join(virtualListRoot, relativePath));
+  }
+  filePaths.push(fixedVirtualWindowFile);
+
+  const offenders: string[] = [];
+  for (const filePath of filePaths) {
+    if (filePath === thisTestFilePath) continue;
+    const content = await Bun.file(filePath).text();
+    if (content.includes(FORBIDDEN_SPECIFIER)) offenders.push(filePath);
+  }
+  return offenders;
+}
+
+describe('virtual-list dependency-free guard — independent real-repo scan (CIN-204)', () => {
+  test('no virtual-list source file references @tanstack/virtual-core', async () => {
+    const offenders = await collectFilesReferencingForbiddenSpecifier();
+    expect(offenders).toEqual([]);
+  });
+});
+
+describe('virtual-list dependency-free guard — production scan against the real dependencies list', () => {
+  test('findDependencyViolations reports nothing for the current virtual-list tree', async () => {
+    const declaredDependencyNames = await loadDeclaredDependencyNames(packageJsonPath);
+    const files = await collectScanTargets();
+    expect(files.length).toBeGreaterThan(0);
+
+    const violations = [];
+    for (const filePath of files) {
+      const content = await Bun.file(filePath).text();
+      violations.push(...findDependencyViolations(content, filePath, declaredDependencyNames));
+    }
+
+    expect(violations).toEqual([]);
+  });
+});
+
+describe('virtual-list dependency-free guard — classifySpecifier', () => {
+  const declared = new Set(['@lostgradient/markdown', 'culori']);
+
+  test('forbids @tanstack/virtual-core outright, even if it were declared as a dependency', () => {
+    const declaredWithForbidden = new Set([...declared, FORBIDDEN_SPECIFIER]);
+    expect(classifySpecifier(FORBIDDEN_SPECIFIER, declaredWithForbidden)).toBeDefined();
+  });
+
+  test('allows relative specifiers', () => {
+    expect(classifySpecifier('./sibling.ts', declared)).toBeUndefined();
+    expect(classifySpecifier('../../utilities/fixed-virtual-window.ts', declared)).toBeUndefined();
+    expect(classifySpecifier('/absolute/path.ts', declared)).toBeUndefined();
+  });
+
+  test('allows "svelte" and "svelte/*" subpaths', () => {
+    expect(classifySpecifier('svelte', declared)).toBeUndefined();
+    expect(classifySpecifier('svelte/elements', declared)).toBeUndefined();
+  });
+
+  test('allows Node and Bun builtins', () => {
+    expect(classifySpecifier('node:path', declared)).toBeUndefined();
+    expect(classifySpecifier('path', declared)).toBeUndefined();
+    expect(classifySpecifier('bun:test', declared)).toBeUndefined();
+  });
+
+  test('allows a bare specifier already declared in dependencies', () => {
+    expect(classifySpecifier('culori', declared)).toBeUndefined();
+  });
+
+  test('allows a declared scoped dependency reached through a deep subpath', () => {
+    expect(classifySpecifier('@lostgradient/markdown/dist/foo.js', declared)).toBeUndefined();
+  });
+
+  test('rejects an undeclared bare specifier, naming it in the reason', () => {
+    const reason = classifySpecifier('left-pad', declared);
+    expect(reason).toBeDefined();
+    expect(reason).toEqual(expect.stringContaining('left-pad'));
+  });
+
+  test('rejects an undeclared scoped specifier, reporting the resolved package name', () => {
+    const reason = classifySpecifier('@some-scope/some-package/deep/path.js', declared);
+    expect(reason).toEqual(expect.stringContaining('@some-scope/some-package'));
+  });
+});
+
+describe('virtual-list dependency-free guard — packageNameFromSpecifier', () => {
+  test('resolves an unscoped specifier to its first path segment', () => {
+    expect(packageNameFromSpecifier('lodash/debounce')).toBe('lodash');
+    expect(packageNameFromSpecifier('lodash')).toBe('lodash');
+  });
+
+  test('resolves a scoped specifier to scope + name, dropping any deeper subpath', () => {
+    expect(packageNameFromSpecifier('@scope/name/deep/path.js')).toBe('@scope/name');
+    expect(packageNameFromSpecifier('@scope/name')).toBe('@scope/name');
+  });
+
+  test('falls back to the raw specifier for a malformed scoped specifier with no name segment', () => {
+    expect(packageNameFromSpecifier('@scope')).toBe('@scope');
+  });
+});
+
+describe('virtual-list dependency-free guard — findDependencyViolations (fabricated input)', () => {
+  test('flags a fabricated @tanstack/virtual-core import with file/line/specifier detail', () => {
+    const source = [
+      "import { tick } from 'svelte';",
+      "import { createVirtualizer } from '@tanstack/virtual-core';",
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'fake-virtual-list.ts', new Set());
+
+    expect(violations).toEqual([
+      {
+        filePath: 'fake-virtual-list.ts',
+        lineNumber: 2,
+        specifier: FORBIDDEN_SPECIFIER,
+        line: "import { createVirtualizer } from '@tanstack/virtual-core';",
+        reason: expect.stringContaining('@tanstack/virtual-core'),
+      },
+    ]);
+  });
+
+  test('flags a fabricated undeclared bare specifier alongside an allowed relative import', () => {
+    const source = [
+      "import { classNames } from '../../utilities/class-names.ts';",
+      "import leftPad from 'left-pad';",
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'fake.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('left-pad');
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('does not flag an export-from re-export of an allowed relative specifier', () => {
+    const source = "export type { VirtualListProps } from './virtual-list.types.ts';";
+    expect(findDependencyViolations(source, 'fake.ts', new Set())).toEqual([]);
+  });
+
+  test('flags a MULTILINE dynamic import of an undeclared bare specifier in shipped source', () => {
+    // A per-line scan misses every multiline form the language allows, which would
+    // let shipped source import an undeclared package and still pass this guard.
+    const source = ['const helper = await import(', "  'some-dev-only-package',", ');'].join('\n');
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('flags a MULTILINE static import of the forbidden specifier', () => {
+    const source = ['import { thing } from', `  '${FORBIDDEN_SPECIFIER}';`].join('\n');
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('does not treat prose spanning two lines as an import specifier', () => {
+    // Scanning the whole file at once means the specifier character class must
+    // exclude newlines, or a comment containing the word "import" followed by an
+    // unclosed quote swallows the next line and reports it as a bare import.
+    const source = [
+      '// left a stale',
+      '// node with the old content" — bare import "left a stale',
+      '// node still attached"',
+    ].join('\n');
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+  });
+
+  test('flags a dynamic import of an undeclared bare specifier in SHIPPED source', () => {
+    // A production file that dynamically imports an installed devDependency
+    // resolves inside this repository and then fails for a published consumer.
+    // Exempting dynamic syntax from the undeclared-import rule would leave
+    // exactly that hole open, so shipped source faces the full rule.
+    const source = "const helper = await import('some-dev-only-package');";
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('allows a dynamic import of an undeclared bare specifier in a TEST file', () => {
+    // Tests legitimately reach for devDependencies at module scope — the real
+    // virtual-list.test.ts does `await import('@testing-library/svelte')` — and
+    // nothing in a test file ships, so the undeclared-import risk does not apply.
+    const source = "const testing = await import('@testing-library/svelte');";
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'measurement-window.spec.ts', new Set())).toEqual([]);
+  });
+
+  test('still flags the forbidden specifier dynamically imported from a TEST file', () => {
+    // The devDependency exemption is scoped to the undeclared-import rule only.
+    // The @tanstack/virtual-core ban applies everywhere in the subtree.
+    const source = "const virtualizer = await import('@tanstack/virtual-core');";
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('flags a fabricated dynamic import() of the forbidden specifier', () => {
+    const source = "const module = await import('@tanstack/virtual-core');";
+    const violations = findDependencyViolations(source, 'fake.ts', new Set());
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('does not flag a dynamic import() of an allowed relative specifier', () => {
+    const source = "const module = await import('./sibling.ts');";
+    expect(findDependencyViolations(source, 'fake.ts', new Set())).toEqual([]);
+  });
+
+  test('flags multiple violations across multiple lines with correct line numbers', () => {
+    const source = [
+      "import { a } from 'left-pad';",
+      "import { tick } from 'svelte';",
+      "import { b } from '@tanstack/virtual-core';",
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'fake.ts', new Set());
+    expect(violations.map((violation) => violation.lineNumber)).toEqual([1, 3]);
+  });
+
+  test('returns no violations for an empty file', () => {
+    expect(findDependencyViolations('', 'empty.ts', new Set())).toEqual([]);
+  });
+
+  test('returns no violations for a file with no import statements at all', () => {
+    const source = 'export const answer = 42;\n';
+    expect(findDependencyViolations(source, 'no-imports.ts', new Set())).toEqual([]);
+  });
+});
+
+describe('virtual-list dependency-free guard — loadDeclaredDependencyNames', () => {
+  async function withTemporaryManifest(
+    manifest: unknown,
+    assert: (manifestPath: string) => Promise<void>,
+  ): Promise<void> {
+    const root = mkdtempSync(join(tmpdir(), 'virtual-list-dependency-free-'));
+    const manifestPath = join(root, 'package.json');
+    writeFileSync(manifestPath, JSON.stringify(manifest));
+    try {
+      await assert(manifestPath);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  }
+
+  test('reads the dependencies field into a Set of package names', async () => {
+    await withTemporaryManifest(
+      { dependencies: { culori: '^4.0.2', qrcode: '^1.5.4' } },
+      async (manifestPath) => {
+        const names = await loadDeclaredDependencyNames(manifestPath);
+        expect(names).toEqual(new Set(['culori', 'qrcode']));
+      },
+    );
+  });
+
+  test('falls back to an empty Set when dependencies is absent', async () => {
+    await withTemporaryManifest({}, async (manifestPath) => {
+      const names = await loadDeclaredDependencyNames(manifestPath);
+      expect(names).toEqual(new Set());
+    });
+  });
+
+  test('reads the real package.json dependencies and includes @tanstack/virtual-core', async () => {
+    // Sanity check on the fixture itself: @tanstack/virtual-core IS a real
+    // dependency of this package (tree/data-grid use it) — CIN-204 forbids it
+    // for the virtual-list subtree specifically, not package-wide, so this
+    // guard's ban comes from FORBIDDEN_SPECIFIER, not from an absent
+    // dependencies entry.
+    const names = await loadDeclaredDependencyNames(packageJsonPath);
+    expect(names.has('@tanstack/virtual-core')).toBe(true);
+  });
+
+  test('rejects a subpath import of the forbidden package', () => {
+    // packageNameFromSpecifier reduces a deep import to the package root, which IS
+    // a declared dependency of this package — so an exact-match check alone waves
+    // `@tanstack/virtual-core/some-entry` straight through the CIN-204 boundary.
+    const declared = new Set([FORBIDDEN_SPECIFIER]);
+
+    expect(classifySpecifier(FORBIDDEN_SPECIFIER, declared)).toBeDefined();
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}/some-entry`, declared)).toBeDefined();
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}/deep/nested`, declared)).toBeDefined();
+  });
+
+  test('does not reject a different package that merely shares the forbidden prefix', () => {
+    // The subpath rule must match on a `/` boundary, not a bare prefix, or a
+    // legitimately-declared neighbour gets caught by it.
+    const declared = new Set([`${FORBIDDEN_SPECIFIER}-adapter`]);
+
+    expect(classifySpecifier(`${FORBIDDEN_SPECIFIER}-adapter`, declared)).toBeUndefined();
+  });
+
+  test('rejects a forbidden SUBPATH dynamically imported from a test file', () => {
+    // The test-file branch compared against the package root only, so a deep
+    // import slipped past it even after classifySpecifier learned the subpath rule.
+    const source = `const deep = await import('${FORBIDDEN_SPECIFIER}/some-entry');`;
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/some-entry`);
+  });
+
+  test('flags a no-substitution template-literal dynamic import in shipped source', () => {
+    // Valid syntax that a quote-only scanner ignores entirely, so an undeclared
+    // package could ship while the guard stayed green.
+    const source = 'const helper = await import(`some-dev-only-package`);';
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('rejects an interpolated template-literal import in shipped source', () => {
+    // Round five skipped these as "unresolvable, so do not guess". That was the
+    // wrong call for shipped code: an unresolvable specifier is precisely how a
+    // forbidden or undeclared package walks past a static guard. Shipped source may
+    // not contain one at all; a test file, which never ships, still may.
+    const source = 'const helper = await import(`some-${name}-package`);';
+
+    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toHaveLength(1);
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+  });
+
+  test('never mistakes prose in a comment for an import', () => {
+    // The regex scanner had to be taught, repeatedly, not to read comments as code.
+    // A parser cannot make the mistake in the first place.
+    const source = [
+      '// re-exported from `fixed-virtual-window.ts` for convenience',
+      "// see import 'some-dev-only-package' in the old implementation",
+      '/* from "@tanstack/virtual-core" originally */',
+    ].join('\n');
+
+    expect(findDependencyViolations(source, 'virtual-list.ts', new Set())).toEqual([]);
+  });
+
+  test('sees through comments sitting between an import token and its specifier', () => {
+    // Valid syntax that a whitespace-only gap pattern misses entirely, which let
+    // shipped source bypass both rules.
+    const withBlockComment =
+      "const virtualizer = await import(/* webpackChunkName: 'x' */ '" +
+      FORBIDDEN_SPECIFIER +
+      "/sub');";
+    const withStaticComment =
+      "import { thing } from /* a comment */ '" + FORBIDDEN_SPECIFIER + "/sub';";
+
+    expect(findDependencyViolations(withBlockComment, 'virtual-list.ts', new Set())).toHaveLength(
+      1,
+    );
+    expect(findDependencyViolations(withStaticComment, 'virtual-list.ts', new Set())).toHaveLength(
+      1,
+    );
+  });
+
+  test('scans the script blocks of a real Svelte component', () => {
+    // Svelte files are not TypeScript, so their <script> bodies are extracted and
+    // parsed individually, with offsets mapped back to the original file.
+    const source = [
+      '<script lang="ts" module>',
+      "  export { thing } from 'some-dev-only-package';",
+      '</script>',
+      '',
+      '<div>markup that is not TypeScript at all</div>',
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+    expect(violations[0]?.lineNumber).toBe(2);
+  });
+
+  test('rejects a nonliteral dynamic import in shipped source', () => {
+    // `await import(packageName)` is unresolvable by any static scanner, so
+    // permitting it would leave an opening wide enough to drive the whole guard
+    // through — both the forbidden package and any undeclared one.
+    const fromVariable = [
+      "const packageName = '@tanstack/virtual-core';",
+      'const virtualizer = await import(packageName);',
+    ].join('\n');
+    const fromTemplate = 'const virtualizer = await import(`@tanstack/${name}`);';
+
+    expect(findDependencyViolations(fromVariable, 'virtual-list.ts', new Set())).toHaveLength(1);
+    expect(findDependencyViolations(fromTemplate, 'virtual-list.ts', new Set())).toHaveLength(1);
+  });
+
+  test('allows a nonliteral dynamic import in a test file', () => {
+    // Nothing in a test file ships, so an unresolvable specifier there cannot
+    // reach a consumer.
+    const source = 'const helper = await import(packageName);';
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+  });
+
+  test('exempts a STATIC devDependency import in a test file', () => {
+    // The exemption is about the file never shipping, not about the import syntax.
+    // Applying it only to dynamic imports meant an ordinary static test import of a
+    // devDependency was reported as missing from production dependencies.
+    const source = "import { render } from '@testing-library/svelte';";
+
+    expect(findDependencyViolations(source, 'virtual-list.test.ts', new Set())).toEqual([]);
+    expect(findDependencyViolations(source, 'measurement-window.spec.ts', new Set())).toEqual([]);
+  });
+
+  test('still bans the forbidden package statically imported from a test file', () => {
+    const source = `import { thing } from '${FORBIDDEN_SPECIFIER}/sub';`;
+    const violations = findDependencyViolations(source, 'virtual-list.test.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(`${FORBIDDEN_SPECIFIER}/sub`);
+  });
+
+  test('flags an import() written in a Svelte TEMPLATE, outside any script block', () => {
+    // Valid Svelte that loads the package for real, but it lives in the markup, so a
+    // scan of extracted <script> bodies never sees it.
+    const source = [
+      '<script lang="ts">',
+      "  import { thing } from './local.ts';",
+      '</script>',
+      '',
+      `{#await import('${FORBIDDEN_SPECIFIER}') then module}`,
+      '  <div>{module.name}</div>',
+      '{/await}',
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.svelte', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('does not report a script-block import twice for a Svelte component', () => {
+    // The template walk covers only the fragment; script bodies belong to the
+    // TypeScript parser. Walking both over the same nodes would double-report.
+    const source = [
+      '<script lang="ts">',
+      `  import { thing } from '${FORBIDDEN_SPECIFIER}';`,
+      '</script>',
+      '',
+      '<div>markup</div>',
+    ].join('\n');
+
+    expect(findDependencyViolations(source, 'virtual-list.svelte', new Set())).toHaveLength(1);
+  });
+
+  test('flags an import type node whose specifier ships in the declaration file', () => {
+    // `export type X = import('pkg').Y` keeps the specifier in the emitted .d.ts, so
+    // a published consumer resolves it exactly like a value import.
+    const source = "export type Core = import('some-dev-only-package').Core;";
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('flags a type-only reference to the forbidden package', () => {
+    const source = `type Virtualizer = import('${FORBIDDEN_SPECIFIER}').Virtualizer;`;
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('flags a CommonJS require of the forbidden package in shipped source', () => {
+    // require() loads a real dependency that a bundler will include, and Bun's types
+    // make it legal TypeScript here, so leaving it unscanned is a side door.
+    const source = `const virtualizer = require('${FORBIDDEN_SPECIFIER}');`;
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+
+  test('flags a CommonJS require of an undeclared package in shipped source', () => {
+    const source = "const helper = require('some-dev-only-package');";
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe('some-dev-only-package');
+  });
+
+  test('still sees imports that follow an angle-bracket type assertion', () => {
+    // Parsed as TSX, `<Foo>bar` is malformed JSX and can swallow everything after it,
+    // so a later import silently disappears from the AST. These files compile as
+    // ordinary TypeScript, and the scanner has to read them the same way.
+    const source = [
+      'const value = <Foo>bar;',
+      `import { thing } from '${FORBIDDEN_SPECIFIER}';`,
+    ].join('\n');
+
+    const violations = findDependencyViolations(source, 'virtual-list.ts', new Set());
+
+    expect(violations).toHaveLength(1);
+    expect(violations[0]?.specifier).toBe(FORBIDDEN_SPECIFIER);
+  });
+});

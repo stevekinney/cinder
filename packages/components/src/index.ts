@@ -1059,7 +1059,10 @@ export type {
   FixedVirtualWindow,
   FixedVirtualWindowItem,
   VirtualListProps,
+  VirtualListRef,
   VirtualListRowContext,
+  VirtualListScrollAlign,
+  VirtualListScrollToIndexOptions,
 } from './components/virtual-list/index.ts';
 
 export { default as VisuallyHidden } from './components/visually-hidden/index.ts';
