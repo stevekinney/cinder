@@ -27,7 +27,7 @@ import type {
 } from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
 import type { ChatStreamEvent } from './stream-event-codec.ts';
-import { decodeChatStreamEvents } from './stream-event-codec.ts';
+import { decodeChatStreamEvents, guardChatStreamEvents } from './stream-event-codec.ts';
 
 /** Request passed to an injected transport for each assistant turn. */
 export type ChatSessionRequest = {
@@ -195,13 +195,22 @@ export function createChatSessionController(
   };
   const decodeTransportResult = async (
     result: ChatSessionTransportResult,
+    onProtocolError: (error: unknown) => void,
   ): Promise<AsyncIterable<ChatStreamEvent>> => {
+    // The abort is handed to the decoder rather than left to the catch below:
+    // a rejection reaches this command only after the producer's own cleanup
+    // has been awaited, so a transport whose cleanup waits on the signal
+    // would deadlock if the signal could not be raised until then.
+    const decodeOptions = { onProtocolError };
     if (result instanceof Response) {
       if (!result.ok || !result.body) throw new Error(await result.text());
-      return decodeChatStreamEvents(result.body);
+      return decodeChatStreamEvents(result.body, decodeOptions);
     }
-    if (result instanceof ReadableStream) return decodeChatStreamEvents(result);
-    return result;
+    if (result instanceof ReadableStream) return decodeChatStreamEvents(result, decodeOptions);
+    // Already-decoded events still get the request-local stream guard, so a
+    // typed transport is held to the same terminal, sequence, and envelope
+    // rules as an NDJSON one.
+    return guardChatStreamEvents(result, decodeOptions);
   };
   const run = async (userMessageId: string, attachments: ChatAttachment[] = []): Promise<void> => {
     assertActive();
@@ -217,6 +226,11 @@ export function createChatSessionController(
         const messageId = started.messageId;
         emit((handlers) => handlers.onStreamBegin(messageId));
         const controller = new AbortController();
+        // A protocol failure aborts the transport at the throw site (see
+        // `decodeTransportResult`), so by the time the rejection arrives the
+        // signal is already aborted. Remembering WHY keeps that from reading
+        // as a user cancellation, which would swallow the error.
+        let protocolFailure = false;
         active = controller;
         let text = '';
         let toolResultSeen = false;
@@ -232,9 +246,18 @@ export function createChatSessionController(
               turn,
               attachments,
             }),
+            () => {
+              // A frame can fail validation after the user has already
+              // stopped: the transport may still deliver a queued malformed
+              // frame. That is a cancellation, not a protocol failure — the
+              // command must still resolve cleanly — so the cause is only
+              // recorded when nothing had aborted this turn yet.
+              if (!controller.signal.aborted) protocolFailure = true;
+              controller.abort();
+            },
           );
           for await (const event of events) {
-            if (controller.signal.aborted) break;
+            if (controller.signal.aborted && !protocolFailure) break;
             if (event.type === 'text') {
               text += event.text;
               emit((handlers) => handlers.onTokenPush(event.text));
@@ -250,7 +273,7 @@ export function createChatSessionController(
               toolOwners.set(event.id, userMessageId);
               toolCalls.add(event.id);
               committed = options.getConversation();
-            } else {
+            } else if (event.type === 'tool_result') {
               toolResultSeen = true;
               toolResults.add(event.callId);
               const requiresApproval =
@@ -266,15 +289,20 @@ export function createChatSessionController(
                 reportError(observerError);
               }
             }
+            // CIN-507 extends the codec's vocabulary (`stream:*`, `tool.*`,
+            // `run.*`) without wiring a reducer for it yet — that lands with
+            // the route that emits these frames (a separate, out-of-scope
+            // issue). Unrecognized-here members fall through as a no-op
+            // rather than crash this loop.
           }
           update(
             text
               ? finalizeStreamingMessage(options.getConversation(), messageId)
               : cancelStreamingMessage(options.getConversation(), messageId),
           );
-          if (controller.signal.aborted) return;
+          if (controller.signal.aborted && !protocolFailure) return;
         } catch (error) {
-          if (controller.signal.aborted) {
+          if (controller.signal.aborted && !protocolFailure) {
             update(
               text
                 ? finalizeStreamingMessage(options.getConversation(), messageId)
@@ -282,6 +310,14 @@ export function createChatSessionController(
             );
             return;
           }
+          // The transport's signal is the only way it learns the command
+          // failed. A stream-guard rejection (malformed frame, non-increasing
+          // sequence, mixed envelope) surfaces here while the transport's
+          // provider or background work may still be running on that signal,
+          // so abort it before rolling back and reporting. A protocol failure
+          // has already aborted at its throw site; this covers every other
+          // way the turn can fail, and aborting twice is a no-op.
+          controller.abort();
           update(
             markMessageDeliveryFailed(cancelStreamingMessage(committed, messageId), userMessageId),
           );

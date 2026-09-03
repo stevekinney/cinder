@@ -19,7 +19,9 @@ export {
   appendUserMessage,
   buildMessage,
   createConversationHistory,
+  isConversationHistory,
   isJSONValue,
+  isTokenUsage,
   isToolResult,
   prependMessages,
 } from 'conversationalist';
