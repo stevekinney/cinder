@@ -43,6 +43,54 @@
     scrollbar-gutter: stable;
   }
 
+  /*
+   * Horizontal mode swaps the scroll axis. `--cinder-virtual-list-height` keeps its
+   * name and drives inline-size here rather than block-size, so a consumer's
+   * existing theme override survives turning `horizontal` on — see the prop's
+   * JSDoc for why the name is reused instead of a second token being introduced.
+   */
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] {
+    block-size: auto;
+    inline-size: var(--cinder-virtual-list-height, 20rem);
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  /*
+   * The spacer carries the scroll extent on the inline axis instead of the block
+   * axis, so the base rule's `min-block-size: 100%` / `inline-size: 100%` pair is
+   * transposed. The inline size itself comes from the element's style attribute,
+   * which the component writes as a logical property.
+   */
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__spacer {
+    min-block-size: 0;
+    min-inline-size: 100%;
+  }
+
+  /*
+   * In flow, unlike the vertical case. A vertical list takes its block-size from
+   * the `height` prop, so an out-of-flow window costs nothing; horizontal
+   * reinterprets that prop as the inline size and leaves block-size `auto`, so an
+   * absolutely positioned window would leave the container with no content of any
+   * height and collapse it to zero. Relative positioning keeps the rows
+   * contributing their height while still shifting the window to the scroll offset.
+   *
+   * `inset-inline-end: auto` is load-bearing: the base rule pins both inline edges
+   * to stretch the window across a vertical list. Left in place, an over-constrained
+   * relative box drops whichever edge is the end one for the writing direction —
+   * which silently means the START edge under RTL, and the window would not move.
+   */
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__window {
+    position: relative;
+    display: flex;
+    inset-inline-end: auto;
+  }
+
+  /* Rows are sized along the inline axis; flex must not shrink them to fit. */
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__row {
+    flex: 0 0 auto;
+  }
+
   .cinder-virtual-list__spacer {
     position: relative;
     min-block-size: 100%;
