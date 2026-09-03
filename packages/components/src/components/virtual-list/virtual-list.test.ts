@@ -1361,11 +1361,12 @@ describe('VirtualList — horizontal', () => {
 
     await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
     const firstRow = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
-    const style = firstRow.getAttribute('style') ?? '';
-    // Assert the PROPERTY, not just the number. \`40px\` alone passed against the
-    // original code, which set a physical \`height\` on every row in both modes.
-    expect(style).toContain('inline-size: 40px');
-    expect(style).not.toContain('block-size');
+    // Read through CSSStyleDeclaration rather than the raw attribute string, whose
+    // whitespace and property order are serialization details that vary by DOM
+    // implementation. Assert the PROPERTY, not just the number: `40px` alone passed
+    // against the original code, which set a physical `height` in both modes.
+    expect(firstRow.style.inlineSize).toBe('40px');
+    expect(firstRow.style.blockSize).toBe('');
   });
 });
 

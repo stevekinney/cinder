@@ -493,6 +493,10 @@
    */
   function readScrollOffset(element: HTMLElement): number {
     if (!horizontal) return Math.max(0, element.scrollTop);
+    // Normalization is the identity under ltr, and resolving the convention costs a
+    // layout-forcing probe. Short-circuit so a left-to-right page never pays for an
+    // answer it would discard.
+    if (writingDirection === 'ltr') return Math.max(0, element.scrollLeft);
     return Math.max(
       0,
       normalizeInlineScrollOffset(
