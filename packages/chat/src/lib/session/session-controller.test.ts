@@ -277,6 +277,127 @@ describe('chat session controller', () => {
     void rejectStream;
   });
 
+  test('holds a typed event iterable to the same stream guard as NDJSON bytes', async () => {
+    const make = (transport: () => Promise<AsyncIterable<ChatStreamEvent>>) => {
+      let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+      return createChatSessionController({
+        getConversation: () => conversation,
+        setConversation: (next) => {
+          conversation = next;
+        },
+        transport,
+      });
+    };
+
+    // A versioned stream that ends without a terminal frame.
+    const unterminated = make(async () =>
+      events([{ type: 'text', text: 'hello', wireVersion: 1, sequence: 0 }]),
+    );
+    await expect(
+      unterminated.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event: stream ended without a terminal frame');
+
+    // A frame after the terminal frame.
+    const afterTerminal = make(async () =>
+      events([
+        { type: 'run.aborted', wireVersion: 1, sequence: 0 },
+        { type: 'text', text: 'late', wireVersion: 1, sequence: 1 },
+      ]),
+    );
+    await expect(
+      afterTerminal.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event: frame arrived after the terminal frame');
+
+    // A bare frame following a versioned one.
+    const mixed = make(async () =>
+      events([
+        { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 },
+        { type: 'text', text: 'bare' },
+      ]),
+    );
+    await expect(mixed.adapter.sendMessage({ role: 'user', content: 'hi' }, [])).rejects.toThrow(
+      'Invalid chat stream event',
+    );
+  });
+
+  test('aborts the transport signal when the typed stream guard rejects', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    let signal: AbortSignal | undefined;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async (request) => {
+        signal = request.signal;
+        return events([
+          { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 },
+          { type: 'text', text: 'bare' },
+        ]);
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event');
+    // A transport whose provider work hangs off `request.signal` would otherwise
+    // keep running after the command has already failed.
+    expect(signal?.aborted).toBe(true);
+  });
+
+  test('aborts the transport before awaiting its cleanup when a frame is invalid', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    let signal: AbortSignal | undefined;
+    let cleanupSawAbort = false;
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async (request) => {
+        signal = request.signal;
+        // A transport whose cleanup waits on the signal — the shape that
+        // deadlocks if the abort cannot be raised until the rejection has
+        // already propagated through this `finally`.
+        return (async function* () {
+          try {
+            yield { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 } as ChatStreamEvent;
+            yield { type: 'text', text: 'bare' } as ChatStreamEvent;
+          } finally {
+            cleanupSawAbort = request.signal.aborted;
+            await new Promise<void>((resolve) => {
+              if (request.signal.aborted) resolve();
+              else request.signal.addEventListener('abort', () => resolve(), { once: true });
+            });
+          }
+        })();
+      },
+    });
+    await expect(
+      controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+    ).rejects.toThrow('Invalid chat stream event');
+    expect(cleanupSawAbort).toBe(true);
+    expect(signal?.aborted).toBe(true);
+  });
+
+  test('a malformed frame arriving after stopGenerating is still a cancellation', async () => {
+    let conversation: ConversationHistory = createConversationHistory({ id: 'typed' });
+    const controller = createChatSessionController({
+      getConversation: () => conversation,
+      setConversation: (next) => {
+        conversation = next;
+      },
+      transport: async () =>
+        (async function* () {
+          yield { type: 'text', text: 'hello', wireVersion: 1, sequence: 0 } as ChatStreamEvent;
+          // The user stops while this queued frame is already in flight; it
+          // fails validation, but the turn was cancelled, not broken.
+          void controller.adapter.stopGenerating?.('user');
+          yield { type: 'text', text: 'bare' } as ChatStreamEvent;
+        })(),
+    });
+    await controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []);
+  });
+
   test('marks the initiating message failed when transport rejects', async () => {
     let conversation: ConversationHistory = createConversationHistory({ id: 'test' });
     const controller = createChatSessionController({
