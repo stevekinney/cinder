@@ -102,6 +102,10 @@ describe('Chat package ownership boundary', () => {
     ]);
   });
 
+  // Editor's guard checks the same thing against the same target (CIN-510). The two
+  // deliberately agree: a guard that checks the CURRENT version cannot see a pending
+  // minor about to exclude itself, and having one of each meant no single peer-range
+  // value satisfied both while a minor was pending.
   test('keeps Chat’s Cinder peer range covering the planned Cinder release', () => {
     const cinderPeerRange = chatManifest.peerDependencies?.['@lostgradient/cinder'];
     expect(

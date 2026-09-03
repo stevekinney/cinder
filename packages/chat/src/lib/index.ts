@@ -28,5 +28,7 @@ export {
   decodeStreamEvents,
   encodeChatStreamEvent,
   encodeStreamEvent,
+  guardChatStreamEvents,
+  type ChatStreamDecodeOptions,
   type ChatStreamEvent,
 } from './session/stream-event-codec.ts';
