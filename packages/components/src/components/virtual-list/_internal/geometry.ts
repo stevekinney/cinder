@@ -107,31 +107,6 @@ export const domWritingDirectionReader: WritingDirectionReader = {
 export type RtlScrollType = 'default' | 'negative' | 'reverse';
 
 /**
- * Converts a raw `element.scrollLeft` into a normalized "distance from the
- * start edge": always `>= 0`, and increasing as the user scrolls away from
- * the start, regardless of which of the three historical RTL `scrollLeft`
- * conventions the current browser implements.
- *
- * Under `ltr` the raw value passes through unchanged — `rtlScrollType` is
- * meaningless there — regardless of which convention was passed. Under
- * `rtl`:
- *
- *   - `'negative'` — **what current browsers do.** `scrollLeft` is 0 at the
- *     start (right) edge and grows NEGATIVE toward the end. Chrome aligned
- *     with Firefox and Safari on this in Chrome 85; it is the CSSOM-View
- *     behaviour. The normalized value is its negation.
- *   - `'default'` — 0 at the start edge, growing POSITIVE toward the end.
- *     Legacy Edge/IE. Already the normalized shape, so it passes through.
- *   - `'reverse'` — `scrollLeft` equals `scrollWidth - clientWidth` at the
- *     start edge and decreases to 0 at the end. Pre-85 Chrome and old
- *     WebKit. The normalized value is that maximum minus the raw value.
- *
- * The names are this module's own and do NOT rank the conventions: `'default'`
- * is a legacy behaviour despite its name, and callers must not treat it as a
- * safe default. Detect the convention rather than assuming one — pinning
- * `'default'` would invert the sign in every browser shipping today.
- */
-/**
  * Classifies which RTL `scrollLeft` convention a browser implements, from two
  * probe readings taken on a throwaway right-to-left scroll container.
  *
@@ -156,6 +131,31 @@ export function classifyRtlScrollType(
   return scrollLeftAfterWritingNegativeOne < 0 ? 'negative' : 'default';
 }
 
+/**
+ * Converts a raw `element.scrollLeft` into a normalized "distance from the
+ * start edge": always `>= 0`, and increasing as the user scrolls away from
+ * the start, regardless of which of the three historical RTL `scrollLeft`
+ * conventions the current browser implements.
+ *
+ * Under `ltr` the raw value passes through unchanged — `rtlScrollType` is
+ * meaningless there — regardless of which convention was passed. Under
+ * `rtl`:
+ *
+ *   - `'negative'` — **what current browsers do.** `scrollLeft` is 0 at the
+ *     start (right) edge and grows NEGATIVE toward the end. Chrome aligned
+ *     with Firefox and Safari on this in Chrome 85; it is the CSSOM-View
+ *     behaviour. The normalized value is its negation.
+ *   - `'default'` — 0 at the start edge, growing POSITIVE toward the end.
+ *     Legacy Edge/IE. Already the normalized shape, so it passes through.
+ *   - `'reverse'` — `scrollLeft` equals `scrollWidth - clientWidth` at the
+ *     start edge and decreases to 0 at the end. Pre-85 Chrome and old
+ *     WebKit. The normalized value is that maximum minus the raw value.
+ *
+ * The names are this module's own and do NOT rank the conventions: `'default'`
+ * is a legacy behaviour despite its name, and callers must not treat it as a
+ * safe default. Detect the convention rather than assuming one — pinning
+ * `'default'` would invert the sign in every browser shipping today.
+ */
 export function normalizeInlineScrollOffset(
   rawScrollLeft: number,
   scrollWidth: number,

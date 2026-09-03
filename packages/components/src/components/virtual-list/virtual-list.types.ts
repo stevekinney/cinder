@@ -48,15 +48,17 @@ export type VirtualListProps<Item = unknown> = Omit<
   /** Items in full logical order. Only the visible window is mounted. */
   items: readonly Item[];
   /**
-   * Row height in pixels. By default every row is assumed to be exactly this
-   * tall. When `dynamicSize` is true this becomes the initial estimate for rows
-   * that have not been measured yet.
+   * Each item's extent in pixels along the axis being scrolled: its height by
+   * default, or its width under `horizontal`. By default every row is assumed to
+   * be exactly this size. When `dynamicSize` is true this becomes the initial
+   * estimate for rows that have not been measured yet.
    */
   itemHeight: number;
   /**
    * Measure each rendered row with `ResizeObserver` and cache the result,
-   * instead of assuming every row is exactly `itemHeight` tall. Use this when
-   * rows wrap, contain images, or otherwise vary in height.
+   * instead of assuming every row is exactly `itemHeight` along the scrolled
+   * axis. Use this when rows wrap, contain images, or otherwise vary in size.
+   * Composes with `horizontal`, where each row is measured by its width.
    *
    * Defaults to `false`. While false, no row is measured, no size is cached,
    * and no scroll correction runs — the fixed-height path stays the fast path.
@@ -87,7 +89,8 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   overscan?: number;
   /**
-   * CSS block-size for the native scroll container.
+   * CSS extent of the native scroll container across the axis it scrolls: its
+   * block-size by default, or its inline-size under `horizontal`.
    * Defaults to `"20rem"`.
    */
   height?: string;
