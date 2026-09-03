@@ -65,6 +65,23 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   dynamicSize?: boolean;
   /**
+   * Scrolls and lays rows out along the inline axis instead of the block axis.
+   *
+   * `itemHeight` and `height` are REINTERPRETED rather than renamed: `itemHeight`
+   * becomes each item's width in pixels along the main axis, and `height` becomes
+   * the container's inline-size. The `--cinder-virtual-list-height` custom property
+   * keeps its name too and switches to driving `inline-size`, so an existing theme
+   * override keeps working when this is turned on.
+   *
+   * Right-to-left is handled: the writing direction is resolved from the container's
+   * computed style at mount, and the scroll offset is read from the start (right)
+   * edge in that case.
+   *
+   * Defaults to false.
+   */
+  horizontal?: boolean;
+
+  /**
    * Extra rows rendered before and after the visible window.
    * Defaults to 5.
    */

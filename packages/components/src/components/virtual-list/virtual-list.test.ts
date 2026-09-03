@@ -441,13 +441,13 @@ describe('VirtualList — dynamicSize', () => {
 
     await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
     const spacer = container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
-    expect(spacer.style.height).toBe('2000px');
+    expect(spacer.style.blockSize).toBe('2000px');
 
     // Row 0 is really 60px tall, not the 20px estimate: +40px of total size.
     reportRowSizes(new Map([[0, 60]]));
     await tick();
 
-    expect(spacer.style.height).toBe('2040px');
+    expect(spacer.style.blockSize).toBe('2040px');
   });
 
   test('corrects the scroll offset against pre-mutation offsets when a row above the anchor grows', async () => {
@@ -733,13 +733,13 @@ describe('VirtualList — dynamicSize', () => {
 
     await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
     const spacer = container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
-    expect(spacer.style.height).toBe('2000px');
+    expect(spacer.style.blockSize).toBe('2000px');
 
     reportRowSizes(new Map([[0, 0]]));
     await tick();
 
     // Row 0 contributed 20px of estimate and now contributes 0.
-    expect(spacer.style.height).toBe('1980px');
+    expect(spacer.style.blockSize).toBe('1980px');
   });
 
   test('drops cached measurements for keys that leave the list', async () => {
@@ -770,7 +770,7 @@ describe('VirtualList — dynamicSize', () => {
 
     const spacer = view.container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
     // 40 rows: 39 estimated at 20 plus one measured at 60.
-    expect(spacer.style.height).toBe('840px');
+    expect(spacer.style.blockSize).toBe('840px');
 
     // Replace every item with a fresh key set. The old measurement must not survive.
     await view.rerender({
@@ -784,7 +784,7 @@ describe('VirtualList — dynamicSize', () => {
     });
     await tick();
 
-    expect(spacer.style.height).toBe('800px');
+    expect(spacer.style.blockSize).toBe('800px');
   });
 
   test('does not yank a scrolled-up reader to the end when dynamicSize flips on during an append', async () => {
@@ -950,16 +950,16 @@ describe('VirtualList — dynamicSize', () => {
 
     reportRowSizes(new Map([[0, 60]]));
     await tick();
-    expect(spacer.style.height).toBe('2040px');
+    expect(spacer.style.blockSize).toBe('2040px');
 
     await view.rerender({ ...base, dynamicSize: false, row: rowSnippet() });
     await tick();
-    expect(spacer.style.height).toBe('2000px');
+    expect(spacer.style.blockSize).toBe('2000px');
 
     // Back on: the stale 60px measurement must be gone, not reused.
     await view.rerender({ ...base, dynamicSize: true, row: rowSnippet() });
     await tick();
-    expect(spacer.style.height).toBe('2000px');
+    expect(spacer.style.blockSize).toBe('2000px');
   });
 
   test('keeps the pin for an at-bottom reader when dynamicSize flips on during an append', async () => {
@@ -1020,7 +1020,7 @@ describe('VirtualList — dynamicSize', () => {
     );
 
     const measureIndex = pinBody.indexOf('syncViewport(element)');
-    const writeIndex = pinBody.indexOf('element.scrollTop = maxScrollOffset');
+    const writeIndex = pinBody.indexOf('writeScrollOffset(');
 
     expect(measureIndex).toBeGreaterThan(-1);
     expect(writeIndex).toBeGreaterThan(-1);
@@ -1286,5 +1286,146 @@ describe('VirtualList — dynamicSize', () => {
     const anchorStart = 10 * 40;
     expect(list.scrollTop).toBeGreaterThanOrEqual(anchorStart);
     expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 400);
+  });
+});
+
+describe('VirtualList — horizontal', () => {
+  test('marks the root with the horizontal orientation attribute', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 40,
+      height: '200px',
+      horizontal: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    expect(list.getAttribute('data-cinder-orientation')).toBe('horizontal');
+  });
+
+  test('leaves the orientation attribute off in the default vertical mode', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 40,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    expect(list.hasAttribute('data-cinder-orientation')).toBe(false);
+  });
+
+  test('drives the window from scrollLeft rather than scrollTop', async () => {
+    // The axis adapter is the whole point: under `horizontal` the offset comes from
+    // the inline axis, so a scrollTop change must not move the window and a
+    // scrollLeft change must.
+    const { container } = render(VirtualList, {
+      items: makeItems(1000),
+      itemHeight: 20,
+      height: '200px',
+      horizontal: true,
+      overscan: 2,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    list.scrollTop = 2_000;
+    await fireEvent.scroll(list);
+    expect(renderedRows(container)[0]?.dataset['index']).toBe('0');
+
+    list.scrollLeft = 2_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(renderedRows(container).some((row) => row.dataset['index'] === '100')).toBe(true),
+    );
+  });
+
+  test('reinterprets itemHeight as the inline size of each row', async () => {
+    // `itemHeight` is reinterpreted rather than renamed, per the documented naming
+    // decision, so under `horizontal` it must size rows along the inline axis.
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 40,
+      height: '200px',
+      horizontal: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+    const style = firstRow.getAttribute('style') ?? '';
+    // Assert the PROPERTY, not just the number. \`40px\` alone passed against the
+    // original code, which set a physical \`height\` on every row in both modes.
+    expect(style).toContain('inline-size: 40px');
+    expect(style).not.toContain('block-size');
+  });
+});
+
+describe('VirtualList — horizontal with dynamicSize', () => {
+  test('leaves the row unsized on the inline axis so it can be measured', async () => {
+    // Under dynamicSize the row's main-axis size comes from the ResizeObserver, not
+    // from the component. Writing an inline-size here would pin every column to the
+    // estimate and the measurement would only ever confirm the value it was given.
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 40,
+      height: '200px',
+      horizontal: true,
+      dynamicSize: true,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+    expect(firstRow.getAttribute('style')).toBeNull();
+  });
+
+  test('sizes the spacer along the inline axis, not the block axis', async () => {
+    // The spacer is what creates the scrollable extent. On the wrong axis the
+    // container never overflows and the list cannot be scrolled at all.
+    const { container } = render(VirtualList, {
+      items: makeItems(50),
+      itemHeight: 40,
+      height: '200px',
+      horizontal: true,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const spacer = container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
+    expect(spacer.style.inlineSize).toBe('2000px');
+    expect(spacer.style.blockSize).toBe('');
+  });
+
+  test('offsets the window along the inline axis', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 40,
+      height: '200px',
+      horizontal: true,
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Events',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollLeft = 400;
+    await fireEvent.scroll(list);
+
+    const window_ = container.querySelector('.cinder-virtual-list__window') as HTMLElement;
+    await waitFor(() => expect(window_.style.insetInlineStart).toBe('400px'));
+    expect(window_.style.insetBlockStart).toBe('');
   });
 });
