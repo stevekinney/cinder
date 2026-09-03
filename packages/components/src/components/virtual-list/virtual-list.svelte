@@ -71,6 +71,10 @@
     row,
     role = 'list',
     onscroll: onScroll,
+    onwheel: onWheel,
+    onpointerdown: onPointerDown,
+    ontouchstart: onTouchStart,
+    onkeydown: onKeyDown,
     class: className,
     ref = $bindable<VirtualListRef | undefined>(),
     ...rest
@@ -78,6 +82,18 @@
 
   const SCROLL_TO_INDEX_MAX_ATTEMPTS = 3;
   const SCROLL_TO_INDEX_SETTLED_EPSILON = 1;
+  /** Keys that scroll a native container. A letter keypress is not a viewport takeover. */
+  const SCROLLING_KEYS = new Set([
+    'ArrowUp',
+    'ArrowDown',
+    'ArrowLeft',
+    'ArrowRight',
+    'PageUp',
+    'PageDown',
+    'Home',
+    'End',
+    ' ',
+  ]);
   /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
   const SCROLL_SETTLE_MAX_FRAMES = 30;
 
@@ -103,7 +119,6 @@
   // $state, not a plain let: arming the pin must itself re-run the re-pin effect.
   let isPinnedToBottom = $state(false);
   let scrollToIndexGeneration = 0;
-  let lastProgrammaticScrollTarget: number | null = null;
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
@@ -348,10 +363,20 @@
       anchor = { index, offsetWithinRow: liveScrollOffset - (previousOffsets[index] ?? 0) };
     }
 
-    let target =
-      anchor === null
-        ? null
-        : Math.max(0, (currentOffsets[anchor.index] ?? 0) + anchor.offsetWithinRow);
+    let target: number | null = null;
+    if (anchor !== null) {
+      const anchorStart = currentOffsets[anchor.index] ?? 0;
+      // Clamp to the row as it exists in the REBUILT table. The reader may have been
+      // deep inside a measured row that the rebuild replaced with a small estimate;
+      // carrying the raw offset across would land many rows past the anchor, and the
+      // anchor row would then unmount and never be remeasured to correct it.
+      const anchorSize = Math.max(
+        0,
+        (currentOffsets[anchor.index + 1] ?? anchorStart) - anchorStart,
+      );
+      const offsetWithinRow = Math.min(Math.max(0, anchor.offsetWithinRow), anchorSize);
+      target = Math.max(0, anchorStart + offsetWithinRow);
+    }
 
     // Measurement corrections apply ONLY when no re-anchor ran. A re-anchor is
     // computed from the rebuilt table, which already contains this flush's
@@ -480,25 +505,50 @@
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
-    const nextOffset = Math.max(0, element.scrollTop);
-
-    // A scroll this component did not perform means the user has taken over —
-    // wheel, drag, touch, keyboard. An in-flight settle loop would otherwise read
-    // their position as an inaccurate programmatic result and scroll back, fighting
-    // them for up to three passes. Retiring the generation abandons that loop.
-    // Compared against the last programmatic write rather than timed, so a delayed
-    // scroll event is still recognised as ours.
-    if (
-      lastProgrammaticScrollTarget === null ||
-      Math.abs(nextOffset - lastProgrammaticScrollTarget) > SCROLL_TO_INDEX_SETTLED_EPSILON
-    ) {
-      scrollToIndexGeneration += 1;
-      lastProgrammaticScrollTarget = null;
-    }
-
-    scrollOffset = nextOffset;
+    scrollOffset = Math.max(0, element.scrollTop);
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom) isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
+  }
+
+  /**
+   * Abandons any in-flight `scrollToIndex` settle loop, because the user has taken
+   * over the viewport.
+   *
+   * Keyed on INPUT events rather than on scroll offsets. Inferring takeover by
+   * comparing the offset against the last programmatic target cannot work: a smooth
+   * scroll emits intermediate events whose offsets differ from the final one by
+   * construction, so the first animation step reads as interruption and cancels the
+   * settle pass that smooth scrolling most needs. A wheel, pointer, touch, or key
+   * event is unambiguous — nothing but the user produces one.
+   */
+  function retireSettleLoop(): void {
+    scrollToIndexGeneration += 1;
+  }
+
+  function handleWheel(event: WheelEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
+    retireSettleLoop();
+    if (typeof onWheel === 'function') onWheel(event);
+  }
+
+  function handlePointerDown(
+    event: PointerEvent & { currentTarget: EventTarget & HTMLDivElement },
+  ): void {
+    retireSettleLoop();
+    if (typeof onPointerDown === 'function') onPointerDown(event);
+  }
+
+  function handleTouchStart(
+    event: TouchEvent & { currentTarget: EventTarget & HTMLDivElement },
+  ): void {
+    retireSettleLoop();
+    if (typeof onTouchStart === 'function') onTouchStart(event);
+  }
+
+  function handleKeyDown(
+    event: KeyboardEvent & { currentTarget: EventTarget & HTMLDivElement },
+  ): void {
+    if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
+    if (typeof onKeyDown === 'function') onKeyDown(event);
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -659,7 +709,6 @@
         align,
       });
 
-      lastProgrammaticScrollTarget = target;
       if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
         element.scrollTo({ top: target, behavior: 'smooth' });
       } else {
@@ -710,6 +759,10 @@
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
   style:--cinder-virtual-list-height={height}
   onscroll={handleScroll}
+  onwheel={handleWheel}
+  onpointerdown={handlePointerDown}
+  ontouchstart={handleTouchStart}
+  onkeydown={handleKeyDown}
 >
   <div
     class="cinder-virtual-list__spacer"

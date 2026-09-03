@@ -1187,31 +1187,104 @@ describe('VirtualList — dynamicSize', () => {
     expect(list.scrollTop).toBe(820);
   });
 
-  test('retires the settle generation on a scroll it did not perform', async () => {
-    // Source-shape, deliberately. A behavioural test cannot reach this: in happy-dom
-    // the settle loop converges on its first attempt — the write lands exactly, the
-    // position stops moving, and the loop returns — so it is never in flight when a
-    // user scroll arrives. The race needs real smooth scrolling or a target that
-    // keeps moving as rows measure, neither of which this harness has.
-    //
-    // What is pinned here is the mechanism: the handler compares against the last
-    // programmatic target rather than a timer, so a delayed scroll event is still
-    // recognised as the component's own, and anything else retires the generation
-    // so an in-flight loop stops fighting the user. Real behaviour is browser-verified.
+  test('retires the settle generation from input events, not from scroll offsets', async () => {
+    // Source-shape for the mechanism, because the harness cannot hold a settle loop
+    // in flight: it converges on its first attempt, so a user event never arrives
+    // while one is running. What IS pinned here is that takeover is detected from
+    // INPUT rather than inferred from offsets — the previous offset-comparison
+    // version classified a smooth scroll's own intermediate events as interruption
+    // and cancelled the settle pass that smooth scrolling exists to need.
     const source = await Bun.file(
       new URL('./virtual-list.svelte', import.meta.url).pathname,
     ).text();
 
-    const handlerStart = source.indexOf('function handleScroll(');
-    const handlerBody = source.slice(
-      handlerStart,
-      source.indexOf('function maxScrollOffset', handlerStart),
+    // Scrolling is no longer where takeover is decided.
+    const scrollHandler = source.slice(
+      source.indexOf('function handleScroll('),
+      source.indexOf('function retireSettleLoop('),
     );
+    expect(scrollHandler).not.toContain('scrollToIndexGeneration');
 
-    expect(handlerBody).toContain('lastProgrammaticScrollTarget');
-    expect(handlerBody).toContain('scrollToIndexGeneration += 1');
-    // And every programmatic write must record its target, or the comparison above
-    // treats the component's own scroll as user input and cancels itself.
-    expect(source).toContain('lastProgrammaticScrollTarget = target;');
+    // Input events are.
+    expect(source).toContain('function retireSettleLoop()');
+    for (const handler of [
+      'function handleWheel(',
+      'function handlePointerDown(',
+      'function handleTouchStart(',
+      'function handleKeyDown(',
+    ]) {
+      expect(source).toContain(handler);
+    }
+    // A letter keypress is not a viewport takeover; only scrolling keys are.
+    expect(source).toContain('SCROLLING_KEYS.has(event.key)');
+  });
+
+  test('still forwards consumer wheel, pointer, touch, and key handlers', async () => {
+    // Four handlers were added to the root to detect takeover. Any of them
+    // clobbering a consumer's own handler would be a silent regression, so this is
+    // behavioural rather than structural.
+    const calls: string[] = [];
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Events',
+      onwheel: () => calls.push('wheel'),
+      onpointerdown: () => calls.push('pointerdown'),
+      ontouchstart: () => calls.push('touchstart'),
+      onkeydown: () => calls.push('keydown'),
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    await fireEvent.wheel(list, { deltaY: 100 });
+    await fireEvent.pointerDown(list);
+    await fireEvent.touchStart(list, { touches: [] });
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+
+    expect(calls).toEqual(['wheel', 'pointerdown', 'touchstart', 'keydown']);
+  });
+
+  test('clamps the re-anchor offset to the rebuilt anchor row', async () => {
+    // A reader deep inside a measured tall row would, across a rebuild that replaces
+    // it with a small estimate, be placed many rows past the anchor — which then
+    // unmounts and can never be remeasured to correct the position.
+    installFakeResizeObserver();
+    const base = {
+      items: makeItems(200),
+      height: '200px',
+      dynamicSize: true,
+      'aria-label': 'Events',
+    };
+    const view = render(VirtualList, { ...base, itemHeight: 20, row: rowSnippet() });
+
+    const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 200;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Row 10 is mounted and measures 400px, far taller than the estimate.
+    reportRowSizes(new Map([[10, 400]]));
+    await tick();
+
+    // Sit deep inside that row: it now spans [200, 600).
+    list.scrollTop = 560;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // An estimate change rebuilds row 10 back down to 40px.
+    await view.rerender({ ...base, itemHeight: 40, row: rowSnippet() });
+    await tick();
+    await tick();
+
+    // Row 10 starts at 400 in the rebuilt table and is 400px tall (its measurement
+    // survives an estimate change), so a 360px intra-row offset still fits. What
+    // matters is that the reader stays within the anchor row rather than being
+    // carried past it.
+    const anchorStart = 10 * 40;
+    expect(list.scrollTop).toBeGreaterThanOrEqual(anchorStart);
+    expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 400);
   });
 });
