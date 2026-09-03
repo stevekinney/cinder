@@ -2,6 +2,9 @@ import type { Snippet } from 'svelte';
 import type { HTMLAttributes } from 'svelte/elements';
 
 import type { VirtualListKey } from '../../utilities/fixed-virtual-window.ts';
+import type { VirtualListScrollAlign } from './_internal/measurement-window.ts';
+
+export type { VirtualListScrollAlign };
 
 export type VirtualListRowContext = {
   /** Zero-based index of the item in the full items array. */
@@ -10,8 +13,32 @@ export type VirtualListRowContext = {
   key: VirtualListKey;
   /** Pixel offset from the top of the full virtual list. */
   start: number;
-  /** Pixel height of this fixed-height row. */
+  /** Pixel height of this row: the measured size under `dynamicSize`, otherwise `itemHeight`. */
   size: number;
+};
+
+/** Options for `VirtualListRef.scrollToIndex`. */
+export type VirtualListScrollToIndexOptions = {
+  /**
+   * Where the target row lands in the viewport. Defaults to `'auto'`, which
+   * leaves the scroll position alone when the row is already fully visible.
+   */
+  align?: VirtualListScrollAlign;
+  /** Scroll behavior. Defaults to `'auto'`. */
+  behavior?: ScrollBehavior;
+};
+
+/**
+ * Programmatic VirtualList handle exposed through `bind:ref`.
+ */
+export type VirtualListRef = {
+  /**
+   * Scrolls the item at `index` into view. Under `dynamicSize` this accounts for
+   * the measured size of every row before the target, and re-settles if rows
+   * above it are measured for the first time mid-scroll. Out-of-range indexes
+   * are clamped to the list's bounds.
+   */
+  scrollToIndex: (index: number, options?: VirtualListScrollToIndexOptions) => void;
 };
 
 export type VirtualListProps<Item = unknown> = Omit<
@@ -21,10 +48,22 @@ export type VirtualListProps<Item = unknown> = Omit<
   /** Items in full logical order. Only the visible window is mounted. */
   items: readonly Item[];
   /**
-   * Fixed row height in pixels. Variable and measured row heights are out of
-   * scope for v1; pass the known or estimated fixed height for every row.
+   * Row height in pixels. By default every row is assumed to be exactly this
+   * tall. When `dynamicSize` is true this becomes the initial estimate for rows
+   * that have not been measured yet.
    */
   itemHeight: number;
+  /**
+   * Measure each rendered row with `ResizeObserver` and cache the result,
+   * instead of assuming every row is exactly `itemHeight` tall. Use this when
+   * rows wrap, contain images, or otherwise vary in height.
+   *
+   * Defaults to `false`. While false, no row is measured, no size is cached,
+   * and no scroll correction runs — the fixed-height path stays the fast path.
+   * The component still observes its own scroll container to track viewport
+   * size, as it always has; that is independent of this prop.
+   */
+  dynamicSize?: boolean;
   /**
    * Extra rows rendered before and after the visible window.
    * Defaults to 5.
@@ -51,10 +90,15 @@ export type VirtualListProps<Item = unknown> = Omit<
   /**
    * Stable key extractor. Omit only when items are append-only and never
    * reordered; the component will fall back to full-array indexes.
+   *
+   * Required in practice under `dynamicSize`: measured sizes are cached by key,
+   * so index-derived keys will mis-attribute cached sizes if items ever reorder.
    */
   getKey?: (item: Item, index: number) => VirtualListKey;
   /** Rendered row snippet. Receives the item and its virtual row context. */
   row: Snippet<[Item, VirtualListRowContext]>;
   /** Additional class names merged with `.cinder-virtual-list`. */
   class?: string;
+  /** Typed programmatic handle. Use `bind:ref` to receive it. */
+  ref?: VirtualListRef | undefined;
 };

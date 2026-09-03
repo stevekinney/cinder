@@ -237,6 +237,18 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['unit-tests', 'main-green'],
     reason: 'Member of lint:invariants (invoked with `-- --strict`) — same layer set.',
   },
+  'check:virtual-list-dependency-free': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'Member of lint:invariants — same layer set as its siblings. CIN-204: keeps ' +
+      'virtual-list/** and fixed-virtual-window.ts free of @tanstack/virtual-core and of any ' +
+      'undeclared bare import. The constraint is a deliberate architectural boundary (virtual-list ' +
+      'hand-rolls a small offset engine while tree/data-grid wrap @tanstack/virtual-core, which is ' +
+      'already a declared dependency of this package and therefore importable without any other ' +
+      'gate objecting), so nothing but a scoped scan can enforce it — oxlint has no per-glob ' +
+      'no-restricted-imports in this config. _internal/dependency-free.test.ts asserts the same ' +
+      'invariant independently so a local bun test catches a violation too.',
+  },
   'check:component-variable-registry': {
     layers: ['unit-tests', 'main-green'],
     reason:
