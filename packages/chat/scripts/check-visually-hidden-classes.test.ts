@@ -1308,3 +1308,63 @@ describe('scanSource — thirteenth-round review findings', () => {
     expect(scanSource('<div class="&#1114112; sr-only">x</div>', 'svelte')).toHaveLength(1);
   });
 });
+
+describe('scanSource — fourteenth-round review findings', () => {
+  test('a nested functional selector inside `@supports selector()` styles nothing', () => {
+    expect(
+      scanSource('@supports selector(:where(.sr-only)) { .safe { color: red; } }', 'css'),
+    ).toHaveLength(0);
+    expect(
+      scanSource('@supports selector(:is(.a, .sr-only)) { .safe { color: red; } }', 'css'),
+    ).toHaveLength(0);
+    // A functional pseudo-class outside a feature query still opens a rule.
+    expect(scanSource(':where(.sr-only) { color: red; }', 'css')).toHaveLength(1);
+  });
+
+  test('a class write is recognized in static bracket notation', () => {
+    expect(scanSource("node['className'] = 'state(active) sr-only';", 'script')).toHaveLength(1);
+    expect(scanSource("node.classList['value'] = 'state(active) sr-only';", 'script')).toHaveLength(
+      1,
+    );
+    expect(scanSource("node['title'] = 'state(active) sr-only';", 'script')).toHaveLength(0);
+  });
+
+  test('taking the class off an element is not a usage site', () => {
+    expect(scanSource("node.classList.remove('sr-only');", 'script')).toHaveLength(0);
+    expect(
+      scanSource("node.classList.replace('sr-only', 'cinder-sr-only');", 'script'),
+    ).toHaveLength(0);
+    expect(scanSource("node.classList.toggle('sr-only', false);", 'script')).toHaveLength(0);
+    // Adding it, or toggling it on, still is.
+    expect(scanSource("node.classList.add('sr-only');", 'script')).toHaveLength(1);
+    expect(scanSource("node.classList.toggle('sr-only');", 'script')).toHaveLength(1);
+  });
+
+  test('`svelte:element` carries HTML attributes, not component props', () => {
+    expect(scanSource('<svelte:element this="div" CLASS="sr-only" />', 'svelte')).toHaveLength(1);
+    expect(scanSource('<svelte:component this={Widget} Class="sr-only" />', 'svelte')).toHaveLength(
+      0,
+    );
+  });
+
+  test('a literal handed to an HTML sink is read as markup', () => {
+    expect(scanSource(`node.innerHTML = '<span class="sr-only">x</span>';`, 'script')).toHaveLength(
+      1,
+    );
+    expect(
+      scanSource(
+        `node.insertAdjacentHTML('beforeend', '<span class="sr-only">x</span>');`,
+        'script',
+      ),
+    ).toHaveLength(1);
+    // A markup-shaped literal that is not injected stays an example.
+    expect(scanSource(`const example = '<span class="sr-only">x</span>';`, 'script')).toHaveLength(
+      0,
+    );
+  });
+
+  test('a JSX className on an HTML element is a class', () => {
+    expect(scanSource('<div className="foo+bar sr-only" />')).toHaveLength(1);
+    expect(scanSource('<Widget className="sr-only" />')).toHaveLength(0);
+  });
+});

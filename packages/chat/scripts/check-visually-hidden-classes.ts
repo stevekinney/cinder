@@ -897,8 +897,15 @@ function isInsideSupportsSelector(source: string, matchEnd: number): boolean {
     const character = source[index];
     if (character === ')') depth++;
     else if (character === '(') {
-      if (depth === 0) return /@supports[\s\S]*\bselector\s*$/.test(source.slice(0, index));
-      depth--;
+      if (depth > 0) {
+        depth--;
+        continue;
+      }
+      // An enclosing paren that is not `selector(` is a nested functional
+      // selector — `:where(`, `:is(`, `:not(` — so the walk continues
+      // outward rather than concluding here:
+      // `@supports selector(:where(.sr-only))` is still a condition.
+      if (/@supports[\s\S]*\bselector\s*$/.test(source.slice(0, index))) return true;
     } else if (character === '{' || character === '}' || character === ';') return false;
   }
   return false;
@@ -910,6 +917,9 @@ function isInsideSupportsSelector(source: string, matchEnd: number): boolean {
  * class the lowercase spelling would.
  */
 function isClassAttributeName(name: string, tagName: string): boolean {
+  // JSX spells it `className`, and on an HTML element that IS the class
+  // attribute. On a component it is an ordinary prop, like `class` is.
+  if (name === 'className') return !isComponentTagName(tagName);
   // Attribute names are case-insensitive on an HTML element, so
   // `<div CLASS="sr-only">` carries the class. A Svelte component's props are
   // case-SENSITIVE identifiers, so `<Widget Class="sr-only" />` is a prop
@@ -920,6 +930,11 @@ function isClassAttributeName(name: string, tagName: string): boolean {
 
 /** Whether a tag name names a Svelte component rather than an HTML element. */
 function isComponentTagName(tagName: string): boolean {
+  // `<svelte:element this="div">` renders the HTML element it names, so its
+  // attributes follow HTML's case-insensitive rules like any other element's.
+  // Every other `svelte:` tag, a capitalized tag, and a dotted namespace are
+  // components, whose props are case-sensitive identifiers.
+  if (tagName === 'svelte:element') return false;
   return /^[A-Z]/.test(tagName) || tagName.includes('.') || tagName.includes(':');
 }
 
@@ -989,11 +1004,53 @@ export function isModuleSpecifier(prefix: string): boolean {
  */
 export function isClassWriteArgument(prefix: string): boolean {
   return (
-    /(?:^|[^\w$])classList\s*\.\s*(?:add|remove|toggle|replace)\s*\(\s*(?:["'`][^"'`]*["'`]\s*,\s*)*$/.test(
+    // `classList.add('a', 'b')` — every argument is applied. `remove` and the
+    // first argument of `replace` take the class OFF, and `toggle(x, false)`
+    // does too, so those are handled by `isClassRemovalArgument` instead.
+    /(?:^|[^\w$])classList\s*\.\s*(?:add|toggle)\s*\(\s*(?:["'`][^"'`]*["'`]\s*,\s*)*$/.test(
       prefix,
     ) ||
-    /(?:^|[^\w$])(?:class(?:Name)?|classList\s*\.\s*value)\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])classList\s*\.\s*replace\s*\(\s*["'`][^"'`]*["'`]\s*,\s*$/.test(prefix) ||
+    // The assignment targets, in dot or static bracket form: `node.className`,
+    // `node['className']`, `node.classList.value`, `node.classList['value']`.
+    /(?:^|[^\w$])class(?:Name)?\s*(?:\+?=)\s*$/.test(prefix) ||
+    // The bracket form follows the object directly (`node['className']`), so
+    // no separator precedes it.
+    /\[\s*["'`]class(?:Name)?["'`]\s*\]\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])classList\s*(?:\.\s*value|\[\s*["'`]value["'`]\s*\])\s*(?:\+?=)\s*$/.test(
+      prefix,
+    ) ||
     /(?:^|[^\w$])setAttribute\s*\(\s*["'`]class["'`]\s*,\s*$/i.test(prefix)
+  );
+}
+
+/**
+ * Whether the text before a literal makes it HTML handed to a DOM sink —
+ * `innerHTML`/`outerHTML` assignment, `insertAdjacentHTML`'s second argument,
+ * or `document.write`. What lands there is parsed as markup, so a `class`
+ * attribute inside it applies exactly like one written inline.
+ */
+export function isHtmlSinkArgument(prefix: string): boolean {
+  return (
+    /(?:^|[^\w$])(?:inner|outer)HTML\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])\[\s*["'`](?:inner|outer)HTML["'`]\s*\]\s*(?:\+?=)\s*$/.test(prefix) ||
+    /(?:^|[^\w$])insertAdjacentHTML\s*\(\s*["'`][^"'`]*["'`]\s*,\s*$/.test(prefix) ||
+    /(?:^|[^\w$])document\s*\.\s*write(?:ln)?\s*\(\s*$/.test(prefix)
+  );
+}
+
+/**
+ * Whether the literal takes the class OFF an element rather than applying it:
+ * `classList.remove('sr-only')`, the first argument of
+ * `classList.replace('sr-only', …)`, and `classList.toggle('sr-only', false)`.
+ * Cleaning up a legacy class is not a usage site.
+ */
+export function isClassRemovalArgument(prefix: string, suffix = ''): boolean {
+  if (/(?:^|[^\w$])classList\s*\.\s*remove\s*\(\s*(?:["'`][^"'`]*["'`]\s*,\s*)*$/.test(prefix))
+    return true;
+  if (/(?:^|[^\w$])classList\s*\.\s*replace\s*\(\s*$/.test(prefix)) return true;
+  return (
+    /(?:^|[^\w$])classList\s*\.\s*toggle\s*\(\s*$/.test(prefix) && /^\s*,\s*false\s*\)/.test(suffix)
   );
 }
 
@@ -1982,10 +2039,21 @@ export function scanSource(
       index = end;
       if (end <= start + 1 || literalSource[end - 1] !== quote) continue;
       const literalPrefix = literalSource.slice(0, start);
-      if (isDomReadArgument(literalPrefix, literalSource.slice(end))) continue;
+      const literalSuffix = literalSource.slice(end);
+      if (isDomReadArgument(literalPrefix, literalSuffix)) continue;
       if (isModuleSpecifier(literalPrefix)) continue;
+      if (isClassRemovalArgument(literalPrefix, literalSuffix)) continue;
       const content = literalSource.slice(start + 1, end - 1);
       const contentOffset = offset + start + 1;
+      // A literal handed to an HTML sink becomes markup, so it is read as
+      // markup: `node.innerHTML = '<span class="sr-only">'` applies the class
+      // exactly as the same tag written inline would, and its shape is
+      // markup, which the class-list filter below deliberately rejects.
+      if (isHtmlSinkArgument(literalPrefix)) {
+        for (const span of extractOpeningTagSpans(decodeStringEscapes(content)))
+          scanOpeningTag(span.text, contentOffset + span.start);
+        continue;
+      }
       if (quote === '`') {
         for (const placeholder of templatePlaceholders(content))
           scanScriptLiterals(
