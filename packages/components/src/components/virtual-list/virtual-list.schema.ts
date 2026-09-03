@@ -33,6 +33,11 @@ const schema = {
       description:
         'When true, appending items while the viewport is already at the bottom\nkeeps the newest item pinned in view. Appending while scrolled up leaves the\nscroll position unchanged.',
     },
+    reverse: {
+      type: 'boolean',
+      description:
+        'Chat-transcript behaviour: the list starts at its end and returns there on\nevery append.\n\nItems stay in their natural order — oldest at index 0, newest last. `reverse`\nnames the anchoring, not the ordering, and the array is never flipped.\n\nDeliberately distinct from `stickToBottom`, which pins only when the reader is\nalready at the bottom. `reverse` pins on every append regardless of where the\nreader is. When both are set, `reverse` wins.\n\nPrepending — loading a page of older history — never moves the reader: the row\nthey were looking at stays put while the list grows above it.\n\nDefaults to false.',
+    },
     tabindex: {
       type: 'number',
       description:
@@ -58,6 +63,18 @@ const schema = {
         reason: 'generic-type-parameter',
         required: true,
         description: 'Items in full logical order. Only the visible window is mounted.',
+      },
+      {
+        name: 'onEndReached',
+        reason: 'function-or-snippet',
+        description:
+          'Called when the reader scrolls within `overscan` items of the end of the list.\n\nFires once per approach, not once per scroll event, and re-arms when the item\ncount changes — so appending in response to it allows the next approach to fire\nwhile a source that returns nothing does not spin.',
+      },
+      {
+        name: 'onStartReached',
+        reason: 'function-or-snippet',
+        description:
+          "Called when the reader scrolls within `overscan` items of the start of the\nlist. Pair with `onEndReached` for bi-directional infinite scroll.\n\nLatched the same way as `onEndReached`. Prepending in response is safe: the\nreader's position is preserved rather than jumping to the new start.",
       },
       {
         name: 'ref',

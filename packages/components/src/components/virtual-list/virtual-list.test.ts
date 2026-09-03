@@ -1014,10 +1014,12 @@ describe('VirtualList — dynamicSize', () => {
       new URL('./virtual-list.svelte', import.meta.url).pathname,
     ).text();
 
-    const pinBody = source.slice(
-      source.indexOf('shouldStickAfterAppend || !element) return;'),
-      source.indexOf('isPinnedToBottom = true;'),
-    );
+    // Both bounds resolved relative to the guard, not from the top of the file:
+    // `isPinnedToBottom = true;` also appears in the mount effect above, and an
+    // absolute search would slice backwards into an empty string that trivially
+    // "passes" every assertion below.
+    const pinStart = source.indexOf('shouldStickAfterAppend || !element) return;');
+    const pinBody = source.slice(pinStart, source.indexOf('isPinnedToBottom = true;', pinStart));
 
     const measureIndex = pinBody.indexOf('syncViewport(element)');
     const writeIndex = pinBody.indexOf('writeScrollOffset(');
@@ -1428,5 +1430,252 @@ describe('VirtualList — horizontal with dynamicSize', () => {
     const window_ = container.querySelector('.cinder-virtual-list__window') as HTMLElement;
     await waitFor(() => expect(window_.style.insetInlineStart).toBe('400px'));
     expect(window_.style.insetBlockStart).toBe('');
+  });
+});
+
+describe('VirtualList — reverse', () => {
+  test('opens at the end rather than the start', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '499')).toBe(true),
+    );
+    expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(false);
+  });
+
+  test('pins to the end on append even when the reader has scrolled away', async () => {
+    // This is the whole difference from stickToBottom, which would leave a
+    // scrolled-up reader where they are.
+    const { container, rerender } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      overscan: 0,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    list.scrollTop = 0;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true),
+    );
+
+    await rerender({
+      items: makeItems(510),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      overscan: 0,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '509')).toBe(true),
+    );
+  });
+
+  test('a prepend holds the reader in place instead of pinning to the end', async () => {
+    // Loading older history must not yank the reader anywhere. The row they were
+    // on keeps its position while ten rows arrive above it, so the rendered
+    // indices shift by exactly ten.
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const { container, rerender } = render(VirtualList, {
+      items: buildItems(500, 0),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      overscan: 0,
+      getKey: (item: unknown) => (item as { id: string }).id,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 2_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '100')).toBe(true),
+    );
+
+    // Ten older rows arrive at the FRONT: same keys, shifted ten places along.
+    await rerender({
+      items: buildItems(510, 10),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      overscan: 0,
+      getKey: (item: unknown) => (item as { id: string }).id,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    // The reader stays on the same key, which now lives ten indexes later.
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '110')).toBe(true),
+    );
+    // And is emphatically not dragged to the end.
+    expect(renderedRows(container).some((node) => node.dataset['index'] === '509')).toBe(false);
+  });
+});
+
+describe('VirtualList — infinite scroll callbacks', () => {
+  test('fires onEndReached once per approach rather than once per scroll event', async () => {
+    let endReachedCount = 0;
+    const { container } = render(VirtualList, {
+      items: makeItems(200),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 2,
+      onEndReached: () => {
+        endReachedCount += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    expect(endReachedCount).toBe(0);
+
+    list.scrollTop = 3_800;
+    await fireEvent.scroll(list);
+    await waitFor(() => expect(endReachedCount).toBe(1));
+
+    // Several more updates that all remain near the end must not re-fire.
+    list.scrollTop = 3_820;
+    await fireEvent.scroll(list);
+    list.scrollTop = 3_800;
+    await fireEvent.scroll(list);
+    expect(endReachedCount).toBe(1);
+  });
+
+  test('re-arms once the requested items arrive', async () => {
+    let endReachedCount = 0;
+    const props = (count: number) => ({
+      items: makeItems(count),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 2,
+      onEndReached: () => {
+        endReachedCount += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    const { container, rerender } = render(VirtualList, props(200));
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    list.scrollTop = 3_800;
+    await fireEvent.scroll(list);
+    await waitFor(() => expect(endReachedCount).toBe(1));
+
+    // A page arrives. Without the item-count release the latch would stay set and
+    // the list could never request a second page.
+    await rerender(props(400));
+    list.scrollTop = 7_800;
+    await fireEvent.scroll(list);
+    await waitFor(() => expect(endReachedCount).toBe(2));
+  });
+
+  test('fires onStartReached near the start', async () => {
+    let startReachedCount = 0;
+    render(VirtualList, {
+      items: makeItems(200),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 2,
+      onStartReached: () => {
+        startReachedCount += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    // A list mounted at the top is already at its start edge.
+    await waitFor(() => expect(startReachedCount).toBe(1));
+  });
+
+  test('a load-more loop terminates once the list overflows the viewport', async () => {
+    // The runaway case: every fire appends, every append re-arms the latch. What
+    // must stop the loop is proximity going false as the list outgrows the
+    // viewport — not the latch, which deliberately releases on a count change.
+    let fireCount = 0;
+    let itemCount = 5;
+    const props = () => ({
+      items: makeItems(itemCount),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 2,
+      onEndReached: () => {
+        fireCount += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    const { container, rerender } = render(VirtualList, props());
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    // Stand in for a consumer that appends a page on every call. The guard is the
+    // assertion: a list that never stops asking would exhaust it.
+    let rounds = 0;
+    let previousFireCount = -1;
+    while (fireCount !== previousFireCount && rounds < 20) {
+      previousFireCount = fireCount;
+      itemCount += 5;
+      await rerender(props());
+      await tick();
+      rounds += 1;
+    }
+
+    expect(rounds).toBeLessThan(20);
+    // And it stopped because the end genuinely left range, not because nothing
+    // ever fired.
+    expect(fireCount).toBeGreaterThan(0);
+  });
+
+  test('neither callback fires for an empty list', async () => {
+    // An empty list has no edge to reach, and firing here would ask a source that
+    // returned nothing to return nothing again.
+    let calls = 0;
+    render(VirtualList, {
+      items: [],
+      itemHeight: 20,
+      height: '200px',
+      onEndReached: () => {
+        calls += 1;
+      },
+      onStartReached: () => {
+        calls += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await tick();
+    await tick();
+    expect(calls).toBe(0);
   });
 });
