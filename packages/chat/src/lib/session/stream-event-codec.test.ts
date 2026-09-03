@@ -902,6 +902,59 @@ describe('chat stream event codec', () => {
       ).toThrow('Invalid chat stream event');
     });
 
+    test('does not encode tool-result error fields that live only on the prototype', () => {
+      const error = Object.create({
+        code: 'TIMEOUT',
+        category: 'timeout',
+        retryable: true,
+        message: 'inherited',
+      }) as Record<string, unknown>;
+      expect(() =>
+        encodeChatStreamEvent({
+          type: 'tool.settled',
+          toolCallId: 'call-1',
+          toolName: 'lookup',
+          result: { callId: 'call-1', outcome: 'error', content: null, error },
+          wireVersion: 1,
+          sequence: 2,
+        } as unknown as ChatStreamEvent),
+      ).toThrow('Invalid chat stream event');
+    });
+
+    test('validates the conversation it projected, not the one it was handed', () => {
+      const identities = ['conversation-1', 42];
+      const conversation = {
+        schemaVersion: 1,
+        status: 'active',
+        metadata: {},
+        ids: [],
+        messages: {},
+        createdAt: '2026-01-01T00:00:00.000Z',
+        updatedAt: '2026-01-01T00:00:00.000Z',
+      } as Record<string, unknown>;
+      Object.defineProperty(conversation, 'id', {
+        enumerable: true,
+        get: () => identities.shift() ?? identities[0],
+      });
+      // Validating the raw graph would let the schema see the string and the
+      // projection encode the number, producing a frame the decoder rejects.
+      // Projecting first means one graph is both validated and serialized.
+      const decoded = decodeChatStreamEvent(
+        encodeChatStreamEvent({
+          type: 'run.completed',
+          conversation,
+          content: 'Done.',
+          usage: { prompt: 1, completion: 1, total: 2 },
+          finishReason: 'stop-condition',
+          wireVersion: 1,
+          sequence: 9,
+        } as unknown as ChatStreamEvent),
+      );
+      expect(decoded.type).toBe('run.completed');
+      if (decoded.type === 'run.completed')
+        expect((decoded.conversation as { id: string }).id).toBe('conversation-1');
+    });
+
     test('rejects an array carrying frame-shaped properties', () => {
       // It spreads into an ordinary frame but serializes to `[]`, so the
       // typed-transport path would accept what the NDJSON path rejects.

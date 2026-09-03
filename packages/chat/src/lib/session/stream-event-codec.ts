@@ -262,27 +262,23 @@ function projectChatToolResult(rawResult: ChatToolResult): Record<string, unknow
     content: assertFiniteJSONValue(result.content, 'tool result content'),
   };
   if (result.error !== undefined) {
+    const error = ownFields(result.error);
     const projectedError: Record<string, unknown> = {
-      code: result.error.code,
-      category: result.error.category,
-      retryable: result.error.retryable,
-      message: result.error.message,
+      code: error.code,
+      category: error.category,
+      retryable: error.retryable,
+      message: error.message,
     };
-    if (result.error.details !== undefined)
-      projectedError['details'] = assertFiniteJSONValue(
-        result.error.details,
-        'tool result error.details',
-      );
+    if (error.details !== undefined)
+      projectedError['details'] = assertFiniteJSONValue(error.details, 'tool result error.details');
     projected['error'] = projectedError;
   }
   if (result.action !== undefined) {
-    const projectedAction: Record<string, unknown> = { type: result.action.type };
-    if (result.action.message !== undefined) projectedAction['message'] = result.action.message;
-    if (result.action.schema !== undefined)
-      projectedAction['schema'] = assertFiniteJSONValue(
-        result.action.schema,
-        'tool result action.schema',
-      );
+    const action = ownFields(result.action);
+    const projectedAction: Record<string, unknown> = { type: action.type };
+    if (action.message !== undefined) projectedAction['message'] = action.message;
+    if (action.schema !== undefined)
+      projectedAction['schema'] = assertFiniteJSONValue(action.schema, 'tool result action.schema');
     projected['action'] = projectedAction;
   }
   if (result.inputDigest !== undefined) projected['inputDigest'] = result.inputDigest;
@@ -730,9 +726,13 @@ function projectChatStreamEventBody(
       // would have to reimplement that entire schema (messages, multimodal
       // content, tool calls/results, ...); reusing the guard is the
       // maintainable way to get the same guarantee.
-      // Read once: a stateful accessor could otherwise pass the guard and hand
-      // the projection below a different value.
-      const conversation = event.conversation;
+      // Project FIRST, then validate what was projected. Reading once is not
+      // enough on its own: the projection walks the whole graph, so a nested
+      // accessor could answer the schema with a string and the projection
+      // with a number, and the encoder would emit a frame its own decoder
+      // rejects. Validating the projected data means the schema and the wire
+      // see the same bytes.
+      const conversation = projectPlainJSON(event.conversation, 'conversation');
       if (!isConversationHistory(conversation)) {
         throw new Error(
           'Invalid chat stream event: conversation is not a valid ConversationHistory',
@@ -747,7 +747,7 @@ function projectChatStreamEventBody(
         // `JSON.stringify` would call, replacing the validated history with
         // whatever the hook returns. Project to plain JSON data (own
         // enumerable keys only, no prototype) and refuse any hook outright.
-        conversation: projectPlainJSON(conversation, 'conversation'),
+        conversation,
         content: requireString(event.content, 'content'),
         usage: projectTokenUsage(event.usage),
         finishReason: requireString(event.finishReason, 'finishReason'),
