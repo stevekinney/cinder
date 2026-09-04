@@ -16,12 +16,12 @@ import { appendUserMessage, createConversationHistory } from '@lostgradient/chat
 
 import {
 	createChatAgent,
+	createChatStreamWriter,
 	pumpChatRun,
-	startChatRun,
-	type ChatStreamFrame
+	startChatRun
 } from '../src/routes/api/chat/chat-agent';
 
-import type { EnhancedStreamingOptions } from '@lostgradient/operative';
+import { decodeChatStreamEvent, type ChatStreamEvent } from '@lostgradient/chat';
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 256;
@@ -36,17 +36,13 @@ async function main(): Promise<void> {
 	}
 
 	const toolbox = createToolbox([]);
-	const eventTarget = new EventTarget() as unknown as NonNullable<
-		EnhancedStreamingOptions['eventTarget']
-	>;
 
-	const frames: ChatStreamFrame[] = [];
-	// `createChatAgent` never wires this listener itself — the caller attaches
-	// it to the exact `eventTarget` instance passed in, same as `+server.ts`
-	// and `chat-agent.test.ts`. Without it this script would report success
-	// on a run that silently dropped every text delta.
-	eventTarget.addEventListener('stream:text-delta', (event) => {
-		frames.push({ type: 'text', text: event.detail.content });
+	// The same writer the route builds, reading back what actually went on the
+	// wire: every line is decoded with the published decoder, so this check
+	// fails if the run emits a frame the client would reject.
+	const frames: ChatStreamEvent[] = [];
+	const writer = createChatStreamWriter((line) => {
+		frames.push(decodeChatStreamEvent(line));
 	});
 
 	const agent = createChatAgent({
@@ -64,7 +60,7 @@ async function main(): Promise<void> {
 			agentId: 'chat-room-assistant',
 			runId: 'live-operative-check'
 		},
-		eventTarget
+		writer
 	});
 
 	const conversation = appendUserMessage(
@@ -73,19 +69,17 @@ async function main(): Promise<void> {
 	);
 
 	const run = startChatRun(agent, conversation);
-	let envelope: Awaited<ReturnType<typeof pumpChatRun>>;
-	try {
-		envelope = await pumpChatRun(run, (frame) => frames.push(frame));
-	} finally {
-		// Same best-effort teardown the route performs, so this check exercises
-		// production's cleanup path too and never leaves provider-side resources
-		// hanging on a failed run.
+	// Disposed even when the pump throws, so a failed live check cannot leave
+	// a provider connection open. `Symbol.dispose` is the same mechanism the
+	// route's `finally` uses; `.finally` rather than a `try` block so the
+	// envelope keeps its discriminated-union narrowing below.
+	const envelope = await pumpChatRun(run, writer).finally(() => {
 		try {
 			run[Symbol.dispose]();
 		} catch {
-			// The run is ending either way; a disposal failure has nothing left to attach to.
+			// Best effort: cleanup must not mask the check's own result.
 		}
-	}
+	});
 
 	if (!envelope.ok) {
 		console.error(
@@ -106,9 +100,9 @@ async function main(): Promise<void> {
 	// `envelope.content` still comes through some other way — is exactly the
 	// failure mode a status-only (or merely non-empty) check would miss.
 	// `envelope.content` (the run's own accumulated text) and the assembled
-	// `stream:text-delta` frames (what the listener above actually observed)
-	// are two independent sources, so both are checked against the requested
-	// reply, not just against each other.
+	// `text` frames (what actually reached the wire, decoded back with the
+	// published decoder) are two independent sources, so both are checked
+	// against the requested reply, not just against each other.
 	const textFrames = frames.filter((frame) => frame.type === 'text');
 	const assembledFromFrames = textFrames.map((frame) => frame.text).join('');
 	const expectedSubstring = 'pong';
@@ -123,7 +117,7 @@ async function main(): Promise<void> {
 
 	if (textFrames.length === 0 || !assembledFromFrames.toLowerCase().includes(expectedSubstring)) {
 		console.error(
-			`test:live-operative failed: the streamed stream:text-delta frames did not assemble into text containing "${expectedSubstring}" — got ${JSON.stringify(assembledFromFrames)} across ${textFrames.length} frame(s). The streaming path may be dropping deltas even though the run completed.`
+			`test:live-operative failed: the streamed text frames did not assemble into text containing "${expectedSubstring}" — got ${JSON.stringify(assembledFromFrames)} across ${textFrames.length} frame(s). The streaming path may be dropping deltas even though the run completed.`
 		);
 		process.exitCode = 1;
 		return;
