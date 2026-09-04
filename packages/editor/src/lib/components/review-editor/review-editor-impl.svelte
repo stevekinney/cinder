@@ -901,13 +901,19 @@
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
-        // Fall through to the debounce: a collapsed caret is how the editor's
-        // own selection moves off {@link consumedSelection}, and that is what
+        // A collapsed caret falls through to the debounce ONLY while a release
+        // is pending: that is how the editor's own selection is observed
+        // moving off {@link consumedSelection}, and observing it is what
         // releases the latch. Releasing on the KEYSTROKE instead would
         // reintroduce the original race — a caret key pressed inside
         // ProseMirror's ~20ms focus window collapses the DOM selection, the
         // pending `selectionToDOM` then restores the old range, and the
         // popover would reopen over the text just commented on.
+        //
+        // With nothing latched there is nothing for the callback to do, and
+        // the popover state above is already cleared, so an ordinary caret
+        // move schedules no timer at all.
+        if (!consumedSelection || !consumedSelectionReleaseArm) return;
       }
 
       // Check if selection is within the actual editor DOM (not front matter controls,
