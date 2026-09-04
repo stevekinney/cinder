@@ -69,6 +69,15 @@ const CREATION_PARAGRAPH = 'Export actions land in the second release.';
  */
 const KEY_INTERVAL_MS = 60;
 
+/**
+ * The review editor's own selection debounce (`SELECTION_DEBOUNCE_MS` in
+ * `review-editor-impl.svelte`). The specs that assert the selection popover
+ * did NOT appear run the installed clock past this window, so the assertion
+ * is made after the timer would have fired rather than before it.
+ */
+const SELECTION_DEBOUNCE_MS = 20;
+const SELECTION_DEBOUNCE_WINDOW_MS = SELECTION_DEBOUNCE_MS * 5;
+
 async function ready(page: Page): Promise<void> {
 	await gotoHydrated(page, ROUTE);
 	// Both live ProseMirror surfaces only exist after MarkdownEditor mounts inside
@@ -183,25 +192,23 @@ async function submitSelectionComment(page: Page, body: string): Promise<void> {
 }
 
 /**
- * Get the selection popover out of the way after a submit.
+ * Wait for the selection popover to be gone after a submit.
  *
- * It MAY come back after a successful submit — roughly six clicked submits in ten
- * do (the race the test below pins) — and when it does it is `position: fixed`,
- * portaled to <body>, and anchored to the very text that was just commented on,
- * so it floats over that text and can swallow a later click meant for the anchor
- * decoration underneath.
- *
- * Dismissing it with a click somewhere else would just trade one geometry
- * gamble for another (a fixed-position panel does not move when the page
- * scrolls to whatever was clicked). Collapse the selection with the keyboard
- * instead: submitting restores focus to the editor, so a single ArrowRight moves
- * the caret, and the component hides the popover on any collapsed selection.
- * That works on both sides of the race — if the popover never came back, the
- * count is already zero.
+ * Submitting restores focus to the editor, and ProseMirror re-writes its stored
+ * (still non-collapsed) selection into the DOM on focus. The editor remembers
+ * the range it just turned into a thread and ignores that restored selection,
+ * so the popover does not come back over the text that was just commented on
+ * (`review-editor-impl.svelte`, `consumedSelection`). The earlier version of
+ * this helper collapsed the selection with ArrowRight instead, which raced
+ * ProseMirror's own deferred focus-handler `selectionToDOM` (~20ms after
+ * focus): when the key landed inside that window the caret move was overwritten
+ * by the restored range, nothing ever collapsed, and the popover stayed — the
+ * WebKit flake in CIN-515. Nothing is pressed here any more; the count is the
+ * whole assertion — hence the name: this waits for the popover to be gone, it
+ * does not make it go.
  */
-async function dismissSelectionPopover(page: Page): Promise<void> {
+async function expectSelectionPopoverGone(page: Page): Promise<void> {
 	await expect(page.locator('#creation-editor .ProseMirror')).toBeFocused();
-	await page.keyboard.press('ArrowRight');
 	await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
 }
 
@@ -492,6 +499,11 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 
 	test('submitting closes the composer and hands focus back to the editor', async ({ page }) => {
 		await ready(page);
+		// The popover's absence below is a negative assertion about a debounced
+		// timer, so the timer is driven rather than waited on: with the clock
+		// installed, `runFor` advances past the editor's selection debounce
+		// deterministically instead of sleeping for a multiple of it.
+		await page.clock.install();
 		await selectCreationParagraph(page);
 
 		const popover = page.locator('#creation-editor-selection-popover');
@@ -512,31 +524,72 @@ test.describe('review-comment-creation: creation is notification-only', () => {
 		// composer's return would require `selectionPopoverExpanded` to go true
 		// again, which only a click on "Add comment" can do
 		// (review-editor-impl.svelte:1294, reached solely from `onExpand` at :1884).
-		// Note what this does NOT claim — the collapsed POPOVER genuinely may come
-		// back, which is the race the block below pins; the two assertions here are
-		// about the composer and the expanded attribute specifically, and those are
-		// settled.
+		// These two are about the composer and the expanded attribute specifically;
+		// the collapsed popover's own fate is the block below.
 		await expect(popover.getByRole('textbox', { name: 'Comment text' })).toHaveCount(0);
 		await expect(
 			page.locator('#creation-editor-selection-popover[data-cinder-expanded]')
 		).toHaveCount(0);
 
-		// PINNED RACE. What does NOT hold is anything about the selection you just
-		// commented on. Submitting restores focus to the editor without touching
-		// ProseMirror's stored selection, so on paper the range survives, the resulting
-		// `selectionchange` re-captures it, and the popover comes straight back —
-		// offering to comment again on the text you just commented on. Whether it does
-		// is settled inside ProseMirror's focus handler, which re-writes its stored
-		// selection into the DOM ~20ms after the editor regains focus, but only if its
-		// DOM observer has not already flushed the collapsed selection first.
-		//
-		// Measured on this page: run serially, Cmd/Ctrl+Enter lost that race 18 times
-		// out of 18 (selection collapsed, no popover) while clicking Submit won it about
-		// 6 times in 10; run four-wide in parallel, the keyboard path started winning it
-		// instead and the popover came back. Same gesture, opposite UI, decided by how
-		// busy the machine is — so there is no honest assertion to make about it in
-		// either direction, and `dismissSelectionPopover` above is written to cope with
-		// both. That instability is the finding.
+		// The popover must NOT come back over the text just commented on. ProseMirror
+		// restores its stored, still non-collapsed selection into the DOM when the
+		// editor regains focus, and that `selectionchange` used to re-open the
+		// popover (~6 clicked submits in 10; the keyboard path usually lands
+		// collapsed instead). Whether the restore happens is timing the test cannot
+		// pin, so put the exact commented range back into the DOM by hand — the
+		// same `selectionchange` the restore produces — give the editor's 20ms
+		// selection debounce five times its window, and assert the popover stayed
+		// away. `consumedSelection` in review-editor-impl.svelte is what holds it
+		// back (CIN-515).
+		const reselectParagraph = () =>
+			page.evaluate(() => {
+				const paragraph = document.querySelectorAll('#creation-editor .ProseMirror p')[1]!;
+				const range = document.createRange();
+				range.selectNodeContents(paragraph);
+				const selection = document.getSelection()!;
+				selection.removeAllRanges();
+				selection.addRange(range);
+			});
+		await reselectParagraph();
+		await expect.poll(() => page.evaluate(() => document.getSelection()?.isCollapsed)).toBe(false);
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
+
+		// A keystroke that leaves the selection where it is does not release the
+		// hold — the release is driven by where the editor's selection SETTLES,
+		// not by the key that was pressed. (Releasing on the keystroke would
+		// reintroduce the original race: a caret key inside ProseMirror's focus
+		// window collapses the DOM selection, the pending restore puts the old
+		// range back, and the popover would reopen.)
+		await page.keyboard.press('ControlOrMeta+c');
+		await page.keyboard.press('Shift');
+		await reselectParagraph();
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(0);
+
+		// Select-all releases the hold outright, without waiting for the selection
+		// to settle elsewhere: a comment covering the whole document would leave
+		// a keyboard-only user unable to comment on it again, and the browser may
+		// emit no `selectionchange` at all when everything is already selected.
+		// The event is dispatched rather than typed for exactly that reason —
+		// this pins the release on the keystroke, not on a range that changed.
+		await page.evaluate(() => {
+			document
+				.querySelector('#creation-editor .ProseMirror')
+				?.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', ctrlKey: true, bubbles: true }));
+		});
+		await reselectParagraph();
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
+
+		// The hold is not permanent. A pointer press lands a caret of its own
+		// first, so whatever it selects next is the user's — including the very
+		// same paragraph, which is what a double-click on just-commented text
+		// does, and which must offer to comment on it again.
+		await editor.click();
+		await reselectParagraph();
+		await page.clock.runFor(SELECTION_DEBOUNCE_WINDOW_MS);
+		await expect(page.locator('#creation-editor-selection-popover')).toHaveCount(1);
 	});
 });
 
@@ -569,7 +622,7 @@ test.describe('review-comment-creation: applying the events', () => {
 		await expect(commentsToggle).toHaveAccessibleName('Open comments sidebar (1 comment)');
 
 		// And the sidebar lists it, quote and body.
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 		await commentsToggle.click();
 		const sidebar = page.locator('#creation-editor-sidebar');
 		await expect(sidebar).toBeVisible();
@@ -585,7 +638,7 @@ test.describe('review-comment-creation: applying the events', () => {
 		await selectCreationParagraph(page);
 		await submitSelectionComment(page, 'Ship this earlier.');
 		await expect(page.locator('#creation-editor .comment-anchor')).toHaveCount(1);
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 
 		// Clicking an anchor decoration opens the thread popover for that thread.
 		await page.locator('#creation-editor .comment-anchor').click();
@@ -690,7 +743,7 @@ test.describe('review-comment-creation: document-level comments', () => {
 		await selectCreationParagraph(page);
 		await submitSelectionComment(page, 'Text-anchored note.');
 		await expect(page.getByTestId('thread-count')).toHaveText('threads: 1');
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 
 		const creationHost = page.getByTestId('creation-host');
 		await creationHost.getByRole('button', { name: /comments sidebar/ }).click();
@@ -778,7 +831,7 @@ test.describe('review-comment-creation: mentions', () => {
 		// The body is stored verbatim. There is no linkification and no mention
 		// autocomplete anywhere in the package — `mentions` is metadata for the
 		// host to act on, not a rendering feature.
-		await dismissSelectionPopover(page);
+		await expectSelectionPopoverGone(page);
 		const anchor = page.locator('#creation-editor .comment-anchor');
 		await expect(anchor).toHaveCount(1);
 		await anchor.click();

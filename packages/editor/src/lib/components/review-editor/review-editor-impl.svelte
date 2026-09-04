@@ -264,6 +264,54 @@
       }
     | undefined;
 
+  /**
+   * The ProseMirror range whose comment was just submitted. Submitting hands
+   * focus back to the editor, and ProseMirror re-writes its stored (still
+   * non-collapsed) selection into the DOM on focus; the resulting
+   * `selectionchange` would otherwise re-open the popover over the text that
+   * was just commented on. It is cleared once the user has pressed a key or a
+   * pointer inside the editor AND the editor's own selection has settled —
+   * see {@link consumedSelectionReleaseArm}.
+   */
+  let consumedSelection: { from: number; to: number } | null = null;
+
+  /**
+   * What the user has since done inside the editor that could start a new
+   * selection, if anything. It arms the release of {@link consumedSelection}
+   * without performing it: the release itself waits for the editor's
+   * selection to settle.
+   *
+   * Both halves are load-bearing. Releasing on the input alone loses to
+   * ProseMirror's deferred `selectionToDOM`, which can restore the old range
+   * after a key has collapsed the DOM selection. Releasing on the settled
+   * selection alone misfires during the hand-off back from the composer,
+   * where ProseMirror briefly reports a caret at the top of the document
+   * before restoring the range — no user input, so nothing is armed.
+   *
+   * Which input it was decides what "settled" has to show. A pointer press
+   * always lands a caret of its own first, so anything it selects afterwards
+   * is the user's, even the very same range: a double-click on the word that
+   * was just commented on must offer to comment on it again. A key cannot be
+   * trusted that way — the restore is indistinguishable from a keyboard
+   * re-selection of the same range — so a key only releases the latch once
+   * the selection has settled somewhere genuinely different.
+   */
+  let consumedSelectionReleaseArm: 'pointer' | 'key' | null = null;
+
+  /** Keys that only qualify the next keystroke; see {@link consumedSelectionReleaseArm}. */
+  const MODIFIER_KEYS = new Set([
+    'Alt',
+    'AltGraph',
+    'CapsLock',
+    'Control',
+    'Fn',
+    'Meta',
+    'NumLock',
+    'ScrollLock',
+    'Shift',
+    'Symbol',
+  ]);
+
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
     activeView === 'editor' &&
@@ -848,16 +896,29 @@
       }
 
       // If selection is collapsed, hide popover immediately and reset all popover state
-      if (!browserSelection || browserSelection.isCollapsed) {
+      const collapsed = !browserSelection || browserSelection.isCollapsed;
+      if (collapsed) {
         selectionPopoverPosition = null;
         capturedSelectionForPopover = null;
         selectionPopoverExpanded = false;
-        return;
+        // A collapsed caret falls through to the debounce ONLY while a release
+        // is pending: that is how the editor's own selection is observed
+        // moving off {@link consumedSelection}, and observing it is what
+        // releases the latch. Releasing on the KEYSTROKE instead would
+        // reintroduce the original race — a caret key pressed inside
+        // ProseMirror's ~20ms focus window collapses the DOM selection, the
+        // pending `selectionToDOM` then restores the old range, and the
+        // popover would reopen over the text just commented on.
+        //
+        // With nothing latched there is nothing for the callback to do, and
+        // the popover state above is already cleared, so an ordinary caret
+        // move schedules no timer at all.
+        if (!consumedSelection || !consumedSelectionReleaseArm) return;
       }
 
       // Check if selection is within the actual editor DOM (not front matter controls,
       // sidebar, or toolbar content).
-      const anchorNode = browserSelection.anchorNode;
+      const anchorNode = browserSelection?.anchorNode;
       const editorDom = editorRef?.getView()?.dom;
       if (!editorDom || !anchorNode || !editorDom.contains(anchorNode)) {
         selectionPopoverPosition = null;
@@ -869,6 +930,23 @@
       // Debounce position calculation to let rapid selection events settle
       selectionTimeoutId = setTimeout(() => {
         selectionTimeoutId = null;
+
+        // The latch is released here, once the editor's own selection has
+        // settled somewhere other than the range whose comment was just
+        // submitted. Debouncing is what makes that reliable: ProseMirror
+        // syncs its state from the DOM asynchronously, and a restore that
+        // lands inside the window simply reschedules this callback, so what
+        // it reads is where the selection actually ended up.
+        const settledView = editorRef?.getView();
+        if (consumedSelection && consumedSelectionReleaseArm && settledView?.hasFocus()) {
+          const settled = settledView.state.selection;
+          const movedElsewhere =
+            settled.from !== consumedSelection.from || settled.to !== consumedSelection.to;
+          if (movedElsewhere || consumedSelectionReleaseArm === 'pointer') {
+            consumedSelection = null;
+            consumedSelectionReleaseArm = null;
+          }
+        }
 
         // Re-check selection after debounce
         const sel = window.getSelection();
@@ -890,6 +968,11 @@
           const view = editorRef?.getView();
           if (view) {
             const { from, to } = view.state.selection;
+            // Still the range whose comment was just submitted: this is
+            // ProseMirror restoring its stored selection on refocus, not the
+            // user asking to comment on that text again.
+            if (consumedSelection && consumedSelection.from === from && consumedSelection.to === to)
+              return;
             if (from !== to) {
               capturedSelectionForPopover = { from, to };
               // Only show popover when we have a valid captured selection
@@ -901,10 +984,55 @@
       }, SELECTION_DEBOUNCE_MS);
     }
 
+    // Input inside the editor ARMS the release; see
+    // {@link consumedSelectionReleaseArm} for why it does not perform it.
+    function armConsumedSelectionRelease(event: Event) {
+      if (!consumedSelection) return;
+      // A modifier held on its own arms nothing. It starts no selection, and
+      // arming on it would let the transient caret ProseMirror reports during
+      // the composer hand-off satisfy the release — the very race the latch
+      // exists for. `Shift` is the one that matters: it is how a keyboard
+      // selection begins, so it arrives before any selection exists.
+      if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
+      const editorDom = editorRef?.getView()?.dom;
+      if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target))
+        return;
+      // Select-all is released outright rather than armed. It cannot be
+      // confused with ProseMirror's restore — that is not a keystroke — and
+      // when the comment covered the whole document the range it selects is
+      // the consumed one, so waiting for the selection to settle elsewhere
+      // would strand a keyboard-only user; the browser may not even emit a
+      // `selectionchange` when everything is already selected.
+      if (
+        event instanceof KeyboardEvent &&
+        (event.ctrlKey || event.metaKey) &&
+        event.key.toLowerCase() === 'a'
+      ) {
+        consumedSelection = null;
+        consumedSelectionReleaseArm = null;
+        return;
+      }
+      consumedSelectionReleaseArm = event.type === 'keydown' ? 'key' : 'pointer';
+    }
+
+    // `pointerdown` covers mouse, touch, and pen in one listener; the
+    // `mousedown`/`touchstart` pair is the fallback for a browser without
+    // Pointer Events, matching how the components package handles this.
+    const pointerEventNames =
+      typeof window.PointerEvent !== 'undefined'
+        ? (['pointerdown'] as const)
+        : (['mousedown', 'touchstart'] as const);
+
     document.addEventListener('selectionchange', handleBrowserSelectionChange);
+    for (const eventName of pointerEventNames)
+      document.addEventListener(eventName, armConsumedSelectionRelease, true);
+    document.addEventListener('keydown', armConsumedSelectionRelease, true);
 
     return () => {
       document.removeEventListener('selectionchange', handleBrowserSelectionChange);
+      for (const eventName of pointerEventNames)
+        document.removeEventListener(eventName, armConsumedSelectionRelease, true);
+      document.removeEventListener('keydown', armConsumedSelectionRelease, true);
       if (selectionTimeoutId !== null) {
         clearTimeout(selectionTimeoutId);
         selectionTimeoutId = null;
@@ -1523,7 +1651,10 @@
     };
     onthreadcreate?.(event);
 
-    // Clear state
+    // Clear state. Remember the range so the selection ProseMirror restores on
+    // refocus does not re-open the popover over the text just commented on.
+    consumedSelection = { from, to };
+    consumedSelectionReleaseArm = null;
     capturedSelectionForPopover = null;
     selectionPopoverPosition = null;
     selectionPopoverExpanded = false;
