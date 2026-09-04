@@ -22,7 +22,7 @@
     },
     "labs/chat-room": {
       "name": "@cinder/chat-room-lab",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.116.0",
         "@lasercat/homogenaize": "^1.2.41",
@@ -66,7 +66,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.13.1",
+      "version": "0.14.0",
       "dependencies": {
         "conversationalist": "^1.1.0",
         "decode-named-character-reference": "^1.3.0",
@@ -96,7 +96,7 @@
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.25.1",
+      "version": "0.26.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -155,7 +155,7 @@
     },
     "packages/editor": {
       "name": "@lostgradient/editor",
-      "version": "0.13.0",
+      "version": "0.14.0",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "esm-env": "^1.2.0",
@@ -227,7 +227,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },

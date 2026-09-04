@@ -1,5 +1,45 @@
 # @lostgradient/cinder
 
+## 0.26.0
+
+### Minor Changes
+
+- [#1502](https://github.com/stevekinney/cinder/pull/1502) [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9) Thanks [@stevekinney](https://github.com/stevekinney)! - Input keeps its native element when a `leading` or `trailing` addon appears or disappears. The control wrapper is now always rendered — `.cinder-input-group` with addons, a boxless `.cinder-input-host` (`display: contents`) without — so the `<input>` has one stable position in the tree instead of moving between template arms, and focus, the selection range, and IME composition survive the toggle. Unadorned inputs lay out exactly as before, and the host carries `data-cinder-full-width` so ancestors that detect a full-width control by direct child keep matching.
+
+  DOM contract change for consumers styling the native control: an unadorned `.cinder-input` is no longer a direct child of its frame or of the element that composes it. Descendant selectors (`.your-row .cinder-input`) still match; a direct-child selector (`.your-row > .cinder-input`) must become `.your-row > .cinder-input-host > .cinder-input`. TimeField's own control-row sizing was the one in-repo case and is updated.
+
+- [#1501](https://github.com/stevekinney/cinder/pull/1501) [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix StatisticGroup's column collapse and row-end dividers. The group's `@container` rules queried the element that declared the container, so a standalone group never collapsed at the documented 30rem and 18rem thresholds. The public root (`.cinder-statistic-group`, which receives `class`, `style`, and every other prop) is now the query container, and the cells live in an inner `.cinder-statistic-group__grid`; a consumer that constrains the group's inline size constrains exactly what collapses, and a nested group queries its own width. The default variant's row-end divider suppression was also inert — the generic enabler out-ranked every `nth-child` suppressor by specificity — so every group that wrapped to a second row drew a divider at the end of each row. Divider rules are now enumerated per column count at uniform specificity and follow the collapse thresholds, so they describe the grid that actually renders. Note that the query measures the root's content box, so for the padded default variant the thresholds apply to the width the cells share.
+
+  DOM contract change for consumers styling the group: the grid moved from `.cinder-statistic-group` to an inner `.cinder-statistic-group__grid`, which is now the documented layout hook. Consumer `class` and `style` still land on `.cinder-statistic-group`, but a `grid-template-columns` or `gap` override written against the root no longer reaches the cells; target `.cinder-statistic-group__grid` instead, or keep using `--cinder-statistic-group-gap` on the root, which the grid still reads. `.cinder-statistic` cells are no longer direct children of `.cinder-statistic-group`: descendant selectors still match; a direct-child selector (`.cinder-statistic-group > .cinder-statistic`) must become `.cinder-statistic-group > .cinder-statistic-group__grid > .cinder-statistic`.
+
+- [#1496](https://github.com/stevekinney/cinder/pull/1496) [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `dynamicSize` for measured, variable-height rows, and a typed `ref` handle.
+
+  `dynamicSize` opts a list into measuring each rendered row with `ResizeObserver` and caching the
+  result, using `itemHeight` as the initial estimate for rows that have not been measured yet. When a
+  measurement differs from the estimate, the scroll offset is corrected before paint so the viewport
+  does not visibly jump. The fixed-height path remains the default and is untouched: with `dynamicSize`
+  off, no row is measured, no size is cached, and no scroll correction runs. (The component observes
+  its own scroll container to track viewport size in both modes, as it always has.)
+
+  `bind:ref` now exposes a typed `VirtualListRef` with `scrollToIndex(index, options)`, which accounts
+  for the measured sizes of every row before the target and accepts `align` and `behavior` options.
+
+- [#1511](https://github.com/stevekinney/cinder/pull/1511) [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `horizontal` for inline-axis virtualization, with right-to-left support.
+
+  `horizontal` scrolls and lays rows out along the inline axis. `itemHeight` and `height` are
+  reinterpreted rather than renamed — `itemHeight` becomes each item's width, `height` becomes the
+  container's inline-size — and `--cinder-virtual-list-height` keeps its name while switching to drive
+  `inline-size`, so an existing theme override survives turning the prop on.
+
+  Right-to-left is handled rather than assumed. The writing direction is resolved from the container's
+  computed style, and the RTL `scrollLeft` convention is feature-detected once per document: browsers
+  disagree on both the sign and the origin of `scrollLeft` in a right-to-left container, and current
+  browsers use the negative convention that older ones did not.
+
+### Patch Changes
+
+- [#1506](https://github.com/stevekinney/cinder/pull/1506) [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890) Thanks [@stevekinney](https://github.com/stevekinney)! - ShareCard renders its value field from a single `Input` call site. Previously the icon-only and `labelSnippet` layouts were two separate `Input` instances, so a parent that reactively changed `actions` across that boundary tore the field down and dropped the user's focus and selection. Now the actions move between the trailing addon and the sibling row as a prop update on the same element, and focus and the selection range survive.
+
 ## 0.25.1
 
 ### Patch Changes

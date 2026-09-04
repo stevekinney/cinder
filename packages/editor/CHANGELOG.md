@@ -1,5 +1,18 @@
 # @lostgradient/editor
 
+## 0.14.0
+
+### Minor Changes
+
+- [#1330](https://github.com/stevekinney/cinder/pull/1330) [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen internal peer ranges to follow the coordinated release.
+
+### Patch Changes
+
+- [#1508](https://github.com/stevekinney/cinder/pull/1508) [`67fd167`](https://github.com/stevekinney/cinder/commit/67fd167fac69e6b1fdd3fa0a118c1b00189b301a) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop the review editor's selection popover from re-opening over text whose comment was just submitted. Submitting hands focus back to the editor, ProseMirror re-writes its stored, still non-collapsed selection into the DOM, and that `selectionchange` used to re-open the popover. The editor now holds the submitted range until a pointer or key inside it starts a new selection.
+
+- Updated dependencies [[`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec)]:
+  - @lostgradient/cinder@0.26.0
+
 ## 0.13.0
 
 ### Minor Changes
