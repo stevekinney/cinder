@@ -147,7 +147,7 @@ describe('VirtualList SSR contract', () => {
       'aria-label': 'Rows',
     });
 
-    expect(html).toContain('height: 20000px');
+    expect(html).toContain('block-size:20000px');
   });
 
   test('emits no measured row heights in dynamic-size mode', async () => {
@@ -168,7 +168,7 @@ describe('VirtualList SSR contract', () => {
       'aria-label': 'Rows',
     });
 
-    expect(fixedHtml).toContain('height: 40px');
-    expect(dynamicHtml).not.toContain('height: 40px');
+    expect(fixedHtml).toContain('block-size:40px');
+    expect(dynamicHtml).not.toContain('block-size:40px');
   });
 });

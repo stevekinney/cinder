@@ -30,6 +30,11 @@
     resolveVirtualItemHeight,
     resolveVirtualOverscan,
   } from '../../utilities/fixed-virtual-window.ts';
+  /**
+   * Cached for the lifetime of the document: the convention cannot change, and the
+   * probe forces layout, so it must not run per instance.
+   */
+  let detectedRtlScrollType: import('./_internal/geometry.ts').RtlScrollType | null = null;
 </script>
 
 <script lang="ts" generics="Item">
@@ -58,11 +63,22 @@
     type VirtualItemLocator,
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
+  import {
+    classifyRtlScrollType,
+    domWritingDirectionReader,
+    normalizeInlineScrollOffset,
+    resolveObservedMainAxisSize,
+    resolveRowLayoutDescriptor,
+    resolveWritingDirection,
+    type RtlScrollType,
+    type WritingDirection,
+  } from './_internal/geometry.ts';
 
   let {
     items,
     itemHeight,
     dynamicSize = false,
+    horizontal = false,
     overscan = 5,
     height = '20rem',
     stickToBottom = false,
@@ -111,7 +127,16 @@
   let rowResizeObserver: ResizeObserver | undefined;
   let previousOffsets: readonly number[] | undefined;
   let previousTotalSize = 0;
-  let previousViewportWidth = 0;
+  /** Cross-axis extent at the last measurement: the width when vertical, the height when horizontal. */
+  let previousCrossExtent = 0;
+
+  /**
+   * Logical property names for the axis in play. Logical rather than physical so
+   * the inline axis flips correctly under RTL with no separate branch: the browser
+   * resolves `inset-inline-start` to the right edge on its own.
+   */
+  const rowLayout = $derived(resolveRowLayoutDescriptor(horizontal ? 'horizontal' : 'vertical'));
+  let writingDirection: WritingDirection = $state('ltr');
   let previousEstimate = 0;
   let pendingReanchor: { index: number; offsetWithinRow: number } | null = null;
   let pendingScrollTarget: number | null = $state(null);
@@ -165,6 +190,9 @@
   $effect(() => {
     const element = scrollElement;
     if (!element) return;
+    // Resolved here rather than in a $derived: getComputedStyle does not exist during
+    // server rendering, and an effect never runs there.
+    writingDirection = resolveWritingDirection(element, domWritingDirectionReader);
     syncViewport(element);
   });
 
@@ -275,11 +303,15 @@
       // otherwise compute the bottom from the pre-patch viewport and land short —
       // and in fixed mode there is no re-pin effect afterwards to rescue it.
       const currentViewportHeight = syncViewport(element);
-      element.scrollTop = maxScrollOffset(
-        dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight,
-        currentViewportHeight,
+      writeScrollOffset(
+        element,
+        maxScrollOffset(
+          dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight,
+          currentViewportHeight,
+        ),
+        'auto',
       );
-      scrollOffset = Math.max(0, element.scrollTop);
+      scrollOffset = readScrollOffset(element);
       shouldStickAfterAppend = false;
       isPinnedToBottom = true;
     });
@@ -308,8 +340,8 @@
     if (!element) return;
     const target = maxScrollOffset(totalSize, currentViewportHeight);
     if (Math.abs(element.scrollTop - target) <= 1) return;
-    element.scrollTop = target;
-    scrollOffset = Math.max(0, element.scrollTop);
+    writeScrollOffset(element, target, 'auto');
+    scrollOffset = readScrollOffset(element);
   });
 
   /**
@@ -346,7 +378,7 @@
     // Live, not the `scrollOffset` state: during a smooth scroll, after an external
     // write, or before a throttled scroll event lands, the state trails the real
     // position, and every calculation below is relative to where the reader is NOW.
-    const liveScrollOffset = Math.max(0, element.scrollTop);
+    const liveScrollOffset = readScrollOffset(element);
 
     // Every wholesale rebuild of the offsets table funnels through one re-anchor.
     // There are three triggers — a width-driven cache reset, an `itemHeight` change,
@@ -407,8 +439,8 @@
     // resulting scroll event could disarm the pin entirely.
     if (isPinnedToBottom) return;
     // Never animated: a smooth correction would visibly show the jump it exists to hide.
-    element.scrollTop = Math.max(0, target);
-    scrollOffset = Math.max(0, element.scrollTop);
+    writeScrollOffset(element, Math.max(0, target), 'auto');
+    scrollOffset = readScrollOffset(element);
   });
 
   const virtualListRef: VirtualListRef = { scrollToIndex };
@@ -452,30 +484,133 @@
   }
 
   /**
+   * Reads the scroll offset along whichever axis is active, as a distance from the
+   * start edge that always grows away from it.
+   *
+   * Under `horizontal` + RTL that is not simply `scrollLeft`: browsers disagree on
+   * its sign and origin, so the raw value is normalized through the convention this
+   * browser was measured to use. See `resolveRtlScrollType`.
+   */
+  function readScrollOffset(element: HTMLElement): number {
+    if (!horizontal) return Math.max(0, element.scrollTop);
+    // Normalization is the identity under ltr, and resolving the convention costs a
+    // layout-forcing probe. Short-circuit so a left-to-right page never pays for an
+    // answer it would discard.
+    if (writingDirection === 'ltr') return Math.max(0, element.scrollLeft);
+    return Math.max(
+      0,
+      normalizeInlineScrollOffset(
+        element.scrollLeft,
+        element.scrollWidth,
+        element.clientWidth,
+        writingDirection,
+        resolveRtlScrollType(),
+      ),
+    );
+  }
+
+  /** Writes a start-edge-relative offset back along the active axis. */
+  function writeScrollOffset(element: HTMLElement, offset: number, behavior: ScrollBehavior): void {
+    if (!horizontal) {
+      if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
+        element.scrollTo({ top: offset, behavior: 'smooth' });
+      } else {
+        element.scrollTop = offset;
+      }
+      return;
+    }
+
+    // Convert back out of the normalized space into whatever this browser expects.
+    // `normalizeInlineScrollOffset` is its own inverse for every convention here:
+    // 'default' is identity, 'negative' negates, and 'reverse' subtracts from the
+    // maximum — each of which undoes itself when applied twice.
+    const raw =
+      writingDirection === 'ltr'
+        ? offset
+        : normalizeInlineScrollOffset(
+            offset,
+            element.scrollWidth,
+            element.clientWidth,
+            writingDirection,
+            resolveRtlScrollType(),
+          );
+    if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
+      element.scrollTo({ left: raw, behavior: 'smooth' });
+    } else {
+      element.scrollLeft = raw;
+    }
+  }
+
+  /**
+   * Measures, once per document, which RTL `scrollLeft` convention this browser
+   * implements.
+   *
+   * Detected rather than assumed. The three conventions are only distinguishable by
+   * behaviour, and choosing one by name is how the sign silently inverts —
+   * `'default'` reads as the safe choice and is in fact the legacy Edge/IE
+   * behaviour, while current browsers use `'negative'`.
+   */
+  function resolveRtlScrollType(): RtlScrollType {
+    if (detectedRtlScrollType !== null) return detectedRtlScrollType;
+    if (typeof document === 'undefined') return 'negative';
+
+    const probe = document.createElement('div');
+    probe.setAttribute('dir', 'rtl');
+    probe.style.position = 'absolute';
+    probe.style.insetBlockStart = '-9999px';
+    probe.style.inlineSize = '1px';
+    probe.style.blockSize = '1px';
+    probe.style.overflow = 'scroll';
+    const content = document.createElement('div');
+    content.style.inlineSize = '2px';
+    content.style.blockSize = '1px';
+    probe.append(content);
+    document.body.append(probe);
+
+    const startScrollLeft = probe.scrollLeft;
+    probe.scrollLeft = -1;
+    const afterNegativeWrite = probe.scrollLeft;
+    probe.remove();
+
+    detectedRtlScrollType = classifyRtlScrollType(startScrollLeft, afterNegativeWrite);
+    return detectedRtlScrollType;
+  }
+
+  /**
    * Re-reads the container's size and scroll position, and returns the size it
    * measured so a caller acting in the same turn can use the fresh value rather
    * than the `viewportHeight` derived, which still holds the pre-patch number.
    */
   function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
+    // The MAIN axis — the one being scrolled and windowed. Under `horizontal` that
+    // is the inline extent: the container's block-size is `auto` and collapses to
+    // one row's height, which would badly under-report the viewport and render too
+    // few columns. The `height` prop is reinterpreted as the inline size in that
+    // mode, so the fallback stays correct without a branch.
     const measured =
-      rect.height || element.clientHeight || parsePixelLength(height) || resolvedItemHeight * 10;
+      (horizontal ? rect.width || element.clientWidth : rect.height || element.clientHeight) ||
+      parsePixelLength(height) ||
+      resolvedItemHeight * 10;
 
-    // A width change re-wraps every row, so every cached height taken at the old
-    // width is now wrong. Offscreen rows would keep those stale heights until they
-    // happened to remount, leaving the spacer and every scroll target off by the
-    // accumulated difference. Dropping the cache forces re-measurement.
-    // clientWidth first: it is the width actually available to rows, excluding the
-    // scrollbar. A measurement that makes the list start or stop overflowing adds or
-    // removes a non-overlay scrollbar and re-wraps every row while the border-box
-    // width never changes — so comparing rect.width would miss it entirely and leave
-    // offscreen rows holding heights measured at the other width.
-    const measuredWidth = element.clientWidth || rect.width || 0;
+    // A CROSS-axis change re-wraps every row, so every cached main-axis size taken
+    // at the old cross extent is now wrong. Offscreen rows would keep those stale
+    // sizes until they happened to remount, leaving the spacer and every scroll
+    // target off by the accumulated difference. Dropping the cache forces
+    // re-measurement.
+    // The client extent first: it is what is actually available to rows, excluding
+    // the scrollbar. A measurement that makes the list start or stop overflowing
+    // adds or removes a non-overlay scrollbar and re-wraps every row while the
+    // border-box extent never changes — so comparing the rect would miss it
+    // entirely and leave offscreen rows holding sizes measured at the other extent.
+    const measuredCrossExtent = horizontal
+      ? element.clientHeight || rect.height || 0
+      : element.clientWidth || rect.width || 0;
     if (
       dynamicSize &&
-      measuredWidth > 0 &&
-      previousViewportWidth > 0 &&
-      measuredWidth !== previousViewportWidth
+      measuredCrossExtent > 0 &&
+      previousCrossExtent > 0 &&
+      measuredCrossExtent !== previousCrossExtent
     ) {
       // Capture where the reader is BEFORE discarding the cache. The reset rebuilds
       // every row from the estimate and drops `previousOffsets`, so the correction
@@ -485,7 +620,7 @@
       // offscreen rows may be never.
       const table = offsets?.offsets;
       if (table) {
-        const liveScrollOffset = Math.max(0, element.scrollTop);
+        const liveScrollOffset = readScrollOffset(element);
         const anchorIndex = findOffsetIndex(table, liveScrollOffset);
         pendingReanchor = {
           index: anchorIndex,
@@ -495,17 +630,17 @@
       measurementStore.reset();
       previousOffsets = undefined;
     }
-    if (measuredWidth > 0) previousViewportWidth = measuredWidth;
+    if (measuredCrossExtent > 0) previousCrossExtent = measuredCrossExtent;
 
     measuredViewportHeight = measured;
-    scrollOffset = Math.max(0, element.scrollTop);
+    scrollOffset = readScrollOffset(element);
     return measured;
   }
 
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
-    scrollOffset = Math.max(0, element.scrollTop);
+    scrollOffset = readScrollOffset(element);
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom) isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
   }
@@ -556,7 +691,9 @@
   }
 
   function isAtBottom(element: HTMLElement, totalSize: number, height: number): boolean {
-    return element.scrollTop >= maxScrollOffset(totalSize, height) - 1;
+    // Start-edge-relative, so this reads "at the far end of the scroll axis"
+    // regardless of orientation or writing direction.
+    return readScrollOffset(element) >= maxScrollOffset(totalSize, height) - 1;
   }
 
   /**
@@ -572,12 +709,16 @@
       if (rawIndex === undefined) continue;
       const index = Number.parseInt(rawIndex, 10);
       if (!Number.isInteger(index) || index < 0 || index >= items.length) continue;
-      const blockSize = entry.borderBoxSize?.[0]?.blockSize ?? entry.contentRect.height;
+      const mainAxisSize = resolveObservedMainAxisSize(
+        entry.borderBoxSize?.[0],
+        entry.contentRect,
+        horizontal ? 'horizontal' : 'vertical',
+      );
       // Zero is a legitimate measurement — a row can collapse to nothing. Discarding
       // it would leave the offsets table reserving space the row no longer occupies,
       // shifting every later offset and scroll target until it grew again.
-      if (!Number.isFinite(blockSize) || blockSize < 0) continue;
-      measurementStore.record(keyAt(index), index, blockSize, resolvedItemHeight);
+      if (!Number.isFinite(mainAxisSize) || mainAxisSize < 0) continue;
+      measurementStore.record(keyAt(index), index, mainAxisSize, resolvedItemHeight);
     }
   }
 
@@ -705,16 +846,12 @@
         // smooth scroll, a throttled scroll event, or an external write, the state
         // lags the real position — and `align: 'auto'` decides whether to move at
         // all by comparing against it.
-        currentScrollOffset: Math.max(0, element.scrollTop),
+        currentScrollOffset: readScrollOffset(element),
         align,
       });
 
-      if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
-        element.scrollTo({ top: target, behavior: 'smooth' });
-      } else {
-        element.scrollTop = target;
-      }
-      scrollOffset = Math.max(0, element.scrollTop);
+      writeScrollOffset(element, target, behavior);
+      scrollOffset = readScrollOffset(element);
 
       // Fixed rows never change size, so the first write always lands exactly.
       if (!dynamicSize) return;
@@ -735,13 +872,13 @@
         // smooth scroll, a throttled scroll event, or an external write, the state
         // lags the real position — and `align: 'auto'` decides whether to move at
         // all by comparing against it.
-        currentScrollOffset: Math.max(0, element.scrollTop),
+        currentScrollOffset: readScrollOffset(element),
         align,
       });
       // Compared against the element, not the state, for the same reason the target
       // is computed from it: the state lags a smooth or externally-driven scroll,
       // which both wastes retries and can stop retrying while still in flight.
-      const settledScrollOffset = Math.max(0, element.scrollTop);
+      const settledScrollOffset = readScrollOffset(element);
       if (Math.abs(settled - settledScrollOffset) <= SCROLL_TO_INDEX_SETTLED_EPSILON) return;
     }
   }
@@ -757,6 +894,7 @@
   {tabindex}
   data-cinder-stick-to-bottom={stickToBottom ? 'true' : undefined}
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
+  data-cinder-orientation={horizontal ? 'horizontal' : undefined}
   style:--cinder-virtual-list-height={height}
   onscroll={handleScroll}
   onwheel={handleWheel}
@@ -766,16 +904,19 @@
 >
   <div
     class="cinder-virtual-list__spacer"
-    style:height={`${virtualWindow.totalSize}px`}
+    style={`${rowLayout.sizeProperty}:${virtualWindow.totalSize}px;`}
     aria-hidden={items.length === 0 ? 'true' : undefined}
   >
-    <div class="cinder-virtual-list__window" style:top={`${virtualWindow.leadingSize}px`}>
+    <div
+      class="cinder-virtual-list__window"
+      style={`${rowLayout.offsetProperty}:${virtualWindow.leadingSize}px;`}
+    >
       {#each renderedItems as virtualItem (virtualItem.key)}
         <div
           class="cinder-virtual-list__row"
           role={role === 'list' ? 'listitem' : undefined}
           data-cinder-virtual-index={virtualItem.index}
-          style:height={dynamicSize ? undefined : `${virtualItem.size}px`}
+          style={dynamicSize ? undefined : `${rowLayout.sizeProperty}:${virtualItem.size}px;`}
           {@attach observeRow}
         >
           {@render row(virtualItem.item, {
