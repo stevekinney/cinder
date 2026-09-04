@@ -298,6 +298,20 @@
    */
   let consumedSelectionReleaseArm: 'pointer' | 'key' | null = null;
 
+  /** Keys that only qualify the next keystroke; see {@link consumedSelectionReleaseArm}. */
+  const MODIFIER_KEYS = new Set([
+    'Alt',
+    'AltGraph',
+    'CapsLock',
+    'Control',
+    'Fn',
+    'Meta',
+    'NumLock',
+    'ScrollLock',
+    'Shift',
+    'Symbol',
+  ]);
+
   /** Whether the selection popover should be visible */
   const showSelectionPopover = $derived(
     activeView === 'editor' &&
@@ -968,6 +982,12 @@
     // {@link consumedSelectionReleaseArm} for why it does not perform it.
     function armConsumedSelectionRelease(event: Event) {
       if (!consumedSelection) return;
+      // A modifier held on its own arms nothing. It starts no selection, and
+      // arming on it would let the transient caret ProseMirror reports during
+      // the composer hand-off satisfy the release — the very race the latch
+      // exists for. `Shift` is the one that matters: it is how a keyboard
+      // selection begins, so it arrives before any selection exists.
+      if (event instanceof KeyboardEvent && MODIFIER_KEYS.has(event.key)) return;
       const editorDom = editorRef?.getView()?.dom;
       if (!editorDom || !(event.target instanceof Node) || !editorDom.contains(event.target))
         return;
