@@ -1,5 +1,14 @@
 # @cinder/chat-room-lab
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`9343fcd`](https://github.com/stevekinney/cinder/commit/9343fcd794cc649122e29d1f72e6562279d85905), [`dae3c6e`](https://github.com/stevekinney/cinder/commit/dae3c6e7b095e81e9e9a5f94f7147aabfcfc4109), [`8fee818`](https://github.com/stevekinney/cinder/commit/8fee81816b35ce98887b11d93c28bbeccbc1f4ee), [`398237e`](https://github.com/stevekinney/cinder/commit/398237ed3f3067f4ee2fd0e5123889b28281b2ce), [`78195ad`](https://github.com/stevekinney/cinder/commit/78195add17276e5c6041f7cb30e255bbe1195069), [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`67fd167`](https://github.com/stevekinney/cinder/commit/67fd167fac69e6b1fdd3fa0a118c1b00189b301a), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec)]:
+  - @lostgradient/chat@0.14.0
+  - @lostgradient/cinder@0.26.0
+  - @lostgradient/editor@0.14.0
+
 ## 0.0.4
 
 ### Patch Changes

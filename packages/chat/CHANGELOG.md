@@ -1,5 +1,24 @@
 # @lostgradient/chat
 
+## 0.14.0
+
+### Minor Changes
+
+- [#1489](https://github.com/stevekinney/cinder/pull/1489) [`398237e`](https://github.com/stevekinney/cinder/commit/398237ed3f3067f4ee2fd0e5123889b28281b2ce) Thanks [@stevekinney](https://github.com/stevekinney)! - Extend `ChatStreamEvent` additively to carry Operative's full stream and run event vocabulary (`stream:*`, `tool.*`, `run.*`) plus a `wireVersion` / `sequence` wire envelope. The three original members (`text`, `tool_call`, `tool_result`) keep their exact current shapes and decode unchanged, with or without the new envelope fields.
+
+### Patch Changes
+
+- [#1488](https://github.com/stevekinney/cinder/pull/1488) [`9343fcd`](https://github.com/stevekinney/cinder/commit/9343fcd794cc649122e29d1f72e6562279d85905) Thanks [@stevekinney](https://github.com/stevekinney)! - Raise the `conversationalist` dependency floor to `^1.1.0`, matching what `@lostgradient/operative` requires, so a host running Chat alongside Operative resolves a single `ConversationHistory` implementation instead of two divergent nested copies.
+
+- [#1493](https://github.com/stevekinney/cinder/pull/1493) [`dae3c6e`](https://github.com/stevekinney/cinder/commit/dae3c6e7b095e81e9e9a5f94f7147aabfcfc4109) Thanks [@stevekinney](https://github.com/stevekinney)! - Cap the grouped tool-call transcript row (`ToolCallTimeline`'s `.chat-tool-call-timeline`) to the same shared readability max-width every other row respects, via the new `--cinder-chat-message-max-width` token. Previously this row — the one carrying the widest content in the transcript, serialized JSON arguments and results — had no inline-size constraint of its own and stretched to the full timeline width on wide viewports. Also fix a grid track sizing issue that let an expanded tool-call group's long, unbroken payload blow out past that cap instead of scrolling within its own code block.
+
+- [#1507](https://github.com/stevekinney/cinder/pull/1507) [`8fee818`](https://github.com/stevekinney/cinder/commit/8fee81816b35ce98887b11d93c28bbeccbc1f4ee) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep each component's stylesheet in a consumer's client bundle. The package listed only `**/*.css` under `sideEffects`, so a Rolldown-based bundler (Vite 8) treated the component barrels that import those stylesheets as side-effect-free re-export modules and skipped them entirely, dropping the `chat.css` sidecar from production client output while the Vite dev server still served it. The barrels (`src/lib/components/*/index.ts` and `dist/components/*/index.js`) are now declared side-effectful too, using the same bare relative form as the sibling packages so every bundler matches them.
+
+- [#1492](https://github.com/stevekinney/cinder/pull/1492) [`78195ad`](https://github.com/stevekinney/cinder/commit/78195add17276e5c6041f7cb30e255bbe1195069) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix visually-hidden status announcers rendering as ordinary visible text. Chat marked screen-reader-only content with the bare `sr-only` class, which had no CSS rule reaching most of the elements that used it — most visibly, a stray unstyled "Action required" line stacking above the intended tool-status chip. Every visually-hidden element now uses `cinder-sr-only`, the design system's utility (already required via `@lostgradient/cinder/styles`), and a guard script fails the build if a bare `sr-only` class reappears.
+
+- Updated dependencies [[`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec)]:
+  - @lostgradient/cinder@0.26.0
+
 ## 0.13.1
 
 ### Patch Changes
