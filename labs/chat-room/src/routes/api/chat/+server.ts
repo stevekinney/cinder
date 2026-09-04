@@ -136,7 +136,16 @@ export const POST: RequestHandler = async ({ request }) => {
 			// frames to every other in-flight request.
 			const writer = createChatStreamWriter((line) => {
 				if (settled) return;
-				controller.enqueue(encoder.encode(line));
+				// Same race `closeStream` guards: the consumer can cancel between the
+				// `settled` check and this call, and `enqueue()` on an already
+				// terminal controller throws. The throw would propagate out of the
+				// pump and turn a normal cancellation into an error nobody caused,
+				// so a late write is dropped — the stream is ending either way.
+				try {
+					controller.enqueue(encoder.encode(line));
+				} catch {
+					// Already terminal; the frame has nowhere to go.
+				}
 			});
 
 			const agent = createChatAgent({

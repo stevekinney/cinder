@@ -5,6 +5,7 @@ import {
 	StandardSchemaValidationError,
 	createAgent,
 	stopWhen,
+	type AgentRun,
 	type EnhancedStreamingOptions,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
@@ -100,6 +101,15 @@ function expectWellFormedWire(frames: ChatStreamEvent[]): void {
 	expect(frames.at(-1)).toBe(terminals[0]);
 }
 
+/** Best-effort disposal, mirroring the route's `finally`. */
+function disposeRun(run: AgentRun): void {
+	try {
+		run.abort('test finished');
+	} catch {
+		// Already settled; nothing to release.
+	}
+}
+
 async function runAndCollect(
 	generate: StreamingGenerateFunction,
 	toolbox: AnyToolbox = createToolbox([]),
@@ -111,7 +121,9 @@ async function runAndCollect(
 	const writer = createChatStreamWriter((line) => lines.push(line));
 	const agent = createChatAgent({ generate, toolbox, requestContext, writer });
 	const run = startChatRun(agent, conversationWith('hello'));
-	const envelope = await pumpChatRun(run, writer);
+	// Disposed like the route disposes it, so a run's listeners cannot outlive
+	// the test that made it and leak into the next one.
+	const envelope = await pumpChatRun(run, writer).finally(() => disposeRun(run));
 	const frames = decodeLines(lines);
 	expectWellFormedWire(frames);
 	return { frames, envelope };
@@ -268,7 +280,7 @@ describe('pumpChatRun: aborted request', () => {
 		await abortListenerReady;
 		run.abort('test abort');
 
-		const envelope = await pumpChatRun(run, writer);
+		const envelope = await pumpChatRun(run, writer).finally(() => disposeRun(run));
 
 		expect(envelope.ok).toBe(false);
 		if (envelope.ok) throw new Error('unreachable');
