@@ -1274,8 +1274,21 @@ export function extractOpeningTagSpans(text: string): Array<{ start: number; tex
       const inner = text[index];
       if (inner === '>') break;
       if (inner === '"' || inner === "'") {
-        const close = text.indexOf(inner, index + 1);
-        index = close === -1 ? text.length : close + 1;
+        // The closing quote is found by walking, stepping over each balanced
+        // `{…}`: a quoted value can interpolate, and an expression inside it
+        // may contain the same quote or a `>` (`class="{a > b ? 'x' : ''}"`).
+        // Jumping to the next matching quote would end the value — and then
+        // the `>` would end the whole tag — in the middle of the expression.
+        let cursor = index + 1;
+        for (; cursor < text.length; cursor++) {
+          const valueCharacter = text[cursor];
+          if (valueCharacter === '{') {
+            cursor += balancedExpressionLength(text, cursor) - 1;
+            continue;
+          }
+          if (valueCharacter === inner) break;
+        }
+        index = cursor >= text.length ? text.length : cursor + 1;
         continue;
       }
       if (inner === '{') {

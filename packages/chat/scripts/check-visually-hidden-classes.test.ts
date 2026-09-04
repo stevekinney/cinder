@@ -1368,3 +1368,22 @@ describe('scanSource — fourteenth-round review findings', () => {
     expect(scanSource('<Widget className="sr-only" />')).toHaveLength(0);
   });
 });
+
+describe('scanSource — fifteenth-round review findings', () => {
+  // Characterization, not regression: the previous `indexOf` scan happened to
+  // land correctly on every shape I could construct, because the quotes inside
+  // an expression come in pairs. These pass on both implementations; they pin
+  // the behavior now that the walk no longer depends on that parity.
+  test('a `>` inside a quoted attribute interpolation does not end the tag', () => {
+    // The expression is JavaScript: its `>` is a comparison and its quotes are
+    // string delimiters, so neither ends the value or the tag.
+    expect(
+      scanSource(`<div class="foo {a > b ? "sr-only" : ""}" data-x="y">z</div>`, 'svelte'),
+    ).toHaveLength(1);
+    // The same shape on a non-class attribute stays inert, which it could not
+    // if the span had been truncated into the following attributes.
+    expect(
+      scanSource(`<div class="{a > b ? "x" : ""}" title="sr-only">z</div>`, 'svelte'),
+    ).toHaveLength(0);
+  });
+});
