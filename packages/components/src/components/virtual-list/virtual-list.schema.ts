@@ -7,12 +7,17 @@ const schema = {
     itemHeight: {
       type: 'number',
       description:
-        'Row height in pixels. By default every row is assumed to be exactly this\ntall. When `dynamicSize` is true this becomes the initial estimate for rows\nthat have not been measured yet.',
+        "Each item's extent in pixels along the axis being scrolled: its height by\ndefault, or its width under `horizontal`. By default every row is assumed to\nbe exactly this size. When `dynamicSize` is true this becomes the initial\nestimate for rows that have not been measured yet.",
     },
     dynamicSize: {
       type: 'boolean',
       description:
-        'Measure each rendered row with `ResizeObserver` and cache the result,\ninstead of assuming every row is exactly `itemHeight` tall. Use this when\nrows wrap, contain images, or otherwise vary in height.\n\nDefaults to `false`. While false, no row is measured, no size is cached,\nand no scroll correction runs — the fixed-height path stays the fast path.\nThe component still observes its own scroll container to track viewport\nsize, as it always has; that is independent of this prop.',
+        'Measure each rendered row with `ResizeObserver` and cache the result,\ninstead of assuming every row is exactly `itemHeight` along the scrolled\naxis. Use this when rows wrap, contain images, or otherwise vary in size.\nComposes with `horizontal`, where each row is measured by its width.\n\nDefaults to `false`. While false, no row is measured, no size is cached,\nand no scroll correction runs — the fixed-height path stays the fast path.\nThe component still observes its own scroll container to track viewport\nsize, as it always has; that is independent of this prop.',
+    },
+    horizontal: {
+      type: 'boolean',
+      description:
+        "Scrolls and lays rows out along the inline axis instead of the block axis.\n\n`itemHeight` and `height` are REINTERPRETED rather than renamed: `itemHeight`\nbecomes each item's width in pixels along the main axis, and `height` becomes\nthe container's inline-size. The `--cinder-virtual-list-height` custom property\nkeeps its name too and switches to driving `inline-size`, so an existing theme\noverride keeps working when this is turned on.\n\nRight-to-left is handled: the writing direction is resolved from the container's\ncomputed style at mount, and the scroll offset is read from the start (right)\nedge in that case.\n\nDefaults to false.",
     },
     overscan: {
       type: 'number',
@@ -20,7 +25,8 @@ const schema = {
     },
     height: {
       type: 'string',
-      description: 'CSS block-size for the native scroll container.\nDefaults to `"20rem"`.',
+      description:
+        'CSS extent of the native scroll container across the axis it scrolls: its\nblock-size by default, or its inline-size under `horizontal`.\nDefaults to `"20rem"`.',
     },
     stickToBottom: {
       type: 'boolean',

@@ -79,18 +79,23 @@ export function createChatStreamWriter(sink: (line: string) => void): ChatStream
 	return {
 		write(frame) {
 			if (terminated) return;
-			if (frame.type.startsWith('run.')) terminated = true;
 			// `encodeChatStreamEvent` re-projects and validates every field, so a
 			// malformed frame throws HERE, at the producer, instead of decoding
 			// as garbage on the client. The cast is the one place TypeScript
 			// can't re-distribute the spread over the union on its own.
-			sink(
-				encodeChatStreamEvent({
-					...frame,
-					wireVersion: WIRE_VERSION,
-					sequence: sequence++
-				} as ChatStreamEvent)
-			);
+			//
+			// The counter advances and the stream is marked terminated only
+			// AFTER the line is encoded and sunk: a frame that throws never
+			// reached the wire, so it must not consume a sequence number or
+			// close the stream against the corrected frame that follows it.
+			const line = encodeChatStreamEvent({
+				...frame,
+				wireVersion: WIRE_VERSION,
+				sequence
+			} as ChatStreamEvent);
+			sink(line);
+			sequence += 1;
+			if (frame.type.startsWith('run.')) terminated = true;
 		},
 		get terminated() {
 			return terminated;

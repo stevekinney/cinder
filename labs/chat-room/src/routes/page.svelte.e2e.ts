@@ -15,6 +15,14 @@ import {
 	fixtureMarker
 } from './streaming-fixture';
 
+/**
+ * How long the in-page reader waits for the first `stream:tool-call-delta`
+ * before failing with what it did see. Diagnostic only: the frame arrives in
+ * milliseconds when the route works, and the fixture holds the response open
+ * until the test releases it, so this deadline is never the thing under test.
+ */
+const WIRE_SNAPSHOT_DEADLINE_MS = 15_000;
+
 test('sends a message and streams the assistant reply into the conversation log', async ({
 	page
 }) => {
@@ -488,7 +496,7 @@ test.describe('production streaming path', () => {
 		// fixture is still parked mid-`input_json_delta` at that point, so the
 		// frames returned here were written while the tool-use block was open.
 		const framesWhileOpen = await page.evaluate(
-			async (body) => {
+			async ({ body, deadlineMs }) => {
 				const response = await fetch('/api/chat', {
 					method: 'POST',
 					headers: { 'Content-Type': 'application/json' },
@@ -520,13 +528,23 @@ test.describe('production streaming path', () => {
 				(window as unknown as { __wireFinished: Promise<unknown> }).__wireFinished = finished;
 				// Poll the snapshot rather than racing `finished`: the response stays
 				// open until the fixture gate is released, which is the whole point.
+				// The deadline is diagnostic, not a tuning knob — without it a route
+				// regression, a fixture failure, or a rejected fetch would hang until
+				// Playwright's own timeout with nothing to read.
+				const deadline = Date.now() + deadlineMs;
 				for (;;) {
 					const snapshot = (window as unknown as { __wireSnapshot?: unknown }).__wireSnapshot;
 					if (snapshot) return snapshot as Array<Record<string, unknown>>;
+					if (Date.now() > deadline)
+						throw new Error(
+							`No stream:tool-call-delta frame arrived within ${deadlineMs}ms. Frames seen: ${JSON.stringify(
+								frames.map((frame) => frame['type'])
+							)}`
+						);
 					await new Promise((resolve) => setTimeout(resolve, 10));
 				}
 			},
-			{ conversation }
+			{ body: { conversation }, deadlineMs: WIRE_SNAPSHOT_DEADLINE_MS }
 		);
 
 		// `released: true` is the causal claim: the fixture was still parked
