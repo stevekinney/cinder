@@ -213,8 +213,9 @@
     "test:prepare": "bun run --filter=@lostgradient/cinder build",
     "tokens:audit": "bun ../components/scripts/check-component-css-token-usage.ts --source-root src/lib --baseline scripts/token-usage-baseline.json --strict",
     "typecheck": "tsc --noEmit -p tsconfig.json && bunx svelte-check --workspace src/lib --tsconfig ../../tsconfig.json --threshold warning",
-    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run components:check && bun run build",
-    "validate:consumer": "bun run scripts/validate-consumer.ts"
+    "validate": "bun run lint && bun run typecheck && bun run test:coverage && bun run platform:audit && bun run colors:audit && bun run tokens:audit && bun run visually-hidden:audit && bun run components:check && bun run build",
+    "validate:consumer": "bun run scripts/validate-consumer.ts",
+    "visually-hidden:audit": "bun run scripts/check-visually-hidden-classes.ts"
   },
   "dependencies": {
     "conversationalist": "^1.1.0",

@@ -833,7 +833,7 @@
           type="file"
           accept={acceptedTypes.join(',')}
           multiple
-          class="sr-only"
+          class="cinder-sr-only"
           onchange={handleFileSelect}
           aria-label="Attach files"
           aria-hidden="true"
@@ -852,7 +852,7 @@
       {/if}
 
       <!-- Visually hidden shortcut description: always in the accessibility tree even when hint is container-queried away -->
-      <span id={shortcutDescriptionId} class="sr-only">
+      <span id={shortcutDescriptionId} class="cinder-sr-only">
         {#if showStopButton}
           Response is streaming. Use the stop button to stop generation.
         {:else if submitOn === 'modifier-enter'}
@@ -943,7 +943,7 @@
   {/if}
 
   <!-- Screen reader announcements -->
-  <div aria-live="polite" aria-atomic="true" class="sr-only">
+  <div aria-live="polite" aria-atomic="true" class="cinder-sr-only">
     {announcer.message}
   </div>
 </form>
@@ -1253,18 +1253,5 @@
     margin: 0;
     font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-status-danger-solid);
-  }
-
-  /* Screen reader only */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

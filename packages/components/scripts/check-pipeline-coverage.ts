@@ -458,6 +458,12 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
     layers: ['main-green'],
     reason: 'Chat token audit owned by the authoritative source gate.',
   },
+  [`${chatPackageName}#visually-hidden:audit`]: {
+    layers: ['main-green'],
+    reason:
+      'Chat bare-sr-only-class guard (CIN-505) owned by the authoritative source gate, ' +
+      'mirroring platform:audit and colors:audit.',
+  },
   [`${chatPackageName}#validate:consumer`]: {
     layers: ['release'],
     reason: 'The release artifact gate installs and validates the staged Chat tarball.',
