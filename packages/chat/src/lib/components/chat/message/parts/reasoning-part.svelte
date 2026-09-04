@@ -97,7 +97,7 @@
        streaming ends (part.streaming: true→false). Clearing on resume ensures it
        fires again on subsequent streams. The element must be in the DOM before
        content is set so screen readers have already registered it as a live region. -->
-  <div class="sr-only" aria-live="polite" aria-atomic="true">{announcementText}</div>
+  <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">{announcementText}</div>
 </div>
 
 <style>
@@ -134,18 +134,5 @@
     .chat-reasoning {
       border-inline-start-color: ButtonText;
     }
-  }
-
-  /* Screen reader only */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

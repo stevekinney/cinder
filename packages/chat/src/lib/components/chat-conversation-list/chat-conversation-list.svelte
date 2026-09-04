@@ -82,7 +82,7 @@
                 <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
                   {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
                 </span>
-                <span class="sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
+                <span class="cinder-sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
               {/if}
             </button>
           {:else}
@@ -99,7 +99,7 @@
                 <span class="cinder-chat-conversation-list__badge" aria-hidden="true">
                   {conversation.unreadCount > 99 ? '99+' : conversation.unreadCount}
                 </span>
-                <span class="sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
+                <span class="cinder-sr-only">, {unreadMessageLabel(conversation.unreadCount)}</span>
               {/if}
             </div>
           {/if}

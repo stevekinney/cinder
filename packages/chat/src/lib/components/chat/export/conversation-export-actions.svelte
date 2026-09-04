@@ -105,7 +105,7 @@
 
 <div class={classNames('conversation-export-actions', className)}>
   <!-- Screen reader announcement for copy success -->
-  <div class="sr-only" aria-live="polite" aria-atomic="true">
+  <div class="cinder-sr-only" aria-live="polite" aria-atomic="true">
     {#if copyState.copiedKey}
       Copied as {formatLabels[copyState.copiedKey]}
     {/if}
