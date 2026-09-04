@@ -70,13 +70,14 @@ async function main(): Promise<void> {
 
 	const run = startChatRun(agent, conversation);
 	// Disposed even when the pump throws, so a failed live check cannot leave
-	// a provider connection open. `.finally` rather than a `try` block so the
+	// a provider connection open. `Symbol.dispose` is the same mechanism the
+	// route's `finally` uses; `.finally` rather than a `try` block so the
 	// envelope keeps its discriminated-union narrowing below.
 	const envelope = await pumpChatRun(run, writer).finally(() => {
 		try {
-			run.abort('live-operative-check finished');
+			run[Symbol.dispose]();
 		} catch {
-			// Best effort: the run may already have settled on its own.
+			// Best effort: cleanup must not mask the check's own result.
 		}
 	});
 

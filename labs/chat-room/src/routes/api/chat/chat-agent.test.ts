@@ -101,12 +101,17 @@ function expectWellFormedWire(frames: ChatStreamEvent[]): void {
 	expect(frames.at(-1)).toBe(terminals[0]);
 }
 
-/** Best-effort disposal, mirroring the route's `finally`. */
+/**
+ * Best-effort disposal, the same mechanism the route's `finally` uses
+ * (`+server.ts`): `Symbol.dispose` is what releases the run's listeners,
+ * which `abort` alone does not do.
+ */
 function disposeRun(run: AgentRun): void {
 	try {
-		run.abort('test finished');
+		run[Symbol.dispose]();
 	} catch {
-		// Already settled; nothing to release.
+		// Cleanup, not an outcome: a disposal failure must not replace the
+		// assertion the test is actually making.
 	}
 }
 
