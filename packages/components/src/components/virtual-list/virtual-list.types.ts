@@ -101,6 +101,39 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   stickToBottom?: boolean;
   /**
+   * Chat-transcript behaviour: the list starts at its end and returns there on
+   * every append.
+   *
+   * Items stay in their natural order — oldest at index 0, newest last. `reverse`
+   * names the anchoring, not the ordering, and the array is never flipped.
+   *
+   * Deliberately distinct from `stickToBottom`, which pins only when the reader is
+   * already at the bottom. `reverse` pins on every append regardless of where the
+   * reader is. When both are set, `reverse` wins.
+   *
+   * Prepending — loading a page of older history — never moves the reader: the row
+   * they were looking at stays put while the list grows above it.
+   *
+   * Defaults to false.
+   */
+  reverse?: boolean;
+  /**
+   * Called when the reader scrolls within `overscan` items of the end of the list.
+   *
+   * Fires once per approach, not once per scroll event, and re-arms when the item
+   * count changes — so appending in response to it allows the next approach to fire
+   * while a source that returns nothing does not spin.
+   */
+  onEndReached?: () => void;
+  /**
+   * Called when the reader scrolls within `overscan` items of the start of the
+   * list. Pair with `onEndReached` for bi-directional infinite scroll.
+   *
+   * Latched the same way as `onEndReached`. Prepending in response is safe: the
+   * reader's position is preserved rather than jumping to the new start.
+   */
+  onStartReached?: () => void;
+  /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the native scroll container for
    * arrow-key scrolling. Pass `tabindex={-1}` when the viewport should be

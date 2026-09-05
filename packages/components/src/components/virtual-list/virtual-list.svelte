@@ -38,7 +38,7 @@
 </script>
 
 <script lang="ts" generics="Item">
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
@@ -64,6 +64,17 @@
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
   import {
+    createEdgeLatch,
+    resolveEdgeFireDecision,
+    resolveEdgeProximity,
+    type EdgeLatch,
+  } from './_internal/edge-proximity.ts';
+  import {
+    classifyItemGrowth,
+    shouldPinToEnd,
+    type ItemGrowth,
+  } from './_internal/reverse-order.ts';
+  import {
     classifyRtlScrollType,
     domWritingDirectionReader,
     normalizeInlineScrollOffset,
@@ -82,6 +93,9 @@
     overscan = 5,
     height = '20rem',
     stickToBottom = false,
+    reverse = false,
+    onEndReached,
+    onStartReached,
     tabindex = 0,
     getKey,
     row,
@@ -116,9 +130,22 @@
   let scrollElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
   let measuredViewportHeight = $state(0);
-  let previousItemCount = 0;
   let hasObservedItemCount = false;
   let shouldStickAfterAppend = false;
+  /**
+   * Keys as of the last `items` change, so growth can be told apart by WHICH end
+   * grew rather than by the count alone. An append and a prepend both raise the
+   * count, and they call for opposite handling: one pins to the end, the other
+   * must leave the reader exactly where they were.
+   *
+   * Recomputed whenever `items` changes, which is O(n) — the same order as the
+   * work the caller just did building that array, and the same order as the
+   * cache-prune pass that already runs on this dependency.
+   */
+  let previousKeys: readonly VirtualListKey[] = [];
+  /** Set once on mount under `reverse`, which starts at the end rather than the start. */
+  let needsInitialReversePin = false;
+  let edgeLatch: EdgeLatch = createEdgeLatch();
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -193,7 +220,66 @@
     // Resolved here rather than in a $derived: getComputedStyle does not exist during
     // server rendering, and an effect never runs there.
     writingDirection = resolveWritingDirection(element, domWritingDirectionReader);
-    syncViewport(element);
+    const measuredHeight = syncViewport(element);
+
+    if (needsInitialReversePin) {
+      needsInitialReversePin = false;
+      // Written here rather than by arming `shouldStickAfterAppend`: that flag is a
+      // plain binding, so the append-pin effect does not re-run when it changes —
+      // it works only because an `$effect.pre` sets it in the same items-driven
+      // pass. Nothing would pick it up from here.
+      writeScrollOffset(element, maxScrollOffset(currentTotalSize(), measuredHeight), 'auto');
+      scrollOffset = readScrollOffset(element);
+      // Under `dynamicSize` the total at mount is only an estimate, so this first
+      // write lands short. Marking the list pinned hands it to the re-pin effect,
+      // which follows the total as rows measure.
+      isPinnedToBottom = true;
+    }
+  });
+
+  /**
+   * Fires the infinite-scroll callbacks as the reader approaches either end.
+   *
+   * Depends on the window AND the item count: an append can bring the end into
+   * range with no scroll event at all, and the count is what re-arms the latch so
+   * a second page can be requested after the first arrives.
+   */
+  $effect(() => {
+    const currentWindow = virtualWindow;
+    const itemCount = items.length;
+    const currentViewportHeight = viewportHeight;
+    if (!onEndReached && !onStartReached) return;
+    if (isDestroyed) return;
+
+    // `startIndex`/`endIndex` describe the RENDERED range, which already carries
+    // overscan on both sides, and `endIndex` is exclusive. Undo both so the
+    // "within overscan items of the end" test is applied once rather than twice.
+    const lastRenderedIndex = Math.max(0, itemCount - 1);
+    const firstVisibleIndex = Math.min(currentWindow.startIndex + overscan, lastRenderedIndex);
+    const lastVisibleIndex = Math.max(
+      0,
+      Math.min(currentWindow.endIndex - 1 - overscan, lastRenderedIndex),
+    );
+
+    const proximity = resolveEdgeProximity({
+      scrollOffset,
+      viewportSize: currentViewportHeight,
+      totalSize: currentWindow.totalSize,
+      firstVisibleIndex,
+      lastVisibleIndex,
+      itemCount,
+      overscan,
+    });
+    const decision = resolveEdgeFireDecision({ proximity, previous: edgeLatch, itemCount });
+    edgeLatch = decision.next;
+
+    // Untracked: a consumer that appends inside the callback would otherwise write
+    // `items` while this effect is still reading it, and Svelte would treat that as
+    // this effect depending on its own output.
+    untrack(() => {
+      if (decision.fireStart) onStartReached?.();
+      if (decision.fireEnd) onEndReached?.();
+    });
   });
 
   const observeResize = useResizeObserver(() => {
@@ -209,29 +295,64 @@
     // scrolled within — even if the mode changes in between.
     const currentTotal = dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight;
 
+    const nextKeys = items.map((item, index) => getKey?.(item, index) ?? index);
+
     if (!hasObservedItemCount) {
-      previousItemCount = itemCount;
       previousTotalSize = currentTotal;
+      previousKeys = nextKeys;
       hasObservedItemCount = true;
       shouldStickAfterAppend = false;
+      // A reverse list opens at its end. Deferred to the mount effect rather than
+      // written here: there is no element yet on the first server-or-client pass,
+      // and under `dynamicSize` the total is still only an estimate.
+      needsInitialReversePin = reverse;
       return;
     }
 
-    shouldStickAfterAppend =
-      stickToBottom &&
-      element !== undefined &&
-      itemCount > previousItemCount &&
-      // Against the PREVIOUS run's total, not a total re-derived under the mode
-      // that happens to be active now. Re-deriving reads the dynamic total as 0
-      // for as long as fixed mode was active, which yanks a scrolled-up reader to
-      // the end; and skipping the check whenever the mode changed — the obvious
-      // guard against that — instead drops the pin for a reader who genuinely was
-      // at the bottom. Carrying the real previous total is correct in both
-      // directions and needs no mode special-case at all.
-      isAtBottom(element, previousTotalSize, viewportHeight);
+    const growth: ItemGrowth = classifyItemGrowth(previousKeys, nextKeys);
 
-    previousItemCount = itemCount;
+    shouldStickAfterAppend =
+      element !== undefined &&
+      shouldPinToEnd({
+        mode: reverse ? 'reverse' : stickToBottom ? 'stick-to-bottom' : 'none',
+        growth,
+        // Against the PREVIOUS run's total, not a total re-derived under the mode
+        // that happens to be active now. Re-deriving reads the dynamic total as 0
+        // for as long as fixed mode was active, which yanks a scrolled-up reader to
+        // the end; and skipping the check whenever the mode changed — the obvious
+        // guard against that — instead drops the pin for a reader who genuinely was
+        // at the bottom. Carrying the real previous total is correct in both
+        // directions and needs no mode special-case at all.
+        isAtEnd: isAtBottom(element, previousTotalSize, viewportHeight),
+      });
+
+    // A prepend inserts content ABOVE the reader. Every existing row shifts down by
+    // the height of what arrived, so holding `scrollOffset` still would silently
+    // move them to a different row — and with native scroll anchoring disabled
+    // under `dynamicSize`, nothing puts them back. Anchoring to the row they were
+    // actually on is the only thing that reads as "the list grew upward".
+    if (growth.kind === 'prepended' && element) {
+      const table = offsets?.offsets;
+      const liveScrollOffset = readScrollOffset(element);
+      if (table) {
+        const anchorIndex = findOffsetIndex(table, liveScrollOffset);
+        pendingReanchor = {
+          // The same row now sits `prependedCount` further along the list.
+          index: anchorIndex + growth.prependedCount,
+          offsetWithinRow: liveScrollOffset - (table[anchorIndex] ?? 0),
+        };
+      } else {
+        // Fixed-height mode has no offsets table, but every row is the same size,
+        // so the shift is exactly arithmetic.
+        pendingScrollTarget = Math.max(
+          0,
+          liveScrollOffset + growth.prependedCount * resolvedItemHeight,
+        );
+      }
+    }
+
     previousTotalSize = currentTotal;
+    previousKeys = nextKeys;
   });
 
   /**
@@ -282,20 +403,20 @@
    * append having happened.
    */
   $effect(() => {
-    if (!stickToBottom) isPinnedToBottom = false;
+    if (!stickToBottom && !reverse) isPinnedToBottom = false;
   });
 
   $effect(() => {
     const itemCount = items.length;
     const element = scrollElement;
-    if (!stickToBottom || !shouldStickAfterAppend || !element) return;
+    if ((!stickToBottom && !reverse) || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
       // Re-read the prop: it can be disabled between the append and this callback,
       // and the disabled-mode effect will already have cleared the pin. Arming it
       // again here would leave a stale flag that no later scroll clears, so
       // re-enabling the option would jump to the end with no append behind it.
-      if (!stickToBottom) {
+      if (!stickToBottom && !reverse) {
         shouldStickAfterAppend = false;
         return;
       }
@@ -335,11 +456,11 @@
     // measurement changed it — which is the entire case this exists to handle.
     const totalSize = offsets?.totalSize ?? 0;
     const currentViewportHeight = viewportHeight;
-    if (!stickToBottom || !dynamicSize || !isPinnedToBottom) return;
+    if ((!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
     const element = scrollElement;
     if (!element) return;
     const target = maxScrollOffset(totalSize, currentViewportHeight);
-    if (Math.abs(element.scrollTop - target) <= 1) return;
+    if (Math.abs(readScrollOffset(element) - target) <= 1) return;
     writeScrollOffset(element, target, 'auto');
     scrollOffset = readScrollOffset(element);
   });
@@ -642,7 +763,9 @@
     const element = event.currentTarget as HTMLElement;
     scrollOffset = readScrollOffset(element);
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
-    if (stickToBottom) isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
+    if (stickToBottom || reverse) {
+      isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
+    }
   }
 
   /**
@@ -802,7 +925,10 @@
     for (let frame = 0; frame < SCROLL_SETTLE_MAX_FRAMES; frame += 1) {
       await nextAnimationFrame();
       if (isDestroyed) return;
-      const currentOffset = element.scrollTop;
+      // Axis-aware: reading scrollTop on a horizontal list sees a value that never
+      // moves, so the loop would report "settled" after two frames and skip the
+      // settle pass entirely.
+      const currentOffset = readScrollOffset(element);
       if (currentOffset === previousOffset) return;
       previousOffset = currentOffset;
     }
