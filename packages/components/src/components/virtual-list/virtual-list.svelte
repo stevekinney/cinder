@@ -3,14 +3,18 @@
    * @cinder
    * @category data-display
    * @status beta
-   * @purpose Windowing primitive for long vertical lists that renders only the visible rows plus overscan in a native scroll container, with fixed-height rows by default and opt-in measured rows.
+   * @purpose Windowing primitive for long lists that renders only the visible rows plus overscan, along either axis, with fixed-height rows by default and opt-in measured rows.
    * @tag list
    * @tag virtualization
    * @tag performance
    * @useWhen Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.
-   * @useWhen Rows vary in height because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.
-   * @useWhen You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet.
-   * @avoidWhen Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization.
+   * @useWhen Rows vary in size because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.
+   * @useWhen Windowing along the inline axis, including right-to-left, with horizontal.
+   * @useWhen Building a chat transcript that stays anchored to its newest message — reverse pins on every append, unlike stickToBottom.
+   * @useWhen Loading more in either direction as the reader nears an edge, via onEndReached and onStartReached.
+   * @useWhen You need a reusable primitive that owns the scroll container but leaves row markup to a snippet.
+   * @avoidWhen Rendering two-dimensional grids — use data-grid, whose column virtualization and grid semantics this deliberately does not duplicate.
+   * @avoidWhen The collection is small enough to render in full — windowing costs a scroll listener and an offsets table that buy nothing.
    * @related data-list, data-table, data-grid, load-more
    */
   export type {

@@ -917,3 +917,48 @@ describe('computeScrollToIndexOffset — targetIsStuckAtLeadingEdge', () => {
     ).toBe(200);
   });
 });
+
+describe('computeScrollToIndexOffset — a row exactly the viewport height', () => {
+  // The oversized-row branch is keyed on `size > viewportSize`, strictly, because a
+  // row exactly the viewport's height CAN be fully revealed.
+  //
+  // The two branches only disagree when such a row is PARTIALLY visible: the
+  // oversized branch holds the current offset once the row overlaps at all, while
+  // edge alignment brings the overflowing edge into view. A fully-offscreen row and
+  // an already-flush row resolve identically under both, so neither pins the
+  // boundary — an earlier version of this test used exactly those two and passed
+  // against a `>=` regression.
+  const viewportSize = 400;
+  const locator = {
+    getStart: (index: number) => index * viewportSize,
+    getSize: () => viewportSize,
+  };
+
+  test('scrolls a half-visible row fully into view instead of holding', () => {
+    // Row 3 spans [1200, 1600); the viewport is [1000, 1400). The row overlaps, so a
+    // `>=` regression would hold at 1000 and leave it half shown.
+    const offset = computeScrollToIndexOffset({
+      index: 3,
+      itemCount: 10,
+      locator,
+      viewportSize,
+      currentScrollOffset: 1_000,
+      align: 'auto',
+      totalSize: 10 * viewportSize,
+    });
+    expect(offset).toBe(1_200);
+  });
+
+  test('leaves the position alone once it exactly fills the viewport', () => {
+    const offset = computeScrollToIndexOffset({
+      index: 3,
+      itemCount: 10,
+      locator,
+      viewportSize,
+      currentScrollOffset: 3 * viewportSize,
+      align: 'auto',
+      totalSize: 10 * viewportSize,
+    });
+    expect(offset).toBe(3 * viewportSize);
+  });
+});

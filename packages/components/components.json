@@ -5973,16 +5973,22 @@
       "exportName": "VirtualList",
       "category": "data-display",
       "status": "beta",
-      "purpose": "Windowing primitive for long vertical lists that renders only the visible rows plus overscan in a native scroll container, with fixed-height rows by default and opt-in measured rows.",
+      "purpose": "Windowing primitive for long lists that renders only the visible rows plus overscan, along either axis, with fixed-height rows by default and opt-in measured rows.",
       "tags": ["list", "virtualization", "performance"],
       "useWhen": [
         "Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.",
-        "Rows vary in height because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.",
-        "You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet."
+        "Rows vary in size because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.",
+        "Windowing along the inline axis, including right-to-left, with horizontal.",
+        "Building a chat transcript that stays anchored to its newest message — reverse pins on every append, unlike stickToBottom.",
+        "Loading more in either direction as the reader nears an edge, via onEndReached and onStartReached.",
+        "You need a reusable primitive that owns the scroll container but leaves row markup to a snippet."
       ],
       "avoidWhen": [
         {
-          "reason": "Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization."
+          "reason": "Rendering two-dimensional grids — use data-grid, whose column virtualization and grid semantics this deliberately does not duplicate."
+        },
+        {
+          "reason": "The collection is small enough to render in full — windowing costs a scroll listener and an offsets table that buy nothing."
         }
       ],
       "related": ["data-list", "data-table", "data-grid", "load-more"],
