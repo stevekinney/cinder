@@ -1491,6 +1491,39 @@ describe('VirtualList — reverse', () => {
     );
   });
 
+  test('pins to the end under dynamicSize, where the total keeps growing after the write', async () => {
+    // reverse + dynamicSize is the combination the re-pin effect exists for. The
+    // append pin writes against the total as currently estimated; rows measured
+    // afterwards grow it further. The pin deliberately reuses `isPinnedToBottom`
+    // rather than bypassing it, so that the re-pin effect keeps following.
+    const props = (count: number) => ({
+      items: makeItems(count),
+      itemHeight: 20,
+      height: '200px',
+      reverse: true,
+      dynamicSize: true,
+      overscan: 0,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Transcript',
+    });
+
+    const { container, rerender } = render(VirtualList, props(300));
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    list.scrollTop = 0;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true),
+    );
+
+    await rerender(props(310));
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '309')).toBe(true),
+    );
+  });
+
   test('a prepend holds the reader in place instead of pinning to the end', async () => {
     // Loading older history must not yank the reader anywhere. The row they were
     // on keeps its position while ten rows arrive above it, so the rendered

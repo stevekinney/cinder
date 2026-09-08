@@ -295,7 +295,10 @@
     // scrolled within — even if the mode changes in between.
     const currentTotal = dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight;
 
-    const nextKeys = items.map((item, index) => getKey?.(item, index) ?? index);
+    // Through `keyAt`, not a local getKey call: the measurement cache is keyed by
+    // exactly what `keyAt` returns, and a second derivation that disagreed on any
+    // item — a hole in the array, say — would report growth where there is none.
+    const nextKeys = items.map((_item, index) => keyAt(index));
 
     if (!hasObservedItemCount) {
       previousTotalSize = currentTotal;
@@ -456,6 +459,11 @@
     // measurement changed it — which is the entire case this exists to handle.
     const totalSize = offsets?.totalSize ?? 0;
     const currentViewportHeight = viewportHeight;
+    // `reverse` routes through the same `isPinnedToBottom` flag rather than
+    // bypassing it. Scrolling up clears the flag, so a measurement that grows the
+    // total does NOT drag a reader out of history; an append then re-arms it, and
+    // the row appended under `dynamicSize` measures after the pin write — which is
+    // exactly the window this effect covers.
     if ((!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
     const element = scrollElement;
     if (!element) return;
