@@ -13,7 +13,12 @@ ENV PLAYWRIGHT_DOCKER=1
 ENV CINDER_PLAYWRIGHT_VERSION=${PLAYWRIGHT_VERSION}
 ENV DEBIAN_FRONTEND=noninteractive
 
-RUN apt-get update \
+# Fail the build rather than fall back to "latest": an image that silently
+# installs an unpinned Bun is exactly the drift this argument exists to stop,
+# and a manual `docker build` without it would reintroduce it quietly.
+RUN test -n "${BUN_VERSION}" \
+    || { echo 'BUN_VERSION build-arg is required (see readPinnedBunVersion)' >&2; exit 1; } \
+    && apt-get update \
     && apt-get install -y --no-install-recommends unzip \
     && rm -rf /var/lib/apt/lists/* \
     && curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" \

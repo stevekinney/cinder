@@ -32,6 +32,14 @@ describe('the container runs the Bun this workspace pins', () => {
     expect(dockerfile).toMatch(/bun\.sh\/install \| bash -s "bun-v\$\{BUN_VERSION\}"/);
   });
 
+  it('refuses to build without the version rather than falling back to latest', () => {
+    // A manual `docker build` with no build-arg would otherwise reintroduce
+    // the drift quietly, which is the whole failure this pins down.
+    const dockerfile = readFileSync(resolve(testingPackageRoot, 'Dockerfile'), 'utf8');
+    expect(dockerfile).toMatch(/test -n "\$\{BUN_VERSION\}"/);
+    expect(dockerfile).toMatch(/BUN_VERSION build-arg is required/);
+  });
+
   it('is the same Bun every workflow job installs', () => {
     const workflow = readFileSync(
       resolve(workspaceRoot, '.github/workflows/browser-tests.yaml'),
