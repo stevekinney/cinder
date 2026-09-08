@@ -46,6 +46,14 @@ export type PlaygroundExit = {
 };
 
 /**
+ * What the process recorded when it died, before its output is attached.
+ * `exit` can fire while stdout still has buffered `data` events to deliver,
+ * so the tail is read when the report is written rather than snapshotted
+ * here — otherwise the report omits exactly the last lines that explain it.
+ */
+type PlaygroundTermination = { code: number | null; signal: NodeJS.Signals | null };
+
+/**
  * What to print when the playground dies mid-run. Says outright that the
  * browser failures above are downstream of this, because the alternative —
  * dozens of `ERR_CONNECTION_REFUSED` navigations — reads as the branch under
@@ -734,11 +742,15 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
-  let playgroundExit: PlaygroundExit | null = null;
+  let playgroundTermination: PlaygroundTermination | null = null;
+  // Reads the server's output as it stands when the report is written; the
+  // buffer itself lives in the block that spawns the server, and stays null
+  // until there is one to read.
+  let serverOutputTail: (() => string) | null = null;
   // Read through a function with a declared return type: the only assignment
   // is inside the server's `exit` callback, which control-flow analysis does
   // not see, so a direct read narrows to `never` at the check below.
-  const readPlaygroundExit = (): PlaygroundExit | null => playgroundExit;
+  const readPlaygroundTermination = (): PlaygroundTermination | null => playgroundTermination;
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
   let dependencyWatchController: DependencyWatchController | null = null;
@@ -845,6 +857,7 @@ async function main(): Promise<void> {
     });
 
     let serverOutputBuffer = '';
+    serverOutputTail = (): string => serverOutputBuffer;
 
     // Nothing watched the server once it was ready, so a server that exited
     // mid-run turned into one bare `ERR_EMPTY_RESPONSE` followed by a
@@ -852,7 +865,7 @@ async function main(): Promise<void> {
     // that name the symptom and never the cause. Record its death here and
     // report it below.
     serverProcess.on('exit', (code, signal) => {
-      playgroundExit = { code, signal, output: serverOutputBuffer };
+      playgroundTermination = { code, signal };
     });
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
@@ -949,16 +962,27 @@ async function main(): Promise<void> {
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
   // A dead playground cannot serve the rest of the suite, and every test that
   // follows would spend its full timeout proving it. Stop here instead.
-  serverProcess?.once('exit', () => {
-    if (playwright.exitCode === null && playwright.signalCode === null) {
-      console.error('Playground server exited mid-run; stopping the browser suite.');
-      playwright.kill('SIGTERM');
-    }
-  });
+  const stopSuiteForDeadPlayground = (): void => {
+    if (playwright.exitCode !== null || playwright.signalCode !== null) return;
+    console.error('Playground server exited mid-run; stopping the browser suite.');
+    playwright.kill('SIGTERM');
+  };
+  serverProcess?.once('exit', stopSuiteForDeadPlayground);
+  // `exit` is not replayed, so a server that died between becoming ready and
+  // this registration would otherwise leave the suite running to its
+  // timeouts — the very thing this is here to prevent. The earlier listener
+  // has already recorded it, so the recorded state is the reliable signal.
+  if (readPlaygroundTermination() !== null) stopSuiteForDeadPlayground();
+
   const playwrightCode = await waitForExit(playwright);
-  const playgroundDeath = readPlaygroundExit();
-  if (playgroundDeath !== null) {
-    console.error(describePlaygroundExit(playgroundDeath));
+  const playgroundDeath = readPlaygroundTermination();
+  // A shutdown this wrapper asked for kills the playground on its way out.
+  // Reporting that as a mid-run death would blame cancellation for failures
+  // it did not cause, so only an unrequested exit is reported.
+  if (playgroundDeath !== null && shutdownExitCode === null) {
+    console.error(
+      describePlaygroundExit({ ...playgroundDeath, output: serverOutputTail?.() ?? '' }),
+    );
     await exitAfterCleanup(playwrightCode === 0 ? 1 : playwrightCode);
   }
   await exitIfShuttingDown();

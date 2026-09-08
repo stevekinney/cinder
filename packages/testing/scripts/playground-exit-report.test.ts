@@ -27,6 +27,19 @@ describe('describePlaygroundExit', () => {
     expect(report).not.toContain('line 20');
   });
 
+  it('reads the tail when the report is written, not when the process exits', () => {
+    // `exit` can fire while stdout still has buffered data to deliver, so the
+    // report takes the buffer as it stands at report time. This models that:
+    // the last line arrives after the termination is recorded.
+    let buffer = 'starting up';
+    const readTail = (): string => buffer;
+    const termination = { code: 1, signal: null };
+    buffer += '\nSegmentation fault';
+    expect(describePlaygroundExit({ ...termination, output: readTail() })).toContain(
+      'Segmentation fault',
+    );
+  });
+
   it('omits the output section when the server said nothing', () => {
     expect(describePlaygroundExit({ code: 0, signal: null, output: '   \n  ' })).not.toContain(
       'Last playground output',
