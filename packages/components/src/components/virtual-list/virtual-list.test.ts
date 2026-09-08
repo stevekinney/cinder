@@ -1789,3 +1789,269 @@ describe('VirtualList — infinite scroll callbacks', () => {
     expect(calls).toBe(0);
   });
 });
+
+describe('VirtualList — windowScroll', () => {
+  test('marks the root as window-scrolled so it stops being its own scroller', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      windowScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    expect(list.getAttribute('data-cinder-scroll-source')).toBe('window');
+  });
+
+  test('leaves the attribute off in the default container-scrolled mode', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    expect(list.hasAttribute('data-cinder-scroll-source')).toBe(false);
+  });
+
+  test('ignores the element scroll position, which it no longer owns', async () => {
+    // The document is the scroller in this mode. Writing to the element's own
+    // scrollTop must not move the window, or the two would fight.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      windowScroll: true,
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const before = renderedRows(container).map((node) => node.dataset['index']);
+
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+
+    expect(renderedRows(container).map((node) => node.dataset['index'])).toEqual(before);
+  });
+
+  test('subscribes to window scroll and releases the listener on teardown', async () => {
+    // The listener lives on the window, so nothing tears it down implicitly when
+    // the element is removed — a leak here outlives every list the page mounts.
+    const added = new Set<string>();
+    const removed = new Set<string>();
+    const originalAdd = window.addEventListener.bind(window);
+    const originalRemove = window.removeEventListener.bind(window);
+
+    window.addEventListener = ((type: string, ...rest: unknown[]) => {
+      added.add(type);
+      return (originalAdd as unknown as (...args: unknown[]) => void)(type, ...rest);
+    }) as typeof window.addEventListener;
+    window.removeEventListener = ((type: string, ...rest: unknown[]) => {
+      removed.add(type);
+      return (originalRemove as unknown as (...args: unknown[]) => void)(type, ...rest);
+    }) as typeof window.removeEventListener;
+
+    try {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(500),
+        itemHeight: 20,
+        windowScroll: true,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      expect(added.has('scroll')).toBe(true);
+      expect(added.has('resize')).toBe(true);
+
+      unmount();
+      await tick();
+      expect(removed.has('scroll')).toBe(true);
+      expect(removed.has('resize')).toBe(true);
+    } finally {
+      window.addEventListener = originalAdd;
+      window.removeEventListener = originalRemove;
+    }
+  });
+});
+
+describe('VirtualList — scrollRestoration', () => {
+  function createStorage() {
+    const entries = new Map<string, string>();
+    return {
+      entries,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        entries.set(key, value);
+      },
+      removeItem: (key: string) => {
+        entries.delete(key);
+      },
+    };
+  }
+
+  test('writes nothing without an id, because an implicit key would collide', async () => {
+    const storage = createStorage();
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    try {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(500),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      unmount();
+      await tick();
+      expect(storage.entries.size).toBe(0);
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('saves on teardown and restores on the next mount', async () => {
+    const storage = createStorage();
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    const props = () => ({
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      scrollRestoration: true,
+      scrollRestorationId: 'feed',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    try {
+      const first = render(VirtualList, props());
+      await waitFor(() => expect(renderedRows(first.container).length).toBeGreaterThan(0));
+      const list = first.container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(first.container).some((node) => node.dataset['index'] === '200')).toBe(
+          true,
+        ),
+      );
+
+      first.unmount();
+      await tick();
+      expect(storage.entries.size).toBe(1);
+
+      const second = render(VirtualList, props());
+      await waitFor(() => expect(renderedRows(second.container).length).toBeGreaterThan(0));
+      await waitFor(() =>
+        expect(renderedRows(second.container).some((node) => node.dataset['index'] === '200')).toBe(
+          true,
+        ),
+      );
+      expect(renderedRows(second.container).some((node) => node.dataset['index'] === '0')).toBe(
+        false,
+      );
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('drops a saved position whose row no longer exists', async () => {
+    // The collection shrank between visits. Clamping into range would drop the
+    // reader somewhere arbitrary and then re-save it as though it were their place.
+    const storage = createStorage();
+    storage.setItem(
+      'cinder:virtual-list:feed',
+      JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    );
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    try {
+      const { container } = render(VirtualList, {
+        items: makeItems(10),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true);
+      expect(storage.entries.has('cinder:virtual-list:feed')).toBe(false);
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('a storage that throws on every access does not break the list', async () => {
+    // Safari in private browsing throws on access, not only on write.
+    const hostile = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: hostile,
+      configurable: true,
+    });
+
+    try {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(500),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      expect(() => unmount()).not.toThrow();
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+});

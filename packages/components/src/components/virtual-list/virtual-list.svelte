@@ -64,6 +64,16 @@
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
   import {
+    resolveWindowScrollGeometry,
+    resolveWindowViewportSize,
+  } from './_internal/window-scroll.ts';
+  import {
+    clearScrollPosition,
+    loadScrollPosition,
+    saveScrollPosition,
+    type ScrollRestorationStorage,
+  } from './_internal/scroll-restoration.ts';
+  import {
     createEdgeLatch,
     resolveEdgeFireDecision,
     resolveEdgeProximity,
@@ -96,6 +106,9 @@
     reverse = false,
     onEndReached,
     onStartReached,
+    windowScroll = false,
+    scrollRestoration = false,
+    scrollRestorationId,
     tabindex = 0,
     getKey,
     row,
@@ -148,6 +161,14 @@
   /** Set once on mount under `reverse`, which starts at the end rather than the start. */
   let needsInitialReversePin = false;
   let edgeLatch: EdgeLatch = createEdgeLatch();
+  /**
+   * Under `windowScroll` the component has no scroll container of its own, so the
+   * visible extent is the overlap of the list's box with the viewport rather than
+   * the element's own size. Held separately because `measuredViewportHeight`
+   * doubles as the container measurement everywhere else.
+   */
+  let windowVisibleSize = $state(0);
+  let windowScrollOffset = $state(0);
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -323,6 +344,101 @@
 
   const observeResize = useResizeObserver(() => {
     if (scrollElement) syncViewport(scrollElement);
+  });
+
+  /**
+   * Under `windowScroll` the scroll events the component needs are on the document,
+   * not on any element it renders — so it subscribes to them, and to resize, since
+   * the viewport extent is now the window's.
+   *
+   * `passive: true` because the handler only measures; declaring so lets the
+   * browser scroll without waiting to learn whether the event will be cancelled.
+   */
+  $effect(() => {
+    if (!windowScroll) return;
+    const element = scrollElement;
+    if (!element || typeof window === 'undefined') return;
+
+    const handleWindowGeometryChange = () => {
+      if (isDestroyed) return;
+      syncViewport(element);
+    };
+
+    window.addEventListener('scroll', handleWindowGeometryChange, { passive: true });
+    window.addEventListener('resize', handleWindowGeometryChange, { passive: true });
+    handleWindowGeometryChange();
+
+    return () => {
+      window.removeEventListener('scroll', handleWindowGeometryChange);
+      window.removeEventListener('resize', handleWindowGeometryChange);
+    };
+  });
+
+  /**
+   * The storage scroll restoration writes to, or `undefined` when it should not
+   * write at all.
+   *
+   * Resolved through a guarded read: some privacy modes throw on merely ACCESSING
+   * `sessionStorage`, not just on writing to it, so the property access itself has
+   * to be inside the try.
+   */
+  function resolveRestorationStorage(): ScrollRestorationStorage | undefined {
+    if (!scrollRestoration) return undefined;
+    try {
+      return typeof sessionStorage === 'undefined' ? undefined : sessionStorage;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Restores a remembered position on mount, and remembers the current one on
+   * teardown.
+   *
+   * Deliberately keyed on nothing reactive but the id: re-running this on an
+   * unrelated state change would re-apply a stale saved offset over wherever the
+   * reader had since scrolled to.
+   */
+  $effect(() => {
+    const id = scrollRestorationId;
+    const element = scrollElement;
+    if (!element || !id) return;
+
+    const storage = resolveRestorationStorage();
+    const saved = loadScrollPosition(storage, id);
+    if (saved && saved.startIndex >= items.length) {
+      // The collection shrank since the position was saved, so the remembered row
+      // no longer exists. Restoring to a clamped index would drop the reader
+      // somewhere arbitrary and then re-save that as if it were their place;
+      // dropping the entry lets the list open at the start, which is at least true.
+      clearScrollPosition(storage, id);
+    } else if (saved) {
+      // Applied through the index rather than the raw offset: under `dynamicSize`
+      // the offsets table is still all estimates at mount, so the saved pixel
+      // offset points at a different row than it did when saved. Scrolling to the
+      // index lands on the row the reader was actually looking at, and the settle
+      // loop follows it as the rows above are measured.
+      if (dynamicSize) {
+        scrollToIndex(saved.startIndex, { align: 'start' });
+      } else {
+        writeScrollOffset(element, saved.scrollOffset, 'auto');
+        scrollOffset = readScrollOffset(element);
+      }
+    }
+
+    return () => {
+      // Teardown is the last moment the position is knowable. Reading state here
+      // rather than a captured copy so a scroll during the component's life is
+      // reflected, and untracked so this cleanup never becomes a dependency.
+      const storageAtTeardown = resolveRestorationStorage();
+      if (!storageAtTeardown) return;
+      untrack(() => {
+        saveScrollPosition(storageAtTeardown, id, {
+          scrollOffset,
+          startIndex: virtualWindow.startIndex,
+        });
+      });
+    };
   });
 
   $effect.pre(() => {
@@ -679,6 +795,10 @@
    * browser was measured to use. See `resolveRtlScrollType`.
    */
   function readScrollOffset(element: HTMLElement): number {
+    // With no scroll container of its own, the offset is not on the element at
+    // all — it is how far the list's box has travelled past the viewport's start
+    // edge, which `syncViewport` has already resolved.
+    if (windowScroll) return windowScrollOffset;
     if (!horizontal) return Math.max(0, element.scrollTop);
     // Normalization is the identity under ltr, and resolving the convention costs a
     // layout-forcing probe. Short-circuit so a left-to-right page never pays for an
@@ -770,6 +890,27 @@
    */
   function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
+
+    if (windowScroll) {
+      const viewportSize = resolveWindowViewportSize(
+        typeof window === 'undefined' ? undefined : window,
+        horizontal ? 'horizontal' : 'vertical',
+      );
+      const geometry = resolveWindowScrollGeometry({
+        listStartInViewport: horizontal ? rect.left : rect.top,
+        viewportSize,
+        totalSize: currentTotalSize(),
+      });
+      windowScrollOffset = geometry.scrollOffset;
+      // Fall back to the full viewport while the overlap is zero: the list is off
+      // screen entirely, and windowing against 0 would mount nothing, so scrolling
+      // it back into view would find an empty list.
+      windowVisibleSize = geometry.visibleSize || viewportSize;
+      measuredViewportHeight = windowVisibleSize;
+      scrollOffset = geometry.scrollOffset;
+      return windowVisibleSize;
+    }
+
     // The MAIN axis — the one being scrolled and windowed. Under `horizontal` that
     // is the inline extent: the container's block-size is `auto` and collapses to
     // one row's height, which would badly under-report the viewport and render too
@@ -1087,6 +1228,7 @@
   data-cinder-stick-to-bottom={stickToBottom ? 'true' : undefined}
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
   data-cinder-orientation={horizontal ? 'horizontal' : undefined}
+  data-cinder-scroll-source={windowScroll ? 'window' : undefined}
   style:--cinder-virtual-list-height={height}
   onscroll={handleScroll}
   onwheel={handleWheel}

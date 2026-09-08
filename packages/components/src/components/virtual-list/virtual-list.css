@@ -91,6 +91,19 @@
     flex: 0 0 auto;
   }
 
+  /*
+   * Under `windowScroll` the list is a plain block in the page: the document is
+   * the scroller, so the container must not create one of its own. It takes its
+   * height from the spacer, and `overflow: visible` matters as much as the size —
+   * a clipping container would trap sticky positioning and cut off any row that
+   * paints outside its box.
+   */
+  .cinder-virtual-list[data-cinder-scroll-source='window'] {
+    block-size: auto;
+    inline-size: auto;
+    overflow: visible;
+  }
+
   .cinder-virtual-list__spacer {
     position: relative;
     min-block-size: 100%;

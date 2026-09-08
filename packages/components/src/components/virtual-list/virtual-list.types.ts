@@ -145,6 +145,48 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   onStartReached?: (() => void) | undefined;
   /**
+   * Virtualize against the document scroller instead of an internal one.
+   *
+   * The list becomes a plain block in the page with no scroll container of its
+   * own: `height` is ignored, the viewport is measured from the window, and how
+   * far the reader has travelled is derived from where the list's box currently
+   * sits relative to the viewport.
+   *
+   * Use this when the list IS the page — a feed, a search-results view — so the
+   * reader scrolls the document rather than a box inside it, and the browser's
+   * own scroll restoration and scrollbar behave normally.
+   *
+   * `stickToBottom` and `reverse` are not supported in this mode and are ignored:
+   * both pin a scroll position the component no longer owns.
+   *
+   * Defaults to false.
+   */
+  windowScroll?: boolean;
+  /**
+   * Remember the scroll position across navigation, keyed by
+   * `scrollRestorationId`.
+   *
+   * The position is written to `sessionStorage` as the reader scrolls and on
+   * teardown, and read back on mount. Storage failures are swallowed: a browser
+   * in private mode or at its quota throws on write, and losing a remembered
+   * offset must not break the list.
+   *
+   * Has no effect without a `scrollRestorationId` — see that prop for why.
+   *
+   * Defaults to false.
+   */
+  scrollRestoration?: boolean;
+  /**
+   * Stable id under which `scrollRestoration` saves this list's position.
+   *
+   * Required for restoration to do anything. There is deliberately no default:
+   * an implicit key derived from position or order would silently hand one
+   * list's remembered offset to a different list after a refactor, and two lists
+   * on one page would overwrite each other. Choose something tied to what the
+   * list shows, such as a route or collection name.
+   */
+  scrollRestorationId?: string;
+  /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the native scroll container for
    * arrow-key scrolling. Pass `tabindex={-1}` when the viewport should be
