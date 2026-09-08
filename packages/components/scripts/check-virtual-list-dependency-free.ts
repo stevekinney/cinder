@@ -12,15 +12,22 @@
  * other new bare import into this one subtree without a corresponding,
  * reviewed `dependencies` entry.
  *
- * This script walks every `.ts`/`.svelte` file under
+ * This script starts from every `.ts`/`.svelte` file under
  * `packages/components/src/components/virtual-list/**` plus
  * `packages/components/src/utilities/fixed-virtual-window.ts`, parses every
- * `import`/`export ... from` specifier, and fails if any specifier:
+ * `import`/`export ... from`/`import x = require(...)` specifier (dynamic
+ * `import()` included), and — via `walkDependencyGraph` — follows every literal
+ * RELATIVE one transitively to whatever file it resolves to, so a relative hop to
+ * a module outside that starting set cannot smuggle in anything unchecked (CIN-522).
+ * It fails if any specifier reached this way:
  *
  *   - is exactly `@tanstack/virtual-core`, or
  *   - is a bare specifier (not relative, not `svelte`/`svelte/*`, not a
  *     Node/Bun builtin) that is not already listed in this package's
- *     `package.json` `dependencies`.
+ *     `package.json` `dependencies` — unless the file it was found in is reached
+ *     ONLY through relative imports from a `*.test.ts`/`*.spec.ts` file, in which
+ *     case it never ships and the undeclared-dependency rule does not apply (see
+ *     `walkDependencyGraph`'s doc comment for exactly how that is decided).
  *
  * Registered as `check:virtual-list-dependency-free` and wired into
  * `lint:invariants` so it is CI-gated, not merely runnable.
@@ -39,6 +46,7 @@
  */
 
 import { Glob } from 'bun';
+import { existsSync, statSync } from 'node:fs';
 import { isBuiltin } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -338,6 +346,25 @@ function collectSpecifiers(text: string, baseOffset: number): ParsedSpecifier[] 
       }
     }
 
+    // `import x = require('pkg')` is TypeScript's own import-equals form, still legal
+    // in a `.ts` file compiled as CommonJS-interop, and loads exactly as real a
+    // dependency as `import x from 'pkg'` does. `ts.forEachChild` does not surface it
+    // through either of the two branches above — its right-hand side is an
+    // `ExternalModuleReference` node, not a `CallExpression` — so a bare `visit` walk
+    // skips it unless asked for by name. It is a static declaration, not a runtime
+    // call, hence `isDynamic: false` here (matching the plain `import`/`export from`
+    // branch above), even though `require()` calls are treated as dynamic.
+    if (ts.isImportEqualsDeclaration(node) && ts.isExternalModuleReference(node.moduleReference)) {
+      const { expression } = node.moduleReference;
+      const specifier = literalText(expression);
+      found.push({
+        specifier: specifier ?? expression.getText(sourceFile),
+        offset: baseOffset + expression.getStart(sourceFile),
+        isDynamic: false,
+        isLiteral: specifier !== undefined,
+      });
+    }
+
     if (ts.isCallExpression(node) && node.expression.kind === ts.SyntaxKind.ImportKeyword) {
       const [argument] = node.arguments;
       if (argument !== undefined) {
@@ -396,6 +423,42 @@ function resolveViolationReason(
 }
 
 /**
+ * Every import specifier `content` contains: for a `.ts` file, the whole file
+ * parsed once; for a `.svelte` file, each `<script>` body parsed separately (see
+ * `extractScriptBlocks`) plus the template walked on its own (see
+ * `collectTemplateSpecifiers`), since a template `{#await import(...)}` lives
+ * outside every script body.
+ *
+ * Shared by `findDependencyViolations` (classifies each specifier) and
+ * `walkDependencyGraph` (follows the relative ones to the file they resolve to) so
+ * both see the exact same import list for a given file — the two-parser drift this
+ * module's history warns about (see the module doc) is a risk only when a
+ * scanner is reimplemented, not when it is reused.
+ */
+function collectAllSpecifiers(content: string, filePath: string): ParsedSpecifier[] {
+  const isSvelte = filePath.endsWith('.svelte');
+  const blocks = isSvelte ? extractScriptBlocks(content) : [{ text: content, offset: 0 }];
+  const parsedSpecifiers = blocks.flatMap((block) => collectSpecifiers(block.text, block.offset));
+  if (isSvelte) parsedSpecifiers.push(...collectTemplateSpecifiers(content));
+  return parsedSpecifiers;
+}
+
+/** Overrides for {@link findDependencyViolations}. */
+export type FindDependencyViolationsOptions = {
+  /**
+   * Forces the shipped-source-versus-test-file rule (see {@link resolveViolationReason})
+   * for this call, in place of `TEST_FILE_PATTERN.test(filePath)`. `walkDependencyGraph`
+   * passes this once it has determined whether the file is reachable from a
+   * shipping entry point at all, rather than from its filename alone — a file
+   * reached ONLY through a relative import from a test file (e.g.
+   * `src/test/happy-dom.ts`, which never ships) needs the lenient rule even though
+   * its own name does not end in `.test.ts`. Omitted, this call behaves exactly as
+   * it always has.
+   */
+  readonly treatAsTestFile?: boolean;
+};
+
+/**
  * Returns one {@link DependencyViolation} per disallowed specifier in `content`.
  * Pure and filesystem-free so it can be exercised directly against fabricated
  * source text (see `_internal/dependency-free.test.ts`).
@@ -406,15 +469,12 @@ export function findDependencyViolations(
   content: string,
   filePath: string,
   declaredDependencyNames: ReadonlySet<string>,
+  options?: FindDependencyViolationsOptions,
 ): DependencyViolation[] {
-  const isTestFile = TEST_FILE_PATTERN.test(filePath);
+  const isTestFile = options?.treatAsTestFile ?? TEST_FILE_PATTERN.test(filePath);
   const lineStartOffsets = buildLineStartOffsets(content);
   const lines = content.split('\n');
-
-  const isSvelte = filePath.endsWith('.svelte');
-  const blocks = isSvelte ? extractScriptBlocks(content) : [{ text: content, offset: 0 }];
-  const parsedSpecifiers = blocks.flatMap((block) => collectSpecifiers(block.text, block.offset));
-  if (isSvelte) parsedSpecifiers.push(...collectTemplateSpecifiers(content));
+  const parsedSpecifiers = collectAllSpecifiers(content, filePath);
 
   const violations: DependencyViolation[] = [];
   {
@@ -486,20 +546,167 @@ export async function collectScanTargets(): Promise<string[]> {
   return files;
 }
 
+/**
+ * Extensions `collectScanTargets`' own glob recognizes. A relative import that
+ * resolves to anything else (`./virtual-list.css`, say) is real and gets its
+ * existence confirmed by `resolveRelativeSpecifier`, but this guard has no import
+ * graph to walk for it — it only understands `.ts`/`.svelte` source — so it is left
+ * unscanned rather than fed to a TypeScript parser that was never going to
+ * understand it.
+ */
+const SCANNABLE_SOURCE_EXTENSIONS = ['.ts', '.svelte'] as const;
+
+function isScannableSourceFile(filePath: string): boolean {
+  return SCANNABLE_SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension));
+}
+
+/**
+ * Resolves a relative import specifier against the file that wrote it, trying (in
+ * order) the specifier exactly as written, then each extension this package's own
+ * relative imports are sometimes written without appended to it (e.g.
+ * `virtual-list.schema.ts` imports `'../../schema-types'`, no `.ts`), then an
+ * `index` file inside it as a directory. Returns `undefined` — never throws — when
+ * none of those exist, so a broken relative import is reported as a violation
+ * rather than crashing the scan.
+ *
+ * `statSync(...).isFile()`, not just `existsSync`, because a specifier can name an
+ * existing DIRECTORY with no `index` file inside it (`./some-folder` where nothing
+ * has been added yet) — `existsSync` alone would treat the directory itself as a
+ * resolved module.
+ */
+export function resolveRelativeSpecifier(
+  specifier: string,
+  importingFilePath: string,
+): string | undefined {
+  const candidateBase = resolve(dirname(importingFilePath), specifier);
+  const candidatePaths = [
+    candidateBase,
+    ...SCANNABLE_SOURCE_EXTENSIONS.map((extension) => `${candidateBase}${extension}`),
+    ...SCANNABLE_SOURCE_EXTENSIONS.map((extension) => join(candidateBase, `index${extension}`)),
+  ];
+  for (const candidatePath of candidatePaths) {
+    if (existsSync(candidatePath) && statSync(candidatePath).isFile()) return candidatePath;
+  }
+  return undefined;
+}
+
+const UNRESOLVED_RELATIVE_IMPORT_REASON =
+  'this relative import does not resolve to a file on disk, so the dependency-free guard cannot ' +
+  'verify what it would pull into the virtual-list engine';
+
+/** What one full transitive scan of the virtual-list dependency graph found. */
+export type DependencyGraphWalkResult = {
+  /**
+   * Every disallowed specifier found across the whole reachable graph, plus one
+   * entry per relative import that did not resolve to a file on disk.
+   */
+  readonly violations: DependencyViolation[];
+  /**
+   * Every `.ts`/`.svelte` file the walk actually parsed for violations — the
+   * original `rootFilePaths` plus everything reached transitively through a
+   * literal relative import.
+   */
+  readonly scannedFilePaths: readonly string[];
+};
+
+/**
+ * Follows every literal relative import reachable from `rootFilePaths`, closing
+ * the CIN-522 escape hatch where a scanned file relatively imports a module
+ * outside the scan set and that module goes completely unchecked —
+ * `classifySpecifier` always waves a relative specifier through, so nothing short
+ * of actually opening the file it points to can tell whether that file is clean.
+ *
+ * Runs as two passes over one shared `visited` set, rather than classifying each
+ * newly-reached file by its own filename in isolation, so a file's shipped-versus-
+ * test status is decided by how the import graph actually reaches it:
+ *
+ *   1. From every root NOT matched by `TEST_FILE_PATTERN`, follow relative
+ *      imports to exhaustion. Everything this reaches ships, and faces the full
+ *      rule (`treatAsTestFile: false`).
+ *   2. From every root matched by `TEST_FILE_PATTERN`, follow relative imports
+ *      into whatever pass 1 left unvisited. A file reached ONLY this way — e.g.
+ *      `src/test/happy-dom.ts`, which `package.json`'s `files` allowlist excludes
+ *      from the published tarball — never ships, so it gets the same
+ *      undeclared-devDependency leniency `resolveViolationReason` already grants
+ *      any `*.test.ts` file (`treatAsTestFile: true`). The forbidden-package ban
+ *      still applies to it regardless — see `resolveViolationReason`.
+ *
+ * A file reachable from both groups is claimed by pass 1, since it runs to
+ * completion first and marks the file visited — correct, because reachability
+ * from any shipping root means the file ships, however else it is also reached.
+ * `visited` is what makes a cycle terminate: each file is read and parsed at most
+ * once, however many edges point at it.
+ */
+export async function walkDependencyGraph(
+  rootFilePaths: readonly string[],
+  declaredDependencyNames: ReadonlySet<string>,
+): Promise<DependencyGraphWalkResult> {
+  const visited = new Set<string>();
+  const violations: DependencyViolation[] = [];
+  const scannedFilePaths: string[] = [];
+
+  async function visitFrom(
+    seedFilePaths: readonly string[],
+    treatAsTestFile: boolean,
+  ): Promise<void> {
+    const queue = [...seedFilePaths];
+    for (let filePath = queue.shift(); filePath !== undefined; filePath = queue.shift()) {
+      if (visited.has(filePath)) continue;
+      visited.add(filePath);
+      if (!isScannableSourceFile(filePath)) continue;
+
+      const content = await Bun.file(filePath).text();
+      scannedFilePaths.push(filePath);
+      violations.push(
+        ...findDependencyViolations(content, filePath, declaredDependencyNames, {
+          treatAsTestFile,
+        }),
+      );
+
+      const lineStartOffsets = buildLineStartOffsets(content);
+      const lines = content.split('\n');
+      for (const parsed of collectAllSpecifiers(content, filePath)) {
+        if (!parsed.isLiteral || !isRelativeSpecifier(parsed.specifier)) continue;
+        const resolvedPath = resolveRelativeSpecifier(parsed.specifier, filePath);
+        if (resolvedPath === undefined) {
+          const lineNumber = lineNumberForOffset(lineStartOffsets, parsed.offset);
+          violations.push({
+            filePath,
+            lineNumber,
+            specifier: parsed.specifier,
+            line: (lines[lineNumber - 1] ?? '').trim(),
+            reason: UNRESOLVED_RELATIVE_IMPORT_REASON,
+          });
+          continue;
+        }
+        if (!visited.has(resolvedPath)) queue.push(resolvedPath);
+      }
+    }
+  }
+
+  const testRootFilePaths = rootFilePaths.filter((filePath) => TEST_FILE_PATTERN.test(filePath));
+  const productionRootFilePaths = rootFilePaths.filter(
+    (filePath) => !TEST_FILE_PATTERN.test(filePath),
+  );
+
+  await visitFrom(productionRootFilePaths, false);
+  await visitFrom(testRootFilePaths, true);
+
+  return { violations, scannedFilePaths };
+}
+
 async function main(): Promise<void> {
   const declaredDependencyNames = await loadDeclaredDependencyNames();
-  const files = await collectScanTargets();
-
-  const violations: DependencyViolation[] = [];
-  for (const filePath of files) {
-    const content = await Bun.file(filePath).text();
-    violations.push(...findDependencyViolations(content, filePath, declaredDependencyNames));
-  }
+  const rootFilePaths = await collectScanTargets();
+  const { violations, scannedFilePaths } = await walkDependencyGraph(
+    rootFilePaths,
+    declaredDependencyNames,
+  );
 
   if (violations.length === 0) {
     process.stdout.write(
-      `check-virtual-list-dependency-free — OK (${files.length} files, no @tanstack/virtual-core ` +
-        'or undeclared bare imports).\n',
+      `check-virtual-list-dependency-free — OK (${scannedFilePaths.length} files, no ` +
+        '@tanstack/virtual-core or undeclared bare imports).\n',
     );
     return;
   }
