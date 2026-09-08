@@ -37,6 +37,30 @@ const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
 const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
+
+/** How the playground server ended, when it ends before the suite does. */
+export type PlaygroundExit = {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  output: string;
+};
+
+/**
+ * What to print when the playground dies mid-run. Says outright that the
+ * browser failures above are downstream of this, because the alternative —
+ * dozens of `ERR_CONNECTION_REFUSED` navigations — reads as the branch under
+ * test being broken, and keeps the server's own last words, which are usually
+ * the only evidence of why it stopped.
+ */
+export function describePlaygroundExit({ code, signal, output }: PlaygroundExit): string {
+  const lines = [
+    `Playground server exited during the run (code=${code ?? 'null'} signal=${signal ?? 'null'}). ` +
+      'The browser failures above are its consequence, not their own cause.',
+  ];
+  const tail = output.trim().split('\n').slice(-20).join('\n');
+  if (tail.length > 0) lines.push(`Last playground output:\n${tail}`);
+  return lines.join('\n');
+}
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
 const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
 const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
@@ -710,6 +734,11 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
+  let playgroundExit: PlaygroundExit | null = null;
+  // Read through a function with a declared return type: the only assignment
+  // is inside the server's `exit` callback, which control-flow analysis does
+  // not see, so a direct read narrows to `never` at the check below.
+  const readPlaygroundExit = (): PlaygroundExit | null => playgroundExit;
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
   let dependencyWatchController: DependencyWatchController | null = null;
@@ -816,6 +845,15 @@ async function main(): Promise<void> {
     });
 
     let serverOutputBuffer = '';
+
+    // Nothing watched the server once it was ready, so a server that exited
+    // mid-run turned into one bare `ERR_EMPTY_RESPONSE` followed by a
+    // `ERR_CONNECTION_REFUSED` for every remaining test — dozens of failures
+    // that name the symptom and never the cause. Record its death here and
+    // report it below.
+    serverProcess.on('exit', (code, signal) => {
+      playgroundExit = { code, signal, output: serverOutputBuffer };
+    });
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
@@ -909,7 +947,20 @@ async function main(): Promise<void> {
     },
   });
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
+  // A dead playground cannot serve the rest of the suite, and every test that
+  // follows would spend its full timeout proving it. Stop here instead.
+  serverProcess?.once('exit', () => {
+    if (playwright.exitCode === null && playwright.signalCode === null) {
+      console.error('Playground server exited mid-run; stopping the browser suite.');
+      playwright.kill('SIGTERM');
+    }
+  });
   const playwrightCode = await waitForExit(playwright);
+  const playgroundDeath = readPlaygroundExit();
+  if (playgroundDeath !== null) {
+    console.error(describePlaygroundExit(playgroundDeath));
+    await exitAfterCleanup(playwrightCode === 0 ? 1 : playwrightCode);
+  }
   await exitIfShuttingDown();
   await dependencyWatchController?.waitForIdle();
   const dependencyFailure = dependencyWatchController?.getFailure();
