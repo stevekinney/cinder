@@ -8,7 +8,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
 const repoRoot = resolvePath(packageRoot, '../..');
 
-type PackageManifest = { devDependencies?: Record<string, string> };
+type PackageManifest = { devDependencies?: Record<string, string>; packageManager?: string };
 
 export function readPinnedPlaywrightVersion(): string {
   const raw = readFileSync(resolvePath(packageRoot, 'package.json'), 'utf8');
@@ -20,6 +20,31 @@ export function readPinnedPlaywrightVersion(): string {
     );
   }
   return pinned;
+}
+
+/**
+ * The Bun the container must run, taken from the workspace's own
+ * `packageManager` pin so the image cannot drift away from the host.
+ *
+ * It drifted: the image installed whatever `https://bun.sh/install` served at
+ * build time, so a container built today ran a Bun the repository never
+ * pinned, while every other job used the pinned one. That is invisible until
+ * a Bun release changes behaviour, and then it looks like the branch broke.
+ */
+export function readPinnedBunVersion(): string {
+  const raw = readFileSync(resolvePath(repoRoot, 'package.json'), 'utf8');
+  const parsed: unknown = JSON.parse(raw);
+  const pinned =
+    typeof parsed === 'object' && parsed !== null
+      ? (parsed as PackageManifest).packageManager
+      : undefined;
+  const match = pinned?.match(/^bun@(\d+\.\d+\.\d+)$/);
+  if (!match?.[1]) {
+    throw new Error(
+      `packageManager must pin an exact Bun version (bun@x.y.z) in the workspace package.json; got ${pinned ?? 'undefined'}`,
+    );
+  }
+  return match[1];
 }
 
 export function run(
@@ -240,6 +265,8 @@ export async function buildPlaywrightDockerImage(
       'build',
       '--build-arg',
       `PLAYWRIGHT_VERSION=${playwrightVersion}`,
+      '--build-arg',
+      `BUN_VERSION=${readPinnedBunVersion()}`,
       '-t',
       imageTag,
       '-f',
