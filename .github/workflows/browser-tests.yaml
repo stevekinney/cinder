@@ -429,6 +429,9 @@ jobs:
       - name: Upload Playwright HTML report
         if: failure()
         uses: actions/upload-artifact@v7
+        # Diagnostics, never a verdict: a 403 from the artifact service must not
+        # fail a lane whose tests passed, and with it the required check.
+        continue-on-error: true
         with:
           name: playwright-report-${{ matrix.shard }}
           path: packages/testing/playwright-report
@@ -438,6 +441,7 @@ jobs:
       - name: Upload Playwright blob report
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shard }}
           path: packages/testing/blob-report
@@ -447,6 +451,7 @@ jobs:
       - name: Upload axe JSON results
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: axe-results-${{ matrix.shard }}
           path: packages/testing/test-results/axe
@@ -456,6 +461,7 @@ jobs:
       - name: Upload axe summary
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: axe-summary-${{ matrix.shard }}
           path: packages/testing/test-results/axe-summary.json
@@ -468,6 +474,7 @@ jobs:
         # 7-day retention bounds the storage cost.
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: screenshots-${{ matrix.shard }}
           path: packages/testing/screenshots
@@ -509,6 +516,7 @@ jobs:
         env:
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report
           path: packages/testing/test-results/visual-report.json
@@ -572,6 +580,7 @@ jobs:
       - name: Upload visual report
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report-${{ matrix.shard }}
           path: packages/testing/test-results/visual-report.json
@@ -580,6 +589,7 @@ jobs:
       - name: Upload visual failure diagnostics
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-visual-diagnostics-${{ matrix.shard }}
           path: |
@@ -645,6 +655,7 @@ jobs:
       - name: Upload merged report
         if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-report-merged
           path: playwright-report
@@ -653,6 +664,7 @@ jobs:
       - name: Upload merged visual report
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report
           path: packages/testing/visual-report.json
