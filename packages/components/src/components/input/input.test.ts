@@ -719,7 +719,13 @@ describe('Input group (leading/trailing addons)', () => {
       /\.cinder-input-host:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--cinder-border-strong\);/,
     );
     expect(css).toMatch(
-      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*oklch\(from var\(--cinder-status-danger-solid\) calc\(l - 0\.06\) c h\);/,
+      /\.cinder-input-host\[data-invalid\]:hover:not\(\[data-disabled\]\)\s*\{[^}]*border-color:\s*var\(--_cinder-input-invalid-border-hover\);/,
+    );
+    // The three surfaces that can paint that edge share one declaration of it,
+    // so they cannot drift apart: the bare input, the host that takes over when
+    // an addon appears, and the group.
+    expect(css).toMatch(
+      /\.cinder-input,\s*\.cinder-input-host,\s*\.cinder-input-group\s*\{[^}]*--_cinder-input-invalid-border-hover:\s*oklch\(\s*from var\(--cinder-status-danger-solid\) calc\(l - 0\.06\) c h\s*\);/,
     );
     // And the reverse direction: the grouped input drops its border with
     // `border-style`, not the `border` shorthand, so its computed border-color
