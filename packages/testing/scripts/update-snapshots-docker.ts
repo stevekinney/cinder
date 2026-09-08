@@ -34,10 +34,14 @@ export function readPinnedPlaywrightVersion(): string {
 export function readPinnedBunVersion(): string {
   const raw = readFileSync(resolvePath(repoRoot, 'package.json'), 'utf8');
   const parsed: unknown = JSON.parse(raw);
-  const pinned =
+  const field =
     typeof parsed === 'object' && parsed !== null
       ? (parsed as PackageManifest).packageManager
       : undefined;
+  // Checked rather than assumed: a `packageManager` that is present but not a
+  // string would make `.match` throw a TypeError, replacing the explicit
+  // message below with something a reader has to decode.
+  const pinned = typeof field === 'string' ? field : undefined;
   const match = pinned?.match(/^bun@(\d+\.\d+\.\d+)$/);
   if (!match?.[1]) {
     throw new Error(

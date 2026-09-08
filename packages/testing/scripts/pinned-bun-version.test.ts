@@ -18,9 +18,9 @@ function readWorkspaceManifest(): { packageManager?: string } {
 
 describe('the container runs the Bun this workspace pins', () => {
   it('reads the exact version from `packageManager`', () => {
-    expect(readPinnedBunVersion()).toBe(
-      readWorkspaceManifest().packageManager?.replace('bun@', ''),
-    );
+    const { packageManager } = readWorkspaceManifest();
+    expect(packageManager).toBeDefined();
+    expect(readPinnedBunVersion()).toBe(packageManager?.replace('bun@', ''));
   });
 
   it('installs that exact version in the image rather than whatever bun.sh serves', () => {
