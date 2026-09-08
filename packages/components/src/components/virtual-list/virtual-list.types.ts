@@ -168,6 +168,42 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   scrollRestoration?: boolean | undefined;
   /**
+   * Item indexes that stay visible at the leading edge while the reader scrolls
+   * past them — section headers in a grouped list, most often.
+   *
+   * A sticky row is kept mounted even after its own index leaves the rendered
+   * window, which is the part virtualization would otherwise break: unmounting it
+   * would make the heading vanish exactly when it is meant to be pinned.
+   *
+   * Indexes outside the list, duplicates, and non-integers are dropped rather than
+   * throwing — a bad sticky index is a cosmetic problem, not a correctness one.
+   */
+  stickyItems?: number[];
+  /**
+   * Animate `scrollToIndex` by default instead of jumping.
+   *
+   * Equivalent to passing `behavior: 'smooth'` on every call; an explicit
+   * `behavior` in the call's options still wins. Scroll corrections under
+   * `dynamicSize` are never animated whatever this is set to — a smooth
+   * correction would visibly perform the jump it exists to hide.
+   *
+   * Defaults to false.
+   */
+  smoothScroll?: boolean;
+  /**
+   * Grow `overscan` while the reader is scrolling fast, and shrink it back when
+   * they slow down.
+   *
+   * `overscan` becomes a floor rather than a fixed value: a fast fling renders
+   * further ahead to cut pop-in, and a stationary list falls back to exactly what
+   * was configured so the DOM stays small. The growth is bounded, because an
+   * unbounded overscan during a fling would mount thousands of rows and defeat the
+   * point of virtualizing at all.
+   *
+   * Defaults to false.
+   */
+  adaptiveOverscan?: boolean;
+  /**
    * Stable id under which `scrollRestoration` saves this list's position.
    *
    * Required for restoration to do anything. There is deliberately no default:

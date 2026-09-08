@@ -105,4 +105,22 @@
   .cinder-virtual-list__row {
     overflow: hidden;
   }
+
+  /*
+   * Sticky rows are positioned relative to the scroll container, which is the
+   * element that scrolls — so the offset is 0 on the axis being scrolled.
+   * `z-index` keeps a pinned header above the rows sliding under it; without it
+   * the later rows in source order paint on top.
+   */
+  .cinder-virtual-list__row[data-cinder-sticky='true'] {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+  }
+
+  .cinder-virtual-list[data-cinder-orientation='horizontal']
+    .cinder-virtual-list__row[data-cinder-sticky='true'] {
+    inset-block-start: auto;
+    inset-inline-start: 0;
+  }
 }

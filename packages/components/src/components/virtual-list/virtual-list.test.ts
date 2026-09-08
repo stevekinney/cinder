@@ -1254,9 +1254,15 @@ describe('VirtualList — dynamicSize', () => {
   });
 
   test('clamps the re-anchor offset to the rebuilt anchor row', async () => {
-    // A reader deep inside a measured tall row would, across a rebuild that replaces
-    // it with a small estimate, be placed many rows past the anchor — which then
-    // unmounts and can never be remeasured to correct the position.
+    // A reader deep inside a tall row would, across a rebuild that shrinks it, be
+    // carried many rows past the anchor — which then unmounts and can never be
+    // remeasured to correct the position.
+    //
+    // The anchor row is deliberately UNMEASURED here, so its size comes from the
+    // estimate and shrinks with it. An earlier version of this test used a MEASURED
+    // anchor, whose size survives the estimate change; the carried-forward offset
+    // then still fit inside the row and an unclamped implementation produced exactly
+    // the same number, so the assertion passed either way.
     installFakeResizeObserver();
     const base = {
       items: makeItems(200),
@@ -1264,34 +1270,25 @@ describe('VirtualList — dynamicSize', () => {
       dynamicSize: true,
       'aria-label': 'Events',
     };
-    const view = render(VirtualList, { ...base, itemHeight: 20, row: rowSnippet() });
+    const view = render(VirtualList, { ...base, itemHeight: 1_000, row: rowSnippet() });
 
     const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
-    list.scrollTop = 200;
+
+    // Sit 900px into row 10, which spans [10000, 11000) at the large estimate.
+    list.scrollTop = 10_900;
     await fireEvent.scroll(list);
     await tick();
 
-    // Row 10 is mounted and measures 400px, far taller than the estimate.
-    reportRowSizes(new Map([[10, 400]]));
-    await tick();
-
-    // Sit deep inside that row: it now spans [200, 600).
-    list.scrollTop = 560;
-    await fireEvent.scroll(list);
-    await tick();
-
-    // An estimate change rebuilds row 10 back down to 40px.
+    // The estimate collapses. Row 10 now spans [400, 440): its whole size is 40px,
+    // far less than the 900px the reader was carrying inside it.
     await view.rerender({ ...base, itemHeight: 40, row: rowSnippet() });
     await tick();
     await tick();
 
-    // Row 10 starts at 400 in the rebuilt table and is 400px tall (its measurement
-    // survives an estimate change), so a 360px intra-row offset still fits. What
-    // matters is that the reader stays within the anchor row rather than being
-    // carried past it.
     const anchorStart = 10 * 40;
+    // Unclamped this lands at 400 + 900 = 1300, inside row 32.
     expect(list.scrollTop).toBeGreaterThanOrEqual(anchorStart);
-    expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 400);
+    expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 40);
   });
 });
 
@@ -2519,5 +2516,191 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
       expect(raw).toBeDefined();
       expect(JSON.parse(raw as string).startIndex).toBe(200);
     });
+  });
+});
+
+describe('VirtualList — list semantics', () => {
+  test('announces each row as 1-based within the FULL collection, not the window', async () => {
+    // The whole reason these attributes are needed on a virtualized list: without
+    // them assistive technology announces the rendered window, so a 10,000-row list
+    // reads as "3 of 12".
+    const { container } = render(VirtualList, {
+      items: makeItems(10_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index="0"]') as HTMLElement;
+    expect(firstRow.getAttribute('aria-posinset')).toBe('1');
+    expect(firstRow.getAttribute('aria-setsize')).toBe('10000');
+    expect(renderedRows(container).length).toBeLessThan(100);
+  });
+});
+
+describe('VirtualList — stickyItems', () => {
+  test('keeps a sticky row mounted after the reader scrolls past it', async () => {
+    // A pinned header whose index leaves the window would be unmounted by plain
+    // virtualization, so the heading would vanish exactly when it is meant to show.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+    );
+    const sticky = container.querySelector<HTMLElement>('[data-cinder-virtual-index="0"]');
+    expect(sticky).not.toBeNull();
+    expect(sticky?.getAttribute('data-cinder-sticky')).toBe('true');
+    expect(sticky?.getAttribute('data-cinder-sticky-active')).toBe('true');
+  });
+
+  test('renders sticky rows in index order, not appended after the window', async () => {
+    // The each block is keyed, so appending the reattached row would move it after
+    // rows that follow it in the list.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+    );
+
+    const indexes = renderedRows(container).map((node) => Number(node.dataset['index']));
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+    expect(indexes[0]).toBe(0);
+  });
+
+  test('leaves the sticky attributes off when no sticky items are configured', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    expect(container.querySelector('[data-cinder-sticky]')).toBeNull();
+  });
+});
+
+describe('VirtualList — smoothScroll', () => {
+  function renderWithRef(extra: Record<string, unknown>) {
+    let listRef: VirtualListRef | undefined;
+    const rendered = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+      ...extra,
+      get ref() {
+        return listRef;
+      },
+      set ref(next: VirtualListRef | undefined) {
+        listRef = next;
+      },
+    });
+    return { ...rendered, getRef: () => listRef };
+  }
+
+  test('animates scrollToIndex by default when smoothScroll is on', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({ smoothScroll: true });
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start' });
+    await tick();
+    expect(behaviors).toContain('smooth');
+  });
+
+  test('an explicit behavior in the call still wins', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({ smoothScroll: true });
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start', behavior: 'auto' });
+    await tick();
+    expect(behaviors).not.toContain('smooth');
+  });
+
+  test('does not animate when smoothScroll is off', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({});
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start' });
+    await tick();
+    expect(behaviors).not.toContain('smooth');
+  });
+});
+
+describe('VirtualList — adaptiveOverscan', () => {
+  test('never renders fewer rows than the configured overscan', async () => {
+    // The floor is the safety property: turning adaptation on must not be able to
+    // make pop-in worse than leaving it off.
+    const baseline = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 6,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+    await waitFor(() => expect(renderedRows(baseline.container).length).toBeGreaterThan(0));
+    const baselineCount = renderedRows(baseline.container).length;
+
+    const adaptive = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 6,
+      adaptiveOverscan: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+    await waitFor(() => expect(renderedRows(adaptive.container).length).toBeGreaterThan(0));
+
+    expect(renderedRows(adaptive.container).length).toBeGreaterThanOrEqual(baselineCount);
   });
 });

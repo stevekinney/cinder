@@ -64,6 +64,18 @@
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
   import {
+    normalizeStickyIndexes,
+    resolveActiveStickyIndex,
+    resolveStickyRenderSet,
+  } from './_internal/sticky-items.ts';
+  import { resolveKeyboardTargetIndex, resolveRowSemantics } from './_internal/list-semantics.ts';
+  import {
+    createVelocityTracker,
+    resolveAdaptiveOverscan,
+    trackScrollVelocity,
+    type VelocityTracker,
+  } from './_internal/adaptive-overscan.ts';
+  import {
     loadScrollPosition,
     saveScrollPosition,
     type ScrollRestorationPosition,
@@ -104,6 +116,9 @@
     onStartReached,
     scrollRestoration = false,
     scrollRestorationId,
+    stickyItems,
+    smoothScroll = false,
+    adaptiveOverscan = false,
     tabindex = 0,
     getKey,
     row,
@@ -175,6 +190,14 @@
    * position to restore — not the same one already handled.
    */
   let restoredId: string | undefined;
+  /**
+   * Velocity is tracked in a plain binding, not `$state`. It updates on every
+   * scroll event, and making it reactive would re-run the window derivation twice
+   * per event — once for the offset and again for the velocity — for a value the
+   * derivation only reads through `effectiveOverscan`.
+   */
+  let velocityTracker: VelocityTracker = createVelocityTracker();
+  let scrollVelocity = $state(0);
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -203,6 +226,20 @@
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
+  /**
+   * The overscan actually applied. `resolvedOverscan` is the floor: adaptation only
+   * ever renders MORE than the consumer asked for, never less, so turning it on
+   * cannot make pop-in worse than the configured value.
+   */
+  const effectiveOverscan = $derived(
+    adaptiveOverscan
+      ? resolveAdaptiveOverscan({
+          baseOverscan: resolvedOverscan,
+          velocityInPixelsPerMillisecond: scrollVelocity,
+          itemSize: resolvedItemHeight,
+        })
+      : resolvedOverscan,
+  );
   const viewportHeight = $derived(
     measuredViewportHeight || estimateViewportHeight(height, resolvedItemHeight),
   );
@@ -225,23 +262,72 @@
           getKey: keyAt,
           scrollOffset,
           viewportSize: viewportHeight,
-          overscan: resolvedOverscan,
+          overscan: effectiveOverscan,
         })
       : getFixedVirtualWindow({
           itemCount: items.length,
           itemHeight: resolvedItemHeight,
           scrollOffset,
           viewportHeight,
-          overscan: resolvedOverscan,
+          overscan: effectiveOverscan,
           getKey: keyAt,
         }),
   );
-  const renderedItems = $derived(
-    virtualWindow.items.flatMap((virtualItem) => {
-      const item = items[virtualItem.index];
-      return item === undefined ? [] : [{ ...virtualItem, item }];
+  const stickyIndexes = $derived(normalizeStickyIndexes(stickyItems, items.length));
+  /** The sticky row currently pinned to the leading edge, if any. */
+  const activeStickyIndex = $derived(
+    resolveActiveStickyIndex(stickyIndexes, virtualWindow.startIndex),
+  );
+  /**
+   * Sticky indexes that must be in the DOM. This is a superset of the window: the
+   * pinned row has usually scrolled out of it, and unmounting it would make the
+   * heading disappear exactly when it is meant to be visible.
+   */
+  const stickyRenderSet = $derived(
+    resolveStickyRenderSet({
+      stickyIndexes,
+      windowStartIndex: virtualWindow.startIndex,
+      windowEndIndex: virtualWindow.endIndex,
+      firstVisibleIndex: virtualWindow.startIndex,
     }),
   );
+
+  const renderedItems = $derived.by(() => {
+    const windowed = virtualWindow.items.flatMap((virtualItem) => {
+      const item = items[virtualItem.index];
+      return item === undefined ? [] : [{ ...virtualItem, item }];
+    });
+    if (stickyRenderSet.length === 0) return windowed;
+
+    // Anything sticky that the window did not already cover is added back, then the
+    // whole set is re-sorted: a pinned row that scrolled above the window would
+    // otherwise render after the rows that follow it, and a keyed each block would
+    // reorder the DOM accordingly.
+    const present = new Set(windowed.map((entry) => entry.index));
+    const reattached = stickyRenderSet
+      .filter((index) => !present.has(index))
+      .flatMap((index) => {
+        const item = items[index];
+        if (item === undefined) return [];
+        const start = locateRowStart(index);
+        return [{ index, key: keyAt(index), start, size: locateRowSize(index), item }];
+      });
+    if (reattached.length === 0) return windowed;
+    return [...windowed, ...reattached].sort((left, right) => left.index - right.index);
+  });
+
+  /** Pixel offset of a row that the current window does not include. */
+  function locateRowStart(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return table[index] ?? 0;
+    return index * resolvedItemHeight;
+  }
+
+  function locateRowSize(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return Math.max(0, (table[index + 1] ?? 0) - (table[index] ?? 0));
+    return resolvedItemHeight;
+  }
 
   $effect(() => {
     const element = scrollElement;
@@ -1128,6 +1214,16 @@
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
     scrollOffset = readScrollOffset(element);
+    if (adaptiveOverscan) {
+      // `event.timeStamp` rather than a clock read: it is the time the browser
+      // associated with the scroll itself, so a handler delayed behind a long task
+      // does not report the delay as a slower scroll.
+      velocityTracker = trackScrollVelocity(velocityTracker, {
+        scrollOffset,
+        timestamp: event.timeStamp,
+      });
+      scrollVelocity = velocityTracker.velocityInPixelsPerMillisecond;
+    }
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom || reverse) {
       isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
@@ -1173,6 +1269,25 @@
   ): void {
     if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
     if (typeof onKeyDown === 'function') onKeyDown(event);
+    if (event.defaultPrevented) return;
+
+    // Only take over the keys when there is a sticky row to keep in view or the
+    // list is virtualized past what the browser can reach. Otherwise the native
+    // scroll container already handles every one of these correctly, and
+    // intercepting them would replace smooth native scrolling with a jump.
+    if (!stickyIndexes.length) return;
+
+    const target = resolveKeyboardTargetIndex({
+      key: event.key,
+      currentIndex: virtualWindow.startIndex,
+      itemCount: items.length,
+      visibleCount: Math.max(1, Math.floor(viewportHeight / Math.max(1, resolvedItemHeight))),
+      orientation: horizontal ? 'horizontal' : 'vertical',
+      writingDirection,
+    });
+    if (target === null) return;
+    event.preventDefault();
+    scrollToIndex(target, { align: 'start' });
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -1316,7 +1431,9 @@
   ): Promise<void> {
     if (isDestroyed || items.length === 0) return;
     const align = options?.align ?? 'auto';
-    const behavior = options?.behavior ?? 'auto';
+    // An explicit behavior in the call always wins; `smoothScroll` only supplies
+    // the default.
+    const behavior = options?.behavior ?? (smoothScroll ? 'smooth' : 'auto');
     // Each call supersedes any settle loop still running. Without this, two
     // overlapping loops write competing targets and the older one can land last,
     // finishing rapid navigation on the wrong item.
@@ -1408,6 +1525,10 @@
           class="cinder-virtual-list__row"
           role={role === 'list' ? 'listitem' : undefined}
           data-cinder-virtual-index={virtualItem.index}
+          data-cinder-sticky={stickyIndexes.includes(virtualItem.index) ? 'true' : undefined}
+          data-cinder-sticky-active={virtualItem.index === activeStickyIndex ? 'true' : undefined}
+          aria-posinset={resolveRowSemantics(virtualItem.index, items.length).ariaPosInSet}
+          aria-setsize={resolveRowSemantics(virtualItem.index, items.length).ariaSetSize}
           style={dynamicSize ? undefined : `${rowLayout.sizeProperty}:${virtualItem.size}px;`}
           {@attach observeRow}
         >
