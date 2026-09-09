@@ -69,7 +69,7 @@ export function describePlaygroundExit({ code, signal, output }: PlaygroundExit)
   // the server's own logs read. The split tolerates CRLF so a `\r` does not
   // ride along on every line.
   const tail = output.trimEnd().split(/\r?\n/).slice(-20).join('\n');
-  if (tail.trim().length > 0) lines.push(`Last playground output:\n${tail}`);
+  if (tail.trim().length > 0) lines.push(`Last playground output (stdout and stderr):\n${tail}`);
   return lines.join('\n');
 }
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
@@ -852,7 +852,11 @@ async function main(): Promise<void> {
     serverProcess = spawn('bun', playgroundServerArguments(), {
       cwd: playgroundServerWorkingDirectory(),
       detached: process.platform !== 'win32',
-      stdio: ['ignore', 'pipe', 'inherit'],
+      // stderr is piped rather than inherited so an uncaught exception's stack
+      // trace — where the reason for a death usually is — reaches the tail the
+      // exit report prints. It is still teed straight through, so nothing that
+      // used to appear in the log disappears from it.
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
     children.push({
@@ -876,15 +880,20 @@ async function main(): Promise<void> {
     // does not promise. Waiting for it before reading the tail is what keeps
     // the crash reason — often the very last chunk — in the report.
     const serverProcessRef = serverProcess;
+    let serverStdioClosed = false;
+    serverProcessRef.once('close', () => {
+      serverStdioClosed = true;
+    });
+    const hasClosed = (): boolean => serverStdioClosed;
     awaitServerOutputDrain = async (): Promise<void> => {
       if (serverProcessRef.exitCode === null && serverProcessRef.signalCode === null) return;
+      if (hasClosed()) return;
+      // `close` is the only event that promises every stdio stream has been
+      // delivered — `exit` does not, and with stderr piped as well there are
+      // now two streams to wait on rather than one.
       await new Promise<void>((resolve) => {
-        if (serverProcessRef.stdout === null || serverProcessRef.stdout.readableEnded) {
-          resolve();
-          return;
-        }
-        serverProcessRef.stdout.once('end', () => resolve());
         serverProcessRef.once('close', () => resolve());
+        setTimeout(resolve, 2_000).unref();
       });
     };
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
@@ -898,6 +907,18 @@ async function main(): Promise<void> {
       reportedPlaygroundPort =
         parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
       serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
+    });
+
+    serverProcess.stderr?.on('data', (chunk: string | Uint8Array) => {
+      process.stderr.write(chunk);
+      const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      // Same bounded buffer as stdout, interleaved, so the tail reads in the
+      // order the server actually said things.
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        output,
+        reportedPlaygroundPort !== null,
+      );
     });
 
     const startedAt = Date.now();

@@ -21,7 +21,7 @@ describe('describePlaygroundExit', () => {
   it("keeps the server's last words, bounded to the final lines", () => {
     const output = Array.from({ length: 40 }, (_, index) => `line ${index + 1}`).join('\n');
     const report = describePlaygroundExit({ code: 1, signal: null, output });
-    expect(report).toContain('Last playground output:');
+    expect(report).toContain('Last playground output (stdout and stderr):');
     expect(report).toContain('line 40');
     expect(report).toContain('line 21');
     expect(report).not.toContain('line 20');
@@ -50,6 +50,16 @@ describe('describePlaygroundExit', () => {
     // whitespace is part of how the server's own logs read.
     expect(report).not.toContain('\r');
     expect(report).toContain('    indented detail');
+  });
+
+  it('names both streams, because a crash reason usually arrives on stderr', () => {
+    const report = describePlaygroundExit({
+      code: null,
+      signal: 'SIGSEGV',
+      output: 'Listening at http://localhost:5555\nUncaught Error: boom',
+    });
+    expect(report).toContain('stdout and stderr');
+    expect(report).toContain('Uncaught Error: boom');
   });
 
   it('omits the output section when the server said nothing', () => {
