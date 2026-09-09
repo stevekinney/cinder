@@ -2,7 +2,7 @@ import { describe, expect, test } from 'bun:test';
 import {
 	AgentRunError,
 	AbortAgentRunError,
-	StandardSchemaValidationError,
+	OutputValidationError,
 	createAgent,
 	stopWhen,
 	type AgentRun,
@@ -519,19 +519,37 @@ describe('classifyChatRunFailure', () => {
 	});
 
 	// Pins CIN-434's confirmed fact: output-validation failures are an
-	// `AgentRunError` with `kind: 'output'`, `code: 'INVALID_OUTPUT'` — there is
-	// no separate `OutputValidationError`. `StandardSchemaValidationError` is
-	// the concrete class Operative throws for this (from `AgentRun.output()` /
-	// `.unwrap()`, not from `run.result()` — see the doc comment on
-	// `classifyChatRunFailure`), so constructing one directly here exercises
-	// the real shape rather than a hand-rolled stand-in.
-	test('maps a StandardSchemaValidationError to kind: "output", code: "INVALID_OUTPUT"', () => {
-		const error = new StandardSchemaValidationError([{ message: 'expected an object' }]);
+	// `AgentRunError` with `kind: 'output'`, `code: 'INVALID_OUTPUT'`.
+	// `OutputValidationError` is the concrete class Operative throws for this
+	// (from `AgentRun.output()` / `.unwrap()`, not from `run.result()` — see
+	// the doc comment on `classifyChatRunFailure`), so constructing one
+	// directly here exercises the real shape rather than a hand-rolled
+	// stand-in. It replaced `StandardSchemaValidationError`, which 0.10.0
+	// removed with no alias.
+	test('maps an OutputValidationError to kind: "output", code: "INVALID_OUTPUT"', () => {
+		const error = new OutputValidationError(new Error('expected an object'));
 		const envelope = classifyChatRunFailure(error, 'error');
 		expect(envelope.ok).toBe(false);
 		if (envelope.ok) throw new Error('unreachable');
 		expect(envelope.error.kind).toBe('output');
 		expect(envelope.error.code).toBe('INVALID_OUTPUT');
+	});
+
+	// Operative's code union grows on its own schedule; the chat wire's does
+	// not. `decodeChatStreamEvent` rejects a frame whose code it does not know,
+	// so a code that reached the wire verbatim would take the entire terminal
+	// frame down with it and the client would see no failure at all. Reverting
+	// `toChatWireErrorCode` to pass `error.code` through fails this test.
+	test('reports an Operative code the chat wire does not admit as UNKNOWN', () => {
+		const error = new AgentRunError('no such agent handle', {
+			kind: 'generate',
+			code: 'INVALID_AGENT_HANDLE'
+		});
+		const envelope = classifyChatRunFailure(error, 'error');
+		expect(envelope.ok).toBe(false);
+		if (envelope.ok) throw new Error('unreachable');
+		expect(envelope.error.code).toBe('UNKNOWN');
+		expect(envelope.error.message).toBe('no such agent handle');
 	});
 
 	// The route branches on `error.kind === 'abort'` to choose between closing
