@@ -288,7 +288,8 @@ export function startChatRun(agent: StandaloneAgent, conversation: ConversationH
  *
  * Exported so `chat-agent.test.ts` can pin the `AgentRunError` shapes
  * `@lostgradient/operative` documents directly — most usefully
- * `StandardSchemaValidationError` (`kind: 'output'`, `code: 'INVALID_OUTPUT'`),
+ * `OutputValidationError` (`kind: 'output'`, `code: 'INVALID_OUTPUT'`; it replaced
+ * `StandardSchemaValidationError`, which 0.10.0 removed with no alias),
  * which this route never triggers live: `createChatAgent` sets no `output`
  * schema, and even an agent that does only ever raises it from
  * `AgentRun.output()`/`.unwrap()`, not from `run.result()` — confirmed
