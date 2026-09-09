@@ -17,6 +17,31 @@ const workspaceRoot = resolve(testingPackageRoot, '../..');
  * would resolve to the empty string and `setup-bun` would install whatever it
  * likes — while a file-level "this file declares it" check waved it through.
  */
+/**
+ * True when the step carries `bun-version:` as a direct child of its own
+ * `with:` mapping — the only place `setup-bun` reads an input from.
+ *
+ * Searching the whole step body was too generous: a `bun-version` indented
+ * under an `env:` block, or sitting inside a multi-line `run:` script, would
+ * satisfy the search while the action received no input at all and installed
+ * its own default.
+ */
+function hasBunVersionInput(step: readonly string[]): boolean {
+  for (const [index, line] of step.entries()) {
+    const withKey = /^(\s*)with:\s*$/.exec(line);
+    if (withKey === null) continue;
+    const withIndent = (withKey[1] ?? '').length;
+    for (let cursor = index + 1; cursor < step.length; cursor += 1) {
+      const candidate = step[cursor] ?? '';
+      if (candidate.trim().length === 0) continue;
+      const indent = candidate.length - candidate.trimStart().length;
+      if (indent <= withIndent) break;
+      if (indent === withIndent + 2 && /^bun-version:\s*\S/.test(candidate.trim())) return true;
+    }
+  }
+  return false;
+}
+
 function declaredAtWorkflowScope(lines: readonly string[], index: number): boolean {
   const line = lines[index] ?? '';
   if (line.length - line.trimStart().length !== 2) return false;
@@ -94,8 +119,9 @@ describe('the container runs the Bun this workspace pins', () => {
     // An expression is not a free pass. `${{ vars.BUN_VERSION }}`, or a typo
     // like `${{ env.BUN_VERSOIN }}`, installs some other Bun (or none at all)
     // while every literal declaration elsewhere keeps the assertion above
-    // green. Exactly one expression is admissible, and only in a file whose
-    // declaration every job can actually read — see `declaredAtWorkflowScope`.
+    // green. `${{ env.BUN_VERSION }}` is the only admissible expression form,
+    // and only in a file whose declaration every job can actually read — see
+    // `declaredAtWorkflowScope`. It may of course appear in many steps.
     expect(references.filter((reference) => reference.value !== '${{ env.BUN_VERSION }}')).toEqual(
       [],
     );
@@ -127,10 +153,9 @@ describe('the container runs the Bun this workspace pins', () => {
           if (next.length - next.trimStart().length <= indent) break;
           step.push(next);
         }
-        const body = step.join('\n');
-        if (!body.includes('oven-sh/setup-bun')) continue;
+        if (!step.join('\n').includes('oven-sh/setup-bun')) continue;
         stepsChecked += 1;
-        if (!/^\s*bun-version:/m.test(body)) stepsWithoutAVersion.push(`${file}:${index + 1}`);
+        if (!hasBunVersionInput(step)) stepsWithoutAVersion.push(`${file}:${index + 1}`);
       }
     }
     expect(stepsChecked).toBeGreaterThan(0);
