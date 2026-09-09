@@ -169,6 +169,8 @@
    */
   let windowVisibleSize = $state(0);
   let windowScrollOffset = $state(0);
+  /** True while a window-scrolled list sits entirely outside the viewport. */
+  let isWindowListOffscreen = $state(false);
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -322,9 +324,10 @@
     // callback has nothing to fire, and reporting it as near would leave its own
     // latch set — so re-enabling that one callback at the same position and item
     // count would find it already latched and stay silent.
+    const isReachable = !windowScroll || !isWindowListOffscreen;
     const maskedProximity = {
-      isNearStart: onStartReached ? proximity.isNearStart : false,
-      isNearEnd: onEndReached ? proximity.isNearEnd : false,
+      isNearStart: onStartReached && isReachable ? proximity.isNearStart : false,
+      isNearEnd: onEndReached && isReachable ? proximity.isNearEnd : false,
     };
     const decision = resolveEdgeFireDecision({
       proximity: maskedProximity,
@@ -400,19 +403,33 @@
    * reader had since scrolled to.
    */
   $effect(() => {
-    const id = scrollRestorationId;
+    const id = scrollRestorationId?.trim();
     const element = scrollElement;
     if (!element || !id) return;
 
-    const storage = resolveRestorationStorage();
-    const saved = loadScrollPosition(storage, id);
-    if (saved && saved.startIndex >= items.length) {
-      // The collection shrank since the position was saved, so the remembered row
-      // no longer exists. Restoring to a clamped index would drop the reader
-      // somewhere arbitrary and then re-save that as if it were their place;
-      // dropping the entry lets the list open at the start, which is at least true.
-      clearScrollPosition(storage, id);
-    } else if (saved) {
+    // Everything below the id is read untracked. This effect restores ONCE; left
+    // reactive it re-ran whenever the item count or the sizing mode changed and
+    // re-applied the saved position over wherever the reader had since scrolled to.
+    untrack(() => {
+      const storage = resolveRestorationStorage();
+      const saved = loadScrollPosition(storage, id);
+      if (!saved) return;
+
+      if (items.length === 0) {
+        // Almost certainly still loading. Leaving the entry alone is the whole point:
+        // deleting it here would mean a list that fetches its own data can never
+        // restore, because its first render is always empty.
+        return;
+      }
+
+      if (saved.startIndex >= items.length) {
+        // The collection genuinely shrank, so the remembered row no longer exists.
+        // Restoring to a clamped index would drop the reader somewhere arbitrary and
+        // then re-save that as if it were their place.
+        clearScrollPosition(storage, id);
+        return;
+      }
+
       // Applied through the index rather than the raw offset: under `dynamicSize`
       // the offsets table is still all estimates at mount, so the saved pixel
       // offset points at a different row than it did when saved. Scrolling to the
@@ -424,18 +441,24 @@
         writeScrollOffset(element, saved.scrollOffset, 'auto');
         scrollOffset = readScrollOffset(element);
       }
-    }
+    });
 
     return () => {
-      // Teardown is the last moment the position is knowable. Reading state here
-      // rather than a captured copy so a scroll during the component's life is
-      // reflected, and untracked so this cleanup never becomes a dependency.
       const storageAtTeardown = resolveRestorationStorage();
       if (!storageAtTeardown) return;
       untrack(() => {
+        // Nothing to remember about an empty list, and writing one would overwrite a
+        // real position with a placeholder if the component tears down mid-load.
+        if (items.length === 0) return;
         saveScrollPosition(storageAtTeardown, id, {
           scrollOffset,
-          startIndex: virtualWindow.startIndex,
+          // The row the reader is actually looking at, not the rendered window's
+          // first index — that one carries overscan, so restoring it would land them
+          // a few rows above where they left off, every single time.
+          startIndex: Math.min(
+            virtualWindow.startIndex + resolvedOverscan,
+            Math.max(0, items.length - 1),
+          ),
         });
       });
     };
@@ -586,7 +609,9 @@
   $effect(() => {
     const itemCount = items.length;
     const element = scrollElement;
-    if ((!stickToBottom && !reverse) || !shouldStickAfterAppend || !element) return;
+    // `windowScroll` genuinely disables these rather than merely documenting them as
+    // disabled: both pin a scroll position, and the component does not own one here.
+    if (windowScroll || (!stickToBottom && !reverse) || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
       // Re-read the prop: it can be disabled between the append and this callback,
@@ -638,7 +663,7 @@
     // total does NOT drag a reader out of history; an append then re-arms it, and
     // the row appended under `dynamicSize` measures after the pin write — which is
     // exactly the window this effect covers.
-    if ((!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
+    if (windowScroll || (!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
     const element = scrollElement;
     if (!element) return;
     const target = maxScrollOffset(totalSize, currentViewportHeight);
@@ -816,8 +841,41 @@
     );
   }
 
+  /**
+   * Moves the DOCUMENT so that `offset` pixels of the list sit above the viewport's
+   * start edge.
+   *
+   * Under `windowScroll` the element has no scroll position of its own, so every
+   * write has to be translated into a page scroll: the list's current distance from
+   * the viewport start plus the current page offset gives where the list begins in
+   * document space, and the target is that plus the requested offset.
+   *
+   * Without this the whole write side of the component — `scrollToIndex`, prepend
+   * re-anchoring, measurement corrections, restoration — silently did nothing in
+   * this mode, because it was writing to an element that does not scroll.
+   */
+  function writeWindowScrollOffset(
+    element: HTMLElement,
+    offset: number,
+    behavior: ScrollBehavior,
+  ): void {
+    if (typeof window === 'undefined') return;
+    const rect = element.getBoundingClientRect();
+    const listStartInDocument = horizontal ? rect.left + window.scrollX : rect.top + window.scrollY;
+    const target = Math.max(0, listStartInDocument + offset);
+    window.scrollTo(
+      horizontal
+        ? { left: target, top: window.scrollY, behavior }
+        : { top: target, left: window.scrollX, behavior },
+    );
+  }
+
   /** Writes a start-edge-relative offset back along the active axis. */
   function writeScrollOffset(element: HTMLElement, offset: number, behavior: ScrollBehavior): void {
+    if (windowScroll) {
+      writeWindowScrollOffset(element, offset, behavior);
+      return;
+    }
     if (!horizontal) {
       if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
         element.scrollTo({ top: offset, behavior: 'smooth' });
@@ -897,17 +955,34 @@
         horizontal ? 'horizontal' : 'vertical',
       );
       const geometry = resolveWindowScrollGeometry({
-        listStartInViewport: horizontal ? rect.left : rect.top,
+        // The INLINE-START edge, which is the right one under RTL. Measuring
+        // `rect.left` there would report the list's end as its beginning and run
+        // the offset backwards.
+        listStartInViewport: horizontal
+          ? writingDirection === 'rtl'
+            ? resolveWindowViewportSize(
+                typeof window === 'undefined' ? undefined : window,
+                'horizontal',
+              ) - rect.right
+            : rect.left
+          : rect.top,
         viewportSize,
         totalSize: currentTotalSize(),
       });
       windowScrollOffset = geometry.scrollOffset;
       // Fall back to the full viewport while the overlap is zero: the list is off
       // screen entirely, and windowing against 0 would mount nothing, so scrolling
-      // it back into view would find an empty list.
+      // it back into view would find an empty list. Tracked separately so the edge
+      // callbacks can tell "nothing visible" from "a viewport's worth visible" —
+      // a list nobody can see has not had either of its edges reached.
+      isWindowListOffscreen = geometry.visibleSize <= 0;
       windowVisibleSize = geometry.visibleSize || viewportSize;
       measuredViewportHeight = windowVisibleSize;
       scrollOffset = geometry.scrollOffset;
+      // Still invalidate on a cross-axis change. Returning early skipped it, so a
+      // window-scrolled `dynamicSize` list kept every row size measured at the old
+      // width after a resize re-wrapped them all.
+      invalidateOnCrossAxisChange(element, rect);
       return windowVisibleSize;
     }
 
@@ -926,6 +1001,23 @@
     // sizes until they happened to remount, leaving the spacer and every scroll
     // target off by the accumulated difference. Dropping the cache forces
     // re-measurement.
+    // The client extent first: it is what is actually available to rows, excluding
+    // the scrollbar. A measurement that makes the list start or stop overflowing
+    // adds or removes a non-overlay scrollbar and re-wraps every row while the
+    // border-box extent never changes — so comparing the rect would miss it
+    // entirely and leave offscreen rows holding sizes measured at the other extent.
+    invalidateOnCrossAxisChange(element, rect);
+
+    measuredViewportHeight = measured;
+    scrollOffset = readScrollOffset(element);
+    return measured;
+  }
+
+  /**
+   * Drops cached row sizes when the CROSS axis changed, because that re-wraps every
+   * row and every size measured at the old extent is now wrong.
+   */
+  function invalidateOnCrossAxisChange(element: HTMLElement, rect: DOMRect): void {
     // The client extent first: it is what is actually available to rows, excluding
     // the scrollbar. A measurement that makes the list start or stop overflowing
     // adds or removes a non-overlay scrollbar and re-wraps every row while the
@@ -959,10 +1051,6 @@
       previousOffsets = undefined;
     }
     if (measuredCrossExtent > 0) previousCrossExtent = measuredCrossExtent;
-
-    measuredViewportHeight = measured;
-    scrollOffset = readScrollOffset(element);
-    return measured;
   }
 
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {

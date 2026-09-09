@@ -1018,7 +1018,11 @@ describe('VirtualList — dynamicSize', () => {
     // `isPinnedToBottom = true;` also appears in the mount effect above, and an
     // absolute search would slice backwards into an empty string that trivially
     // "passes" every assertion below.
-    const pinStart = source.indexOf('shouldStickAfterAppend || !element) return;');
+    // Anchored on `void tick().then(`, which marks the start of the pin body itself
+    // rather than the guard above it. The guard's text keeps changing as modes are
+    // added, and each time it does this test starts asserting against an empty slice
+    // instead of failing — hence the explicit bounds check below.
+    const pinStart = source.indexOf('void tick().then(');
     const pinBody = source.slice(pinStart, source.indexOf('isPinnedToBottom = true;', pinStart));
 
     const measureIndex = pinBody.indexOf('syncViewport(element)');
@@ -2053,5 +2057,183 @@ describe('VirtualList — scrollRestoration', () => {
         configurable: true,
       });
     }
+  });
+});
+
+describe('VirtualList — windowScroll writes and restoration edges', () => {
+  test('routes a programmatic scroll to the document, not the element', async () => {
+    // The element does not scroll in this mode. Writing to it left scrollToIndex,
+    // prepend re-anchoring, measurement corrections and restoration as silent
+    // no-ops — reads were window-derived while writes were not.
+    const scrolls: unknown[] = [];
+    const originalScrollTo = window.scrollTo;
+    window.scrollTo = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollTo;
+
+    let listRef: VirtualListRef | undefined;
+    try {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        windowScroll: true,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+        get ref() {
+          return listRef;
+        },
+        set ref(next: VirtualListRef | undefined) {
+          listRef = next;
+        },
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      const elementScrollBefore = list.scrollTop;
+
+      listRef?.scrollToIndex(400, { align: 'start' });
+      await tick();
+
+      expect(scrolls.length).toBeGreaterThan(0);
+      expect(list.scrollTop).toBe(elementScrollBefore);
+    } finally {
+      window.scrollTo = originalScrollTo;
+    }
+  });
+
+  test('does not pin to the bottom under windowScroll, whatever stickToBottom says', async () => {
+    // Both pinning modes are suppressed here rather than merely documented as
+    // unsupported: there is no scroll position of the component's own to pin.
+    const scrolls: unknown[] = [];
+    const originalScrollTo = window.scrollTo;
+    window.scrollTo = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollTo;
+
+    const props = (count: number) => ({
+      items: makeItems(count),
+      itemHeight: 20,
+      windowScroll: true,
+      stickToBottom: true,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    try {
+      const { container, rerender } = render(VirtualList, props(200));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      scrolls.length = 0;
+
+      await rerender(props(210));
+      await tick();
+      await tick();
+
+      expect(scrolls).toEqual([]);
+    } finally {
+      window.scrollTo = originalScrollTo;
+    }
+  });
+});
+
+describe('VirtualList — scrollRestoration lifecycle', () => {
+  function createStorage(seed?: Record<string, string>) {
+    const entries = new Map<string, string>(Object.entries(seed ?? {}));
+    return {
+      entries,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        entries.set(key, value);
+      },
+      removeItem: (key: string) => {
+        entries.delete(key);
+      },
+    };
+  }
+
+  function withStorage(storage: unknown, run: () => Promise<void>) {
+    const original = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', { value: storage, configurable: true });
+    return run().finally(() => {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: original,
+        configurable: true,
+      });
+    });
+  }
+
+  test('keeps a saved position when the list mounts empty while its data loads', async () => {
+    // A list that fetches its own data always renders empty first. Treating that as
+    // "the collection shrank" deleted the entry, so such a list could never restore.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      render(VirtualList, {
+        items: [],
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await tick();
+      await tick();
+      expect(storage.entries.has('cinder:virtual-list:feed')).toBe(true);
+    });
+  });
+
+  test('a whitespace-only id is not an id', async () => {
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(200),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: '   ',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      unmount();
+      await tick();
+      expect(storage.entries.size).toBe(0);
+    });
+  });
+
+  test('saves the row the reader is on, not the overscanned window boundary', async () => {
+    // `virtualWindow.startIndex` carries overscan, so saving it would restore the
+    // reader a few rows above where they left off — every single time.
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 5,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+
+      unmount();
+      await tick();
+
+      const raw = storage.entries.get('cinder:virtual-list:feed');
+      expect(raw).toBeDefined();
+      expect(JSON.parse(raw as string).startIndex).toBe(200);
+    });
   });
 });

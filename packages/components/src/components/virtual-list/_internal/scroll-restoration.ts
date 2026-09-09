@@ -46,6 +46,15 @@ export function resolveScrollRestorationKey(id: string): string | null {
 }
 
 /** Serializes a scroll position for storage. */
+/**
+ * A saved `startIndex` must be a whole number: it is used to index `items` and is
+ * handed to `scrollToIndex`. A fractional value read back from storage — which is
+ * shared, user-writable, and survives deploys — would resolve to no row at all.
+ */
+function isValidScrollRestorationIndex(value: unknown): value is number {
+  return typeof value === 'number' && Number.isInteger(value) && value >= 0;
+}
+
 export function serializeScrollPosition(position: ScrollRestorationPosition): string {
   return JSON.stringify(position);
 }
@@ -89,7 +98,7 @@ export function deserializeScrollPosition(raw: string | null): ScrollRestoration
 
   const candidate = parsed as UnknownScrollRestorationPosition;
   const { scrollOffset, startIndex } = candidate;
-  if (!isValidScrollRestorationField(scrollOffset) || !isValidScrollRestorationField(startIndex)) {
+  if (!isValidScrollRestorationField(scrollOffset) || !isValidScrollRestorationIndex(startIndex)) {
     return null;
   }
 

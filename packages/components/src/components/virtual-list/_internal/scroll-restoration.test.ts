@@ -98,6 +98,20 @@ describe('deserializeScrollPosition', () => {
     expect(deserializeScrollPosition('{"scrollOffset":"5","startIndex":0}')).toBeNull();
   });
 
+  test('returns null when startIndex is fractional', () => {
+    // It is used to index `items` and is handed to `scrollToIndex`, so a fractional
+    // value read back from shared, user-writable storage resolves to no row at all.
+    expect(
+      deserializeScrollPosition(JSON.stringify({ scrollOffset: 100, startIndex: 0.5 })),
+    ).toBeNull();
+  });
+
+  test('still accepts a fractional scrollOffset, which is a real pixel position', () => {
+    expect(
+      deserializeScrollPosition(JSON.stringify({ scrollOffset: 100.5, startIndex: 3 })),
+    ).toEqual({ scrollOffset: 100.5, startIndex: 3 });
+  });
+
   test('returns null when a field is negative', () => {
     expect(deserializeScrollPosition('{"scrollOffset":-1,"startIndex":0}')).toBeNull();
   });

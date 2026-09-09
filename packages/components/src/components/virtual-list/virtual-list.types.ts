@@ -156,8 +156,9 @@ export type VirtualListProps<Item = unknown> = Omit<
    * reader scrolls the document rather than a box inside it, and the browser's
    * own scroll restoration and scrollbar behave normally.
    *
-   * `stickToBottom` and `reverse` are not supported in this mode and are ignored:
-   * both pin a scroll position the component no longer owns.
+   * `stickToBottom` and `reverse` are not supported in this mode and are actively
+   * suppressed, not merely undocumented: both pin a scroll position the component no
+   * longer owns.
    *
    * Defaults to false.
    */
@@ -166,10 +167,14 @@ export type VirtualListProps<Item = unknown> = Omit<
    * Remember the scroll position across navigation, keyed by
    * `scrollRestorationId`.
    *
-   * The position is written to `sessionStorage` as the reader scrolls and on
-   * teardown, and read back on mount. Storage failures are swallowed: a browser
-   * in private mode or at its quota throws on write, and losing a remembered
-   * offset must not break the list.
+   * The position is written to `sessionStorage` when the list tears down, and read
+   * back when it mounts. Deliberately not on every scroll: that would mean a
+   * storage write per frame during a fling, and teardown is the last moment the
+   * position is knowable anyway. The consequence is that a tab closed by a crash,
+   * rather than by navigating away, will not have saved.
+   *
+   * Storage failures are swallowed: a browser in private mode or at its quota throws
+   * on write — and on read — and losing a remembered offset must not break the list.
    *
    * Has no effect without a `scrollRestorationId` — see that prop for why.
    *

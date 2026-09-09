@@ -41,12 +41,12 @@ const schema = {
     windowScroll: {
       type: 'boolean',
       description:
-        "Virtualize against the document scroller instead of an internal one.\n\nThe list becomes a plain block in the page with no scroll container of its\nown: `height` is ignored, the viewport is measured from the window, and how\nfar the reader has travelled is derived from where the list's box currently\nsits relative to the viewport.\n\nUse this when the list IS the page — a feed, a search-results view — so the\nreader scrolls the document rather than a box inside it, and the browser's\nown scroll restoration and scrollbar behave normally.\n\n`stickToBottom` and `reverse` are not supported in this mode and are ignored:\nboth pin a scroll position the component no longer owns.\n\nDefaults to false.",
+        "Virtualize against the document scroller instead of an internal one.\n\nThe list becomes a plain block in the page with no scroll container of its\nown: `height` is ignored, the viewport is measured from the window, and how\nfar the reader has travelled is derived from where the list's box currently\nsits relative to the viewport.\n\nUse this when the list IS the page — a feed, a search-results view — so the\nreader scrolls the document rather than a box inside it, and the browser's\nown scroll restoration and scrollbar behave normally.\n\n`stickToBottom` and `reverse` are not supported in this mode and are actively\nsuppressed, not merely undocumented: both pin a scroll position the component no\nlonger owns.\n\nDefaults to false.",
     },
     scrollRestoration: {
       type: 'boolean',
       description:
-        'Remember the scroll position across navigation, keyed by\n`scrollRestorationId`.\n\nThe position is written to `sessionStorage` as the reader scrolls and on\nteardown, and read back on mount. Storage failures are swallowed: a browser\nin private mode or at its quota throws on write, and losing a remembered\noffset must not break the list.\n\nHas no effect without a `scrollRestorationId` — see that prop for why.\n\nDefaults to false.',
+        'Remember the scroll position across navigation, keyed by\n`scrollRestorationId`.\n\nThe position is written to `sessionStorage` when the list tears down, and read\nback when it mounts. Deliberately not on every scroll: that would mean a\nstorage write per frame during a fling, and teardown is the last moment the\nposition is knowable anyway. The consequence is that a tab closed by a crash,\nrather than by navigating away, will not have saved.\n\nStorage failures are swallowed: a browser in private mode or at its quota throws\non write — and on read — and losing a remembered offset must not break the list.\n\nHas no effect without a `scrollRestorationId` — see that prop for why.\n\nDefaults to false.',
     },
     scrollRestorationId: {
       type: 'string',
