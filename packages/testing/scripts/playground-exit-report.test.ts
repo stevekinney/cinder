@@ -40,8 +40,23 @@ describe('describePlaygroundExit', () => {
     );
   });
 
+  it('keeps CRLF output readable and preserves indentation', () => {
+    const report = describePlaygroundExit({
+      code: 1,
+      signal: null,
+      output: 'first line\r\n    indented detail\r\n',
+    });
+    // A stray `\r` on every line makes the tail unreadable, and the leading
+    // whitespace is part of how the server's own logs read.
+    expect(report).not.toContain('\r');
+    expect(report).toContain('    indented detail');
+  });
+
   it('omits the output section when the server said nothing', () => {
     expect(describePlaygroundExit({ code: 0, signal: null, output: '   \n  ' })).not.toContain(
+      'Last playground output',
+    );
+    expect(describePlaygroundExit({ code: 0, signal: null, output: '  \r\n \r\n' })).not.toContain(
       'Last playground output',
     );
   });

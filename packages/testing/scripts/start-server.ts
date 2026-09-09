@@ -65,8 +65,11 @@ export function describePlaygroundExit({ code, signal, output }: PlaygroundExit)
     `Playground server exited during the run (code=${code ?? 'null'} signal=${signal ?? 'null'}). ` +
       'The browser failures above are its consequence, not their own cause.',
   ];
-  const tail = output.trim().split('\n').slice(-20).join('\n');
-  if (tail.length > 0) lines.push(`Last playground output:\n${tail}`);
+  // `trimEnd` rather than `trim`: the first line's indentation is part of how
+  // the server's own logs read. The split tolerates CRLF so a `\r` does not
+  // ride along on every line.
+  const tail = output.trimEnd().split(/\r?\n/).slice(-20).join('\n');
+  if (tail.trim().length > 0) lines.push(`Last playground output:\n${tail}`);
   return lines.join('\n');
 }
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
@@ -747,6 +750,8 @@ async function main(): Promise<void> {
   // buffer itself lives in the block that spawns the server, and stays null
   // until there is one to read.
   let serverOutputTail: (() => string) | null = null;
+  // Resolves once the dead server's stdio has been fully delivered.
+  let awaitServerOutputDrain: (() => Promise<void>) | null = null;
   // Read through a function with a declared return type: the only assignment
   // is inside the server's `exit` callback, which control-flow analysis does
   // not see, so a direct read narrows to `never` at the check below.
@@ -867,6 +872,21 @@ async function main(): Promise<void> {
     serverProcess.on('exit', (code, signal) => {
       playgroundTermination = { code, signal };
     });
+    // `close` fires once every stdio stream has been consumed, which `exit`
+    // does not promise. Waiting for it before reading the tail is what keeps
+    // the crash reason — often the very last chunk — in the report.
+    const serverProcessRef = serverProcess;
+    awaitServerOutputDrain = async (): Promise<void> => {
+      if (serverProcessRef.exitCode === null && serverProcessRef.signalCode === null) return;
+      await new Promise<void>((resolve) => {
+        if (serverProcessRef.stdout === null || serverProcessRef.stdout.readableEnded) {
+          resolve();
+          return;
+        }
+        serverProcessRef.stdout.once('end', () => resolve());
+        serverProcessRef.once('close', () => resolve());
+      });
+    };
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
@@ -964,6 +984,10 @@ async function main(): Promise<void> {
   // follows would spend its full timeout proving it. Stop here instead.
   const stopSuiteForDeadPlayground = (): void => {
     if (playwright.exitCode !== null || playwright.signalCode !== null) return;
+    // A shutdown this wrapper requested kills the playground itself. Saying
+    // it "exited mid-run" there would be a message no later guard can
+    // retract, so the check belongs here as well as on the report.
+    if (shutdownExitCode !== null) return;
     console.error('Playground server exited mid-run; stopping the browser suite.');
     playwright.kill('SIGTERM');
   };
@@ -980,6 +1004,7 @@ async function main(): Promise<void> {
   // Reporting that as a mid-run death would blame cancellation for failures
   // it did not cause, so only an unrequested exit is reported.
   if (playgroundDeath !== null && shutdownExitCode === null) {
+    await awaitServerOutputDrain?.();
     console.error(
       describePlaygroundExit({ ...playgroundDeath, output: serverOutputTail?.() ?? '' }),
     );
