@@ -645,6 +645,18 @@ test.describe('production streaming path', () => {
 		await expect(log).toContainText(HOLD_PARTIAL_TEXT);
 		await expect(page.getByTestId('demo-error')).toBeEmpty();
 
+		// Keeping the partial text is only half a correct stop. The other half is
+		// upstream: the fixture is still holding an open response for this marker
+		// until the socket closes, so the gate clearing is the proof that the
+		// abort travelled all the way to the provider request instead of stopping
+		// at the browser. `gate` resolves `disconnected` on that close and drops
+		// the marker, so the poll clears without anyone releasing it.
+		await expect.poll(() => fixtureGateHeld(marker)).toBe(false);
+
+		// And nothing is left to release — a `true` here would mean the gate
+		// outlived the abort and this spec merely raced it.
+		expect(await releaseFixtureGate(marker)).toBe(false);
+
 		// The server-side half of the same stop. A dead preview server refuses the
 		// connection and this throws rather than returning a failing response, so
 		// read a rejection here as the crash described above and not as a routing
@@ -682,18 +694,17 @@ test.describe('production streaming path', () => {
 		await expect(page.getByTestId('demo-error')).toBeEmpty();
 		await expect(log.getByRole('article')).toHaveCount(1);
 
-		// The abort SHOULD reach the fixture — SvelteKit cancels the ndjson
-		// stream, the route aborts the run, Operative aborts the upstream
-		// request, the fixture's `gate` sees the socket close — and CIN-513 adds
-		// `await expect.poll(() => fixtureGateHeld(marker)).toBe(false)` here.
-		// Today it does not: Operative 0.8.0's Anthropic provider puts the abort
-		// signal in the request BODY instead of the SDK's `RequestOptions`
-		// (AB-189), so the upstream request stays parked. Read the probe for the
-		// trace, then release the gate so the leaked run can unwind instead of
-		// outliving the test.
-		const heldAfterAbort = await fixtureGateHeld(marker);
-		expect(typeof heldAfterAbort).toBe('boolean');
-		await releaseFixtureGate(marker);
+		// The abort reaches the fixture: SvelteKit cancels the ndjson stream, the
+		// route aborts the run, Operative aborts the upstream request, and the
+		// fixture's `gate` sees the socket close and drops the marker. Under
+		// Operative 0.8.0 this stayed held forever — its Anthropic provider put
+		// the abort signal in the request BODY instead of the SDK's
+		// `RequestOptions`, so the upstream request was never cancelled (AB-189).
+		await expect.poll(() => fixtureGateHeld(marker)).toBe(false);
+
+		// Nothing left to release. A `true` here would mean the gate was still
+		// parked and the poll above had merely raced it.
+		expect(await releaseFixtureGate(marker)).toBe(false);
 
 		const alive = await page.request.get('/');
 		expect(alive.ok()).toBe(true);
