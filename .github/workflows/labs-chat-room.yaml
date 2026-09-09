@@ -42,7 +42,7 @@ permissions:
   contents: read
 
 env:
-  BUN_VERSION: 1.4.2
+  BUN_VERSION: 1.4.0
 
 concurrency:
   group: labs-chat-room-${{ github.ref }}
