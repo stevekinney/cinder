@@ -6,6 +6,22 @@
  * INPUT
  * ======================================== */
 
+  /* One recipe for the invalid border's hover step, shared by the three
+   * surfaces that can paint that edge: the bare input, the host wrapper that
+   * takes ownership when an addon appears, and the group. Deriving it three
+   * times over is what pushed this file past its raw-color allowance, and a
+   * single declaration keeps the three in step by construction — they are the
+   * same edge, and a divergence between them would be a bug rather than a
+   * choice.
+   */
+  .cinder-input,
+  .cinder-input-host,
+  .cinder-input-group {
+    --_cinder-input-invalid-border-hover: oklch(
+      from var(--cinder-status-danger-solid) calc(l - 0.06) c h
+    );
+  }
+
   /* ----------------------------------------
  * Field wrapper
  * ---------------------------------------- */
@@ -168,7 +184,7 @@
 
   @media (hover: hover) {
     .cinder-input[aria-invalid='true']:hover:not(:disabled) {
-      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
+      border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
 
@@ -230,7 +246,7 @@
   }
   @media (hover: hover) {
     .cinder-input-host[data-invalid]:hover:not([data-disabled]) {
-      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
+      border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
   .cinder-input-host[data-disabled] {
@@ -340,7 +356,7 @@
   }
   @media (hover: hover) {
     .cinder-input-group--invalid:hover:not(.cinder-input-group--disabled) {
-      border-color: oklch(from var(--cinder-status-danger-solid) calc(l - 0.06) c h);
+      border-color: var(--_cinder-input-invalid-border-hover);
     }
   }
 
