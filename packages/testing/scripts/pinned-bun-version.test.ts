@@ -8,6 +8,27 @@ import { readPinnedBunVersion } from './update-snapshots-docker.ts';
 const testingPackageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workspaceRoot = resolve(testingPackageRoot, '../..');
 
+/**
+ * True when the declaration on `index` sits in the workflow's own top-level
+ * `env:` block, which every job in the file can read.
+ *
+ * Scope is the whole point: a `BUN_VERSION` nested under one job is invisible
+ * to the others, so a `${{ env.BUN_VERSION }}` reference in a different job
+ * would resolve to the empty string and `setup-bun` would install whatever it
+ * likes — while a file-level "this file declares it" check waved it through.
+ */
+function declaredAtWorkflowScope(lines: readonly string[], index: number): boolean {
+  const line = lines[index] ?? '';
+  if (line.length - line.trimStart().length !== 2) return false;
+  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
+    const candidate = lines[cursor] ?? '';
+    if (candidate.trim().length === 0) continue;
+    if (candidate.length - candidate.trimStart().length >= 2) continue;
+    return candidate.trimEnd() === 'env:';
+  }
+  return false;
+}
+
 function readWorkspaceManifest(): { packageManager?: string } {
   const parsed: unknown = JSON.parse(readFileSync(resolve(workspaceRoot, 'package.json'), 'utf8'));
   if (typeof parsed !== 'object' || parsed === null)
@@ -52,14 +73,18 @@ describe('the container runs the Bun this workspace pins', () => {
     const filesDeclaringEnvironmentPin = new Set<string>();
     for (const file of readdirSync(workflowsRoot)) {
       if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
-      const workflow = readFileSync(resolve(workflowsRoot, file), 'utf8');
-      for (const match of workflow.matchAll(/^\s*(BUN_VERSION|bun-version):\s*(.+?)\s*$/gm)) {
-        const value = (match[2] ?? '').replace(/^'|'$/g, '');
+      const lines = readFileSync(resolve(workflowsRoot, file), 'utf8').split('\n');
+      for (const [index, line] of lines.entries()) {
+        const declaration = /^\s*(BUN_VERSION|bun-version):\s*(.+?)\s*$/.exec(line);
+        if (declaration === null) continue;
+        const value = (declaration[2] ?? '').replace(/^'|'$/g, '');
         if (value.startsWith('${{')) {
           references.push({ file, value });
           continue;
         }
-        if (match[1] === 'BUN_VERSION') filesDeclaringEnvironmentPin.add(file);
+        if (declaration[1] === 'BUN_VERSION' && declaredAtWorkflowScope(lines, index)) {
+          filesDeclaringEnvironmentPin.add(file);
+        }
         pins.push({ file, version: value });
       }
     }
@@ -69,8 +94,8 @@ describe('the container runs the Bun this workspace pins', () => {
     // An expression is not a free pass. `${{ vars.BUN_VERSION }}`, or a typo
     // like `${{ env.BUN_VERSOIN }}`, installs some other Bun (or none at all)
     // while every literal declaration elsewhere keeps the assertion above
-    // green. Exactly one expression is admissible, and only in a file that
-    // actually declares the value it dereferences.
+    // green. Exactly one expression is admissible, and only in a file whose
+    // declaration every job can actually read — see `declaredAtWorkflowScope`.
     expect(references.filter((reference) => reference.value !== '${{ env.BUN_VERSION }}')).toEqual(
       [],
     );
