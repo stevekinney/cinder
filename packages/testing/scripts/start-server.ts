@@ -896,6 +896,11 @@ async function main(): Promise<void> {
       // threshold masking a lifecycle bug rather than fixing one.
       await new Promise<void>((resolve) => {
         serverProcessRef.once('close', () => resolve());
+        // `close` is not replayed, so it can fire in the window between the
+        // check above and this registration and never reach the listener.
+        // Re-checking the recorded flag after registering closes that window,
+        // the same way `waitForExit` handles its own spawn-to-listen race.
+        if (hasClosed()) resolve();
       });
     };
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
