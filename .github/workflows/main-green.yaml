@@ -105,6 +105,7 @@ jobs:
           bun run --filter=@lostgradient/chat platform:audit -- --strict
           bun run --filter=@lostgradient/chat colors:audit -- --strict
           bun run --filter=@lostgradient/chat tokens:audit -- --strict
+          bun run --filter=@lostgradient/chat visually-hidden:audit
 
       - name: Source audits (editor)
         run: |

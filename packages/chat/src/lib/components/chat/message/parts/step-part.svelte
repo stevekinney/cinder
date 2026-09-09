@@ -43,7 +43,7 @@
   <span class="chat-step-body">
     <span class="chat-step-title">
       {part.title}
-      <span class="sr-only"> — {statusLabel[part.status]}</span>
+      <span class="cinder-sr-only"> — {statusLabel[part.status]}</span>
     </span>
     {#if part.content}
       <span class="chat-step-content">{part.content}</span>
@@ -120,18 +120,5 @@
     font-size: var(--_cinder-chat-text-xs, var(--cinder-text-xs));
     color: var(--cinder-text-muted);
     line-height: var(--cinder-leading-normal, 1.5);
-  }
-
-  /* Screen reader only */
-  .sr-only {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    padding: 0;
-    margin: -1px;
-    overflow: hidden;
-    clip: rect(0, 0, 0, 0);
-    white-space: nowrap;
-    border: 0;
   }
 </style>

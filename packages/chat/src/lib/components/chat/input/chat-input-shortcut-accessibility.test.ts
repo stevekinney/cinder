@@ -23,9 +23,9 @@ describe('ChatInput — shortcut accessibility', () => {
   });
 
   test('renders a visually hidden shortcut description element', () => {
-    // Must have a span/element with shortcutDescriptionId and sr-only class
+    // Must have a span/element with shortcutDescriptionId and the cinder-sr-only class
     expect(chatInputSource).toMatch(/id=\{shortcutDescriptionId\}/);
-    expect(chatInputSource).toMatch(/class="sr-only"/);
+    expect(chatInputSource).toMatch(/class="cinder-sr-only"/);
     // Must mention Enter and Shift+Enter in text
     expect(chatInputSource).toMatch(/Enter/);
     expect(chatInputSource).toMatch(/Shift\+Enter/);

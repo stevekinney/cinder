@@ -20,7 +20,7 @@
  *   }
  * </script>
  *
- * <div aria-live="polite" aria-atomic="true" class="sr-only">
+ * <div aria-live="polite" aria-atomic="true" class="cinder-sr-only">
  *   {announcer.message}
  * </div>
  * ```
@@ -51,7 +51,7 @@
  *
  * <button onclick={handleAction}>Do Action</button>
  *
- * <div aria-live="polite" aria-atomic="true" class="sr-only">
+ * <div aria-live="polite" aria-atomic="true" class="cinder-sr-only">
  *   {announcer.message}
  * </div>
  * ```

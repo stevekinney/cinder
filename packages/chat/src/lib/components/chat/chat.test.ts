@@ -221,9 +221,17 @@ function liveRegion(
   container: HTMLElement,
   level: 'polite' | 'assertive',
 ): HTMLElement | undefined {
+  // Scoped to exclude ChatInput's own internal live region: since CIN-505
+  // standardized every visually-hidden Chat element on `cinder-sr-only`
+  // (previously ChatInput's own region carried the bare, unstyled `sr-only`
+  // class, which happened to make it invisible to this exact selector), a
+  // bare `.cinder-sr-only[aria-live="polite"][aria-atomic="true"]` query now
+  // also matches ChatInput's own status region alongside ChatStatusAnnouncer's
+  // — the one `announce()` actually writes to. Excluding `.chat-input`
+  // descendants disambiguates without depending on DOM order.
   const regions = Array.from(
     container.querySelectorAll<HTMLElement>(`.cinder-sr-only[aria-live="${level}"]`),
-  );
+  ).filter((region) => !region.closest('.chat-input'));
   return regions.find((region) => region.getAttribute('aria-atomic') === 'true');
 }
 

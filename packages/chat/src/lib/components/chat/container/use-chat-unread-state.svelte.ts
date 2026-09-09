@@ -89,7 +89,7 @@ export interface UseChatUnreadStateReturn {
  *   if (atBottom) unreadState.markAllAsRead();
  * </script>
  *
- * <div aria-live="polite" class="sr-only">
+ * <div aria-live="polite" class="cinder-sr-only">
  *   {unreadState.announcerMessage}
  * </div>
  * ```

@@ -37,6 +37,41 @@ const reuseOptOut = process.env['PLAYWRIGHT_REUSE_SERVER'] === '0';
 let targetPlaygroundUrl = PLAYGROUND_URL;
 const PLAYGROUND_PORT_PROBE_TIMEOUT_MS = 500;
 const PLAYGROUND_READY_TIMEOUT_MS = 240_000;
+
+/** How the playground server ended, when it ends before the suite does. */
+export type PlaygroundExit = {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  output: string;
+};
+
+/**
+ * What the process recorded when it died, before its output is attached.
+ * `exit` can fire while stdout still has buffered `data` events to deliver,
+ * so the tail is read when the report is written rather than snapshotted
+ * here — otherwise the report omits exactly the last lines that explain it.
+ */
+type PlaygroundTermination = { code: number | null; signal: NodeJS.Signals | null };
+
+/**
+ * What to print when the playground dies mid-run. Says outright that the
+ * browser failures above are downstream of this, because the alternative —
+ * dozens of `ERR_CONNECTION_REFUSED` navigations — reads as the branch under
+ * test being broken, and keeps the server's own last words, which are usually
+ * the only evidence of why it stopped.
+ */
+export function describePlaygroundExit({ code, signal, output }: PlaygroundExit): string {
+  const lines = [
+    `Playground server exited during the run (code=${code ?? 'null'} signal=${signal ?? 'null'}). ` +
+      'The browser failures above are its consequence, not their own cause.',
+  ];
+  // `trimEnd` rather than `trim`: the first line's indentation is part of how
+  // the server's own logs read. The split tolerates CRLF so a `\r` does not
+  // ride along on every line.
+  const tail = output.trimEnd().split(/\r?\n/).slice(-20).join('\n');
+  if (tail.trim().length > 0) lines.push(`Last playground output (stdout and stderr):\n${tail}`);
+  return lines.join('\n');
+}
 const PLAYGROUND_WARM_READINESS_STABLE_READS = 2;
 const PLAYGROUND_WARM_READINESS_DELAY_MS = 500;
 const CHILD_PROCESS_TERMINATION_GRACE_MS = 5_000;
@@ -710,6 +745,17 @@ async function main(): Promise<void> {
   const args = process.argv.slice(2);
 
   let serverProcess: ReturnType<typeof spawn> | null = null;
+  let playgroundTermination: PlaygroundTermination | null = null;
+  // Reads the server's output as it stands when the report is written; the
+  // buffer itself lives in the block that spawns the server, and stays null
+  // until there is one to read.
+  let serverOutputTail: (() => string) | null = null;
+  // Resolves once the dead server's stdio has been fully delivered.
+  let awaitServerOutputDrain: (() => Promise<void>) | null = null;
+  // Read through a function with a declared return type: the only assignment
+  // is inside the server's `exit` callback, which control-flow analysis does
+  // not see, so a direct read narrows to `never` at the check below.
+  const readPlaygroundTermination = (): PlaygroundTermination | null => playgroundTermination;
   let playgroundPortFile: string | null = null;
   const children: ManagedChildProcess[] = [];
   let dependencyWatchController: DependencyWatchController | null = null;
@@ -806,7 +852,11 @@ async function main(): Promise<void> {
     serverProcess = spawn('bun', playgroundServerArguments(), {
       cwd: playgroundServerWorkingDirectory(),
       detached: process.platform !== 'win32',
-      stdio: ['ignore', 'pipe', 'inherit'],
+      // stderr is piped rather than inherited so an uncaught exception's stack
+      // trace — where the reason for a death usually is — reaches the tail the
+      // exit report prints. It is still teed straight through, so nothing that
+      // used to appear in the log disappears from it.
+      stdio: ['ignore', 'pipe', 'pipe'],
       env: { ...process.env, PLAYGROUND_PORT_FILE: playgroundPortFile },
     });
     children.push({
@@ -816,6 +866,43 @@ async function main(): Promise<void> {
     });
 
     let serverOutputBuffer = '';
+    serverOutputTail = (): string => serverOutputBuffer;
+
+    // Nothing watched the server once it was ready, so a server that exited
+    // mid-run turned into one bare `ERR_EMPTY_RESPONSE` followed by a
+    // `ERR_CONNECTION_REFUSED` for every remaining test — dozens of failures
+    // that name the symptom and never the cause. Record its death here and
+    // report it below.
+    serverProcess.on('exit', (code, signal) => {
+      playgroundTermination = { code, signal };
+    });
+    // `close` fires once every stdio stream has been consumed, which `exit`
+    // does not promise. Waiting for it before reading the tail is what keeps
+    // the crash reason — often the very last chunk — in the report.
+    const serverProcessRef = serverProcess;
+    let serverStdioClosed = false;
+    serverProcessRef.once('close', () => {
+      serverStdioClosed = true;
+    });
+    const hasClosed = (): boolean => serverStdioClosed;
+    awaitServerOutputDrain = async (): Promise<void> => {
+      if (serverProcessRef.exitCode === null && serverProcessRef.signalCode === null) return;
+      if (hasClosed()) return;
+      // `close` is the only event that promises every stdio stream has been
+      // delivered — `exit` does not, and with stderr piped as well there are
+      // two streams to wait on rather than one. Awaited without a deadline
+      // deliberately: the process has already exited by the time this runs,
+      // so its stdio closes on its own, and a bound here would be a wait
+      // threshold masking a lifecycle bug rather than fixing one.
+      await new Promise<void>((resolve) => {
+        serverProcessRef.once('close', () => resolve());
+        // `close` is not replayed, so it can fire in the window between the
+        // check above and this registration and never reach the listener.
+        // Re-checking the recorded flag after registering closes that window,
+        // the same way `waitForExit` handles its own spawn-to-listen race.
+        if (hasClosed()) resolve();
+      });
+    };
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
       process.stdout.write(chunk);
       const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
@@ -826,7 +913,27 @@ async function main(): Promise<void> {
       );
       reportedPlaygroundPort =
         parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
-      serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
+      // Bounded only once the port is known, matching the parameter's intent.
+      // Forcing it unconditionally discarded pre-readiness output, which is
+      // exactly where an early crash explains itself — and now that this
+      // buffer is what the exit report prints, that output is the point.
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        '',
+        reportedPlaygroundPort !== null,
+      );
+    });
+
+    serverProcess.stderr?.on('data', (chunk: string | Uint8Array) => {
+      process.stderr.write(chunk);
+      const output = typeof chunk === 'string' ? chunk : new TextDecoder().decode(chunk);
+      // Same bounded buffer as stdout, interleaved, so the tail reads in the
+      // order the server actually said things.
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        output,
+        reportedPlaygroundPort !== null,
+      );
     });
 
     const startedAt = Date.now();
@@ -909,7 +1016,36 @@ async function main(): Promise<void> {
     },
   });
   children.push({ childProcess: playwright, name: 'Playwright', killProcessGroup: false });
+  // A dead playground cannot serve the rest of the suite, and every test that
+  // follows would spend its full timeout proving it. Stop here instead.
+  const stopSuiteForDeadPlayground = (): void => {
+    if (playwright.exitCode !== null || playwright.signalCode !== null) return;
+    // A shutdown this wrapper requested kills the playground itself. Saying
+    // it "exited mid-run" there would be a message no later guard can
+    // retract, so the check belongs here as well as on the report.
+    if (shutdownExitCode !== null) return;
+    console.error('Playground server exited mid-run; stopping the browser suite.');
+    playwright.kill('SIGTERM');
+  };
+  serverProcess?.once('exit', stopSuiteForDeadPlayground);
+  // `exit` is not replayed, so a server that died between becoming ready and
+  // this registration would otherwise leave the suite running to its
+  // timeouts — the very thing this is here to prevent. The earlier listener
+  // has already recorded it, so the recorded state is the reliable signal.
+  if (readPlaygroundTermination() !== null) stopSuiteForDeadPlayground();
+
   const playwrightCode = await waitForExit(playwright);
+  const playgroundDeath = readPlaygroundTermination();
+  // A shutdown this wrapper asked for kills the playground on its way out.
+  // Reporting that as a mid-run death would blame cancellation for failures
+  // it did not cause, so only an unrequested exit is reported.
+  if (playgroundDeath !== null && shutdownExitCode === null) {
+    await awaitServerOutputDrain?.();
+    console.error(
+      describePlaygroundExit({ ...playgroundDeath, output: serverOutputTail?.() ?? '' }),
+    );
+    await exitAfterCleanup(playwrightCode === 0 ? 1 : playwrightCode);
+  }
   await exitIfShuttingDown();
   await dependencyWatchController?.waitForIdle();
   const dependencyFailure = dependencyWatchController?.getFailure();
