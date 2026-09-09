@@ -429,6 +429,13 @@ jobs:
       - name: Upload Playwright HTML report
         if: failure()
         uses: actions/upload-artifact@v7
+        # Diagnostics, never a verdict — this applies to every upload in this
+        # workflow, including the ones that only run after a failure. Whether
+        # the artifact service accepts a zip must not change what the job
+        # reports about the code under test, in either direction: a 403 on
+        # finalize was turning green lanes red, and on a step like this one it
+        # would bury the failure the report was collected to explain.
+        continue-on-error: true
         with:
           name: playwright-report-${{ matrix.shard }}
           path: packages/testing/playwright-report
@@ -438,6 +445,7 @@ jobs:
       - name: Upload Playwright blob report
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-blob-${{ matrix.shard }}
           path: packages/testing/blob-report
@@ -447,6 +455,7 @@ jobs:
       - name: Upload axe JSON results
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: axe-results-${{ matrix.shard }}
           path: packages/testing/test-results/axe
@@ -456,6 +465,7 @@ jobs:
       - name: Upload axe summary
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: axe-summary-${{ matrix.shard }}
           path: packages/testing/test-results/axe-summary.json
@@ -468,6 +478,7 @@ jobs:
         # 7-day retention bounds the storage cost.
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: screenshots-${{ matrix.shard }}
           path: packages/testing/screenshots
@@ -509,6 +520,7 @@ jobs:
         env:
           CINDER_VISUAL_DIFF: ${{ github.event.inputs.mode || 'off' }}
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report
           path: packages/testing/test-results/visual-report.json
@@ -572,6 +584,7 @@ jobs:
       - name: Upload visual report
         if: always() && env.CINDER_VISUAL_DIFF == 'report'
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report-${{ matrix.shard }}
           path: packages/testing/test-results/visual-report.json
@@ -580,6 +593,7 @@ jobs:
       - name: Upload visual failure diagnostics
         if: always()
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-visual-diagnostics-${{ matrix.shard }}
           path: |
@@ -621,13 +635,30 @@ jobs:
       - name: Download blob reports
         if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/download-artifact@v8
+        # The same reachable state one step earlier: with uploads best-effort,
+        # a run where no shard uploaded a blob matches no artifact, and the
+        # download fails before the merge guard below ever sees the empty
+        # directory. Tolerated here so the aggregate does not inherit the very
+        # false red this change removes from the lanes.
+        continue-on-error: true
         with:
           pattern: playwright-blob-*
           path: packages/testing/blob-reports
           merge-multiple: true
       - name: Merge sharded report
         if: "always() && needs.playwright-lane.result != 'skipped'"
-        run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
+        # Uploads are best-effort, so "no blobs at all" is now a reachable
+        # state — an artifact-service outage produces it. Merging nothing is
+        # not a failure of the code under test, and failing here would just
+        # move the false red from the lanes to the aggregate. A merge that
+        # fails with blobs present still fails the job.
+        run: |
+          set -euo pipefail
+          if find packages/testing/blob-reports -type f -print -quit 2>/dev/null | grep -q .; then
+            bunx playwright merge-reports --reporter html packages/testing/blob-reports
+          else
+            echo 'No blob reports were uploaded; skipping the merged report.' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Merge sharded visual reports
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/download-artifact@v8
@@ -645,6 +676,7 @@ jobs:
       - name: Upload merged report
         if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: playwright-report-merged
           path: playwright-report
@@ -653,6 +685,7 @@ jobs:
       - name: Upload merged visual report
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/upload-artifact@v7
+        continue-on-error: true
         with:
           name: visual-report
           path: packages/testing/visual-report.json
