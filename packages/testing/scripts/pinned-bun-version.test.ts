@@ -78,4 +78,37 @@ describe('the container runs the Bun this workspace pins', () => {
       references.filter((reference) => !filesDeclaringEnvironmentPin.has(reference.file)),
     ).toEqual([]);
   });
+
+  it('leaves no setup-bun step without a version to install', () => {
+    // Scanning declarations only finds the pins that exist. A `setup-bun` step
+    // that never had a `bun-version` input, or lost one, falls back to the
+    // action's own default — the unpinned install this file exists to forbid —
+    // while every other file's declaration keeps the sweep above green. So
+    // enumerate the steps, not the declarations.
+    const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
+    const stepsWithoutAVersion: string[] = [];
+    let stepsChecked = 0;
+    for (const file of readdirSync(workflowsRoot)) {
+      if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
+      const lines = readFileSync(resolve(workflowsRoot, file), 'utf8').split('\n');
+      for (const [index, line] of lines.entries()) {
+        const listItem = /^(\s*)-\s/.exec(line);
+        if (listItem === null) continue;
+        const indent = (listItem[1] ?? '').length;
+        const step = [line];
+        for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
+          const next = lines[cursor] ?? '';
+          if (next.trim().length === 0) continue;
+          if (next.length - next.trimStart().length <= indent) break;
+          step.push(next);
+        }
+        const body = step.join('\n');
+        if (!body.includes('oven-sh/setup-bun')) continue;
+        stepsChecked += 1;
+        if (!/^\s*bun-version:/m.test(body)) stepsWithoutAVersion.push(`${file}:${index + 1}`);
+      }
+    }
+    expect(stepsChecked).toBeGreaterThan(0);
+    expect(stepsWithoutAVersion).toEqual([]);
+  });
 });

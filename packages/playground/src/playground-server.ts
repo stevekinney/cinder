@@ -1525,9 +1525,17 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   // A bundler that retains memory per build turns this sweep into an OOM kill
   // on a CI runner, and that kill carries no message of its own — the run just
   // reports whatever browser assertion happened to be in flight. `maxRSS` is
-  // the process's high-water mark in kilobytes, not the instantaneous reading:
-  // a sweep that spikes and then falls back still reports the number that
-  // decides whether the runner kills it.
+  // the process's high-water mark, not the instantaneous reading: a sweep that
+  // spikes and then falls back still reports the number that decides whether
+  // the runner kills it.
+  //
+  // Units: `process.resourceUsage().maxRSS` is kibibytes on BOTH macOS and
+  // Linux — libuv normalizes Darwin's byte-valued `ru_maxrss` on the way out.
+  // That is not true of `Bun.spawn`'s subprocess `resourceUsage()`, which
+  // hands back Darwin's raw bytes; that difference is what
+  // `memory-canary.ts`'s `bytesFromMaxRss` exists for, and applying it here
+  // would under-report by 1024x on macOS. Measured on darwin at a 611 MB
+  // resident size: this API reports 625,856, the subprocess API 641,024,000.
   const peakResidentMegabytes = Math.round(process.resourceUsage().maxRSS / 1024);
   process.stdout.write(
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix} ` +
