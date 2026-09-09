@@ -1670,6 +1670,45 @@ describe('VirtualList — infinite scroll callbacks', () => {
     expect(startReachedCount).toBe(1);
   });
 
+  test('re-enabling one callback fires again, even at the same position and count', async () => {
+    // The latch is per edge. Resetting it only when BOTH callbacks are absent left
+    // the removed edge latched, so putting that one callback back at the same
+    // position and item count found it already set and stayed silent.
+    let endReachedCount = 0;
+    const onEndReached = () => {
+      endReachedCount += 1;
+    };
+    // Passed explicitly as undefined, which is how a consumer disables a handler
+    // conditionally — and the only way to clear it here, since `rerender` merges
+    // props rather than replacing them, so an omitted key keeps its previous value.
+    const props = (handler: (() => void) | undefined) => ({
+      items: makeItems(200),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 2,
+      onStartReached: () => {},
+      onEndReached: handler,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    const { container, rerender } = render(VirtualList, props(onEndReached));
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    list.scrollTop = 3_800;
+    await fireEvent.scroll(list);
+    await waitFor(() => expect(endReachedCount).toBe(1));
+
+    // Remove the callback while the reader stays exactly where they are.
+    await rerender(props(undefined));
+    await tick();
+
+    // Put it back, still near the end, still the same item count.
+    await rerender(props(onEndReached));
+    await waitFor(() => expect(endReachedCount).toBe(2));
+  });
+
   test('fires onStartReached near the start', async () => {
     let startReachedCount = 0;
     render(VirtualList, {

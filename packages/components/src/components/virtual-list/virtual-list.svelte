@@ -297,7 +297,19 @@
       itemCount,
       overscan: resolvedOverscan,
     });
-    const decision = resolveEdgeFireDecision({ proximity, previous: edgeLatch, itemCount });
+    // Masked per edge, not just when BOTH callbacks are gone. An edge without a
+    // callback has nothing to fire, and reporting it as near would leave its own
+    // latch set — so re-enabling that one callback at the same position and item
+    // count would find it already latched and stay silent.
+    const maskedProximity = {
+      isNearStart: onStartReached ? proximity.isNearStart : false,
+      isNearEnd: onEndReached ? proximity.isNearEnd : false,
+    };
+    const decision = resolveEdgeFireDecision({
+      proximity: maskedProximity,
+      previous: edgeLatch,
+      itemCount,
+    });
     edgeLatch = decision.next;
 
     // Untracked: a consumer that appends inside the callback would otherwise write

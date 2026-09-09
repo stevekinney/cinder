@@ -126,11 +126,15 @@ export type VirtualListProps<Item = unknown> = Omit<
   /**
    * Called when the reader scrolls within `overscan` items of the end of the list.
    *
+   * Explicitly `| undefined` rather than merely optional: this package compiles with
+   * `exactOptionalPropertyTypes`, under which the two differ, and a consumer writing
+   * `onEndReached={enabled ? load : undefined}` would otherwise fail to typecheck.
+   *
    * Fires once per approach, not once per scroll event, and re-arms when the item
    * count changes — so appending in response to it allows the next approach to fire
    * while a source that returns nothing does not spin.
    */
-  onEndReached?: () => void;
+  onEndReached?: (() => void) | undefined;
   /**
    * Called when the reader scrolls within `overscan` items of the start of the
    * list. Pair with `onEndReached` for bi-directional infinite scroll.
@@ -139,7 +143,7 @@ export type VirtualListProps<Item = unknown> = Omit<
    * reader's position rather than jumping to the new start — but only with `getKey`,
    * since index-derived keys make a prepend look exactly like an append.
    */
-  onStartReached?: () => void;
+  onStartReached?: (() => void) | undefined;
   /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the native scroll container for

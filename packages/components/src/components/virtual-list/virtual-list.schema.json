@@ -57,7 +57,7 @@
       {
         "name": "onEndReached",
         "reason": "function-or-snippet",
-        "description": "Called when the reader scrolls within `overscan` items of the end of the list.\n\nFires once per approach, not once per scroll event, and re-arms when the item\ncount changes — so appending in response to it allows the next approach to fire\nwhile a source that returns nothing does not spin."
+        "description": "Called when the reader scrolls within `overscan` items of the end of the list.\n\nExplicitly `| undefined` rather than merely optional: this package compiles with\n`exactOptionalPropertyTypes`, under which the two differ, and a consumer writing\n`onEndReached={enabled ? load : undefined}` would otherwise fail to typecheck.\n\nFires once per approach, not once per scroll event, and re-arms when the item\ncount changes — so appending in response to it allows the next approach to fire\nwhile a source that returns nothing does not spin."
       },
       {
         "name": "onStartReached",
