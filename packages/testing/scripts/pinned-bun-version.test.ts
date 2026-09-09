@@ -7,51 +7,127 @@ import { readPinnedBunVersion } from './update-snapshots-docker.ts';
 
 const testingPackageRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const workspaceRoot = resolve(testingPackageRoot, '../..');
+const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
 
 /**
- * True when the declaration on `index` sits in the workflow's own top-level
- * `env:` block, which every job in the file can read.
- *
- * Scope is the whole point: a `BUN_VERSION` nested under one job is invisible
- * to the others, so a `${{ env.BUN_VERSION }}` reference in a different job
- * would resolve to the empty string and `setup-bun` would install whatever it
- * likes — while a file-level "this file declares it" check waved it through.
+ * The only expression a `bun-version` input may hold. Anything else —
+ * `${{ vars.BUN_VERSION }}`, a typo like `${{ env.BUN_VERSOIN }}` — resolves
+ * to the empty string and `setup-bun` installs whatever it likes.
  */
-/**
- * True when the step carries `bun-version:` as a direct child of its own
- * `with:` mapping — the only place `setup-bun` reads an input from.
- *
- * Searching the whole step body was too generous: a `bun-version` indented
- * under an `env:` block, or sitting inside a multi-line `run:` script, would
- * satisfy the search while the action received no input at all and installed
- * its own default.
- */
-function hasBunVersionInput(step: readonly string[]): boolean {
-  for (const [index, line] of step.entries()) {
-    const withKey = /^(\s*)with:\s*$/.exec(line);
-    if (withKey === null) continue;
-    const withIndent = (withKey[1] ?? '').length;
-    for (let cursor = index + 1; cursor < step.length; cursor += 1) {
-      const candidate = step[cursor] ?? '';
-      if (candidate.trim().length === 0) continue;
-      const indent = candidate.length - candidate.trimStart().length;
-      if (indent <= withIndent) break;
-      if (indent === withIndent + 2 && /^bun-version:\s*\S/.test(candidate.trim())) return true;
-    }
-  }
-  return false;
+const ENVIRONMENT_REFERENCE = '${{ env.BUN_VERSION }}';
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-function declaredAtWorkflowScope(lines: readonly string[], index: number): boolean {
-  const line = lines[index] ?? '';
-  if (line.length - line.trimStart().length !== 2) return false;
-  for (let cursor = index - 1; cursor >= 0; cursor -= 1) {
-    const candidate = lines[cursor] ?? '';
-    if (candidate.trim().length === 0) continue;
-    if (candidate.length - candidate.trimStart().length >= 2) continue;
-    return candidate.trimEnd() === 'env:';
+/**
+ * The `BUN_VERSION` an `env:` mapping declares, if any.
+ *
+ * YAML scalars come back typed, so `bun-version: 1.2` would arrive as a
+ * number. Everything is compared as a string, which is also how Actions
+ * substitutes it.
+ */
+function declaredBunVersion(node: unknown): string | undefined {
+  if (!isRecord(node)) return undefined;
+  const environment = node['env'];
+  if (!isRecord(environment)) return undefined;
+  const declared = environment['BUN_VERSION'];
+  return declared === undefined || declared === null ? undefined : String(declared);
+}
+
+type SetupBunStep = {
+  location: string;
+  /** The `bun-version` input, or `undefined` when the step carries none. */
+  input: string | undefined;
+  /**
+   * What `${{ env.BUN_VERSION }}` would resolve to for THIS step: its own
+   * `env`, else its job's, else the workflow's. Scope is the point — a
+   * `BUN_VERSION` declared under one job is invisible to every other.
+   */
+  resolvedEnvironmentPin: string | undefined;
+};
+
+/**
+ * Every `setup-bun` step in a parsed workflow, each carrying the version it
+ * would actually install.
+ *
+ * Parsed rather than pattern-matched. Three rounds of review found three ways
+ * around a line-oriented reader — an expression that was skipped instead of
+ * checked, a declaration under a job that a file-level check accepted, and a
+ * `bun-version` sitting outside the action's own `with:` mapping. Flow-style
+ * YAML (`env: { BUN_VERSION: 1.4.0 }`) would have been a fourth. Reading the
+ * structure ends the whole class rather than the last instance of it.
+ */
+function collectSetupBunSteps(file: string, workflow: unknown): SetupBunStep[] {
+  const collected: SetupBunStep[] = [];
+  if (!isRecord(workflow)) return collected;
+  const workflowPin = declaredBunVersion(workflow);
+  const jobs = workflow['jobs'];
+  if (!isRecord(jobs)) return collected;
+
+  for (const [jobName, job] of Object.entries(jobs)) {
+    if (!isRecord(job)) continue;
+    const jobPin = declaredBunVersion(job) ?? workflowPin;
+    const steps = job['steps'];
+    if (!Array.isArray(steps)) continue;
+
+    for (const [index, step] of steps.entries()) {
+      if (!isRecord(step)) continue;
+      const uses = step['uses'];
+      if (typeof uses !== 'string' || !uses.startsWith('oven-sh/setup-bun')) continue;
+      const inputs = step['with'];
+      const input = isRecord(inputs) ? inputs['bun-version'] : undefined;
+      collected.push({
+        location: `${file} › ${jobName} › step ${index + 1}`,
+        input: input === undefined || input === null ? undefined : String(input),
+        resolvedEnvironmentPin: declaredBunVersion(step) ?? jobPin,
+      });
+    }
   }
-  return false;
+  return collected;
+}
+
+/** Every `BUN_VERSION` an `env:` mapping declares, at any scope. */
+function collectDeclarations(
+  file: string,
+  workflow: unknown,
+): { location: string; version: string }[] {
+  const collected: { location: string; version: string }[] = [];
+  if (!isRecord(workflow)) return collected;
+
+  const workflowPin = declaredBunVersion(workflow);
+  if (workflowPin !== undefined)
+    collected.push({ location: `${file} › env`, version: workflowPin });
+
+  const jobs = workflow['jobs'];
+  if (!isRecord(jobs)) return collected;
+  for (const [jobName, job] of Object.entries(jobs)) {
+    if (!isRecord(job)) continue;
+    const jobPin = declaredBunVersion(job);
+    if (jobPin !== undefined)
+      collected.push({ location: `${file} › ${jobName} › env`, version: jobPin });
+    const steps = job['steps'];
+    if (!Array.isArray(steps)) continue;
+    for (const [index, step] of steps.entries()) {
+      const stepPin = declaredBunVersion(step);
+      if (stepPin !== undefined) {
+        collected.push({
+          location: `${file} › ${jobName} › step ${index + 1} › env`,
+          version: stepPin,
+        });
+      }
+    }
+  }
+  return collected;
+}
+
+function readWorkflows(): { file: string; workflow: unknown }[] {
+  return readdirSync(workflowsRoot)
+    .filter((file) => file.endsWith('.yaml') || file.endsWith('.yml'))
+    .map((file) => ({
+      file,
+      workflow: Bun.YAML.parse(readFileSync(resolve(workflowsRoot, file), 'utf8')) as unknown,
+    }));
 }
 
 function readWorkspaceManifest(): { packageManager?: string } {
@@ -86,79 +162,42 @@ describe('the container runs the Bun this workspace pins', () => {
     expect(dockerfile).toMatch(/BUN_VERSION build-arg is required/);
   });
 
-  it('is the same Bun every workflow job installs', () => {
+  it('declares the pinned version everywhere it declares one at all', () => {
     // Checking one workflow let the other ten drift: the pin lives in eleven
     // places across `BUN_VERSION` env blocks and `setup-bun` inputs, and a
     // bump that misses any of them puts a job on a different Bun than the
-    // container and the workspace.
+    // container and the workspace. A stale declaration nothing reads today is
+    // a trap for whoever wires the next reference to it, so it fails too.
     const pinned = readPinnedBunVersion();
-    const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
-    const pins: { file: string; version: string }[] = [];
-    const references: { file: string; value: string }[] = [];
-    const filesDeclaringEnvironmentPin = new Set<string>();
-    for (const file of readdirSync(workflowsRoot)) {
-      if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
-      const lines = readFileSync(resolve(workflowsRoot, file), 'utf8').split('\n');
-      for (const [index, line] of lines.entries()) {
-        const declaration = /^\s*(BUN_VERSION|bun-version):\s*(.+?)\s*$/.exec(line);
-        if (declaration === null) continue;
-        const value = (declaration[2] ?? '').replace(/^'|'$/g, '');
-        if (value.startsWith('${{')) {
-          references.push({ file, value });
-          continue;
-        }
-        if (declaration[1] === 'BUN_VERSION' && declaredAtWorkflowScope(lines, index)) {
-          filesDeclaringEnvironmentPin.add(file);
-        }
-        pins.push({ file, version: value });
-      }
-    }
-    expect(pins.length).toBeGreaterThan(0);
-    expect(pins.filter((pin) => pin.version !== pinned)).toEqual([]);
-
-    // An expression is not a free pass. `${{ vars.BUN_VERSION }}`, or a typo
-    // like `${{ env.BUN_VERSOIN }}`, installs some other Bun (or none at all)
-    // while every literal declaration elsewhere keeps the assertion above
-    // green. `${{ env.BUN_VERSION }}` is the only admissible expression form,
-    // and only in a file whose declaration every job can actually read — see
-    // `declaredAtWorkflowScope`. It may of course appear in many steps.
-    expect(references.filter((reference) => reference.value !== '${{ env.BUN_VERSION }}')).toEqual(
-      [],
+    const declarations = readWorkflows().flatMap(({ file, workflow }) =>
+      collectDeclarations(file, workflow),
     );
-    expect(
-      references.filter((reference) => !filesDeclaringEnvironmentPin.has(reference.file)),
-    ).toEqual([]);
+    expect(declarations.length).toBeGreaterThan(0);
+    expect(declarations.filter((declaration) => declaration.version !== pinned)).toEqual([]);
   });
 
-  it('leaves no setup-bun step without a version to install', () => {
-    // Scanning declarations only finds the pins that exist. A `setup-bun` step
-    // that never had a `bun-version` input, or lost one, falls back to the
-    // action's own default — the unpinned install this file exists to forbid —
-    // while every other file's declaration keeps the sweep above green. So
-    // enumerate the steps, not the declarations.
-    const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
-    const stepsWithoutAVersion: string[] = [];
-    let stepsChecked = 0;
-    for (const file of readdirSync(workflowsRoot)) {
-      if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
-      const lines = readFileSync(resolve(workflowsRoot, file), 'utf8').split('\n');
-      for (const [index, line] of lines.entries()) {
-        const listItem = /^(\s*)-\s/.exec(line);
-        if (listItem === null) continue;
-        const indent = (listItem[1] ?? '').length;
-        const step = [line];
-        for (let cursor = index + 1; cursor < lines.length; cursor += 1) {
-          const next = lines[cursor] ?? '';
-          if (next.trim().length === 0) continue;
-          if (next.length - next.trimStart().length <= indent) break;
-          step.push(next);
-        }
-        if (!step.join('\n').includes('oven-sh/setup-bun')) continue;
-        stepsChecked += 1;
-        if (!hasBunVersionInput(step)) stepsWithoutAVersion.push(`${file}:${index + 1}`);
-      }
-    }
-    expect(stepsChecked).toBeGreaterThan(0);
-    expect(stepsWithoutAVersion).toEqual([]);
+  it('installs that same version in every setup-bun step', () => {
+    const pinned = readPinnedBunVersion();
+    const steps = readWorkflows().flatMap(({ file, workflow }) =>
+      collectSetupBunSteps(file, workflow),
+    );
+
+    // A formatting or key change that stops matching must fail loudly rather
+    // than pass over an empty list.
+    expect(steps.length).toBeGreaterThan(0);
+
+    // No input at all means `setup-bun` picks its own version — the unpinned
+    // install this whole file exists to forbid.
+    expect(steps.filter((step) => step.input === undefined).map((step) => step.location)).toEqual(
+      [],
+    );
+
+    const wrong = steps.filter((step) => {
+      if (step.input === pinned) return false;
+      if (step.input !== ENVIRONMENT_REFERENCE) return true;
+      // The reference is only as good as what it resolves to for THIS step.
+      return step.resolvedEnvironmentPin !== pinned;
+    });
+    expect(wrong.map((step) => `${step.location}: ${step.input ?? '(none)'}`)).toEqual([]);
   });
 });
