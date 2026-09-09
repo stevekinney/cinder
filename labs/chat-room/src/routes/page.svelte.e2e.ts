@@ -2,6 +2,12 @@ import { expect, test } from '@playwright/test';
 import { appendUserMessage, createConversationHistory } from 'conversationalist';
 import { gotoHydrated } from './exercises/hydration';
 import {
+	fixtureGateHeld,
+	fixtureRequestCount,
+	newFixtureMarker,
+	releaseFixtureGate
+} from './fixture-probe';
+import {
 	APPROVAL_FOLLOW_UP_TEXT,
 	APPROVAL_NOTE_TEXT,
 	FIXTURE_ORIGIN,
@@ -298,29 +304,7 @@ test.describe('production streaming path', () => {
 	// Unique per test AND per browser project: three engines run this file
 	// concurrently in separate workers against one fixture process, so gates and
 	// counters that were keyed by scenario alone would cross wires.
-	function newMarker(): string {
-		return crypto.randomUUID();
-	}
-
-	async function fixtureRequestCount(marker: string): Promise<number> {
-		const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/requests?marker=${marker}`);
-		const payload = (await response.json()) as { count: number };
-		return payload.count;
-	}
-
-	async function fixtureGateHeld(marker: string): Promise<boolean> {
-		const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/held?marker=${marker}`);
-		const payload = (await response.json()) as { held: boolean };
-		return payload.held;
-	}
-
-	async function releaseFixtureGate(marker: string): Promise<boolean> {
-		const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/release?marker=${marker}`, {
-			method: 'POST'
-		});
-		const payload = (await response.json()) as { released: boolean };
-		return payload.released;
-	}
+	const newMarker = newFixtureMarker;
 
 	// Proves the turn reached the fixture rather than the real Anthropic API,
 	// and says so in the failure message — the difference between "this ran
