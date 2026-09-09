@@ -1524,13 +1524,14 @@ export async function startServer(port: number = PORT): Promise<PlaygroundServer
   const failedSuffix = prebuild.failed.length > 0 ? ` (failed: ${prebuild.failed.join(', ')})` : '';
   // A bundler that retains memory per build turns this sweep into an OOM kill
   // on a CI runner, and that kill carries no message of its own — the run just
-  // reports whatever browser assertion happened to be in flight. Print the
-  // footprint the sweep actually reached so the next regression is legible in
-  // the log rather than inferred from the wreckage.
-  const residentMegabytes = Math.round(process.memoryUsage().rss / 1024 / 1024);
+  // reports whatever browser assertion happened to be in flight. `maxRSS` is
+  // the process's high-water mark in kilobytes, not the instantaneous reading:
+  // a sweep that spikes and then falls back still reports the number that
+  // decides whether the runner kills it.
+  const peakResidentMegabytes = Math.round(process.resourceUsage().maxRSS / 1024);
   process.stdout.write(
     `[playground] Pre-built ${prebuild.succeeded}/${total} page bundles${failedSuffix} ` +
-      `(resident ${residentMegabytes} MB)\n`,
+      `(peak resident ${peakResidentMegabytes} MB)\n`,
   );
   // Prepare the SSR shell renderer before advertising readiness. Requests must
   // never pay the cold Svelte server compilation cost on the first navigation.

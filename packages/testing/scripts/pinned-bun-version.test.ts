@@ -48,18 +48,34 @@ describe('the container runs the Bun this workspace pins', () => {
     const pinned = readPinnedBunVersion();
     const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
     const pins: { file: string; version: string }[] = [];
+    const references: { file: string; value: string }[] = [];
+    const filesDeclaringEnvironmentPin = new Set<string>();
     for (const file of readdirSync(workflowsRoot)) {
       if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
       const workflow = readFileSync(resolve(workflowsRoot, file), 'utf8');
-      for (const match of workflow.matchAll(/^\s*(?:BUN_VERSION:|bun-version:)\s*(.+?)\s*$/gm)) {
-        const value = (match[1] ?? '').replace(/^'|'$/g, '');
-        // `bun-version: ${{ env.BUN_VERSION }}` resolves through the same
-        // file's env block, which this sweep already checks directly.
-        if (value.startsWith('${{')) continue;
+      for (const match of workflow.matchAll(/^\s*(BUN_VERSION|bun-version):\s*(.+?)\s*$/gm)) {
+        const value = (match[2] ?? '').replace(/^'|'$/g, '');
+        if (value.startsWith('${{')) {
+          references.push({ file, value });
+          continue;
+        }
+        if (match[1] === 'BUN_VERSION') filesDeclaringEnvironmentPin.add(file);
         pins.push({ file, version: value });
       }
     }
     expect(pins.length).toBeGreaterThan(0);
     expect(pins.filter((pin) => pin.version !== pinned)).toEqual([]);
+
+    // An expression is not a free pass. `${{ vars.BUN_VERSION }}`, or a typo
+    // like `${{ env.BUN_VERSOIN }}`, installs some other Bun (or none at all)
+    // while every literal declaration elsewhere keeps the assertion above
+    // green. Exactly one expression is admissible, and only in a file that
+    // actually declares the value it dereferences.
+    expect(references.filter((reference) => reference.value !== '${{ env.BUN_VERSION }}')).toEqual(
+      [],
+    );
+    expect(
+      references.filter((reference) => !filesDeclaringEnvironmentPin.has(reference.file)),
+    ).toEqual([]);
   });
 });
