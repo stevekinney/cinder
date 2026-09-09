@@ -913,7 +913,15 @@ async function main(): Promise<void> {
       );
       reportedPlaygroundPort =
         parsePlaygroundListeningPort(serverOutputBuffer) ?? reportedPlaygroundPort;
-      serverOutputBuffer = appendServerOutputBuffer(serverOutputBuffer, '', true);
+      // Bounded only once the port is known, matching the parameter's intent.
+      // Forcing it unconditionally discarded pre-readiness output, which is
+      // exactly where an early crash explains itself — and now that this
+      // buffer is what the exit report prints, that output is the point.
+      serverOutputBuffer = appendServerOutputBuffer(
+        serverOutputBuffer,
+        '',
+        reportedPlaygroundPort !== null,
+      );
     });
 
     serverProcess.stderr?.on('data', (chunk: string | Uint8Array) => {
