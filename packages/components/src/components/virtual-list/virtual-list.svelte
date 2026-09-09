@@ -332,7 +332,9 @@
     // local getKey call: the measurement cache is keyed by exactly what `keyAt`
     // returns, and a second derivation that disagreed on any item would report
     // growth where there is none.
-    const itemsChanged = items !== previousItems;
+    // Length as well as identity: a consumer that pushes into the same array keeps
+    // its reference, and treating that as unchanged would miss the growth entirely.
+    const itemsChanged = items !== previousItems || items.length !== previousKeys.length;
     const nextKeys = itemsChanged
       ? Array.from({ length: items.length }, (_unused, index) => keyAt(index))
       : previousKeys;
@@ -350,7 +352,13 @@
       return;
     }
 
-    const growth: ItemGrowth = classifyItemGrowth(previousKeys, nextKeys);
+    // Skipped outright when the array did not change. `classifyItemGrowth` opens with
+    // an O(n) equality walk, so running it on every measurement-driven pass would
+    // reintroduce the per-measurement cost this guard exists to remove — to reach
+    // the answer this branch already knows.
+    const growth: ItemGrowth = itemsChanged
+      ? classifyItemGrowth(previousKeys, nextKeys)
+      : { kind: 'unchanged' };
 
     shouldStickAfterAppend =
       element !== undefined &&
