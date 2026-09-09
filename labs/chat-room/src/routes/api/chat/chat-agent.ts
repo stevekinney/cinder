@@ -25,7 +25,6 @@ import {
 	createAgent,
 	stopWhen,
 	type AgentRun,
-	type AgentRunErrorCode,
 	type AgentRunErrorKind,
 	type AnyToolbox,
 	type ConversationHistory,
@@ -109,8 +108,41 @@ export type ChatRunEnvelope =
 	| {
 			ok: false;
 			status: string;
-			error: { kind: AgentRunErrorKind; code: AgentRunErrorCode; message: string };
+			error: { kind: AgentRunErrorKind; code: ChatSerializedRunError['code']; message: string };
 	  };
+
+/**
+ * Every error code `@lostgradient/chat`'s wire contract admits, as a total
+ * record so this list cannot silently fall behind that union: adding a member
+ * to it makes this object fail to typecheck for the missing key.
+ *
+ * The narrowing exists because the two unions grow independently. Operative's
+ * `AgentRunErrorCode` gained `INVALID_AGENT_HANDLE` in 0.9.0, and
+ * `decodeChatStreamEvent` REJECTS a frame carrying a code it does not know —
+ * so forwarding a new Operative code verbatim does not deliver an unfamiliar
+ * error, it drops the whole terminal frame and the client sees nothing at all.
+ * Reporting `UNKNOWN`, which the wire does know, keeps the failure visible.
+ * Admitting a new code into the contract is a `packages/chat` decision with a
+ * published release behind it, not something a lab widens on its own.
+ */
+const CHAT_WIRE_ERROR_CODES: Record<ChatSerializedRunError['code'], true> = {
+	INVALID_EXPORT: true,
+	LOAD_FAILED: true,
+	ABORTED: true,
+	BUDGET_EXCEEDED: true,
+	ELICITATION_DENIED: true,
+	INVALID_OUTPUT: true,
+	MAXIMUM_STEPS: true,
+	TRIPWIRE: true,
+	UNKNOWN: true
+};
+
+/** Projects an Operative error code onto the codes the chat wire accepts. */
+export function toChatWireErrorCode(code: string): ChatSerializedRunError['code'] {
+	return Object.hasOwn(CHAT_WIRE_ERROR_CODES, code)
+		? (code as ChatSerializedRunError['code'])
+		: 'UNKNOWN';
+}
 
 /**
  * Stops the loop the instant a step produces ANY tool call, approval-gated
@@ -271,7 +303,11 @@ export function classifyChatRunFailure(
 		return {
 			ok: false,
 			status: error.kind === 'abort' ? 'aborted' : fallbackStatus,
-			error: { kind: error.kind, code: error.code, message: error.message }
+			error: {
+				kind: error.kind,
+				code: toChatWireErrorCode(error.code),
+				message: error.message
+			}
 		};
 	}
 
