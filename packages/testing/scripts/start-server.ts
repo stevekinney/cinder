@@ -890,10 +890,12 @@ async function main(): Promise<void> {
       if (hasClosed()) return;
       // `close` is the only event that promises every stdio stream has been
       // delivered — `exit` does not, and with stderr piped as well there are
-      // now two streams to wait on rather than one.
+      // two streams to wait on rather than one. Awaited without a deadline
+      // deliberately: the process has already exited by the time this runs,
+      // so its stdio closes on its own, and a bound here would be a wait
+      // threshold masking a lifecycle bug rather than fixing one.
       await new Promise<void>((resolve) => {
         serverProcessRef.once('close', () => resolve());
-        setTimeout(resolve, 2_000).unref();
       });
     };
     serverProcess.stdout?.on('data', (chunk: string | Uint8Array) => {
