@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { readFileSync, readdirSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -41,11 +41,25 @@ describe('the container runs the Bun this workspace pins', () => {
   });
 
   it('is the same Bun every workflow job installs', () => {
-    const workflow = readFileSync(
-      resolve(workspaceRoot, '.github/workflows/browser-tests.yaml'),
-      'utf8',
-    );
-    const pinned = workflow.match(/^\s*BUN_VERSION:\s*(\S+)\s*$/m)?.[1];
-    expect(pinned).toBe(readPinnedBunVersion());
+    // Checking one workflow let the other ten drift: the pin lives in eleven
+    // places across `BUN_VERSION` env blocks and `setup-bun` inputs, and a
+    // bump that misses any of them puts a job on a different Bun than the
+    // container and the workspace.
+    const pinned = readPinnedBunVersion();
+    const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
+    const pins: { file: string; version: string }[] = [];
+    for (const file of readdirSync(workflowsRoot)) {
+      if (!file.endsWith('.yaml') && !file.endsWith('.yml')) continue;
+      const workflow = readFileSync(resolve(workflowsRoot, file), 'utf8');
+      for (const match of workflow.matchAll(/^\s*(?:BUN_VERSION:|bun-version:)\s*(.+?)\s*$/gm)) {
+        const value = (match[1] ?? '').replace(/^'|'$/g, '');
+        // `bun-version: ${{ env.BUN_VERSION }}` resolves through the same
+        // file's env block, which this sweep already checks directly.
+        if (value.startsWith('${{')) continue;
+        pins.push({ file, version: value });
+      }
+    }
+    expect(pins.length).toBeGreaterThan(0);
+    expect(pins.filter((pin) => pin.version !== pinned)).toEqual([]);
   });
 });
