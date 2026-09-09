@@ -429,8 +429,9 @@ jobs:
       - name: Upload Playwright HTML report
         if: failure()
         uses: actions/upload-artifact@v7
-        # Diagnostics, never a verdict: a 403 from the artifact service must not
-        # fail a lane whose tests passed, and with it the required check.
+        # Diagnostics, never a verdict: whether the artifact service accepts a
+        # zip must not decide what this job reports about the code under test.
+        # A 403 on finalize was failing lanes whose tests had all passed.
         continue-on-error: true
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -637,7 +638,19 @@ jobs:
           merge-multiple: true
       - name: Merge sharded report
         if: "always() && needs.playwright-lane.result != 'skipped'"
-        run: bunx playwright merge-reports --reporter html packages/testing/blob-reports
+        # Uploads are best-effort, so "no blobs at all" is now a reachable
+        # state — an artifact-service outage produces it. Merging nothing is
+        # not a failure of the code under test, and failing here would just
+        # move the false red from the lanes to the aggregate. A merge that
+        # fails with blobs present still fails the job.
+        run: |
+          set -euo pipefail
+          BLOBS=packages/testing/blob-reports
+          if [ -d "$BLOBS" ] && find "$BLOBS" -type f -print -quit | grep -q .; then
+            bunx playwright merge-reports --reporter html "$BLOBS"
+          else
+            echo 'No blob reports were uploaded; skipping the merged report.' | tee -a "$GITHUB_STEP_SUMMARY"
+          fi
       - name: Merge sharded visual reports
         if: "always() && needs.playwright-visual.result != 'skipped' && github.event_name == 'workflow_dispatch' && github.event.inputs.mode == 'report'"
         uses: actions/download-artifact@v8
