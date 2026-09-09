@@ -367,13 +367,29 @@
       syncViewport(element);
     };
 
+    // The takeover handlers live on the element, which the reader never touches in
+    // this mode — so a smooth `scrollToIndex` driving the document would keep
+    // fighting them for the viewport. Mirror them onto the window.
+    const handleWindowTakeover = () => retireSettleLoop();
+    const handleWindowKeyTakeover = (event: KeyboardEvent) => {
+      if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
+    };
+
     window.addEventListener('scroll', handleWindowGeometryChange, { passive: true });
     window.addEventListener('resize', handleWindowGeometryChange, { passive: true });
+    window.addEventListener('wheel', handleWindowTakeover, { passive: true });
+    window.addEventListener('pointerdown', handleWindowTakeover, { passive: true });
+    window.addEventListener('touchstart', handleWindowTakeover, { passive: true });
+    window.addEventListener('keydown', handleWindowKeyTakeover, { passive: true });
     handleWindowGeometryChange();
 
     return () => {
       window.removeEventListener('scroll', handleWindowGeometryChange);
       window.removeEventListener('resize', handleWindowGeometryChange);
+      window.removeEventListener('wheel', handleWindowTakeover);
+      window.removeEventListener('pointerdown', handleWindowTakeover);
+      window.removeEventListener('touchstart', handleWindowTakeover);
+      window.removeEventListener('keydown', handleWindowKeyTakeover);
     };
   });
 
@@ -452,13 +468,12 @@
         if (items.length === 0) return;
         saveScrollPosition(storageAtTeardown, id, {
           scrollOffset,
-          // The row the reader is actually looking at, not the rendered window's
-          // first index — that one carries overscan, so restoring it would land them
-          // a few rows above where they left off, every single time.
-          startIndex: Math.min(
-            virtualWindow.startIndex + resolvedOverscan,
-            Math.max(0, items.length - 1),
-          ),
+          // Derived from the live offset, not from the rendered window. The window's
+          // first index carries overscan, and adding it back does not recover the
+          // anchor either: near the top the leading overscan is clipped against 0,
+          // so `startIndex + overscan` points several rows PAST the reader instead
+          // of at them. The offset knows where they actually are.
+          startIndex: resolveAnchorIndexAtOffset(scrollOffset),
         });
       });
     };
@@ -499,7 +514,9 @@
       // A reverse list opens at its end. Deferred to the mount effect rather than
       // written here: there is no element yet on the first server-or-client pass,
       // and under `dynamicSize` the total is still only an estimate.
-      needsInitialReversePin = reverse;
+      // Not under `windowScroll`: there is no scroll position of the component's own
+      // to pin, and the mount effect would scroll the whole page to the list's end.
+      needsInitialReversePin = reverse && !windowScroll;
       return;
     }
 
@@ -754,6 +771,17 @@
     previousOffsets = currentOffsets;
   });
 
+  /**
+   * The index of the row occupying a given scroll offset — the row the reader is
+   * looking at, independent of overscan and of any clamping at the list's edges.
+   */
+  function resolveAnchorIndexAtOffset(offset: number): number {
+    const lastIndex = Math.max(0, items.length - 1);
+    const table = offsets?.offsets;
+    if (table) return Math.min(findOffsetIndex(table, Math.max(0, offset)), lastIndex);
+    return Math.min(Math.floor(Math.max(0, offset) / Math.max(1, resolvedItemHeight)), lastIndex);
+  }
+
   $effect(() => {
     if (pendingScrollTarget === null) return;
     const element = scrollElement;
@@ -860,13 +888,17 @@
     behavior: ScrollBehavior,
   ): void {
     if (typeof window === 'undefined') return;
-    const rect = element.getBoundingClientRect();
-    const listStartInDocument = horizontal ? rect.left + window.scrollX : rect.top + window.scrollY;
-    const target = Math.max(0, listStartInDocument + offset);
-    window.scrollTo(
-      horizontal
-        ? { left: target, top: window.scrollY, behavior }
-        : { top: target, left: window.scrollX, behavior },
+    // Moved as a RELATIVE delta rather than to an absolute coordinate. The read path
+    // is normalized — it measures from the inline-START edge, which is the right one
+    // under RTL — so an absolute physical target would have to re-derive the page's
+    // own RTL scroll convention to match it. The distance between where the reader
+    // is and where they should be needs no such conversion; only its sign flips, and
+    // only along a right-to-left inline axis.
+    const delta = offset - readScrollOffset(element);
+    if (delta === 0) return;
+    const inlineDelta = horizontal && writingDirection === 'rtl' ? -delta : delta;
+    window.scrollBy(
+      horizontal ? { left: inlineDelta, top: 0, behavior } : { top: delta, left: 0, behavior },
     );
   }
 

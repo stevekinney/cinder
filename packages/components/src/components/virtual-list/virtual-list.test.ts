@@ -2065,11 +2065,18 @@ describe('VirtualList — windowScroll writes and restoration edges', () => {
     // The element does not scroll in this mode. Writing to it left scrollToIndex,
     // prepend re-anchoring, measurement corrections and restoration as silent
     // no-ops — reads were window-derived while writes were not.
+    // Both, because the write moves the document by a relative delta rather than to
+    // an absolute coordinate — the assertion is "the page moved and the element did
+    // not", not which API expressed it.
     const scrolls: unknown[] = [];
     const originalScrollTo = window.scrollTo;
+    const originalScrollBy = window.scrollBy;
     window.scrollTo = ((options: unknown) => {
       scrolls.push(options);
     }) as typeof window.scrollTo;
+    window.scrollBy = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollBy;
 
     let listRef: VirtualListRef | undefined;
     try {
@@ -2098,6 +2105,7 @@ describe('VirtualList — windowScroll writes and restoration edges', () => {
       expect(list.scrollTop).toBe(elementScrollBefore);
     } finally {
       window.scrollTo = originalScrollTo;
+      window.scrollBy = originalScrollBy;
     }
   });
 
@@ -2106,9 +2114,13 @@ describe('VirtualList — windowScroll writes and restoration edges', () => {
     // unsupported: there is no scroll position of the component's own to pin.
     const scrolls: unknown[] = [];
     const originalScrollTo = window.scrollTo;
+    const originalScrollBy = window.scrollBy;
     window.scrollTo = ((options: unknown) => {
       scrolls.push(options);
     }) as typeof window.scrollTo;
+    window.scrollBy = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollBy;
 
     const props = (count: number) => ({
       items: makeItems(count),
@@ -2132,6 +2144,7 @@ describe('VirtualList — windowScroll writes and restoration edges', () => {
       expect(scrolls).toEqual([]);
     } finally {
       window.scrollTo = originalScrollTo;
+      window.scrollBy = originalScrollBy;
     }
   });
 });
