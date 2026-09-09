@@ -248,8 +248,20 @@
     const currentWindow = virtualWindow;
     const itemCount = items.length;
     const currentViewportHeight = viewportHeight;
+    // Read before the guards below so the effect re-runs when the correction is
+    // applied and this clears.
+    const hasQueuedCorrection = pendingScrollTarget !== null;
     if (!onEndReached && !onStartReached) return;
     if (isDestroyed) return;
+
+    // A correction is queued, so the reader is about to move and any proximity
+    // reading now is stale. Firing on it asks for another page before the last one
+    // has been placed — which is exactly what a prepend does, since holding the
+    // reader's row is what moves them away from the start edge in the first place.
+    // `pendingReanchor` covers the same window under `dynamicSize`; it is a plain
+    // binding rather than state, so it does not re-trigger this effect on its own,
+    // but the scroll write that consumes it updates `scrollOffset`, which does.
+    if (hasQueuedCorrection || pendingReanchor !== null) return;
 
     // `startIndex`/`endIndex` describe the RENDERED range, which already carries
     // overscan on both sides, and `endIndex` is exclusive. Undo both so the

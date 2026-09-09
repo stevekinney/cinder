@@ -1632,6 +1632,44 @@ describe('VirtualList — infinite scroll callbacks', () => {
     await waitFor(() => expect(endReachedCount).toBe(2));
   });
 
+  test('a prepend in response to onStartReached does not immediately ask for another page', async () => {
+    // Caught from a captured screenshot, not from a unit test: the documentation
+    // example read "2 older pages" on first paint. The callback fires, the consumer
+    // prepends, and the component queues a correction to hold the reader's row — but
+    // the effect re-runs on the new item count BEFORE that correction lands, still
+    // sees the reader at the start, and asks again. A real API gets fetched twice.
+    let startReachedCount = 0;
+    const pageSize = 50;
+    let firstId = 0;
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const props = (count: number, offset: number) => ({
+      items: buildItems(count, offset),
+      itemHeight: 40,
+      height: '320px',
+      overscan: 5,
+      getKey: (item: unknown) => (item as { id: string }).id,
+      onStartReached: () => {
+        startReachedCount += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    const { container, rerender } = render(VirtualList, props(100, firstId));
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    await waitFor(() => expect(startReachedCount).toBe(1));
+
+    // The consumer's response: a page of older rows at the front.
+    firstId += pageSize;
+    await rerender(props(100 + pageSize, firstId));
+    await tick();
+    await tick();
+
+    expect(startReachedCount).toBe(1);
+  });
+
   test('fires onStartReached near the start', async () => {
     let startReachedCount = 0;
     render(VirtualList, {
