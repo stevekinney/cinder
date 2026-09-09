@@ -42,7 +42,7 @@ export type PlaintextLanguage = typeof PLAINTEXT_LANGUAGE;
  *
  * These are real Shiki grammars and will be highlighted at render time.
  * To add a language: add it to this array AND add a corresponding loader
- * to `LANGUAGE_LOADERS` below. The exhaustive `Record` type forces both
+ * to `BUNDLED_LANGUAGE_LOADERS` below. The exhaustive `Record` type forces both
  * to stay in sync — the file won't compile if a language is missing a
  * loader.
  */
@@ -90,8 +90,16 @@ type LanguageLoader = DynamicImportLanguageRegistration;
  * If a `@shikijs/langs/<name>` subpath does not exist in the installed
  * shiki version, the dynamic import fails at module evaluation with a
  * clear "Cannot find module" error — which is the desired loud failure.
+ *
+ * Exported so a second highlighting surface can be built from the SAME
+ * curated set rather than reaching for `shiki/langs`. Cinder's playground
+ * highlights through two independent paths — markdown fences here, and
+ * `<CodeBlock>` through cinder's own Shiki adapter — and when the second
+ * one fell back to the full registry it put all 253 grammars back into
+ * every page bundle's module graph, which is the cost this map exists to
+ * avoid. One list, both paths, no drift.
  */
-const LANGUAGE_LOADERS: Record<BundledLanguage, LanguageLoader> = {
+export const BUNDLED_LANGUAGE_LOADERS: Record<BundledLanguage, LanguageLoader> = {
   typescript: () => import('@shikijs/langs/typescript'),
   javascript: () => import('@shikijs/langs/javascript'),
   python: () => import('@shikijs/langs/python'),
@@ -216,7 +224,7 @@ export async function getHighlighter(): Promise<HighlighterCore> {
   if (!highlighterPromise) {
     highlighterPromise = createHighlighterCore({
       themes: [CSS_VARIABLE_THEME],
-      langs: BUNDLED_LANGUAGES.map((lang) => LANGUAGE_LOADERS[lang]()),
+      langs: BUNDLED_LANGUAGES.map((lang) => BUNDLED_LANGUAGE_LOADERS[lang]()),
       engine: createOnigurumaEngine(import('shiki/wasm')),
     }).then((highlighter) => {
       highlighterInstance = highlighter;

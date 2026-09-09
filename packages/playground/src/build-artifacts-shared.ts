@@ -1,6 +1,7 @@
 import type { BuildArtifact } from 'bun';
 
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
+import { curatedShikiAdapterPlugin } from './curated-shiki-adapter-plugin.ts';
 
 /**
  * Family identifier used by `findArtifactForFamily` to constrain which
@@ -55,7 +56,7 @@ export const PUBLIC_PATH_BY_FAMILY: Record<ArtifactFamily, string> = {
  * naming template stays flat.
  */
 export const SHARED_BUILD_OPTIONS = {
-  plugins: [sveltePlugin({ generate: 'client', injectCss: true })],
+  plugins: [sveltePlugin({ generate: 'client', injectCss: true }), curatedShikiAdapterPlugin()],
   target: 'browser',
   format: 'esm',
   // `svelte` falls back to source resolution for the `@lostgradient/cinder`

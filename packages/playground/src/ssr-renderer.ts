@@ -6,6 +6,7 @@ import { pathToFileURL } from 'node:url';
 import { sveltePlugin } from '../../components/scripts/svelte-plugin.ts';
 import { coordinatedBuild } from './build-artifacts-shared.ts';
 import type { ComponentDocumentationPayload } from './component-documentation-types.ts';
+import { curatedShikiAdapterPlugin } from './curated-shiki-adapter-plugin.ts';
 import { PLAYGROUND_ROOT, PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
 
@@ -115,7 +116,7 @@ export async function loadShellServerRenderer(): Promise<ShellServerRendererLoad
     const result = await coordinatedBuild(() =>
       Bun.build({
         entrypoints: [join(PLAYGROUND_ROOT, 'src', 'shell-app', 'shell-server-entry.ts')],
-        plugins: [sveltePlugin({ generate: 'server' })],
+        plugins: [sveltePlugin({ generate: 'server' }), curatedShikiAdapterPlugin()],
         target: 'bun',
         format: 'esm',
         conditions: ['bun', 'svelte'],
@@ -252,7 +253,7 @@ export function loadPageServerRenderer(): Promise<PageServerRendererLoadResult> 
       const result = await coordinatedBuild(() =>
         Bun.build({
           entrypoints: [join(PLAYGROUND_ROOT, 'src', 'page-server-entry.ts')],
-          plugins: [sveltePlugin({ generate: 'server' })],
+          plugins: [sveltePlugin({ generate: 'server' }), curatedShikiAdapterPlugin()],
           target: 'bun',
           format: 'esm',
           conditions: ['bun', 'svelte'],
