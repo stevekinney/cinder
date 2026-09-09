@@ -645,9 +645,8 @@ jobs:
         # fails with blobs present still fails the job.
         run: |
           set -euo pipefail
-          BLOBS=packages/testing/blob-reports
-          if [ -d "$BLOBS" ] && find "$BLOBS" -type f -print -quit | grep -q .; then
-            bunx playwright merge-reports --reporter html "$BLOBS"
+          if find packages/testing/blob-reports -type f -print -quit 2>/dev/null | grep -q .; then
+            bunx playwright merge-reports --reporter html packages/testing/blob-reports
           else
             echo 'No blob reports were uploaded; skipping the merged report.' | tee -a "$GITHUB_STEP_SUMMARY"
           fi

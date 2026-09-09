@@ -121,6 +121,12 @@ describe('Turbo input topology', () => {
     expect(browserWorkflow).toContain(
       'bunx playwright merge-reports --reporter html packages/testing/blob-reports',
     );
+    // The merge is skipped when no shard uploaded a blob — a reachable state
+    // now that the diagnostic uploads are best-effort — so that an artifact
+    // outage cannot fail the aggregate on behalf of code that passed.
+    expect(browserWorkflow).toContain(
+      "echo 'No blob reports were uploaded; skipping the merged report.'",
+    );
     expect(mainWorkflow).toContain("github.event_name == 'schedule'");
     expect(mainWorkflow).toContain("github.event.inputs.force_audit == 'true'");
     expect(turboConfiguration.tasks['@lostgradient/cinder#test']?.inputs).toContain(
