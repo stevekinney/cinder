@@ -143,6 +143,8 @@
    * cache-prune pass that already runs on this dependency.
    */
   let previousKeys: readonly VirtualListKey[] = [];
+  /** Identity of the array the keys were last derived from, so measurements skip the walk. */
+  let previousItems: readonly Item[] | undefined;
   /** Set once on mount under `reverse`, which starts at the end rather than the start. */
   let needsInitialReversePin = false;
   let edgeLatch: EdgeLatch = createEdgeLatch();
@@ -251,7 +253,13 @@
     // Read before the guards below so the effect re-runs when the correction is
     // applied and this clears.
     const hasQueuedCorrection = pendingScrollTarget !== null;
-    if (!onEndReached && !onStartReached) return;
+    if (!onEndReached && !onStartReached) {
+      // Drop the latch with the callbacks. Left set, re-enabling a callback while
+      // still near the same edge and at the same item count would find it already
+      // latched and never fire the approach the consumer just asked to hear about.
+      edgeLatch = createEdgeLatch();
+      return;
+    }
     if (isDestroyed) return;
 
     // A correction is queued, so the reader is about to move and any proximity
@@ -266,11 +274,18 @@
     // `startIndex`/`endIndex` describe the RENDERED range, which already carries
     // overscan on both sides, and `endIndex` is exclusive. Undo both so the
     // "within overscan items of the end" test is applied once rather than twice.
+    // `resolvedOverscan`, not the raw prop: the window was built with the clamped,
+    // floored value, so undoing it with a negative, fractional, or non-finite prop
+    // would drift from the real window — or resolve to NaN, which compares false
+    // against everything and silently reports both edges as out of range.
     const lastRenderedIndex = Math.max(0, itemCount - 1);
-    const firstVisibleIndex = Math.min(currentWindow.startIndex + overscan, lastRenderedIndex);
+    const firstVisibleIndex = Math.min(
+      currentWindow.startIndex + resolvedOverscan,
+      lastRenderedIndex,
+    );
     const lastVisibleIndex = Math.max(
       0,
-      Math.min(currentWindow.endIndex - 1 - overscan, lastRenderedIndex),
+      Math.min(currentWindow.endIndex - 1 - resolvedOverscan, lastRenderedIndex),
     );
 
     const proximity = resolveEdgeProximity({
@@ -280,7 +295,7 @@
       firstVisibleIndex,
       lastVisibleIndex,
       itemCount,
-      overscan,
+      overscan: resolvedOverscan,
     });
     const decision = resolveEdgeFireDecision({ proximity, previous: edgeLatch, itemCount });
     edgeLatch = decision.next;
@@ -307,10 +322,21 @@
     // scrolled within — even if the mode changes in between.
     const currentTotal = dynamicSize ? (offsets?.totalSize ?? 0) : itemCount * resolvedItemHeight;
 
-    // Through `keyAt`, not a local getKey call: the measurement cache is keyed by
-    // exactly what `keyAt` returns, and a second derivation that disagreed on any
-    // item — a hole in the array, say — would report growth where there is none.
-    const nextKeys = items.map((_item, index) => keyAt(index));
+    // Only when `items` itself changed. This effect also depends on `offsets`, which
+    // is rebuilt on every row measurement under `dynamicSize` — walking the keys
+    // there would turn each measurement into an O(n) pass over the whole list, and
+    // the growth it would report is always "unchanged" anyway.
+    //
+    // `Array.from` over the length rather than `items.map`, which skips sparse holes
+    // and would leave the key sequence shorter than the list. Through `keyAt`, not a
+    // local getKey call: the measurement cache is keyed by exactly what `keyAt`
+    // returns, and a second derivation that disagreed on any item would report
+    // growth where there is none.
+    const itemsChanged = items !== previousItems;
+    const nextKeys = itemsChanged
+      ? Array.from({ length: items.length }, (_unused, index) => keyAt(index))
+      : previousKeys;
+    previousItems = items;
 
     if (!hasObservedItemCount) {
       previousTotalSize = currentTotal;

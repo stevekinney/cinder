@@ -114,6 +114,12 @@ export type VirtualListProps<Item = unknown> = Omit<
    * Prepending — loading a page of older history — never moves the reader: the row
    * they were looking at stays put while the list grows above it.
    *
+   * That last guarantee REQUIRES `getKey`. Telling a prepend from an append means
+   * comparing key sequences, and without `getKey` the keys are array indexes: a
+   * prepend turns `[0, 1, 2]` into `[0, 1, 2, 3, 4]`, which is indistinguishable
+   * from an append and pins the reader to the end instead of holding their place.
+   * Pass `getKey` whenever the list can grow at the front.
+   *
    * Defaults to false.
    */
   reverse?: boolean;
@@ -129,8 +135,9 @@ export type VirtualListProps<Item = unknown> = Omit<
    * Called when the reader scrolls within `overscan` items of the start of the
    * list. Pair with `onEndReached` for bi-directional infinite scroll.
    *
-   * Latched the same way as `onEndReached`. Prepending in response is safe: the
-   * reader's position is preserved rather than jumping to the new start.
+   * Latched the same way as `onEndReached`. Prepending in response preserves the
+   * reader's position rather than jumping to the new start — but only with `getKey`,
+   * since index-derived keys make a prepend look exactly like an append.
    */
   onStartReached?: () => void;
   /**
