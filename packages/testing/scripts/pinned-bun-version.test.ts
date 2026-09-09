@@ -10,9 +10,14 @@ const workspaceRoot = resolve(testingPackageRoot, '../..');
 const workflowsRoot = resolve(workspaceRoot, '.github/workflows');
 
 /**
- * The only expression a `bun-version` input may hold. Anything else —
- * `${{ vars.BUN_VERSION }}`, a typo like `${{ env.BUN_VERSOIN }}` — resolves
- * to the empty string and `setup-bun` installs whatever it likes.
+ * The only expression a `bun-version` input may hold.
+ *
+ * Anything else is refused rather than reasoned about. A typo like
+ * `${{ env.BUN_VERSOIN }}` resolves to the empty string and `setup-bun`
+ * installs whatever it likes; `${{ vars.BUN_VERSION }}` resolves to whatever
+ * a repository or organization variable happens to hold, which is worse —
+ * a value this repository cannot see, review, or keep in step with
+ * `packageManager`. Neither is checkable from the tree, so neither is allowed.
  */
 const ENVIRONMENT_REFERENCE = '${{ env.BUN_VERSION }}';
 
@@ -198,6 +203,18 @@ describe('the container runs the Bun this workspace pins', () => {
       // The reference is only as good as what it resolves to for THIS step.
       return step.resolvedEnvironmentPin !== pinned;
     });
-    expect(wrong.map((step) => `${step.location}: ${step.input ?? '(none)'}`)).toEqual([]);
+    // Report what the step resolves to, not just what it says. An input of
+    // `${{ env.BUN_VERSION }}` is correct or not depending entirely on the
+    // environment chain behind it, and a message showing only the expression
+    // sends the reader looking at the one line that is fine.
+    expect(
+      wrong.map((step) => {
+        const resolved =
+          step.input === ENVIRONMENT_REFERENCE
+            ? ` → ${step.resolvedEnvironmentPin ?? '(no BUN_VERSION in scope)'}`
+            : '';
+        return `${step.location}: ${step.input ?? '(no bun-version input)'}${resolved}`;
+      }),
+    ).toEqual([]);
   });
 });
