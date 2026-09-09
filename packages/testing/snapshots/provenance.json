@@ -1,7 +1,9 @@
 {
   "schemaVersion": 1,
-  "componentScope": ["virtual-list"],
-  "renderedSourceSha": "375507ea22e1571f07bd4f8f057c3288b0648da6",
+  "componentScope": [
+    "virtual-list"
+  ],
+  "renderedSourceSha": "57da4fd1a776ecd7305ecd208deb86191b6335ac",
   "playwrightVersion": "1.60.0",
   "osCodename": "jammy",
   "architecture": "x64",
