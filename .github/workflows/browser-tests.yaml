@@ -429,9 +429,12 @@ jobs:
       - name: Upload Playwright HTML report
         if: failure()
         uses: actions/upload-artifact@v7
-        # Diagnostics, never a verdict: whether the artifact service accepts a
-        # zip must not decide what this job reports about the code under test.
-        # A 403 on finalize was failing lanes whose tests had all passed.
+        # Diagnostics, never a verdict — this applies to every upload in this
+        # workflow, including the ones that only run after a failure. Whether
+        # the artifact service accepts a zip must not change what the job
+        # reports about the code under test, in either direction: a 403 on
+        # finalize was turning green lanes red, and on a step like this one it
+        # would bury the failure the report was collected to explain.
         continue-on-error: true
         with:
           name: playwright-report-${{ matrix.shard }}
@@ -632,6 +635,12 @@ jobs:
       - name: Download blob reports
         if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/download-artifact@v8
+        # The same reachable state one step earlier: with uploads best-effort,
+        # a run where no shard uploaded a blob matches no artifact, and the
+        # download fails before the merge guard below ever sees the empty
+        # directory. Tolerated here so the aggregate does not inherit the very
+        # false red this change removes from the lanes.
+        continue-on-error: true
         with:
           pattern: playwright-blob-*
           path: packages/testing/blob-reports
