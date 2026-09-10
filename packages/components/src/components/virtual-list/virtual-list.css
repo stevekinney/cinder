@@ -86,6 +86,11 @@
     inset-inline-end: auto;
   }
 
+  /* Rows are sized along the inline axis; flex must not shrink them to fit. */
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__row {
+    flex: 0 0 auto;
+  }
+
   /*
    * Except when the inline axis IS the scrolled one, where clipping would hide
    * everything past the first viewport.

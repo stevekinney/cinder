@@ -64,10 +64,6 @@
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
   import {
-    resolveWindowScrollGeometry,
-    resolveWindowViewportSize,
-  } from './_internal/window-scroll.ts';
-  import {
     loadScrollPosition,
     saveScrollPosition,
     type ScrollRestorationPosition,
@@ -106,7 +102,6 @@
     reverse = false,
     onEndReached,
     onStartReached,
-    windowScroll = false,
     scrollRestoration = false,
     scrollRestorationId,
     tabindex = 0,
@@ -161,16 +156,6 @@
   /** Set once on mount under `reverse`, which starts at the end rather than the start. */
   let needsInitialReversePin = false;
   let edgeLatch: EdgeLatch = createEdgeLatch();
-  /**
-   * Under `windowScroll` the component has no scroll container of its own, so the
-   * visible extent is the overlap of the list's box with the viewport rather than
-   * the element's own size. Held separately because `measuredViewportHeight`
-   * doubles as the container measurement everywhere else.
-   */
-  let windowVisibleSize = $state(0);
-  let windowScrollOffset = $state(0);
-  /** True while a window-scrolled list sits entirely outside the viewport. */
-  let isWindowListOffscreen = $state(false);
   /**
    * Item count at the last failed restore, so incremental loading can keep trying.
    *
@@ -347,10 +332,9 @@
     // callback has nothing to fire, and reporting it as near would leave its own
     // latch set — so re-enabling that one callback at the same position and item
     // count would find it already latched and stay silent.
-    const isReachable = !windowScroll || !isWindowListOffscreen;
     const maskedProximity = {
-      isNearStart: onStartReached && isReachable ? proximity.isNearStart : false,
-      isNearEnd: onEndReached && isReachable ? proximity.isNearEnd : false,
+      isNearStart: onStartReached ? proximity.isNearStart : false,
+      isNearEnd: onEndReached ? proximity.isNearEnd : false,
     };
     const decision = resolveEdgeFireDecision({
       proximity: maskedProximity,
@@ -370,55 +354,6 @@
 
   const observeResize = useResizeObserver(() => {
     if (scrollElement) syncViewport(scrollElement);
-  });
-
-  /**
-   * Under `windowScroll` the scroll events the component needs are on the document,
-   * not on any element it renders — so it subscribes to them, and to resize, since
-   * the viewport extent is now the window's.
-   *
-   * `passive: true` because the handler only measures; declaring so lets the
-   * browser scroll without waiting to learn whether the event will be cancelled.
-   */
-  $effect(() => {
-    if (!windowScroll) return;
-    const element = scrollElement;
-    if (!element) return;
-    // The element's OWN window, not the module's global: mounted into an iframe or
-    // another document, the two are different objects and the list would be
-    // listening to a page that never scrolls.
-    const view = element.ownerDocument.defaultView;
-    if (!view) return;
-
-    const handleWindowGeometryChange = () => {
-      if (isDestroyed) return;
-      syncViewport(element);
-    };
-
-    // The takeover handlers live on the element, which the reader never touches in
-    // this mode — so a smooth `scrollToIndex` driving the document would keep
-    // fighting them for the viewport. Mirror them onto the window.
-    const handleWindowTakeover = () => retireSettleLoop();
-    const handleWindowKeyTakeover = (event: KeyboardEvent) => {
-      if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
-    };
-
-    view.addEventListener('scroll', handleWindowGeometryChange, { passive: true });
-    view.addEventListener('resize', handleWindowGeometryChange, { passive: true });
-    view.addEventListener('wheel', handleWindowTakeover, { passive: true });
-    view.addEventListener('pointerdown', handleWindowTakeover, { passive: true });
-    view.addEventListener('touchstart', handleWindowTakeover, { passive: true });
-    view.addEventListener('keydown', handleWindowKeyTakeover, { passive: true });
-    handleWindowGeometryChange();
-
-    return () => {
-      view.removeEventListener('scroll', handleWindowGeometryChange);
-      view.removeEventListener('resize', handleWindowGeometryChange);
-      view.removeEventListener('wheel', handleWindowTakeover);
-      view.removeEventListener('pointerdown', handleWindowTakeover);
-      view.removeEventListener('touchstart', handleWindowTakeover);
-      view.removeEventListener('keydown', handleWindowKeyTakeover);
-    };
   });
 
   /**
@@ -454,12 +389,7 @@
     // makes this happen exactly once — without it, re-running on every item change
     // would re-apply the saved position over wherever the reader had scrolled to.
     const itemCount = items.length;
-    // Not under `windowScroll`. The saved offset is measured from the list's start
-    // edge and clamps at 0, so it cannot represent a reader who left while still
-    // ABOVE the list — restoring would scroll them down to it, somewhere they never
-    // were. The browser's own document scroll restoration already handles this mode,
-    // and handles the whole page rather than one list within it.
-    if (windowScroll || !element || !id || restoredId === id || itemCount === 0) return;
+    if (!element || !id || restoredId === id || itemCount === 0) return;
 
     untrack(() => {
       const storage = resolveRestorationStorage();
@@ -553,7 +483,7 @@
    */
   $effect(() => {
     const id = scrollRestorationId?.trim();
-    if (windowScroll || !id) return;
+    if (!id) return;
 
     return () => {
       const storage = resolveRestorationStorage();
@@ -624,11 +554,9 @@
       // A reverse list opens at its end. Deferred to the mount effect rather than
       // written here: there is no element yet on the first server-or-client pass,
       // and under `dynamicSize` the total is still only an estimate.
-      // Not under `windowScroll`: there is no scroll position of the component's own
-      // to pin, and the mount effect would scroll the whole page to the list's end.
-      // Not when a position is about to be restored either — the reader asked to
-      // come back where they were, which outranks opening at the newest message.
-      needsInitialReversePin = reverse && !windowScroll && !willRestoreScrollPosition();
+      // Not when a position is about to be restored: the reader asked to come back
+      // where they were, which outranks opening at the newest message.
+      needsInitialReversePin = reverse && !willRestoreScrollPosition();
       return;
     }
 
@@ -738,9 +666,7 @@
   $effect(() => {
     const itemCount = items.length;
     const element = scrollElement;
-    // `windowScroll` genuinely disables these rather than merely documenting them as
-    // disabled: both pin a scroll position, and the component does not own one here.
-    if (windowScroll || (!stickToBottom && !reverse) || !shouldStickAfterAppend || !element) return;
+    if ((!stickToBottom && !reverse) || !shouldStickAfterAppend || !element) return;
 
     void tick().then(() => {
       // Re-read the prop: it can be disabled between the append and this callback,
@@ -792,7 +718,7 @@
     // total does NOT drag a reader out of history; an append then re-arms it, and
     // the row appended under `dynamicSize` measures after the pin write — which is
     // exactly the window this effect covers.
-    if (windowScroll || (!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
+    if ((!stickToBottom && !reverse) || !dynamicSize || !isPinnedToBottom) return;
     const element = scrollElement;
     if (!element) return;
     const target = maxScrollOffset(totalSize, currentViewportHeight);
@@ -892,7 +818,7 @@
    */
   function willRestoreScrollPosition(): boolean {
     const id = scrollRestorationId?.trim();
-    if (windowScroll || !scrollRestoration || !id || restoredId === id) return false;
+    if (!scrollRestoration || !id || restoredId === id) return false;
     // Only while a restore is IMMINENT. Once an attempt has failed and the component
     // is waiting for more data, the edge callbacks are exactly what fetches the page
     // carrying the anchor — suppressing them there deadlocks the two features
@@ -945,10 +871,6 @@
     const target = pendingScrollTarget;
     pendingScrollTarget = null;
     if (!element) return;
-    // A window-scrolled list that has left the viewport is not something the reader
-    // is looking at, and a correction here would scroll the PAGE out from under
-    // whatever they moved on to.
-    if (windowScroll && isWindowListOffscreen) return;
     // The bottom pin wins. A batch containing resizes both above and below the
     // anchor makes the two mechanisms disagree: the pin moves to the new total
     // using every delta, while this correction accounts only for the ones before
@@ -1009,10 +931,6 @@
    * browser was measured to use. See `resolveRtlScrollType`.
    */
   function readScrollOffset(element: HTMLElement): number {
-    // With no scroll container of its own, the offset is not on the element at
-    // all — it is how far the list's box has travelled past the viewport's start
-    // edge, which `syncViewport` has already resolved.
-    if (windowScroll) return windowScrollOffset;
     if (!horizontal) return Math.max(0, element.scrollTop);
     // Normalization is the identity under ltr, and resolving the convention costs a
     // layout-forcing probe. Short-circuit so a left-to-right page never pays for an
@@ -1030,72 +948,8 @@
     );
   }
 
-  /**
-   * Distance from the viewport's start edge to the list's start edge, along the axis
-   * in play. Negative once the list's beginning has scrolled past.
-   *
-   * The INLINE-START edge under `horizontal`, which is the right one in a
-   * right-to-left document — measuring `rect.left` there would report the list's end
-   * as its beginning and run the offset backwards. Shared by the read and write
-   * paths so the two cannot disagree about where the list begins.
-   */
-  function resolveListStartInViewport(element: HTMLElement, rect?: DOMRect): number {
-    const box = rect ?? element.getBoundingClientRect();
-    if (!horizontal) return box.top;
-    if (writingDirection !== 'rtl') return box.left;
-    const viewportWidth = resolveWindowViewportSize(
-      element.ownerDocument.defaultView ?? undefined,
-      'horizontal',
-    );
-    return viewportWidth - box.right;
-  }
-
-  /**
-   * Moves the DOCUMENT so that `offset` pixels of the list sit above the viewport's
-   * start edge.
-   *
-   * Under `windowScroll` the element has no scroll position of its own, so every
-   * write has to be translated into a page scroll: the list's current distance from
-   * the viewport start plus the current page offset gives where the list begins in
-   * document space, and the target is that plus the requested offset.
-   *
-   * Without this the whole write side of the component — `scrollToIndex`, prepend
-   * re-anchoring, measurement corrections, restoration — silently did nothing in
-   * this mode, because it was writing to an element that does not scroll.
-   */
-  function writeWindowScrollOffset(
-    element: HTMLElement,
-    offset: number,
-    behavior: ScrollBehavior,
-  ): void {
-    // The element's own window, for the same reason the listeners use it: inside an
-    // iframe the module's global is a different document entirely.
-    const view = element.ownerDocument.defaultView;
-    if (!view) return;
-    // Moved as a RELATIVE delta rather than to an absolute coordinate. The read path
-    // is normalized — it measures from the inline-START edge, which is the right one
-    // under RTL — so an absolute physical target would have to re-derive the page's
-    // own RTL scroll convention to match it. The distance between where the reader
-    // is and where they should be needs no such conversion; only its sign flips, and
-    // only along a right-to-left inline axis.
-    // Against the RAW list position, not `readScrollOffset`, which clamps at 0. A
-    // window-scrolled list normally begins below the viewport — under a page header —
-    // and while it does, the clamped offset reads 0 for every position above it. The
-    // delta would then be 0 and the page would never move to the list at all.
-    const delta = offset + resolveListStartInViewport(element);
-    if (delta === 0) return;
-    const inlineDelta = horizontal && writingDirection === 'rtl' ? -delta : delta;
-    view.scrollBy(
-      horizontal ? { left: inlineDelta, top: 0, behavior } : { top: delta, left: 0, behavior },
-    );
-  }
-
   /** Writes a start-edge-relative offset back along the active axis. */
   function writeScrollOffset(element: HTMLElement, offset: number, behavior: ScrollBehavior): void {
-    if (windowScroll) {
-      writeWindowScrollOffset(element, offset, behavior);
-      return;
-    }
     if (!horizontal) {
       if (behavior === 'smooth' && typeof element.scrollTo === 'function') {
         element.scrollTo({ top: offset, behavior: 'smooth' });
@@ -1168,33 +1022,6 @@
    */
   function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
-
-    if (windowScroll) {
-      const viewportSize = resolveWindowViewportSize(
-        element.ownerDocument.defaultView ?? undefined,
-        horizontal ? 'horizontal' : 'vertical',
-      );
-      const geometry = resolveWindowScrollGeometry({
-        listStartInViewport: resolveListStartInViewport(element, rect),
-        viewportSize,
-        totalSize: currentTotalSize(),
-      });
-      windowScrollOffset = geometry.scrollOffset;
-      // Fall back to the full viewport while the overlap is zero: the list is off
-      // screen entirely, and windowing against 0 would mount nothing, so scrolling
-      // it back into view would find an empty list. Tracked separately so the edge
-      // callbacks can tell "nothing visible" from "a viewport's worth visible" —
-      // a list nobody can see has not had either of its edges reached.
-      isWindowListOffscreen = geometry.visibleSize <= 0;
-      windowVisibleSize = geometry.visibleSize || viewportSize;
-      measuredViewportHeight = windowVisibleSize;
-      scrollOffset = geometry.scrollOffset;
-      // Still invalidate on a cross-axis change. Returning early skipped it, so a
-      // window-scrolled `dynamicSize` list kept every row size measured at the old
-      // width after a resize re-wrapped them all.
-      invalidateOnCrossAxisChange(element, rect);
-      return windowVisibleSize;
-    }
 
     // The MAIN axis — the one being scrolled and windowed. Under `horizontal` that
     // is the inline extent: the container's block-size is `auto` and collapses to
@@ -1526,7 +1353,6 @@
   data-cinder-stick-to-bottom={stickToBottom ? 'true' : undefined}
   data-cinder-dynamic-size={dynamicSize ? 'true' : undefined}
   data-cinder-orientation={horizontal ? 'horizontal' : undefined}
-  data-cinder-scroll-source={windowScroll ? 'window' : undefined}
   style:--cinder-virtual-list-height={height}
   onscroll={handleScroll}
   onwheel={handleWheel}

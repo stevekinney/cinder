@@ -145,35 +145,6 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   onStartReached?: (() => void) | undefined;
   /**
-   * Virtualize against the document scroller instead of an internal one.
-   *
-   * The list becomes a plain block in the page with no scroll container of its
-   * own: `height` is ignored, the viewport is measured from the window, and how
-   * far the reader has travelled is derived from where the list's box currently
-   * sits relative to the viewport.
-   *
-   * Use this when the list IS the page — a feed, a search-results view — so the
-   * reader scrolls the document rather than a box inside it, and the browser's
-   * own scroll restoration and scrollbar behave normally.
-   *
-   * `stickToBottom`, `reverse`, and `scrollRestoration` are not supported in this
-   * mode and are actively suppressed, not merely undocumented. The first two pin a
-   * scroll position the component no longer owns. The third cannot represent one: a
-   * saved offset is measured from the list's start edge and clamps at 0, so a reader
-   * who left while still above the list would be restored by scrolling DOWN to it,
-   * somewhere they never were. The browser's own document scroll restoration already
-   * covers this mode, across the whole page rather than one list within it.
-   *
-   * `onscroll` does NOT fire in this mode, and deliberately so. The element it is
-   * attached to is not what scrolls, and forwarding the document's event through it
-   * would either hand consumers an `Event` typed as an element-scoped one, or widen
-   * the prop for everyone to describe a case most callers never hit. Listen on
-   * `window` directly when the page is the scroller.
-   *
-   * Defaults to false.
-   */
-  windowScroll?: boolean;
-  /**
    * Remember the scroll position across navigation, keyed by
    * `scrollRestorationId`.
    *
