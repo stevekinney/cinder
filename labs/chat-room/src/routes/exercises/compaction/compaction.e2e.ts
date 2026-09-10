@@ -139,6 +139,13 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// projection and pass everything.
 	await expect(page.locator(field('metadata-control'))).toHaveText('true');
 
+	// The second regression path, which the first control cannot see: a
+	// message explicitly marked `pinned: false`. A predicate asking
+	// `'pinned' in metadata`, or testing it loosely, preserves that one while
+	// still summarizing the message carrying unrelated metadata — so both
+	// controls are needed to pin `metadata.pinned === true` specifically.
+	await expect(page.locator(field('false-pinned-control'))).toHaveText('true');
+
 	// And nothing summarized reached the model raw. Every accounting field
 	// here would hold if the compactor summarized a message correctly AND
 	// also copied it into the injected summary, with the raw history still

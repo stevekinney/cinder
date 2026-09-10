@@ -70,6 +70,14 @@
 		conversation = appendUserMessage(conversation, FIRST_FILLER_QUESTION);
 		conversation = appendAssistantMessage(conversation, `We kept it. ${FILLER_BODY}`);
 		for (let index = 0; index < 5; index += 1) {
+			// TWO out-of-window negative controls, because
+			// `metadata.pinned === true` has two distinct ways to regress and
+			// one control cannot separate them: index 1 carries unrelated
+			// metadata, catching a predicate that preserves anything with
+			// metadata defined at all; index 2 carries `pinned: false`,
+			// catching one that tests truthiness loosely or asks
+			// `'pinned' in metadata`. Both must be summarized away.
+			//
 			// One out-of-window message carries metadata that is NOT `pinned`.
 			// Without it the pinned message is the only old message with any
 			// metadata at all, so a compactor that regressed to preserving
@@ -79,7 +87,7 @@
 			conversation = appendUserMessage(
 				conversation,
 				`Follow-up ${index}. ${FILLER_BODY}`,
-				index === 1 ? { topic: 'staging-bucket' } : undefined
+				index === 1 ? { topic: 'staging-bucket' } : index === 2 ? { pinned: false } : undefined
 			);
 			conversation = appendAssistantMessage(conversation, `Answer ${index}. ${FILLER_BODY}`);
 		}
@@ -113,6 +121,7 @@
 		partitionExact: boolean;
 		pinnedMetadataSurvives: boolean;
 		metadataControlSummarized: boolean;
+		falsePinnedControlSummarized: boolean;
 		rawSummarizedInProjection: number;
 		carriedIdOverlap: number;
 		allSummariesReachProjection: boolean;
@@ -386,6 +395,7 @@
 		const emptyChunks = chunkSeedPositions.filter((positions) => positions.length === 0).length;
 
 		const metadataControl = before.find((message) => message.metadata?.topic === 'staging-bucket');
+		const falsePinnedControl = before.find((message) => message.metadata?.pinned === false);
 		const projectionText = projection.map((message) => JSON.stringify(message)).join('\n');
 
 		const pinnedInProjection = projection.find((message) =>
@@ -434,6 +444,13 @@
 				metadataControl !== undefined &&
 				summarizedIds.includes(metadataControl.id) &&
 				!projectionShapes.includes(shapeOf(metadataControl)),
+			// …and `pinned: false` is not the same as `pinned` being present.
+			// A predicate reading `'pinned' in metadata`, or testing it
+			// loosely, preserves a message explicitly marked NOT pinned.
+			falsePinnedControlSummarized:
+				falsePinnedControl !== undefined &&
+				summarizedIds.includes(falsePinnedControl.id) &&
+				!projectionShapes.includes(shapeOf(falsePinnedControl)),
 			// No summarized message reached the model in raw form. Every
 			// accounting field above would hold if the compactor summarized a
 			// message correctly AND also copied it verbatim into the injected
@@ -546,6 +563,10 @@
 				<dd data-testid="compaction-pinned-metadata">{result.pinnedMetadataSurvives}</dd>
 				<dt>unpinned message with metadata was summarized</dt>
 				<dd data-testid="compaction-metadata-control">{result.metadataControlSummarized}</dd>
+				<dt><code>pinned: false</code> message was summarized</dt>
+				<dd data-testid="compaction-false-pinned-control">
+					{result.falsePinnedControlSummarized}
+				</dd>
 				<dt>summarized messages reaching the model raw</dt>
 				<dd data-testid="compaction-raw-summarized">{result.rawSummarizedInProjection}</dd>
 				<dt>seed ids reused in the projection</dt>

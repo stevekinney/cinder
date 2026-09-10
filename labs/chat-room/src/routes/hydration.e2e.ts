@@ -23,7 +23,9 @@ const DEV_ORIGIN = 'http://localhost:5175';
 // but the same guarantee that hydration happens — and the same reason to check
 // it. Keep this list current as routes are added: a hydration failure gets
 // triaged against the surface actually under test, and a stale rationale sends
-// that triage at a component neither route mounts. It used to list five exercises out of 25, which
+// that triage at a component neither route mounts.
+//
+// It used to list five exercises out of 25, which
 // meant `review-front-matter`'s nine ReviewEditor instances seeded with
 // edge-case YAML front matter went unchecked, and so did `review-ssr-and-a11y`,
 // the route built specifically to audit SSR and hydration.
