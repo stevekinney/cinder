@@ -84,7 +84,7 @@
 		call to narrate the result. The counter is the only thing that can show it did not.
 	</p>
 
-	<section data-testid="stop-condition">
+	<section data-testid="stop-condition" aria-live="polite">
 		{#await observation}
 			<p data-testid="stop-condition-pending">Running…</p>
 		{:then result}

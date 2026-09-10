@@ -37,7 +37,7 @@ describe('the approval-signing toolbox is host-owned', () => {
 	 * verification on resume — and the failure would read as a rejected token,
 	 * pointing at signing rather than at ownership.
 	 */
-	it('is the only toolbox any server endpoint constructs', () => {
+	it('is the only toolbox any server-side module constructs', () => {
 		// The invariant is narrower than "constructed once in the repository",
 		// and stating it that way was wrong: `chat-agent.test.ts` builds its own
 		// for isolation, and the `/exercises/*` routes each build throwaway
@@ -48,16 +48,22 @@ describe('the approval-signing toolbox is host-owned', () => {
 		// it would hold a different `approvalSecret` and reject a token signed
 		// by the other one — surfacing as a rejected approval, which points at
 		// signing rather than at ownership.
-		// Matched on `+server.ts` rather than on a `routes/api/` prefix: that is
-		// what makes a file a SvelteKit endpoint, and endpoints are not confined
-		// to one directory. A `routes/webhook/+server.ts` that minted its own
-		// toolbox would have slipped straight past a path-prefix check.
-		const endpoints = sourceFiles(applicationRoot)
+		// Every module SvelteKit runs on the server, not just endpoints: a
+		// `+page.server.ts` or `+layout.server.ts` load function can mint a
+		// toolbox and sign with it exactly like a `+server.ts` can.
+		//
+		// Two narrowings too far, in order: `routes/api/` missed endpoints
+		// elsewhere, and `+server.ts` alone missed the server modules beside
+		// them. The invariant never moved — one `approvalSecret`, one toolbox
+		// on any path that signs or verifies — only my aim at it.
+		const serverModules = sourceFiles(applicationRoot)
 			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
-			.filter((path) => /(^|\/)\+server\.ts$/.test(relativeToApplication(path)))
+			.filter((path) =>
+				/(^|\/)\+(server|page\.server|layout\.server)\.ts$/.test(relativeToApplication(path))
+			)
 			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
 			.map(relativeToApplication);
-		expect(endpoints).toEqual([]);
+		expect(serverModules).toEqual([]);
 	});
 
 	it('is constructed in exactly one place outside routes and tests', () => {

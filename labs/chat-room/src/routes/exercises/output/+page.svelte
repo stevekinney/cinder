@@ -12,9 +12,15 @@
 	// consumer that checks the finish reason and stops there ships a bug —
 	// it will treat garbage as an answer.
 	//
-	// What actually separates them is `result.schemaValidation.success`, and
-	// the rejection from `unwrap()` / `output()`. Nothing else on the terminal
-	// result says a word about it.
+	// What separates them on the terminal result is `schemaValidation.success`
+	// and `output` — which is absent on the invalid run — plus the rejection
+	// from `unwrap()` / `output()`. What does NOT separate them is the pair a
+	// caller reaches for first: `finishReason` and `error`.
+	//
+	// `output` being absent is a weaker signal than it looks, though: a schema
+	// whose valid parse is `undefined` would make it useless, and it says
+	// nothing about WHY. `schemaValidation.success` is the field that answers
+	// the question directly.
 	//
 	// Every fixture here is a local function. No network, no key, no fixture
 	// server — the whole point is that the contract is observable without any
@@ -122,7 +128,7 @@
 	</p>
 
 	{#each [{ id: 'valid', label: 'Valid output', promise: valid }, { id: 'invalid', label: 'Invalid output', promise: invalid }] as panel (panel.id)}
-		<section data-testid="output-{panel.id}">
+		<section data-testid="output-{panel.id}" aria-live="polite" aria-busy={false}>
 			<h2>{panel.label}</h2>
 			{#await panel.promise}
 				<p data-testid="output-{panel.id}-pending">Running…</p>

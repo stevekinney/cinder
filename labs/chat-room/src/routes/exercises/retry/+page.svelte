@@ -102,7 +102,7 @@
 	</p>
 
 	{#each [{ id: 'transient', label: 'Generate throws, then succeeds', promise: transient }, { id: 'invalid', label: 'Invalid output, then valid', promise: invalidThenValid }, { id: 'hook', label: 'validateResponse rejects the answer', promise: rejectedByHook }] as panel (panel.id)}
-		<section data-testid="retry-{panel.id}">
+		<section data-testid="retry-{panel.id}" aria-live="polite">
 			<h2>{panel.label}</h2>
 			{#await panel.promise}
 				<p data-testid="retry-{panel.id}-pending">Running…</p>

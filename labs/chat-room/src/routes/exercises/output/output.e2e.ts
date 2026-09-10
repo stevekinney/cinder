@@ -42,11 +42,19 @@ test('an invalid run is indistinguishable from a valid one by finishReason', asy
 	await expect(page.locator(field('invalid', 'has-error'))).toHaveText('false');
 });
 
-test('schemaValidation is the only terminal field that tells them apart', async ({ page }) => {
+test('schemaValidation answers directly what output only hints at', async ({ page }) => {
 	await gotoHydrated(page, '/exercises/output');
 
 	await expect(page.locator(field('valid', 'schema-valid'))).toHaveText('true');
 	await expect(page.locator(field('invalid', 'schema-valid'))).toHaveText('false');
+
+	// `output` differs too — absent on the invalid run — so this is not the
+	// ONLY discriminator, and saying so would be overclaiming. It is the one
+	// that answers the question directly: absence is circumstantial (a schema
+	// whose valid parse is `undefined` would make it useless) and says nothing
+	// about why.
+	await expect(page.locator(field('valid', 'output'))).not.toHaveText('(none)');
+	await expect(page.locator(field('invalid', 'output'))).toHaveText('(none)');
 });
 
 test('unwrap() and output() reject with one shared error carrying kind and code', async ({
