@@ -91,7 +91,7 @@ export type FixtureScenario =
 export const GATED_FIRST_CHUNK = 'Streaming first half.';
 export const GATED_SECOND_CHUNK = 'Streaming second half.';
 export const HOLD_PARTIAL_TEXT = 'Partial answer before the stop.';
-/** Rendered before the mid-stream failure, and must NOT survive it. */
+/** Written by the fixture before the mid-stream failure, and — verified — never rendered. */
 export const MIDSTREAM_PARTIAL_TEXT = 'Here is the first half';
 export const MIDSTREAM_ERROR_MESSAGE = 'The provider gave up mid-stream.';
 export const APPROVAL_NOTE_TEXT = 'Ship the release notes';
@@ -376,12 +376,19 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 		return;
 	}
 
-	// A failure that arrives AFTER tokens are already on screen, which is a
-	// different code path from a rejected request: the stream opened, the
-	// client rendered part of a reply, and only then did the provider give up.
-	// The partial text has to be discarded rather than frozen in the
-	// transcript, because a half sentence reads as an answer the assistant
-	// gave rather than one it never finished.
+	// A failure that arrives AFTER the stream opened and a text delta was
+	// written, which is a different code path through the route from a
+	// rejected request.
+	//
+	// It does NOT put that text on screen first. The provider's error event
+	// supersedes the content it had already sent, so the delta never reaches
+	// the client — verified in `error-handling.e2e.ts`, which asserts the
+	// absence rather than a disappearance. An earlier version of this comment
+	// claimed the opposite, and a spec written against it would sit waiting
+	// for a transient state that never occurs.
+	//
+	// `MIDSTREAM_PARTIAL_TEXT` is therefore a probe for text that must never
+	// appear, not a checkpoint to wait for.
 	if (scenario === 'midstream') {
 		sse(res, 'content_block_start', {
 			type: 'content_block_start',

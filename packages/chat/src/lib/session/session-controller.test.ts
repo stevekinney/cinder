@@ -88,6 +88,54 @@ describe('chat session controller', () => {
       ]);
     });
 
+    test('aborts the transport before throwing, so cleanup cannot deadlock', async () => {
+      // A transport whose cleanup waits on its own `AbortSignal` is the
+      // failure mode: throwing out of a `for await` invokes the iterator's
+      // `return()` and AWAITS it, so cleanup that waits for an abort issued
+      // only in the catch block would never be reached. `sendMessage` would
+      // hang for good rather than reporting the failure it already had.
+      let cleanupSawAbort = false;
+      const transport = async ({ signal }: { signal: AbortSignal }) => {
+        async function* stream(): AsyncGenerator<ChatStreamEvent> {
+          try {
+            yield { type: 'run.error', error: runError, wireVersion: 1, sequence: 1 };
+          } finally {
+            // Resolves only once the signal is aborted, which is exactly what
+            // a real cleanup awaiting in-flight work would do.
+            await new Promise<void>((resolve) => {
+              if (signal.aborted) {
+                cleanupSawAbort = true;
+                resolve();
+                return;
+              }
+              signal.addEventListener('abort', () => {
+                cleanupSawAbort = true;
+                resolve();
+              });
+            });
+          }
+        }
+        return stream();
+      };
+
+      let conversation = createConversationHistory({ id: 'test' });
+      const controller = createChatSessionController({
+        getConversation: () => conversation,
+        setConversation: (next) => {
+          conversation = next;
+        },
+        transport,
+        hooks: { onError: () => undefined },
+      });
+
+      // The assertion is that this settles at all. Before the abort moved
+      // ahead of the throw, it never did.
+      await expect(
+        controller.adapter.sendMessage({ role: 'user', content: 'hi' }, []),
+      ).rejects.toBeInstanceOf(ChatRunFailureError);
+      expect(cleanupSawAbort).toBe(true);
+    });
+
     test('does not treat run.aborted as a failure', async () => {
       // An abort is a user decision, carries no error, and must not reach the
       // error path — a banner on every Stop press would be wrong.

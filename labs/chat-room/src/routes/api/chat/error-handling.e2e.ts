@@ -100,9 +100,19 @@ test('does not re-send the turn on its own', async ({ page }) => {
 	// honest scenario for this claim — the SDK will not retry it at the
 	// transport level, so any count above one could only be the application
 	// deciding to try again by itself.
-	await page.waitForTimeout(1500);
-	expect(await fixtureRequestCount(marker)).toBe(1);
+	//
+	// Scoped deliberately to "the turn settles without a resend". A sleep here
+	// would only have proven that no resend happened inside whatever window I
+	// picked, and a resend scheduled a second later would still have passed —
+	// so the window bought nothing and cost a fixed delay on every engine.
+	// These are the observable conditions of a settled, idle turn instead.
+	await expect(page.getByRole('button', { name: 'Stop generating' })).toHaveCount(0);
+	await expect(page.getByRole('log', { name: 'Messages' })).toContainText('Failed to send');
+	await expect(page.getByRole('button', { name: 'Retry' })).toBeVisible();
 	await expect(page.locator(BANNER)).not.toBeEmpty();
+
+	// Nothing further reached the provider on the way to that resting state.
+	expect(await fixtureRequestCount(marker)).toBe(1);
 });
 
 test('the SDK retries a rate limit on its own, which is not the app retrying', async ({ page }) => {

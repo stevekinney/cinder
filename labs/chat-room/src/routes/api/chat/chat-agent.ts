@@ -287,23 +287,6 @@ export function startChatRun(agent: StandaloneAgent, conversation: ConversationH
 }
 
 /**
- * Turns one classified failure into the safe `{ kind, code, message }`
- * envelope. `RunResultBase.error` and a caught `result()` rejection are both
- * typed `unknown` — this is the one place that narrows them, rather than
- * serializing an unknown error object (which could carry a credential-bearing
- * provider response) straight onto the wire.
- *
- * Exported so `chat-agent.test.ts` can pin the `AgentRunError` shapes
- * `@lostgradient/operative` documents directly — most usefully
- * `OutputValidationError` (`kind: 'output'`, `code: 'INVALID_OUTPUT'`; it replaced
- * `StandardSchemaValidationError`, which 0.10.0 removed with no alias),
- * which this route never triggers live: `createChatAgent` sets no `output`
- * schema, and even an agent that does only ever raises it from
- * `AgentRun.output()`/`.unwrap()`, not from `run.result()` — confirmed
- * empirically, contrary to `RunResultBase.schemaValidation`, which records a
- * failed validation without changing `finishReason` or setting `.error`.
- */
-/**
  * Operative's own read on whether a failure is worth retrying.
  *
  * `kind` cannot answer this — a rate-limited provider and a rejected API key
@@ -347,6 +330,23 @@ function withRetryability(error: unknown): { retryable?: boolean } {
 	return retryable === undefined ? {} : { retryable };
 }
 
+/**
+ * Turns one classified failure into the safe `{ kind, code, message }`
+ * envelope. `RunResultBase.error` and a caught `result()` rejection are both
+ * typed `unknown` — this is the one place that narrows them, rather than
+ * serializing an unknown error object (which could carry a credential-bearing
+ * provider response) straight onto the wire.
+ *
+ * Exported so `chat-agent.test.ts` can pin the `AgentRunError` shapes
+ * `@lostgradient/operative` documents directly — most usefully
+ * `OutputValidationError` (`kind: 'output'`, `code: 'INVALID_OUTPUT'`; it replaced
+ * `StandardSchemaValidationError`, which 0.10.0 removed with no alias),
+ * which this route never triggers live: `createChatAgent` sets no `output`
+ * schema, and even an agent that does only ever raises it from
+ * `AgentRun.output()`/`.unwrap()`, not from `run.result()` — confirmed
+ * empirically, contrary to `RunResultBase.schemaValidation`, which records a
+ * failed validation without changing `finishReason` or setting `.error`.
+ */
 export function classifyChatRunFailure(
 	error: unknown,
 	fallbackStatus: string

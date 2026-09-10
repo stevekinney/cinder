@@ -249,10 +249,12 @@ export function createChatSessionController(
         const messageId = started.messageId;
         emit((handlers) => handlers.onStreamBegin(messageId));
         const controller = new AbortController();
-        // A protocol failure aborts the transport at the throw site (see
-        // `decodeTransportResult`), so by the time the rejection arrives the
-        // signal is already aborted. Remembering WHY keeps that from reading
-        // as a user cancellation, which would swallow the error.
+        // Two things abort the transport from inside this loop rather than
+        // from the user: a protocol failure at its throw site (see
+        // `decodeTransportResult`) and a terminal `run.*` failure frame. In
+        // both cases the signal is already aborted by the time the rejection
+        // reaches the catch, and remembering WHY keeps that from reading as a
+        // user cancellation — which would swallow the error entirely.
         let protocolFailure = false;
         active = controller;
         let text = '';
@@ -327,6 +329,15 @@ export function createChatSessionController(
               // `run.aborted` deliberately does not throw. An abort is not a
               // failure, carries no error, and is already handled by the
               // abort branches around this loop.
+              //
+              // Abort BEFORE throwing, and record why. Throwing out of a
+              // `for await` invokes the iterator's `return()` and awaits it,
+              // so a transport whose cleanup waits on its `AbortSignal` would
+              // deadlock against a catch block that only aborts afterwards —
+              // cleanup waiting for the abort, the abort waiting for cleanup,
+              // and `sendMessage` never settling.
+              protocolFailure = true;
+              controller.abort();
               throw new ChatRunFailureError(event.error);
             }
             // The remaining `stream:*` and `tool.*` members the codec
