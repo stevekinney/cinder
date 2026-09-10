@@ -34,7 +34,7 @@ Retinting all three tiers is now one override:
 
 ```css
 :root {
-  --cinder-border-ink: light-dark(oklch(20% 0.03 280), oklch(86% 0.08 280));
+  --cinder-border-ink: light-dark(oklch(20% 0.03 280), oklch(86% 0.06 280));
 }
 ```
 

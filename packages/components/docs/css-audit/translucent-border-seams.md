@@ -74,6 +74,36 @@ on one of the two adjacent elements (or as a pseudo-element rail). The
 `interior-border-weight` stylelint rule is what keeps this the house idiom. None
 of them stack.
 
+## Border tokens used as fills
+
+Most `background: var(--cinder-border*)` sites in the repository are 1px rules —
+a divider drawn as a filled element rather than as a border. Alpha behaves
+identically there, because the rule sits directly on one surface.
+
+One site is a real area rather than a hairline, and is worth naming.
+
+### Toggle track, light arm — intentional, and steadier than before
+
+`--cinder-toggle-track-off-resting` aliases `border.muted` in its light arm
+(the dark arm is an independent literal and is untouched). It is the only place
+a structural tier fills a visible area, so it is the only place the tier's alpha
+covers more than a hairline.
+
+The track now tracks the surface underneath it instead of being a fixed grey,
+which is the same improvement the borders get:
+
+| surface          | before                 | after                    | contrast (before → after) |
+| ---------------- | ---------------------- | ------------------------ | ------------------------- |
+| `surface-inset`  | `oklch(85% 0.004 255)` | `oklch(83.2% 0.007 255)` | 1.408 → 1.492             |
+| `surface-canvas` | `oklch(85% 0.004 255)` | `oklch(85.2% 0.005 255)` | 1.510 → 1.498             |
+| `surface`        | `oklch(85% 0.004 255)` | `oklch(86.1% 0.004 255)` | 1.554 → 1.500             |
+| `surface-raised` | `oklch(85% 0.004 255)` | `oklch(86.6% 0.003 255)` | 1.581 → 1.502             |
+
+The track reads at a near-identical weight on every surface now (1.49–1.50)
+rather than drifting across a 12% range, and its floor goes up rather than down.
+The dark arm's ≥3:1 shape-contrast requirement is unaffected — that arm is a
+literal, not an alias.
+
 ## Border tokens used as an input to `color-mix()`
 
 A translucent token mixed into another color behaves differently from an opaque

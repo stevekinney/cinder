@@ -1296,6 +1296,12 @@ describe('sRGB gamut integrity (no silent chroma clamping)', () => {
     successActive,
     warningHover,
     warningActive,
+    // The border ink's dark arm sits close to its chroma ceiling on purpose:
+    // it is what keeps the composed tiers' blue tint at low alpha, and the
+    // first candidate for it (`oklch(88% 0.08 250)`) turned out to be OUTSIDE
+    // sRGB, where the browser gamut-maps and the tiers quietly stop matching
+    // what this file computes. Whoever retunes the ink next needs that caught.
+    borderInk,
   };
   for (const [name, token] of Object.entries(namedTokens)) {
     for (const arm of ['light', 'dark'] as const) {

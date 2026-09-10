@@ -262,7 +262,7 @@ The three structural tiers — `--cinder-border-muted`, `--cinder-border`, and `
 
 ```css
 :root {
-  --cinder-border-ink: light-dark(oklch(20% 0.03 280), oklch(86% 0.08 280));
+  --cinder-border-ink: light-dark(oklch(20% 0.03 280), oklch(86% 0.06 280));
 }
 ```
 
