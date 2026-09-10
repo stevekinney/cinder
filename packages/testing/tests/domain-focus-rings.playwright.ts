@@ -147,16 +147,51 @@ async function focusPaint(target: Locator): Promise<{
   });
 }
 
+type FocusPaint = Awaited<ReturnType<typeof focusPaint>>;
+
+/**
+ * Wait for the element's own focus-ring recipe to actually be in effect,
+ * rather than trusting that a single post-focus animation frame (see
+ * `waitForFocusStyleFrame`) is always enough.
+ *
+ * CIN-516: on CI this test intermittently caught `.chat-timeline` with a
+ * fully opaque `currentColor` outline (not the recipe's `transparent`) one
+ * frame after a genuine keyboard Tab landed on it — `outline-style`/`-width`
+ * were already correct, only the color hadn't settled. Cinder's chat
+ * component ships its scoped CSS as a package stylesheet that Svelte 5
+ * injects through a deferred (non-render) `effect()`, not synchronously with
+ * mount, so there is a real — if normally sub-millisecond — window where an
+ * element can be focused and `:focus-visible`-matching before its own
+ * component styles have been applied. A single rAF does not bound that
+ * window; polling for the recipe's actual signature (transparent outline)
+ * does, without touching the harness or raising any timeout.
+ */
+async function waitForSettledFocusPaint(target: Locator, label: string): Promise<FocusPaint> {
+  let paint: FocusPaint = await focusPaint(target);
+  try {
+    await expect
+      .poll(async () => {
+        paint = await focusPaint(target);
+        return paint.outlineColorAlpha;
+      })
+      .toBe(0);
+  } catch (error) {
+    throw new Error(
+      `${label} focus-ring recipe never settled to a transparent outline ` +
+        `(outlineColor=${paint.outlineColor}, boxShadow=${paint.boxShadow}, ` +
+        `matchesFocusVisible=${paint.matchesFocusVisible})`,
+      { cause: error },
+    );
+  }
+  return paint;
+}
+
 async function assertSharedOuterRing(target: Locator, label: string): Promise<void> {
-  const paint = await focusPaint(target);
+  const paint = await waitForSettledFocusPaint(target, label);
 
   expect(paint.matchesFocusVisible, `${label} should match :focus-visible`).toBe(true);
   expect(paint.outlineStyle, `${label} should reserve an outline channel`).toBe('solid');
   expect(parseFloat(paint.outlineWidth), `${label} outline width`).toBeGreaterThan(0);
-  expect(
-    paint.outlineColorAlpha,
-    `${label} outline should be transparent (${paint.outlineColor}, forced colors: ${paint.forcedColorsActive})`,
-  ).toBe(0);
   expect(paint.boxShadow, `${label} should paint a focus shadow`).not.toBe('none');
   expect(
     boxShadowLayerCount(paint.boxShadow),
@@ -166,15 +201,11 @@ async function assertSharedOuterRing(target: Locator, label: string): Promise<vo
 }
 
 async function assertInsetRing(target: Locator, label: string): Promise<void> {
-  const paint = await focusPaint(target);
+  const paint = await waitForSettledFocusPaint(target, label);
 
   expect(paint.matchesFocusVisible, `${label} should match :focus-visible`).toBe(true);
   expect(paint.outlineStyle, `${label} should reserve an outline channel`).toBe('solid');
   expect(parseFloat(paint.outlineWidth), `${label} outline width`).toBeGreaterThan(0);
-  expect(
-    paint.outlineColorAlpha,
-    `${label} outline should be transparent (${paint.outlineColor}, forced colors: ${paint.forcedColorsActive})`,
-  ).toBe(0);
   expect(paint.boxShadow, `${label} should paint an inset focus shadow`).toContain('inset');
 }
 
@@ -259,6 +290,79 @@ test.describe('domain focus rings -- chat harness', () => {
       expect(paint.outlineColorAlpha).toBeGreaterThan(0);
     } finally {
       await dispose();
+    }
+  });
+});
+
+test.describe('domain focus rings -- CIN-516 settle race regression', () => {
+  /**
+   * Deterministic reproduction of the CIN-516 CI flake, isolated from the
+   * Chat harness (and its "dense surface" cost) so it always fails the same
+   * way with no fix, on any machine, on every run.
+   *
+   * The CI failure's own signature — captured in the failing assertion and
+   * the blob report step log for run 33600421893's `playwright-lane (4, 8)`
+   * job — was: a genuine keyboard Tab lands on the target
+   * (`toBeFocused` passes, `:focus-visible` matches, `outline-style`/`-width`
+   * already correct) but `outline-color` reads back as an opaque
+   * `currentColor` instead of the recipe's `transparent`. That is exactly
+   * what an `outline: <width> solid` declaration (color omitted, so it
+   * defaults to `currentColor`) followed later by a second stylesheet
+   * supplying `outline-color: transparent` plus the inset box-shadow
+   * produces — the shape of the cascade before Cinder's own scoped focus-ring
+   * CSS (which Chat ships as a package stylesheet that Svelte 5 applies
+   * through a deferred, non-render `effect()` rather than synchronously with
+   * mount) has taken effect.
+   *
+   * This harness delay stands in for that window instead of trying to force
+   * the real one, which does not reproduce under CDP CPU or network
+   * throttling locally (tried up to 15x CPU and 300ms latency, 55 attempts,
+   * zero repros) — the actual bottleneck is Svelte's internal effect-flush
+   * scheduling under a CI worker, not raw compute or network speed.
+   */
+  test('a focus-visible outline that settles after a delay is not read mid-settle', async ({
+    browser,
+  }) => {
+    const context = await browser.newContext({ reducedMotion: 'reduce' });
+    const page = await context.newPage();
+    try {
+      await page.setContent(`
+        <style>
+          /* The pre-recipe state: an outline channel is already reserved
+             (matching Cinder's real components before their own CSS lands)
+             but no color is specified, so it defaults to currentColor. */
+          #target:focus-visible { outline: 3px solid; }
+        </style>
+        <button id="target" style="margin: 40px; color: rgb(218, 230, 241);">Target</button>
+      `);
+      await page.evaluate(() => {
+        // Stand-in for Cinder's component-owned focus-ring override landing
+        // after the element is already focused: a later stylesheet supplies
+        // the transparent outline and inset box-shadow the recipe expects.
+        window.addEventListener(
+          'focusin',
+          () => {
+            setTimeout(() => {
+              const style = document.createElement('style');
+              style.textContent =
+                '#target:focus-visible { outline-color: transparent; box-shadow: inset 0 0 0 3px rgb(218, 230, 241); }';
+              document.head.append(style);
+            }, 150);
+          },
+          { once: true },
+        );
+      });
+
+      const target = page.locator('#target');
+      await page.keyboard.press('Tab');
+      await expect(target).toBeFocused();
+
+      // Would fail immediately (opaque currentColor outline, boxShadow
+      // 'none') against the pre-fix single-rAF `focusPaint` read; passes once
+      // the assertion waits for the settled recipe.
+      await assertInsetRing(target, 'delayed-settle target');
+    } finally {
+      await context.close();
     }
   });
 });
