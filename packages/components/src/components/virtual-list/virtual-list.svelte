@@ -171,8 +171,12 @@
   let windowScrollOffset = $state(0);
   /** True while a window-scrolled list sits entirely outside the viewport. */
   let isWindowListOffscreen = $state(false);
-  /** Restoration runs once, on the first render that actually has items to land on. */
-  let hasRestored = false;
+  /**
+   * The id restoration last ran for, rather than a bare flag: a parent that reuses
+   * this component for a different collection changes the id, and that is a new
+   * position to restore — not the same one already handled.
+   */
+  let restoredId: string | undefined;
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -364,9 +368,16 @@
     const element = scrollElement;
     if (!element || typeof window === 'undefined') return;
 
-    const handleWindowGeometryChange = () => {
+    const handleWindowGeometryChange = (event?: Event) => {
       if (isDestroyed) return;
       syncViewport(element);
+      // Forwarded, because in this mode the document is the scroller and the
+      // element's own `onscroll` never fires — a consumer's handler would otherwise
+      // be silently dead. Its `currentTarget` is the window here rather than the
+      // list, which the prop documents.
+      if (event?.type === 'scroll' && typeof onScroll === 'function') {
+        onScroll(event as UIEvent & { currentTarget: EventTarget & HTMLDivElement });
+      }
     };
 
     // The takeover handlers live on the element, which the reader never touches in
@@ -428,16 +439,21 @@
     // makes this happen exactly once — without it, re-running on every item change
     // would re-apply the saved position over wherever the reader had scrolled to.
     const itemCount = items.length;
-    if (!element || !id || hasRestored || itemCount === 0) return;
+    // Not under `windowScroll`. The saved offset is measured from the list's start
+    // edge and clamps at 0, so it cannot represent a reader who left while still
+    // ABOVE the list — restoring would scroll them down to it, somewhere they never
+    // were. The browser's own document scroll restoration already handles this mode,
+    // and handles the whole page rather than one list within it.
+    if (windowScroll || !element || !id || restoredId === id || itemCount === 0) return;
 
     untrack(() => {
       const storage = resolveRestorationStorage();
       const saved = loadScrollPosition(storage, id);
       if (!saved) {
-        hasRestored = true;
+        restoredId = id;
         return;
       }
-      hasRestored = true;
+      restoredId = id;
 
       if (saved.startIndex >= items.length) {
         // The collection genuinely shrank, so the remembered row no longer exists.
@@ -486,7 +502,7 @@
    */
   $effect(() => {
     const id = scrollRestorationId?.trim();
-    if (!id) return;
+    if (windowScroll || !id) return;
 
     return () => {
       const storage = resolveRestorationStorage();

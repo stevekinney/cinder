@@ -2270,6 +2270,81 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('does not restore under windowScroll, where a saved offset cannot describe the page', async () => {
+    // A saved offset is measured from the list's start edge and clamps at 0, so a
+    // reader who left while still above the list would be restored by scrolling DOWN
+    // to it — somewhere they never were. The browser handles this mode itself.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+    const scrolls: unknown[] = [];
+    const originalScrollTo = window.scrollTo;
+    const originalScrollBy = window.scrollBy;
+    window.scrollTo = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollTo;
+    window.scrollBy = ((options: unknown) => {
+      scrolls.push(options);
+    }) as typeof window.scrollBy;
+
+    try {
+      await withStorage(storage, async () => {
+        const { container, unmount } = render(VirtualList, {
+          items: makeItems(1_000),
+          itemHeight: 20,
+          windowScroll: true,
+          scrollRestoration: true,
+          scrollRestorationId: 'feed',
+          row: rowSnippet(),
+          'aria-label': 'Feed',
+        });
+        await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+        expect(scrolls).toEqual([]);
+        unmount();
+        await tick();
+
+        // And the entry is left exactly as it was, not overwritten with a clamped 0.
+        expect(JSON.parse(storage.entries.get('cinder:virtual-list:feed') as string)).toEqual({
+          scrollOffset: 4_000,
+          startIndex: 200,
+        });
+      });
+    } finally {
+      window.scrollTo = originalScrollTo;
+      window.scrollBy = originalScrollBy;
+    }
+  });
+
+  test('a changed id is a new collection to restore', async () => {
+    // A parent reusing this component for a different collection changes the id.
+    // An instance-wide "already restored" flag would suppress the new restore.
+    const storage = createStorage({
+      'cinder:virtual-list:second': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (id: string) => ({
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender } = render(VirtualList, props('first'));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      await rerender(props('second'));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {

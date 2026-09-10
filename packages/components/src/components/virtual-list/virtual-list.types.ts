@@ -156,9 +156,16 @@ export type VirtualListProps<Item = unknown> = Omit<
    * reader scrolls the document rather than a box inside it, and the browser's
    * own scroll restoration and scrollbar behave normally.
    *
-   * `stickToBottom` and `reverse` are not supported in this mode and are actively
-   * suppressed, not merely undocumented: both pin a scroll position the component no
-   * longer owns.
+   * `stickToBottom`, `reverse`, and `scrollRestoration` are not supported in this
+   * mode and are actively suppressed, not merely undocumented. The first two pin a
+   * scroll position the component no longer owns. The third cannot represent one: a
+   * saved offset is measured from the list's start edge and clamps at 0, so a reader
+   * who left while still above the list would be restored by scrolling DOWN to it,
+   * somewhere they never were. The browser's own document scroll restoration already
+   * covers this mode, across the whole page rather than one list within it.
+   *
+   * `onscroll` still fires, from the document rather than the list — its
+   * `currentTarget` is the window in this mode.
    *
    * Defaults to false.
    */
