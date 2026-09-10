@@ -88,23 +88,55 @@ paints `--cinder-border` across the whole root, but the children paint over it
 with their own surface, so only the 1px grid gaps survive. The result is a
 hairline; the declaration is not.
 
-Eight sites are a real area rather than a hairline. All eight now carry their
+Three sites put a tier in an **inset `box-shadow`** on an edge that also carries
+a tier border, which is the nearest thing in the repository to the double-border
+problem: `kbd` (a `border.control` border on every edge plus a `border.muted`
+inset line along the bottom) and `data-grid`'s pinned columns (a `border.muted`
+`border-inline-end` plus a `border.control` pin shadow on that same edge).
+`steps`' skipped marker uses an inset ring with no border under it.
+
+They do not stack. An inset shadow is clipped to the padding box, so it lands on
+the pixel _beside_ the border rather than on it. Measured rather than reasoned —
+a probe carrying the Kbd recipe reads two distinct rows at the bottom edge:
+
+```
+y=18  rgb(210,211,213)   the inset border.muted line, 19% ink on surface-raised
+y=19  rgb(141,144,148)   the border.control border, 48% ink
+```
+
+A stacked pair would have produced a single row at their combined weight. The
+edge is 2px of two different weights, which is what it was before the tiers were
+composed — both layers simply track the surface now.
+
+Eleven sites are a real area rather than a hairline. All eleven now carry their
 tier's alpha over whatever surface is behind them.
 
-| site                            | tier                     | size                       |
-| ------------------------------- | ------------------------ | -------------------------- |
-| `toggle` track (light arm)      | `border.muted`           | the full track             |
-| `parameter-field` rail          | `--cinder-border-muted`  | 3px wide, full body height |
-| `mega-menu` indicator track     | `--cinder-border-muted`  | 2px tall                   |
-| `media-controls` progress track | `--cinder-border`        | 4px tall                   |
-| `drawer` drag-handle pill       | `--cinder-border`        | 40 × 4px                   |
-| `slider` tick                   | `--cinder-border`        | 2 × 8px                    |
-| `feed-event` dot                | `--cinder-border-strong` | 8 × 8px                    |
-| `status-dot` neutral indicator  | `--cinder-border-strong` | `--cinder-status-dot-size` |
+| site                            | tier             | how it is painted                                |
+| ------------------------------- | ---------------- | ------------------------------------------------ |
+| `toggle` track (light arm)      | `border.muted`   | the full track                                   |
+| `parameter-field` rail          | `border.muted`   | 3px wide, full body height                       |
+| `mega-menu` indicator track     | `border.muted`   | 2px tall                                         |
+| `media-controls` progress track | `border.control` | 4px tall                                         |
+| `drawer` drag-handle pill       | `border.control` | 40 × 4px                                         |
+| `slider` tick                   | `border.control` | 2 × 8px                                          |
+| `color-field` empty hatch       | `border.control` | a 6px `linear-gradient` repeat across the swatch |
+| `feed-event` dot                | `border.strong`  | 8 × 8px                                          |
+| `status-dot` neutral indicator  | `border.strong`  | `--cinder-status-dot-size`                       |
+| `rating` empty star             | `border.strong`  | a 1.5rem masked glyph                            |
+| `resizable-panels` grip         | `border.strong`  | `color:`, so the glyph paints in the tier        |
 
-`status-dot` reaches the tier through `--cinder-status-dot-color`; every other
-status maps to a `*-solid` token, and neutral borrows the border tier because
-there is no neutral solid.
+Four of those do not reach the tier through `background` at all, which is how two
+earlier passes of this document missed them: `color-field` uses
+`background-image`, `resizable-panels` uses `color`, and `rating` and
+`status-dot` hop through a component token (`--_cinder-rating-empty`,
+`--cinder-status-dot-color`). `status-dot` borrows a border tier because every
+other status maps to a `*-solid` and neutral has none.
+
+This list is no longer prose that has to be re-derived.
+`src/styles/border-tier-non-border-uses.test.ts` enumerates every use of a
+structural tier outside a `border`/`outline` declaration, requires each to be
+classified as a hairline, area, mix, or occlusion, and requires every `area` to
+be named in this document. An unclassified site fails the suite.
 
 Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:
@@ -159,6 +191,17 @@ a fully opaque one, and the tint it contributes is proportionally weaker. The
 declaration is a _subtle_ background tint by design and still reads as one; the
 residual transparency lands on the same surface the mix is anchored to, so the
 painted result is within a fraction of a percent of what it was. Left as authored.
+
+### `chip.css:137` — intentional
+
+```css
+color-mix(in oklch, … var(--cinder-border) 65% …)
+```
+
+Chip's `brandColor` mix pulls `border.control` in at 65%. The tier is now 48%
+alpha, so the mix contributes proportionally less ink and the result carries a
+little residual transparency over whatever the chip sits on. It is a tint by
+design and still reads as one. Left as authored.
 
 ### Playground placeholder hatching — intentional
 

@@ -287,8 +287,6 @@ Two consequences worth knowing before you use them. A structural border mixed in
 
 Two neutral borders that wear another name do follow the ink, by aliasing a tier rather than by being derived from it: `--cinder-status-neutral-border` is `--cinder-border`, and `--cinder-border-inverse`'s dark arm is `--cinder-border-strong` (its light arm is `transparent`). Both are neutral structure rather than a hue that needs protecting, so tracking the surface is the right behavior for them.
 
-`--cinder-status-neutral-border` is the exception, and always was: it is a straight alias of `--cinder-border`, so it is translucent now like every other use of that token. That is the intent — the neutral status tier is neutral structure, not a hue.
-
 ## Opacity
 
 <!-- BEGIN GENERATED TOKEN TABLE: opacity -->
