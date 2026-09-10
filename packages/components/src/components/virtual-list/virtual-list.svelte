@@ -450,6 +450,12 @@
       pendingScrollTarget = null;
       pendingReanchor = null;
       retireSettleLoop();
+      // The append pin too. When the saved anchor arrives in an APPENDED page — under
+      // `reverse`, or with `stickToBottom` still reading a short first page as being
+      // at the end — the growth pass has already armed it, and its effect scrolls to
+      // the maximum offset a tick later, after the restore has landed.
+      shouldStickAfterAppend = false;
+      isPinnedToBottom = false;
 
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the
@@ -835,6 +841,10 @@
     // carrying the anchor — suppressing them there deadlocks the two features
     // against each other: no pagination, so no anchor, so no restore, forever.
     if (lastRestoreAttemptCount > 0) return false;
+    // Same deadlock at the other end. An empty list has nothing to restore ONTO, and
+    // the restore effect returns before recording an attempt — so a list that mounts
+    // empty and fetches its first page from these very callbacks would wait forever.
+    if (items.length === 0) return false;
     return loadScrollPosition(resolveRestorationStorage(), id) !== null;
   }
 

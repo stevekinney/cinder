@@ -2360,6 +2360,84 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('lets an empty list fetch its first page while restoration is configured', async () => {
+    // The deadlock at the other end: an empty list has nothing to restore onto, and
+    // the restore effect returns before recording an attempt — so suppressing the
+    // edge callbacks here means a list that fetches its FIRST page from them never
+    // loads anything, and restoration never becomes possible.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+      }),
+    });
+    let endReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      render(VirtualList, {
+        items: [],
+        itemHeight: 20,
+        height: '200px',
+        overscan: 2,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        onEndReached: () => {
+          endReachedCount += 1;
+        },
+        onStartReached: () => {
+          endReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await tick();
+      await tick();
+      // An empty list reports no edges at all, so nothing fires — but crucially the
+      // suppression is not what stopped it, so a list that renders one row can page.
+      expect(endReachedCount).toBe(0);
+    });
+  });
+
+  test('a restore overrides the append pin that armed while its page loaded', async () => {
+    // Under `reverse`, a page arriving with the anchor also arms the append pin, whose
+    // effect scrolls to the maximum offset a tick later — after the restore landed.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+        anchorKey: 'row-5',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        reverse: true,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (_item: unknown, index: number) => `row-${index}`,
+        row: rowSnippet(),
+        'aria-label': 'Transcript',
+      });
+
+      const { container, rerender } = render(VirtualList, props(0));
+      await tick();
+
+      await rerender(props(200));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '5')).toBe(true),
+      );
+      // Not yanked to the newest message by the pin the append armed.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '199')).toBe(false);
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {
