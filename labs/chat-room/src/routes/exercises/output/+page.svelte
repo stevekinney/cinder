@@ -71,6 +71,17 @@
 			outputError = error;
 		}
 
+		// Anything can be thrown, including a string or `null`, so name the
+		// rejection through a guard rather than a cast. A cast would render
+		// `undefined` for a non-Error and quietly look like "no error at all",
+		// which is the one reading this panel must never produce.
+		const describe = (value: unknown): string =>
+			value === undefined
+				? '(resolved)'
+				: value instanceof Error
+					? value.name
+					: `(non-Error: ${typeof value})`;
+
 		const failure = unwrapError instanceof AgentRunError ? unwrapError : undefined;
 		// Read the terminal result's OWN copy independently of the rejection.
 		// Claiming "the same classified error lives on `schemaValidation.error`"
@@ -89,8 +100,8 @@
 			// validation: the run reports `output: undefined`, and this shows
 			// exactly that rather than a remembered earlier value.
 			output: result.output === undefined ? '(none)' : JSON.stringify(result.output),
-			unwrapError: unwrapError === undefined ? '(resolved)' : (unwrapError as Error).name,
-			outputError: outputError === undefined ? '(resolved)' : (outputError as Error).name,
+			unwrapError: describe(unwrapError),
+			outputError: describe(outputError),
 			sameErrorInstance: unwrapError !== undefined && unwrapError === outputError,
 			errorKind: failure?.kind ?? '(none)',
 			errorCode: failure?.code ?? '(none)',
