@@ -13,7 +13,12 @@
 	// conversationalist as a dependency and re-exports the builders precisely so
 	// client code has one import surface, and so a version-skewed or broken
 	// re-export surfaces here instead of staying hidden behind a second copy.
-	import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
+	import {
+		appendUserMessage,
+		createConversationHistory,
+		getMessages,
+		type Message
+	} from '@lostgradient/chat';
 	import { createToolbox } from 'armorer';
 
 	// A tripwire-mode input guardrail, measured against two controls.
@@ -61,6 +66,7 @@
 		eventStep: string;
 		eventCount: number;
 		firstMessage: string;
+		firstMessageIntact: boolean;
 		identityMatchesEvent: boolean;
 		transcriptLength: number;
 		transcriptRoles: string;
@@ -78,6 +84,20 @@
 	 * that the live view and the settled view agree rather than merely that
 	 * each contains a couple of expected substrings.
 	 */
+	/**
+	 * The whole of a message that matters here: role, content, and metadata.
+	 * `.content` alone is not enough — the seeded user message reconstructed
+	 * as a SYSTEM message carrying the same text would satisfy every length,
+	 * content, and counter assertion on the guarded panels, and a metadata
+	 * change would be invisible outright.
+	 */
+	const shapeOf = (message: Message): string =>
+		JSON.stringify({
+			role: message.role,
+			content: message.content,
+			metadata: message.metadata
+		});
+
 	const identityOf = (source: {
 		guardrailName: string;
 		category: string;
@@ -188,6 +208,8 @@
 		const tripped = result.error instanceof GuardrailTripwireError ? result.error : undefined;
 
 		const messages = result.conversation.getMessages();
+		const first = messages.at(0);
+		const seededFirst = getMessages(conversation)[0];
 		const last = messages.at(-1)?.content;
 		return {
 			finishReason: result.finishReason,
@@ -213,10 +235,11 @@
 			// before halting would leave every count, role, and identity
 			// assertion green while the comments claimed the seeded message
 			// was still there.
-			firstMessage: ((): string => {
-				const content = messages.at(0)?.content;
-				return typeof content === 'string' ? content : JSON.stringify(content);
-			})(),
+			firstMessage: first === undefined ? '(none)' : shapeOf(first),
+			// Compared against the message this page actually seeded, rather
+			// than against a literal repeated in the spec — so the claim is
+			// "unchanged from what we sent", which is the claim being made.
+			firstMessageIntact: first !== undefined && shapeOf(first) === shapeOf(seededFirst),
 			identityMatchesEvent: tripped !== undefined && identityOf(tripped) === eventIdentity,
 			transcriptLength: messages.length,
 			// Structure, not just the tail. A guardrail that appended an extra
@@ -337,6 +360,10 @@
 					<dd data-testid="tripwire-{panel.id}-event-count">{observation.eventCount}</dd>
 					<dt>first message</dt>
 					<dd data-testid="tripwire-{panel.id}-first-message">{observation.firstMessage}</dd>
+					<dt>first message unchanged from the seed</dt>
+					<dd data-testid="tripwire-{panel.id}-first-message-intact">
+						{observation.firstMessageIntact}
+					</dd>
 					<dt>prompt <code>generate</code> received</dt>
 					<dd data-testid="tripwire-{panel.id}-prompt-seen">{observation.promptSeenByGenerate}</dd>
 					<dt>model's answer replaced</dt>

@@ -176,7 +176,12 @@
 				metadata: message.metadata
 			});
 
-		const summarizerShapes: string[] = [];
+		// `{ id, shape }` pairs rather than a bag of shapes. A membership test
+		// answers "was this shape somewhere in the seed", which a compactor
+		// that kept every id in order while giving one message ANOTHER seeded
+		// message's role, content, or metadata would satisfy. The pair lets
+		// each shape be checked against the seeded message of that same id.
+		const summarizerInputs: { id: string; shape: string }[] = [];
 
 		let projection: readonly Message[] = [];
 		// Captured on the FIRST call and not overwritten. The panel's claim is
@@ -205,7 +210,9 @@
 						// let a compaction that preserved every id and its order
 						// while altering a role, content, or metadata hand a real
 						// summarizer altered context with every assertion green.
-						for (const message of messages) summarizerShapes.push(shapeOf(message));
+						for (const message of messages) {
+							summarizerInputs.push({ id: message.id, shape: shapeOf(message) });
+						}
 						const marker = `[summary ${markers.length + 1} of ${messages.length} messages]`;
 						markers.push(marker);
 						return marker;
@@ -403,8 +410,11 @@
 			// Every message the summarizer saw matched the seeded message of
 			// the same shape — role, content, and metadata alike.
 			summarizerInputsIntact:
-				summarizerShapes.length > 0 &&
-				summarizerShapes.every((shape) => beforeShapes.includes(shape))
+				summarizerInputs.length > 0 &&
+				summarizerInputs.every(({ id, shape }) => {
+					const seededIndex = seededIds.indexOf(id);
+					return seededIndex >= 0 && beforeShapes[seededIndex] === shape;
+				})
 		};
 	}
 
