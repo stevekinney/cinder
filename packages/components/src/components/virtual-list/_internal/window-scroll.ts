@@ -46,19 +46,22 @@ export function resolveWindowScrollGeometry(options: {
   const totalSize = Math.max(0, options.totalSize);
   const listStart = Number.isFinite(options.listStartInViewport) ? options.listStartInViewport : 0;
 
-  // A negative `listStart` means the list's beginning has scrolled off the start
-  // edge, and that distance is precisely how far into the content the reader is.
-  // While it is still positive the list has not been reached, so the offset is 0.
-  const rawOffset = Math.max(0, -listStart);
-  // The reader cannot be further into the list than its content allows, however
-  // far the document itself has scrolled past it.
-  const maximumOffset = Math.max(0, totalSize - viewportSize);
-  const scrollOffset = Math.min(rawOffset, maximumOffset);
-
   // The on-screen slice is the overlap between the list's box and the viewport.
   const overlapStart = Math.max(0, listStart);
   const overlapEnd = Math.min(viewportSize, listStart + totalSize);
   const visibleSize = Math.max(0, overlapEnd - overlapStart);
+
+  // A negative `listStart` means the list's beginning has scrolled off the start
+  // edge, and that distance is precisely how far into the content the reader is.
+  // While it is still positive the list has not been reached, so the offset is 0.
+  const rawOffset = Math.max(0, -listStart);
+  // Clamped against what is VISIBLE, not against the whole viewport. With content
+  // after the list, its end leaves the viewport while only part of it still shows —
+  // and clamping to `totalSize - viewportSize` would stop the offset short, so the
+  // final rows never entered the window at all. Falls back to the viewport while
+  // nothing is visible, where there is no meaningful slice to measure against.
+  const maximumOffset = Math.max(0, totalSize - (visibleSize || viewportSize));
+  const scrollOffset = Math.min(rawOffset, maximumOffset);
 
   return { scrollOffset, visibleSize };
 }

@@ -140,6 +140,13 @@ list _above_ the reader, and the component anchors to the row they were on so it
 stays put — it does not pin to the end, and it does not leave them silently looking
 at a different row.
 
+> [!IMPORTANT] Pass `getKey` for any list that can grow at the front
+> Telling a prepend from an append means comparing key sequences. Without `getKey`
+> the keys are array indexes, so prepending two items turns `[0, 1, 2]` into
+> `[0, 1, 2, 3, 4]` — a prefix extension, indistinguishable from an append. Under
+> `reverse` the list then pins to the end rather than holding the reader's place,
+> which is the opposite of what this section promises.
+
 ### Loading more in both directions
 
 `onEndReached` fires when the reader comes within `overscan` items of the end;

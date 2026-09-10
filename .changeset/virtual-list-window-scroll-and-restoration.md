@@ -9,8 +9,10 @@ VirtualList: add `windowScroll` for virtualizing against the page, and
 `height` is ignored, and the viewport comes from the window. Progress is derived from
 where the list's box sits relative to the viewport, and windowing uses the overlap
 between the two rather than the full viewport, so a list beginning halfway down the
-page does not mount rows below the fold. `stickToBottom` and `reverse` are ignored in
-this mode, since both pin a scroll position the component no longer owns.
+page does not mount rows below the fold. `stickToBottom`, `reverse`, and `scrollRestoration` are all ignored in this mode.
+The first two pin a scroll position the component no longer owns; the third cannot
+represent one, since a saved offset measures from the list's start edge and clamps at
+zero. The browser's own document scroll restoration already covers this mode.
 
 `scrollRestoration` persists the position to `sessionStorage` under a required
 `scrollRestorationId` — there is no implicit key, because one would hand a remembered

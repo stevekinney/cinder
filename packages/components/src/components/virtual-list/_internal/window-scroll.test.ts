@@ -36,6 +36,19 @@ describe('resolveWindowScrollGeometry', () => {
     expect(geometry.scrollOffset).toBe(totalSize - viewportSize);
   });
 
+  test('reaches the trailing rows when content follows the list', () => {
+    // With content after the list, its end leaves the viewport while part of it still
+    // shows. Clamping against the whole viewport stops the offset 300px short here,
+    // so the final rows never enter the window at all.
+    const geometry = resolveWindowScrollGeometry({
+      listStartInViewport: -9_500,
+      viewportSize,
+      totalSize,
+    });
+    expect(geometry.visibleSize).toBe(500);
+    expect(geometry.scrollOffset).toBe(9_500);
+  });
+
   test('a list shorter than the viewport never reports a non-zero offset', () => {
     const geometry = resolveWindowScrollGeometry({
       listStartInViewport: -5_000,

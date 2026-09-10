@@ -458,17 +458,23 @@
       }
       restoredId = id;
 
-      if (saved.startIndex >= items.length) {
-        // The collection genuinely shrank, so the remembered row no longer exists.
-        // Restoring to a clamped index would drop the reader somewhere arbitrary and
-        // then re-save that as if it were their place.
+      // By KEY first, and BEFORE judging the index. An index stops describing the
+      // same row once the collection changes while unmounted — which is exactly what
+      // a feed does — so a stale index is not evidence the row is gone. The key is.
+      const anchorIndex = resolveIndexForSavedAnchor(saved);
+      const anchorIsResolvable =
+        anchorIndex < items.length &&
+        (saved.anchorKey === undefined
+          ? saved.startIndex < items.length
+          : keyAt(anchorIndex) === saved.anchorKey);
+
+      if (!anchorIsResolvable) {
+        // The remembered row genuinely no longer exists. Restoring to a clamped index
+        // would drop the reader somewhere arbitrary and then re-save that as if it
+        // were their place.
         clearScrollPosition(storage, id);
         return;
       }
-
-      // By KEY first. An index stops describing the same row once the collection
-      // changes while unmounted, which is exactly what a feed does.
-      const anchorIndex = resolveIndexForSavedAnchor(saved);
 
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the
@@ -885,6 +891,10 @@
     const target = pendingScrollTarget;
     pendingScrollTarget = null;
     if (!element) return;
+    // A window-scrolled list that has left the viewport is not something the reader
+    // is looking at, and a correction here would scroll the PAGE out from under
+    // whatever they moved on to.
+    if (windowScroll && isWindowListOffscreen) return;
     // The bottom pin wins. A batch containing resizes both above and below the
     // anchor makes the two mechanisms disagree: the pin moves to the new total
     // using every delta, while this correction accounts only for the ones before
