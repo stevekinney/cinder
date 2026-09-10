@@ -326,11 +326,29 @@ test.describe('domain focus rings -- CIN-516 settle race regression', () => {
    * through a deferred, non-render `effect()` rather than synchronously with
    * mount) has taken effect.
    *
-   * This harness delay stands in for that window instead of trying to force
-   * the real one, which does not reproduce under CDP CPU or network
-   * throttling locally (tried up to 15x CPU and 300ms latency, 55 attempts,
-   * zero repros) — the actual bottleneck is Svelte's internal effect-flush
+   * This harness stands in for that window instead of trying to force the
+   * real one, which does not reproduce under CDP CPU or network throttling
+   * locally (tried up to 15x CPU and 300ms latency, 55 attempts, zero
+   * repros) — the actual bottleneck is Svelte's internal effect-flush
    * scheduling under a CI worker, not raw compute or network speed.
+   *
+   * The "later" stylesheet is applied from the test driver via
+   * `page.addStyleTag()`, not an in-page `setTimeout`. An earlier version
+   * scheduled it with `setTimeout(..., 150)` inside the page; on CI that
+   * consistently timed out the 500ms settle poll with the DOM still in its
+   * exact pre-injection state (`outlineColor` reading back as the target's
+   * own `color`, `boxShadow: 'none'`) on two independent shards with
+   * byte-identical failure values — the in-page timer never fired inside
+   * the window, not a slow settle. `addStyleTag()` removes that dependency
+   * on real browser timer scheduling entirely. The trade-off: this no
+   * longer exercises `waitForSettledFocusPaint`'s poll waiting through a
+   * genuinely delayed mutation — that property is covered by the two
+   * `chat harness` tests above, which race the real Svelte effect flush on
+   * the real Chat component and passed on the same CI runners that hit this
+   * failure (run 34501975815, shard `playwright-visual shard 7`). This test
+   * instead proves, deterministically, that the pre-settle paint really is
+   * the CIN-516 failure signature and that the production read function
+   * still reports the settled recipe once it has landed.
    */
   test('a focus-visible outline that settles after a delay is not read mid-settle', async ({
     browser,
@@ -347,31 +365,32 @@ test.describe('domain focus rings -- CIN-516 settle race regression', () => {
         </style>
         <button id="target" style="margin: 40px; color: rgb(218, 230, 241);">Target</button>
       `);
-      await page.evaluate(() => {
-        // Stand-in for Cinder's component-owned focus-ring override landing
-        // after the element is already focused: a later stylesheet supplies
-        // the transparent outline and inset box-shadow the recipe expects.
-        window.addEventListener(
-          'focusin',
-          () => {
-            setTimeout(() => {
-              const style = document.createElement('style');
-              style.textContent =
-                '#target:focus-visible { outline-color: transparent; box-shadow: inset 0 0 0 3px rgb(218, 230, 241); }';
-              document.head.append(style);
-            }, 150);
-          },
-          { once: true },
-        );
-      });
 
       const target = page.locator('#target');
       await page.keyboard.press('Tab');
       await expect(target).toBeFocused();
 
-      // Would fail immediately (opaque currentColor outline, boxShadow
-      // 'none') against the pre-fix single-rAF `focusPaint` read; passes once
-      // the assertion waits for the settled recipe.
+      // Confirm this really does reproduce the CIN-516 signature before the
+      // recipe lands: a fully opaque `currentColor` outline, no shadow yet.
+      // Reading through `focusPaint` directly (not the settle poll) proves
+      // the pre-fix single-rAF read would have reported this as final.
+      const preSettle = await focusPaint(target);
+      expect(
+        preSettle.outlineColorAlpha,
+        'pre-settle outline should still be opaque',
+      ).toBeGreaterThan(0);
+      expect(preSettle.boxShadow, 'pre-settle should have no shadow yet').toBe('none');
+
+      // Stand-in for Cinder's component-owned focus-ring override landing
+      // after the element is already focused: a later stylesheet supplies
+      // the transparent outline and inset box-shadow the recipe expects.
+      await page.addStyleTag({
+        content:
+          '#target:focus-visible { outline-color: transparent; box-shadow: inset 0 0 0 3px rgb(218, 230, 241); }',
+      });
+
+      // Passes once the recipe has actually landed; would still fail against
+      // the pre-fix single-rAF `focusPaint` read taken before this point.
       await assertInsetRing(target, 'delayed-settle target');
     } finally {
       await context.close();
