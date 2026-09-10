@@ -17,13 +17,13 @@
 
 <script lang="ts">
   import type { CommandPaletteProps } from './command-palette.types.ts';
-  import { onDestroy } from 'svelte';
+  import { onDestroy, tick } from 'svelte';
 
-  import { captureFocus, pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
-  import { restoreFocusTo } from '../../utilities/focus.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { setCommandListContext } from '../_internal/command-list-context.ts';
   import { createCommandListState } from '../_internal/create-command-list-state.svelte.ts';
+  import { createSlidingDialogState } from '../_internal/create-sliding-dialog-state.svelte.ts';
 
   let {
     open = $bindable(false),
@@ -45,19 +45,10 @@
 
   // ── DOM refs ─────────────────────────────────────────────────────────────
   let dialogElement: HTMLDialogElement | undefined = $state();
+  let panelElement: HTMLDivElement | undefined = $state();
   let inputElement: HTMLInputElement | undefined = $state();
 
-  // ── Hydration guard ───────────────────────────────────────────────────────
-  // `mounted` is false during SSR. The dialog is rendered only when mounted
-  // (client) or when already open (SSR open=true). Matching modal.svelte.
-  let mounted = $state(false);
-  $effect(() => {
-    mounted = true;
-  });
-
-  // ── Focus capture ─────────────────────────────────────────────────────────
-  let capturedFocus: HTMLElement | null = null;
-
+  const reducedMotion = useReducedMotion();
   const commandList = createCommandListState(listboxId);
 
   $effect(() => {
@@ -66,81 +57,75 @@
     commandList.refreshRegistrationsReady();
   });
 
-  // ── Escape stack ──────────────────────────────────────────────────────────
-  let releaseEscape: (() => void) | null = null;
-
-  // ── Focus restoration ─────────────────────────────────────────────────────
-  function returnFocus() {
-    // Iterate candidates so a disconnected `triggerRef` falls through to
-    // capturedFocus. Matches the modal/drawer/popover pattern; without this
-    // a removed trigger would silently drop focus on the floor.
-    const candidates: Array<HTMLElement | null> = [triggerRef, capturedFocus];
-    for (const candidate of candidates) {
-      if (restoreFocusTo(candidate)) break;
-    }
-    capturedFocus = null;
-  }
-
-  // ── Close ─────────────────────────────────────────────────────────────────
-  // Single authoritative close path. All close triggers (Escape stack,
-  // backdrop click, `close` event, programmatic open=false) route through here.
-  // The `isClosing` flag prevents double-invocation: setting `open = false`
-  // schedules the lifecycle $effect, which calls closePalette() again from the
-  // else branch. The flag ensures that second call is a no-op.
-  let isClosing = false;
-  function closePalette() {
-    if (isClosing) return;
-    if (!open && !dialogElement?.open) return;
-    isClosing = true;
-    open = false;
-    releaseEscape?.();
-    releaseEscape = null;
-    if (dialogElement?.open) dialogElement.close();
-    returnFocus();
-    onClose?.();
-    isClosing = false;
-  }
-
-  // ── Open/close lifecycle ──────────────────────────────────────────────────
-  $effect(() => {
-    if (!dialogElement) return;
-    if (open && !dialogElement.open) {
+  // ── Sliding-dialog lifecycle ────────────────────────────────────────────
+  // Adopts SlidingDialogState (the same mechanism Modal and Drawer use)
+  // rather than hand-rolling an exit lifecycle. Per OVERLAY-POLICY.md,
+  // "Transition lifecycle" > "The contract": the component renders
+  // data-cinder-closing on its animated panel for the full duration of the
+  // exit transition, and the shared waitForTransitionCompletion helper (used
+  // internally by SlidingDialogState) — not a fixed timeout — decides when
+  // the panel actually unmounts and the native dialog closes. This also
+  // gives the palette the counted lockBodyScroll() acquisition/release and
+  // the hydrated-gated SSR pattern it previously lacked (both tracked as
+  // OVERLAY-POLICY.md deviations under CIN-426, alongside this lifecycle
+  // gap itself).
+  const dialogState = createSlidingDialogState({
+    getOpen: () => open,
+    setOpen: (nextOpen) => {
+      open = nextOpen;
+    },
+    getDialogElement: () => dialogElement,
+    getPanelElement: () => panelElement,
+    getReducedMotion: () => reducedMotion.current,
+    getTriggerRef: () => triggerRef,
+    onOpen: () => {
       query = '';
       commandList.resetActiveItem();
-      capturedFocus = captureFocus();
-      dialogElement.showModal();
-      inputElement?.focus();
-      releaseEscape = pushEscapeHandler(closePalette);
-    } else if (!open && dialogElement.open) {
-      // Programmatic close: open was set to false externally.
-      // closePalette handles everything; call it to ensure focus is restored.
-      closePalette();
-    }
+      // Deferred: the panel subtree (and the inputElement binding) has not
+      // flushed yet in the same effect that first sets renderPanel — mirrors
+      // focusDialogBodyUnlessAutofocused's own tick() deferral for
+      // Modal/Drawer in create-sliding-dialog-state.svelte.ts.
+      void tick().then(() => {
+        if (!open) return;
+        inputElement?.focus();
+      });
+    },
+    onClosed: () => onClose?.(),
   });
 
-  // Release escape handler on component destroy to prevent leaks.
+  $effect(() => {
+    dialogState.markHydrated();
+  });
+
+  $effect(() => {
+    dialogState.syncOpenState();
+  });
+
   onDestroy(() => {
-    releaseEscape?.();
-    releaseEscape = null;
+    dialogState.destroy();
   });
 
   // ── Dialog event handlers ─────────────────────────────────────────────────
 
-  // The native <dialog> fires `cancel` before `close` when Escape is pressed.
-  // Prevent the native cancel so our escape-stack handler is the sole close path.
+  // Matches modal.svelte's oncancel wiring: the native <dialog> fires
+  // `cancel` before `close` when Escape is pressed. Prevent the browser's
+  // own dialog-closing behavior so the sole close path is
+  // dialogState.requestClose() → the exit transition → the real `close`
+  // event → dialogState.handleClose().
   function handleCancel(event: Event) {
-    event.preventDefault();
+    dialogState.handleNativeCancel(event);
   }
 
-  // The `close` event fires when the dialog actually closes (any path).
+  // The `close` event fires when the native dialog actually closes (any
+  // path) — SlidingDialogState.handleClose() is the single place that
+  // releases the scroll lock and escape-stack registration, restores focus,
+  // and reports completion via onClosed.
   function handleClose() {
-    closePalette();
+    dialogState.handleClose();
   }
 
   function handleBackdropClick(event: MouseEvent) {
-    if (event.target === dialogElement) {
-      closePalette();
-    }
+    dialogState.handleBackdropClick(event);
   }
 
   // ── Keyboard routing ──────────────────────────────────────────────────────
@@ -165,11 +150,13 @@
   setCommandListContext(commandList.createContext());
 
   const showEmpty = $derived(
-    mounted && commandList.registrationsReady && commandList.registrations.length === 0,
+    dialogState.hydrated &&
+      commandList.registrationsReady &&
+      commandList.registrations.length === 0,
   );
 </script>
 
-{#if mounted || open}
+{#if dialogState.hydrated}
   <dialog
     bind:this={dialogElement}
     class="cinder-command-palette"
@@ -179,8 +166,13 @@
     onclose={handleClose}
     onclick={handleBackdropClick}
   >
-    {#if open}
-      <div class={classNames('cinder-command-palette__panel', className)}>
+    {#if dialogState.renderPanel}
+      <div
+        bind:this={panelElement}
+        class={classNames('cinder-command-palette__panel', className)}
+        data-cinder-closing={dialogState.isClosing ? '' : undefined}
+        inert={dialogState.isClosing}
+      >
         <div class="cinder-command-palette__search">
           <svg
             class="cinder-command-palette__search-icon"
