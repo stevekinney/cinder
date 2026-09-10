@@ -8,10 +8,12 @@
 	//
 	// The loop's default is to keep going: a step that produces tool calls
 	// normally resolves them and then takes ANOTHER generate call to narrate
-	// the results. The condition below is what makes this run stop instead —
-	// and the counter proves it, because "no second generation" is invisible
-	// in the transcript. A run that took two generate calls and said nothing
-	// the second time renders identically.
+	// the results. The condition below is what makes this run stop instead.
+	//
+	// "No second generation" is invisible in the transcript — a run that took
+	// two generate calls and said nothing the second time renders identically —
+	// so it is the numbers that show it: the fixture's own call counter and
+	// `result.steps.length`, which move together and are both rendered.
 	//
 	// Everything is local: the generator always asks for one `roll_dice`, and
 	// the die always returns 4. No network, no key, no randomness.
@@ -81,7 +83,8 @@
 	<h1>Stop conditions</h1>
 	<p>
 		Without <code>rolledTheDie</code>, this run would resolve the tool and take a second generate
-		call to narrate the result. The counter is the only thing that can show it did not.
+		call to narrate the result. Nothing in the transcript would look different — the counter and the
+		step count are what show it did not.
 	</p>
 
 	<section data-testid="stop-condition" aria-live="polite">

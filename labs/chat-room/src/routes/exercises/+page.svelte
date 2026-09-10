@@ -153,7 +153,7 @@
 			href: resolve('/exercises/retry'),
 			title: 'Retry',
 			description:
-				'One retry budget, three failures, three different call counts — retry does not re-roll a bad answer.'
+				'One retry budget, three failures, and only one of them retried — retry does not re-roll a bad answer.'
 		},
 		{
 			slug: 'stop-condition',

@@ -4,7 +4,9 @@
  * The assertion that matters is the negative one — no second generation — and
  * it is invisible in the transcript. A run that took two generate calls and
  * produced nothing the second time renders identically to this one, which is
- * why the fixture counts its own calls.
+ * why the numbers matter: the fixture's own call counter and
+ * `result.steps.length`. Both are asserted, and a second generation would move
+ * both, so neither is load-bearing alone.
  */
 
 import { expect, test } from '@playwright/test';
