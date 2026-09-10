@@ -367,10 +367,11 @@
     // OVERLAY-POLICY.md, "Transition lifecycle" > "The contract": the component
     // renders data-cinder-closing on its animated element for the full duration
     // of the exit transition while waitForTransitionCompletion detects
-    // completion. Toast keys its exit CSS off the pre-existing, non-canonical
-    // data-cinder-presence="exiting" attribute (see "Known deviations"); this
-    // data-cinder-closing attribute is purely additive so consumers and future
-    // migrations can rely on the canonical attribute name too.
+    // completion. Toast keeps keying its exit CSS off the pre-existing
+    // data-cinder-presence="exiting" attribute (an accepted, additive naming
+    // difference — see the census entry for Toast); data-cinder-closing is
+    // purely additive so consumers and future migrations can rely on the
+    // canonical attribute name too.
     clearRemovalTimer(id);
     const cancelCompletion = waitForTransitionCompletion({
       element: shell,
