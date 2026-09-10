@@ -314,9 +314,13 @@ test.describe('domain focus rings -- chat harness', () => {
 
 test.describe('domain focus rings -- CIN-516 settle race regression', () => {
   /**
-   * Deterministic reproduction of the CIN-516 CI flake, isolated from the
-   * Chat harness (and its "dense surface" cost) so it always fails the same
-   * way with no fix, on any machine, on every run.
+   * Isolated reproduction of the CIN-516 CI failure signature, independent
+   * of the Chat harness (and its "dense surface" cost): confirms the exact
+   * pre-settle paint that failure showed is real, and that the production
+   * read function reports the settled recipe once it has landed. It does
+   * not itself exercise the poll racing a genuinely delayed mutation — see
+   * the note on `addStyleTag()` below for why, and the `chat harness` tests
+   * above for where that property is actually covered.
    *
    * The CI failure's own signature — captured in the failing assertion and
    * the blob report step log for run 33600421893's `playwright-lane (4, 8)`
@@ -356,7 +360,7 @@ test.describe('domain focus rings -- CIN-516 settle race regression', () => {
    * the CIN-516 failure signature and that the production read function
    * still reports the settled recipe once it has landed.
    */
-  test('a focus-visible outline that settles after a delay is not read mid-settle', async ({
+  test('the pre-settle paint is the CIN-516 signature and the recipe reads as an inset ring once it lands', async ({
     browser,
   }) => {
     const context = await browser.newContext({ reducedMotion: 'reduce' });
