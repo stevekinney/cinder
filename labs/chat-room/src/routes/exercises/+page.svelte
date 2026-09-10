@@ -169,7 +169,7 @@
 			href: resolve('/exercises/tripwire'),
 			title: 'Guardrails — tripwire mode',
 			description:
-				'The same injection trips the same detector twice — only one of the two runs stops.'
+				'The same injection trips the same detector twice — only one of the two halts before the loop runs.'
 		},
 		{
 			slug: 'compaction',

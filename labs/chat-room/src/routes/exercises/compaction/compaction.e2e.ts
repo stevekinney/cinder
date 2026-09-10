@@ -71,6 +71,17 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// chunks compaction chose is an internal, whether it dropped one is not.
 	await expect(page.locator(field('summaries-survived'))).toHaveText('true');
 
+	// …and in the order they were produced. Presence alone would hold if the
+	// chunks were concatenated backwards, and the model would then read the
+	// summarized history in reverse while every other assertion passed.
+	await expect(page.locator(field('summary-order'))).toHaveText('1, 2, 3, 4');
+	await expect(page.locator(field('summaries-in-order'))).toHaveText('true');
+
+	// No message summarized twice. Distinct-id counting hides a repeat: the
+	// totals and the partition stay correct while the summary double-counts
+	// context and a real summarizer bills for the redundant call.
+	await expect(page.locator(field('duplicate-inputs'))).toHaveText('0');
+
 	// "Unchanged" above means role, content, and metadata — the whole of what
 	// survives. Message IDS are reassigned by compaction, which is why the
 	// comparison is by shape rather than by id, and why anything keyed to a

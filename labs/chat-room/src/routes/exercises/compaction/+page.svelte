@@ -89,6 +89,9 @@
 		carriedIdOverlap: number;
 		allSummariesReachProjection: boolean;
 		summaryChunks: string;
+		duplicateSummarizerInputs: number;
+		summaryOrder: string;
+		summariesInOrder: boolean;
 		generateCalls: number;
 	};
 
@@ -226,6 +229,29 @@
 			})
 			.join(', ');
 
+		// Presence is not order. If the chunk summaries were concatenated in
+		// reverse, every marker would still be found and `projectionOrder`
+		// would still call the containing message `summary` — while the model
+		// read the summarized history backwards. Marker positions inside the
+		// injected text answer that, and are rendered as the call order they
+		// resolve to.
+		const summaryText = projection
+			.filter((message) => JSON.stringify(message.content).includes('[summary '))
+			.map((message) => JSON.stringify(message.content))
+			.join('\n');
+		const markerPositions = markers.map((marker) => summaryText.indexOf(marker));
+		const summaryOrder = markers
+			.map((marker, index) => ({ call: index + 1, at: markerPositions[index] }))
+			.filter((entry) => entry.at >= 0)
+			.sort((first, second) => first.at - second.at)
+			.map((entry) => entry.call)
+			.join(', ');
+		const summariesInOrder =
+			markerPositions.length > 0 &&
+			markerPositions.every(
+				(position, index) => position >= 0 && (index === 0 || position > markerPositions[index - 1])
+			);
+
 		const pinnedInProjection = projection.find((message) =>
 			JSON.stringify(message.content).includes(PINNED_FACT)
 		);
@@ -278,7 +304,14 @@
 				markers.every((marker) =>
 					projection.some((message) => JSON.stringify(message.content).includes(marker))
 				),
-			summaryChunks: `${markers.filter((marker) => projection.some((message) => JSON.stringify(message.content).includes(marker))).length} of ${markers.length}`,
+			summaryChunks: `${markers.filter((marker) => summaryText.includes(marker)).length} of ${markers.length}`,
+			// Raw occurrences minus distinct ones. `distinct` above collapses a
+			// message handed to `summarize` twice, so every count and the
+			// partition stay correct while the summary double-counts context
+			// and a real summarizer bills for the redundant work.
+			duplicateSummarizerInputs: seenIds.length - distinct(seenIds).length,
+			summaryOrder,
+			summariesInOrder,
 			generateCalls
 		};
 	}
@@ -331,6 +364,12 @@
 				<dd data-testid="compaction-summaries-survived">
 					{result.allSummariesReachProjection}
 				</dd>
+				<dt>chunk summaries, in the order the model reads them</dt>
+				<dd data-testid="compaction-summary-order">{result.summaryOrder}</dd>
+				<dt>chunk summaries in chronological order</dt>
+				<dd data-testid="compaction-summaries-in-order">{result.summariesInOrder}</dd>
+				<dt>messages summarized more than once</dt>
+				<dd data-testid="compaction-duplicate-inputs">{result.duplicateSummarizerInputs}</dd>
 				<dt><code>generate</code> calls</dt>
 				<dd data-testid="compaction-generate-calls">{result.generateCalls}</dd>
 				<dt>pinned fact present</dt>
