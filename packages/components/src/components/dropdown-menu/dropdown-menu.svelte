@@ -198,23 +198,24 @@
 
   $effect(() => {
     if (!context.supportsPopover || !context.isOpen) return;
-    const releaseEscape = pushEscapeHandler((event) => {
+    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
       // Still must not preventDefault (see above) — the browser's own
-      // Escape close-request is what actually hides the popover. But
-      // propagation and that native default action are independent: stop
-      // propagation so a focused input or page-level Escape handler doesn't
-      // also react to the same key while the browser dismisses the
-      // dropdown, defeating the shared stack's topmost-overlay-only
-      // arbitration (review finding).
+      // Escape close-request is what actually hides the popover. It DOES
+      // still call stopPropagation(): the two are independent (propagation
+      // only controls whether the event keeps reaching other listeners in
+      // its path; only preventDefault() cancels the browser's own default
+      // action), so stopping propagation here is safe and is what keeps a
+      // focused descendant's own keydown listener, or a page-level Escape
+      // handler, from also reacting to the same keystroke while the
+      // top-most overlay's stack registration is supposed to own it.
       event?.stopPropagation();
       // Native focus restoration only returns focus to the invoker if focus
-      // was still *inside* the popover at the moment it closes; if focus
-      // had already moved outside (e.g. the user tabbed out while the menu
-      // was open), native restoration doesn't apply and focus would
-      // otherwise be left on whatever was outside — breaking
-      // dropdown.a11y.md's Escape-returns-focus-to-trigger contract.
-      // Restore it ourselves in that case only; when focus is still inside,
-      // leave it to native.
+      // was still *inside* the popover at the moment it closes; if focus had
+      // already moved outside (e.g. the user tabbed out while the menu was
+      // open), native restoration doesn't apply and focus would otherwise
+      // be left on whatever was outside — breaking dropdown.a11y.md's
+      // Escape-returns-focus-to-trigger contract. Restore it ourselves in
+      // that case only; when focus is still inside, leave it to native.
       if (menuElement && !menuElement.contains(document.activeElement)) {
         context.focusTrigger();
       }

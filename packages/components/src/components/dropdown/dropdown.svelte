@@ -201,12 +201,19 @@
   // in a real browser: without an entry on the stack while this popover is
   // open, a LOWER escape-stack overlay would incorrectly react to the same
   // Escape keystroke (our LIFO stack only ever invokes the top-most
-  // handler). The callback intentionally does nothing else — no
-  // `preventDefault()`, so the browser's native close-request path for the
-  // top-layer popover is left completely alone.
+  // handler). The callback never calls `preventDefault()` — the browser's
+  // native close-request path for the top-layer popover is left completely
+  // alone — but it DOES call `stopPropagation()`: the two are independent
+  // (propagation only controls whether the event keeps reaching other
+  // listeners in its path; only `preventDefault()` cancels the browser's own
+  // default action), so this keeps a focused descendant's own keydown
+  // listener, or a page-level Escape handler, from also reacting to the same
+  // keystroke while this top-most overlay is supposed to own it.
   $effect(() => {
     if (!usesLegacySnippetApi || !supportsPopover || !open) return;
-    const releaseEscape = pushEscapeHandler(() => {});
+    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
+      event?.stopPropagation();
+    });
     return releaseEscape;
   });
 
