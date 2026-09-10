@@ -30,17 +30,14 @@
   }
 
   /* TimeField composes FormFieldFrame itself, which puts the nested Input
-     inside a FormFieldContext. Since Input never receives its own label from
-     TimeField, it renders bare (no `.cinder-input-field` wrapper): just its
-     control, which always sits inside Input's control wrapper. Without addons
-     that wrapper is `.cinder-input-host` — `display: contents`, so it
-     contributes no box and the native control is still a flex item of this
-     row, but it is no longer the row's direct child. The sizing constraint
-     therefore reaches through the host to `.cinder-time-field__input`. The
-     `.cinder-input-field` alternative covers a TimeField that passes Input a
-     label of its own. */
-  .cinder-time-field__controls > .cinder-input-field,
-  .cinder-time-field__controls > .cinder-input-host > .cinder-time-field__input {
+     inside a FormFieldContext. Input always renders its own nested
+     FormFieldFrame there now (CIN-511: no more arm switch between a bare
+     control and a framed one — see input.svelte), with label/description/
+     error absent since TimeField never gives Input its own. That frame
+     always carries `.cinder-input-field` and is a direct child of this row,
+     so this single selector covers it regardless of whether a future
+     TimeField variant ever does pass Input its own label. */
+  .cinder-time-field__controls > .cinder-input-field {
     flex: 0 1 12rem;
     inline-size: auto;
   }
