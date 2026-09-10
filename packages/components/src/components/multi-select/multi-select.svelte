@@ -262,6 +262,12 @@
   }
 
   function handleListNavigationKeydown(event: KeyboardEvent): void {
+    // Fallback-guard, matching Combobox's pattern (CIN-428): in a real
+    // browser the capture-phase escape-stack handler (registered via
+    // `commandList.bindDismissal` below) runs first and already
+    // preventDefault()s + stopPropagation()s — this bails rather than
+    // redundantly re-closing an already-closed menu.
+    if (event.key === 'Escape' && event.defaultPrevented) return;
     commandList.handleKeydown({
       event,
       onEnter: (itemId) => {

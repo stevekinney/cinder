@@ -31,11 +31,11 @@ The consumer is responsible for:
 | Key    | Behavior                                                                                                                       |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------ |
 | Tab    | Moves focus through sequentially focusable items and actions in DOM order; enabled controls with `tabindex="-1"` are excluded. |
-| Escape | Closes the mobile menu when open. Scoped to the `<nav>` element—Escape pressed outside the navbar has no effect.               |
+| Escape | Closes the mobile menu when open, regardless of where focus is on the page.                                                    |
 
-### Scoped Escape behavior
+### Escape ownership (CIN-428)
 
-The Escape handler is attached to the `<nav>` element rather than `<svelte:window>`. This means Escape only closes the menu when focus is inside the navbar, avoiding interference with dialogs, comboboxes, or other disclosures elsewhere on the page.
+Escape is owned by the shared overlay escape stack (see `OVERLAY-POLICY.md`), not a listener scoped to the `<nav>` element. While the mobile panel is open, `NavigationBar` is the top-most entry on that stack, and a window-level Escape dismisses the panel regardless of where focus currently is — including outside the navbar entirely. This matches every other escape-stack overlay in Cinder (Dropdown, Popover, Combobox, etc.) and lets a top-layer overlay elsewhere on the page take priority: if another overlay opened after the mobile panel, it sits above the panel on the stack and Escape dismisses it first.
 
 ### Cooperative Escape semantics
 

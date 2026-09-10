@@ -27,10 +27,11 @@
   import type { Placement } from '@floating-ui/dom';
   import type { NavigationBarProps, NavigationVariant } from './navigation-bar.types.ts';
   import type { SequentialFocusTarget } from '../../utilities/focus.ts';
-  import { onDestroy } from 'svelte';
+  import { flushSync, onDestroy } from 'svelte';
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -510,6 +511,74 @@
     focusTarget?.focus();
   }
 
+  // Escape ownership (CIN-428). The escape-stack registration is the single
+  // Escape dispatch path, firing whenever the mobile panel is open
+  // regardless of focus location — so a dispatch that originates outside the
+  // bar's own DOM tree (`pressing Escape outside the navbar still closes the
+  // mobile menu`) still closes it, swallowing the key uniformly like every
+  // other escape-stack overlay.
+  //
+  // Escape dispatched *inside* the bar's tree is different: this handler
+  // runs at the window capture phase, which is necessarily reached before
+  // the event arrives at its actual target — before a nested control (a
+  // search field, a disclosure) or the consumer's own composed `<nav
+  // onkeydown>` ever sees it. Closing unconditionally here would make it
+  // impossible for either to call `preventDefault()` and cancel the close,
+  // contradicting the cooperative Escape contract in
+  // navigation-bar.a11y.md's "Cooperative Escape semantics" section. So for
+  // an in-tree target, stash the event and let it keep propagating — the
+  // decision happens in `handleKeyDown` below (the bar's own bubble-phase
+  // listener on `<nav>`), which runs *after* the target's own handler and
+  // the composed consumer handler, once `event.defaultPrevented` reflects
+  // their answer. Identity comparison against `pendingEscapeEvent` makes a
+  // stale stash harmless (it's only ever consulted for the exact event that
+  // set it).
+  let pendingEscapeEvent: KeyboardEvent | null = null;
+
+  function closeMobilePanel(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    // Once the panel actually accepts the dismissal — whether immediately,
+    // for a dispatch outside the bar's tree, or after the deferred in-tree
+    // decision in `handleKeyDown` below — stop the key from leaking past
+    // here to unrelated ancestor keydown handlers (review findings from
+    // both Copilot and Codex). This still preserves the cooperative path
+    // above: propagation is only cut off once the close is decided, never
+    // before a nested control or the composed consumer handler got a look.
+    event?.stopPropagation();
+    mobileMenuOpen = false;
+    focusMenuToggle();
+  }
+
+  function dismissMobilePanel(event?: KeyboardEvent): void {
+    const target = event?.target;
+    // The open mobile panel is portaled to `document.body` by default (no
+    // enclosing top layer to anchor to — see `itemsPortalScope` above), so a
+    // target inside it is no longer a DOM descendant of `navigationBarElement`
+    // once open. Check `itemsRegionElement` too: portaling re-parents that
+    // wrapper but never changes its own descendants, so this still correctly
+    // recognizes "inside the bar" regardless of where the wrapper currently
+    // sits. The original portaled-target event never reaches `handleKeyDown`
+    // directly (it isn't a DOM ancestor anymore), but `bridgePortaledEvents`
+    // below re-dispatches a bridged copy at `navigationBarElement` — which
+    // re-enters this same handler with a *new* event object, re-stashing
+    // `pendingEscapeEvent` to the one `handleKeyDown` will actually see.
+    if (
+      event &&
+      target instanceof Node &&
+      (navigationBarElement?.contains(target) || itemsRegionElement?.contains(target))
+    ) {
+      pendingEscapeEvent = event;
+      return;
+    }
+    closeMobilePanel(event);
+  }
+
+  $effect(() => {
+    if (!isCollapsible || !mobilePanelOpen) return;
+    const releaseEscape = pushEscapeHandler(dismissMobilePanel);
+    return releaseEscape;
+  });
+
   function getFocusTargetBeforeItems(
     navigationItem: HTMLElement | null = null,
   ): SequentialFocusTarget | null {
@@ -668,15 +737,27 @@
     if (consumerOnKeyDown) {
       (consumerOnKeyDown as (e: KeyboardEvent) => void)(withNavigationCurrentTarget(event));
     }
+
+    // Resolve an Escape stashed by `dismissMobilePanel` above (CIN-428): by
+    // the time this bubble-phase listener on `<nav>` runs, any nested
+    // control's own keydown handler (fired at the target phase, before
+    // bubbling reaches here) and the consumer handler just above have both
+    // had their chance to call `preventDefault()`.
+    if (event.key === 'Escape' && pendingEscapeEvent === event) {
+      pendingEscapeEvent = null;
+      // `handleKeyDown` runs as a plain, un-flushed consequence of the DOM's
+      // own bubble-phase dispatch to <nav> (see overlay.ts's `onEscapeKeydown`
+      // for the same reasoning) — flush explicitly so a second Escape
+      // dispatched immediately afterward observes this close (and this
+      // handler's stack release) synchronously, matching the guarantee the
+      // shared escape stack gives every other overlay.
+      if (!event.defaultPrevented) flushSync(() => closeMobilePanel(event));
+      return;
+    }
+
     if (event.defaultPrevented) return;
 
     if (bridgeBrandTabToPortaledPanel(event)) return;
-
-    if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
-      mobileMenuOpen = false;
-      focusMenuToggle();
-      return;
-    }
 
     const navigationItem = getEventNavigationItem(event);
     if (

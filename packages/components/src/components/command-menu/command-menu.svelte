@@ -33,6 +33,7 @@
   import { on } from 'svelte/events';
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { isRightToLeftElement } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { setCommandListContext } from '../_internal/command-list-context.ts';
@@ -352,17 +353,73 @@
     return event.altKey || event.ctrlKey || event.metaKey || event.shiftKey;
   }
 
+  // Escape ownership (CIN-427).
+  //
+  // Two-stage: first Escape dismisses inline ghost text without closing the
+  // menu; only a second Escape (ghost already hidden) falls through to
+  // dismiss the menu itself. This is the single place that logic lives —
+  // both the anchor's own keydown listener below AND the escape-stack
+  // registration further down call this same function, so there is exactly
+  // one implementation of the two-stage semantics regardless of where focus
+  // sits when Escape is pressed.
+  function handleEscape(event?: KeyboardEvent): void {
+    if (!open) return;
+    if (event && (event.isComposing || event.keyCode === 229)) return;
+
+    if (inlineCompletion.dismissGhostText()) {
+      event?.preventDefault();
+      event?.stopPropagation();
+      return;
+    }
+
+    dismiss({ latch: true });
+    event?.preventDefault();
+    event?.stopPropagation();
+  }
+
+  // The stack handler is the top-most Escape consumer for the entire open
+  // session, including with focus OUTSIDE the anchor — unlike the old
+  // anchor-scoped-only keydown listener below, `pushEscapeHandler` receives
+  // every window keydown regardless of focus location. That is a deliberate
+  // behavior change: Escape now dismisses the menu even when focus has moved
+  // elsewhere on the page while it's open.
+  //
+  // Depend on `hasAnchor` (a boolean), not `anchor` itself: a host that
+  // replaces one non-null anchor with another (e.g. swapping which
+  // textarea/input owns the menu) while `open` stays true must NOT tear down
+  // and re-push this registration — doing so would move it above any
+  // overlay that opened in the meantime, so a later Escape would dismiss
+  // this (visually lower) menu first instead of that newer, higher overlay.
+  // Only an actual null<->non-null transition should change registration —
+  // matching the menu's own render condition, which cares about presence,
+  // not identity.
+  const hasAnchor = $derived(anchor != null);
+  $effect(() => {
+    // Matches the menu's own render condition (`mounted && open && anchor`,
+    // line ~487): when a host clears or unmounts `anchor` while `open` stays
+    // true, nothing renders, so this stack entry must not either — otherwise
+    // it silently swallows Escape for a menu that's no longer visible,
+    // blocking whatever overlay is actually on screen beneath it.
+    if (!open || !hasAnchor) return;
+    const releaseEscape = pushEscapeHandler(handleEscape);
+    return releaseEscape;
+  });
+
   function handleKeydown(event: KeyboardEvent) {
     if (!open) return;
 
     const isComposingEvent = event.isComposing || event.keyCode === 229;
 
-    // Escape's first stage: dismiss the ghost text without closing the
-    // menu. Only a second Escape (ghost already hidden) falls through to
-    // the existing listbox Escape-dismiss latch below.
-    if (!isComposingEvent && event.key === 'Escape' && inlineCompletion.dismissGhostText()) {
-      event.preventDefault();
-      event.stopPropagation();
+    // Escape: fallback path. In a real browser the capture-phase
+    // escape-stack listener (installed by the $effect above) runs first,
+    // already ran the two-stage `handleEscape` logic, and called
+    // preventDefault()/stopPropagation() — so `event.defaultPrevented` is
+    // true here and this bails without re-running the logic. This branch
+    // only does real work when the stack listener never ran (SSR/no-window
+    // environments where `pushEscapeHandler` installed nothing).
+    if (!isComposingEvent && event.key === 'Escape') {
+      if (event.defaultPrevented) return;
+      handleEscape(event);
       return;
     }
 
@@ -392,7 +449,6 @@
     commandList.handleKeydown({
       event,
       onEnter: activateItemById,
-      onEscape: () => dismiss({ latch: true }),
       ignoreModifiedNavigation: true,
     });
   }
