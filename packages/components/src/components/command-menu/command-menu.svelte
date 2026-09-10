@@ -384,7 +384,12 @@
   // behavior change: Escape now dismisses the menu even when focus has moved
   // elsewhere on the page while it's open.
   $effect(() => {
-    if (!open) return;
+    // Matches the menu's own render condition (`mounted && open && anchor`,
+    // line ~487): when a host clears or unmounts `anchor` while `open` stays
+    // true, nothing renders, so this stack entry must not either — otherwise
+    // it silently swallows Escape for a menu that's no longer visible,
+    // blocking whatever overlay is actually on screen beneath it.
+    if (!open || !anchor) return;
     const releaseEscape = pushEscapeHandler(handleEscape);
     return releaseEscape;
   });

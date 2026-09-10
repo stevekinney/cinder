@@ -292,7 +292,13 @@
   }
 
   $effect(() => {
-    if (!open) return;
+    // A consumer can set `hidden` on an already-open dial (or supply
+    // `open={true}` together with `hidden={true}`): the control and its
+    // actions go `aria-hidden`/`inert` but `open` itself doesn't flip. Gate
+    // on `!hidden` too, consistent with the other `hidden`-gated effects
+    // above, so this invisible dial doesn't sit on top of the escape stack
+    // and swallow Escape meant for whatever overlay is actually visible.
+    if (!open || hidden) return;
     const releaseEscape = pushEscapeHandler(dismissSpeedDial);
     return releaseEscape;
   });

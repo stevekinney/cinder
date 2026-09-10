@@ -15,6 +15,12 @@ setupHappyDom();
 // through integration tests in a real browser environment.
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+const { default: Dropdown } = await import('./dropdown.svelte');
+const { default: DropdownCompoundFixture } =
+  await import('../../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: DropdownTriggerNoCaretFixture } =
+  await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Tests render into the shared `document.body` (see the `render` wrapper below).
 // Without unmounting between tests, prior renders linger in the DOM and leave
@@ -26,13 +32,6 @@ afterEach(() => {
   document.body.replaceChildren();
   _resetEscapeStack();
 });
-
-const { default: Dropdown } = await import('./dropdown.svelte');
-const { default: DropdownCompoundFixture } =
-  await import('../../test/fixtures/dropdown-compound-fixture.svelte');
-const { default: DropdownTriggerNoCaretFixture } =
-  await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
-const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open Menu</button>`,

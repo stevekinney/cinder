@@ -170,6 +170,19 @@
   // submenu-then-menubar close falls out of this naturally: each open
   // DropdownMenu instance — submenu, then top-level — registers separately,
   // so the submenu's registration sits above the top-level's on the stack).
+  //
+  // Split by `context.supportsPopover`, mirroring dropdown.svelte's own
+  // legacy native-popover branch: the fallback (non-popover) path dismisses
+  // directly. The native-popover path must NOT call `preventDefault()` —
+  // doing so would cancel the browser's own Escape close-request for the
+  // top-layer `popover="auto"` element, leaving it visually open (and
+  // `ontoggle` never firing to sync `context.isOpen` back to false) even
+  // though this handler had already called `setOpen(false)`. Registering a
+  // no-op still matters: without an entry here, a lower escape-stack overlay
+  // would incorrectly react to the same keystroke, since the stack only
+  // invokes the top-most handler. The browser's native light-dismiss closes
+  // the popover on its own, and `handleToggle`'s `ontoggle` listener keeps
+  // `context.isOpen` in sync once it does.
   function dismissMenu(event?: KeyboardEvent): void {
     event?.preventDefault();
     event?.stopPropagation();
@@ -178,8 +191,14 @@
   }
 
   $effect(() => {
-    if (!context.isOpen) return;
+    if (context.supportsPopover || !context.isOpen) return;
     const releaseEscape = pushEscapeHandler(dismissMenu);
+    return releaseEscape;
+  });
+
+  $effect(() => {
+    if (!context.supportsPopover || !context.isOpen) return;
+    const releaseEscape = pushEscapeHandler(() => {});
     return releaseEscape;
   });
 
