@@ -7,11 +7,23 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
 
-// happy-dom does not implement HTMLDialogElement.showModal / close — stub them.
+// happy-dom does not implement HTMLDialogElement.showModal / close — stub
+// them. `open` is reflected as a real IDL property (not just an attribute,
+// see drawer.test.ts's identical stub) and `close()` dispatches the native
+// `close` event itself, the way a real browser's "close the dialog" steps
+// do — SlidingDialogState.handleClose() (wired to `onclose`) is now the sole
+// place that releases the scroll lock/escape registration, restores focus,
+// and reports `onClose`, so tests must let a genuine `close` event reach it
+// rather than asserting those effects happened synchronously.
 if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.showModal) {
     Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: true,
+          configurable: true,
+          writable: true,
+        });
         this.setAttribute('open', '');
       },
       configurable: true,
@@ -21,7 +33,13 @@ if (typeof HTMLDialogElement !== 'undefined') {
   if (!HTMLDialogElement.prototype.close) {
     Object.defineProperty(HTMLDialogElement.prototype, 'close', {
       value: function () {
+        Object.defineProperty(this, 'open', {
+          value: false,
+          configurable: true,
+          writable: true,
+        });
         this.removeAttribute('open');
+        this.dispatchEvent(new Event('close'));
       },
       configurable: true,
       writable: true,
@@ -29,7 +47,7 @@ if (typeof HTMLDialogElement !== 'undefined') {
   }
 }
 
-const { render, fireEvent, cleanup } = await import('@testing-library/svelte');
+const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
@@ -403,12 +421,15 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
     expect(cancelPrevented).toBe(true);
   });
 
-  test('Escape key via the escape stack closes the palette and fires onClose', async () => {
-    // This tests the pushEscapeHandler path: opening the palette registers a
-    // handler on the escape stack, and a keydown Escape on the window fires it.
+  test('Escape (native cancel event) closes the palette and fires onClose', async () => {
+    // Per OVERLAY-POLICY.md's "Escape priority" section: "Native <dialog> ESC
+    // dispatches via onCancel/onClose, not via the JS stack." SlidingDialogState
+    // registers a NO-OP handler on the escape stack purely for LIFO bookkeeping
+    // with other overlays — actual Escape handling is the native `cancel` event,
+    // routed through dialogState.handleNativeCancel() -> requestClose().
     let closeFired = false;
     let openValue = true;
-    render(CommandPalette, {
+    const { container } = render(CommandPalette, {
       props: {
         get open() {
           return openValue;
@@ -422,9 +443,9 @@ describe('CommandPalette — keyboard routing (no registered items)', () => {
         items: emptySnippet,
       },
     });
-    // Dispatch Escape on the window — the escape stack listens on window with capture.
-    await fireEvent.keyDown(window, { key: 'Escape' });
-    await tick();
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    await fireEvent(dialog, new Event('cancel', { cancelable: true }));
+    await settleCommandPalette();
     expect(openValue).toBe(false);
     expect(closeFired).toBe(true);
   });
@@ -614,9 +635,235 @@ describe('CommandPalette — close idempotency', () => {
       },
     });
     const dialog = container.querySelector('dialog') as HTMLDialogElement;
-    await fireEvent(dialog, new Event('close'));
-    await tick();
+    // Simulate a genuine external/native close: `dialog.close()` (the fixed
+    // happy-dom stub) both flips the `open` IDL property and dispatches the
+    // real `close` event itself — SlidingDialogState.handleClose() validates
+    // an unmatched (external) `close` event against `dialogElement.open` to
+    // detect staleness, so a bare synthetic `close` Event with `open` still
+    // `true` is correctly ignored rather than double-firing `onClose`.
+    dialog.close();
+    await settleCommandPalette();
     expect(closeCount).toBe(1);
+  });
+});
+
+// ── Exit-transition lifecycle (CIN-426) ───────────────────────────────────
+//
+// OVERLAY-POLICY.md, "Transition lifecycle" > "The contract": the component
+// renders data-cinder-closing on its animated element for the full duration
+// of the exit transition; the shared waitForTransitionCompletion helper —
+// not open flipping false — decides when the panel actually unmounts and
+// the native dialog closes. CommandPalette now gets this via
+// SlidingDialogState, the same mechanism Modal/Drawer use.
+
+describe('CommandPalette — exit transition lifecycle', () => {
+  test('keeps the panel mounted with data-cinder-closing until its exit transition finishes; dialog.close() fires only after completion', async () => {
+    // Stub a real (non-zero) transition duration for
+    // `.cinder-command-palette__panel` so `waitForTransitionCompletion`
+    // takes its transitionend-listening path instead of resolving on the
+    // next microtask — mirrors modal.test.ts's identical technique, the
+    // only way to observe the intermediate "closing but still mounted"
+    // state.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-command-palette__panel')
+      ) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(CommandPalette, {
+        props: { open: true, items: emptySnippet },
+      });
+
+      const dialog = container.querySelector('dialog') as HTMLDialogElement;
+      await rerender({ open: false, items: emptySnippet });
+
+      // `open` flips synchronously, but the native <dialog> and the panel's
+      // DOM node must both survive the exit transition instead of vanishing
+      // in the same tick.
+      expect(dialog.hasAttribute('open')).toBe(true);
+      const panel = container.querySelector('.cinder-command-palette__panel');
+      expect(panel).not.toBeNull();
+      expect(panel?.hasAttribute('data-cinder-closing')).toBe(true);
+
+      for (const propertyName of ['opacity', 'translate']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        panel?.dispatchEvent(event);
+      }
+
+      await waitFor(() => {
+        expect(dialog.hasAttribute('open')).toBe(false);
+        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('closes immediately under prefers-reduced-motion: reduce', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = ((media: string): MediaQueryList =>
+      ({
+        matches: media === '(prefers-reduced-motion: reduce)',
+        media,
+        onchange: null,
+        addEventListener: () => {},
+        removeEventListener: () => {},
+        addListener: () => {},
+        removeListener: () => {},
+        dispatchEvent: () => true,
+      }) as MediaQueryList) as typeof window.matchMedia;
+
+    // Stub a real transition duration too — if this test passed only because
+    // happy-dom's DEFAULT computed style is a zero duration, it would not
+    // actually prove the reduced-motion path is what caused the immediate
+    // close (see the "attribute override" test below for the companion
+    // case: zero duration WITHOUT the reduced-motion hook returning true).
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-command-palette__panel')
+      ) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(CommandPalette, {
+        props: { open: true, items: emptySnippet },
+      });
+
+      await rerender({ open: false, items: emptySnippet });
+
+      // useReducedMotion() reports true, so SlidingDialogState passes
+      // reducedMotion: true to waitForTransitionCompletion, which ignores
+      // the (non-zero) computed duration entirely and resolves via
+      // queueMicrotask regardless.
+      await waitFor(() => {
+        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
+      });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('closes immediately when duration tokens are collapsed to 0 by attribute override (no reduced-motion preference)', async () => {
+    // No matchMedia mock — useReducedMotion() reports false. This proves the
+    // CSS-side collapse (tokens-base.css's `[data-cinder-reduced-motion]`/
+    // `[data-reduced-motion]` attribute overrides collapsing every
+    // `--cinder-duration-*` token to 0ms) is independently sufficient:
+    // waitForTransitionCompletion reads the ACTUAL computed duration, not
+    // just the JS reducedMotion flag, per OVERLAY-POLICY.md's ruling that
+    // "CSS-side overrides cannot disagree with the JS wait."
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-command-palette__panel')
+      ) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '0ms, 0ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(CommandPalette, {
+        props: { open: true, items: emptySnippet },
+      });
+
+      await rerender({ open: false, items: emptySnippet });
+
+      await waitFor(() => {
+        expect(container.querySelector('.cinder-command-palette__panel')).toBeNull();
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('reopening mid-close does not unmount the freshly reopened palette', async () => {
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (
+        target instanceof HTMLElement &&
+        target.classList.contains('cinder-command-palette__panel')
+      ) {
+        return {
+          transitionProperty: 'opacity, translate',
+          transitionDuration: '80ms, 80ms',
+          transitionDelay: '0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      const { container, rerender } = render(CommandPalette, {
+        props: { open: true, items: emptySnippet },
+      });
+
+      await rerender({ open: false, items: emptySnippet });
+      expect(container.querySelector('.cinder-command-palette__panel')).not.toBeNull();
+
+      // Reopen mid-transition, before any transitionend fires.
+      await rerender({ open: true, items: emptySnippet });
+
+      expect(container.querySelector('.cinder-command-palette__panel')).not.toBeNull();
+      expect(
+        container
+          .querySelector('.cinder-command-palette__panel')
+          ?.hasAttribute('data-cinder-closing'),
+      ).toBe(false);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+});
+
+// ── Scroll lock ────────────────────────────────────────────────────────────
+
+describe('CommandPalette — scroll lock', () => {
+  test('body scroll lock is acquired on open and released on close', async () => {
+    let openValue = true;
+    const { container } = render(CommandPalette, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        items: emptySnippet,
+      },
+    });
+
+    expect(document.body.style.overflow).toBe('hidden');
+
+    const dialog = container.querySelector('dialog') as HTMLDialogElement;
+    dialog.close();
+    await settleCommandPalette();
+    expect(document.body.style.overflow).toBe('');
   });
 });
 
