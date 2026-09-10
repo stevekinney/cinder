@@ -33,16 +33,16 @@ Invariants asserted in tests:
 
 ## Keyboard Contract
 
-| Key                 | Behavior                                                                                                         |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| `ArrowDown`         | Move active item to next non-disabled; wrap to first if at end. `preventDefault`.                                |
-| `ArrowUp`           | Move active item to previous non-disabled; wrap to last. `preventDefault`.                                       |
-| `Home`              | Move active item to first non-disabled. `preventDefault` (prevents caret jump).                                  |
-| `End`               | Move active item to last non-disabled. `preventDefault`.                                                         |
-| `Enter`             | Invoke the active item's `onSelect`. `preventDefault` (prevents form submission).                                |
-| `Escape`            | Close the palette via the shared escape stack. Single-sourced through `closePalette()`.                          |
-| `Tab` / `Shift+Tab` | Native `<dialog>` focus trap (browser-level). Focus cycles through interactive elements in the panel and footer. |
-| Typing              | Updates `query` (bindable). Items snippet re-renders with the new query.                                         |
+| Key                 | Behavior                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ArrowDown`         | Move active item to next non-disabled; wrap to first if at end. `preventDefault`.                                                                                                                                                                                                                                                                                                                   |
+| `ArrowUp`           | Move active item to previous non-disabled; wrap to last. `preventDefault`.                                                                                                                                                                                                                                                                                                                          |
+| `Home`              | Move active item to first non-disabled. `preventDefault` (prevents caret jump).                                                                                                                                                                                                                                                                                                                     |
+| `End`               | Move active item to last non-disabled. `preventDefault`.                                                                                                                                                                                                                                                                                                                                            |
+| `Enter`             | Invoke the active item's `onSelect`. `preventDefault` (prevents form submission).                                                                                                                                                                                                                                                                                                                   |
+| `Escape`            | Native `<dialog>` `cancel` event, prevented and routed through `SlidingDialogState.handleNativeCancel()` → `requestClose()`. Per OVERLAY-POLICY.md's "Escape priority" section, native `<dialog>` ESC does not go through the shared JS escape stack — the palette still registers a no-op stack entry (via `SlidingDialogState`) purely so lower overlays' own stack handlers arbitrate correctly. |
+| `Tab` / `Shift+Tab` | Native `<dialog>` focus trap (browser-level). Focus cycles through interactive elements in the panel and footer.                                                                                                                                                                                                                                                                                    |
+| Typing              | Updates `query` (bindable). Items snippet re-renders with the new query.                                                                                                                                                                                                                                                                                                                            |
 
 The active descendant is scrolled with `scrollIntoView({ block: 'nearest' })` whenever keyboard or pointer movement changes it, so long result sets remain navigable without moving DOM focus out of the search input.
 
@@ -66,9 +66,9 @@ The empty state renders inside a `role="status"` region so screen readers announ
 
 ## Reduced Motion
 
-Panel enter/exit transitions are gated behind `@media (prefers-reduced-motion: no-preference)`. An opacity-only fallback applies under `prefers-reduced-motion: reduce`.
+Panel enter/exit is `transition`-driven (`opacity`/`translate` on `.cinder-command-palette__panel`, keyed off `[data-cinder-closing]` on exit — see OVERLAY-POLICY.md's "Transition lifecycle" section), not `animation`-driven. No separate reduced-motion CSS override is needed: the `--cinder-duration-*` tokens it transitions with already collapse to `0ms` under `prefers-reduced-motion: reduce` (and the `data-cinder-reduced-motion`/`data-reduced-motion` attribute overrides), matching every other `SlidingDialogState`-driven overlay (Modal, Drawer). The close path also routes through `useReducedMotion()` so `waitForTransitionCompletion` never waits on a transition that will not fire.
 
-`backdrop-filter: blur()` is a separate capability/performance decision gated via `@supports (backdrop-filter: blur(1px))` — this is a capability check, not a motion check. A solid-fill backdrop is the fallback for browsers that lack it.
+`backdrop-filter: blur()` is a separate capability/performance decision gated via `@supports (backdrop-filter: blur(1px))` — this is a capability check, not a motion check. A solid-fill backdrop is the fallback for browsers that lack it. The palette's `::backdrop` itself has no enter/exit transition (static background/blur) — this is a known, separate class-level gap tracked outside CIN-426 (OVERLAY-POLICY.md), not specific to Command Palette.
 
 ## Grouped Sections (v1)
 
