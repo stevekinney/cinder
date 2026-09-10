@@ -12,6 +12,7 @@ import {
   collectEntries,
   type CorpusEntry,
   documentsForResolutionOrder,
+  findBareColorComponents,
   findDriftedPaths,
   requireDocument,
   resolveAlias,
@@ -2620,5 +2621,92 @@ describe('CIN-494: a theme-exclusive override still resets in the opposite theme
     expect(themeBlock(css, 'dark')).toContain(
       '--test-surface: light-dark(var(--test-raised), var(--test-inset));',
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// CIN-242: a public color token must resolve to a COMPLETE CSS color, never a
+// bare OKLCH component triplet. A bare triplet assigned to a color property is
+// an invalid declaration that the browser drops silently, so nothing
+// downstream -- not the contrast gate, not a screenshot diff -- reports it.
+// ---------------------------------------------------------------------------
+
+describe('CIN-242: complete color values only', () => {
+  function recipeEntry(cssRecipe: string, type: CorpusEntry['type'] = 'color'): CorpusEntry {
+    return colorEntry({
+      path: 'polarity.ink',
+      cssProperty: '--cinder-polarity-ink',
+      cssRecipe,
+      type,
+    });
+  }
+
+  test('rejects the bare-triplet polarity token the decision record rules out', () => {
+    // The literal shape CIN-242's decision record names: a component triplet
+    // per arm, meant to be stapled into `oklch(var(--token) / 0.4)` at a call
+    // site. Deliberately substituted here so the gate is proven to fire.
+    expect(() =>
+      serializeEntryValue(recipeEntry('light-dark(100% 0 0, 0% 0 0)'), new Map()),
+    ).toThrow(/bare component list rather than a complete CSS color/);
+  });
+
+  test('rejects a bare triplet in a single arm, and inside a color-mix argument', () => {
+    expect(() =>
+      serializeEntryValue(recipeEntry('light-dark(oklch(0% 0 0), 100% 0 0)'), new Map()),
+    ).toThrow(/bare component list/);
+    expect(() =>
+      serializeEntryValue(recipeEntry('color-mix(in oklch, 0% 0 0, transparent 96%)'), new Map()),
+    ).toThrow(/bare component list/);
+  });
+
+  test('accepts every complete-value shape the corpus actually ships', () => {
+    const accepted = [
+      'light-dark(oklch(0% 0 0), oklch(100% 0 0))',
+      'color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)',
+      'light-dark(transparent, var(--cinder-border-strong))',
+      'oklch(from var(--cinder-accent-solid) 0.7 0.14 h)',
+      // The status-tier recipe: a relative-color form whose own body is a bare
+      // component list by design. Descending into it would be a false positive.
+      'oklch( from color-mix(in oklch, var(--cinder-info), var(--cinder-surface) 36%) l min(c, 0.05) h )',
+      '#fff',
+      'currentColor',
+    ];
+    for (const recipe of accepted) {
+      expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
+    }
+  });
+
+  test('leaves non-color tokens alone -- a shadow recipe is a component list by nature', () => {
+    const shadow = '0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09))';
+    expect(serializeEntryValue(recipeEntry(shadow, 'shadow'), new Map())).toBe(shadow);
+  });
+
+  test('every color declaration the corpus emits is already a complete value', async () => {
+    // The gate above runs inside the generator, so this is the artifact-side
+    // restatement: it reads the COMMITTED stylesheet and the COMMITTED
+    // registry rather than regenerating either, and so also covers a hand-edit
+    // or a bad merge. Which properties are colors comes from the registry's
+    // own `category`, not from a name pattern -- a spacing or shadow value is
+    // a component list by design and must not be flagged.
+    const registry: unknown = JSON.parse(
+      await Bun.file(
+        join(import.meta.dir, '..', '..', 'src', 'tokens', 'registry.generated.json'),
+      ).text(),
+    );
+    const entries = (registry as { entries: { cssProperty: string; category?: string }[] }).entries;
+    const colorProperties = new Set(
+      entries.filter((entry) => entry.category === 'color').map((entry) => entry.cssProperty),
+    );
+    expect(colorProperties.size).toBeGreaterThan(100);
+
+    const css = await Bun.file(tokensBaseCssPath).text();
+    const bare: string[] = [];
+    for (const [, property = '', value = ''] of css.matchAll(
+      /(--cinder-[a-z0-9-]+):\s*([^;]+);/g,
+    )) {
+      if (!colorProperties.has(property)) continue;
+      if (findBareColorComponents(value) !== undefined) bare.push(`${property}: ${value.trim()}`);
+    }
+    expect(bare).toEqual([]);
   });
 });

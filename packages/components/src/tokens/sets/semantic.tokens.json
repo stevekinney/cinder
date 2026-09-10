@@ -159,6 +159,24 @@
       }
     }
   },
+  "polarity": {
+    "$type": "color",
+    "ink": {
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0, 0, 0]
+      },
+      "$description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together.",
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssProperty": "--cinder-polarity-ink",
+          "public": true,
+          "category": "color",
+          "cssRecipe": "light-dark(oklch(0% 0 0), oklch(100% 0 0))"
+        }
+      }
+    }
+  },
   "border": {
     "$type": "color",
     "control": {
@@ -583,7 +601,7 @@
           "cssProperty": "--cinder-scrollbar-track",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04))"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)"
         }
       }
     },
@@ -600,7 +618,7 @@
           "cssProperty": "--cinder-scrollbar-thumb",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)"
         }
       }
     },
@@ -617,7 +635,7 @@
           "cssProperty": "--cinder-scrollbar-thumb-hover",
           "public": true,
           "category": "color",
-          "cssRecipe": "light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))"
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)"
         }
       }
     }
@@ -1171,7 +1189,10 @@
   "severity": {
     "$type": "color",
     "critical": {
-      "$value": { "colorSpace": "oklch", "components": [0.38, 0.18, 25] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.38, 0.18, 25]
+      },
       "$description": "Highest-severity badge foreground.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -1183,7 +1204,10 @@
       }
     },
     "critical-background": {
-      "$value": { "colorSpace": "oklch", "components": [0.93, 0.045, 25] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.93, 0.045, 25]
+      },
       "$description": "Highest-severity badge background.",
       "$extensions": {
         "com.lostgradient.cinder": {
@@ -1199,7 +1223,10 @@
     "$type": "color",
     "$description": "ANSI 16-color foreground ramp for terminal output.",
     "ansi-black": {
-      "$value": { "colorSpace": "oklch", "components": [0.25, 0, 0] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.25, 0, 0]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-black",
@@ -1210,7 +1237,10 @@
       }
     },
     "ansi-red": {
-      "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 25] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.42, 0.16, 25]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-red",
@@ -1221,7 +1251,10 @@
       }
     },
     "ansi-green": {
-      "$value": { "colorSpace": "oklch", "components": [0.38, 0.13, 145] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.38, 0.13, 145]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-green",
@@ -1232,7 +1265,10 @@
       }
     },
     "ansi-yellow": {
-      "$value": { "colorSpace": "oklch", "components": [0.48, 0.14, 85] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.48, 0.14, 85]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-yellow",
@@ -1243,7 +1279,10 @@
       }
     },
     "ansi-blue": {
-      "$value": { "colorSpace": "oklch", "components": [0.4, 0.16, 260] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.4, 0.16, 260]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-blue",
@@ -1254,7 +1293,10 @@
       }
     },
     "ansi-magenta": {
-      "$value": { "colorSpace": "oklch", "components": [0.42, 0.16, 325] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.42, 0.16, 325]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-magenta",
@@ -1265,7 +1307,10 @@
       }
     },
     "ansi-cyan": {
-      "$value": { "colorSpace": "oklch", "components": [0.35, 0.11, 205] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.35, 0.11, 205]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-cyan",
@@ -1276,7 +1321,10 @@
       }
     },
     "ansi-white": {
-      "$value": { "colorSpace": "oklch", "components": [0.18, 0, 0] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.18, 0, 0]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-white",
@@ -1287,7 +1335,10 @@
       }
     },
     "ansi-bright-black": {
-      "$value": { "colorSpace": "oklch", "components": [0.42, 0, 0] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.42, 0, 0]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-black",
@@ -1298,7 +1349,10 @@
       }
     },
     "ansi-bright-red": {
-      "$value": { "colorSpace": "oklch", "components": [0.52, 0.18, 25] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.52, 0.18, 25]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-red",
@@ -1309,7 +1363,10 @@
       }
     },
     "ansi-bright-green": {
-      "$value": { "colorSpace": "oklch", "components": [0.48, 0.15, 145] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.48, 0.15, 145]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-green",
@@ -1320,7 +1377,10 @@
       }
     },
     "ansi-bright-yellow": {
-      "$value": { "colorSpace": "oklch", "components": [0.52, 0.16, 85] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.52, 0.16, 85]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-yellow",
@@ -1331,7 +1391,10 @@
       }
     },
     "ansi-bright-blue": {
-      "$value": { "colorSpace": "oklch", "components": [0.5, 0.18, 260] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.5, 0.18, 260]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-blue",
@@ -1342,7 +1405,10 @@
       }
     },
     "ansi-bright-magenta": {
-      "$value": { "colorSpace": "oklch", "components": [0.54, 0.18, 325] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.54, 0.18, 325]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-magenta",
@@ -1353,7 +1419,10 @@
       }
     },
     "ansi-bright-cyan": {
-      "$value": { "colorSpace": "oklch", "components": [0.45, 0.13, 205] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.45, 0.13, 205]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-cyan",
@@ -1364,7 +1433,10 @@
       }
     },
     "ansi-bright-white": {
-      "$value": { "colorSpace": "oklch", "components": [0.1, 0, 0] },
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.1, 0, 0]
+      },
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-terminal-ansi-bright-white",

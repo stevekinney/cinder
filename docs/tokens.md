@@ -196,10 +196,13 @@ Background and surface tokens for the three core elevations — page background,
 | `--cinder-surface-inverse`         | `light-dark(var(--cinder-text-default), var(--cinder-surface-raised))`                                                                                                    | Inverse surface, used by Tooltip to stay a dark overlay in both themes. Light arm mirrors the text/surface swap (dark bg, light fg); dark arm uses the elevated surface + near-white text so the tooltip reads as a dark elevated layer rather than inverting to light.                                                                                                                                                                                                         |
 | `--cinder-text-inverse`            | `light-dark(var(--cinder-surface), var(--cinder-text-default))`                                                                                                           | Text color for use on `surface.inverse` (Tooltip).                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `--cinder-border-inverse`          | `light-dark(transparent, var(--cinder-border-strong))`                                                                                                                    | Border for surfaces using `surface.inverse` (Tooltip). Transparent in light mode; adds a 1px delineation in dark mode only.                                                                                                                                                                                                                                                                                                                                                     |
+| `--cinder-polarity-ink`            | `light-dark(oklch(0% 0 0), oklch(100% 0 0))`                                                                                                                              | The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together.                                                          |
 
 <!-- END GENERATED TOKEN TABLE -->
 
 `--cinder-surface-upcoming-marker` is the background for Steps component upcoming-state markers. In light mode it resolves to `--cinder-surface-inset` (visibly recessed); in dark mode it lifts to `--cinder-surface` so the marker is visible against the dark stage. `--cinder-surface-inverse`, `--cinder-text-inverse`, and `--cinder-border-inverse` form the dark-overlay triple used by Tooltip — both arms render a dark overlay with legible light text (no theme inversion occurs in dark mode).
+
+`--cinder-polarity-ink` is the ink that contrasts with whatever the theme paints underneath it — black in light mode, white in dark mode. Every polarity-aware wash in the corpus is a `color-mix()` over it, so the scrollbar track, thumb, and thumb-hover tiers all re-polarize together when it is overridden. It is deliberately a _complete_ color value rather than a bare `0% 0 0` component triplet: a bare triplet assigned to a color property is an invalid declaration, and CSS drops invalid declarations silently, so the mistake renders as "nothing changed" instead of as something you can see. Build your own wash with `color-mix(in oklch, var(--cinder-polarity-ink), transparent 90%)` rather than reaching for `oklch(var(--token) / 0.1)`.
 
 Form controls sit on `--cinder-surface-raised` in both themes. `--cinder-surface` is a page or panel surface and must never be used as an input fill. Interior component dividers use `--cinder-border-muted`; reserve `--cinder-border` for the component's outer edge. Forced-colors styles may restore system-color hairlines where background separation is unavailable.
 
@@ -471,12 +474,12 @@ Themed native scrollbars for components that opt in via `scrollbar-width` and `:
 
 <!-- BEGIN GENERATED TOKEN TABLE: scrollbars -->
 
-| Token                            | Default                                                    | Description                  |
-| -------------------------------- | ---------------------------------------------------------- | ---------------------------- |
-| `--cinder-scrollbar-size`        | `0.625rem`                                                 | Scrollbar thickness.         |
-| `--cinder-scrollbar-track`       | `light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04))` | Scrollbar track color.       |
-| `--cinder-scrollbar-thumb`       | `light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45))` | Scrollbar thumb color.       |
-| `--cinder-scrollbar-thumb-hover` | `light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65))` | Scrollbar thumb hover color. |
+| Token                            | Default                                                            | Description                  |
+| -------------------------------- | ------------------------------------------------------------------ | ---------------------------- |
+| `--cinder-scrollbar-size`        | `0.625rem`                                                         | Scrollbar thickness.         |
+| `--cinder-scrollbar-track`       | `color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)` | Scrollbar track color.       |
+| `--cinder-scrollbar-thumb`       | `color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)` | Scrollbar thumb color.       |
+| `--cinder-scrollbar-thumb-hover` | `color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)` | Scrollbar thumb hover color. |
 
 <!-- END GENERATED TOKEN TABLE -->
 

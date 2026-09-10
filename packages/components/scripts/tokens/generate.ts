@@ -669,11 +669,106 @@ function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry
   return baseIndex.get(wholeTokenIndexPath(reference))?.cssProperty !== undefined;
 }
 
+/**
+ * The two color functions whose ARGUMENTS are themselves `<color>` values, and
+ * so have to be checked recursively by {@link findBareColorComponents}.
+ *
+ * Every other color function -- `oklch()`, `rgb()`, `color()`, and the
+ * relative-color `oklch(from … l c h)` form -- takes numbers, so descending
+ * into one would flag the bare component list it is SUPPOSED to contain.
+ */
+const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
+
+/** Split on commas at paren depth zero, so nested function arguments stay whole. */
+function splitTopLevelArguments(value: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const character of value) {
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    if (character === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += character;
+  }
+  parts.push(current);
+  return parts.map((part) => part.trim());
+}
+
+/**
+ * The first fragment of `value` that sits in a `<color>` position but is not a
+ * complete CSS color -- or `undefined` when every color position is complete.
+ *
+ * This exists for one failure mode, from CIN-242's decision record: a token
+ * authored as a BARE OKLCH COMPONENT TRIPLET (`light-dark(0% 0 0, 100% 0 0)`,
+ * so a call site can staple its own alpha on with `oklch(var(--token) / 0.4)`)
+ * is not a color. Assigned directly to `color`/`background-color`/
+ * `border-color` it produces an invalid declaration, which CSS drops SILENTLY
+ * -- the element keeps its inherited or initial color and nothing anywhere
+ * reports a problem. A complete value that is mis-referenced instead paints a
+ * visibly wrong color, which is catchable. Hence: complete values only.
+ *
+ * A color position is complete when it starts a function (`oklch(`, `var(`,
+ * `color-mix(`, …), a hex literal, or a bare keyword (`transparent`,
+ * `currentColor`). A component list starts with a number, so it is exactly
+ * what falls through.
+ */
+export function findBareColorComponents(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed === '') return undefined;
+
+  const functionCall = /^([a-zA-Z-]+)\(([\s\S]*)\)$/.exec(trimmed);
+  if (functionCall) {
+    const [, name = '', body = ''] = functionCall;
+    if (!COLOR_ARGUMENT_FUNCTIONS.has(name.toLowerCase())) return undefined;
+    const args = splitTopLevelArguments(body);
+    // `color-mix()`'s first argument is its interpolation method (`in oklch`),
+    // not a color; `light-dark()`'s arguments are all colors.
+    const colorArguments = name.toLowerCase() === 'color-mix' ? args.slice(1) : args;
+    for (const argument of colorArguments) {
+      // A mix argument may carry a trailing percentage: `var(--ink) 30%`.
+      const withoutPercentage = argument.replace(/\s+[\d.]+%$/, '').trim();
+      const bare = findBareColorComponents(withoutPercentage);
+      if (bare !== undefined) return bare;
+    }
+    return undefined;
+  }
+
+  // A hex literal, or a bare keyword such as `transparent` / `currentColor`.
+  if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) return undefined;
+  if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(trimmed)) return undefined;
+
+  return trimmed;
+}
+
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
 export function serializeEntryValue(
   entry: CorpusEntry,
   baseIndex: Map<string, CorpusEntry>,
   resolveReferences: ValueResolver = (raw) => raw,
+): string {
+  const serialized = serializeEntryValueUnchecked(entry, baseIndex, resolveReferences);
+  if (entry.type === 'color') {
+    const bare = findBareColorComponents(serialized);
+    if (bare !== undefined) {
+      throw new Error(
+        `Color token at "${entry.path}" serializes to "${serialized}", whose color position ` +
+          `"${bare}" is a bare component list rather than a complete CSS color. A bare triplet ` +
+          'is an invalid declaration that the browser drops silently; author the token as a ' +
+          'complete `light-dark()`/`color-mix()`/`oklch()` value instead (CIN-242).',
+      );
+    }
+  }
+  return serialized;
+}
+
+function serializeEntryValueUnchecked(
+  entry: CorpusEntry,
+  baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver,
 ): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
   if (isAliasReference(entry.value)) {

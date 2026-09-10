@@ -229,6 +229,8 @@
   --cinder-surface-upcoming-marker: light-dark(var(--cinder-surface-inset), var(--cinder-surface));
   /* Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness. */
   --cinder-surface-canvas: light-dark(oklch(98.4% 0.003 255), oklch(15% 0.035 245));
+  /* The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together. */
+  --cinder-polarity-ink: light-dark(oklch(0% 0 0), oklch(100% 0 0));
   /* Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill. */
   --cinder-border: light-dark(oklch(63% 0.006 255), oklch(58% 0.05 245));
   /* Decorative-only hairline. Never use as a control boundary: it is intentionally below the WCAG 1.4.11 3:1 non-text threshold. */
@@ -289,11 +291,11 @@
   /* Scrollbar thickness. */
   --cinder-scrollbar-size: 0.625rem;
   /* Scrollbar track color. */
-  --cinder-scrollbar-track: light-dark(oklch(0% 0 0 / 0.04), oklch(100% 0 0 / 0.04));
+  --cinder-scrollbar-track: color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%);
   /* Scrollbar thumb color. */
-  --cinder-scrollbar-thumb: light-dark(oklch(0% 0 0 / 0.45), oklch(100% 0 0 / 0.45));
+  --cinder-scrollbar-thumb: color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%);
   /* Scrollbar thumb hover color. */
-  --cinder-scrollbar-thumb-hover: light-dark(oklch(0% 0 0 / 0.65), oklch(100% 0 0 / 0.65));
+  --cinder-scrollbar-thumb-hover: color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%);
   /* Overlay backdrop scrim color. */
   --cinder-overlay-backdrop: light-dark(oklch(20% 0.03 245 / 0.5), oklch(8% 0.02 245 / 0.65));
   /* Overlay backdrop blur radius. */
@@ -703,6 +705,7 @@
   --cinder-surface-inverse: var(--cinder-surface-raised);
   --cinder-surface-upcoming-marker: var(--cinder-surface);
   --cinder-surface-canvas: oklch(15% 0.035 245);
+  --cinder-polarity-ink: oklch(100% 0 0);
   --cinder-border: oklch(58% 0.05 245);
   --cinder-border-faint: oklch(33% 0.03 245);
   --cinder-border-muted: oklch(38% 0.04 245);
@@ -730,9 +733,9 @@
   --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.7 0.14 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(100% 0 0);
-  --cinder-scrollbar-track: oklch(100% 0 0 / 0.04);
-  --cinder-scrollbar-thumb: oklch(100% 0 0 / 0.45);
-  --cinder-scrollbar-thumb-hover: oklch(100% 0 0 / 0.65);
+  --cinder-scrollbar-track: color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%);
+  --cinder-scrollbar-thumb: color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%);
+  --cinder-scrollbar-thumb-hover: color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%);
   --cinder-overlay-backdrop: oklch(8% 0.02 245 / 0.65);
   --cinder-shadow-sm: 0 1px 2px oklch(100% 0 0 / 0.09), 0 1px 1px oklch(100% 0 0 / 0.05);
   --cinder-shadow-md: 0 4px 6px -1px oklch(100% 0 0 / 0.09), 0 2px 4px -2px oklch(100% 0 0 / 0.06);
@@ -867,6 +870,7 @@
   --cinder-surface-inverse: var(--cinder-text-default);
   --cinder-surface-upcoming-marker: var(--cinder-surface-inset);
   --cinder-surface-canvas: oklch(98.4% 0.003 255);
+  --cinder-polarity-ink: oklch(0% 0 0);
   --cinder-border: oklch(63% 0.006 255);
   --cinder-border-faint: oklch(92% 0.003 255);
   --cinder-border-muted: oklch(85% 0.004 255);
@@ -894,9 +898,9 @@
   --cinder-ring-color: oklch(from var(--cinder-accent-solid) 0.55 0.16 h);
   --cinder-ring-offset-color: var(--cinder-surface-raised);
   --cinder-ring-on-accent: oklch(15% 0.035 245);
-  --cinder-scrollbar-track: oklch(0% 0 0 / 0.04);
-  --cinder-scrollbar-thumb: oklch(0% 0 0 / 0.45);
-  --cinder-scrollbar-thumb-hover: oklch(0% 0 0 / 0.65);
+  --cinder-scrollbar-track: color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%);
+  --cinder-scrollbar-thumb: color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%);
+  --cinder-scrollbar-thumb-hover: color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%);
   --cinder-overlay-backdrop: oklch(20% 0.03 245 / 0.5);
   --cinder-shadow-sm: 0 1px 2px oklch(0% 0 0 / 0.1), 0 1px 1px oklch(0% 0 0 / 0.06);
   --cinder-shadow-md: 0 4px 6px -1px oklch(0% 0 0 / 0.12), 0 2px 4px -2px oklch(0% 0 0 / 0.1);

@@ -80,6 +80,15 @@
       }
     }
   },
+  "polarity": {
+    "$type": "color",
+    "ink": {
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0, 0, 0]
+      }
+    }
+  },
   "border": {
     "$type": "color",
     "control": {
@@ -299,6 +308,11 @@
         "colorSpace": "oklch",
         "components": [0, 0, 0],
         "alpha": 0.04
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 96%)"
+        }
       }
     },
     "thumb": {
@@ -307,6 +321,11 @@
         "colorSpace": "oklch",
         "components": [0, 0, 0],
         "alpha": 0.45
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 55%)"
+        }
       }
     },
     "thumb-hover": {
@@ -315,6 +334,11 @@
         "colorSpace": "oklch",
         "components": [0, 0, 0],
         "alpha": 0.65
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-polarity-ink), transparent 35%)"
+        }
       }
     }
   },

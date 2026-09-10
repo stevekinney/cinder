@@ -242,6 +242,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
       '--cinder-surface-inverse',
       '--cinder-text-inverse',
       '--cinder-border-inverse',
+      '--cinder-polarity-ink',
     ],
   },
   {

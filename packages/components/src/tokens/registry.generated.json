@@ -892,6 +892,15 @@
       "description": "Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness."
     },
     {
+      "path": "polarity.ink",
+      "cssProperty": "--cinder-polarity-ink",
+      "category": "color",
+      "public": true,
+      "themeAware": true,
+      "deprecated": false,
+      "description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together."
+    },
+    {
       "path": "border.control",
       "cssProperty": "--cinder-border",
       "category": "color",
@@ -2962,6 +2971,7 @@
     "surface.inverse": "--cinder-surface-inverse",
     "surface.upcoming-marker": "--cinder-surface-upcoming-marker",
     "surface.canvas": "--cinder-surface-canvas",
+    "polarity.ink": "--cinder-polarity-ink",
     "border.control": "--cinder-border",
     "border.faint": "--cinder-border-faint",
     "border.muted": "--cinder-border-muted",
@@ -3272,6 +3282,7 @@
     "--cinder-surface-inverse": "surface.inverse",
     "--cinder-surface-upcoming-marker": "surface.upcoming-marker",
     "--cinder-surface-canvas": "surface.canvas",
+    "--cinder-polarity-ink": "polarity.ink",
     "--cinder-border": "border.control",
     "--cinder-border-faint": "border.faint",
     "--cinder-border-muted": "border.muted",
@@ -3582,6 +3593,7 @@
     "--cinder-surface-inverse": ["surface.inverse"],
     "--cinder-surface-upcoming-marker": ["surface.upcoming-marker"],
     "--cinder-surface-canvas": ["surface.canvas"],
+    "--cinder-polarity-ink": ["polarity.ink"],
     "--cinder-border": ["border.control"],
     "--cinder-border-faint": ["border.faint"],
     "--cinder-border-muted": ["border.muted"],
@@ -3998,6 +4010,7 @@
       "surface.inverse",
       "surface.upcoming-marker",
       "surface.canvas",
+      "polarity.ink",
       "border.control",
       "border.faint",
       "border.muted",
