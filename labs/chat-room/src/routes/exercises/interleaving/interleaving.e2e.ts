@@ -165,6 +165,15 @@ test.describe('interleaving: submit a new message immediately after stopping a s
 		const log = page.getByTestId('interleaving-log');
 		const messagesLog = chat.getByRole('log', { name: 'Messages' });
 
+		// Park the FIRST send mid-stream; the latch is one-shot, so the second
+		// message below still streams to completion. Without this the send loop runs on a fixed
+		// per-token delay and a loaded machine can finish it between the text
+		// rendering and the click landing — which detaches the
+		// Stop button mid-click, so the failure reads as a timeout rather than
+		// as the race it is. The sibling test above holds the retry path the
+		// same way.
+		await page.getByRole('checkbox', { name: 'Hold the next send mid-stream' }).check();
+
 		await chat.getByRole('textbox', { name: 'Message' }).fill('First message, will be stopped.');
 		await chat.getByRole('button', { name: 'Send message' }).click();
 		await expect(messagesLog).toContainText('Sure, here');

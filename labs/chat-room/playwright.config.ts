@@ -9,8 +9,9 @@ import { defineConfig } from '@playwright/test';
 //     from Chromium's, and every "confirmed in a real browser" claim this repo
 //     has made about focus was confirmed in exactly one engine.
 //   - STREAMING / FETCH. `ReadableStream` backpressure and chunk-delivery timing
-//     have known WebKit quirks. Only `page.svelte.e2e.ts` drives a real network
-//     read (`fetch` → `getReader()`); the rest listed here drive in-page adapters,
+//     have known WebKit quirks. `page.svelte.e2e.ts` and `approval-flow.e2e.ts`
+//     drive a real network read (`fetch` → `getReader()`); the rest listed here
+//     drive in-page adapters,
 //     so they exercise JS timing rather than engine fetch behavior — included
 //     because the abort/interleave paths are still engine-observable, not because
 //     they touch the network.
@@ -34,7 +35,20 @@ const CROSS_ENGINE_SHARDS = [
 		'**/diff-viewer.e2e.ts',
 		'**/interleaving.e2e.ts'
 	],
-	['**/markdown-editor.e2e.ts', '**/message-lifecycle.e2e.ts', '**/review-comment-creation.e2e.ts'],
+	[
+		'**/markdown-editor.e2e.ts',
+		'**/message-lifecycle.e2e.ts',
+		'**/review-comment-creation.e2e.ts',
+		// A real fetch/ReadableStream path, which is precisely what these
+		// cross-engine shards exist for — Chromium-only coverage of it would be
+		// the silent reduction this list is meant to prevent.
+		//
+		// Placed in THIS shard by measurement, not by eye: with the five
+		// approval tests, `--list` per project counts 49/48/62/44/50. The
+		// obvious-looking home next to `review-imperative` was already at the
+		// 62 the ceiling note describes, and would have gone to 67.
+		'**/approval-flow.e2e.ts'
+	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
 	['**/review-modes.e2e.ts', '**/review-ssr-and-a11y.e2e.ts'],
 	[
