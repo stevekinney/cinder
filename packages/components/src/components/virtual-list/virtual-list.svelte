@@ -68,7 +68,6 @@
     resolveWindowViewportSize,
   } from './_internal/window-scroll.ts';
   import {
-    clearScrollPosition,
     loadScrollPosition,
     saveScrollPosition,
     type ScrollRestorationPosition,
@@ -172,6 +171,8 @@
   let windowScrollOffset = $state(0);
   /** True while a window-scrolled list sits entirely outside the viewport. */
   let isWindowListOffscreen = $state(false);
+  /** Item count at the last failed restore, so incremental loading can keep trying. */
+  let lastRestoreAttemptCount = 0;
   /** The position as of the last render, so a teardown never has to re-derive it. */
   let latestPosition: ScrollRestorationPosition | undefined;
   /**
@@ -373,7 +374,12 @@
   $effect(() => {
     if (!windowScroll) return;
     const element = scrollElement;
-    if (!element || typeof window === 'undefined') return;
+    if (!element) return;
+    // The element's OWN window, not the module's global: mounted into an iframe or
+    // another document, the two are different objects and the list would be
+    // listening to a page that never scrolls.
+    const view = element.ownerDocument.defaultView;
+    if (!view) return;
 
     const handleWindowGeometryChange = () => {
       if (isDestroyed) return;
@@ -388,21 +394,21 @@
       if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
     };
 
-    window.addEventListener('scroll', handleWindowGeometryChange, { passive: true });
-    window.addEventListener('resize', handleWindowGeometryChange, { passive: true });
-    window.addEventListener('wheel', handleWindowTakeover, { passive: true });
-    window.addEventListener('pointerdown', handleWindowTakeover, { passive: true });
-    window.addEventListener('touchstart', handleWindowTakeover, { passive: true });
-    window.addEventListener('keydown', handleWindowKeyTakeover, { passive: true });
+    view.addEventListener('scroll', handleWindowGeometryChange, { passive: true });
+    view.addEventListener('resize', handleWindowGeometryChange, { passive: true });
+    view.addEventListener('wheel', handleWindowTakeover, { passive: true });
+    view.addEventListener('pointerdown', handleWindowTakeover, { passive: true });
+    view.addEventListener('touchstart', handleWindowTakeover, { passive: true });
+    view.addEventListener('keydown', handleWindowKeyTakeover, { passive: true });
     handleWindowGeometryChange();
 
     return () => {
-      window.removeEventListener('scroll', handleWindowGeometryChange);
-      window.removeEventListener('resize', handleWindowGeometryChange);
-      window.removeEventListener('wheel', handleWindowTakeover);
-      window.removeEventListener('pointerdown', handleWindowTakeover);
-      window.removeEventListener('touchstart', handleWindowTakeover);
-      window.removeEventListener('keydown', handleWindowKeyTakeover);
+      view.removeEventListener('scroll', handleWindowGeometryChange);
+      view.removeEventListener('resize', handleWindowGeometryChange);
+      view.removeEventListener('wheel', handleWindowTakeover);
+      view.removeEventListener('pointerdown', handleWindowTakeover);
+      view.removeEventListener('touchstart', handleWindowTakeover);
+      view.removeEventListener('keydown', handleWindowKeyTakeover);
     };
   });
 
@@ -453,7 +459,6 @@
         restoredId = id;
         return;
       }
-      restoredId = id;
 
       // By KEY first, and BEFORE judging the index. An index stops describing the
       // same row once the collection changes while unmounted — which is exactly what
@@ -466,12 +471,29 @@
           : keyAt(anchorIndex) === saved.anchorKey);
 
       if (!anchorIsResolvable) {
-        // The remembered row genuinely no longer exists. Restoring to a clamped index
-        // would drop the reader somewhere arbitrary and then re-save that as if it
-        // were their place.
-        clearScrollPosition(storage, id);
+        // Not found is not the same as deleted. A feed that loads page by page has a
+        // first non-empty render that does not reach the saved row yet, and clearing
+        // here would delete the position before the page carrying it ever arrived.
+        //
+        // So: keep waiting while the collection is still growing, and only give up
+        // once a render arrives no larger than the last one that failed — at which
+        // point the row really is gone. `restoredId` stays unset meanwhile, so the
+        // next render tries again.
+        if (items.length > lastRestoreAttemptCount) {
+          lastRestoreAttemptCount = items.length;
+          restoredId = undefined;
+          return;
+        }
+        // Growth has stopped and the row never appeared, so stop looking — the key
+        // scan is O(n) and would otherwise run on every future update. The entry is
+        // deliberately NOT deleted: nothing is restored from it, and teardown
+        // overwrites it with the reader's real position anyway. Deleting it was only
+        // ever needed back when a missing anchor got clamped into range.
+        restoredId = id;
         return;
       }
+
+      restoredId = id;
 
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the

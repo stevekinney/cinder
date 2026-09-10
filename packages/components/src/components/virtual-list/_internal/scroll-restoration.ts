@@ -59,10 +59,13 @@ const SCROLL_RESTORATION_KEY_PREFIX = 'cinder:virtual-list:';
  * position.
  */
 export function resolveScrollRestorationKey(id: string): string | null {
-  return id.trim().length === 0 ? null : `${SCROLL_RESTORATION_KEY_PREFIX}${id}`;
+  // Built from the TRIMMED id, which is what was validated. Keying on the raw value
+  // made ids differing only by surrounding whitespace resolve to different entries,
+  // so a caller who added a space silently lost their saved position.
+  const trimmed = id.trim();
+  return trimmed.length === 0 ? null : `${SCROLL_RESTORATION_KEY_PREFIX}${trimmed}`;
 }
 
-/** Serializes a scroll position for storage. */
 /**
  * A saved `startIndex` must be a whole number: it is used to index `items` and is
  * handed to `scrollToIndex`. A fractional value read back from storage — which is
@@ -72,6 +75,7 @@ function isValidScrollRestorationIndex(value: unknown): value is number {
   return typeof value === 'number' && Number.isInteger(value) && value >= 0;
 }
 
+/** Serializes a scroll position for storage. */
 export function serializeScrollPosition(position: ScrollRestorationPosition): string {
   return JSON.stringify(position);
 }

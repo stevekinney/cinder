@@ -1983,9 +1983,12 @@ describe('VirtualList — scrollRestoration', () => {
     }
   });
 
-  test('drops a saved position whose row no longer exists', async () => {
-    // The collection shrank between visits. Clamping into range would drop the
-    // reader somewhere arbitrary and then re-save it as though it were their place.
+  test('does not apply a saved position whose row no longer exists', async () => {
+    // The collection shrank between visits. The saved row is simply not restored —
+    // clamping into range would drop the reader somewhere arbitrary and then re-save
+    // that as though it were their place. The entry itself is left alone: nothing
+    // reads it, and teardown overwrites it with the reader's real position. Deleting
+    // it mattered only back when a missing anchor got clamped rather than skipped.
     const storage = createStorage();
     storage.setItem(
       'cinder:virtual-list:feed',
@@ -2010,7 +2013,6 @@ describe('VirtualList — scrollRestoration', () => {
 
       await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
       expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true);
-      expect(storage.entries.has('cinder:virtual-list:feed')).toBe(false);
     } finally {
       Object.defineProperty(globalThis, 'sessionStorage', {
         value: originalSession,
@@ -2453,6 +2455,43 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
       // Not pinned to the newest message.
       expect(renderedRows(container).some((node) => node.dataset['index'] === '999')).toBe(false);
       expect(startReachedCount).toBe(0);
+    });
+  });
+
+  test('waits for an incrementally loaded page to reach the saved row', async () => {
+    // A feed that loads page by page has a first non-empty render that does not
+    // reach the saved anchor yet. Treating that as "the row was deleted" would
+    // abandon the position before the page carrying it ever arrived.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // First page: 50 rows, nowhere near index 200.
+      const { container, rerender } = render(VirtualList, props(50));
+      await tick();
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true);
+
+      // The page carrying the anchor arrives.
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
     });
   });
 
