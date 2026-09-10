@@ -145,6 +145,39 @@ export type VirtualListProps<Item = unknown> = Omit<
    */
   onStartReached?: (() => void) | undefined;
   /**
+   * Remember the scroll position across navigation, keyed by
+   * `scrollRestorationId`.
+   *
+   * The position is written to `sessionStorage` when the list tears down, and read
+   * back when it mounts. Deliberately not on every scroll: that would mean a
+   * storage write per frame during a fling, and teardown is the last moment the
+   * position is knowable anyway. The consequence is that a tab closed by a crash,
+   * rather than by navigating away, will not have saved.
+   *
+   * Storage failures are swallowed: a browser in private mode or at its quota throws
+   * on write — and on read — and losing a remembered offset must not break the list.
+   *
+   * Has no effect without a `scrollRestorationId` — see that prop for why.
+   *
+   * Explicitly `| undefined`, like the other conditionally-supplied props: this
+   * package compiles with `exactOptionalPropertyTypes`, under which optional and
+   * undefined-valued differ, and `scrollRestoration={enabled ? true : undefined}`
+   * would otherwise fail to typecheck.
+   *
+   * Defaults to false.
+   */
+  scrollRestoration?: boolean | undefined;
+  /**
+   * Stable id under which `scrollRestoration` saves this list's position.
+   *
+   * Required for restoration to do anything. There is deliberately no default:
+   * an implicit key derived from position or order would silently hand one
+   * list's remembered offset to a different list after a refactor, and two lists
+   * on one page would overwrite each other. Choose something tied to what the
+   * list shows, such as a route or collection name.
+   */
+  scrollRestorationId?: string | undefined;
+  /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the native scroll container for
    * arrow-key scrolling. Pass `tabindex={-1}` when the viewport should be

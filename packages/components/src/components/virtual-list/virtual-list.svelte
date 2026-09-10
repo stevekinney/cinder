@@ -64,6 +64,12 @@
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
   import {
+    loadScrollPosition,
+    saveScrollPosition,
+    type ScrollRestorationPosition,
+    type ScrollRestorationStorage,
+  } from './_internal/scroll-restoration.ts';
+  import {
     createEdgeLatch,
     resolveEdgeFireDecision,
     resolveEdgeProximity,
@@ -96,6 +102,8 @@
     reverse = false,
     onEndReached,
     onStartReached,
+    scrollRestoration = false,
+    scrollRestorationId,
     tabindex = 0,
     getKey,
     row,
@@ -148,6 +156,25 @@
   /** Set once on mount under `reverse`, which starts at the end rather than the start. */
   let needsInitialReversePin = false;
   let edgeLatch: EdgeLatch = createEdgeLatch();
+  /**
+   * Item count at the last failed restore, so incremental loading can keep trying.
+   *
+   * `$state` because the edge callbacks read it to decide whether a restore is still
+   * imminent. As a plain binding, the effect that fetches the next page would never
+   * re-evaluate after the first attempt gave up waiting — and the page carrying the
+   * anchor would never be requested.
+   */
+  let lastRestoreAttemptCount = $state(0);
+  /** Which id that attempt history belongs to. */
+  let restoredIdInProgress: string | undefined;
+  /** The position as of the last render, so a teardown never has to re-derive it. */
+  let latestPosition: ScrollRestorationPosition | undefined;
+  /**
+   * The id restoration last ran for, rather than a bare flag: a parent that reuses
+   * this component for a different collection changes the id, and that is a new
+   * position to restore — not the same one already handled.
+   */
+  let restoredId: string | undefined;
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -270,6 +297,10 @@
     // binding rather than state, so it does not re-trigger this effect on its own,
     // but the scroll write that consumes it updates `scrollOffset`, which does.
     if (hasQueuedCorrection || pendingReanchor !== null) return;
+    // A restore is about to move the reader, so the list's current position says
+    // nothing about which edge they are near. Firing now would ask for a page of
+    // history because the list happens to render at offset 0 for one frame.
+    if (willRestoreScrollPosition()) return;
 
     // `startIndex`/`endIndex` describe the RENDERED range, which already carries
     // overscan on both sides, and `endIndex` is exclusive. Undo both so the
@@ -325,6 +356,199 @@
     if (scrollElement) syncViewport(scrollElement);
   });
 
+  /**
+   * The storage scroll restoration writes to, or `undefined` when it should not
+   * write at all.
+   *
+   * Resolved through a guarded read: some privacy modes throw on merely ACCESSING
+   * `sessionStorage`, not just on writing to it, so the property access itself has
+   * to be inside the try.
+   */
+  function resolveRestorationStorage(): ScrollRestorationStorage | undefined {
+    if (!scrollRestoration) return undefined;
+    try {
+      return typeof sessionStorage === 'undefined' ? undefined : sessionStorage;
+    } catch {
+      return undefined;
+    }
+  }
+
+  /**
+   * Restores a remembered position on mount, and remembers the current one on
+   * teardown.
+   *
+   * Tracks the element and the item count deliberately — a list that fetches its own
+   * data has nothing to restore onto until those arrive. What keeps it from running
+   * twice is `restoredId`, not a lack of dependencies: re-applying a saved offset
+   * over wherever the reader had since scrolled to is the failure this guards.
+   */
+  $effect(() => {
+    const id = scrollRestorationId?.trim();
+    const element = scrollElement;
+    // Tracked deliberately: a list that fetches its own data renders empty first, so
+    // there is nothing to restore onto until its items arrive. `restoredId` is what
+    // makes this happen exactly once per collection — without it, re-running on every
+    // item change would re-apply the saved position over wherever the reader had
+    // since scrolled to.
+    const itemCount = items.length;
+    if (!element || !id || restoredId === id || itemCount === 0) return;
+
+    untrack(() => {
+      const storage = resolveRestorationStorage();
+      const saved = loadScrollPosition(storage, id);
+      if (restoredIdInProgress !== id) {
+        // A different collection: its attempt history is its own.
+        restoredIdInProgress = id;
+        lastRestoreAttemptCount = 0;
+      }
+
+      if (!saved) {
+        restoredId = id;
+        return;
+      }
+
+      // By KEY first, and BEFORE judging the index. An index stops describing the
+      // same row once the collection changes while unmounted — which is exactly what
+      // a feed does — so a stale index is not evidence the row is gone. The key is.
+      const anchorIndex = resolveIndexForSavedAnchor(saved);
+      const anchorIsResolvable =
+        anchorIndex < items.length &&
+        (saved.anchorKey === undefined
+          ? saved.startIndex < items.length
+          : keyAt(anchorIndex) === saved.anchorKey);
+
+      if (!anchorIsResolvable) {
+        // Not found is not the same as deleted. A feed that loads page by page has a
+        // first non-empty render that does not reach the saved row yet, and clearing
+        // here would delete the position before the page carrying it ever arrived.
+        //
+        // So: keep waiting while the collection is still growing, and only give up
+        // once a render arrives no larger than the last one that failed — at which
+        // point the row really is gone. `restoredId` stays unset meanwhile, so the
+        // next render tries again.
+        if (items.length > lastRestoreAttemptCount) {
+          lastRestoreAttemptCount = items.length;
+          restoredId = undefined;
+          return;
+        }
+        // Growth has stopped and the row never appeared, so stop looking — the key
+        // scan is O(n) and would otherwise run on every future update. The entry is
+        // deliberately NOT deleted: nothing is restored from it, and teardown
+        // overwrites it with the reader's real position anyway. Deleting it was only
+        // ever needed back when a missing anchor got clamped into range.
+        restoredId = id;
+        return;
+      }
+
+      restoredId = id;
+
+      // Nothing queued for the old view may land after this. Two things can be in
+      // flight: a correction the growth effect queued to preserve the pre-prepend
+      // viewport — the saved row often arrives IN that prepended page — and a settle
+      // loop from a `scrollToIndex` started for a collection this component has
+      // since been reused away from. Either would write over the restored position
+      // a moment later, leaving the reader where they were while loading rather
+      // than where they left off.
+      pendingScrollTarget = null;
+      pendingReanchor = null;
+      retireSettleLoop();
+      // The append pin too. When the saved anchor arrives in an APPENDED page — under
+      // `reverse`, or with `stickToBottom` still reading a short first page as being
+      // at the end — the growth pass has already armed it, and its effect scrolls to
+      // the maximum offset a tick later, after the restore has landed.
+      shouldStickAfterAppend = false;
+      isPinnedToBottom = false;
+
+      if (dynamicSize) {
+        // Written directly rather than through `scrollToIndex`, which lands on the
+        // row's start edge and would lose where the reader was WITHIN a tall row —
+        // the difference between reopening mid-paragraph and at the top of it.
+        //
+        // The offsets table is all estimates at mount, so this lands on the ESTIMATED
+        // position of the right row. That is the correct starting point: the
+        // measurement-correction pass then holds this row still as the rows above it
+        // are measured, which is precisely the job it already does.
+        //
+        // The remainder is clamped to the row's CURRENT size. While that size is
+        // still an estimate a larger saved remainder would overshoot into the next
+        // row, and the correction pass would then hold the wrong row still.
+        const rowStart = locateRowStartOffset(anchorIndex);
+        const rowSize = Math.max(
+          0,
+          locateRowStartOffset(anchorIndex + 1) - rowStart || resolvedItemHeight,
+        );
+        // Strictly inside the row. An inclusive clamp lands on exactly the next row's
+        // start — 30px into a 40px row becomes 20px into a 20px row, which IS row
+        // 201 — defeating the anchor this whole branch exists to honour.
+        const withinRow = Math.min(
+          Math.max(0, saved.offsetWithinRow ?? 0),
+          Math.max(0, rowSize - 1),
+        );
+        writeScrollOffset(element, rowStart + withinRow, 'auto');
+        scrollOffset = readScrollOffset(element);
+      } else {
+        // From the row anchor, not the raw saved pixel offset. `itemHeight` can differ
+        // between visits — a density setting, a responsive breakpoint — and the old
+        // offset then points at a different row entirely.
+        const withinRow = Math.min(
+          Math.max(0, saved.offsetWithinRow ?? 0),
+          Math.max(0, resolvedItemHeight - 1),
+        );
+        writeScrollOffset(element, anchorIndex * resolvedItemHeight + withinRow, 'auto');
+        scrollOffset = readScrollOffset(element);
+      }
+    });
+  });
+
+  /**
+   * Saves the position on teardown.
+   *
+   * Separate from the restore effect, and depending on nothing but the id. An
+   * `$effect` cleanup runs on INVALIDATION as well as teardown, so folding this into
+   * an effect that tracks the item count meant every append ran the saver and then
+   * re-ran the effect — which, already having restored, returned early and registered
+   * no new cleanup. After the first append the teardown save was simply gone.
+   */
+  $effect(() => {
+    const id = scrollRestorationId?.trim();
+    if (!id) return;
+
+    return () => {
+      const storage = resolveRestorationStorage();
+      if (!storage) return;
+      untrack(() => {
+        // The snapshot, not a fresh read. When a parent swaps BOTH the id and the
+        // items at once, this cleanup runs after that state has already changed —
+        // computing here would file the incoming collection's position under the
+        // outgoing collection's key.
+        const snapshot = latestPosition;
+        if (!snapshot) return;
+        saveScrollPosition(storage, id, snapshot);
+      });
+    };
+  });
+
+  /** Keeps the position saveable at any moment, independent of what changed. */
+  $effect(() => {
+    // An empty render contributes nothing. Leaving the previous snapshot in place is
+    // deliberate: a list emptied just before teardown — a parent swapping collections,
+    // or a refetch clearing while it loads — should still save where the reader
+    // actually was, not be treated as having no position at all.
+    if (items.length === 0) return;
+    const anchorIndex = resolveAnchorIndexAtOffset(scrollOffset);
+    latestPosition = {
+      scrollOffset,
+      // Derived from the live offset, not from the rendered window. The window's
+      // first index carries overscan, and adding it back does not recover the
+      // anchor either: near the top the leading overscan is clipped against 0,
+      // so `startIndex + overscan` points several rows PAST the reader instead
+      // of at them. The offset knows where they actually are.
+      startIndex: anchorIndex,
+      offsetWithinRow: Math.max(0, scrollOffset - locateRowStartOffset(anchorIndex)),
+      anchorKey: keyAt(anchorIndex),
+    };
+  });
+
   $effect.pre(() => {
     const itemCount = items.length;
     const element = scrollElement;
@@ -360,7 +584,9 @@
       // A reverse list opens at its end. Deferred to the mount effect rather than
       // written here: there is no element yet on the first server-or-client pass,
       // and under `dynamicSize` the total is still only an estimate.
-      needsInitialReversePin = reverse;
+      // Not when a position is about to be restored: the reader asked to come back
+      // where they were, which outranks opening at the newest message.
+      needsInitialReversePin = reverse && !willRestoreScrollPosition();
       return;
     }
 
@@ -613,6 +839,66 @@
     previousOffsets = currentOffsets;
   });
 
+  /**
+   * Whether a saved position is going to be applied on this mount.
+   *
+   * Consulted before arming the initial `reverse` pin, and before letting the edge
+   * callbacks fire: both assume the list opens where it renders, and restoration is
+   * about to move it somewhere else entirely.
+   */
+  function willRestoreScrollPosition(): boolean {
+    const id = scrollRestorationId?.trim();
+    if (!scrollRestoration || !id || restoredId === id) return false;
+    // Only while a restore is IMMINENT. Once an attempt has failed and the component
+    // is waiting for more data, the edge callbacks are exactly what fetches the page
+    // carrying the anchor — suppressing them there deadlocks the two features
+    // against each other: no pagination, so no anchor, so no restore, forever.
+    if (lastRestoreAttemptCount > 0) return false;
+    // Same deadlock at the other end. An empty list has nothing to restore ONTO, and
+    // the restore effect returns before recording an attempt — so a list that mounts
+    // empty and fetches its first page from these very callbacks would wait forever.
+    if (items.length === 0) return false;
+    return loadScrollPosition(resolveRestorationStorage(), id) !== null;
+  }
+
+  /**
+   * The index a saved anchor refers to NOW.
+   *
+   * The key wins when the list has one and it is still present: the collection may
+   * have grown at the front while the list was unmounted, which moves every index
+   * without moving any row. Falls back to the saved index, clamped.
+   */
+  function resolveIndexForSavedAnchor(saved: {
+    startIndex: number;
+    anchorKey?: string | number;
+  }): number {
+    const lastIndex = Math.max(0, items.length - 1);
+    if (saved.anchorKey !== undefined) {
+      for (let index = 0; index < items.length; index += 1) {
+        if (keyAt(index) === saved.anchorKey) return index;
+      }
+    }
+    return Math.min(Math.max(0, saved.startIndex), lastIndex);
+  }
+
+  /** Where a row begins, from the measured table when there is one. */
+  function locateRowStartOffset(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return table[index] ?? 0;
+    return index * resolvedItemHeight;
+  }
+
+  /**
+   * The index of the row occupying a given scroll offset — the row the reader is
+   * looking at, independent of overscan and of any clamping at the list's edges.
+   */
+  function resolveAnchorIndexAtOffset(offset: number): number {
+    const lastIndex = Math.max(0, items.length - 1);
+    const table = offsets?.offsets;
+    if (table) return Math.min(findOffsetIndex(table, Math.max(0, offset)), lastIndex);
+    return Math.min(Math.floor(Math.max(0, offset) / Math.max(1, resolvedItemHeight)), lastIndex);
+  }
+
   $effect(() => {
     if (pendingScrollTarget === null) return;
     const element = scrollElement;
@@ -770,6 +1056,7 @@
    */
   function syncViewport(element: HTMLElement): number {
     const rect = element.getBoundingClientRect();
+
     // The MAIN axis — the one being scrolled and windowed. Under `horizontal` that
     // is the inline extent: the container's block-size is `auto` and collapses to
     // one row's height, which would badly under-report the viewport and render too
@@ -785,6 +1072,23 @@
     // sizes until they happened to remount, leaving the spacer and every scroll
     // target off by the accumulated difference. Dropping the cache forces
     // re-measurement.
+    // The client extent first: it is what is actually available to rows, excluding
+    // the scrollbar. A measurement that makes the list start or stop overflowing
+    // adds or removes a non-overlay scrollbar and re-wraps every row while the
+    // border-box extent never changes — so comparing the rect would miss it
+    // entirely and leave offscreen rows holding sizes measured at the other extent.
+    invalidateOnCrossAxisChange(element, rect);
+
+    measuredViewportHeight = measured;
+    scrollOffset = readScrollOffset(element);
+    return measured;
+  }
+
+  /**
+   * Drops cached row sizes when the CROSS axis changed, because that re-wraps every
+   * row and every size measured at the old extent is now wrong.
+   */
+  function invalidateOnCrossAxisChange(element: HTMLElement, rect: DOMRect): void {
     // The client extent first: it is what is actually available to rows, excluding
     // the scrollbar. A measurement that makes the list start or stop overflowing
     // adds or removes a non-overlay scrollbar and re-wraps every row while the
@@ -818,10 +1122,6 @@
       previousOffsets = undefined;
     }
     if (measuredCrossExtent > 0) previousCrossExtent = measuredCrossExtent;
-
-    measuredViewportHeight = measured;
-    scrollOffset = readScrollOffset(element);
-    return measured;
   }
 
   function handleScroll(event: UIEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
