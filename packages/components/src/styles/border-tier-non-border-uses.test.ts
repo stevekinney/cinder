@@ -17,13 +17,23 @@
  * - a `mix` feeds the tier into `color-mix()`, where the result inherits a
  *   fraction of the transparency;
  * - an `occlusion` paints a tier across an element that something opaque then
- *   covers, so only a seam survives.
+ *   covers, so only a seam survives;
+ * - an `alias` redeclares a tier under a component-token name whose consumers
+ *   use it as a border, so it inherits the border case unchanged.
  *
- * The audit prose claimed to enumerate these twice and was wrong twice -- a
- * `background:`-only sweep missed `background-image` gradients, `color:`, inset
- * `box-shadow`, and component-token aliases. So the enumeration lives here
- * instead, where an unclassified site is a failing test rather than a document
- * nobody re-derives. Adding a site is fine; adding one silently is not.
+ * The audit prose claimed to enumerate these twice and was wrong twice. Both
+ * misses were the same mistake -- a sweep narrow enough to only find sites
+ * shaped like the ones already found. The first looked for
+ * `background: var(--cinder-border*)` in `packages/components`, and missed
+ * `background-image` gradients, `color:`, inset `box-shadow`, and the
+ * component-token alias hop. The second widened the properties but stayed in
+ * one package, and missed the `.svelte` `<style>` blocks in Chat, Editor, and
+ * the playground.
+ *
+ * So the enumeration lives here instead, across every workspace that ships or
+ * renders cinder styles, where an unclassified site is a failing test rather
+ * than a document nobody re-derives. Adding a site is fine; adding one
+ * silently is not.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -31,182 +41,261 @@ import { join, relative } from 'node:path';
 
 import { describe, expect, test } from 'bun:test';
 
-type Category = 'hairline' | 'area' | 'mix' | 'occlusion';
+type Category = 'hairline' | 'area' | 'mix' | 'occlusion' | 'alias';
 
-const STYLES_DIRECTORY = import.meta.dirname;
-const COMPONENTS_DIRECTORY = join(STYLES_DIRECTORY, '..', 'components');
-
-/**
- * A tier reference that is NOT the value of a `border*` or `outline*`
- * declaration. Matches the three structural tiers only: `border.faint` is
- * still opaque and `border.ink` is the source rather than a tier.
- */
-const TIER_REFERENCE = /var\(--cinder-border(?:-muted|-strong)?[\s,)]/;
-const BORDER_DECLARATION = /^\s*(?:border|outline)(?:-[a-z-]+)?\s*:/;
-const CUSTOM_PROPERTY_DECLARATION = /^\s*--/;
-
-/**
- * Every classified site, keyed by path relative to `src/`. The value is the
- * trimmed source line, so a new use in a classified file fails just as loudly
- * as a use in a new file.
- */
-const CLASSIFIED: Record<string, ReadonlyArray<readonly [string, Category]>> = {
-  'styles/components/_row-item.css': [['background: var(--cinder-border-muted);', 'hairline']],
-  'components/kbd/kbd.css': [
-    // Sits inside the padding box, so it lands on the pixel ABOVE the border
-    // rather than on it -- measured, not assumed: the two rows read
-    // rgb(210,211,213) and rgb(141,144,148) rather than one combined row.
-    ['box-shadow: inset 0 -1px 0 var(--cinder-border-muted);', 'hairline'],
-  ],
-  'components/run-step-timeline/run-step-timeline.css': [
-    ['background: var(--cinder-border-muted);', 'hairline'],
-  ],
-  'components/steps/steps.css': [
-    ['box-shadow: inset 0 0 0 1px var(--cinder-border-muted);', 'hairline'],
-    ['background: var(--cinder-border-muted);', 'hairline'],
-  ],
-  'components/divider/divider.css': [
-    ['background-color: var(--cinder-border-muted);', 'hairline'],
-    ['background-color: var(--cinder-border-strong);', 'hairline'],
-  ],
-  'components/timeline/timeline.css': [['background: var(--cinder-border-muted);', 'hairline']],
-  'components/feed-boundary/feed-boundary.css': [
-    ['background: var(--cinder-border-muted);', 'hairline'],
-  ],
-  'components/data-grid/data-grid.css': [
-    // Same adjacency as Kbd: the pin shadow is inset, so it sits beside the
-    // cell's own `border-inline-end` rather than on top of it.
-    ['inset -1px 0 0 var(--cinder-border),', 'hairline'],
-    ['inset 1px 0 0 var(--cinder-border),', 'hairline'],
-  ],
-  'components/button-group/button-group.css': [['background: var(--cinder-border);', 'hairline']],
-  'components/feed-event/feed-event.css': [
-    ['background: var(--cinder-border-strong);', 'area'],
-    ['background: var(--cinder-border-muted);', 'hairline'],
-  ],
-  'components/parameter-field/parameter-field.css': [
-    ['background: var(--cinder-border-muted);', 'area'],
-  ],
-  'components/drawer/drawer.css': [['background: var(--cinder-border);', 'area']],
-  'components/mega-menu/mega-menu.css': [['background: var(--cinder-border-muted);', 'area']],
-  'components/rating/rating.css': [
-    ['--_cinder-rating-empty: var(--cinder-border-strong);', 'area'],
-  ],
-  'components/status-dot/status-dot.css': [
-    ['--cinder-status-dot-color: var(--cinder-border-strong);', 'area'],
-  ],
-  'components/slider/slider.css': [['background: var(--cinder-border, currentColor);', 'area']],
-  'components/resizable-panels/resizable-panels.css': [
-    ['color: var(--cinder-border-strong);', 'area'],
-  ],
-  'components/color-field/color-field.css': [
-    ['var(--cinder-border) 45%,', 'area'],
-    ['var(--cinder-border) 55%,', 'area'],
-  ],
-  'components/media-controls/media-controls.css': [
-    ['background-color: var(--cinder-border);', 'area'],
-  ],
-  'components/statistic-group/statistic-group.css': [
-    ['background: var(--cinder-border);', 'occlusion'],
-  ],
-  'components/chip/chip.css': [['var(--cinder-border) 65%', 'mix']],
+type Classification = {
+  /** The trimmed declaration, exactly as it appears in the source. */
+  readonly declaration: string;
+  readonly category: Category;
+  /** For an `area`, the name the seam audit has to mention. */
+  readonly audit?: string;
 };
 
-function cssFiles(directory: string): string[] {
+const REPOSITORY_ROOT = join(import.meta.dirname, '..', '..', '..', '..');
+
+/**
+ * Every place cinder styles are authored. `packages/components/src/styles`
+ * carries the shared partials; the sibling workspaces render with the same
+ * tokens, so a tier used as a fill there changed rendering just as much.
+ */
+const SCAN_ROOTS = [
+  'packages/components/src/components',
+  'packages/components/src/styles',
+  'packages/chat/src',
+  'packages/editor/src',
+  'packages/playground/src',
+];
+
+/** `tokens-base.css` is generated from the corpus, where the aliases are already gated. */
+const GENERATED = 'tokens-base.css';
+
+const TIER_REFERENCE = /var\(--cinder-border(?:-muted|-strong)?[\s,)]/;
+const BORDER_PROPERTY = /^(?:border|outline)(?:-[a-z-]+)?$/;
+
+const CLASSIFIED: readonly Classification[] = [
+  // --- hairlines: a 1px rule drawn as a filled element or an inset shadow ---
+  { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  { declaration: 'background-color: var(--cinder-border-muted);', category: 'hairline' },
+  { declaration: 'background-color: var(--cinder-border-strong);', category: 'hairline' },
+  { declaration: 'background: var(--cinder-border);', category: 'hairline' },
+  // Kbd's keycap underline and Steps' skipped-marker ring. An inset shadow is
+  // clipped to the padding box, so it lands on the pixel BESIDE a border rather
+  // than on it -- measured, not assumed: the two rows at Kbd's bottom edge read
+  // rgb(210,211,213) and rgb(141,144,148) rather than one combined row.
+  { declaration: 'box-shadow: inset 0 -1px 0 var(--cinder-border-muted);', category: 'hairline' },
+  { declaration: 'box-shadow: inset 0 0 0 1px var(--cinder-border-muted);', category: 'hairline' },
+  // DataGrid's pinned columns: same adjacency, on the cell's inline-end edge.
+  { declaration: 'inset -1px 0 0 var(--cinder-border),', category: 'hairline' },
+  { declaration: 'inset 1px 0 0 var(--cinder-border),', category: 'hairline' },
+
+  // --- areas: the tier's alpha is visible over whatever is behind it ---
+  {
+    declaration: 'background: var(--cinder-border, currentColor);',
+    category: 'area',
+    audit: 'slider',
+  },
+  {
+    declaration: 'background-color: var(--cinder-border);',
+    category: 'area',
+    audit: 'media-controls',
+  },
+  {
+    declaration: 'color: var(--cinder-border-strong);',
+    category: 'area',
+    audit: 'resizable-panels',
+  },
+  {
+    declaration: 'background: var(--cinder-border-strong);',
+    category: 'area',
+    audit: 'feed-event',
+  },
+  {
+    declaration: '--_cinder-rating-empty: var(--cinder-border-strong);',
+    category: 'area',
+    audit: 'rating',
+  },
+  {
+    declaration: '--cinder-status-dot-color: var(--cinder-border-strong);',
+    category: 'area',
+    audit: 'status-dot',
+  },
+  { declaration: 'var(--cinder-border) 45%,', category: 'area', audit: 'color-field' },
+  { declaration: 'var(--cinder-border) 55%,', category: 'area', audit: 'color-field' },
+
+  // --- component-token aliases, consumed as borders by their own components ---
+  { declaration: '--cinder-chat-reasoning-border: var(--cinder-border);', category: 'alias' },
+  { declaration: '--cinder-chat-suggestion-border: var(--cinder-border);', category: 'alias' },
+  { declaration: '--cinder-chat-tool-approval-border: var(--cinder-border);', category: 'alias' },
+
+  // --- mixes and occlusions ---
+  { declaration: 'var(--cinder-border) 65%', category: 'mix' },
+  {
+    declaration:
+      'background: color-mix(in oklch, var(--cinder-surface), var(--cinder-border-muted) 10%);',
+    category: 'mix',
+  },
+];
+
+/**
+ * Sites whose classification depends on the FILE, not just the declaration
+ * text -- `background: var(--cinder-border-muted)` is a 1px rule in most
+ * places and a 3px rail in ParameterField.
+ */
+const BY_FILE: Record<string, readonly Classification[]> = {
+  'packages/components/src/components/parameter-field/parameter-field.css': [
+    {
+      declaration: 'background: var(--cinder-border-muted);',
+      category: 'area',
+      audit: 'parameter-field',
+    },
+  ],
+  'packages/components/src/components/mega-menu/mega-menu.css': [
+    {
+      declaration: 'background: var(--cinder-border-muted);',
+      category: 'area',
+      audit: 'mega-menu',
+    },
+  ],
+  'packages/components/src/components/drawer/drawer.css': [
+    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'drawer' },
+  ],
+  'packages/components/src/components/statistic-group/statistic-group.css': [
+    { declaration: 'background: var(--cinder-border);', category: 'occlusion' },
+  ],
+  'packages/chat/src/lib/components/chat/message/entry-frame.svelte': [
+    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'entry-frame' },
+  ],
+  'packages/playground/src/component-page.svelte': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+    {
+      declaration: 'background: var(--cinder-border-strong);',
+      category: 'area',
+      audit: 'dx-stage',
+    },
+  ],
+};
+
+function styleFiles(directory: string): string[] {
   const found: string[] = [];
   for (const entry of readdirSync(directory)) {
+    if (entry === 'node_modules' || entry === 'dist' || entry.startsWith('.')) continue;
     const path = join(directory, entry);
     if (statSync(path).isDirectory()) {
-      found.push(...cssFiles(path));
+      found.push(...styleFiles(path));
       continue;
     }
-    if (path.endsWith('.css')) found.push(path);
+    if (path.endsWith('.css') || path.endsWith('.svelte')) found.push(path);
   }
   return found;
 }
 
-/** Every non-border tier reference in `path`, as trimmed source lines. */
-function tierUses(path: string): string[] {
+/**
+ * Every tier reference in `source` that is not the value of a `border*` or
+ * `outline*` declaration, as trimmed declaration text.
+ *
+ * Split on `;` rather than by line so an inline `style="…; border: 1px solid
+ * var(--cinder-border-muted)"` on markup is read the same way as a rule in a
+ * `<style>` block.
+ */
+function tierUses(source: string): string[] {
   const uses: string[] = [];
-  for (const line of readFileSync(path, 'utf8').split('\n')) {
+  for (const rawLine of source.split('\n')) {
+    const line = rawLine.trim();
     if (!TIER_REFERENCE.test(line)) continue;
-    if (BORDER_DECLARATION.test(line)) continue;
-    // A component-token alias is a corpus concern, gated by the token pipeline
-    // and measured in `check-token-contrast.test.ts`; the two here are local
-    // `--_cinder-*` privates and stay in scope.
-    if (CUSTOM_PROPERTY_DECLARATION.test(line) && !line.includes('--cinder-status-dot-color')) {
-      if (!line.trimStart().startsWith('--_cinder')) continue;
-    }
-    const trimmed = line.trim();
     // A tier named in prose is not a use.
-    if (trimmed.startsWith('*') || trimmed.startsWith('/*')) continue;
-    uses.push(trimmed);
+    if (line.startsWith('*') || line.startsWith('//') || line.startsWith('/*')) continue;
+    for (const fragment of line.split(';')) {
+      if (!TIER_REFERENCE.test(fragment)) continue;
+      // An inline `style="border: …"` arrives with the attribute still
+      // attached, so the property would read as `style="border`.
+      const attribute = fragment.lastIndexOf('="');
+      const trimmed = (attribute === -1 ? fragment : fragment.slice(attribute + 2)).trim();
+      const colon = trimmed.indexOf(':');
+      const property = colon === -1 ? '' : trimmed.slice(0, colon).trim();
+      if (BORDER_PROPERTY.test(property)) continue;
+      // Restore the `;` that `split` removed, so the recorded text matches the
+      // source for a complete declaration.
+      uses.push(line.includes(`${trimmed};`) ? `${trimmed};` : trimmed);
+    }
   }
   return uses;
 }
 
-describe('CIN-245: structural border tiers used outside a border declaration', () => {
-  test('every site is classified', () => {
-    const root = join(STYLES_DIRECTORY, '..');
-    const found: Record<string, string[]> = {};
-    for (const path of [...cssFiles(COMPONENTS_DIRECTORY), ...cssFiles(STYLES_DIRECTORY)]) {
-      // `tokens-base.css` is generated from the corpus, where the aliases are
-      // already gated; it is not a hand-authored use site.
-      if (path.endsWith('tokens-base.css')) continue;
-      const uses = tierUses(path);
-      if (uses.length > 0) found[relative(root, path)] = uses;
+/** Every use site in the repository, as `[relativePath, declaration]`. */
+function allUseSites(): Array<readonly [string, string]> {
+  const sites: Array<readonly [string, string]> = [];
+  for (const root of SCAN_ROOTS) {
+    for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {
+      if (path.endsWith(GENERATED)) continue;
+      const relativePath = relative(REPOSITORY_ROOT, path);
+      for (const use of tierUses(readFileSync(path, 'utf8'))) sites.push([relativePath, use]);
     }
+  }
+  return sites;
+}
 
-    const unclassified: string[] = [];
-    for (const [file, uses] of Object.entries(found)) {
-      const expected = (CLASSIFIED[file] ?? []).map(([snippet]) => snippet);
-      for (const use of uses) {
-        if (!expected.includes(use)) unclassified.push(`${file}  ${use}`);
-      }
-    }
+/**
+ * The documentation placeholder hatch, built out of a doubly-diluted tier in
+ * eleven `packages/playground/src/examples/**` files. One shape, many copies,
+ * and not part of the shipped component surface -- matched by shape rather
+ * than transcribed eleven times.
+ */
+const PLACEHOLDER_HATCH =
+  /^background: repeating-linear-gradient\(-45deg,.*color-mix\(in oklch, var\(--cinder-border-muted\), transparent \d+%\)/;
+
+function classify(file: string, declaration: string): Classification | undefined {
+  const byFile = BY_FILE[file]?.find((entry) => entry.declaration === declaration);
+  if (byFile !== undefined) return byFile;
+  const exact = CLASSIFIED.find((entry) => entry.declaration === declaration);
+  if (exact !== undefined) return exact;
+  if (file.startsWith('packages/playground/src/examples/') && PLACEHOLDER_HATCH.test(declaration)) {
+    return { declaration, category: 'mix' };
+  }
+  return undefined;
+}
+
+describe('CIN-245: structural border tiers used outside a border declaration', () => {
+  test('every site in every workspace is classified', () => {
+    const unclassified = allUseSites()
+      .filter(([file, declaration]) => classify(file, declaration) === undefined)
+      .map(([file, declaration]) => `${file}  ${declaration}`);
 
     expect(
       unclassified,
       'A structural border tier is used outside a border declaration at a site that is not ' +
         "classified. Every such use carries the tier's alpha somewhere a border would not: " +
-        'decide whether it is a hairline, an area, a mix, or an occlusion, add it to ' +
-        'CLASSIFIED here, and record an area in docs/css-audit/translucent-border-seams.md ' +
-        'with its measured contrast.',
+        'decide whether it is a hairline, an area, a mix, or an occlusion, add it here, and ' +
+        'record an area in docs/css-audit/translucent-border-seams.md with its measured ' +
+        'contrast.',
     ).toEqual([]);
   });
 
-  test('the classification has no stale entries', () => {
-    const root = join(STYLES_DIRECTORY, '..');
-    const found = new Set<string>();
-    for (const path of [...cssFiles(COMPONENTS_DIRECTORY), ...cssFiles(STYLES_DIRECTORY)]) {
-      if (path.endsWith('tokens-base.css')) continue;
-      for (const use of tierUses(path)) found.add(`${relative(root, path)}  ${use}`);
-    }
-
+  test('the file-specific classifications all still exist', () => {
+    const sites = new Set(allUseSites().map(([file, declaration]) => `${file}  ${declaration}`));
     const stale: string[] = [];
-    for (const [file, entries] of Object.entries(CLASSIFIED)) {
-      for (const [snippet] of entries) {
-        if (!found.has(`${file}  ${snippet}`)) stale.push(`${file}  ${snippet}`);
+    for (const [file, entries] of Object.entries(BY_FILE)) {
+      for (const entry of entries) {
+        if (!sites.has(`${file}  ${entry.declaration}`))
+          stale.push(`${file}  ${entry.declaration}`);
       }
     }
-
-    expect(stale, 'A classified site no longer exists; remove it from CLASSIFIED.').toEqual([]);
+    expect(stale, 'A classified site no longer exists; remove it.').toEqual([]);
   });
 
   test('every area fill is named in the seam audit', () => {
     const audit = readFileSync(
-      join(STYLES_DIRECTORY, '..', '..', 'docs', 'css-audit', 'translucent-border-seams.md'),
+      join(REPOSITORY_ROOT, 'packages/components/docs/css-audit/translucent-border-seams.md'),
       'utf8',
     );
-    const missing: string[] = [];
-    for (const [file, entries] of Object.entries(CLASSIFIED)) {
-      if (!entries.some(([, category]) => category === 'area')) continue;
-      // The audit names components by slug, which is the directory name.
-      const slug = file.split('/').at(-2) ?? file;
-      if (!audit.includes(slug)) missing.push(slug);
+    const missing = new Set<string>();
+    for (const [file, declaration] of allUseSites()) {
+      const entry = classify(file, declaration);
+      if (entry?.category !== 'area') continue;
+      const name = entry.audit ?? file;
+      if (!audit.includes(name)) missing.add(name);
     }
     expect(
-      missing,
+      [...missing],
       'An area fill carries the tier alpha over a real surface, so the audit has to name it ' +
         'and record its measured contrast.',
     ).toEqual([]);

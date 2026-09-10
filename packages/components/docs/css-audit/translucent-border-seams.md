@@ -108,8 +108,10 @@ A stacked pair would have produced a single row at their combined weight. The
 edge is 2px of two different weights, which is what it was before the tiers were
 composed — both layers simply track the surface now.
 
-Eleven sites are a real area rather than a hairline. All eleven now carry their
-tier's alpha over whatever surface is behind them.
+Thirteen sites are a real area rather than a hairline. All thirteen now carry
+their tier's alpha over whatever surface is behind them. Two of them are outside
+`@lostgradient/cinder` — Chat's busy dot and the playground's stage dot — which
+is the third way this list was wrong before: the sweep stayed in one package.
 
 | site                            | tier             | how it is painted                                |
 | ------------------------------- | ---------------- | ------------------------------------------------ |
@@ -124,6 +126,8 @@ tier's alpha over whatever surface is behind them.
 | `status-dot` neutral indicator  | `border.strong`  | `--cinder-status-dot-size`                       |
 | `rating` empty star             | `border.strong`  | a 1.5rem masked glyph                            |
 | `resizable-panels` grip         | `border.strong`  | `color:`, so the glyph paints in the tier        |
+| `entry-frame` busy dot (Chat)   | `border.control` | 8 × 8px                                          |
+| `dx-stage` dot (playground)     | `border.strong`  | 7 × 7px                                          |
 
 Four of those do not reach the tier through `background` at all, which is how two
 earlier passes of this document missed them: `color-field` uses
@@ -134,23 +138,45 @@ other status maps to a `*-solid` and neutral has none.
 
 This list is no longer prose that has to be re-derived.
 `src/styles/border-tier-non-border-uses.test.ts` enumerates every use of a
-structural tier outside a `border`/`outline` declaration, requires each to be
-classified as a hairline, area, mix, or occlusion, and requires every `area` to
-be named in this document. An unclassified site fails the suite.
+structural tier outside a `border`/`outline` declaration — in `.css` and in
+`.svelte` `<style>` blocks, across `packages/components`, `packages/chat`,
+`packages/editor`, and `packages/playground` — requires each to be classified as
+a hairline, area, mix, occlusion, or alias, and requires every `area` to be named
+in this document. An unclassified site fails the suite.
 
 Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:
 
 - **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark.
 - **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark.
-- **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark. That
-  is unchanged in kind: the muted tier sat below 3:1 before this work too (the
-  light arm measured 1.408–1.581 opaque, against 1.492–1.502 now), so the two
-  sites that use it as an area fill — the ParameterField rail and the MegaMenu
-  indicator track — carry a pre-existing shortfall that composition neither
-  introduces nor worsens. It is out of scope for CIN-245, which enumerates the
-  three structural tiers rather than re-deciding what each is licensed for, but
-  it is real and should be picked up separately.
+- **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark, and
+  in the dark arm this is a **regression** rather than a pre-existing shortfall
+  carried forward. An earlier draft of this document compared only the light arm
+  and concluded that composition "neither introduces nor worsens" the gap. That
+  was wrong. Measured on both:
+
+  | dark surface     | opaque `border.muted` | 19% ink | change |
+  | ---------------- | --------------------- | ------- | ------ |
+  | `surface-inset`  | 2.052                 | 1.456   | −29%   |
+  | `surface-canvas` | 1.974                 | 1.511   | −23%   |
+  | `surface`        | 1.814                 | 1.577   | −13%   |
+  | `surface-raised` | 1.460                 | 1.613   | +10%   |
+
+  The tier still clears its own 1.4:1 decorative floor on every surface (1.456 is
+  the worst case), and its spread collapses from 28.9% to 9.7%, which is what the
+  ticket asks for. But the two sites that use the muted tier as an **area fill**
+  rather than a hairline — the ParameterField rail and the MegaMenu indicator
+  track — were already below 1.4.11's 3:1 in the dark arm and are now further
+  below it on the three recessed surfaces.
+
+  Not fixed here, and flagged rather than absorbed. The muted tier's contract is
+  a 1.4:1 decorative hairline; filling a state indicator with it is a misuse that
+  predates this work, and the fix is to move those two sites onto `border.control`
+  (3.338–3.624 dark) or a purpose-built token — a visual change to two components
+  that CIN-245 does not scope and that deserves its own decision.
+  `toolbar-separator.svelte` reached the same conclusion independently: "the
+  muted variant looked invisible in dark mode (~1.4:1 against surface-raised)",
+  which is why it uses `border.control`.
 
 ### Toggle track, light arm — intentional, and steadier than before
 

@@ -10,7 +10,10 @@ Two related token changes.
 the current theme paints underneath it — black in light mode, white in dark. The
 three scrollbar washes are now `color-mix()` values over it rather than
 open-coded `light-dark()` pairs, so they re-polarize together when it is
-overridden. Rendering is unchanged: `color-mix(in oklch, C, transparent 96%)`
+overridden at `:root` or in a `[data-theme]` block. A subtree override does not
+reach them — the washes are declared at `:root`, so descendants inherit the
+already-resolved values; retinting one region means redeclaring the washes
+alongside the ink. Rendering is unchanged: `color-mix(in oklch, C, transparent 96%)`
 computes byte-for-byte to `oklch(C / 0.04)`.
 
 It is deliberately a complete color value rather than a bare `0% 0 0` component

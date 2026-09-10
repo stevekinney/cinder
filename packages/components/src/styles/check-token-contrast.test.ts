@@ -535,19 +535,53 @@ const css = readFileSync(
  * token is absent -- a silent miss would drop an assertion.
  */
 function readTokenValue(source: string, tokenName: string): string {
+  const [first] = readAllTokenValues(source, tokenName);
+  if (first === undefined) throw new Error(`token ${tokenName} not found in tokens-base.css`);
+  return first;
+}
+
+/**
+ * EVERY declaration of `tokenName`, in source order: the `:root` one first,
+ * then each `[data-theme]` override block.
+ *
+ * `readTokenValue` returns only the first, which is the `:root` value. For an
+ * assertion about a token's SHAPE that is not enough -- the theme blocks
+ * redeclare the same tokens with their own `cssRecipe`, so a recipe that
+ * drifted from its `$value` in one arm would pass a check that only ever read
+ * `:root`. The contrast assertions measure resolved artifacts, and the browser
+ * probe only proves a value parses, so nothing else would catch it either.
+ */
+function readAllTokenValues(source: string, tokenName: string): string[] {
   const marker = `${tokenName}:`;
-  const start = source.indexOf(marker);
-  if (start === -1) throw new Error(`token ${tokenName} not found in tokens-base.css`);
-  let depth = 0;
-  let value = '';
-  for (let index = start + marker.length; index < source.length; index += 1) {
-    const character = source[index];
-    if (character === '(') depth += 1;
-    else if (character === ')') depth -= 1;
-    else if (character === ';' && depth === 0) return value.trim().replace(/\s+/g, ' ');
-    value += character;
+  const values: string[] = [];
+  let searchFrom = 0;
+  for (;;) {
+    const start = source.indexOf(marker, searchFrom);
+    if (start === -1) break;
+    // `--cinder-border:` must not match inside `--cinder-border-muted:`; the
+    // marker already ends in `:`, so only a preceding partial name can alias.
+    const previous = source[start - 1] ?? '';
+    if (/[A-Za-z0-9-]/.test(previous)) {
+      searchFrom = start + marker.length;
+      continue;
+    }
+    let depth = 0;
+    let value = '';
+    let index = start + marker.length;
+    for (; index < source.length; index += 1) {
+      const character = source[index];
+      if (character === '(') depth += 1;
+      else if (character === ')') depth -= 1;
+      else if (character === ';' && depth === 0) break;
+      value += character;
+    }
+    if (index >= source.length) {
+      throw new Error(`token ${tokenName} value never terminated (unbalanced parens?)`);
+    }
+    values.push(value.trim().replace(/\s+/g, ' '));
+    searchFrom = index;
   }
-  throw new Error(`token ${tokenName} value never terminated (unbalanced parens?)`);
+  return values;
 }
 
 /**
@@ -1228,10 +1262,22 @@ describe('border-on-surface contrast', () => {
       '--cinder-border-strong': borderStrong,
     } as const;
     for (const [property, tier] of Object.entries(tierProperties)) {
-      const declaration = readTokenValue(css, property).replace(/\s+/g, ' ');
-      expect(declaration).toBe(
-        `color-mix(in oklch, var(--cinder-border-ink), transparent ${Math.round((1 - tier.light.alpha) * 100)}%)`,
-      );
+      const expected = `color-mix(in oklch, var(--cinder-border-ink), transparent ${Math.round((1 - tier.light.alpha) * 100)}%)`;
+      // EVERY block, not just `:root`. The theme blocks redeclare each tier
+      // with their own recipe, and a percentage that drifted there would ship a
+      // border no gate had measured -- the contrast assertions read the
+      // resolved artifacts, which come from `$value`, not from the recipe.
+      const declarations = readAllTokenValues(css, property);
+      expect(
+        declarations.length,
+        `${property} should be declared at :root and in both [data-theme] blocks`,
+      ).toBe(3);
+      for (const declaration of declarations) {
+        expect(
+          declaration,
+          `${property} recipe must agree with its resolved alpha in every block`,
+        ).toBe(expected);
+      }
       expect(tier.dark.alpha, `${property} shares one alpha ladder across arms`).toBe(
         tier.light.alpha,
       );

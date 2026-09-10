@@ -1346,7 +1346,7 @@
   },
   "polarity.ink": {
     "$value": { "colorSpace": "oklch", "components": [0, 0, 0] },
-    "$description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it at :root or in a [data-theme] block re-polarizes all of them together; a subtree override does not reach them, because the washes are declared at :root and descendants inherit the already-resolved values.",
+    "$description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. The scrollbar washes (track, thumb, thumb-hover) derive from this one token, so overriding it at :root or in a [data-theme] block re-polarizes them together; a subtree override does not reach them, because the washes are declared at :root and descendants inherit the already-resolved values. The shadow tokens are NOT derived from it and do not follow an override: shadow.small/medium/large carry independently tuned per-arm alphas (0.10 light against 0.09 dark, and so on) that one ink cannot express without changing what they paint.",
     "$extensions": {
       "com.lostgradient.cinder": {
         "cssProperty": "--cinder-polarity-ink",
