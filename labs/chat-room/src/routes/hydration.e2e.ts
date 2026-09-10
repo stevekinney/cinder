@@ -57,6 +57,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/assistant-metadata',
 	'/exercises/attachments',
 	'/exercises/chat-transcript-navigation',
+	'/exercises/compaction',
 	'/exercises/composer-popover',
 	'/exercises/contracts',
 	'/exercises/conversation-list',
@@ -83,6 +84,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/row-reconciliation',
 	'/exercises/stop-condition',
 	'/exercises/tool-approval',
+	'/exercises/tripwire',
 	'/exercises/utilities',
 	'/exercises/virtualization'
 ];
