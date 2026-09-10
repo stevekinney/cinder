@@ -67,9 +67,12 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	// tripped panel did not do.
 	await expect(page.locator(field('continued', 'steps'))).toHaveText('1');
 	await expect(page.locator(field('continued', 'transcript-length'))).toHaveText('2');
-	await expect(page.locator(field('continued', 'last-message'))).toContainText(
-		'blocked by input guardrail'
-	);
+
+	// What landed there is not the model's answer — the page decides that
+	// against its own fixture constant. Asserting the refusal WORDING would
+	// pin operative's copy, which can change without any of this behavior
+	// changing; the substitution itself is the fact the panel is about.
+	await expect(page.locator(field('continued', 'substituted'))).toHaveText('true');
 });
 
 test('leaves a benign request alone', async ({ page }) => {
@@ -80,5 +83,10 @@ test('leaves a benign request alone', async ({ page }) => {
 	await expect(page.locator(field('clean', 'finish'))).toHaveText('stop-condition');
 	await expect(page.locator(field('clean', 'generate-calls'))).toHaveText('1');
 	await expect(page.locator(field('clean', 'event'))).toHaveText('(none)');
+
+	// The model's own answer reached the transcript untouched. This is also
+	// what keeps the `substituted` field above honest: a field that read
+	// `true` unconditionally would pass there and fail here.
+	await expect(page.locator(field('clean', 'substituted'))).toHaveText('false');
 	await expect(page.locator(field('clean', 'last-message'))).toContainText('Paris');
 });
