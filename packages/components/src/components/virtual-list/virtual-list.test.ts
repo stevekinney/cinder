@@ -2345,6 +2345,73 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('finds the anchor by key after the collection grew at the front', async () => {
+    // The list was unmounted while a feed received older messages. Every index moved;
+    // no row did. An index-only anchor restores several rows off.
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+        anchorKey: 'key-200',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      // 50 older rows arrived, so `key-200` now lives at index 250.
+      const { container } = render(VirtualList, {
+        items: buildItems(1_050, 50),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (item: unknown) => (item as { id: string }).id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '250')).toBe(true),
+      );
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(false);
+    });
+  });
+
+  test('restores a fixed-size list from its row anchor, not the stale pixel offset', async () => {
+    // `itemHeight` can differ between visits — a density setting, a responsive
+    // breakpoint. The saved pixel offset then points at a different row entirely.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        // Half the height the position was saved at.
+        itemHeight: 10,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // Row 200, not the row at pixel 4000 (which is now row 400).
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {

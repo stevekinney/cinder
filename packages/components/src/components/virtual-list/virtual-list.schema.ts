@@ -86,6 +86,12 @@ const schema = {
           'Called when the reader scrolls within `overscan` items of the end of the list.\n\nExplicitly `| undefined` rather than merely optional: this package compiles with\n`exactOptionalPropertyTypes`, under which the two differ, and a consumer writing\n`onEndReached={enabled ? load : undefined}` would otherwise fail to typecheck.\n\nFires once per approach, not once per scroll event, and re-arms when the item\ncount changes — so appending in response to it allows the next approach to fire\nwhile a source that returns nothing does not spin.',
       },
       {
+        name: 'onscroll',
+        reason: 'function-or-snippet',
+        description:
+          "Scroll handler.\n\nWidened from the inherited element-scoped type on purpose: under `windowScroll`\nthe document is what scrolls, so the forwarded event's `currentTarget` is the\nwindow rather than the list. Typing it as an element handler would be a lie the\ncompiler could not catch.",
+      },
+      {
         name: 'onStartReached',
         reason: 'function-or-snippet',
         description:

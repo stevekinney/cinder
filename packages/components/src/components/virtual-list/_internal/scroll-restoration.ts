@@ -35,6 +35,15 @@ export type ScrollRestorationPosition = {
    * start edge, which is what the previous version restored anyway.
    */
   readonly offsetWithinRow?: number;
+  /**
+   * The anchor row's key, when the list had one.
+   *
+   * An index alone stops describing the same row as soon as the collection changes
+   * while the list is unmounted — a feed that received older messages restores
+   * several rows off. The key survives that; the index remains as the fallback for
+   * a list without `getKey`, and for entries written before this field existed.
+   */
+  readonly anchorKey?: string | number;
 };
 
 const SCROLL_RESTORATION_KEY_PREFIX = 'cinder:virtual-list:';
@@ -69,6 +78,7 @@ export function serializeScrollPosition(position: ScrollRestorationPosition): st
 
 type UnknownScrollRestorationPosition = {
   offsetWithinRow?: unknown;
+  anchorKey?: unknown;
   scrollOffset?: unknown;
   startIndex?: unknown;
 };
@@ -113,11 +123,13 @@ export function deserializeScrollPosition(raw: string | null): ScrollRestoration
 
   // Absent or malformed, the remainder is simply zero: the row's start edge, which
   // is exactly what an entry from before this field existed meant.
-  const { offsetWithinRow } = candidate;
+  const { offsetWithinRow, anchorKey } = candidate;
+  const isUsableKey = typeof anchorKey === 'string' || typeof anchorKey === 'number';
   return {
     scrollOffset,
     startIndex,
     offsetWithinRow: isValidScrollRestorationField(offsetWithinRow) ? offsetWithinRow : 0,
+    ...(isUsableKey ? { anchorKey } : {}),
   };
 }
 

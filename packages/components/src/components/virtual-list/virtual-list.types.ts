@@ -43,8 +43,17 @@ export type VirtualListRef = {
 
 export type VirtualListProps<Item = unknown> = Omit<
   HTMLAttributes<HTMLDivElement>,
-  'class' | 'tabindex'
+  'class' | 'tabindex' | 'onscroll'
 > & {
+  /**
+   * Scroll handler.
+   *
+   * Widened from the inherited element-scoped type on purpose: under `windowScroll`
+   * the document is what scrolls, so the forwarded event's `currentTarget` is the
+   * window rather than the list. Typing it as an element handler would be a lie the
+   * compiler could not catch.
+   */
+  onscroll?: ((event: UIEvent) => void) | undefined;
   /** Items in full logical order. Only the visible window is mounted. */
   items: readonly Item[];
   /**

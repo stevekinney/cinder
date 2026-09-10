@@ -71,6 +71,7 @@
     clearScrollPosition,
     loadScrollPosition,
     saveScrollPosition,
+    type ScrollRestorationPosition,
     type ScrollRestorationStorage,
   } from './_internal/scroll-restoration.ts';
   import {
@@ -171,6 +172,8 @@
   let windowScrollOffset = $state(0);
   /** True while a window-scrolled list sits entirely outside the viewport. */
   let isWindowListOffscreen = $state(false);
+  /** The position as of the last render, so a teardown never has to re-derive it. */
+  let latestPosition: ScrollRestorationPosition | undefined;
   /**
    * The id restoration last ran for, rather than a bare flag: a parent that reuses
    * this component for a different collection changes the id, and that is a new
@@ -376,7 +379,7 @@
       // be silently dead. Its `currentTarget` is the window here rather than the
       // list, which the prop documents.
       if (event?.type === 'scroll' && typeof onScroll === 'function') {
-        onScroll(event as UIEvent & { currentTarget: EventTarget & HTMLDivElement });
+        onScroll(event as UIEvent);
       }
     };
 
@@ -463,6 +466,10 @@
         return;
       }
 
+      // By KEY first. An index stops describing the same row once the collection
+      // changes while unmounted, which is exactly what a feed does.
+      const anchorIndex = resolveIndexForSavedAnchor(saved);
+
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the
         // row's start edge and would lose where the reader was WITHIN a tall row —
@@ -476,16 +483,20 @@
         // The remainder is clamped to the row's CURRENT size. While that size is
         // still an estimate a larger saved remainder would overshoot into the next
         // row, and the correction pass would then hold the wrong row still.
-        const rowStart = locateRowStartOffset(saved.startIndex);
+        const rowStart = locateRowStartOffset(anchorIndex);
         const rowSize = Math.max(
           0,
-          locateRowStartOffset(saved.startIndex + 1) - rowStart || resolvedItemHeight,
+          locateRowStartOffset(anchorIndex + 1) - rowStart || resolvedItemHeight,
         );
         const withinRow = Math.min(Math.max(0, saved.offsetWithinRow ?? 0), rowSize);
         writeScrollOffset(element, rowStart + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       } else {
-        writeScrollOffset(element, saved.scrollOffset, 'auto');
+        // From the row anchor, not the raw saved pixel offset. `itemHeight` can differ
+        // between visits — a density setting, a responsive breakpoint — and the old
+        // offset then points at a different row entirely.
+        const withinRow = Math.min(Math.max(0, saved.offsetWithinRow ?? 0), resolvedItemHeight);
+        writeScrollOffset(element, anchorIndex * resolvedItemHeight + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       }
     });
@@ -511,19 +522,30 @@
         // Nothing to remember about an empty list, and writing one would overwrite a
         // real position with a placeholder if the component tears down mid-load.
         if (items.length === 0) return;
-        // Resolved once, so the index and its remainder cannot describe different rows.
-        const anchorIndex = resolveAnchorIndexAtOffset(scrollOffset);
-        saveScrollPosition(storage, id, {
-          scrollOffset,
-          // Derived from the live offset, not from the rendered window. The window's
-          // first index carries overscan, and adding it back does not recover the
-          // anchor either: near the top the leading overscan is clipped against 0,
-          // so `startIndex + overscan` points several rows PAST the reader instead
-          // of at them. The offset knows where they actually are.
-          startIndex: anchorIndex,
-          offsetWithinRow: Math.max(0, scrollOffset - locateRowStartOffset(anchorIndex)),
-        });
+        // The snapshot, not a fresh read. When a parent swaps BOTH the id and the
+        // items at once, this cleanup runs after that state has already changed —
+        // computing here would file the incoming collection's position under the
+        // outgoing collection's key.
+        const snapshot = latestPosition;
+        if (!snapshot) return;
+        saveScrollPosition(storage, id, snapshot);
       });
+    };
+  });
+
+  /** Keeps the position saveable at any moment, independent of what changed. */
+  $effect(() => {
+    const anchorIndex = resolveAnchorIndexAtOffset(scrollOffset);
+    latestPosition = {
+      scrollOffset,
+      // Derived from the live offset, not from the rendered window. The window's
+      // first index carries overscan, and adding it back does not recover the
+      // anchor either: near the top the leading overscan is clipped against 0,
+      // so `startIndex + overscan` points several rows PAST the reader instead
+      // of at them. The offset knows where they actually are.
+      startIndex: anchorIndex,
+      offsetWithinRow: Math.max(0, scrollOffset - locateRowStartOffset(anchorIndex)),
+      ...(items.length > 0 ? { anchorKey: keyAt(anchorIndex) } : {}),
     };
   });
 
@@ -818,6 +840,26 @@
     if (target !== null) pendingScrollTarget = Math.max(0, target);
     previousOffsets = currentOffsets;
   });
+
+  /**
+   * The index a saved anchor refers to NOW.
+   *
+   * The key wins when the list has one and it is still present: the collection may
+   * have grown at the front while the list was unmounted, which moves every index
+   * without moving any row. Falls back to the saved index, clamped.
+   */
+  function resolveIndexForSavedAnchor(saved: {
+    startIndex: number;
+    anchorKey?: string | number;
+  }): number {
+    const lastIndex = Math.max(0, items.length - 1);
+    if (saved.anchorKey !== undefined) {
+      for (let index = 0; index < items.length; index += 1) {
+        if (keyAt(index) === saved.anchorKey) return index;
+      }
+    }
+    return Math.min(Math.max(0, saved.startIndex), lastIndex);
+  }
 
   /** Where a row begins, from the measured table when there is one. */
   function locateRowStartOffset(index: number): number {
