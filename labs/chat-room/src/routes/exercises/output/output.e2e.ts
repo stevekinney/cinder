@@ -40,6 +40,13 @@ test('an invalid run is indistinguishable from a valid one by finishReason', asy
 		await page.locator(field('valid', 'finish')).innerText()
 	);
 	await expect(page.locator(field('invalid', 'has-error'))).toHaveText('false');
+
+	// The valid panel too. Checking only the invalid one would let this pass if
+	// Operative started populating `result.error` for BOTH — which would make
+	// the route's central claim ("`finishReason` and `error` do not
+	// distinguish them") false while the spec stayed green. The claim is about
+	// a pair; assert the pair.
+	await expect(page.locator(field('valid', 'has-error'))).toHaveText('false');
 });
 
 test('schemaValidation answers directly what output only hints at', async ({ page }) => {

@@ -136,7 +136,7 @@
 	</p>
 
 	{#each [{ id: 'valid', label: 'Valid output', promise: valid }, { id: 'invalid', label: 'Invalid output', promise: invalid }] as panel (panel.id)}
-		<section data-testid="output-{panel.id}" aria-live="polite" aria-busy={false}>
+		<section data-testid="output-{panel.id}" aria-live="polite">
 			<h2>{panel.label}</h2>
 			{#await panel.promise}
 				<p data-testid="output-{panel.id}-pending">Running…</p>
