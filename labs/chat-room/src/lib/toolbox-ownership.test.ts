@@ -20,6 +20,11 @@ function sourceFiles(directory: string): string[] {
 	return collected;
 }
 
+/** Repository-relative and separator-normalized, so assertions read the same on Windows. */
+function relativeToApplication(path: string): string {
+	return path.slice(applicationRoot.length + 1).replaceAll('\\', '/');
+}
+
 function read(relativePath: string): string {
 	return readFileSync(resolve(applicationRoot, relativePath), 'utf8');
 }
@@ -40,7 +45,7 @@ describe('the approval-signing toolbox is host-owned', () => {
 		const constructing = sourceFiles(applicationRoot)
 			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
 			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
-			.map((path) => path.slice(applicationRoot.length + 1));
+			.map(relativeToApplication);
 		expect(constructing).toEqual(['lib/toolbox.ts']);
 	});
 

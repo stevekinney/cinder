@@ -35,7 +35,14 @@ const CROSS_ENGINE_SHARDS = [
 		'**/interleaving.e2e.ts'
 	],
 	['**/markdown-editor.e2e.ts', '**/message-lifecycle.e2e.ts', '**/review-comment-creation.e2e.ts'],
-	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
+	[
+		'**/review-comment-lifecycle.e2e.ts',
+		'**/review-imperative.e2e.ts',
+		// A real fetch/ReadableStream path, which is precisely what these
+		// cross-engine shards exist for — Chromium-only coverage of it would be
+		// the silent reduction this list is meant to prevent.
+		'**/approval-flow.e2e.ts'
+	],
 	['**/review-modes.e2e.ts', '**/review-ssr-and-a11y.e2e.ts'],
 	[
 		'**/review-views.e2e.ts',

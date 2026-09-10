@@ -83,6 +83,8 @@
 	const stopRequestedIds = new SvelteSet<string>();
 	let holdRetryAfterFirstToken = $state(false);
 	let releaseHeldRetry: (() => void) | undefined;
+	let holdSendMidStream = $state(false);
+	let releaseHeldSend: (() => void) | undefined;
 
 	function requestStop(messageId: string): void {
 		stopRequestedIds.add(messageId);
@@ -96,6 +98,31 @@
 		return new Promise((resolve) => {
 			releaseHeldRetry = resolve;
 		});
+	}
+
+	/**
+	 * Parks the send loop after its SECOND token until `stopGenerating`
+	 * releases it, so a spec can click Stop against a stream that is provably
+	 * still open. The send loop otherwise runs on a fixed per-token delay, and
+	 * a loaded machine can finish it between the text rendering and the click
+	 * landing — which detaches the Stop button mid-click rather than failing an
+	 * assertion, so the symptom names the wrong thing.
+	 *
+	 * The second token, not the first, because `SEND_TOKENS` opens with
+	 * `'Sure, '` and `'here '` and the spec waits for `'Sure, here'` before it
+	 * clicks. Parking a token earlier would hold the stream open on text that
+	 * never arrives. The retry path holds after its first token because
+	 * `'Retried '` is a whole token on its own.
+	 */
+	function waitForHeldSendRelease(): Promise<void> {
+		return new Promise((resolve) => {
+			releaseHeldSend = resolve;
+		});
+	}
+
+	function releaseSend(): void {
+		releaseHeldSend?.();
+		releaseHeldSend = undefined;
 	}
 
 	function releaseRetry(): void {
@@ -122,13 +149,21 @@
 
 			try {
 				let buffer = '';
-				for (const token of SEND_TOKENS) {
+				for (const [index, token] of SEND_TOKENS.entries()) {
 					if (stopRequestedIds.has(messageId)) break;
 					await sleep(TOKEN_DELAY_MS);
 					if (stopRequestedIds.has(messageId)) break;
 
 					buffer += token;
 					conversation = updateStreamingMessage(snapshot(), messageId, buffer);
+					if (holdSendMidStream && index === 1) {
+						// One-shot: consumed by the send it parks. The spec that uses
+						// this stops the FIRST send and then expects the SECOND to
+						// stream to completion, so a latch that stayed armed would
+						// park that one too.
+						holdSendMidStream = false;
+						await waitForHeldSendRelease();
+					}
 				}
 				conversation = buffer
 					? finalizeStreamingMessage(snapshot(), messageId)
@@ -188,6 +223,7 @@
 			log = [...log, `stopGenerating:${messageId}`];
 			requestStop(messageId);
 			releaseRetry();
+			releaseSend();
 		}
 	};
 
@@ -232,6 +268,10 @@
 			<label>
 				<input type="checkbox" bind:checked={holdRetryAfterFirstToken} />
 				Hold retry after its first token
+			</label>
+			<label>
+				<input type="checkbox" bind:checked={holdSendMidStream} />
+				Hold the next send mid-stream
 			</label>
 			<button type="button" data-testid="force-retry-again" onclick={forceRetryAgain}>
 				Force retry again (bypasses the UI's Retry button)
