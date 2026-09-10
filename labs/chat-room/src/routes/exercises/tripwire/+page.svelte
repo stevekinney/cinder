@@ -53,6 +53,7 @@
 		transcriptRoles: string;
 		lastRole: string;
 		lastMessageNonEmpty: boolean;
+		promptSeenByGenerate: string;
 		substituted: boolean;
 		lastMessage: string;
 	};
@@ -106,9 +107,24 @@
 		// `RunOptions`. Operative documents this exact case: `createActiveRun`
 		// is the "full-control factory behind `createAgent`", to be used
 		// "directly when you need something `createAgent` doesn't expose".
+		// What the model was actually handed. A fixed generator that ignores
+		// its context cannot tell you that the prompt arrived unchanged — a
+		// guardrail that rewrote the user message on the way through would
+		// leave the answer, the counts, and the roles all correct. Recording
+		// it here is what makes "left alone" mean the request, not just the
+		// reply.
+		let promptSeenByGenerate = '(generate not called)';
 		const activeRun = createActiveRun({
-			generate: async () => {
+			generate: async (context) => {
 				generateCalls += 1;
+				const seen = context.conversation.getMessages();
+				const lastUser = seen.findLast((message) => message.role === 'user')?.content;
+				promptSeenByGenerate =
+					lastUser === undefined
+						? '(no user message)'
+						: typeof lastUser === 'string'
+							? lastUser
+							: JSON.stringify(lastUser);
 				return { content: MODEL_ANSWER, toolCalls: [] };
 			},
 			toolbox: createToolbox([]),
@@ -149,7 +165,16 @@
 			finishReason: result.finishReason,
 			generateCalls,
 			steps: result.steps.length,
-			errorName: result.error instanceof Error ? result.error.name : '(none)',
+			// Three-way, not two. Collapsing "no error" and "something that is
+			// not an Error was thrown" into one string would let a malformed
+			// terminal failure read as `(none)` — the exact value the
+			// default-mode panel treats as proof the run completed cleanly.
+			errorName:
+				result.error === undefined
+					? '(none)'
+					: result.error instanceof Error
+						? result.error.name
+						: `(non-Error: ${typeof result.error})`,
 			errorIdentity: tripped === undefined ? '(none)' : identityOf(tripped),
 			eventIdentity,
 			eventStep,
@@ -161,6 +186,7 @@
 			transcriptRoles: messages.map((message) => message.role).join(', '),
 			lastRole: messages.at(-1)?.role ?? '(none)',
 			lastMessageNonEmpty: typeof last === 'string' && last.length > 0,
+			promptSeenByGenerate,
 			// Whether a guardrail replaced the model's answer, decided against
 			// this page's own constant. The `validate` panel's whole point is
 			// that the loop continued and put something ELSE in the transcript;
@@ -242,6 +268,8 @@
 					<dd data-testid="tripwire-{panel.id}-last-nonempty">
 						{observation.lastMessageNonEmpty}
 					</dd>
+					<dt>prompt <code>generate</code> received</dt>
+					<dd data-testid="tripwire-{panel.id}-prompt-seen">{observation.promptSeenByGenerate}</dd>
 					<dt>model's answer replaced</dt>
 					<dd data-testid="tripwire-{panel.id}-substituted">{observation.substituted}</dd>
 					<dt>last message</dt>

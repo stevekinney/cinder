@@ -31,6 +31,10 @@ test('halts the run before the model is ever called', async ({ page }) => {
 	// Nothing was appended: the transcript still holds only the user message
 	// the page seeded. A substituted refusal would make this 2.
 	await expect(page.locator(field('tripped', 'transcript-length'))).toHaveText('1');
+
+	// Nothing reached the generator to inspect, which is the same fact from
+	// the other side.
+	await expect(page.locator(field('tripped', 'prompt-seen'))).toHaveText('(generate not called)');
 });
 
 test('surfaces the guardrail identity on both the event and the terminal error', async ({
@@ -78,6 +82,7 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	// regression that started calling `generate` and then overwrote its answer
 	// would leave the step, transcript, and substitution assertions all green.
 	await expect(page.locator(field('continued', 'generate-calls'))).toHaveText('0');
+	await expect(page.locator(field('continued', 'prompt-seen'))).toHaveText('(generate not called)');
 
 	// It took a step and grew the transcript, which is exactly what the
 	// tripped panel did not do.
@@ -119,4 +124,14 @@ test('leaves a benign request alone', async ({ page }) => {
 	// last-message check green on a three-message transcript.
 	await expect(page.locator(field('clean', 'transcript-length'))).toHaveText('2');
 	await expect(page.locator(field('clean', 'transcript-roles'))).toHaveText('user, assistant');
+
+	// And the REQUEST was left alone, not just the reply. This page's
+	// `generate` returns a fixed string without reading its context, so
+	// nothing above would notice a guardrail that sanitized the user message
+	// on its way through — the answer, the count, and the roles would all
+	// still be right. What `generate` was handed is the only thing that says
+	// the prompt arrived intact.
+	await expect(page.locator(field('clean', 'prompt-seen'))).toHaveText(
+		'What is the capital of France?'
+	);
 });

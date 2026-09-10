@@ -14,9 +14,16 @@
 	// Context compaction, and what it does NOT touch.
 	//
 	// Compaction rewrites the conversation the MODEL sees: older messages are
-	// summarized into a single system message, a few recent ones are kept
-	// verbatim, and anything the preserve policy protects is carried through
-	// whole. This page seeds a transcript long enough to trigger that, pins
+	// summarized into a single system message, a few recent ones are kept, and
+	// anything the preserve policy protects is carried through.
+	//
+	// "Carried through" is precise here rather than loose: role, content, and
+	// metadata survive unchanged — including the `pinned` flag, without which
+	// the next compaction would summarize the message away — but the IDS DO
+	// NOT. Compaction rebuilds what it keeps, so the projection shares none of
+	// the seeded conversation's message ids. Anything keyed to a message id
+	// across a compaction boundary is keyed to something that no longer
+	// exists. This page seeds a transcript long enough to trigger that, pins
 	// one fact inside the part that gets summarized away, and shows the
 	// projection the first generate call actually received.
 	//
@@ -74,6 +81,7 @@
 		summarizedMessages: number;
 		foreignMessages: number;
 		carriedVerbatim: number;
+		projectionOrder: string;
 		inBothBuckets: number;
 		inNeitherBucket: number;
 		partitionExact: boolean;
@@ -159,12 +167,14 @@
 		// summarized AND retained one message while dropping another still
 		// sums to the seeded length.
 		//
-		// Matched by full shape — role, content, AND metadata — rather than by
-		// id, because compaction rebuilds the messages it carries through with
-		// fresh ids, so the projection shares none of the seed's. Including
-		// `metadata` is the part that matters: a carried-through message that
-		// arrived with `pinned` stripped would look identical by content and
-		// then be summarized away on the NEXT compaction.
+		// Matched on role, content, and metadata — which is the whole of what
+		// survives. Not by id, and not as an omission for convenience:
+		// compaction reassigns ids, so the projection shares none of the
+		// seed's and an id comparison finds zero survivors for a projection
+		// that carries four messages through. Including `metadata` is the part
+		// that matters most: a carried-through message that arrived with
+		// `pinned` stripped would look identical by content and then be
+		// summarized away on the NEXT compaction.
 		const shapeOf = (message: Message): string =>
 			JSON.stringify({
 				role: message.role,
@@ -181,6 +191,20 @@
 		const inNeitherBucket = buckets.filter(
 			(bucket) => !bucket.carried && !bucket.summarized
 		).length;
+
+		// Membership is not enough: swapping the pinned message with a retained
+		// recent one leaves every count, shape, and role check identical while
+		// handing the model recent context ahead of the older pinned fact.
+		// This maps the projection back onto the seed positionally, so the
+		// summary's placement and the carried messages' order are both pinned
+		// in one readable string.
+		const projectionOrder = projection
+			.map((message) => {
+				const shape = shapeOf(message);
+				const seedPosition = before.findIndex((seededMessage) => shapeOf(seededMessage) === shape);
+				return seedPosition === -1 ? 'summary' : String(seedPosition);
+			})
+			.join(', ');
 
 		const pinnedInProjection = projection.find((message) =>
 			JSON.stringify(message.content).includes(PINNED_FACT)
@@ -207,6 +231,7 @@
 			// previous summary folded back in, say.
 			foreignMessages: foreignIds.length,
 			carriedVerbatim,
+			projectionOrder,
 			inBothBuckets,
 			inNeitherBucket,
 			// Every seeded message is in exactly one bucket, and the two
@@ -231,7 +256,9 @@
 	<h1>Context management — compaction</h1>
 	<p>
 		The model sees a summarized projection; the page keeps the whole transcript. The pinned fact
-		crosses that boundary because the preserve policy carries it; the first follow-up does not.
+		crosses that boundary because the preserve policy carries it; the first follow-up does not. What
+		crosses does so unchanged in role, content, and metadata — but not in identity: compaction
+		reassigns message ids, so nothing keyed to one survives the boundary.
 	</p>
 
 	<section data-testid="compaction" aria-live="polite">
@@ -250,8 +277,10 @@
 				<dd data-testid="compaction-summarized-messages">{result.summarizedMessages}</dd>
 				<dt>of those, not from the seed</dt>
 				<dd data-testid="compaction-foreign-messages">{result.foreignMessages}</dd>
-				<dt>carried through verbatim</dt>
-				<dd data-testid="compaction-carried-verbatim">{result.carriedVerbatim}</dd>
+				<dt>carried through unchanged (role, content, metadata)</dt>
+				<dd data-testid="compaction-carried-unchanged">{result.carriedVerbatim}</dd>
+				<dt>projection, mapped back to seed positions</dt>
+				<dd data-testid="compaction-projection-order">{result.projectionOrder}</dd>
 				<dt>in both buckets / in neither</dt>
 				<dd data-testid="compaction-bucket-overlap">
 					{result.inBothBuckets} / {result.inNeitherBucket}

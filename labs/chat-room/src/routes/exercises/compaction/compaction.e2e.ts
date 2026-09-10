@@ -46,11 +46,25 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// The partition itself, sorted per message rather than inferred from two
 	// totals: a compaction that both summarized AND retained one message
 	// while dropping another sums to 14 just the same.
-	await expect(page.locator(field('carried-verbatim'))).toHaveText('4');
+	await expect(page.locator(field('carried-unchanged'))).toHaveText('4');
 	await expect(page.locator(field('bucket-overlap'))).toHaveText('0 / 0');
 	await expect(page.locator(field('partition'))).toHaveText('true');
 
-	// Matched by role + content + METADATA, and this is the field that says
+	// Membership says nothing about ORDER, and order is what the model reads.
+	// Swapping the pinned message with a retained recent one leaves every
+	// count, shape, and role assertion above untouched while putting recent
+	// context ahead of the older pinned fact. Mapped back to seed positions,
+	// the whole projection is pinned in one string: the summary first, then
+	// the system message and the pinned fact, then the two retained recent
+	// messages, in the order they were seeded.
+	await expect(page.locator(field('projection-order'))).toHaveText('summary, 0, 1, 12, 13');
+
+	// "Unchanged" above means role, content, and metadata — the whole of what
+	// survives. Message IDS are reassigned by compaction, which is why the
+	// comparison is by shape rather than by id, and why anything keyed to a
+	// message id does not survive a compaction boundary.
+	//
+	// Metadata is in that shape deliberately, and this is the field that says
 	// why. A carried-through message whose `pinned` flag was stripped would
 	// look identical by content and then be summarized away on the next
 	// compaction — the exact failure the preserve policy exists to prevent,
