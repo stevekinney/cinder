@@ -33,6 +33,7 @@ mock.module('@floating-ui/dom', () => ({
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
 const { default: ContextMenuHarness } = await import('./_context-menu-test-harness.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 function queryMenu(): HTMLElement | null {
   return document.body.querySelector<HTMLElement>('[role="menu"]');
@@ -45,10 +46,12 @@ beforeEach(() => {
   flipSpy.mockClear();
   offsetSpy.mockClear();
   shiftSpy.mockClear();
+  _resetEscapeStack();
 });
 
 afterEach(() => {
   cleanup();
+  _resetEscapeStack();
 });
 
 describe('ContextMenu', () => {
@@ -197,7 +200,9 @@ describe('ContextMenu', () => {
     expect(triggerContextMenu).toHaveBeenCalledTimes(1);
 
     await fireEvent.click(region);
-    await fireEvent.keyDown(region, { key: 'Escape' });
+    // A non-Escape key still reaches the consumer's own onkeydown — it's
+    // only Escape that the shared escape stack arbitrates.
+    await fireEvent.keyDown(region, { key: 'a' });
     await fireEvent.pointerDown(region, { pointerType: 'touch', clientX: 14, clientY: 18 });
     await fireEvent.pointerMove(region, { pointerType: 'touch', clientX: 15, clientY: 18 });
     await fireEvent.pointerUp(region, { pointerType: 'touch' });
@@ -207,6 +212,58 @@ describe('ContextMenu', () => {
     expect(triggerPointerUp).toHaveBeenCalledTimes(1);
     expect(triggerClick).toHaveBeenCalledTimes(1);
     expect(triggerKeyDown).toHaveBeenCalledTimes(1);
+  });
+
+  test('CIN-428: Escape is consumed by the shared escape stack before reaching the trigger region, even with focus outside the menu', async () => {
+    // Regression / behavior-change guard: previously DropdownMenu's Escape
+    // handling was target-scoped to its own panel, so an Escape dispatched
+    // on the (unrelated) trigger region would pass straight through to the
+    // consumer's own onkeydown. Now DropdownMenu registers on the shared
+    // escape stack unconditionally while open, so it consumes Escape
+    // regardless of focus location — the consumer's onkeydown never sees it.
+    const triggerKeyDown = mock(() => {});
+    const { container } = render(ContextMenuHarness, {
+      props: {
+        triggerHandlers: { onkeydown: triggerKeyDown },
+      },
+    });
+    const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+    await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const escapeEvent = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    region.dispatchEvent(escapeEvent);
+
+    expect(escapeEvent.defaultPrevented).toBe(true);
+    expect(triggerKeyDown).not.toHaveBeenCalled();
+    await waitFor(() => expect(queryMenu()).toBeNull());
+  });
+
+  test('inherits escape-stack registration transitively from DropdownMenu: dismisses only itself above another stack registration', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = render(ContextMenuHarness);
+      const region = container.querySelector('.context-menu-region') as HTMLElement;
+
+      await fireEvent.contextMenu(region, { clientX: 24, clientY: 36 });
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => expect(queryMenu()).toBeNull());
+    } finally {
+      releaseParent();
+    }
   });
 
   test('right-clicking again while open repositions to the latest pointer coordinates', async () => {

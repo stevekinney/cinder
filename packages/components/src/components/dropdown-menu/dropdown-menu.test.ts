@@ -11,11 +11,13 @@ const { default: Fixture } = await import('../../test/fixtures/dropdown-compound
 const { default: DropdownDirectionFixture } =
   await import('../../test/fixtures/dropdown-direction-fixture.svelte');
 const { default: DropdownMenu } = await import('./dropdown-menu.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
 });
 
 function renderFixture(props?: { menuStyle?: string; triggerStyle?: string }) {
@@ -152,6 +154,76 @@ describe('DropdownMenu', () => {
 
     const menu = container.querySelector('[role="menu"]') as HTMLElement;
     expect(menu.hasAttribute('style')).toBe(false);
+  });
+
+  test('holds a pushEscapeHandler registration while open and releases it when close begins', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = renderFixture();
+      await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+      await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      (document.activeElement as HTMLElement).dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+      // Release timing (CIN-428): released the instant close begins, so the
+      // parent handler (now top-most) receives the very next Escape.
+      await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('with the menu open above another stack registration, Escape dismisses only the menu', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = renderFixture();
+      await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+      await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('Escape dismisses the menu with focus outside it', async () => {
+    // New, intended behavior (CIN-428): the escape-stack registration fires
+    // regardless of focus location, unlike the deleted target-scoped
+    // `onkeydown` branch that only acted while focus was inside the panel.
+    const { container } = renderFixture();
+    await fireEvent.click(container.querySelector('.trigger') as HTMLElement);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
+    outside.remove();
   });
 });
 

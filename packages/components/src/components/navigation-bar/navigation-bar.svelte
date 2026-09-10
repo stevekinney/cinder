@@ -31,6 +31,7 @@
   import { BROWSER as browser } from 'esm-env';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { getSequentialFocusTargets, getTabIndexValue } from '../../utilities/focus.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -510,6 +511,25 @@
     focusTarget?.focus();
   }
 
+  // Escape ownership (CIN-428). The local Escape branch (previously in
+  // handleKeyDown below, only reachable while the keydown bubbled through
+  // the bar's own DOM tree) is deleted — the escape-stack registration is
+  // the single Escape dispatch path, firing whenever the mobile panel is
+  // open regardless of focus location, and swallowing the key (uniform
+  // swallow-at-the-top) whenever it acts.
+  function dismissMobilePanel(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    mobileMenuOpen = false;
+    focusMenuToggle();
+  }
+
+  $effect(() => {
+    if (!isCollapsible || !mobilePanelOpen) return;
+    const releaseEscape = pushEscapeHandler(dismissMobilePanel);
+    return releaseEscape;
+  });
+
   function getFocusTargetBeforeItems(
     navigationItem: HTMLElement | null = null,
   ): SequentialFocusTarget | null {
@@ -671,12 +691,6 @@
     if (event.defaultPrevented) return;
 
     if (bridgeBrandTabToPortaledPanel(event)) return;
-
-    if (event.key === 'Escape' && isCollapsible && isMobileLayout && mobileMenuOpen) {
-      mobileMenuOpen = false;
-      focusMenuToggle();
-      return;
-    }
 
     const navigationItem = getEventNavigationItem(event);
     if (

@@ -8,8 +8,12 @@ setupHappyDom();
 
 const { cleanup, fireEvent, render, screen, waitFor } = await import('@testing-library/svelte');
 const { default: SelectionPopover } = await import('./selection-popover.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  _resetEscapeStack();
+});
 
 async function readSelectionPopoverCss(): Promise<string> {
   // Strip the @layer wrapper: happy-dom does not apply layer-nested rules to
@@ -197,6 +201,102 @@ describe('SelectionPopover', () => {
     await fireEvent.click(screen.getByRole('button', { name: 'Add comment' }));
     await fireEvent.keyDown(toolbar, { key: 'Escape' });
     expect(canceled).toBe(true);
+  });
+
+  test('holds a pushEscapeHandler registration while open and releases it when close begins', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { rerender } = render(SelectionPopover, {
+        props: { id: 'selection-comment', open: true, position: { x: 120, y: 80 } },
+      });
+
+      const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      toolbar.dispatchEvent(escapeEvent);
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+
+      // Release timing (CIN-428): released when close BEGINS — the very next
+      // render that flips `open` false — not after any exit transition.
+      await rerender({ open: false, position: { x: 120, y: 80 } });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('with the popover open above another stack registration, Escape dismisses only the popover', async () => {
+    let parentEscapeCount = 0;
+    let closed = false;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      const toolbar = screen.getByRole('toolbar', { name: 'Selection actions' });
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      toolbar.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(closed).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('Escape dismisses the popover with focus outside its DOM tree', async () => {
+    // New, intended behavior (CIN-428): the escape-stack registration fires
+    // regardless of focus location, unlike the deleted local onkeydown branch.
+    let closed = false;
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+
+    try {
+      render(SelectionPopover, {
+        props: {
+          id: 'selection-comment',
+          open: true,
+          position: { x: 120, y: 80 },
+          onClose: () => {
+            closed = true;
+          },
+        },
+      });
+
+      expect(document.activeElement).toBe(outside);
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(closed).toBe(true);
+    } finally {
+      outside.remove();
+    }
   });
 
   test.each([

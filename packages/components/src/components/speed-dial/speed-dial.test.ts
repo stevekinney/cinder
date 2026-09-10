@@ -11,12 +11,14 @@ const { default: SpeedDialFixture } = await import('./speed-dial.fixture.svelte'
 const { waitForSpeedDialExit } = await import('./speed-dial-exit.ts');
 const { createQueuedFocusRestoration, getFocusTargetBeforeSpeedDial } =
   await import('./speed-dial-focus.ts');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 const speedDialSource = readFileSync(new URL('./speed-dial.svelte', import.meta.url), 'utf8');
 const speedDialStyles = readFileSync(new URL('./speed-dial.css', import.meta.url), 'utf8');
 
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
   // Fallback-duration tests advance fake timers instead of sleeping past a
   // real wall-clock boundary (CIN-376 round 14 review) — reset here so a
   // fake-timer test never leaks into the next one.
@@ -1315,6 +1317,85 @@ describe('SpeedDial', () => {
 
     expect(screen.getByTestId('open-state').textContent).toBe('closed');
     expect(document.activeElement).toBe(trigger);
+  });
+
+  test('holds a pushEscapeHandler registration while open and releases it when close begins', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      screen.getByRole('button', { name: 'Create' }).dispatchEvent(escapeEvent);
+      await flushQueuedFocus();
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+
+      // Release timing (CIN-428): released when close BEGINS, not once any
+      // exit transition finishes — the parent handler (now top-most) sees
+      // the very next Escape.
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('with the dial open above another stack registration, Escape dismisses only the dial', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      render(SpeedDialFixture);
+      const trigger = screen.getByRole('button', { name: 'Quick actions' });
+      await fireEvent.click(trigger);
+      await flushQueuedFocus();
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await flushQueuedFocus();
+
+      expect(parentEscapeCount).toBe(0);
+      expect(screen.getByTestId('open-state').textContent).toBe('closed');
+      expect(document.activeElement).toBe(trigger);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('Escape closes the dial with focus outside the actions panel', async () => {
+    // New, intended behavior (CIN-428): the escape-stack registration fires
+    // regardless of focus location, unlike the deleted local `onkeydown`
+    // branch that only ever fired while focus was inside the actions panel.
+    render(SpeedDialFixture);
+    const trigger = screen.getByRole('button', { name: 'Quick actions' });
+    await fireEvent.click(trigger);
+    await flushQueuedFocus();
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await flushQueuedFocus();
+
+    expect(screen.getByTestId('open-state').textContent).toBe('closed');
+    outside.remove();
   });
 
   test('outside click dismisses an open dial and restores focus when an action is active', async () => {

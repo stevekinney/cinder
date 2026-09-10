@@ -21,6 +21,7 @@
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { getLocaleContext } from '../../_internal/locale-context.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { observeTextDirection, resolveTextDirection } from '../../_internal/text-direction.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import {
@@ -159,17 +160,32 @@
     item?.focus();
   }
 
+  // Escape ownership (CIN-428). The local, target-scoped Escape branch is
+  // deleted — the escape-stack registration below is the single Escape
+  // dispatch path, and it fires whenever this menu is open regardless of
+  // where focus sits. The `target.closest('[role="menu"]')` scoping in
+  // handleKeydown below still applies to ArrowDown/Up/Home/End/typeahead —
+  // Escape no longer needs it, since the shared stack itself arbitrates
+  // between nested/sibling overlays via LIFO ordering (MenuBar's staged
+  // submenu-then-menubar close falls out of this naturally: each open
+  // DropdownMenu instance — submenu, then top-level — registers separately,
+  // so the submenu's registration sits above the top-level's on the stack).
+  function dismissMenu(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    setOpen(false);
+    context.focusTrigger();
+  }
+
+  $effect(() => {
+    if (!context.isOpen) return;
+    const releaseEscape = pushEscapeHandler(dismissMenu);
+    return releaseEscape;
+  });
+
   function handleKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof HTMLElement ? event.target : null;
     if (target?.closest('[role="menu"]') !== menuElement) return;
-
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      event.stopPropagation();
-      setOpen(false);
-      context.focusTrigger();
-      return;
-    }
 
     const itemsArray = getOwnedMenuItems();
     if (!itemsArray.length) return;

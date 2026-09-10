@@ -39,6 +39,7 @@ mock.module('@floating-ui/dom', () => ({
 
 const { cleanup, fireEvent, render, waitFor } = await import('@testing-library/svelte');
 const { tick } = await import('svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 const { default: CommandMenuHostFixture } =
   await import('../../test/fixtures/command-menu-host-fixture.svelte');
 const { default: CommandMenuFixture } =
@@ -110,6 +111,10 @@ beforeEach(() => {
   autoUpdateSpy.mockClear();
   autoUpdateTeardown.mockClear();
   offsetSpy.mockClear();
+  // Clear the shared module-level escape stack so a sibling-overlay handler
+  // registered by one test doesn't leak into the next (see combobox.test.ts
+  // / popover.test.ts, the canonical pattern this file follows).
+  _resetEscapeStack();
 });
 
 afterEach(() => {
@@ -541,6 +546,124 @@ describe('CommandMenu', () => {
     await fireEvent.click(getByTestId('close'));
     await settleCommandMenu();
     expect(states.at(-1)).toBeNull();
+  });
+});
+
+describe('CommandMenu escape-stack registration (CIN-427)', () => {
+  test('holds a pushEscapeHandler registration while open and releases it on close', async () => {
+    // Canonical harness pattern (combobox.test.ts / popover.test.ts): push a
+    // counting 'parent' handler onto the shared stack BEFORE mounting, so it
+    // sits underneath the menu's own registration once the menu opens.
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { getByTestId } = render(CommandMenuFixture);
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+      const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+
+      // While open, the menu's registration sits on top of the stack: the
+      // parent handler underneath does not fire.
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      anchor.dispatchEvent(escapeEvent);
+      await waitFor(() => expect(queryMenu()).toBeNull());
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+
+      // Closing releases the menu's registration: the parent handler (now
+      // top-most again) receives the very next Escape.
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('with the menu open above another stack registration, Escape dismisses only the menu', async () => {
+    let parentEscapeCount = 0;
+    let dismissCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { getByTestId } = render(CommandMenuFixture, {
+        onDismissed: () => {
+          dismissCount += 1;
+        },
+      });
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+      const anchor = getByTestId('anchor') as HTMLTextAreaElement;
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      anchor.dispatchEvent(escapeEvent);
+      await tick();
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(dismissCount).toBe(1);
+      expect(parentEscapeCount).toBe(0);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('escape-stack handler dismisses ghost text first, then falls through to close the menu', async () => {
+    // Regression for the two-stage semantics routed explicitly through the
+    // stack handler rather than the anchor's own keydown listener: dispatch
+    // on `window` directly (no anchor keydown listener attached to `window`
+    // itself) so this exercises the pushEscapeHandler path unambiguously.
+    const dismissed = mock(() => {});
+    const { getByTestId } = render(CommandMenuHostFixture, {
+      ghostTextEnabled: true,
+      onDismissed: dismissed,
+    });
+    const host = getByTestId('host') as HTMLTextAreaElement;
+
+    await typeIntoHost(host, '/al');
+    await waitFor(() => expect(queryGhost()?.textContent).toBe('pha'));
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settleCommandMenu();
+    expect(queryGhost()).toBeNull();
+    expect(queryMenu()).not.toBeNull();
+    expect(dismissed).not.toHaveBeenCalled();
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    await settleCommandMenu();
+    expect(dismissed).toHaveBeenCalledTimes(1);
+    await waitFor(() => expect(queryMenu()).toBeNull());
+  });
+
+  test('Escape dismisses the menu with focus outside the anchor', async () => {
+    // New, intended behavior the stack registration deliberately introduces
+    // (CIN-427): the old anchor-scoped-only keydown listener could only ever
+    // see Escape while focus sat in the anchor. The stack handler receives
+    // every window keydown regardless of focus location.
+    let dismissCount = 0;
+    const { getByTestId } = render(CommandMenuFixture, {
+      onDismissed: () => {
+        dismissCount += 1;
+      },
+    });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    const outside = getByTestId('outside') as HTMLButtonElement;
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(dismissCount).toBe(1);
+    await waitFor(() => expect(queryMenu()).toBeNull());
   });
 });
 

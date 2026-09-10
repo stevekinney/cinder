@@ -24,6 +24,7 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
 });
 
 const { default: Dropdown } = await import('./dropdown.svelte');
@@ -31,6 +32,7 @@ const { default: DropdownCompoundFixture } =
   await import('../../test/fixtures/dropdown-compound-fixture.svelte');
 const { default: DropdownTriggerNoCaretFixture } =
   await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open Menu</button>`,
@@ -217,6 +219,68 @@ describe('Dropdown', () => {
     expect(root).not.toBeNull();
     await fireEvent.keyDown(root, { key: 'Escape' });
     expect(openValue).toBe(false);
+  });
+
+  test('CIN-428 (legacy non-popover branch): holds a pushEscapeHandler registration while open and releases it on close', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container, rerender } = render(Dropdown, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
+      });
+      const root = container.querySelector('.cinder-dropdown') as HTMLElement;
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      root.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+
+      // Release timing: released when close begins. Re-render with `open:
+      // false` — the way a real consumer re-passes the bindable value the
+      // component just requested closed — so the registration effect's
+      // cleanup actually runs; the parent (now top-most) then sees the very
+      // next Escape.
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('CIN-428 (legacy non-popover branch): Escape closes the menu with focus outside the dropdown', async () => {
+    let openValue = true;
+    render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(openValue).toBe(false);
+    outside.remove();
   });
 
   test('data-cinder-placement reflects placement prop on root element', () => {
@@ -444,6 +508,32 @@ describe('Dropdown', () => {
       expect(container.querySelector('[role="menu"]')).toBeNull();
       expect(document.activeElement).toBe(trigger);
     });
+  });
+
+  test('CIN-428 (modern/compound branch): inherits escape-stack registration transitively from DropdownMenu — with another registration underneath, Escape dismisses only the compound menu', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = renderCompoundDropdown();
+      const trigger = container.querySelector('.trigger') as HTMLElement;
+
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(document.activeElement?.textContent).toContain('Copy link');
+      });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => {
+        expect(container.querySelector('[role="menu"]')).toBeNull();
+      });
+    } finally {
+      releaseParent();
+    }
   });
 
   test('Escape on compound menu does not double-fire close+focus through parent handler', async () => {

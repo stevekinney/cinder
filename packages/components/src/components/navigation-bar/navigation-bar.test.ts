@@ -10,11 +10,13 @@ import { setupHappyDom } from '../../test/happy-dom.ts';
 setupHappyDom();
 
 const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Unmount renders between tests; shared document.body otherwise leaks activeElement/nodes.
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
 });
 
 const { default: NavigationBar } = await import('./navigation-bar.svelte');
@@ -1682,19 +1684,102 @@ describe('NavigationBar', () => {
     ).toBe('false');
   });
 
-  test('pressing Escape outside the navbar does not close the menu', async () => {
-    const { container } = render(NavigationBar, {
-      items: textSnippet('items'),
-      menuToggle: toggleSnippet(),
-    });
-    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
-    await fireEvent.click(toggle);
+  test('pressing Escape outside the navbar still closes the mobile menu (CIN-428)', async () => {
+    // New, intended behavior: the escape-stack registration fires regardless
+    // of focus/dispatch location while the mobile panel is open, unlike the
+    // deleted local bubbling `onkeydown` branch that only ever saw keydowns
+    // whose path traversed the bar's own DOM tree.
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+      });
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+      emitNavigationBarResize(nav, 640);
+      await tick();
 
-    // Dispatch Escape on document.body — outside the nav element.
-    await fireEvent.keyDown(document.body, { key: 'Escape' });
-    expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-    ).toBe('true');
+      await fireEvent.click(toggle);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+      // Dispatch Escape on document.body — outside the nav element.
+      await fireEvent.keyDown(document.body, { key: 'Escape' });
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
+  });
+
+  test('holds a pushEscapeHandler registration while the mobile panel is open and releases it when close begins', async () => {
+    await withResizeObserver(async () => {
+      let parentEscapeCount = 0;
+      const releaseParent = pushEscapeHandler(() => {
+        parentEscapeCount += 1;
+      });
+
+      try {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+        await tick();
+        const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+        const nav = container.querySelector('nav') as HTMLElement;
+        emitNavigationBarResize(nav, 640);
+        await tick();
+
+        await fireEvent.click(toggle);
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+        const escapeEvent = new window.KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        });
+        nav.dispatchEvent(escapeEvent);
+
+        expect(escapeEvent.defaultPrevented).toBe(true);
+        expect(parentEscapeCount).toBe(0);
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+
+        // Release timing (CIN-428): released when close BEGINS — the parent
+        // handler (now top-most) sees the very next Escape.
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+        expect(parentEscapeCount).toBe(1);
+      } finally {
+        releaseParent();
+      }
+    });
+  });
+
+  test('with the mobile panel open above another stack registration, Escape dismisses only the panel', async () => {
+    await withResizeObserver(async () => {
+      let parentEscapeCount = 0;
+      const releaseParent = pushEscapeHandler(() => {
+        parentEscapeCount += 1;
+      });
+
+      try {
+        const { container } = render(NavigationBar, {
+          items: textSnippet('items'),
+          menuToggle: toggleSnippet(),
+        });
+        await tick();
+        const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+        const nav = container.querySelector('nav') as HTMLElement;
+        emitNavigationBarResize(nav, 640);
+        await tick();
+
+        await fireEvent.click(toggle);
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+        window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+        expect(parentEscapeCount).toBe(0);
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+      } finally {
+        releaseParent();
+      }
+    });
   });
 
   // ── items snippet receives variant context ───────────────────────────────
@@ -1776,7 +1861,7 @@ describe('NavigationBar', () => {
 
   // ── Composed onkeydown ───────────────────────────────────────────────────
 
-  test('rest-prop onkeydown is composed: spy fires AND menu closes on Escape', async () => {
+  test('rest-prop onkeydown is composed for non-Escape keys', async () => {
     let spyFired = false;
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -1794,32 +1879,54 @@ describe('NavigationBar', () => {
       await tick();
 
       await fireEvent.click(toggle);
-      await fireEvent.keyDown(nav, { key: 'Escape' });
+      await fireEvent.keyDown(nav, { key: 'a' });
 
       expect(spyFired).toBe(true);
-      expect(
-        container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-      ).toBe('false');
     });
   });
 
-  test('rest-prop onkeydown that calls preventDefault cancels the Escape close', async () => {
-    const { container } = render(NavigationBar, {
-      items: textSnippet('items'),
-      menuToggle: toggleSnippet(),
-      onkeydown: (e: KeyboardEvent) => {
-        e.preventDefault();
-      },
-    } as any);
+  test('CIN-428: Escape closes the mobile menu without reaching the composed rest-prop onkeydown', async () => {
+    // Behavior change from the escape-stack migration: the stack handler
+    // runs at the window capture phase and stopPropagation()s once it acts,
+    // so the keydown never reaches <nav>'s own bubble-phase onkeydown (where
+    // the consumer's composed handler used to run first) — and, as a direct
+    // consequence, a consumer can no longer cancel the close by calling
+    // preventDefault() from its own onkeydown for Escape specifically. This
+    // is the same uniform swallow-at-the-top tradeoff every other
+    // escape-stack overlay in this codebase already has (Combobox, Popover,
+    // etc.) — a consumer's onkeydown still composes normally for every other
+    // key (see the test above).
+    let spyFired = false;
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: textSnippet('items'),
+        menuToggle: toggleSnippet(),
+        onkeydown: (event: KeyboardEvent) => {
+          spyFired = true;
+          event.preventDefault();
+        },
+      } as any);
 
-    const toggle = container.querySelector('#toggle-btn') as HTMLElement;
-    const nav = container.querySelector('nav') as HTMLElement;
-    await fireEvent.click(toggle);
-    await fireEvent.keyDown(nav, { key: 'Escape' });
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+      emitNavigationBarResize(nav, 640);
+      await tick();
 
-    expect(
-      container.querySelector('.cinder-navigation-bar__items')?.getAttribute('data-open'),
-    ).toBe('true');
+      await fireEvent.click(toggle);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      nav.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(spyFired).toBe(false);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+    });
   });
 
   test('writable native Event properties use the original event as their receiver', () => {

@@ -23,6 +23,7 @@
   import type { Placement } from '@floating-ui/dom';
   import { untrack } from 'svelte';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -279,13 +280,24 @@
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
   }
 
-  function handleActionsKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close({ focusTrigger: true });
-      return;
-    }
+  // Escape ownership (CIN-428). The local Escape branch (previously here,
+  // only reachable while focus was inside the portalled actions panel) is
+  // deleted — the escape-stack registration below is the single Escape
+  // dispatch path, firing whenever the speed dial is open regardless of
+  // focus location.
+  function dismissSpeedDial(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    close({ focusTrigger: true });
+  }
 
+  $effect(() => {
+    if (!open) return;
+    const releaseEscape = pushEscapeHandler(dismissSpeedDial);
+    return releaseEscape;
+  });
+
+  function handleActionsKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 

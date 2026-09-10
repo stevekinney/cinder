@@ -25,6 +25,7 @@
 
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
   import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -295,17 +296,30 @@
     restoreFocus();
   }
 
-  function handleKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape' && !event.defaultPrevented) {
-      event.preventDefault();
-      if (expanded) {
-        handleCancel();
-      } else {
-        closePopover();
-      }
-      return;
+  // Escape ownership (CIN-428). The shared internal function below holds the
+  // dismiss logic — expanded-restore/cancel first stage, else close — and
+  // the escape-stack registration further down is the ONLY caller: this is
+  // no longer duplicated as a local `onkeydown` branch, so it fires
+  // regardless of where focus sits while the popover is open, not just
+  // while focus is inside its own DOM tree.
+  function dismissEscape(event?: KeyboardEvent): void {
+    // Uniform swallow-at-the-top (CIN-428): both stages consume the key.
+    event?.preventDefault();
+    event?.stopPropagation();
+    if (expanded) {
+      handleCancel();
+    } else {
+      closePopover();
     }
+  }
 
+  $effect(() => {
+    if (!isPositionedOpen) return;
+    const releaseEscape = pushEscapeHandler(dismissEscape);
+    return releaseEscape;
+  });
+
+  function handleKeydown(event: KeyboardEvent): void {
     if ((event.key === 'Enter' || event.key === ' ') && !expanded && !event.defaultPrevented) {
       event.preventDefault();
       handleExpand();
