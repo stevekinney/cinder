@@ -4,6 +4,7 @@
 		createChatSessionController,
 		createConversationHistory,
 		decodeChatStreamEvents,
+		ChatRunFailureError,
 		type ChatAdapterErrorEvent,
 		type ConversationHistory
 	} from '@lostgradient/chat';
@@ -14,7 +15,32 @@
 	let conversation = $state<ConversationHistory>(
 		createConversationHistory({ id: 'chatroom-demo' })
 	);
-	let error = $state<string | null>(null);
+	/**
+	 * The banner's state, kept structured rather than flattened to a string.
+	 *
+	 * `retryable` is what a message alone cannot say: a rate-limited provider
+	 * and a rejected API key produce the same sentence, and only one of them is
+	 * worth pressing Retry over. `undefined` means the host did not classify
+	 * the failure — rendered as neither, because inventing an answer here is
+	 * how a user ends up retrying something that can only fail again.
+	 */
+	type BannerFailure = { message: string; retryable?: boolean };
+	let failure = $state<BannerFailure | null>(null);
+
+	/**
+	 * Narrows whatever reaches an error hook into the banner's shape.
+	 *
+	 * A `ChatRunFailureError` carries the host's own classification off the
+	 * wire. Anything else — a transport rejection, a thrown observer — carries
+	 * no claim about retryability, so none is made.
+	 */
+	function toBannerFailure(cause: unknown): BannerFailure {
+		if (cause instanceof ChatRunFailureError) {
+			const { message, retryable } = cause.runError;
+			return { message, ...(retryable === undefined ? {} : { retryable }) };
+		}
+		return { message: cause instanceof Error ? cause.message : 'Something went wrong.' };
+	}
 	let streaming = $state(false);
 	const pendingApprovals = new SvelteMap<string, SignedPendingToolApproval>();
 	const session = createChatSessionController({
@@ -33,7 +59,7 @@
 		hooks: {
 			onStreamingChange: (value) => {
 				streaming = value;
-				if (value) error = null;
+				if (value) failure = null;
 			},
 			onToolResult: (result) => {
 				updatePendingApproval(pendingApprovals, result);
@@ -65,12 +91,12 @@
 					}
 				};
 			},
-			onError: (cause) => (error = cause instanceof Error ? cause.message : 'Something went wrong.')
+			onError: (cause) => (failure = toBannerFailure(cause))
 		}
 	});
 	const adapter = session.adapter;
 	function handleAdapterError(event: ChatAdapterErrorEvent): void {
-		error = event.error instanceof Error ? event.error.message : 'Something went wrong.';
+		failure = toBannerFailure(event.error);
 	}
 </script>
 
@@ -80,11 +106,24 @@
 	<p
 		role="alert"
 		data-testid="demo-error"
-		style="margin: 0; color: var(--cinder-status-danger-solid); padding: {error
+		data-retryable={failure?.retryable === undefined ? undefined : String(failure.retryable)}
+		style="margin: 0; color: var(--cinder-status-danger-solid); padding: {failure
 			? '0.5rem 1rem'
 			: '0'}"
 	>
-		{error ?? ''}
+		{#if failure}
+			{failure.message}
+			<!--
+				The classification, rendered rather than flattened away. A reader
+				should be able to tell from the banner whether pressing Retry is
+				worth anything, without guessing from the wording.
+			-->
+			{#if failure.retryable === true}
+				<span data-testid="demo-error-disposition"> — you can try that again.</span>
+			{:else if failure.retryable === false}
+				<span data-testid="demo-error-disposition"> — retrying will not help.</span>
+			{/if}
+		{/if}
 	</p>
 	<div style="flex: 1; min-height: 0;">
 		<Chat

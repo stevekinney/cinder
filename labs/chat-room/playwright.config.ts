@@ -50,7 +50,19 @@ const CROSS_ENGINE_SHARDS = [
 		'**/approval-flow.e2e.ts'
 	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
-	['**/review-modes.e2e.ts', '**/review-ssr-and-a11y.e2e.ts'],
+	[
+		'**/review-modes.e2e.ts',
+		'**/review-ssr-and-a11y.e2e.ts',
+		// Another real fetch/ReadableStream path — a provider failure has to
+		// reach the banner on every engine, not only the Chromium project that
+		// inherits the root matcher.
+		//
+		// Placed by measurement: `--list` per project read 49/48/62/44/50
+		// before this entry, so its seven tests go to the smallest shard. My
+		// first attempt put them in the 62 — the one the ceiling note is
+		// about — which is the mistake this comment exists to stop repeating.
+		'**/error-handling.e2e.ts'
+	],
 	[
 		'**/review-views.e2e.ts',
 		'**/row-reconciliation.e2e.ts',

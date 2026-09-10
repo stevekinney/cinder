@@ -11,6 +11,7 @@ export {
 } from './components/chat-composer-popover/chat-composer-mention.ts';
 export * from './components/chat/index.ts';
 export {
+  ChatRunFailureError,
   createChatSession,
   createChatSessionController,
   createSessionController,
@@ -29,6 +30,7 @@ export {
   encodeChatStreamEvent,
   encodeStreamEvent,
   guardChatStreamEvents,
+  type ChatSerializedRunError,
   type ChatStreamDecodeOptions,
   type ChatStreamEvent,
 } from './session/stream-event-codec.ts';
