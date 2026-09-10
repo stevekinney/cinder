@@ -2,6 +2,9 @@
 	import { resolve } from '$app/paths';
 
 	type ExerciseSlug =
+		| 'output'
+		| 'retry'
+		| 'stop-condition'
 		| 'attachments'
 		| 'adapter-push'
 		| 'message-lifecycle'
@@ -137,6 +140,27 @@
 			href: resolve('/exercises/interleaving'),
 			title: 'Interleaving',
 			description: 'Race streaming, editing, retrying, and stopping against a shared transcript.'
+		},
+		{
+			slug: 'output',
+			href: resolve('/exercises/output'),
+			title: 'Output validation',
+			description:
+				'A schema-invalid run settles stop-condition with no result.error, exactly like a valid one.'
+		},
+		{
+			slug: 'retry',
+			href: resolve('/exercises/retry'),
+			title: 'Retry',
+			description:
+				'One retry budget, three failures, and only one of them retried — retry does not re-roll a bad answer.'
+		},
+		{
+			slug: 'stop-condition',
+			href: resolve('/exercises/stop-condition'),
+			title: 'Stop conditions',
+			description:
+				'A named condition ends the loop after one step — the counter is the only proof of the second generation that did not happen.'
 		},
 		{
 			slug: 'contracts',

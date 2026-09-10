@@ -116,11 +116,25 @@ type ChatAgentRunErrorCode =
  * wire type — if a redacted, JSON-safe projection of it is ever needed, that
  * is a new, deliberately-named field, not this one made permissive again.
  */
-type ChatSerializedRunError = {
+export type ChatSerializedRunError = {
   name: string;
   message: string;
   kind: ChatAgentRunErrorKind;
   code: ChatAgentRunErrorCode;
+  /**
+   * Whether the failure is worth retrying, as the host classified it.
+   *
+   * `kind` cannot answer this. A rate-limited provider and a rejected API key
+   * are both `kind: 'generate'`, and one is worth a retry button while the
+   * other never is — so a client deriving retryability from `kind` alone would
+   * offer the wrong affordance for a whole category of failure.
+   *
+   * Optional because a host that does not classify its failures should not be
+   * forced to guess: absent means "not stated", which a client must render as
+   * neither retryable nor terminal rather than defaulting to either. Every
+   * producer written before this field existed keeps working unchanged.
+   */
+  retryable?: boolean;
 };
 
 /** Provider-neutral events emitted by a chat response stream. */
@@ -426,22 +440,34 @@ function projectChatStreamState(rawState: ChatStreamState): Record<string, unkno
  */
 function projectChatSerializedRunError(rawError: ChatSerializedRunError): ChatSerializedRunError {
   const error = ownFields(rawError);
-  // Rebuilding alone only drops `cause`; it does not stop a runtime-cast
-  // producer supplying a `kind`/`code` outside the published vocabulary, or
-  // non-string `name`/`message`. The decoder validates all four with these
-  // same guards, so without this the encoder could emit a frame its own
-  // decoder rejects — after the bad payload had already crossed the wire.
+  // This rebuild IS the whitelist: `{ name, message, kind, code }` plus an
+  // optional `retryable`, and nothing else. `cause` is what it exists to
+  // drop — untyped on the Operative side, and for a provider failure it can
+  // be the raw HTTP response with credential headers on it. Adding a field
+  // here puts it on the wire, so the list is deliberately short and every
+  // addition is a decision.
+  //
+  // Rebuilding alone does not stop a runtime-cast producer supplying a
+  // `kind`/`code` outside the published vocabulary, non-string
+  // `name`/`message`, or a non-boolean `retryable`. The decoder validates all
+  // five with these same guards, so without this the encoder could emit a
+  // frame its own decoder rejects — after the bad payload had already crossed
+  // the wire.
   //
   // Every field is read once up front, so an accessor cannot answer the
   // guards with one value and the returned frame with another.
-  const { name, message, kind, code } = error;
+  const { name, message, kind, code, retryable } = error;
   if (typeof name !== 'string' || typeof message !== 'string')
     throw new Error('Invalid chat stream event: run error name and message must be strings');
   if (!isChatAgentRunErrorKind(kind))
     throw new Error(`Invalid chat stream event: unsupported run error kind ${String(kind)}`);
   if (!isChatAgentRunErrorCode(code))
     throw new Error(`Invalid chat stream event: unsupported run error code ${String(code)}`);
-  return { name, message, kind, code };
+  // Absent is a meaning ("not stated"), so only a present non-boolean is
+  // wrong. Coercing here would invent a claim the host never made.
+  if (retryable !== undefined && typeof retryable !== 'boolean')
+    throw new Error('Invalid chat stream event: run error retryable must be a boolean');
+  return { name, message, kind, code, ...(retryable === undefined ? {} : { retryable }) };
 }
 
 /**
@@ -947,10 +973,15 @@ function isChatAgentRunErrorCode(value: unknown): value is ChatAgentRunErrorCode
 
 /**
  * Validates and rebuilds a `SerializedAgentRunError`-shaped value into
- * exactly `{ name, message, kind, code }`. Rebuilding — rather than
- * validating and returning the parsed value as-is — is what actually drops
- * an incoming `cause`: nothing here re-attaches it, by construction rather
- * than by convention.
+ * exactly `{ name, message, kind, code }`, plus `retryable` when the producer
+ * stated one. Rebuilding — rather than validating and returning the parsed
+ * value as-is — is what actually drops an incoming `cause`: nothing here
+ * re-attaches it, by construction rather than by convention.
+ *
+ * `retryable` is the only field ever added to that list, and it is carried
+ * because a client cannot derive it: `kind` is `'generate'` for both a rate
+ * limit and a rejected credential. An absent value means the producer said
+ * nothing, and stays absent rather than defaulting to either answer.
  */
 function toChatSerializedRunError(value: unknown): ChatSerializedRunError | undefined {
   if (!isRecord(value)) return undefined;
@@ -958,11 +989,14 @@ function toChatSerializedRunError(value: unknown): ChatSerializedRunError | unde
   if (typeof value['message'] !== 'string') return undefined;
   if (!isChatAgentRunErrorKind(value['kind'])) return undefined;
   if (!isChatAgentRunErrorCode(value['code'])) return undefined;
+  const retryable = value['retryable'];
+  if (retryable !== undefined && typeof retryable !== 'boolean') return undefined;
   return {
     name: value['name'],
     message: value['message'],
     kind: value['kind'],
     code: value['code'],
+    ...(retryable === undefined ? {} : { retryable }),
   };
 }
 

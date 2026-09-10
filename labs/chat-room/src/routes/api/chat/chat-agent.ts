@@ -16,6 +16,7 @@
  */
 import {
 	AgentRunError,
+	classifyError,
 	StepCompletedEvent,
 	ToolErrorBubbleEvent,
 	ToolPolicyDeniedBubbleEvent,
@@ -108,7 +109,13 @@ export type ChatRunEnvelope =
 	| {
 			ok: false;
 			status: string;
-			error: { kind: AgentRunErrorKind; code: ChatSerializedRunError['code']; message: string };
+			error: {
+				kind: AgentRunErrorKind;
+				code: ChatSerializedRunError['code'];
+				message: string;
+				/** See {@link classifyRetryability}. Absent means "not stated". */
+				retryable?: boolean;
+			};
 	  };
 
 /**
@@ -280,6 +287,50 @@ export function startChatRun(agent: StandaloneAgent, conversation: ConversationH
 }
 
 /**
+ * Operative's own read on whether a failure is worth retrying.
+ *
+ * `kind` cannot answer this — a rate-limited provider and a rejected API key
+ * are both `kind: 'generate'` — so without this the client would have to guess
+ * from the code, and would offer a retry button for failures that can only
+ * ever fail again.
+ *
+ * ONLY `retryable` crosses. `ClassifiedError` also carries `original: unknown`,
+ * which for a provider failure can be the raw HTTP response with credential
+ * headers on it — the same hazard as `AgentRunError.cause`, and the same rule
+ * applies: it never reaches the browser. `category`, `statusCode`, and
+ * `provider` are withheld too, for now because the wire has nowhere to put
+ * them rather than because they are unsafe.
+ *
+ * An abort is not a failure and is never classified here: the route ends an
+ * aborted turn with `run.aborted`, which carries no error at all.
+ */
+function classifyRetryability(error: unknown): boolean | undefined {
+	try {
+		// The CAUSE first, deliberately. `classifyError` reads `statusCode` /
+		// `status` off the value it is given, and an `AgentRunError` carries
+		// neither — the provider's 429 or 401 is on the SDK error it wrapped.
+		// Classifying the wrapper alone falls through to message matching and
+		// reports every provider failure as terminal, including the ones a
+		// retry would fix.
+		const classified = classifyError(
+			error instanceof AgentRunError && error.cause !== undefined ? error.cause : error
+		);
+		return classified.retryable;
+	} catch {
+		// A classifier that throws must not take the whole failure path with
+		// it: the client still needs the error frame it was about to receive,
+		// just without a retryability claim on it.
+		return undefined;
+	}
+}
+
+/** Spreads a retryability claim only when there is one to make. */
+function withRetryability(error: unknown): { retryable?: boolean } {
+	const retryable = classifyRetryability(error);
+	return retryable === undefined ? {} : { retryable };
+}
+
+/**
  * Turns one classified failure into the safe `{ kind, code, message }`
  * envelope. `RunResultBase.error` and a caught `result()` rejection are both
  * typed `unknown` — this is the one place that narrows them, rather than
@@ -307,7 +358,12 @@ export function classifyChatRunFailure(
 			error: {
 				kind: error.kind,
 				code: toChatWireErrorCode(error.code),
-				message: error.message
+				message: error.message,
+				// An abort is a user decision rather than a failure, so it
+				// carries no retryability claim on either branch of this
+				// function — "you can try that again" on a deliberate stop is
+				// nonsense, and "retrying will not help" is worse.
+				...(error.kind === 'abort' ? {} : withRetryability(error))
 			}
 		};
 	}
@@ -332,7 +388,8 @@ export function classifyChatRunFailure(
 		error: {
 			kind: aborted ? 'abort' : 'generate',
 			code: aborted ? 'ABORTED' : 'UNKNOWN',
-			message: error instanceof Error ? error.message : 'Unknown error'
+			message: error instanceof Error ? error.message : 'Unknown error',
+			...(aborted ? {} : withRetryability(error))
 		}
 	};
 }
