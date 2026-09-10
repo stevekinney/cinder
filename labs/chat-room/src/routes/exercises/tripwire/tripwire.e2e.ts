@@ -83,6 +83,12 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 		'prompt-injection · prompt-injection · 0.3 · tripwire'
 	);
 
+	// Once. `onTriggered` is a consumer callback, so a double fire runs their
+	// side effects twice — and keeping only the last event cannot tell one
+	// invocation from two with identical fields. The `run.tripwire` counter
+	// covers a different path and does not imply this one.
+	await expect(page.locator(field('tripped', 'detection-count'))).toHaveText('1');
+
 	// …and that they are the same, compared in the page rather than inferred
 	// from two assertions that happen to name the same literal.
 	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('yes');
@@ -159,6 +165,7 @@ test('the same detector under the default mode avoids the immediate tripwire hal
 	await expect(page.locator(field('continued', 'detection'))).toHaveText(
 		'prompt-injection · prompt-injection · 0.3 · block'
 	);
+	await expect(page.locator(field('continued', 'detection-count'))).toHaveText('1');
 });
 
 test('lets a benign request through under the default mode too', async ({ page }) => {
@@ -187,6 +194,7 @@ test('lets a benign request through under the default mode too', async ({ page }
 	// dropping its `StepResult` — would pass everything else here.
 	await expect(page.locator(field('permitted', 'identity-matches'))).toHaveText('n/a');
 	await expect(page.locator(field('permitted', 'detection'))).toHaveText('(none)');
+	await expect(page.locator(field('permitted', 'detection-count'))).toHaveText('0');
 	await expect(page.locator(field('permitted', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('permitted', 'steps'))).toHaveText('1');
 });
@@ -223,6 +231,7 @@ test('leaves a benign request alone', async ({ page }) => {
 	);
 	await expect(page.locator(field('clean', 'identity-matches'))).toHaveText('n/a');
 	await expect(page.locator(field('clean', 'detection'))).toHaveText('(none)');
+	await expect(page.locator(field('clean', 'detection-count'))).toHaveText('0');
 	await expect(page.locator(field('clean', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('clean', 'steps'))).toHaveText('1');
 	await expect(page.locator(field('clean', 'first-message-intact'))).toHaveText('true');

@@ -66,6 +66,7 @@
 		eventStep: string;
 		eventCount: number;
 		detection: string;
+		detectionCount: number;
 		firstMessage: string;
 		firstMessageIntact: boolean;
 		identityMatchesEvent: string;
@@ -134,10 +135,17 @@
 		// that refused this injection via some other detector, or at a
 		// different confidence, would satisfy every assertion on that panel.
 		let detection = '(none)';
+		// Counted as well as captured, for the same reason `run.tripwire` is:
+		// keeping only the last event cannot tell one invocation from two with
+		// identical fields, and `onTriggered` is a consumer callback — a
+		// double fire runs their side effects twice. The two counters cover
+		// different paths and neither implies the other.
+		let detectionCount = 0;
 		const guardrails = createGuardrails({
 			input: {
 				detectors: [createPromptInjectionDetector()],
 				onTriggered: (event) => {
+					detectionCount += 1;
 					detection = `${event.detector} · ${event.category} · ${event.confidence} · ${event.action}`;
 				}
 			},
@@ -248,6 +256,7 @@
 			eventStep,
 			eventCount,
 			detection,
+			detectionCount,
 			// The guarded panels short-circuit generation, so the generator's
 			// view cannot vouch for their prompt. This is the transcript's own
 			// answer: a `prepareStep` that rewrote or replaced the injection
@@ -405,6 +414,8 @@
 					</dd>
 					<dt>detector · category · confidence · action</dt>
 					<dd data-testid="tripwire-{panel.id}-detection">{observation.detection}</dd>
+					<dt><code>onTriggered</code> invocations</dt>
+					<dd data-testid="tripwire-{panel.id}-detection-count">{observation.detectionCount}</dd>
 					<dt><code>run.tripwire</code> emissions</dt>
 					<dd data-testid="tripwire-{panel.id}-event-count">{observation.eventCount}</dd>
 					<dt>first message</dt>
