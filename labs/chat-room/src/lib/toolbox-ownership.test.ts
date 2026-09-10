@@ -37,13 +37,32 @@ describe('the approval-signing toolbox is host-owned', () => {
 	 * verification on resume — and the failure would read as a rejected token,
 	 * pointing at signing rather than at ownership.
 	 */
-	it('is constructed in exactly one place in the application', () => {
-		// Tests are excluded on purpose: `chat-agent.test.ts` builds its own
-		// toolbox to exercise the agent in isolation, which is the right thing
-		// for a unit test and signs nothing anyone resumes against. What must
-		// not happen is a SECOND instance on a request path.
+	it('is the only toolbox any request path constructs', () => {
+		// The invariant is narrower than "constructed once in the repository",
+		// and stating it that way was wrong: `chat-agent.test.ts` builds its own
+		// for isolation, and the `/exercises/*` routes each build throwaway
+		// local ones to demonstrate the run loop. None of those signs an
+		// approval, and nobody resumes against them.
+		//
+		// What must never happen is a second instance on a REQUEST path, where
+		// it would hold a different `approvalSecret` and reject a token signed
+		// by the other one — surfacing as a rejected approval, which points at
+		// signing rather than at ownership.
+		const requestPaths = sourceFiles(applicationRoot)
+			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
+			.filter((path) => relativeToApplication(path).startsWith('routes/api/'))
+			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
+			.map(relativeToApplication);
+		expect(requestPaths).toEqual([]);
+	});
+
+	it('is constructed in exactly one place outside routes and tests', () => {
+		// The other half: the shared instance has one home. An `$lib` module
+		// growing a second one would be invisible to the request-path check
+		// above while still splitting the secret.
 		const constructing = sourceFiles(applicationRoot)
 			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
+			.filter((path) => !relativeToApplication(path).startsWith('routes/'))
 			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
 			.map(relativeToApplication);
 		expect(constructing).toEqual(['lib/toolbox.ts']);

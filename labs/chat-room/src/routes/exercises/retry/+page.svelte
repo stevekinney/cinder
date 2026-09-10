@@ -51,10 +51,14 @@
 			retry: { attempts: 2, delay: 0 },
 			...(options.validateResponse
 				? {
+						// Returns nothing on the success path. The hook's contract is
+						// `Promise<GenerateResponse | void>`, and `void` means "leave
+						// the response alone" — which is what this wants. Returning
+						// the argument back through a cast said the same thing while
+						// implying the types disagreed.
 						validateResponse: async (response: { content?: string }) => {
 							const parsed = answerSchema.safeParse(JSON.parse(response.content ?? '{}'));
 							if (!parsed.success) throw new Error('response failed the output schema');
-							return response as never;
 						}
 					}
 				: {})

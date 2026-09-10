@@ -36,6 +36,8 @@
 		sameErrorInstance: boolean;
 		errorKind: string;
 		errorCode: string;
+		schemaErrorKind: string;
+		schemaErrorCode: string;
 	};
 
 	/**
@@ -70,6 +72,15 @@
 		}
 
 		const failure = unwrapError instanceof AgentRunError ? unwrapError : undefined;
+		// Read the terminal result's OWN copy independently of the rejection.
+		// Claiming "the same classified error lives on `schemaValidation.error`"
+		// while only ever displaying the rejection would leave that claim
+		// unchecked — if the field vanished, changed shape, or carried a
+		// different classification, nothing here would notice.
+		const schemaError =
+			result.schemaValidation?.success === false
+				? (result.schemaValidation.error as AgentRunError | undefined)
+				: undefined;
 		return {
 			finishReason: result.finishReason,
 			schemaValid: result.schemaValidation?.success === true,
@@ -82,7 +93,9 @@
 			outputError: outputError === undefined ? '(resolved)' : (outputError as Error).name,
 			sameErrorInstance: unwrapError !== undefined && unwrapError === outputError,
 			errorKind: failure?.kind ?? '(none)',
-			errorCode: failure?.code ?? '(none)'
+			errorCode: failure?.code ?? '(none)',
+			schemaErrorKind: schemaError?.kind ?? '(none)',
+			schemaErrorCode: schemaError?.code ?? '(none)'
 		};
 	}
 
@@ -97,7 +110,7 @@
 		The finish reason cannot tell you which happened.
 	</p>
 
-	{#each [{ id: 'valid', label: 'Valid output', promise: valid }, { id: 'invalid', label: 'Invalid output, retries exhausted', promise: invalid }] as panel (panel.id)}
+	{#each [{ id: 'valid', label: 'Valid output', promise: valid }, { id: 'invalid', label: 'Invalid output', promise: invalid }] as panel (panel.id)}
 		<section data-testid="output-{panel.id}">
 			<h2>{panel.label}</h2>
 			{#await panel.promise}
@@ -118,9 +131,13 @@
 					<dd data-testid="output-{panel.id}-output-method">{observation.outputError}</dd>
 					<dt>same error instance</dt>
 					<dd data-testid="output-{panel.id}-same-instance">{observation.sameErrorInstance}</dd>
-					<dt>kind / code</dt>
+					<dt>kind / code (from the rejection)</dt>
 					<dd data-testid="output-{panel.id}-kind-code">
 						{observation.errorKind} / {observation.errorCode}
+					</dd>
+					<dt>kind / code (from schemaValidation.error)</dt>
+					<dd data-testid="output-{panel.id}-schema-kind-code">
+						{observation.schemaErrorKind} / {observation.schemaErrorCode}
 					</dd>
 				</dl>
 			{/await}
