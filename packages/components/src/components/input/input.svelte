@@ -95,7 +95,10 @@
     ),
   );
   // One class string for the control wrapper in both of its states. The
-  // wrapper itself is always rendered — see the comment on it in the template.
+  // wrapper itself is always rendered — via `controlClass` on FormFieldFrame's
+  // own `.cinder-form-field__control` div (see the `{#if context}` block
+  // below), so the two states differ only by class, never by a wrapper
+  // switching in or out.
   const hostClass = $derived(
     hasGroupWrapper
       ? classNames('cinder-input-group', groupClassName, groupModifiers)

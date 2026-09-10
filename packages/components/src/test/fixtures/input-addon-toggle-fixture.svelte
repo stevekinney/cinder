@@ -20,7 +20,8 @@
      * Where the `Input` sits:
      * - `bare`: on its own, so it renders its own field frame.
      * - `field`: inside a `FormField` with no label/description/error of its
-     *   own, so it renders only the control (the `control()` snippet path).
+     *   own. Renders a nested field frame with label/description/error
+     *   absent, same as `field-with-own-label` (CIN-511).
      * - `field-with-own-label`: inside a `FormField` but with its own label,
      *   so it renders a nested field frame.
      */
