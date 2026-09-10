@@ -213,6 +213,16 @@
     if (!usesLegacySnippetApi || !supportsPopover || !open) return;
     const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
       event?.stopPropagation();
+      // Native focus restoration only returns focus to the invoker if focus
+      // was still *inside* the popover at the moment it closes; if focus had
+      // already moved outside before Escape, native restoration doesn't
+      // apply, leaving focus on the unrelated element instead of the
+      // trigger — contrary to dropdown.a11y.md:14's Escape contract. Restore
+      // it ourselves in that case only, the same conditional restoration the
+      // compound branch's (dropdown-menu.svelte) native-popover handler uses.
+      if (menuElement && !menuElement.contains(document.activeElement)) {
+        resolveLegacyTriggerElement()?.focus();
+      }
     });
     return releaseEscape;
   });

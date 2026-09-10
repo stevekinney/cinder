@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
@@ -915,5 +915,77 @@ describe('Dropdown', () => {
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
+  });
+});
+
+// happy-dom does not implement `showPopover`/`hidePopover`, so the legacy
+// snippet API's own `supportsPopover` detection effect never resolves
+// `true` in the suite above and every test there exercises the non-popover
+// fallback path (`exitState.renderPanel`). Force the popover branch by
+// stubbing the two methods on `HTMLElement.prototype` (mirrors
+// dropdown-menu.test.ts's identical pattern), scoped to this describe block.
+describe('Dropdown legacy native-popover branch', () => {
+  beforeEach(() => {
+    Object.assign(HTMLElement.prototype, {
+      showPopover(this: HTMLElement) {},
+      hidePopover(this: HTMLElement) {},
+    });
+  });
+
+  afterEach(() => {
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+  });
+
+  test('Escape restores focus to the legacy trigger when focus already left the menu (review finding)', async () => {
+    // Regression: this branch's stack handler called stopPropagation() but
+    // never restored focus, unlike the fallback branch's
+    // resolveLegacyTriggerElement()-based restoration — leaving focus on
+    // whatever was outside instead of the trigger, contrary to
+    // dropdown.a11y.md:14's Escape contract. Native focus restoration only
+    // applies when focus was still inside the popover when it closes.
+    let openValue = true;
+    const { container, getByText } = render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+
+    // Confirm the popover branch actually rendered — if CSS Anchor
+    // Positioning feature-detection also fails in this environment, this
+    // guards against a false-negative pass on the wrong branch.
+    const menu = container.querySelector('.cinder-dropdown__menu[popover]');
+    if (!menu) {
+      throw new Error(
+        'Popover branch did not render — supportsPopover detection did not resolve true in this environment.',
+      );
+    }
+
+    const trigger = getByText('Open Menu');
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    const escapeEvent = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(escapeEvent);
+
+    // Not cancelled: the browser's own native close-request must still run.
+    expect(escapeEvent.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
   });
 });
