@@ -78,7 +78,7 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 
 	// …and that they are the same, compared in the page rather than inferred
 	// from two assertions that happen to name the same literal.
-	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('true');
+	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('yes');
 });
 
 test('the same detector under the default mode avoids the immediate tripwire halt', async ({
@@ -130,6 +130,18 @@ test('the same detector under the default mode avoids the immediate tripwire hal
 	await expect(page.locator(field('continued', 'transcript-roles'))).toHaveText('user, assistant');
 	await expect(page.locator(field('continued', 'last-role'))).toHaveText('assistant');
 	await expect(page.locator(field('continued', 'last-nonempty'))).toHaveText('true');
+
+	// A refusal, not merely "something other than the fixture answer". A
+	// guardrail that echoed the injection back would satisfy every assertion
+	// above while putting the attacker's text into the transcript as though
+	// the assistant had said it — the one substitution that would be worse
+	// than no guardrail at all.
+	await expect(page.locator(field('continued', 'last-echoes'))).toHaveText('false');
+
+	// Nothing tripped in the terminal sense here, so the identity comparison
+	// has nothing to compare — it reads n/a rather than claiming two `(none)`
+	// readings disagree.
+	await expect(page.locator(field('continued', 'identity-matches'))).toHaveText('n/a');
 });
 
 test('lets a benign request through under the default mode too', async ({ page }) => {
@@ -156,6 +168,7 @@ test('lets a benign request through under the default mode too', async ({ page }
 	// completed step. Both are already rendered; unasserted, a run that
 	// produced the right answer while retaining a stale error — or while
 	// dropping its `StepResult` — would pass everything else here.
+	await expect(page.locator(field('permitted', 'identity-matches'))).toHaveText('n/a');
 	await expect(page.locator(field('permitted', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('permitted', 'steps'))).toHaveText('1');
 });
@@ -190,6 +203,7 @@ test('leaves a benign request alone', async ({ page }) => {
 	await expect(page.locator(field('clean', 'prompt-seen'))).toHaveText(
 		'What is the capital of France?'
 	);
+	await expect(page.locator(field('clean', 'identity-matches'))).toHaveText('n/a');
 	await expect(page.locator(field('clean', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('clean', 'steps'))).toHaveText('1');
 	await expect(page.locator(field('clean', 'first-message-intact'))).toHaveText('true');

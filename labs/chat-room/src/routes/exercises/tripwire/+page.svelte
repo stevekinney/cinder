@@ -67,11 +67,12 @@
 		eventCount: number;
 		firstMessage: string;
 		firstMessageIntact: boolean;
-		identityMatchesEvent: boolean;
+		identityMatchesEvent: string;
 		transcriptLength: number;
 		transcriptRoles: string;
 		lastRole: string;
 		lastMessageNonEmpty: boolean;
+		lastMessageEchoesPrompt: boolean;
 		promptSeenByGenerate: string;
 		substituted: boolean;
 		lastMessage: string;
@@ -133,6 +134,11 @@
 			createConversationHistory({ id: `exercise-tripwire-${id}` }),
 			prompt
 		);
+		// Snapshotted BEFORE the run, not read back afterwards. A hook that
+		// mutated the caller's message in place would be observed identically
+		// by both sides of a post-run comparison, making the check vacuous
+		// exactly when it matters.
+		const seededFirstShape = shapeOf(getMessages(conversation)[0]);
 
 		// `createActiveRun` rather than `createAgent`, unlike this route's
 		// siblings, because guardrail hooks are not part of
@@ -209,7 +215,6 @@
 
 		const messages = result.conversation.getMessages();
 		const first = messages.at(0);
-		const seededFirst = getMessages(conversation)[0];
 		const last = messages.at(-1)?.content;
 		return {
 			finishReason: result.finishReason,
@@ -239,8 +244,17 @@
 			// Compared against the message this page actually seeded, rather
 			// than against a literal repeated in the spec — so the claim is
 			// "unchanged from what we sent", which is the claim being made.
-			firstMessageIntact: first !== undefined && shapeOf(first) === shapeOf(seededFirst),
-			identityMatchesEvent: tripped !== undefined && identityOf(tripped) === eventIdentity,
+			firstMessageIntact: first !== undefined && shapeOf(first) === seededFirstShape,
+			// Three values, not two. A panel with no tripwire has nothing to
+			// agree or disagree about, and rendering `false` beside two
+			// `(none)` readings tells a reader that two identical values
+			// differ.
+			identityMatchesEvent:
+				tripped === undefined && eventIdentity === '(none)'
+					? 'n/a'
+					: tripped !== undefined && identityOf(tripped) === eventIdentity
+						? 'yes'
+						: 'no',
 			transcriptLength: messages.length,
 			// Structure, not just the tail. A guardrail that appended an extra
 			// system or tool message before the right answer would leave a
@@ -248,6 +262,13 @@
 			transcriptRoles: messages.map((message) => message.role).join(', '),
 			lastRole: messages.at(-1)?.role ?? '(none)',
 			lastMessageNonEmpty: typeof last === 'string' && last.length > 0,
+			// A refusal is not merely "not the fixture answer": a guardrail
+			// that echoed the injection back, or appended any unrelated text,
+			// would satisfy that. Echoing is the failure worth naming — it
+			// would put the attacker's text into the transcript as though the
+			// assistant had said it — and it can be checked without pinning
+			// operative's refusal wording.
+			lastMessageEchoesPrompt: typeof last === 'string' && last.includes(prompt),
 			promptSeenByGenerate,
 			// Whether the transcript ends in something other than this page's
 			// fixture answer, decided against its own constant.
@@ -342,7 +363,7 @@
 					<dd data-testid="tripwire-{panel.id}-event-identity">{observation.eventIdentity}</dd>
 					<dt>event step</dt>
 					<dd data-testid="tripwire-{panel.id}-event-step">{observation.eventStep}</dd>
-					<dt>the two agree</dt>
+					<dt>the two agree (n/a when nothing tripped)</dt>
 					<dd data-testid="tripwire-{panel.id}-identity-matches">
 						{observation.identityMatchesEvent}
 					</dd>
@@ -356,6 +377,10 @@
 					</dd>
 					<dt>last message role</dt>
 					<dd data-testid="tripwire-{panel.id}-last-role">{observation.lastRole}</dd>
+					<dt>last message echoes the prompt</dt>
+					<dd data-testid="tripwire-{panel.id}-last-echoes">
+						{observation.lastMessageEchoesPrompt}
+					</dd>
 					<dt>last message non-empty</dt>
 					<dd data-testid="tripwire-{panel.id}-last-nonempty">
 						{observation.lastMessageNonEmpty}

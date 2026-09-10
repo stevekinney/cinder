@@ -48,6 +48,13 @@
 	// The point of compaction is the reshaping, not the summary text, and a
 	// deterministic stand-in makes the reshaping assertable.
 
+	/**
+	 * Microtask yields granted to the first summarizer callback, decreasing by
+	 * one per subsequent call. Large enough that a parallel dispatch would
+	 * visibly invert completion order, small enough to stay free.
+	 */
+	const MAXIMUM_SUMMARY_SKEW = 8;
+
 	const PINNED_FACT = 'The deployment key rotates every 90 days.';
 	const FIRST_FILLER_QUESTION = 'What did we decide about the staging bucket?';
 	const FILLER_BODY =
@@ -216,6 +223,26 @@
 				maxTokens: 400,
 				onCompact: createContextCompactor({
 					summarize: async (messages) => {
+						// Deliberate, deterministic skew in COMPLETION order.
+						//
+						// Every callback here would otherwise resolve
+						// immediately, so invocation order and completion order
+						// always coincide and `summariesInOrder` cannot tell
+						// them apart. A compactor that dispatched chronological
+						// chunks in parallel and concatenated results as their
+						// promises settled would reorder the summary under
+						// real, variable-latency summarizers while this fixture
+						// stayed green.
+						//
+						// Earlier chunks yield for MORE microtasks than later
+						// ones, so under parallel dispatch the later chunks
+						// settle first. Microtasks rather than timers: no
+						// wall-clock cost, and fully deterministic. Sequential
+						// dispatch is unaffected beyond a few extra ticks.
+						const invocation = markers.length;
+						for (let tick = MAXIMUM_SUMMARY_SKEW - invocation; tick > 0; tick -= 1) {
+							await Promise.resolve();
+						}
 						for (const message of messages) seenIds.push(message.id);
 						chunkSeedPositions.push(messages.map((message) => seededIds.indexOf(message.id)));
 						// The full shape, not just the id. Recording only ids would
