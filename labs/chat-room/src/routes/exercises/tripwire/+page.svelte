@@ -9,7 +9,11 @@
 		createGuardrails,
 		createPromptInjectionDetector
 	} from '@lostgradient/operative/guardrails';
-	import { appendUserMessage, createConversationHistory } from 'conversationalist';
+	// Through `@lostgradient/chat`, not `conversationalist` directly: chat owns
+	// conversationalist as a dependency and re-exports the builders precisely so
+	// client code has one import surface, and so a version-skewed or broken
+	// re-export surfaces here instead of staying hidden behind a second copy.
+	import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
 	import { createToolbox } from 'armorer';
 
 	// A tripwire-mode input guardrail, measured against two controls.

@@ -1,14 +1,23 @@
 <script lang="ts">
 	import { createAgent, createContextCompactor } from '@lostgradient/operative';
+	// Through `@lostgradient/chat` wherever chat re-exports it: chat owns
+	// conversationalist as a dependency and re-exports the builders precisely so
+	// client code has one import surface, and so a version-skewed or broken
+	// re-export surfaces here instead of staying hidden behind a second copy.
 	import {
 		appendAssistantMessage,
-		appendSystemMessage,
 		appendUserMessage,
 		createConversationHistory,
 		getMessages,
 		type ConversationHistory,
 		type Message
-	} from 'conversationalist';
+	} from '@lostgradient/chat';
+	// The one exception, and it is chat's gap rather than a shortcut: chat
+	// re-exports `appendUserMessage` and `appendAssistantMessage` but not
+	// `appendSystemMessage`. Per the lab's own guidance, an app needing
+	// conversationalist beyond chat's re-export surface keeps its own
+	// dependency for exactly that remainder.
+	import { appendSystemMessage } from 'conversationalist';
 	import { createToolbox } from 'armorer';
 
 	// Context compaction, and what it does NOT touch.
@@ -92,6 +101,8 @@
 		duplicateSummarizerInputs: number;
 		summaryOrder: string;
 		summariesInOrder: boolean;
+		chunkRanges: string;
+		chunksChronological: boolean;
 		generateCalls: number;
 	};
 
@@ -134,6 +145,12 @@
 		// "every chunk's summary survived" checkable without pinning HOW MANY
 		// chunks there were, which is conversationalist's business.
 		const markers: string[] = [];
+		// Each chunk's seed positions, so the ORDER THE CALLBACKS RECEIVED can
+		// be checked as well as the order their results landed in. Marker
+		// positions alone only prove the returned strings were concatenated in
+		// callback order — if compaction fed the chunks newest-first, they
+		// would still ascend while the model read the history backwards.
+		const chunkSeedPositions: number[][] = [];
 
 		let projection: readonly Message[] = [];
 		// Captured on the FIRST call and not overwritten. The panel's claim is
@@ -157,6 +174,7 @@
 				onCompact: createContextCompactor({
 					summarize: async (messages) => {
 						for (const message of messages) seenIds.push(message.id);
+						chunkSeedPositions.push(messages.map((message) => seededIds.indexOf(message.id)));
 						const marker = `[summary ${markers.length + 1} of ${messages.length} messages]`;
 						markers.push(marker);
 						return marker;
@@ -252,6 +270,24 @@
 				(position, index) => position >= 0 && (index === 0 || position > markerPositions[index - 1])
 			);
 
+		const chunkRanges = chunkSeedPositions
+			.map((positions) => {
+				const low = Math.min(...positions);
+				const high = Math.max(...positions);
+				return low === high ? `${low}` : `${low}-${high}`;
+			})
+			.join(', ');
+		// Ascending within each chunk, and each chunk strictly after the last.
+		const chunksChronological =
+			chunkSeedPositions.length > 0 &&
+			chunkSeedPositions.every(
+				(positions, chunk) =>
+					positions.every(
+						(position, index) => position >= 0 && (index === 0 || position > positions[index - 1])
+					) &&
+					(chunk === 0 || Math.min(...positions) > Math.max(...chunkSeedPositions[chunk - 1]))
+			);
+
 		const pinnedInProjection = projection.find((message) =>
 			JSON.stringify(message.content).includes(PINNED_FACT)
 		);
@@ -312,6 +348,8 @@
 			duplicateSummarizerInputs: seenIds.length - distinct(seenIds).length,
 			summaryOrder,
 			summariesInOrder,
+			chunkRanges,
+			chunksChronological,
 			generateCalls
 		};
 	}
@@ -366,8 +404,12 @@
 				</dd>
 				<dt>chunk summaries, in the order the model reads them</dt>
 				<dd data-testid="compaction-summary-order">{result.summaryOrder}</dd>
-				<dt>chunk summaries in chronological order</dt>
+				<dt>chunk summaries in callback order</dt>
 				<dd data-testid="compaction-summaries-in-order">{result.summariesInOrder}</dd>
+				<dt>seed positions per chunk</dt>
+				<dd data-testid="compaction-chunk-ranges">{result.chunkRanges}</dd>
+				<dt>chunks fed in chronological order</dt>
+				<dd data-testid="compaction-chunks-chronological">{result.chunksChronological}</dd>
 				<dt>messages summarized more than once</dt>
 				<dd data-testid="compaction-duplicate-inputs">{result.duplicateSummarizerInputs}</dd>
 				<dt><code>generate</code> calls</dt>

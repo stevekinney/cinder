@@ -74,8 +74,18 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// …and in the order they were produced. Presence alone would hold if the
 	// chunks were concatenated backwards, and the model would then read the
 	// summarized history in reverse while every other assertion passed.
-	await expect(page.locator(field('summary-order'))).toHaveText('1, 2, 3, 4');
+	//
+	// The BOOLEAN, not the order string: `'1, 2, 3, 4'` would require exactly
+	// four callbacks, which is the chunk count this whole section is careful
+	// not to pin. A compactor that summarized the same ten messages in two
+	// chunks and preserved both results changes nothing this route advertises.
 	await expect(page.locator(field('summaries-in-order'))).toHaveText('true');
+
+	// And the chunks were FED chronologically, which the marker positions
+	// cannot tell you: newest-first chunks whose results are concatenated in
+	// callback order also produce ascending markers, and the model then reads
+	// the summarized history backwards.
+	await expect(page.locator(field('chunks-chronological'))).toHaveText('true');
 
 	// No message summarized twice. Distinct-id counting hides a repeat: the
 	// totals and the partition stay correct while the summary double-counts
