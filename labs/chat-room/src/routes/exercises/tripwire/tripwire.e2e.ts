@@ -76,7 +76,9 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('true');
 });
 
-test('the same detector under the default mode does not stop the run', async ({ page }) => {
+test('the same detector under the default mode avoids the immediate tripwire halt', async ({
+	page
+}) => {
 	await gotoHydrated(page, '/exercises/tripwire');
 
 	// The control. Same injection, same detector, and NO `mode` passed — so

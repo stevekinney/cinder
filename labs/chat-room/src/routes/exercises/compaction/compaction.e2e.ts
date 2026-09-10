@@ -3,8 +3,10 @@
  *
  * Two claims, and the second is the one that is easy to get wrong. Compaction
  * rewrites the model-visible projection — a summary system message plus the
- * retained tail — while carrying the pinned message through verbatim from
- * outside the retain window. It does NOT touch the history the page handed to
+ * retained tail — while preserving the pinned message's role, content, and
+ * metadata from outside the retain window. Preserving, not carrying verbatim:
+ * ids are reassigned, which this spec asserts further down. It does NOT touch
+ * the history the page handed to
  * `run()`, because `run()` snapshots that history before the loop starts.
  *
  * The second claim is asserted by content and count, never by object
@@ -99,6 +101,17 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// the model reads the same summarized context twice — the input-side
 	// duplicate counter says nothing about this side.
 	await expect(page.locator(field('marker-once'))).toHaveText('true');
+
+	// What the summarizer was handed matched the seed on role, content, and
+	// metadata. Recording only ids would let a compaction that preserved every
+	// id and its order while altering a message hand a real summarizer altered
+	// context with everything above still green.
+	await expect(page.locator(field('summarizer-inputs'))).toHaveText('true');
+
+	// And the run itself succeeded. A loop that failed AFTER `generate` saw the
+	// right projection settles a terminal result carrying that failure, and
+	// every assertion in this file would pass over the top of it.
+	await expect(page.locator(field('run-outcome'))).toHaveText('stop-condition / (none) / 1');
 
 	// No message summarized twice. Distinct-id counting hides a repeat: the
 	// totals and the partition stay correct while the summary double-counts

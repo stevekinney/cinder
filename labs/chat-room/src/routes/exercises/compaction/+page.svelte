@@ -107,6 +107,10 @@
 		everyMarkerOnce: boolean;
 		markerOccurrences: string;
 		generateCalls: number;
+		finishReason: string;
+		runError: string;
+		steps: number;
+		summarizerInputsIntact: boolean;
 	};
 
 	/**
@@ -154,6 +158,25 @@
 		// callback order — if compaction fed the chunks newest-first, they
 		// would still ascend while the model read the history backwards.
 		const chunkSeedPositions: number[][] = [];
+		// The whole of what survives a compaction: role, content, and metadata.
+		// NOT id, and not as an omission for convenience — compaction
+		// reassigns ids, so the projection shares none of the seed's and an id
+		// comparison finds zero survivors for a projection that demonstrably
+		// carries four messages through. Including `metadata` is the part that
+		// matters most: a message that arrived with `pinned` stripped would
+		// look identical by content and then be summarized away on the NEXT
+		// compaction.
+		//
+		// Declared here rather than beside its main use below because the
+		// `summarize` callback needs it, and that callback runs during the run.
+		const shapeOf = (message: Message): string =>
+			JSON.stringify({
+				role: message.role,
+				content: message.content,
+				metadata: message.metadata
+			});
+
+		const summarizerShapes: string[] = [];
 
 		let projection: readonly Message[] = [];
 		// Captured on the FIRST call and not overwritten. The panel's claim is
@@ -178,6 +201,11 @@
 					summarize: async (messages) => {
 						for (const message of messages) seenIds.push(message.id);
 						chunkSeedPositions.push(messages.map((message) => seededIds.indexOf(message.id)));
+						// The full shape, not just the id. Recording only ids would
+						// let a compaction that preserved every id and its order
+						// while altering a role, content, or metadata hand a real
+						// summarizer altered context with every assertion green.
+						for (const message of messages) summarizerShapes.push(shapeOf(message));
 						const marker = `[summary ${markers.length + 1} of ${messages.length} messages]`;
 						markers.push(marker);
 						return marker;
@@ -186,7 +214,12 @@
 				})
 			}
 		});
-		await agent.run({ conversation: seeded }).result();
+		// Kept rather than discarded. A loop that failed AFTER `generate` saw the
+		// right projection — while appending the response, or finalizing the
+		// compacted conversation — settles a terminal result carrying that
+		// failure, and every projection, summarizer, and caller-history
+		// assertion here would still pass over the top of it.
+		const result = await agent.run({ conversation: seeded }).result();
 
 		// Compared by CONTENT, never by object identity: `getMessages` builds
 		// a fresh array on every call, so `after === before` is false for a
@@ -210,22 +243,8 @@
 		// partition without ever checking one: a compaction that both
 		// summarized AND retained one message while dropping another still
 		// sums to the seeded length.
-		//
-		// Matched on role, content, and metadata — which is the whole of what
-		// survives. Not by id, and not as an omission for convenience:
-		// compaction reassigns ids, so the projection shares none of the
-		// seed's and an id comparison finds zero survivors for a projection
-		// that carries four messages through. Including `metadata` is the part
-		// that matters most: a carried-through message that arrived with
-		// `pinned` stripped would look identical by content and then be
-		// summarized away on the NEXT compaction.
-		const shapeOf = (message: Message): string =>
-			JSON.stringify({
-				role: message.role,
-				content: message.content,
-				metadata: message.metadata
-			});
 		const projectionShapes = projection.map(shapeOf);
+		const beforeShapes = before.map(shapeOf);
 		const buckets = before.map((message) => ({
 			carried: projectionShapes.includes(shapeOf(message)),
 			summarized: summarizedIds.includes(message.id)
@@ -372,11 +391,29 @@
 			emptyChunks,
 			everyMarkerOnce,
 			markerOccurrences: markerCounts.join(', '),
-			generateCalls
+			generateCalls,
+			finishReason: result.finishReason,
+			runError:
+				result.error === undefined
+					? '(none)'
+					: result.error instanceof Error
+						? result.error.name
+						: `(non-Error: ${typeof result.error})`,
+			steps: result.steps.length,
+			// Every message the summarizer saw matched the seeded message of
+			// the same shape — role, content, and metadata alike.
+			summarizerInputsIntact:
+				summarizerShapes.length > 0 &&
+				summarizerShapes.every((shape) => beforeShapes.includes(shape))
 		};
 	}
 
 	const observation = observe();
+
+	let settled = $state(false);
+	void observation.then(() => {
+		settled = true;
+	});
 </script>
 
 <main>
@@ -388,7 +425,18 @@
 		reassigns message ids, so nothing keyed to one survives the boundary.
 	</p>
 
-	<section data-testid="compaction" aria-live="polite">
+	<!--
+		A concise, PERSISTENT status line rather than an `aria-live` region
+		around the result tables. Announcing the tables read out the whole
+		technical listing on resolution; this exists at mount (a live region
+		inserted with its content announces unreliably) and says only that the
+		run settled, leaving the tables to normal navigation.
+	-->
+	<p role="status" data-testid="compaction-status">
+		{settled ? 'Compaction run settled.' : 'Compaction run in progress.'}
+	</p>
+
+	<section data-testid="compaction">
 		{#await observation}
 			<p data-testid="compaction-pending">Running…</p>
 		{:then result}
@@ -442,6 +490,12 @@
 				<dd data-testid="compaction-duplicate-inputs">{result.duplicateSummarizerInputs}</dd>
 				<dt><code>generate</code> calls</dt>
 				<dd data-testid="compaction-generate-calls">{result.generateCalls}</dd>
+				<dt>summarizer input matched the seed</dt>
+				<dd data-testid="compaction-summarizer-inputs">{result.summarizerInputsIntact}</dd>
+				<dt>run finishReason / error / steps</dt>
+				<dd data-testid="compaction-run-outcome">
+					{result.finishReason} / {result.runError} / {result.steps}
+				</dd>
 				<dt>pinned fact present</dt>
 				<dd data-testid="compaction-projection-pin">{result.projectionHasPin}</dd>
 				<dt>first follow-up present</dt>

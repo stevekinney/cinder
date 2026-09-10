@@ -131,7 +131,17 @@
 			generate: async (context) => {
 				generateCalls += 1;
 				const seen = context.conversation.getMessages();
-				const lastUser = seen.findLast((message) => message.role === 'user')?.content;
+				// Reverse scan rather than `Array.prototype.findLast`: the repo
+				// targets ES2022 and avoids that method deliberately — see the
+				// same hand-rolled loop in `chat.svelte` and `alert.svelte`,
+				// and `findLastIndex` in `roving-tabindex.ts`.
+				let lastUser: (typeof seen)[number]['content'] | undefined;
+				for (let index = seen.length - 1; index >= 0; index -= 1) {
+					if (seen[index].role === 'user') {
+						lastUser = seen[index].content;
+						break;
+					}
+				}
 				promptSeenByGenerate =
 					lastUser === undefined
 						? '(no user message)'
@@ -251,6 +261,13 @@
 			promise: observe('permitted', BENIGN)
 		}
 	];
+
+	let settledCount = $state(0);
+	for (const panel of panels) {
+		void panel.promise.then(() => {
+			settledCount += 1;
+		});
+	}
 </script>
 
 <main>
@@ -263,8 +280,21 @@
 		by default.
 	</p>
 
+	<!--
+		One concise, PERSISTENT status line for all four runs, rather than an
+		`aria-live` region around each result table. Four tables resolving at
+		once announced four full definition lists — long, queued or coalesced,
+		and with nothing saying which run had finished. This region exists at
+		mount (a live region inserted along with its content announces
+		unreliably) and says only how many runs have settled; the tables stay
+		available to normal navigation.
+	-->
+	<p role="status" data-testid="tripwire-status">
+		{settledCount} of {panels.length} runs settled.
+	</p>
+
 	{#each panels as panel (panel.id)}
-		<section data-testid="tripwire-{panel.id}" aria-live="polite">
+		<section data-testid="tripwire-{panel.id}">
 			<h2>{panel.label}</h2>
 			<p>{panel.note}</p>
 			{#await panel.promise}
