@@ -113,7 +113,11 @@ export class CommandListState {
   bindDismissal(options: CommandListDismissalOptions): () => void {
     const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
       if (!options.isOpen() || event?.key !== 'Escape') return;
+      // Uniform swallow-at-the-top (CIN-428): consume with both
+      // preventDefault() and stopPropagation() so a lower escape-stack
+      // overlay never reacts to the same keystroke.
       event.preventDefault();
+      event.stopPropagation();
       options.onDismiss(true);
     });
     const handlePointerDown = (event: MouseEvent): void => {

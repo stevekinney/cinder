@@ -1,5 +1,5 @@
 /// <reference lib="dom" />
-import { afterEach, describe, expect, test } from 'bun:test';
+import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRawSnippet } from 'svelte';
 
 import { stripCinderComponentsLayer } from '../../test/css.ts';
@@ -15,6 +15,12 @@ setupHappyDom();
 // through integration tests in a real browser environment.
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
+const { default: Dropdown } = await import('./dropdown.svelte');
+const { default: DropdownCompoundFixture } =
+  await import('../../test/fixtures/dropdown-compound-fixture.svelte');
+const { default: DropdownTriggerNoCaretFixture } =
+  await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // Tests render into the shared `document.body` (see the `render` wrapper below).
 // Without unmounting between tests, prior renders linger in the DOM and leave
@@ -24,13 +30,8 @@ const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/s
 afterEach(() => {
   cleanup();
   document.body.replaceChildren();
+  _resetEscapeStack();
 });
-
-const { default: Dropdown } = await import('./dropdown.svelte');
-const { default: DropdownCompoundFixture } =
-  await import('../../test/fixtures/dropdown-compound-fixture.svelte');
-const { default: DropdownTriggerNoCaretFixture } =
-  await import('../../test/fixtures/dropdown-trigger-no-caret-fixture.svelte');
 
 const triggerSnippet = createRawSnippet(() => ({
   render: () => `<button type="button">Open Menu</button>`,
@@ -217,6 +218,101 @@ describe('Dropdown', () => {
     expect(root).not.toBeNull();
     await fireEvent.keyDown(root, { key: 'Escape' });
     expect(openValue).toBe(false);
+  });
+
+  test('CIN-428 (legacy non-popover branch): holds a pushEscapeHandler registration while open and releases it on close', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container, rerender } = render(Dropdown, {
+        props: { open: true, trigger: triggerSnippet, children: textSnippet('Menu item') },
+      });
+      const root = container.querySelector('.cinder-dropdown') as HTMLElement;
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      root.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+
+      // Release timing: released when close begins. Re-render with `open:
+      // false` — the way a real consumer re-passes the bindable value the
+      // component just requested closed — so the registration effect's
+      // cleanup actually runs; the parent (now top-most) then sees the very
+      // next Escape.
+      await rerender({ open: false, trigger: triggerSnippet, children: textSnippet('Menu item') });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('CIN-428 (legacy non-popover branch): Escape closes the menu with focus outside the dropdown', async () => {
+    let openValue = true;
+    render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(openValue).toBe(false);
+    outside.remove();
+  });
+
+  test('CIN-428 (legacy non-popover branch): Escape restores focus to the trigger when focus already left the menu (review finding)', async () => {
+    // Regression: this branch only ran `open = false` on Escape, unlike the
+    // compound fallback's `dismissMenu()` — leaving focus stranded on
+    // whatever was outside the menu instead of returning it to the trigger,
+    // contrary to dropdown.a11y.md's Escape-returns-focus-to-trigger
+    // contract.
+    let openValue = true;
+    const { getByText } = render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+    const trigger = getByText('Open Menu');
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(openValue).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
   });
 
   test('data-cinder-placement reflects placement prop on root element', () => {
@@ -444,6 +540,32 @@ describe('Dropdown', () => {
       expect(container.querySelector('[role="menu"]')).toBeNull();
       expect(document.activeElement).toBe(trigger);
     });
+  });
+
+  test('CIN-428 (modern/compound branch): inherits escape-stack registration transitively from DropdownMenu — with another registration underneath, Escape dismisses only the compound menu', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = renderCompoundDropdown();
+      const trigger = container.querySelector('.trigger') as HTMLElement;
+
+      await fireEvent.click(trigger);
+      await waitFor(() => {
+        expect(document.activeElement?.textContent).toContain('Copy link');
+      });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => {
+        expect(container.querySelector('[role="menu"]')).toBeNull();
+      });
+    } finally {
+      releaseParent();
+    }
   });
 
   test('Escape on compound menu does not double-fire close+focus through parent handler', async () => {
@@ -793,5 +915,77 @@ describe('Dropdown', () => {
     } finally {
       window.getComputedStyle = originalGetComputedStyle;
     }
+  });
+});
+
+// happy-dom does not implement `showPopover`/`hidePopover`, so the legacy
+// snippet API's own `supportsPopover` detection effect never resolves
+// `true` in the suite above and every test there exercises the non-popover
+// fallback path (`exitState.renderPanel`). Force the popover branch by
+// stubbing the two methods on `HTMLElement.prototype` (mirrors
+// dropdown-menu.test.ts's identical pattern), scoped to this describe block.
+describe('Dropdown legacy native-popover branch', () => {
+  beforeEach(() => {
+    Object.assign(HTMLElement.prototype, {
+      showPopover(this: HTMLElement) {},
+      hidePopover(this: HTMLElement) {},
+    });
+  });
+
+  afterEach(() => {
+    const proto = HTMLElement.prototype as unknown as Record<string, unknown>;
+    delete proto['showPopover'];
+    delete proto['hidePopover'];
+  });
+
+  test('Escape restores focus to the legacy trigger when focus already left the menu (review finding)', async () => {
+    // Regression: this branch's stack handler called stopPropagation() but
+    // never restored focus, unlike the fallback branch's
+    // resolveLegacyTriggerElement()-based restoration — leaving focus on
+    // whatever was outside instead of the trigger, contrary to
+    // dropdown.a11y.md:14's Escape contract. Native focus restoration only
+    // applies when focus was still inside the popover when it closes.
+    let openValue = true;
+    const { container, getByText } = render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+
+    // Confirm the popover branch actually rendered — if CSS Anchor
+    // Positioning feature-detection also fails in this environment, this
+    // guards against a false-negative pass on the wrong branch.
+    const menu = container.querySelector('.cinder-dropdown__menu[popover]');
+    if (!menu) {
+      throw new Error(
+        'Popover branch did not render — supportsPopover detection did not resolve true in this environment.',
+      );
+    }
+
+    const trigger = getByText('Open Menu');
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    const escapeEvent = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(escapeEvent);
+
+    // Not cancelled: the browser's own native close-request must still run.
+    expect(escapeEvent.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
   });
 });

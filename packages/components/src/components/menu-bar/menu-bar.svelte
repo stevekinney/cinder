@@ -569,7 +569,20 @@
     // Only consume Escape when a menu or submenu is actually open. On a closed
     // menubar item, swallowing Escape (preventDefault + a no-op closeAll) would
     // block an enclosing overlay or page-level Escape handler from ever running.
-    if (event.key === 'Escape' && (openMenuIndex !== null || openSubmenuKey !== null)) {
+    //
+    // `defaultPrevented` guard (CIN-428 hazard): DropdownMenu's own
+    // escape-stack registration runs at the window capture phase, before this
+    // bubble-phase trigger listener ever sees the key. In the normal case it
+    // already preventDefault()s + stopPropagation()s, so this branch never
+    // even runs for that keystroke — this guard is defense-in-depth for any
+    // path where the event still reaches here with defaultPrevented already
+    // true, so this doesn't run a redundant/conflicting closeAll() on top of
+    // whatever the stack handler already did.
+    if (
+      event.key === 'Escape' &&
+      !event.defaultPrevented &&
+      (openMenuIndex !== null || openSubmenuKey !== null)
+    ) {
       event.preventDefault();
       closeAll();
       return;

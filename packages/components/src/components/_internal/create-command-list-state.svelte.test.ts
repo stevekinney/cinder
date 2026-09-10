@@ -3,6 +3,7 @@ import { afterEach, describe, expect, test } from 'bun:test';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
+import { _resetEscapeStack, pushEscapeHandler } from '../../_internal/overlay.ts';
 import { createCommandListState } from './create-command-list-state.svelte.ts';
 
 setupHappyDom();
@@ -21,6 +22,7 @@ function keydown(key: string): KeyboardEvent {
 describe('CommandListState', () => {
   afterEach(() => {
     document.body.replaceChildren();
+    _resetEscapeStack();
   });
 
   test('registers enabled items, navigates them, and activates the selected item', () => {
@@ -196,6 +198,61 @@ describe('CommandListState', () => {
         configurable: true,
         value: originalDocument,
       });
+    }
+  });
+
+  test('bindDismissal swallows Escape with both preventDefault and stopPropagation (CIN-428 uniform swallow-at-the-top)', () => {
+    const state = createCommandListState('command-list');
+    let dismissed = false;
+    const release = state.bindDismissal({
+      isOpen: () => true,
+      isInside: () => false,
+      onDismiss: () => {
+        dismissed = true;
+      },
+    });
+
+    try {
+      const escapeEvent = keydown('Escape');
+      const stopPropagationSpy = { called: false };
+      const originalStopPropagation = escapeEvent.stopPropagation.bind(escapeEvent);
+      escapeEvent.stopPropagation = () => {
+        stopPropagationSpy.called = true;
+        originalStopPropagation();
+      };
+
+      window.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(stopPropagationSpy.called).toBe(true);
+      expect(dismissed).toBe(true);
+    } finally {
+      release();
+    }
+  });
+
+  test('bindDismissal registers on the shared escape stack: with another registration underneath, only bindDismissal dismisses', () => {
+    const state = createCommandListState('command-list');
+    let dismissed = false;
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+    const release = state.bindDismissal({
+      isOpen: () => true,
+      isInside: () => false,
+      onDismiss: () => {
+        dismissed = true;
+      },
+    });
+
+    try {
+      window.dispatchEvent(keydown('Escape'));
+      expect(dismissed).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+    } finally {
+      release();
+      releaseParent();
     }
   });
 });

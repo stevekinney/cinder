@@ -32,6 +32,7 @@ const { prepareServerRenderSource, renderToServerHtml } =
   await import('../../test/server-render.ts');
 const { tick } = await import('svelte');
 const { default: MenuBar } = await import('./menu-bar.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 const MENU_BAR_SOURCE = `${import.meta.dir}/menu-bar.svelte`;
 const MENU_BAR_DIRECTION_FIXTURE_SOURCE = `${import.meta.dir}/../../test/fixtures/menu-bar-direction-fixture.svelte`;
 
@@ -120,6 +121,7 @@ describe('MenuBar', () => {
   // file (cleanup() in beforeEach never runs after the final test).
   afterEach(() => {
     cleanup();
+    _resetEscapeStack();
   });
 
   test('renders a labelled menubar with top-level menuitem triggers', () => {
@@ -385,6 +387,81 @@ describe('MenuBar', () => {
     expect(document.activeElement).toBe(submenuTrigger);
     expect(submenuTrigger.getAttribute('aria-expanded')).toBe('false');
     expect(file.getAttribute('aria-expanded')).toBe('true');
+  });
+
+  test('CIN-428: two-stage Escape — first closes the submenu only, second closes the top-level menu (staged submenu-then-menubar close)', async () => {
+    // DropdownMenu's escape-stack registration (CIN-428) is keyed per
+    // instance: the submenu renders its own DropdownMenu, so it registers
+    // separately from — and above, since it opens later — the top-level
+    // menu's own DropdownMenu registration. LIFO ordering alone reproduces
+    // the staged close this test asserts, with no target-scoping needed.
+    const { getByRole, queryByRole } = render(MenuBar, { props: { menus: fileEditViewMenus() } });
+    const file = getByRole('menuitem', { name: 'File' });
+
+    await fireEvent.click(file);
+    await tick();
+    const submenuTrigger = getByRole('menuitem', { name: 'Open Recent' });
+    await fireEvent.keyDown(submenuTrigger, { key: 'ArrowRight' });
+    await tick();
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('true');
+    expect(file.getAttribute('aria-expanded')).toBe('true');
+
+    // Stage 1: Escape with focus inside the submenu closes ONLY the submenu.
+    const firstEscape = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    getByRole('menuitem', { name: 'Cinder workspace' }).dispatchEvent(firstEscape);
+    await tick();
+
+    expect(firstEscape.defaultPrevented).toBe(true);
+    expect(submenuTrigger.getAttribute('aria-expanded')).toBe('false');
+    expect(queryByRole('menuitem', { name: 'Cinder workspace' })).toBeNull();
+    expect(file.getAttribute('aria-expanded')).toBe('true');
+    expect(document.activeElement).toBe(submenuTrigger);
+
+    // Stage 2: a second Escape (focus now on the submenu trigger, which sits
+    // inside the top-level menu) closes the top-level menu too.
+    const secondEscape = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    submenuTrigger.dispatchEvent(secondEscape);
+    await tick();
+
+    expect(secondEscape.defaultPrevented).toBe(true);
+    expect(file.getAttribute('aria-expanded')).toBe('false');
+    expect(queryByRole('menuitem', { name: 'Open Recent' })).toBeNull();
+    expect(document.activeElement).toBe(file);
+  });
+
+  test('CIN-428: inherits escape-stack registration transitively from DropdownMenu — with another registration underneath, Escape dismisses only the open top-level menu', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { getByRole, queryByRole } = render(MenuBar, {
+        props: { menus: fileEditViewMenus() },
+      });
+      const file = getByRole('menuitem', { name: 'File' });
+
+      await fireEvent.click(file);
+      await tick();
+      expect(file.getAttribute('aria-expanded')).toBe('true');
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await tick();
+
+      expect(parentEscapeCount).toBe(0);
+      expect(file.getAttribute('aria-expanded')).toBe('false');
+      expect(queryByRole('menuitem', { name: 'New' })).toBeNull();
+    } finally {
+      releaseParent();
+    }
   });
 
   test('closes an open submenu when focus moves to a sibling menu item', async () => {
