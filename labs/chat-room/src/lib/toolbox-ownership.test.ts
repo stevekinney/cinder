@@ -37,13 +37,38 @@ describe('the approval-signing toolbox is host-owned', () => {
 	 * verification on resume — and the failure would read as a rejected token,
 	 * pointing at signing rather than at ownership.
 	 */
-	it('is constructed in exactly one place in the application', () => {
-		// Tests are excluded on purpose: `chat-agent.test.ts` builds its own
-		// toolbox to exercise the agent in isolation, which is the right thing
-		// for a unit test and signs nothing anyone resumes against. What must
-		// not happen is a SECOND instance on a request path.
+	it('is the only toolbox any server-reachable module constructs', () => {
+		// Fourth formulation, and the last one worth having: NO TypeScript
+		// module under `routes/` constructs a toolbox. Not endpoints, not
+		// server modules, not a helper one of them imports.
+		//
+		// The three narrower versions each missed a real case — `routes/api/`
+		// missed endpoints elsewhere, `+server.ts` missed `+page.server.ts`,
+		// and both missed a plain `routes/**/helper.ts` that an endpoint could
+		// import. Chasing that last one through the import graph would be a
+		// much larger mechanism for the same property; refusing construction
+		// anywhere in `routes/*.ts` gets it with a rule a reader can hold.
+		//
+		// `.svelte` is excluded deliberately: the `/exercises/*` routes build
+		// throwaway local toolboxes to demonstrate the run loop. They are
+		// client-side, sign nothing, and nobody resumes against them. Tests are
+		// excluded for the same reason.
+		const underRoutes = sourceFiles(applicationRoot)
+			.filter((path) => path.endsWith('.ts'))
+			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
+			.filter((path) => relativeToApplication(path).startsWith('routes/'))
+			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
+			.map(relativeToApplication);
+		expect(underRoutes).toEqual([]);
+	});
+
+	it('is constructed in exactly one place outside routes and tests', () => {
+		// The other half: the shared instance has one home. An `$lib` module
+		// growing a second one would be invisible to the request-path check
+		// above while still splitting the secret.
 		const constructing = sourceFiles(applicationRoot)
 			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
+			.filter((path) => !relativeToApplication(path).startsWith('routes/'))
 			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
 			.map(relativeToApplication);
 		expect(constructing).toEqual(['lib/toolbox.ts']);
