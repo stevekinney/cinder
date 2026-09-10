@@ -238,20 +238,26 @@ describe('DropdownMenu', () => {
   // into one calling `dismissMenu` unconditionally fails loudly: that would
   // call `event.preventDefault()` for a Popover-API-backed menu, cancelling
   // the browser's own Escape close-request and leaving the top-layer
-  // popover visibly open even though `setOpen(false)` already ran.
+  // popover visibly open even though `setOpen(false)` already ran. Uses a
+  // regex rather than an exact-source match, so a formatting-only change to
+  // the surrounding lines can't fail this guard.
   test('the native-popover branch registers a non-cancelling handler, not dismissMenu (review finding)', () => {
-    expect(dropdownMenuSource).toContain(
-      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler(() => {',
+    expect(dropdownMenuSource).toMatch(
+      /if \(!context\.supportsPopover \|\| !context\.isOpen\) return;\s*\n\s*const releaseEscape = pushEscapeHandler\(/,
     );
-    // It must never call preventDefault()/stopPropagation() — doing so would
-    // cancel the browser's own Escape close-request for the top-layer
-    // popover. Only dismissMenu (the non-popover fallback's handler) may.
+    // It must never call preventDefault() — doing so would cancel the
+    // browser's own Escape close-request for the top-layer popover. Only
+    // dismissMenu (the non-popover fallback's handler) may. It DOES call
+    // stopPropagation() — propagation and the browser's native default
+    // action are independent, so stopping propagation here is safe and is
+    // what keeps a lower escape-stack overlay (or a focused descendant's own
+    // keydown listener) from also reacting to the same keystroke.
     const popoverBranch = dropdownMenuSource.slice(
       dropdownMenuSource.indexOf('if (!context.supportsPopover || !context.isOpen) return;'),
       dropdownMenuSource.indexOf('function handleKeydown'),
     );
     expect(popoverBranch).not.toContain('.preventDefault(');
-    expect(popoverBranch).not.toContain('.stopPropagation(');
+    expect(popoverBranch).toContain('.stopPropagation(');
   });
 });
 
