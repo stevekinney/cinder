@@ -537,6 +537,14 @@
 
   function closeMobilePanel(event?: KeyboardEvent): void {
     event?.preventDefault();
+    // Once the panel actually accepts the dismissal — whether immediately,
+    // for a dispatch outside the bar's tree, or after the deferred in-tree
+    // decision in `handleKeyDown` below — stop the key from leaking past
+    // here to unrelated ancestor keydown handlers (review findings from
+    // both Copilot and Codex). This still preserves the cooperative path
+    // above: propagation is only cut off once the close is decided, never
+    // before a nested control or the composed consumer handler got a look.
+    event?.stopPropagation();
     mobileMenuOpen = false;
     focusMenuToggle();
   }

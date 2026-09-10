@@ -2014,6 +2014,56 @@ describe('NavigationBar', () => {
     });
   });
 
+  test('cooperative Escape: propagation stops once the panel actually accepts the dismissal (review finding)', async () => {
+    // Follow-up review findings (Copilot + Codex): once the panel decides to
+    // close — whether immediately for a dispatch outside the bar's tree, or
+    // after the deferred in-tree decision — the key must not leak past this
+    // point to an unrelated ancestor keydown handler, restoring the uniform
+    // swallow-at-the-top guarantee every other escape-stack overlay has.
+    // This must hold without regressing the cooperative path above: a
+    // handler higher up the DOM tree than <nav> should still not see the
+    // key once <nav> has claimed it.
+    let outerHandlerFired = false;
+    const outerHandler = () => {
+      outerHandlerFired = true;
+    };
+    document.body.addEventListener('keydown', outerHandler);
+
+    try {
+      await withResizeObserver(async () => {
+        const { container } = render(NavigationBar, {
+          items: nestedFieldSnippet(() => {
+            // Sees Escape but does not cancel it — the panel closes.
+          }),
+          menuToggle: toggleSnippet(),
+        } as any);
+
+        await tick();
+        const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+        const nav = container.querySelector('nav') as HTMLElement;
+        emitNavigationBarResize(nav, 640);
+        await tick();
+
+        await fireEvent.click(toggle);
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+        const field = (container.querySelector('#nested-search') ??
+          document.body.querySelector('#nested-search')) as HTMLElement;
+        const escapeEvent = new window.KeyboardEvent('keydown', {
+          key: 'Escape',
+          bubbles: true,
+          cancelable: true,
+        });
+        field.dispatchEvent(escapeEvent);
+
+        expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
+        expect(outerHandlerFired).toBe(false);
+      });
+    } finally {
+      document.body.removeEventListener('keydown', outerHandler);
+    }
+  });
+
   test('writable native Event properties use the original event as their receiver', () => {
     expect(navigationBarSource).toMatch(
       /set\(target, property, value\)\s*\{\s*return Reflect\.set\(target, property, value, target\);/,
