@@ -1235,6 +1235,117 @@ describe('toast variant icons', () => {
   });
 });
 
+describe('data-cinder-closing (OVERLAY-POLICY transition-lifecycle contract)', () => {
+  test('is present on .cinder-toast-shell only while the toast is dismissing', async () => {
+    // Stub a real (non-zero) transition duration for `.cinder-toast-shell` so
+    // `waitForTransitionCompletion` takes its transitionend-listening path
+    // instead of resolving on the next microtask — this is the only way to
+    // observe the intermediate "closing but still mounted" state instead of
+    // the dismissal completing before this test can ever observe it.
+    const originalGetComputedStyle = window.getComputedStyle.bind(window);
+    window.getComputedStyle = ((target: Element) => {
+      if (target instanceof HTMLElement && target.classList.contains('cinder-toast-shell')) {
+        return {
+          transitionProperty: 'max-height, opacity, margin-block',
+          transitionDuration: '80ms, 80ms, 80ms',
+          transitionDelay: '0ms, 0ms, 0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+
+    try {
+      let api: ToastApi | null = null;
+      const { container } = render(Wrapper, {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      });
+      await waitFor(() => expect(api).not.toBeNull());
+      const id = api!.show('Closing soon', { duration: 0 });
+
+      function getShell(): HTMLElement | null {
+        const toastElement = container.querySelector(`[data-cinder-toast-id="${id}"]`);
+        return toastElement?.closest<HTMLElement>('.cinder-toast-shell') ?? null;
+      }
+
+      await waitFor(() => {
+        expect(getShell()).not.toBeNull();
+      });
+
+      // Not dismissing yet — the attribute must be absent entirely, not just falsy.
+      expect(getShell()?.hasAttribute('data-cinder-closing')).toBe(false);
+
+      api!.dismiss(id);
+
+      // The exit transition is in flight (80ms stub duration): the toast is
+      // still mounted and the attribute is present.
+      await waitFor(() => {
+        expect(getShell()?.hasAttribute('data-cinder-closing')).toBe(true);
+        expect(getShell()?.getAttribute('data-cinder-closing')).toBe('');
+      });
+      expect(container.querySelector(`[data-cinder-toast-id="${id}"]`)).not.toBeNull();
+
+      const shell = getShell();
+      for (const propertyName of ['max-height', 'opacity', 'margin-block']) {
+        const event = new Event('transitionend');
+        Object.defineProperty(event, 'propertyName', { value: propertyName });
+        shell?.dispatchEvent(event);
+      }
+
+      // Once the toast finishes unmounting, the element (and its attribute) is
+      // gone from the DOM entirely.
+      await waitFor(() => {
+        expect(container.querySelector(`[data-cinder-toast-id="${id}"]`)).toBeNull();
+      });
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+    }
+  });
+
+  test('unmounts the toast under prefers-reduced-motion: reduce', async () => {
+    const originalMatchMedia = window.matchMedia;
+    window.matchMedia = jest.fn(
+      (media: string): MediaQueryList =>
+        ({
+          matches: media === '(prefers-reduced-motion: reduce)',
+          media,
+          onchange: null,
+          addEventListener: () => {},
+          removeEventListener: () => {},
+          addListener: () => {},
+          removeListener: () => {},
+          dispatchEvent: () => true,
+        }) as MediaQueryList,
+    );
+
+    try {
+      let api: ToastApi | null = null;
+      const { container } = render(Wrapper, {
+        onReady: (a: ToastApi) => {
+          api = a;
+        },
+      });
+      await waitFor(() => expect(api).not.toBeNull());
+      const id = api!.show('Reduced motion close', { duration: 0 });
+
+      await waitFor(() => {
+        expect(container.querySelector(`[data-cinder-toast-id="${id}"]`)).not.toBeNull();
+      });
+
+      api!.dismiss(id);
+
+      // waitForTransitionCompletion resolves via queueMicrotask when the
+      // computed transition duration is 0 — no transitionend needed.
+      await waitFor(() => {
+        expect(container.querySelector(`[data-cinder-toast-id="${id}"]`)).toBeNull();
+      });
+    } finally {
+      window.matchMedia = originalMatchMedia;
+    }
+  });
+});
+
 describe('useToast outside a region', () => {
   test('throws when called outside of any component (getContext lifecycle)', async () => {
     // useToast() ultimately calls getContext, which Svelte requires to run

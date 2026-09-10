@@ -96,6 +96,7 @@ jobs:
           bun run --filter=@lostgradient/editor components:check
           bun run --filter=@lostgradient/cinder validate:consumer:manifest-smoke
           bun run --filter=@lostgradient/cinder validate:release-workflow
+          bun test packages/testing/scripts/pinned-bun-version.test.ts
           bun test packages/components/scripts/check-css-duplication.test.ts
 
   package:

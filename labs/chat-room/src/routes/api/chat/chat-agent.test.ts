@@ -504,7 +504,7 @@ describe('classifyChatRunFailure', () => {
 		expect(envelope).toEqual({
 			ok: false,
 			status: 'error',
-			error: { kind: 'policy', code: 'TRIPWIRE', message: 'boom' }
+			error: { kind: 'policy', code: 'TRIPWIRE', message: 'boom', retryable: false }
 		});
 	});
 
@@ -561,6 +561,9 @@ describe('classifyChatRunFailure', () => {
 	// pressing "stop generating" into an error banner they never caused.
 	test('classifies a non-AgentRunError rejection on the abort path as an abort', () => {
 		const envelope = classifyChatRunFailure(new Error('The operation was aborted'), 'aborted');
+		// No `retryable` on an abort: it is a user decision, not a failure, and
+		// a "you can try that again" disposition on a deliberate stop would be
+		// nonsense.
 		expect(envelope).toEqual({
 			ok: false,
 			status: 'aborted',
@@ -575,12 +578,68 @@ describe('classifyChatRunFailure', () => {
 		});
 	});
 
+	describe('retryability', () => {
+		/**
+		 * `classifyError` reads `statusCode`/`status` off the value it is
+		 * handed. An `AgentRunError` carries neither — the provider's status is
+		 * on the SDK error it wrapped — so these pin that the CAUSE is what
+		 * gets classified. Classifying the wrapper reports every provider
+		 * failure as terminal, including the ones a retry would fix.
+		 */
+		function providerFailure(status: number): AgentRunError {
+			return new AgentRunError('The provider rejected the request.', {
+				kind: 'generate',
+				code: 'UNKNOWN',
+				cause: Object.assign(new Error('upstream'), { status })
+			});
+		}
+
+		test('reports a rate-limited provider as retryable', () => {
+			expect(classifyChatRunFailure(providerFailure(429), 'error').error.retryable).toBe(true);
+		});
+
+		test('reports a server error as retryable', () => {
+			expect(classifyChatRunFailure(providerFailure(503), 'error').error.retryable).toBe(true);
+		});
+
+		test('reports a rejected credential as terminal', () => {
+			// The distinction the whole field exists for: same `kind`, same
+			// `code`, same sentence — and retrying one is free while retrying
+			// the other can only fail again.
+			expect(classifyChatRunFailure(providerFailure(401), 'error').error.retryable).toBe(false);
+		});
+
+		test('reports a malformed request as terminal', () => {
+			expect(classifyChatRunFailure(providerFailure(400), 'error').error.retryable).toBe(false);
+		});
+
+		test('states nothing when the classifier throws', () => {
+			// A classifier that blows up must not take the error frame with it:
+			// the client still needs to hear that the turn failed.
+			const hostile = new AgentRunError('boom', {
+				kind: 'generate',
+				code: 'UNKNOWN',
+				cause: new Proxy(
+					{},
+					{
+						get() {
+							throw new Error('nope');
+						}
+					}
+				)
+			});
+			const envelope = classifyChatRunFailure(hostile, 'error');
+			expect(envelope.error.message).toBe('boom');
+			expect('retryable' in envelope.error).toBe(false);
+		});
+	});
+
 	test('falls back to kind: "generate" for a plain, unclassified error', () => {
 		const envelope = classifyChatRunFailure(new Error('network blip'), 'error');
 		expect(envelope).toEqual({
 			ok: false,
 			status: 'error',
-			error: { kind: 'generate', code: 'UNKNOWN', message: 'network blip' }
+			error: { kind: 'generate', code: 'UNKNOWN', message: 'network blip', retryable: false }
 		});
 	});
 });

@@ -792,6 +792,70 @@ describe('chat stream event codec', () => {
       expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
     });
 
+    test('round-trips run.error retryability in both directions', () => {
+      // Both values matter, and `false` is the one a truthiness bug eats: a
+      // terminal failure that decodes as "not stated" would render with a
+      // retry affordance the host explicitly said not to offer.
+      for (const retryable of [true, false]) {
+        const event = {
+          type: 'run.error' as const,
+          error: {
+            name: 'AgentRunError',
+            message: 'The model call failed.',
+            kind: 'generate' as const,
+            code: 'UNKNOWN' as const,
+            retryable,
+          },
+          wireVersion: 1 as const,
+          sequence: 9,
+        };
+        expect(decodeChatStreamEvent(encodeChatStreamEvent(event))).toEqual(event);
+      }
+    });
+
+    test('keeps an unstated retryability unstated rather than defaulting it', () => {
+      // A producer written before the field existed says nothing about
+      // retryability. Inventing `false` here would be a claim it never made,
+      // and would silently take the retry affordance away from every host
+      // that has not adopted the field.
+      const event = {
+        type: 'run.error' as const,
+        error: {
+          name: 'AgentRunError',
+          message: 'The model call failed.',
+          kind: 'generate' as const,
+          code: 'UNKNOWN' as const,
+        },
+        wireVersion: 1 as const,
+        sequence: 9,
+      };
+      const decoded = decodeChatStreamEvent(encodeChatStreamEvent(event));
+      expect(decoded.type).toBe('run.error');
+      if (decoded.type !== 'run.error') throw new Error('unreachable');
+      expect('retryable' in decoded.error).toBe(false);
+    });
+
+    test('refuses a non-boolean retryability at both boundaries', () => {
+      const error = {
+        name: 'AgentRunError',
+        message: 'The model call failed.',
+        kind: 'generate' as const,
+        code: 'UNKNOWN' as const,
+        retryable: 'yes',
+      };
+      expect(() =>
+        encodeChatStreamEvent({
+          type: 'run.error',
+          error,
+          wireVersion: 1,
+          sequence: 9,
+        } as never),
+      ).toThrow(/retryable must be a boolean/);
+      expect(() =>
+        decodeChatStreamEvent({ type: 'run.error', error, wireVersion: 1, sequence: 9 }),
+      ).toThrow();
+    });
+
     test('encodes the run.error fields it validated when a getter answers differently per read', () => {
       const answers = ['AgentRunError', undefined];
       const error = {

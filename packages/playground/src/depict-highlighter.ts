@@ -16,12 +16,25 @@
  * same `depict` theme for path 2 puts both on one palette that follows the
  * active light/dark theme instead of pinning a light background.
  *
- * `themeLoaders` replaces the theme registry with just `depict`; language
- * grammars still come from Shiki's full bundle, because the default
- * `@lostgradient/cinder/highlighters/shiki` entry point falls back to
- * `shiki/langs`'s `bundledLanguages` whenever `languageLoaders` is omitted.
- * Importing the `/curated` entry point instead would leave the language
- * registry empty and silently render every fence as plaintext.
+ * Both paths now share ONE curated grammar set. This module used to reach the
+ * default `@lostgradient/cinder/highlighters/shiki` entry point, whose every
+ * branch loads `shiki/langs` and `shiki/themes` — the complete 253-grammar,
+ * 65-theme registry — even when `themeLoaders` is supplied. A dynamic
+ * `import()` defers the download but not the build: the bundler still walks
+ * that registry to emit its chunk, once per page bundle. At 179 page bundles
+ * that was 9.8 MB of grammar source per graph against 1.2 MB for everything
+ * else combined, and it took the playground's eager pre-build to 18 GB
+ * resident — an OOM kill on a 16 GB CI runner (CIN-523).
+ *
+ * The `/curated` entry point takes explicit registries instead. It renders
+ * every language as plaintext if given none, which is why this passes
+ * `BUNDLED_LANGUAGE_LOADERS` — the same map `@lostgradient/markdown`'s
+ * rehype-shiki step already uses for path 1. Adding a language means adding
+ * it there, once, for both paths.
+ *
+ * A language outside that set is not an error: the adapter's documented
+ * contract is escaped plaintext plus one `console.warn` per language, never
+ * a throw.
  *
  * Module-scoped singleton: the adapter caches its Shiki module (and therefore
  * its WASM engine and loaded grammars) per instance, so every `<CodeBlock>`
@@ -31,8 +44,11 @@
  */
 
 import type { Highlighter } from '@lostgradient/cinder';
-import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki';
-import { CSS_VARIABLE_THEME } from '@lostgradient/markdown/rendering/highlighter';
+import { shikiHighlighter } from '@lostgradient/cinder/highlighters/shiki/curated';
+import {
+  BUNDLED_LANGUAGE_LOADERS,
+  CSS_VARIABLE_THEME,
+} from '@lostgradient/markdown/rendering/highlighter';
 
 /**
  * Shared `depict`-themed highlighter for `<CodeBlock highlighter={…} />`.
@@ -42,6 +58,7 @@ import { CSS_VARIABLE_THEME } from '@lostgradient/markdown/rendering/highlighter
  */
 export const depictHighlighter: Highlighter = shikiHighlighter({
   theme: 'depict',
+  languageLoaders: BUNDLED_LANGUAGE_LOADERS,
   themeLoaders: {
     depict: async () => ({ default: CSS_VARIABLE_THEME }),
   },

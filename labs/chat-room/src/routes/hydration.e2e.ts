@@ -11,10 +11,15 @@ import { expect, test } from '@playwright/test';
 const DEV_ORIGIN = 'http://localhost:5175';
 
 // ROADMAP A11Y-1. This list is EXHAUSTIVE, not a sample, and that is the point:
-// every route under `src/routes/exercises/` renders `<Chat>` or `<ReviewEditor>`
-// unconditionally in markup — there is no `{#if browser}` guard anywhere — so
-// every one of them is server-rendered and hydrated exactly like the handful
-// that used to be checked here. It used to list five exercises out of 25, which
+// every route under `src/routes/exercises/` renders its content unconditionally
+// in markup — there is no `{#if browser}` guard anywhere — so every one of them
+// is server-rendered and hydrated exactly like the handful that used to be
+// checked here.
+//
+// Most render `<Chat>` or `<ReviewEditor>`. The result-contract exercises
+// (`output`, `retry`, `stop-condition`) render plain markup around a local
+// Operative run instead, which is a weaker guarantee about WHAT hydrates but
+// the same guarantee that hydration happens — and the same reason to check it. It used to list five exercises out of 25, which
 // meant `review-front-matter`'s nine ReviewEditor instances seeded with
 // edge-case YAML front matter went unchecked, and so did `review-ssr-and-a11y`,
 // the route built specifically to audit SSR and hydration.
@@ -60,7 +65,9 @@ const HYDRATING_ROUTES = [
 	'/exercises/interleaving',
 	'/exercises/markdown-editor',
 	'/exercises/message-lifecycle',
+	'/exercises/output',
 	'/exercises/presentation',
+	'/exercises/retry',
 	'/exercises/review-anchoring',
 	'/exercises/review-basics',
 	'/exercises/review-comment-creation',
@@ -74,6 +81,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/review-state-and-session',
 	'/exercises/review-views',
 	'/exercises/row-reconciliation',
+	'/exercises/stop-condition',
 	'/exercises/tool-approval',
 	'/exercises/utilities',
 	'/exercises/virtualization'
@@ -109,9 +117,12 @@ declare global {
  * observable, every hydration warning that will ever fire already has.
  *
  * (The one way back into hydration mode afterwards is Svelte's async-mode
- * `flatten` callback, which needs `experimental.async` — not enabled here — and
- * an `await` inside a component; there are no `{#await}` blocks in `src/` or in
- * the installed component packages' browser builds.)
+ * `flatten` callback, which needs BOTH `experimental.async` and an `await`
+ * inside a component. `experimental.async` is not enabled — nothing in
+ * `vite.config.ts` or the workspace turns it on — and that leg alone settles
+ * it. The second leg no longer holds on its own: the result-contract exercises
+ * added `{#await}` blocks under `src/routes/exercises/`, which is exactly why
+ * this note now rests on the flag rather than on their absence.)
  *
  * What remained was a TEST-side risk — whether a `console` event had been
  * delivered to Playwright yet — and that is removed structurally rather than
