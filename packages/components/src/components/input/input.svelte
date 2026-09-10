@@ -95,7 +95,10 @@
     ),
   );
   // One class string for the control wrapper in both of its states. The
-  // wrapper itself is always rendered — see the comment on it in the template.
+  // wrapper itself is always rendered — via `controlClass` on FormFieldFrame's
+  // own `.cinder-form-field__control` div (see the `{#if context}` block
+  // below), so the two states differ only by class, never by a wrapper
+  // switching in or out.
   const hostClass = $derived(
     hasGroupWrapper
       ? classNames('cinder-input-group', groupClassName, groupModifiers)
@@ -203,61 +206,40 @@
   {/if}
 {/snippet}
 
-{#snippet control()}
-  <!-- Always one wrapper, so the native <input> has one stable position in the
-       tree. Rendering the wrapper only when an addon is present would switch
-       `{#if}` arms when the addon appears or disappears, and Svelte would
-       destroy and recreate the element — losing focus, the selection range,
-       any IME composition, and the scroll position of a long value. Without
-       addons the wrapper is `.cinder-input-host` (`display: contents`), which
-       contributes no box, so an unadorned input lays out exactly as the bare
-       element did. The state attributes stay on the wrapper in both states so
-       the two differ only by class. -->
-  <div
-    class={hostClass}
-    data-leading={leading ? '' : undefined}
-    data-trailing={hasTrailing ? '' : undefined}
-    data-native-date={rendersNativeDateIcon ? '' : undefined}
-    data-disabled={resolvedDisabled ? '' : undefined}
-    data-invalid={isInvalid ? '' : undefined}
-    data-cinder-full-width
-  >
-    {@render leadingAdornment()}
-    {@render inputElement()}
-    {@render trailingAdornment()}
-  </div>
-{/snippet}
-
 {#if context}
-  {#if label || description || error}
-    <FormFieldFrame
-      {id}
-      label={context.labelId ? undefined : label}
-      {labelVisible}
-      {description}
-      {error}
-      required={resolvedRequired}
-      disabled={resolvedDisabled}
-      class="cinder-input-field"
-      data-cinder-variant={variant}
-      fullWidth
-      descriptionClass="cinder-input-field__description"
-      errorClass="cinder-input-field__error"
-      descriptionId={field.ownDescriptionId}
-      errorId={field.ownErrorId}
-      control={inputElement}
-      controlClass={hostClass}
-      controlLeading={!!leading}
-      controlTrailing={hasTrailing}
-      controlNativeDate={rendersNativeDateIcon}
-      controlDisabled={resolvedDisabled}
-      controlInvalid={isInvalid}
-      before={leadingAdornment}
-      after={trailingAdornment}
-    />
-  {:else}
-    {@render control()}
-  {/if}
+  <!-- Always render the nested frame here, even when label/description/error
+       are all unset — collapsing what used to be a second `{#if}` arm switch
+       between this frame and rendering the control snippet bare. Switching
+       arms as those props became truthy destroyed and recreated the native
+       <input> (same failure mode CIN-500 fixed one level up, for the
+       leading/trailing wrapper). label/description/error are simply
+       absent/undefined on the frame when unset, so there is exactly one code
+       path for the context-truthy case. See CIN-511. -->
+  <FormFieldFrame
+    {id}
+    label={context.labelId ? undefined : label}
+    {labelVisible}
+    {description}
+    {error}
+    required={resolvedRequired}
+    disabled={resolvedDisabled}
+    class="cinder-input-field"
+    data-cinder-variant={variant}
+    fullWidth
+    descriptionClass="cinder-input-field__description"
+    errorClass="cinder-input-field__error"
+    descriptionId={field.ownDescriptionId}
+    errorId={field.ownErrorId}
+    control={inputElement}
+    controlClass={hostClass}
+    controlLeading={!!leading}
+    controlTrailing={hasTrailing}
+    controlNativeDate={rendersNativeDateIcon}
+    controlDisabled={resolvedDisabled}
+    controlInvalid={isInvalid}
+    before={leadingAdornment}
+    after={trailingAdornment}
+  />
 {:else}
   <FormFieldFrame
     {id}
