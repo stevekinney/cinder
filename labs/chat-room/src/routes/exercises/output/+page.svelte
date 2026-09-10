@@ -64,16 +64,24 @@
 		const run = agent.run({ conversation });
 		const result = await run.result();
 
+		// `threw` rather than `!== undefined`: `throw undefined` is legal, and
+		// reading the absence of a value as "it resolved" would report the
+		// opposite of what happened — in a panel whose entire subject is a
+		// failure that is easy to miss.
+		let unwrapThrew = false;
+		let outputThrew = false;
 		let unwrapError: unknown;
 		let outputError: unknown;
 		try {
 			await run.unwrap();
 		} catch (error) {
+			unwrapThrew = true;
 			unwrapError = error;
 		}
 		try {
 			await run.output();
 		} catch (error) {
+			outputThrew = true;
 			outputError = error;
 		}
 
@@ -81,12 +89,12 @@
 		// rejection through a guard rather than a cast. A cast would render
 		// `undefined` for a non-Error and quietly look like "no error at all",
 		// which is the one reading this panel must never produce.
-		const describe = (value: unknown): string =>
-			value === undefined
+		const describe = (threw: boolean, value: unknown): string =>
+			!threw
 				? '(resolved)'
 				: value instanceof Error
 					? value.name
-					: `(non-Error: ${typeof value})`;
+					: `(non-Error: ${value === undefined ? 'undefined' : typeof value})`;
 
 		const failure = unwrapError instanceof AgentRunError ? unwrapError : undefined;
 		// Read the terminal result's OWN copy independently of the rejection.
@@ -106,9 +114,9 @@
 			// validation: the run reports `output: undefined`, and this shows
 			// exactly that rather than a remembered earlier value.
 			output: result.output === undefined ? '(none)' : JSON.stringify(result.output),
-			unwrapError: describe(unwrapError),
-			outputError: describe(outputError),
-			sameErrorInstance: unwrapError !== undefined && unwrapError === outputError,
+			unwrapError: describe(unwrapThrew, unwrapError),
+			outputError: describe(outputThrew, outputError),
+			sameErrorInstance: unwrapThrew && outputThrew && unwrapError === outputError,
 			errorKind: failure?.kind ?? '(none)',
 			errorCode: failure?.code ?? '(none)',
 			schemaErrorKind: schemaError?.kind ?? '(none)',

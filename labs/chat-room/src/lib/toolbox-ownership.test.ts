@@ -37,33 +37,29 @@ describe('the approval-signing toolbox is host-owned', () => {
 	 * verification on resume — and the failure would read as a rejected token,
 	 * pointing at signing rather than at ownership.
 	 */
-	it('is the only toolbox any server-side module constructs', () => {
-		// The invariant is narrower than "constructed once in the repository",
-		// and stating it that way was wrong: `chat-agent.test.ts` builds its own
-		// for isolation, and the `/exercises/*` routes each build throwaway
-		// local ones to demonstrate the run loop. None of those signs an
-		// approval, and nobody resumes against them.
+	it('is the only toolbox any server-reachable module constructs', () => {
+		// Fourth formulation, and the last one worth having: NO TypeScript
+		// module under `routes/` constructs a toolbox. Not endpoints, not
+		// server modules, not a helper one of them imports.
 		//
-		// What must never happen is a second instance on a REQUEST path, where
-		// it would hold a different `approvalSecret` and reject a token signed
-		// by the other one — surfacing as a rejected approval, which points at
-		// signing rather than at ownership.
-		// Every module SvelteKit runs on the server, not just endpoints: a
-		// `+page.server.ts` or `+layout.server.ts` load function can mint a
-		// toolbox and sign with it exactly like a `+server.ts` can.
+		// The three narrower versions each missed a real case — `routes/api/`
+		// missed endpoints elsewhere, `+server.ts` missed `+page.server.ts`,
+		// and both missed a plain `routes/**/helper.ts` that an endpoint could
+		// import. Chasing that last one through the import graph would be a
+		// much larger mechanism for the same property; refusing construction
+		// anywhere in `routes/*.ts` gets it with a rule a reader can hold.
 		//
-		// Two narrowings too far, in order: `routes/api/` missed endpoints
-		// elsewhere, and `+server.ts` alone missed the server modules beside
-		// them. The invariant never moved — one `approvalSecret`, one toolbox
-		// on any path that signs or verifies — only my aim at it.
-		const serverModules = sourceFiles(applicationRoot)
+		// `.svelte` is excluded deliberately: the `/exercises/*` routes build
+		// throwaway local toolboxes to demonstrate the run loop. They are
+		// client-side, sign nothing, and nobody resumes against them. Tests are
+		// excluded for the same reason.
+		const underRoutes = sourceFiles(applicationRoot)
+			.filter((path) => path.endsWith('.ts'))
 			.filter((path) => !/\.(test|e2e)\.ts$/.test(path))
-			.filter((path) =>
-				/(^|\/)\+(server|page\.server|layout\.server)\.ts$/.test(relativeToApplication(path))
-			)
+			.filter((path) => relativeToApplication(path).startsWith('routes/'))
 			.filter((path) => /\bcreateToolbox\s*\(/.test(readFileSync(path, 'utf8')))
 			.map(relativeToApplication);
-		expect(serverModules).toEqual([]);
+		expect(underRoutes).toEqual([]);
 	});
 
 	it('is constructed in exactly one place outside routes and tests', () => {
