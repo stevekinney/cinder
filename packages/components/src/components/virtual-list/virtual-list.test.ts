@@ -1018,7 +1018,11 @@ describe('VirtualList — dynamicSize', () => {
     // `isPinnedToBottom = true;` also appears in the mount effect above, and an
     // absolute search would slice backwards into an empty string that trivially
     // "passes" every assertion below.
-    const pinStart = source.indexOf('shouldStickAfterAppend || !element) return;');
+    // Anchored on `void tick().then(`, which marks the start of the pin body itself
+    // rather than the guard above it. The guard's text keeps changing as modes are
+    // added, and each time it does this test starts asserting against an empty slice
+    // instead of failing — hence the explicit bounds check below.
+    const pinStart = source.indexOf('void tick().then(');
     const pinBody = source.slice(pinStart, source.indexOf('isPinnedToBottom = true;', pinStart));
 
     const measureIndex = pinBody.indexOf('syncViewport(element)');
@@ -1787,5 +1791,733 @@ describe('VirtualList — infinite scroll callbacks', () => {
     await tick();
     await tick();
     expect(calls).toBe(0);
+  });
+});
+
+describe('VirtualList — scrollRestoration', () => {
+  function createStorage() {
+    const entries = new Map<string, string>();
+    return {
+      entries,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        entries.set(key, value);
+      },
+      removeItem: (key: string) => {
+        entries.delete(key);
+      },
+    };
+  }
+
+  test('writes nothing without an id, because an implicit key would collide', async () => {
+    const storage = createStorage();
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    try {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(500),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      unmount();
+      await tick();
+      expect(storage.entries.size).toBe(0);
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('saves on teardown and restores on the next mount', async () => {
+    const storage = createStorage();
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    const props = () => ({
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      scrollRestoration: true,
+      scrollRestorationId: 'feed',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    try {
+      const first = render(VirtualList, props());
+      await waitFor(() => expect(renderedRows(first.container).length).toBeGreaterThan(0));
+      const list = first.container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(first.container).some((node) => node.dataset['index'] === '200')).toBe(
+          true,
+        ),
+      );
+
+      first.unmount();
+      await tick();
+      expect(storage.entries.size).toBe(1);
+
+      const second = render(VirtualList, props());
+      await waitFor(() => expect(renderedRows(second.container).length).toBeGreaterThan(0));
+      await waitFor(() =>
+        expect(renderedRows(second.container).some((node) => node.dataset['index'] === '200')).toBe(
+          true,
+        ),
+      );
+      expect(renderedRows(second.container).some((node) => node.dataset['index'] === '0')).toBe(
+        false,
+      );
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('does not apply a saved position whose row no longer exists', async () => {
+    // The collection shrank between visits. The saved row is simply not restored —
+    // clamping into range would drop the reader somewhere arbitrary and then re-save
+    // that as though it were their place. The entry itself is left alone: nothing
+    // reads it, and teardown overwrites it with the reader's real position. Deleting
+    // it mattered only back when a missing anchor got clamped rather than skipped.
+    const storage = createStorage();
+    storage.setItem(
+      'cinder:virtual-list:feed',
+      JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    );
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: storage,
+      configurable: true,
+    });
+
+    try {
+      const { container } = render(VirtualList, {
+        items: makeItems(10),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true);
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+
+  test('a storage that throws on every access does not break the list', async () => {
+    // Safari in private browsing throws on access, not only on write.
+    const hostile = {
+      getItem: () => {
+        throw new Error('SecurityError');
+      },
+      setItem: () => {
+        throw new Error('QuotaExceededError');
+      },
+      removeItem: () => {
+        throw new Error('SecurityError');
+      },
+    };
+    const originalSession = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', {
+      value: hostile,
+      configurable: true,
+    });
+
+    try {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(500),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      expect(() => unmount()).not.toThrow();
+    } finally {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: originalSession,
+        configurable: true,
+      });
+    }
+  });
+});
+
+describe('VirtualList — scrollRestoration lifecycle', () => {
+  function createStorage(seed?: Record<string, string>) {
+    const entries = new Map<string, string>(Object.entries(seed ?? {}));
+    return {
+      entries,
+      getItem: (key: string) => entries.get(key) ?? null,
+      setItem: (key: string, value: string) => {
+        entries.set(key, value);
+      },
+      removeItem: (key: string) => {
+        entries.delete(key);
+      },
+    };
+  }
+
+  function withStorage(storage: unknown, run: () => Promise<void>) {
+    const original = globalThis.sessionStorage;
+    Object.defineProperty(globalThis, 'sessionStorage', { value: storage, configurable: true });
+    return run().finally(() => {
+      Object.defineProperty(globalThis, 'sessionStorage', {
+        value: original,
+        configurable: true,
+      });
+    });
+  }
+
+  test('keeps a saved position when the list mounts empty while its data loads', async () => {
+    // A list that fetches its own data always renders empty first. Treating that as
+    // "the collection shrank" deleted the entry, so such a list could never restore.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      render(VirtualList, {
+        items: [],
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await tick();
+      await tick();
+      expect(storage.entries.has('cinder:virtual-list:feed')).toBe(true);
+    });
+  });
+
+  test('restores once the asynchronously loaded items arrive', async () => {
+    // The list that most needs restoring is the one that fetches its own data, and
+    // its first render is always empty. Restoring strictly on mount would mean it
+    // never restores at all.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender } = render(VirtualList, props(0));
+      await tick();
+
+      // The fetch lands.
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
+  test('still saves on teardown after the list has grown', async () => {
+    // An $effect cleanup runs on INVALIDATION as well as teardown. With the saver
+    // folded into an effect that tracks the item count, the first append ran the
+    // cleanup and then re-ran the effect — which, already having restored, returned
+    // early and registered no new cleanup. From then on nothing saved at all.
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender, unmount } = render(VirtualList, props(1_000));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+
+      // The list grows, which is what invalidated the effect.
+      await rerender(props(1_010));
+      await tick();
+
+      unmount();
+      await tick();
+
+      const raw = storage.entries.get('cinder:virtual-list:feed');
+      expect(raw).toBeDefined();
+      expect(JSON.parse(raw as string).startIndex).toBe(200);
+    });
+  });
+
+  test('a changed id is a new collection to restore', async () => {
+    // A parent reusing this component for a different collection changes the id.
+    // An instance-wide "already restored" flag would suppress the new restore.
+    const storage = createStorage({
+      'cinder:virtual-list:second': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (id: string) => ({
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender } = render(VirtualList, props('first'));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      await rerender(props('second'));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
+  test('finds the anchor by key after the collection grew at the front', async () => {
+    // The list was unmounted while a feed received older messages. Every index moved;
+    // no row did. An index-only anchor restores several rows off.
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+        anchorKey: 'key-200',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      // 50 older rows arrived, so `key-200` now lives at index 250.
+      const { container } = render(VirtualList, {
+        items: buildItems(1_050, 50),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (item: unknown) => (item as { id: string }).id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '250')).toBe(true),
+      );
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(false);
+    });
+  });
+
+  test('restores a fixed-size list from its row anchor, not the stale pixel offset', async () => {
+    // `itemHeight` can differ between visits — a density setting, a responsive
+    // breakpoint. The saved pixel offset then points at a different row entirely.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        // Half the height the position was saved at.
+        itemHeight: 10,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // Row 200, not the row at pixel 4000 (which is now row 400).
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
+  test('a pending restore outranks the initial reverse pin and the edge callbacks', async () => {
+    // Both assume the list opens where it renders, and a restore is about to move it
+    // somewhere else.
+    //
+    // The `onStartReached` half is what this test pins: without its guard the callback
+    // fires because the list rendered at offset 0 for one frame. The reverse-pin half
+    // currently holds by effect ordering alone — restoration runs after the pin and
+    // overwrites it — so the guard there is defensive, and removing it does NOT fail
+    // this test. It is kept so the intent survives a reordering.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+    let startReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        reverse: true,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (_item: unknown, index: number) => `row-${index}`,
+        onStartReached: () => {
+          startReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Transcript',
+      });
+
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+      // Not pinned to the newest message.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '999')).toBe(false);
+      expect(startReachedCount).toBe(0);
+    });
+  });
+
+  test('waits for an incrementally loaded page to reach the saved row', async () => {
+    // A feed that loads page by page has a first non-empty render that does not
+    // reach the saved anchor yet. Treating that as "the row was deleted" would
+    // abandon the position before the page carrying it ever arrived.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // First page: 50 rows, nowhere near index 200.
+      const { container, rerender } = render(VirtualList, props(50));
+      await tick();
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '0')).toBe(true);
+
+      // The page carrying the anchor arrives.
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
+  test('lets pagination run while it waits for the restoration anchor', async () => {
+    // The deadlock these two features can form: restoration suppresses the edge
+    // callbacks so a half-rendered list does not fetch spuriously, but the edge
+    // callbacks are exactly what loads the page carrying the saved anchor. Suppress
+    // them while WAITING and nothing ever loads, so nothing ever restores.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+    let endReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 2,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        onEndReached: () => {
+          endReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // A first page far short of the anchor, with its end already in view.
+      const { container, rerender } = render(VirtualList, props(12));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      // The consumer must be asked for more, or the anchor never arrives.
+      await waitFor(() => expect(endReachedCount).toBeGreaterThan(0));
+
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
+  test('restores the saved row when it arrives in a PREPENDED page', async () => {
+    // The saved row usually arrives in a page of older history, and a prepend queues
+    // its own correction to hold the pre-prepend viewport. That correction is applied
+    // by a later effect, so without retiring it the reader lands back on the row they
+    // were watching while loading rather than the one they left off at.
+    //
+    // The keys must form a genuine prepend — the previous sequence a SUFFIX of the
+    // next — or the growth classifies as `replaced` and queues no correction at all,
+    // which is what an earlier version of this test accidentally exercised.
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+        anchorKey: 'key--25',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number, offset: number) => ({
+        items: buildItems(count, offset),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (item: unknown) => (item as { id: string }).id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // key-0 .. key-19. The saved `key--25` is not here yet.
+      const { container, rerender } = render(VirtualList, props(20, 0));
+      await tick();
+
+      // 30 older rows arrive at the front: key--30 .. key-19. The previous sequence
+      // is now the suffix, so this is a true prepend, and `key--25` sits at index 5.
+      await rerender(props(50, 30));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '5')).toBe(true),
+      );
+      // Not held at the pre-prepend view, where key-0 now lives at index 30.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '30')).toBe(false);
+    });
+  });
+
+  test('lets an empty list fetch its first page while restoration is configured', async () => {
+    // The deadlock at the other end: an empty list has nothing to restore onto, and
+    // the restore effect returns before recording an attempt — so suppressing the
+    // edge callbacks here means a list that fetches its FIRST page from them never
+    // loads anything, and restoration never becomes possible.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+      }),
+    });
+    let endReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      render(VirtualList, {
+        items: [],
+        itemHeight: 20,
+        height: '200px',
+        overscan: 2,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        onEndReached: () => {
+          endReachedCount += 1;
+        },
+        onStartReached: () => {
+          endReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await tick();
+      await tick();
+      // An empty list reports no edges at all, so nothing fires — but crucially the
+      // suppression is not what stopped it, so a list that renders one row can page.
+      expect(endReachedCount).toBe(0);
+    });
+  });
+
+  test('a restore overrides the append pin that armed while its page loaded', async () => {
+    // Under `reverse`, a page arriving with the anchor also arms the append pin, whose
+    // effect scrolls to the maximum offset a tick later — after the restore landed.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+        anchorKey: 'row-5',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        reverse: true,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (_item: unknown, index: number) => `row-${index}`,
+        row: rowSnippet(),
+        'aria-label': 'Transcript',
+      });
+
+      const { container, rerender } = render(VirtualList, props(0));
+      await tick();
+
+      await rerender(props(200));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '5')).toBe(true),
+      );
+      // Not yanked to the newest message by the pin the append armed.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '199')).toBe(false);
+    });
+  });
+
+  test('keeps a remainder that no longer fits inside its own row', async () => {
+    // 30px into a 40px row, restored when rows are 20px tall. An inclusive clamp
+    // gives exactly 20 — which is row 201's start, not row 200's.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 8_030,
+        startIndex: 200,
+        offsetWithinRow: 30,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      // Row 200 starts at 4000; anything from 4019 up would be row 201.
+      expect(list.scrollTop).toBeGreaterThanOrEqual(4_000);
+      expect(list.scrollTop).toBeLessThan(4_020);
+    });
+  });
+
+  test('a whitespace-only id is not an id', async () => {
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(200),
+        itemHeight: 20,
+        height: '200px',
+        scrollRestoration: true,
+        scrollRestorationId: '   ',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      unmount();
+      await tick();
+      expect(storage.entries.size).toBe(0);
+    });
+  });
+
+  test('saves the row the reader is on, not the overscanned window boundary', async () => {
+    // `virtualWindow.startIndex` carries overscan, so saving it would restore the
+    // reader a few rows above where they left off — every single time.
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const { container, unmount } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 5,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+
+      unmount();
+      await tick();
+
+      const raw = storage.entries.get('cinder:virtual-list:feed');
+      expect(raw).toBeDefined();
+      expect(JSON.parse(raw as string).startIndex).toBe(200);
+    });
   });
 });
