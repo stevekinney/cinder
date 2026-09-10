@@ -151,6 +151,13 @@ test('lets a benign request through under the default mode too', async ({ page }
 	);
 	await expect(page.locator(field('permitted', 'event-count'))).toHaveText('0');
 	await expect(page.locator(field('permitted', 'first-message-intact'))).toHaveText('true');
+
+	// A successful benign run carries no terminal error and keeps its one
+	// completed step. Both are already rendered; unasserted, a run that
+	// produced the right answer while retaining a stale error — or while
+	// dropping its `StepResult` — would pass everything else here.
+	await expect(page.locator(field('permitted', 'error'))).toHaveText('(none)');
+	await expect(page.locator(field('permitted', 'steps'))).toHaveText('1');
 });
 
 test('leaves a benign request alone', async ({ page }) => {
@@ -183,6 +190,8 @@ test('leaves a benign request alone', async ({ page }) => {
 	await expect(page.locator(field('clean', 'prompt-seen'))).toHaveText(
 		'What is the capital of France?'
 	);
+	await expect(page.locator(field('clean', 'error'))).toHaveText('(none)');
+	await expect(page.locator(field('clean', 'steps'))).toHaveText('1');
 	await expect(page.locator(field('clean', 'first-message-intact'))).toHaveText('true');
 	await expect(page.locator(field('clean', 'first-message'))).toContainText(
 		'What is the capital of France?'

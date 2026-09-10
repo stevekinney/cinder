@@ -78,13 +78,6 @@
 	};
 
 	/**
-	 * The four fields that identify a tripped guardrail, in one canonical
-	 * order. `GuardrailTripwireError` and `RunTripwireEvent` declare exactly
-	 * these, so one formatter serves both — which is what lets a panel assert
-	 * that the live view and the settled view agree rather than merely that
-	 * each contains a couple of expected substrings.
-	 */
-	/**
 	 * The whole of a message that matters here: role, content, and metadata.
 	 * `.content` alone is not enough — the seeded user message reconstructed
 	 * as a SYSTEM message carrying the same text would satisfy every length,
@@ -98,6 +91,13 @@
 			metadata: message.metadata
 		});
 
+	/**
+	 * The four fields that identify a tripped guardrail, in one canonical
+	 * order. `GuardrailTripwireError` and `RunTripwireEvent` declare exactly
+	 * these, so one formatter serves both — which is what lets a panel assert
+	 * that the live view and the settled view agree rather than merely that
+	 * each contains a couple of expected substrings.
+	 */
 	const identityOf = (source: {
 		guardrailName: string;
 		category: string;
@@ -249,10 +249,14 @@
 			lastRole: messages.at(-1)?.role ?? '(none)',
 			lastMessageNonEmpty: typeof last === 'string' && last.length > 0,
 			promptSeenByGenerate,
-			// Whether a guardrail replaced the model's answer, decided against
-			// this page's own constant. The `validate` panel's whole point is
-			// that the loop continued and put something ELSE in the transcript;
-			// which words it chose is operative's business.
+			// Whether the transcript ends in something other than this page's
+			// fixture answer, decided against its own constant.
+			//
+			// NOT "the model's answer was replaced": on the default-mode
+			// injection panel `generate` is never called, so no answer ever
+			// existed to replace — the guardrail short-circuits and appends a
+			// refusal instead. Saying "replaced" there would misstate both the
+			// security behaviour and the cost: no provider call was made.
 			substituted: messages.length > 1 && last !== MODEL_ANSWER,
 			lastMessage: typeof last === 'string' ? last : JSON.stringify(last)
 		};
@@ -366,7 +370,7 @@
 					</dd>
 					<dt>prompt <code>generate</code> received</dt>
 					<dd data-testid="tripwire-{panel.id}-prompt-seen">{observation.promptSeenByGenerate}</dd>
-					<dt>model's answer replaced</dt>
+					<dt>last message is not the fixture answer</dt>
 					<dd data-testid="tripwire-{panel.id}-substituted">{observation.substituted}</dd>
 					<dt>last message</dt>
 					<dd data-testid="tripwire-{panel.id}-last-message">{observation.lastMessage}</dd>
@@ -398,5 +402,23 @@
 	dd {
 		margin: 0;
 		font-family: monospace;
+	}
+
+	/*
+	 * At 320 CSS pixels, a `max-content` label column cannot shrink, so a long
+	 * term like "carried through unchanged (role, content, metadata)" pushes
+	 * the value column off-screen and a reader at high zoom has to pan
+	 * sideways to pair a term with its value. Stack the list instead once
+	 * there is no room for two columns.
+	 */
+	@media (max-width: 32rem) {
+		dl {
+			grid-template-columns: 1fr;
+			gap: 0;
+		}
+
+		dt {
+			margin-block-start: 0.75rem;
+		}
 	}
 </style>

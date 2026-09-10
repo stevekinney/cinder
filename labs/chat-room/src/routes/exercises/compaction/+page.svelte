@@ -63,7 +63,17 @@
 		conversation = appendUserMessage(conversation, FIRST_FILLER_QUESTION);
 		conversation = appendAssistantMessage(conversation, `We kept it. ${FILLER_BODY}`);
 		for (let index = 0; index < 5; index += 1) {
-			conversation = appendUserMessage(conversation, `Follow-up ${index}. ${FILLER_BODY}`);
+			// One out-of-window message carries metadata that is NOT `pinned`.
+			// Without it the pinned message is the only old message with any
+			// metadata at all, so a compactor that regressed to preserving
+			// everything with defined metadata — rather than checking
+			// `metadata.pinned === true` — would produce this same projection
+			// and pass every assertion. This one has to be summarized away.
+			conversation = appendUserMessage(
+				conversation,
+				`Follow-up ${index}. ${FILLER_BODY}`,
+				index === 1 ? { topic: 'staging-bucket' } : undefined
+			);
 			conversation = appendAssistantMessage(conversation, `Answer ${index}. ${FILLER_BODY}`);
 		}
 		return conversation;
@@ -95,6 +105,8 @@
 		inNeitherBucket: number;
 		partitionExact: boolean;
 		pinnedMetadataSurvives: boolean;
+		metadataControlSummarized: boolean;
+		rawSummarizedInProjection: number;
 		carriedIdOverlap: number;
 		allSummariesReachProjection: boolean;
 		summaryChunks: string;
@@ -333,6 +345,9 @@
 			);
 		const emptyChunks = chunkSeedPositions.filter((positions) => positions.length === 0).length;
 
+		const metadataControl = before.find((message) => message.metadata?.topic === 'staging-bucket');
+		const projectionText = projection.map((message) => JSON.stringify(message)).join('\n');
+
 		const pinnedInProjection = projection.find((message) =>
 			JSON.stringify(message.content).includes(PINNED_FACT)
 		);
@@ -373,6 +388,21 @@
 			// The reason `metadata` is in the shape above, stated on its own
 			// so a failure names the cause rather than a shape mismatch.
 			pinnedMetadataSurvives: pinnedInProjection?.metadata?.pinned === true,
+			// The negative half of the same claim: metadata alone does not buy
+			// preservation, only `pinned` does.
+			metadataControlSummarized:
+				metadataControl !== undefined &&
+				summarizedIds.includes(metadataControl.id) &&
+				!projectionShapes.includes(shapeOf(metadataControl)),
+			// No summarized message reached the model in raw form. Every
+			// accounting field above would hold if the compactor summarized a
+			// message correctly AND also copied it verbatim into the injected
+			// summary — the raw history would still be consuming context.
+			rawSummarizedInProjection: before.filter(
+				(message) =>
+					summarizedIds.includes(message.id) &&
+					projectionText.includes(String(JSON.stringify(message.content)).slice(1, -1))
+			).length,
 			// Makes the page's claim that ids are reassigned load-bearing. If
 			// compaction started preserving them, every other field here would
 			// stay green while the prose taught a contract that had changed.
@@ -474,6 +504,10 @@
 				<dd data-testid="compaction-partition">{result.partitionExact}</dd>
 				<dt><code>pinned</code> metadata survives</dt>
 				<dd data-testid="compaction-pinned-metadata">{result.pinnedMetadataSurvives}</dd>
+				<dt>unpinned message with metadata was summarized</dt>
+				<dd data-testid="compaction-metadata-control">{result.metadataControlSummarized}</dd>
+				<dt>summarized messages reaching the model raw</dt>
+				<dd data-testid="compaction-raw-summarized">{result.rawSummarizedInProjection}</dd>
 				<dt>seed ids reused in the projection</dt>
 				<dd data-testid="compaction-id-overlap">{result.carriedIdOverlap}</dd>
 				<dt>chunk summaries reaching the model</dt>
@@ -555,5 +589,23 @@
 	dd {
 		margin: 0;
 		font-family: monospace;
+	}
+
+	/*
+	 * At 320 CSS pixels, a `max-content` label column cannot shrink, so a long
+	 * term like "carried through unchanged (role, content, metadata)" pushes
+	 * the value column off-screen and a reader at high zoom has to pan
+	 * sideways to pair a term with its value. Stack the list instead once
+	 * there is no room for two columns.
+	 */
+	@media (max-width: 32rem) {
+		dl {
+			grid-template-columns: 1fr;
+			gap: 0;
+		}
+
+		dt {
+			margin-block-start: 0.75rem;
+		}
 	}
 </style>

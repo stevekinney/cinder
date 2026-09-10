@@ -36,8 +36,9 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// A summary-SHAPED message is not evidence that the context reached the
 	// summarizer: a compaction that handed it an empty or truncated slice
 	// would still produce one, and every other assertion here would hold.
-	// Ten is the complement of the four the projection carries verbatim — the
-	// system message, the pinned message, and the two retained recent ones.
+	// Ten is the complement of the four the projection carries through
+	// unchanged in role, content, and metadata — the system message, the
+	// pinned message, and the two retained recent ones.
 	//
 	// Counted by distinct message id, not by call. Compaction chunked this
 	// into 3/3/3/1, and those sizes are conversationalist's business; the id
@@ -129,6 +130,20 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// compaction — the exact failure the preserve policy exists to prevent,
 	// arriving one round later than anyone would look for it.
 	await expect(page.locator(field('pinned-metadata'))).toHaveText('true');
+
+	// The negative half, and the one that makes the line above mean something
+	// specific: an unpinned message carrying unrelated metadata IS summarized.
+	// Without it, `pinned` is the only old message with any metadata, so a
+	// compactor preserving everything with defined metadata — rather than
+	// checking `metadata.pinned === true` — would produce this same
+	// projection and pass everything.
+	await expect(page.locator(field('metadata-control'))).toHaveText('true');
+
+	// And nothing summarized reached the model raw. Every accounting field
+	// here would hold if the compactor summarized a message correctly AND
+	// also copied it into the injected summary, with the raw history still
+	// consuming context.
+	await expect(page.locator(field('raw-summarized'))).toHaveText('0');
 
 	// And the other half of that sentence, made load-bearing: ids really are
 	// reassigned. If compaction started preserving them, every assertion above
