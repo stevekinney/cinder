@@ -517,9 +517,6 @@
       const storage = resolveRestorationStorage();
       if (!storage) return;
       untrack(() => {
-        // Nothing to remember about an empty list, and writing one would overwrite a
-        // real position with a placeholder if the component tears down mid-load.
-        if (items.length === 0) return;
         // The snapshot, not a fresh read. When a parent swaps BOTH the id and the
         // items at once, this cleanup runs after that state has already changed —
         // computing here would file the incoming collection's position under the
@@ -533,6 +530,11 @@
 
   /** Keeps the position saveable at any moment, independent of what changed. */
   $effect(() => {
+    // An empty render contributes nothing. Leaving the previous snapshot in place is
+    // deliberate: a list emptied just before teardown — a parent swapping collections,
+    // or a refetch clearing while it loads — should still save where the reader
+    // actually was, not be treated as having no position at all.
+    if (items.length === 0) return;
     const anchorIndex = resolveAnchorIndexAtOffset(scrollOffset);
     latestPosition = {
       scrollOffset,
@@ -543,7 +545,7 @@
       // of at them. The offset knows where they actually are.
       startIndex: anchorIndex,
       offsetWithinRow: Math.max(0, scrollOffset - locateRowStartOffset(anchorIndex)),
-      ...(items.length > 0 ? { anchorKey: keyAt(anchorIndex) } : {}),
+      anchorKey: keyAt(anchorIndex),
     };
   });
 
