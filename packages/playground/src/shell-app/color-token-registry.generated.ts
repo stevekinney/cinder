@@ -111,6 +111,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-surface-hover', label: 'Surface hover' },
       { name: '--cinder-surface-pressed', label: 'Surface pressed' },
       { name: '--cinder-surface-inverse', label: 'Inverse surface' },
+      { name: '--cinder-polarity-ink', label: 'Polarity ink' },
     ],
   },
   {

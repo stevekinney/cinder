@@ -307,6 +307,10 @@
                 {
                   "cssProperty": "--cinder-surface-inverse",
                   "label": "Inverse surface"
+                },
+                {
+                  "cssProperty": "--cinder-polarity-ink",
+                  "label": "Polarity ink"
                 }
               ]
             },
