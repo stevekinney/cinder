@@ -41,7 +41,7 @@ const schema = {
     windowScroll: {
       type: 'boolean',
       description:
-        "Virtualize against the document scroller instead of an internal one.\n\nThe list becomes a plain block in the page with no scroll container of its\nown: `height` is ignored, the viewport is measured from the window, and how\nfar the reader has travelled is derived from where the list's box currently\nsits relative to the viewport.\n\nUse this when the list IS the page — a feed, a search-results view — so the\nreader scrolls the document rather than a box inside it, and the browser's\nown scroll restoration and scrollbar behave normally.\n\n`stickToBottom`, `reverse`, and `scrollRestoration` are not supported in this\nmode and are actively suppressed, not merely undocumented. The first two pin a\nscroll position the component no longer owns. The third cannot represent one: a\nsaved offset is measured from the list's start edge and clamps at 0, so a reader\nwho left while still above the list would be restored by scrolling DOWN to it,\nsomewhere they never were. The browser's own document scroll restoration already\ncovers this mode, across the whole page rather than one list within it.\n\n`onscroll` still fires, from the document rather than the list — its\n`currentTarget` is the window in this mode.\n\nDefaults to false.",
+        "Virtualize against the document scroller instead of an internal one.\n\nThe list becomes a plain block in the page with no scroll container of its\nown: `height` is ignored, the viewport is measured from the window, and how\nfar the reader has travelled is derived from where the list's box currently\nsits relative to the viewport.\n\nUse this when the list IS the page — a feed, a search-results view — so the\nreader scrolls the document rather than a box inside it, and the browser's\nown scroll restoration and scrollbar behave normally.\n\n`stickToBottom`, `reverse`, and `scrollRestoration` are not supported in this\nmode and are actively suppressed, not merely undocumented. The first two pin a\nscroll position the component no longer owns. The third cannot represent one: a\nsaved offset is measured from the list's start edge and clamps at 0, so a reader\nwho left while still above the list would be restored by scrolling DOWN to it,\nsomewhere they never were. The browser's own document scroll restoration already\ncovers this mode, across the whole page rather than one list within it.\n\n`onscroll` does NOT fire in this mode, and deliberately so. The element it is\nattached to is not what scrolls, and forwarding the document's event through it\nwould either hand consumers an `Event` typed as an element-scoped one, or widen\nthe prop for everyone to describe a case most callers never hit. Listen on\n`window` directly when the page is the scroller.\n\nDefaults to false.",
     },
     scrollRestoration: {
       type: 'boolean',
@@ -84,12 +84,6 @@ const schema = {
         reason: 'function-or-snippet',
         description:
           'Called when the reader scrolls within `overscan` items of the end of the list.\n\nExplicitly `| undefined` rather than merely optional: this package compiles with\n`exactOptionalPropertyTypes`, under which the two differ, and a consumer writing\n`onEndReached={enabled ? load : undefined}` would otherwise fail to typecheck.\n\nFires once per approach, not once per scroll event, and re-arms when the item\ncount changes — so appending in response to it allows the next approach to fire\nwhile a source that returns nothing does not spin.',
-      },
-      {
-        name: 'onscroll',
-        reason: 'function-or-snippet',
-        description:
-          "Scroll handler.\n\nWidened from the inherited element-scoped type on purpose: under `windowScroll`\nthe document is what scrolls, so the forwarded event's `currentTarget` is the\nwindow rather than the list. Typing it as an element handler would be a lie the\ncompiler could not catch.",
       },
       {
         name: 'onStartReached',

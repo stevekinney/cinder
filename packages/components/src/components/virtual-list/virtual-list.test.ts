@@ -2412,6 +2412,50 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('a pending restore outranks the initial reverse pin and the edge callbacks', async () => {
+    // Both assume the list opens where it renders, and a restore is about to move it
+    // somewhere else.
+    //
+    // The `onStartReached` half is what this test pins: without its guard the callback
+    // fires because the list rendered at offset 0 for one frame. The reverse-pin half
+    // currently holds by effect ordering alone — restoration runs after the pin and
+    // overwrites it — so the guard there is defensive, and removing it does NOT fail
+    // this test. It is kept so the intent survives a reordering.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+    let startReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        reverse: true,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (_item: unknown, index: number) => `row-${index}`,
+        onStartReached: () => {
+          startReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Transcript',
+      });
+
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+      // Not pinned to the newest message.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '999')).toBe(false);
+      expect(startReachedCount).toBe(0);
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {

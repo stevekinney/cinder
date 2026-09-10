@@ -43,17 +43,8 @@ export type VirtualListRef = {
 
 export type VirtualListProps<Item = unknown> = Omit<
   HTMLAttributes<HTMLDivElement>,
-  'class' | 'tabindex' | 'onscroll'
+  'class' | 'tabindex'
 > & {
-  /**
-   * Scroll handler.
-   *
-   * Widened from the inherited element-scoped type on purpose: under `windowScroll`
-   * the document is what scrolls, so the forwarded event's `currentTarget` is the
-   * window rather than the list. Typing it as an element handler would be a lie the
-   * compiler could not catch.
-   */
-  onscroll?: ((event: UIEvent) => void) | undefined;
   /** Items in full logical order. Only the visible window is mounted. */
   items: readonly Item[];
   /**
@@ -173,8 +164,11 @@ export type VirtualListProps<Item = unknown> = Omit<
    * somewhere they never were. The browser's own document scroll restoration already
    * covers this mode, across the whole page rather than one list within it.
    *
-   * `onscroll` still fires, from the document rather than the list — its
-   * `currentTarget` is the window in this mode.
+   * `onscroll` does NOT fire in this mode, and deliberately so. The element it is
+   * attached to is not what scrolls, and forwarding the document's event through it
+   * would either hand consumers an `Event` typed as an element-scoped one, or widen
+   * the prop for everyone to describe a case most callers never hit. Listen on
+   * `window` directly when the page is the scroller.
    *
    * Defaults to false.
    */

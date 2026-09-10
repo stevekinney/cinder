@@ -302,6 +302,10 @@
     // binding rather than state, so it does not re-trigger this effect on its own,
     // but the scroll write that consumes it updates `scrollOffset`, which does.
     if (hasQueuedCorrection || pendingReanchor !== null) return;
+    // A restore is about to move the reader, so the list's current position says
+    // nothing about which edge they are near. Firing now would ask for a page of
+    // history because the list happens to render at offset 0 for one frame.
+    if (willRestoreScrollPosition()) return;
 
     // `startIndex`/`endIndex` describe the RENDERED range, which already carries
     // overscan on both sides, and `endIndex` is exclusive. Undo both so the
@@ -371,16 +375,9 @@
     const element = scrollElement;
     if (!element || typeof window === 'undefined') return;
 
-    const handleWindowGeometryChange = (event?: Event) => {
+    const handleWindowGeometryChange = () => {
       if (isDestroyed) return;
       syncViewport(element);
-      // Forwarded, because in this mode the document is the scroller and the
-      // element's own `onscroll` never fires — a consumer's handler would otherwise
-      // be silently dead. Its `currentTarget` is the window here rather than the
-      // list, which the prop documents.
-      if (event?.type === 'scroll' && typeof onScroll === 'function') {
-        onScroll(event as UIEvent);
-      }
     };
 
     // The takeover handlers live on the element, which the reader never touches in
@@ -592,7 +589,9 @@
       // and under `dynamicSize` the total is still only an estimate.
       // Not under `windowScroll`: there is no scroll position of the component's own
       // to pin, and the mount effect would scroll the whole page to the list's end.
-      needsInitialReversePin = reverse && !windowScroll;
+      // Not when a position is about to be restored either — the reader asked to
+      // come back where they were, which outranks opening at the newest message.
+      needsInitialReversePin = reverse && !windowScroll && !willRestoreScrollPosition();
       return;
     }
 
@@ -846,6 +845,19 @@
     if (target !== null) pendingScrollTarget = Math.max(0, target);
     previousOffsets = currentOffsets;
   });
+
+  /**
+   * Whether a saved position is going to be applied on this mount.
+   *
+   * Consulted before arming the initial `reverse` pin, and before letting the edge
+   * callbacks fire: both assume the list opens where it renders, and restoration is
+   * about to move it somewhere else entirely.
+   */
+  function willRestoreScrollPosition(): boolean {
+    const id = scrollRestorationId?.trim();
+    if (windowScroll || !scrollRestoration || !id || restoredId === id) return false;
+    return loadScrollPosition(resolveRestorationStorage(), id) !== null;
+  }
 
   /**
    * The index a saved anchor refers to NOW.
