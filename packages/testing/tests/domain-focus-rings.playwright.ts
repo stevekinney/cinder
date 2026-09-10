@@ -165,15 +165,27 @@ type FocusPaint = Awaited<ReturnType<typeof focusPaint>>;
  * component styles have been applied. A single rAF does not bound that
  * window; polling for the recipe's actual signature (transparent outline)
  * does, without touching the harness or raising any timeout.
+ *
+ * The poll is bounded well under Playwright's 5s default `expect` timeout:
+ * the settle window this guards against is normally a handful of
+ * milliseconds (an effect flush), not seconds, so a genuinely broken recipe
+ * should still fail fast rather than silently eating a multi-second wait
+ * before surfacing.
  */
+const FOCUS_RING_SETTLE_TIMEOUT_MS = 500;
+const FOCUS_RING_SETTLE_POLL_INTERVALS_MS = [10, 25, 50, 100];
+
 async function waitForSettledFocusPaint(target: Locator, label: string): Promise<FocusPaint> {
   let paint: FocusPaint = await focusPaint(target);
   try {
     await expect
-      .poll(async () => {
-        paint = await focusPaint(target);
-        return paint.outlineColorAlpha;
-      })
+      .poll(
+        async () => {
+          paint = await focusPaint(target);
+          return paint.outlineColorAlpha;
+        },
+        { timeout: FOCUS_RING_SETTLE_TIMEOUT_MS, intervals: FOCUS_RING_SETTLE_POLL_INTERVALS_MS },
+      )
       .toBe(0);
   } catch (error) {
     throw new Error(
