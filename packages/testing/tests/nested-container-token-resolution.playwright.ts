@@ -88,5 +88,11 @@ test('a scoped border-ink override retints only where the tiers are redeclared',
   expect(resolved.inkOnly).toBe(resolved.untouched);
   // Redeclaring the tier in the same scope does.
   expect(resolved.inkAndTier).not.toBe(resolved.untouched);
-  expect(resolved.inkAndTier).toContain('0.5');
+  // Pinned exactly rather than by substring. Chromium keeps a
+  // `color-mix(in oklch, ...)` result in oklch rather than collapsing it to
+  // `rgb()`, so both halves of the claim are legible in one string: the
+  // `0.5 0.3 30` proves the scoped ink was the one consulted, and the `/ 0.48`
+  // proves the tier's own alpha survived the substitution. A substring match on
+  // either half alone would pass on a value that got the other half wrong.
+  expect(resolved.inkAndTier).toBe('oklch(0.5 0.3 30 / 0.48)');
 });
