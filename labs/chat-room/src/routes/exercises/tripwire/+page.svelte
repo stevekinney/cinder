@@ -45,12 +45,32 @@
 		generateCalls: number;
 		steps: number;
 		errorName: string;
-		guardrail: string;
-		tripwireEvent: string;
+		errorIdentity: string;
+		eventIdentity: string;
+		eventStep: string;
+		identityMatchesEvent: boolean;
 		transcriptLength: number;
+		transcriptRoles: string;
+		lastRole: string;
+		lastMessageNonEmpty: boolean;
 		substituted: boolean;
 		lastMessage: string;
 	};
+
+	/**
+	 * The four fields that identify a tripped guardrail, in one canonical
+	 * order. `GuardrailTripwireError` and `RunTripwireEvent` declare exactly
+	 * these, so one formatter serves both — which is what lets a panel assert
+	 * that the live view and the settled view agree rather than merely that
+	 * each contains a couple of expected substrings.
+	 */
+	const identityOf = (source: {
+		guardrailName: string;
+		category: string;
+		phase: string;
+		confidence: number;
+	}): string =>
+		`${source.guardrailName} · ${source.category} · ${source.phase} · ${source.confidence}`;
 
 	/**
 	 * Runs one guarded agent loop and reports both readings of "the wire
@@ -102,9 +122,17 @@
 		// immediately, and an input-side tripwire fires before the first
 		// generate call, so a listener attached after any suspension point
 		// would miss the only event this panel is here to show.
-		let tripwireEvent = '(none)';
+		//
+		// Rendered in the SAME canonical shape as the terminal error's
+		// identity below, so the two can be compared field for field rather
+		// than eyeballed. A combined string that only some fields are searched
+		// in would let the event and the error disagree about, say,
+		// `confidence` while every assertion stayed green.
+		let eventIdentity = '(none)';
+		let eventStep = '(none)';
 		activeRun.addEventListener('run.tripwire', (event) => {
-			tripwireEvent = `step ${event.step} · ${event.guardrailName} · ${event.category} · ${event.phase} · ${event.confidence}`;
+			eventIdentity = identityOf(event);
+			eventStep = String(event.step);
 		});
 
 		const result = await createAgentRun(activeRun).result();
@@ -122,12 +150,17 @@
 			generateCalls,
 			steps: result.steps.length,
 			errorName: result.error instanceof Error ? result.error.name : '(none)',
-			guardrail:
-				tripped === undefined
-					? '(none)'
-					: `${tripped.guardrailName} · ${tripped.category} · ${tripped.phase} · ${tripped.confidence}`,
-			tripwireEvent,
+			errorIdentity: tripped === undefined ? '(none)' : identityOf(tripped),
+			eventIdentity,
+			eventStep,
+			identityMatchesEvent: tripped !== undefined && identityOf(tripped) === eventIdentity,
 			transcriptLength: messages.length,
+			// Structure, not just the tail. A guardrail that appended an extra
+			// system or tool message before the right answer would leave a
+			// last-message check green while having changed the transcript.
+			transcriptRoles: messages.map((message) => message.role).join(', '),
+			lastRole: messages.at(-1)?.role ?? '(none)',
+			lastMessageNonEmpty: typeof last === 'string' && last.length > 0,
 			// Whether a guardrail replaced the model's answer, decided against
 			// this page's own constant. The `validate` panel's whole point is
 			// that the loop continued and put something ELSE in the transcript;
@@ -185,13 +218,29 @@
 					<dd data-testid="tripwire-{panel.id}-steps">{observation.steps}</dd>
 					<dt>result.error</dt>
 					<dd data-testid="tripwire-{panel.id}-error">{observation.errorName}</dd>
-					<dt>guardrail (from the error)</dt>
-					<dd data-testid="tripwire-{panel.id}-guardrail">{observation.guardrail}</dd>
-					<dt><code>run.tripwire</code> event</dt>
-					<dd data-testid="tripwire-{panel.id}-event">{observation.tripwireEvent}</dd>
+					<dt>identity (from the error)</dt>
+					<dd data-testid="tripwire-{panel.id}-error-identity">{observation.errorIdentity}</dd>
+					<dt>identity (from <code>run.tripwire</code>)</dt>
+					<dd data-testid="tripwire-{panel.id}-event-identity">{observation.eventIdentity}</dd>
+					<dt>event step</dt>
+					<dd data-testid="tripwire-{panel.id}-event-step">{observation.eventStep}</dd>
+					<dt>the two agree</dt>
+					<dd data-testid="tripwire-{panel.id}-identity-matches">
+						{observation.identityMatchesEvent}
+					</dd>
 					<dt>transcript length</dt>
 					<dd data-testid="tripwire-{panel.id}-transcript-length">
 						{observation.transcriptLength}
+					</dd>
+					<dt>transcript roles</dt>
+					<dd data-testid="tripwire-{panel.id}-transcript-roles">
+						{observation.transcriptRoles}
+					</dd>
+					<dt>last message role</dt>
+					<dd data-testid="tripwire-{panel.id}-last-role">{observation.lastRole}</dd>
+					<dt>last message non-empty</dt>
+					<dd data-testid="tripwire-{panel.id}-last-nonempty">
+						{observation.lastMessageNonEmpty}
 					</dd>
 					<dt>model's answer replaced</dt>
 					<dd data-testid="tripwire-{panel.id}-substituted">{observation.substituted}</dd>

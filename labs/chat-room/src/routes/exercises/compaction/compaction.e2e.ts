@@ -43,9 +43,19 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	await expect(page.locator(field('summarized-messages'))).toHaveText('10');
 	await expect(page.locator(field('foreign-messages'))).toHaveText('0');
 
-	// 10 summarized + 4 carried through = the 14 that were seeded. Nothing
-	// went missing between the two halves.
-	await expect(page.locator(field('accounted'))).toHaveText('true');
+	// The partition itself, sorted per message rather than inferred from two
+	// totals: a compaction that both summarized AND retained one message
+	// while dropping another sums to 14 just the same.
+	await expect(page.locator(field('carried-verbatim'))).toHaveText('4');
+	await expect(page.locator(field('bucket-overlap'))).toHaveText('0 / 0');
+	await expect(page.locator(field('partition'))).toHaveText('true');
+
+	// Matched by role + content + METADATA, and this is the field that says
+	// why. A carried-through message whose `pinned` flag was stripped would
+	// look identical by content and then be summarized away on the next
+	// compaction — the exact failure the preserve policy exists to prevent,
+	// arriving one round later than anyone would look for it.
+	await expect(page.locator(field('pinned-metadata'))).toHaveText('true');
 
 	// The pinned message is the second of fourteen — far outside
 	// `retainRecentMessages: 2`. It survives because the preserve policy

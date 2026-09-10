@@ -73,7 +73,11 @@
 		projectionRoles: string;
 		summarizedMessages: number;
 		foreignMessages: number;
-		everyMessageAccountedFor: boolean;
+		carriedVerbatim: number;
+		inBothBuckets: number;
+		inNeitherBucket: number;
+		partitionExact: boolean;
+		pinnedMetadataSurvives: boolean;
 	};
 
 	/**
@@ -148,6 +152,39 @@
 			ids.filter((id, index) => ids.indexOf(id) === index);
 		const summarizedIds = distinct(seenIds.filter((id) => seededIds.includes(id)));
 		const foreignIds = distinct(seenIds.filter((id) => !seededIds.includes(id)));
+
+		// The partition proper, sorted into buckets per message rather than
+		// inferred from two totals. Adding cardinalities would call it a
+		// partition without ever checking one: a compaction that both
+		// summarized AND retained one message while dropping another still
+		// sums to the seeded length.
+		//
+		// Matched by full shape — role, content, AND metadata — rather than by
+		// id, because compaction rebuilds the messages it carries through with
+		// fresh ids, so the projection shares none of the seed's. Including
+		// `metadata` is the part that matters: a carried-through message that
+		// arrived with `pinned` stripped would look identical by content and
+		// then be summarized away on the NEXT compaction.
+		const shapeOf = (message: Message): string =>
+			JSON.stringify({
+				role: message.role,
+				content: message.content,
+				metadata: message.metadata
+			});
+		const projectionShapes = projection.map(shapeOf);
+		const buckets = before.map((message) => ({
+			carried: projectionShapes.includes(shapeOf(message)),
+			summarized: summarizedIds.includes(message.id)
+		}));
+		const carriedVerbatim = buckets.filter((bucket) => bucket.carried).length;
+		const inBothBuckets = buckets.filter((bucket) => bucket.carried && bucket.summarized).length;
+		const inNeitherBucket = buckets.filter(
+			(bucket) => !bucket.carried && !bucket.summarized
+		).length;
+
+		const pinnedInProjection = projection.find((message) =>
+			JSON.stringify(message.content).includes(PINNED_FACT)
+		);
 		return {
 			seededLengthBefore: before.length,
 			seededLengthAfter: after.length,
@@ -167,17 +204,23 @@
 			projectionRoles: projection.map((message) => message.role).join(', '),
 			summarizedMessages: summarizedIds.length,
 			// Anything the summarizer saw that this page did not seed — a
-			// previous summary folded back in, say. Zero here is what makes
-			// the count above a clean partition rather than an overlapping
-			// tally.
+			// previous summary folded back in, say.
 			foreignMessages: foreignIds.length,
-			// The invariant the two numbers above exist for: every seeded
-			// message either went into the summarizer or was carried into the
-			// projection verbatim, and none quietly vanished in between. A
-			// compaction that handed `summarize` a truncated slice would leave
-			// this short.
-			everyMessageAccountedFor:
-				summarizedIds.length + (projection.length - injectedSummaries) === before.length
+			carriedVerbatim,
+			inBothBuckets,
+			inNeitherBucket,
+			// Every seeded message is in exactly one bucket, and the two
+			// buckets plus the injected summary account for the whole
+			// projection. That is the claim; the counts above are how a
+			// failure gets read.
+			partitionExact:
+				inBothBuckets === 0 &&
+				inNeitherBucket === 0 &&
+				carriedVerbatim + summarizedIds.length === before.length &&
+				carriedVerbatim + injectedSummaries === projection.length,
+			// The reason `metadata` is in the shape above, stated on its own
+			// so a failure names the cause rather than a shape mismatch.
+			pinnedMetadataSurvives: pinnedInProjection?.metadata?.pinned === true
 		};
 	}
 
@@ -207,8 +250,16 @@
 				<dd data-testid="compaction-summarized-messages">{result.summarizedMessages}</dd>
 				<dt>of those, not from the seed</dt>
 				<dd data-testid="compaction-foreign-messages">{result.foreignMessages}</dd>
-				<dt>every message accounted for</dt>
-				<dd data-testid="compaction-accounted">{result.everyMessageAccountedFor}</dd>
+				<dt>carried through verbatim</dt>
+				<dd data-testid="compaction-carried-verbatim">{result.carriedVerbatim}</dd>
+				<dt>in both buckets / in neither</dt>
+				<dd data-testid="compaction-bucket-overlap">
+					{result.inBothBuckets} / {result.inNeitherBucket}
+				</dd>
+				<dt>exact partition</dt>
+				<dd data-testid="compaction-partition">{result.partitionExact}</dd>
+				<dt><code>pinned</code> metadata survives</dt>
+				<dd data-testid="compaction-pinned-metadata">{result.pinnedMetadataSurvives}</dd>
 				<dt>pinned fact present</dt>
 				<dd data-testid="compaction-projection-pin">{result.projectionHasPin}</dd>
 				<dt>first follow-up present</dt>

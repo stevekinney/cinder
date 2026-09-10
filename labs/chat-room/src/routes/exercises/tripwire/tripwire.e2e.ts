@@ -38,19 +38,25 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 }) => {
 	await gotoHydrated(page, '/exercises/tripwire');
 
+	// Both views, rendered in one canonical shape so every field is pinned
+	// rather than two of four being searched for. `confidence` in particular:
+	// a terminal error reconstructed with 0.9 while the event still reported
+	// 0.3 would violate the same-identity claim and pass a substring check.
+	const identity = 'prompt-injection · prompt-injection · input · 0.3';
+
 	// The live view: `run.tripwire`, dispatched before the run settles.
-	const event = page.locator(field('tripped', 'event'));
-	await expect(event).toContainText('prompt-injection');
-	await expect(event).toContainText('input');
-	await expect(event).toContainText('0.3');
+	await expect(page.locator(field('tripped', 'event-identity'))).toHaveText(identity);
+	await expect(page.locator(field('tripped', 'event-step'))).toHaveText('0');
 
 	// The settled view: the same identity reconstructed onto `result.error`,
 	// which is all a caller holding only the awaited result can see. Both are
 	// asserted because they are populated by different code paths.
 	await expect(page.locator(field('tripped', 'error'))).toHaveText('GuardrailTripwireError');
-	const guardrail = page.locator(field('tripped', 'guardrail'));
-	await expect(guardrail).toContainText('prompt-injection');
-	await expect(guardrail).toContainText('input');
+	await expect(page.locator(field('tripped', 'error-identity'))).toHaveText(identity);
+
+	// …and that they are the same, compared in the page rather than inferred
+	// from two assertions that happen to name the same literal.
+	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('true');
 });
 
 test('the same detector under the default mode does not stop the run', async ({ page }) => {
@@ -64,7 +70,7 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	// benign panel reports.
 	await expect(page.locator(field('continued', 'finish'))).toHaveText('stop-condition');
 	await expect(page.locator(field('continued', 'error'))).toHaveText('(none)');
-	await expect(page.locator(field('continued', 'event'))).toHaveText('(none)');
+	await expect(page.locator(field('continued', 'event-identity'))).toHaveText('(none)');
 
 	// Continuing is NOT the same as letting the prompt through. The input
 	// guardrail short-circuits generate even in the default mode, so the
@@ -83,6 +89,14 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	// pin operative's copy, which can change without any of this behavior
 	// changing; the substitution itself is the fact the panel is about.
 	await expect(page.locator(field('continued', 'substituted'))).toHaveText('true');
+
+	// And what landed there is an assistant message with something in it.
+	// "Differs from MODEL_ANSWER" alone would accept an appended system or
+	// tool message, or one with empty content — none of which is the refusal
+	// this panel says it is showing.
+	await expect(page.locator(field('continued', 'transcript-roles'))).toHaveText('user, assistant');
+	await expect(page.locator(field('continued', 'last-role'))).toHaveText('assistant');
+	await expect(page.locator(field('continued', 'last-nonempty'))).toHaveText('true');
 });
 
 test('leaves a benign request alone', async ({ page }) => {
@@ -92,11 +106,17 @@ test('leaves a benign request alone', async ({ page }) => {
 	// assertion above.
 	await expect(page.locator(field('clean', 'finish'))).toHaveText('stop-condition');
 	await expect(page.locator(field('clean', 'generate-calls'))).toHaveText('1');
-	await expect(page.locator(field('clean', 'event'))).toHaveText('(none)');
+	await expect(page.locator(field('clean', 'event-identity'))).toHaveText('(none)');
 
 	// The model's own answer reached the transcript untouched. This is also
 	// what keeps the `substituted` field above honest: a field that read
 	// `true` unconditionally would pass there and fail here.
 	await expect(page.locator(field('clean', 'substituted'))).toHaveText('false');
 	await expect(page.locator(field('clean', 'last-message'))).toContainText('Paris');
+
+	// Structurally untouched, not merely correct at the tail: a guardrail
+	// that appended a refusal BEFORE the right answer would leave a
+	// last-message check green on a three-message transcript.
+	await expect(page.locator(field('clean', 'transcript-length'))).toHaveText('2');
+	await expect(page.locator(field('clean', 'transcript-roles'))).toHaveText('user, assistant');
 });
