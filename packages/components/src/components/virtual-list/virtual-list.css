@@ -102,6 +102,14 @@
     block-size: auto;
     inline-size: auto;
     overflow: visible;
+    /*
+     * `layout` only. The base rule adds `paint`, which clips everything to the
+     * element's box and would undo the `overflow: visible` above — sticky rows and
+     * any row painting outside the container would be cut off exactly where this
+     * mode is supposed to let them through. Layout containment carries the
+     * performance benefit and does not clip.
+     */
+    contain: layout;
   }
 
   .cinder-virtual-list__spacer {

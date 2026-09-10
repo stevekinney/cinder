@@ -171,6 +171,8 @@
   let windowScrollOffset = $state(0);
   /** True while a window-scrolled list sits entirely outside the viewport. */
   let isWindowListOffscreen = $state(false);
+  /** Restoration runs once, on the first render that actually has items to land on. */
+  let hasRestored = false;
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -421,22 +423,21 @@
   $effect(() => {
     const id = scrollRestorationId?.trim();
     const element = scrollElement;
-    if (!element || !id) return;
+    // Tracked deliberately: a list that fetches its own data renders empty first, so
+    // there is nothing to restore onto until its items arrive. `hasRestored` is what
+    // makes this happen exactly once — without it, re-running on every item change
+    // would re-apply the saved position over wherever the reader had scrolled to.
+    const itemCount = items.length;
+    if (!element || !id || hasRestored || itemCount === 0) return;
 
-    // Everything below the id is read untracked. This effect restores ONCE; left
-    // reactive it re-ran whenever the item count or the sizing mode changed and
-    // re-applied the saved position over wherever the reader had since scrolled to.
     untrack(() => {
       const storage = resolveRestorationStorage();
       const saved = loadScrollPosition(storage, id);
-      if (!saved) return;
-
-      if (items.length === 0) {
-        // Almost certainly still loading. Leaving the entry alone is the whole point:
-        // deleting it here would mean a list that fetches its own data can never
-        // restore, because its first render is always empty.
+      if (!saved) {
+        hasRestored = true;
         return;
       }
+      hasRestored = true;
 
       if (saved.startIndex >= items.length) {
         // The collection genuinely shrank, so the remembered row no longer exists.
@@ -452,7 +453,18 @@
       // index lands on the row the reader was actually looking at, and the settle
       // loop follows it as the rows above are measured.
       if (dynamicSize) {
-        scrollToIndex(saved.startIndex, { align: 'start' });
+        // Written directly rather than through `scrollToIndex`, which lands on the
+        // row's start edge and would lose where the reader was WITHIN a tall row —
+        // the difference between reopening mid-paragraph and at the top of it.
+        //
+        // The offsets table is all estimates at mount, so this lands on the ESTIMATED
+        // position of the right row. That is the correct starting point: the
+        // measurement-correction pass then holds this row still as the rows above it
+        // are measured, which is precisely the job it already does.
+        const target =
+          locateRowStartOffset(saved.startIndex) + Math.max(0, saved.offsetWithinRow ?? 0);
+        writeScrollOffset(element, target, 'auto');
+        scrollOffset = readScrollOffset(element);
       } else {
         writeScrollOffset(element, saved.scrollOffset, 'auto');
         scrollOffset = readScrollOffset(element);
@@ -474,6 +486,10 @@
           // so `startIndex + overscan` points several rows PAST the reader instead
           // of at them. The offset knows where they actually are.
           startIndex: resolveAnchorIndexAtOffset(scrollOffset),
+          offsetWithinRow: Math.max(
+            0,
+            scrollOffset - locateRowStartOffset(resolveAnchorIndexAtOffset(scrollOffset)),
+          ),
         });
       });
     };
@@ -771,6 +787,13 @@
     previousOffsets = currentOffsets;
   });
 
+  /** Where a row begins, from the measured table when there is one. */
+  function locateRowStartOffset(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return table[index] ?? 0;
+    return index * resolvedItemHeight;
+  }
+
   /**
    * The index of the row occupying a given scroll offset — the row the reader is
    * looking at, independent of overscan and of any clamping at the list's edges.
@@ -870,6 +893,26 @@
   }
 
   /**
+   * Distance from the viewport's start edge to the list's start edge, along the axis
+   * in play. Negative once the list's beginning has scrolled past.
+   *
+   * The INLINE-START edge under `horizontal`, which is the right one in a
+   * right-to-left document — measuring `rect.left` there would report the list's end
+   * as its beginning and run the offset backwards. Shared by the read and write
+   * paths so the two cannot disagree about where the list begins.
+   */
+  function resolveListStartInViewport(element: HTMLElement, rect?: DOMRect): number {
+    const box = rect ?? element.getBoundingClientRect();
+    if (!horizontal) return box.top;
+    if (writingDirection !== 'rtl') return box.left;
+    const viewportWidth = resolveWindowViewportSize(
+      typeof window === 'undefined' ? undefined : window,
+      'horizontal',
+    );
+    return viewportWidth - box.right;
+  }
+
+  /**
    * Moves the DOCUMENT so that `offset` pixels of the list sit above the viewport's
    * start edge.
    *
@@ -894,7 +937,11 @@
     // own RTL scroll convention to match it. The distance between where the reader
     // is and where they should be needs no such conversion; only its sign flips, and
     // only along a right-to-left inline axis.
-    const delta = offset - readScrollOffset(element);
+    // Against the RAW list position, not `readScrollOffset`, which clamps at 0. A
+    // window-scrolled list normally begins below the viewport — under a page header —
+    // and while it does, the clamped offset reads 0 for every position above it. The
+    // delta would then be 0 and the page would never move to the list at all.
+    const delta = offset + resolveListStartInViewport(element);
     if (delta === 0) return;
     const inlineDelta = horizontal && writingDirection === 'rtl' ? -delta : delta;
     window.scrollBy(
@@ -987,17 +1034,7 @@
         horizontal ? 'horizontal' : 'vertical',
       );
       const geometry = resolveWindowScrollGeometry({
-        // The INLINE-START edge, which is the right one under RTL. Measuring
-        // `rect.left` there would report the list's end as its beginning and run
-        // the offset backwards.
-        listStartInViewport: horizontal
-          ? writingDirection === 'rtl'
-            ? resolveWindowViewportSize(
-                typeof window === 'undefined' ? undefined : window,
-                'horizontal',
-              ) - rect.right
-            : rect.left
-          : rect.top,
+        listStartInViewport: resolveListStartInViewport(element, rect),
         viewportSize,
         totalSize: currentTotalSize(),
       });

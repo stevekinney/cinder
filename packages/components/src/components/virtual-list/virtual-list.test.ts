@@ -2198,6 +2198,37 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('restores once the asynchronously loaded items arrive', async () => {
+    // The list that most needs restoring is the one that fetches its own data, and
+    // its first render is always empty. Restoring strictly on mount would mean it
+    // never restores at all.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({ scrollOffset: 4_000, startIndex: 200 }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender } = render(VirtualList, props(0));
+      await tick();
+
+      // The fetch lands.
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {

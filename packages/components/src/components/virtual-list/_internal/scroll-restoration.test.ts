@@ -67,7 +67,12 @@ describe('serializeScrollPosition', () => {
 describe('deserializeScrollPosition', () => {
   test('round-trips a value serializeScrollPosition produced', () => {
     const serialized = serializeScrollPosition({ scrollOffset: 240, startIndex: 8 });
-    expect(deserializeScrollPosition(serialized)).toEqual({ scrollOffset: 240, startIndex: 8 });
+    expect(deserializeScrollPosition(serialized)).toEqual({
+      scrollOffset: 240,
+      startIndex: 8,
+      // Absent in the serialized entry, so it reads back as the row's start edge.
+      offsetWithinRow: 0,
+    });
   });
 
   test('returns null for a null input', () => {
@@ -109,7 +114,7 @@ describe('deserializeScrollPosition', () => {
   test('still accepts a fractional scrollOffset, which is a real pixel position', () => {
     expect(
       deserializeScrollPosition(JSON.stringify({ scrollOffset: 100.5, startIndex: 3 })),
-    ).toEqual({ scrollOffset: 100.5, startIndex: 3 });
+    ).toEqual({ scrollOffset: 100.5, startIndex: 3, offsetWithinRow: 0 });
   });
 
   test('returns null when a field is negative', () => {
@@ -171,7 +176,20 @@ describe('loadScrollPosition', () => {
     expect(loadScrollPosition(storage, 'inbox-list')).toEqual({
       scrollOffset: 360,
       startIndex: 12,
+      offsetWithinRow: 0,
     });
+  });
+
+  test('round-trips an intra-row remainder', () => {
+    // Restoring only the row's start edge reopens a long transcript at the top of the
+    // paragraph the reader was halfway through.
+    const storage = createMemoryStorage();
+    saveScrollPosition(storage, 'inbox-list', {
+      scrollOffset: 360,
+      startIndex: 12,
+      offsetWithinRow: 84,
+    });
+    expect(loadScrollPosition(storage, 'inbox-list')?.offsetWithinRow).toBe(84);
   });
 
   test('returns null when nothing was saved for the id', () => {

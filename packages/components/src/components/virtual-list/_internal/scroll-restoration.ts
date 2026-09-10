@@ -27,6 +27,14 @@ export type ScrollRestorationStorage = {
 export type ScrollRestorationPosition = {
   readonly scrollOffset: number;
   readonly startIndex: number;
+  /**
+   * How far into the anchor row the reader had scrolled.
+   *
+   * Optional because entries written before this field existed must still load —
+   * `sessionStorage` survives deploys, and a missing remainder simply means the row's
+   * start edge, which is what the previous version restored anyway.
+   */
+  readonly offsetWithinRow?: number;
 };
 
 const SCROLL_RESTORATION_KEY_PREFIX = 'cinder:virtual-list:';
@@ -60,6 +68,7 @@ export function serializeScrollPosition(position: ScrollRestorationPosition): st
 }
 
 type UnknownScrollRestorationPosition = {
+  offsetWithinRow?: unknown;
   scrollOffset?: unknown;
   startIndex?: unknown;
 };
@@ -102,7 +111,14 @@ export function deserializeScrollPosition(raw: string | null): ScrollRestoration
     return null;
   }
 
-  return { scrollOffset, startIndex };
+  // Absent or malformed, the remainder is simply zero: the row's start edge, which
+  // is exactly what an entry from before this field existed meant.
+  const { offsetWithinRow } = candidate;
+  return {
+    scrollOffset,
+    startIndex,
+    offsetWithinRow: isValidScrollRestorationField(offsetWithinRow) ? offsetWithinRow : 0,
+  };
 }
 
 /**
