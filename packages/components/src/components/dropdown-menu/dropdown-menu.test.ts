@@ -1,10 +1,13 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
+import { readFileSync } from 'node:fs';
 import { createRawSnippet } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
 setupHappyDom();
+
+const dropdownMenuSource = readFileSync(new URL('./dropdown-menu.svelte', import.meta.url), 'utf8');
 
 const { render, fireEvent, waitFor, cleanup } = await import('@testing-library/svelte');
 const { default: Fixture } = await import('../../test/fixtures/dropdown-compound-fixture.svelte');
@@ -224,6 +227,22 @@ describe('DropdownMenu', () => {
 
     await waitFor(() => expect(container.querySelector('[role="menu"]')).toBeNull());
     outside.remove();
+  });
+
+  // happy-dom's lack of `showPopover`/`hidePopover` support (see the comment
+  // below) means `context.supportsPopover` never resolves `true` in this
+  // suite, so the native-popover escape-stack branch can't be exercised
+  // behaviorally here — it's covered by integration tests in a real browser.
+  // Assert the source directly instead (mirrors navigation-bar.test.ts's
+  // CIN-376 guard), so a future edit that collapses the two effects back
+  // into one calling `dismissMenu` unconditionally fails loudly: that would
+  // call `event.preventDefault()` for a Popover-API-backed menu, cancelling
+  // the browser's own Escape close-request and leaving the top-layer
+  // popover visibly open even though `setOpen(false)` already ran.
+  test('the native-popover branch registers a no-op, not dismissMenu (review finding)', () => {
+    expect(dropdownMenuSource).toContain(
+      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler(() => {});',
+    );
   });
 });
 

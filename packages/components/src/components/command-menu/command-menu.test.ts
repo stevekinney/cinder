@@ -585,6 +585,33 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
     }
   });
 
+  test('releases its escape-stack registration when anchor is cleared while open stays true (review finding)', async () => {
+    // Regression: a host can clear/unmount `anchor` without `open` itself
+    // flipping (e.g. `clear-anchor` in this fixture). The menu's render
+    // condition (`mounted && open && anchor`) then renders nothing, so the
+    // escape-stack registration must release too — otherwise Escape is
+    // silently swallowed by an invisible menu instead of reaching the next
+    // handler down the stack.
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { getByTestId } = render(CommandMenuFixture);
+      await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+      await fireEvent.click(getByTestId('clear-anchor'));
+      await settleCommandMenu();
+      expect(queryMenu()).toBeNull();
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
   test('with the menu open above another stack registration, Escape dismisses only the menu', async () => {
     let parentEscapeCount = 0;
     let dismissCount = 0;

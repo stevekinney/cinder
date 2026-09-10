@@ -1353,6 +1353,37 @@ describe('SpeedDial', () => {
     }
   });
 
+  test('releases its escape-stack registration the instant an open dial is hidden (review finding)', async () => {
+    // Regression: a consumer can hide an already-open dial — `open` doesn't
+    // flip, only `hidden` does. A separate, pre-existing mechanism
+    // (`observePortalSourceAvailability` closing the dial once its hidden
+    // source subtree is detected as unavailable via a real DOM observer)
+    // eventually self-corrects this too, but only asynchronously — so this
+    // effect must react to `hidden` directly and release synchronously with
+    // the prop change, or there's a real window, between `hidden` flipping
+    // and that observer firing, where Escape is still swallowed by a dial
+    // that's now invisible. Dispatch immediately after `rerender()`, before
+    // that observer gets a chance to run, to prove this effect's own gate
+    // (not the other mechanism) is what closes the window.
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { rerender } = render(SpeedDialFixture, { props: { open: true } });
+      await flushQueuedFocus();
+      expect(screen.getByTestId('open-state').textContent).toBe('open');
+
+      await rerender({ open: true, hidden: true });
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
   test('with the dial open above another stack registration, Escape dismisses only the dial', async () => {
     let parentEscapeCount = 0;
     const releaseParent = pushEscapeHandler(() => {
