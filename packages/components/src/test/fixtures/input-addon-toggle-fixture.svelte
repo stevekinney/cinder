@@ -32,6 +32,14 @@
     leading?: Snippet<[]> | undefined;
     trailing?: Snippet<[]> | undefined;
     error?: string | undefined;
+    // Input's own `description` and `label` props (as opposed to the
+    // FormField's own `label`, which is always set to `"Field"` on the
+    // `field`/`field-with-own-label` hosts below) — plumbed through so a
+    // test can toggle them reactively on the `field` host to prove CIN-511:
+    // setting either one, even while `context.labelId` already suppresses
+    // Input's own label visually, must not recreate the native element.
+    description?: string | undefined;
+    ownLabel?: string | undefined;
   };
 </script>
 
@@ -46,6 +54,8 @@
     leading,
     trailing,
     error,
+    description,
+    ownLabel,
   }: InputAddonToggleFixtureProps = $props();
 
   const addons = $derived(
@@ -57,7 +67,11 @@
           ? { trailing }
           : {},
   );
-  const optional = $derived(error !== undefined ? { error } : {});
+  const optional = $derived({
+    ...(error !== undefined ? { error } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(ownLabel !== undefined ? { label: ownLabel } : {}),
+  });
 </script>
 
 {#if host === 'bare'}
