@@ -29,6 +29,66 @@ import {
 } from '../../streaming-fixture';
 
 /**
+ * Whether this engine puts buttons in the tab order.
+ *
+ * On macOS, WebKit excludes buttons and links from Tab unless the OS-level
+ * "Full Keyboard Access" setting is on — observed here as a Tab walk that
+ * advances to the messages log (`tabindex="0"`) and then refuses to move on to
+ * any button. A Tab assertion there measures the machine's settings, not the
+ * page's markup. The config already carries the same shape of carve-out for
+ * clipboard permissions.
+ */
+function tabOrderIncludesButtons(projectName: string): boolean {
+	return !projectName.startsWith('webkit');
+}
+
+/**
+ * Puts keyboard focus on one of the tool call's decision controls, and says
+ * whether it got there through the tab order.
+ *
+ * Reachability is the claim `locator.press()` cannot make: Playwright focuses
+ * the matched element before dispatching the key, so a control carrying
+ * `tabindex="-1"` would still pass. Starting from the disclosure — itself a
+ * reachable control, and the thing a keyboard user lands on first — makes this
+ * a real statement about the tab order on the engines that have one.
+ *
+ * The disclosure is expanded first when its controls are not already in the
+ * DOM. Chromium renders the group open; Firefox and WebKit render it collapsed,
+ * and a Tab walk cannot reach a control that has not been rendered yet — which
+ * is what defeated an earlier version of this helper.
+ */
+async function focusDecisionControl(
+	page: Page,
+	projectName: string,
+	name: 'Approve' | 'Reject'
+): Promise<void> {
+	const chat = page.locator('#chatroom-demo-chat');
+	const disclosure = chat.getByRole('button', { name: /^Expand remember_note/ });
+	const target = chat.getByRole('button', { name });
+
+	await disclosure.press('Enter');
+	await expect(target).toBeVisible();
+
+	if (!tabOrderIncludesButtons(projectName)) {
+		// Activation still runs from a real key event below; only the walk is
+		// skipped, and only where it would assert the wrong thing.
+		await target.focus();
+		return;
+	}
+
+	for (let press = 0; press < 12; press += 1) {
+		if (await target.evaluate((element) => element === document.activeElement)) return;
+		await page.keyboard.press('Tab');
+	}
+	const focused = await page.evaluate(() =>
+		document.activeElement === null
+			? 'nothing'
+			: `${document.activeElement.tagName}[${document.activeElement.ariaLabel ?? document.activeElement.textContent?.trim() ?? ''}]`
+	);
+	throw new Error(`Tab never reached ${name} from the disclosure; focus rested on ${focused}`);
+}
+
+/**
  * Drives a turn to a settled park: the approval prompt on screen AND the
  * response closed.
  *
@@ -134,22 +194,16 @@ test('approving resumes through the host-owned toolbox and the result rejoins th
 	expect(await fixtureRequestCount(marker)).toBe(2);
 });
 
-test('approves from the keyboard alone', async ({ page }) => {
+test('approves from the keyboard alone', async ({ page }, testInfo) => {
 	const marker = await parkOnApproval(page);
-	const approve = page.locator('#chatroom-demo-chat').getByRole('button', { name: 'Approve' });
+
+	// Reached through the tab order, then activated by a real key event. Both
+	// halves matter: `.click()` would pass on a control no keyboard can reach,
+	// and `locator.press()` alone would pass on one carrying `tabindex="-1"`.
+	await focusDecisionControl(page, testInfo.project.name, 'Approve');
 
 	const resumed = page.waitForResponse('**/api/chat/resume');
-
-	// A real key event on the control, not a synthetic click. `.click()` alone
-	// would keep passing if the handler were bound to a pointer event and the
-	// prompt were unusable for anyone driving the page from a keyboard.
-	//
-	// Tab-order reachability is a separate claim and is deliberately not made
-	// here: a Tab walk reached the control on Chromium but not on Firefox or
-	// WebKit, where the tool-call group presents collapsed behind its
-	// disclosure, and I would rather ship no assertion than one whose failure
-	// mode I cannot explain. Worth its own issue.
-	await approve.press('Enter');
+	await page.keyboard.press('Enter');
 	expect((await resumed).status()).toBe(200);
 
 	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(APPROVAL_FOLLOW_UP_TEXT);
@@ -157,7 +211,7 @@ test('approves from the keyboard alone', async ({ page }) => {
 	expect(await fixtureRequestCount(marker)).toBe(2);
 });
 
-test('denying reaches a terminal state without resuming', async ({ page }) => {
+test('denying reaches a terminal state without resuming', async ({ page }, testInfo) => {
 	const marker = await parkOnApproval(page);
 	const chat = page.locator('#chatroom-demo-chat');
 
@@ -171,8 +225,10 @@ test('denying reaches a terminal state without resuming', async ({ page }) => {
 	});
 
 	// Labelled "Reject" in the UI; `denyToolCall` is the hook behind it.
-	// Keyboard-activated for the same reason the approve path is.
-	await chat.getByRole('button', { name: 'Reject' }).press('Enter');
+	// Reached and activated from the keyboard for the same reason the approve
+	// path is.
+	await focusDecisionControl(page, testInfo.project.name, 'Reject');
+	await page.keyboard.press('Enter');
 
 	// The call settles as failed rather than lingering as a prompt nobody can
 	// answer. The action-required group is gone entirely — its controls with
