@@ -2495,6 +2495,49 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('lets pagination run while it waits for the restoration anchor', async () => {
+    // The deadlock these two features can form: restoration suppresses the edge
+    // callbacks so a half-rendered list does not fetch spuriously, but the edge
+    // callbacks are exactly what loads the page carrying the saved anchor. Suppress
+    // them while WAITING and nothing ever loads, so nothing ever restores.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 4_000,
+        startIndex: 200,
+        offsetWithinRow: 0,
+      }),
+    });
+    let endReachedCount = 0;
+
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 2,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        onEndReached: () => {
+          endReachedCount += 1;
+        },
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // A first page far short of the anchor, with its end already in view.
+      const { container, rerender } = render(VirtualList, props(12));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      // The consumer must be asked for more, or the anchor never arrives.
+      await waitFor(() => expect(endReachedCount).toBeGreaterThan(0));
+
+      await rerender(props(1_000));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {

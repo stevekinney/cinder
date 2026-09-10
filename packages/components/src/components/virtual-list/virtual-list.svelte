@@ -171,8 +171,17 @@
   let windowScrollOffset = $state(0);
   /** True while a window-scrolled list sits entirely outside the viewport. */
   let isWindowListOffscreen = $state(false);
-  /** Item count at the last failed restore, so incremental loading can keep trying. */
-  let lastRestoreAttemptCount = 0;
+  /**
+   * Item count at the last failed restore, so incremental loading can keep trying.
+   *
+   * `$state` because the edge callbacks read it to decide whether a restore is still
+   * imminent. As a plain binding, the effect that fetches the next page would never
+   * re-evaluate after the first attempt gave up waiting — and the page carrying the
+   * anchor would never be requested.
+   */
+  let lastRestoreAttemptCount = $state(0);
+  /** Which id that attempt history belongs to. */
+  let restoredIdInProgress: string | undefined;
   /** The position as of the last render, so a teardown never has to re-derive it. */
   let latestPosition: ScrollRestorationPosition | undefined;
   /**
@@ -455,6 +464,12 @@
     untrack(() => {
       const storage = resolveRestorationStorage();
       const saved = loadScrollPosition(storage, id);
+      if (restoredIdInProgress !== id) {
+        // A different collection: its attempt history is its own.
+        restoredIdInProgress = id;
+        lastRestoreAttemptCount = 0;
+      }
+
       if (!saved) {
         restoredId = id;
         return;
@@ -878,6 +893,11 @@
   function willRestoreScrollPosition(): boolean {
     const id = scrollRestorationId?.trim();
     if (windowScroll || !scrollRestoration || !id || restoredId === id) return false;
+    // Only while a restore is IMMINENT. Once an attempt has failed and the component
+    // is waiting for more data, the edge callbacks are exactly what fetches the page
+    // carrying the anchor — suppressing them there deadlocks the two features
+    // against each other: no pagination, so no anchor, so no restore, forever.
+    if (lastRestoreAttemptCount > 0) return false;
     return loadScrollPosition(resolveRestorationStorage(), id) !== null;
   }
 
@@ -1024,7 +1044,7 @@
     if (!horizontal) return box.top;
     if (writingDirection !== 'rtl') return box.left;
     const viewportWidth = resolveWindowViewportSize(
-      typeof window === 'undefined' ? undefined : window,
+      element.ownerDocument.defaultView ?? undefined,
       'horizontal',
     );
     return viewportWidth - box.right;
@@ -1048,7 +1068,10 @@
     offset: number,
     behavior: ScrollBehavior,
   ): void {
-    if (typeof window === 'undefined') return;
+    // The element's own window, for the same reason the listeners use it: inside an
+    // iframe the module's global is a different document entirely.
+    const view = element.ownerDocument.defaultView;
+    if (!view) return;
     // Moved as a RELATIVE delta rather than to an absolute coordinate. The read path
     // is normalized — it measures from the inline-START edge, which is the right one
     // under RTL — so an absolute physical target would have to re-derive the page's
@@ -1062,7 +1085,7 @@
     const delta = offset + resolveListStartInViewport(element);
     if (delta === 0) return;
     const inlineDelta = horizontal && writingDirection === 'rtl' ? -delta : delta;
-    window.scrollBy(
+    view.scrollBy(
       horizontal ? { left: inlineDelta, top: 0, behavior } : { top: delta, left: 0, behavior },
     );
   }
@@ -1148,7 +1171,7 @@
 
     if (windowScroll) {
       const viewportSize = resolveWindowViewportSize(
-        typeof window === 'undefined' ? undefined : window,
+        element.ownerDocument.defaultView ?? undefined,
         horizontal ? 'horizontal' : 'vertical',
       );
       const geometry = resolveWindowScrollGeometry({

@@ -86,6 +86,14 @@
     inset-inline-end: auto;
   }
 
+  /*
+   * Except when the inline axis IS the scrolled one, where clipping would hide
+   * everything past the first viewport.
+   */
+  .cinder-virtual-list[data-cinder-scroll-source='window'][data-cinder-orientation='horizontal'] {
+    overflow-x: visible;
+  }
+
   /* Rows are sized along the inline axis; flex must not shrink them to fit. */
   .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__row {
     flex: 0 0 auto;
@@ -102,6 +110,13 @@
     block-size: auto;
     inline-size: auto;
     overflow: visible;
+    /*
+     * The window is shifted along the inline axis by the scroll offset, and while
+     * the block axis is the page's scroller that shift would otherwise extend the
+     * DOCUMENT's width — adding a horizontal scrollbar to the whole page for a list
+     * that is not scrolling that way. Clipping the inline axis alone contains it.
+     */
+    overflow-x: clip;
     /*
      * `layout` only. The base rule adds `paint`, which clips everything to the
      * element's box and would undo the `overflow: visible` above — sticky rows and
