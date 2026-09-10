@@ -65,6 +65,7 @@
 		eventIdentity: string;
 		eventStep: string;
 		eventCount: number;
+		detection: string;
 		firstMessage: string;
 		firstMessageIntact: boolean;
 		identityMatchesEvent: string;
@@ -126,8 +127,20 @@
 		// defaulting, so the panel's claim about what you get by reaching for
 		// `createGuardrails` without thinking about `mode` is the claim
 		// actually under test.
+		// `onTriggered` fires in BOTH modes, which is what makes the page's
+		// claim — same detector, same category, same confidence, different
+		// outcome — checkable rather than asserted. Without it only the
+		// tripwire panel exposes any detection identity, so a default path
+		// that refused this injection via some other detector, or at a
+		// different confidence, would satisfy every assertion on that panel.
+		let detection = '(none)';
 		const guardrails = createGuardrails({
-			input: { detectors: [createPromptInjectionDetector()] },
+			input: {
+				detectors: [createPromptInjectionDetector()],
+				onTriggered: (event) => {
+					detection = `${event.detector} · ${event.category} · ${event.confidence} · ${event.action}`;
+				}
+			},
 			...(mode === undefined ? {} : { mode })
 		});
 		const conversation = appendUserMessage(
@@ -234,6 +247,7 @@
 			eventIdentity,
 			eventStep,
 			eventCount,
+			detection,
 			// The guarded panels short-circuit generation, so the generator's
 			// view cannot vouch for their prompt. This is the transcript's own
 			// answer: a `prepareStep` that rewrote or replaced the injection
@@ -389,6 +403,8 @@
 					<dd data-testid="tripwire-{panel.id}-last-nonempty">
 						{observation.lastMessageNonEmpty}
 					</dd>
+					<dt>detector · category · confidence · action</dt>
+					<dd data-testid="tripwire-{panel.id}-detection">{observation.detection}</dd>
 					<dt><code>run.tripwire</code> emissions</dt>
 					<dd data-testid="tripwire-{panel.id}-event-count">{observation.eventCount}</dd>
 					<dt>first message</dt>

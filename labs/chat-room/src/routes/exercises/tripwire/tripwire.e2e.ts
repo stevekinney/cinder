@@ -76,6 +76,13 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 	// would run its tripwire handling twice.
 	await expect(page.locator(field('tripped', 'event-count'))).toHaveText('1');
 
+	// The detection itself, as the detector reported it. Distinct from the
+	// terminal identity above: this fires in BOTH modes, which is what lets
+	// the default-mode panel be compared against this one.
+	await expect(page.locator(field('tripped', 'detection'))).toHaveText(
+		'prompt-injection · prompt-injection · 0.3 · tripwire'
+	);
+
 	// …and that they are the same, compared in the page rather than inferred
 	// from two assertions that happen to name the same literal.
 	await expect(page.locator(field('tripped', 'identity-matches'))).toHaveText('yes');
@@ -142,6 +149,16 @@ test('the same detector under the default mode avoids the immediate tripwire hal
 	// has nothing to compare — it reads n/a rather than claiming two `(none)`
 	// readings disagree.
 	await expect(page.locator(field('continued', 'identity-matches'))).toHaveText('n/a');
+
+	// The page claims both panels see the SAME detector at the SAME
+	// confidence and differ only in what happens next. Without this the claim
+	// was unverified on this side: a default path that refused the injection
+	// via some other detector, or at a different confidence, satisfied every
+	// other assertion here. Same detector, same category, same 0.3 — the
+	// action is the only field that differs.
+	await expect(page.locator(field('continued', 'detection'))).toHaveText(
+		'prompt-injection · prompt-injection · 0.3 · block'
+	);
 });
 
 test('lets a benign request through under the default mode too', async ({ page }) => {
@@ -169,6 +186,7 @@ test('lets a benign request through under the default mode too', async ({ page }
 	// produced the right answer while retaining a stale error — or while
 	// dropping its `StepResult` — would pass everything else here.
 	await expect(page.locator(field('permitted', 'identity-matches'))).toHaveText('n/a');
+	await expect(page.locator(field('permitted', 'detection'))).toHaveText('(none)');
 	await expect(page.locator(field('permitted', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('permitted', 'steps'))).toHaveText('1');
 });
@@ -204,6 +222,7 @@ test('leaves a benign request alone', async ({ page }) => {
 		'What is the capital of France?'
 	);
 	await expect(page.locator(field('clean', 'identity-matches'))).toHaveText('n/a');
+	await expect(page.locator(field('clean', 'detection'))).toHaveText('(none)');
 	await expect(page.locator(field('clean', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('clean', 'steps'))).toHaveText('1');
 	await expect(page.locator(field('clean', 'first-message-intact'))).toHaveText('true');
