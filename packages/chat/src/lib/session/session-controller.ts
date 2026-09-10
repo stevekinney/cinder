@@ -26,8 +26,31 @@ import type {
   ToolResult,
 } from '../components/chat/conversation-model.ts';
 import type { ChatAttachment } from '../components/chat/input/chat-attachment.ts';
-import type { ChatStreamEvent } from './stream-event-codec.ts';
+import type { ChatSerializedRunError, ChatStreamEvent } from './stream-event-codec.ts';
 import { decodeChatStreamEvents, guardChatStreamEvents } from './stream-event-codec.ts';
+
+/**
+ * A terminal failure the host reported through a `run.error` or
+ * `run.tripwire` frame, raised so it takes the same path as every other way a
+ * turn can fail.
+ *
+ * Carries the frame's own `{ name, message, kind, code, retryable? }` rather
+ * than flattening it to a string, so a host can render the distinction it
+ * went to the trouble of sending — most usefully `retryable`, which decides
+ * whether offering a retry is honest or a lie. `retryable` is absent when the
+ * host did not classify the failure; absent is "not stated" and must not be
+ * read as either answer.
+ */
+export class ChatRunFailureError extends Error {
+  /** The frame's error, verbatim — already stripped of `cause` by the codec. */
+  readonly runError: ChatSerializedRunError;
+
+  constructor(runError: ChatSerializedRunError) {
+    super(runError.message);
+    this.name = 'ChatRunFailureError';
+    this.runError = runError;
+  }
+}
 
 /** Request passed to an injected transport for each assistant turn. */
 export type ChatSessionRequest = {
@@ -288,12 +311,27 @@ export function createChatSessionController(
               } catch (observerError) {
                 reportError(observerError);
               }
+            } else if (event.type === 'run.error' || event.type === 'run.tripwire') {
+              // A terminal failure the HOST reported, rather than one this
+              // loop discovered. Throwing hands it to the catch below, which
+              // already cancels the streaming placeholder, marks the user's
+              // message failed so the existing retry affordance appears, and
+              // reports through `onError` — the same treatment every other
+              // failure gets, rather than a second, parallel error path that
+              // could drift from it.
+              //
+              // Before this, these frames were decoded and dropped: a
+              // provider failure mid-stream left a dangling assistant row and
+              // never reached `onError` at all.
+              //
+              // `run.aborted` deliberately does not throw. An abort is not a
+              // failure, carries no error, and is already handled by the
+              // abort branches around this loop.
+              throw new ChatRunFailureError(event.error);
             }
-            // CIN-507 extends the codec's vocabulary (`stream:*`, `tool.*`,
-            // `run.*`) without wiring a reducer for it yet — that lands with
-            // the route that emits these frames (a separate, out-of-scope
-            // issue). Unrecognized-here members fall through as a no-op
-            // rather than crash this loop.
+            // The remaining `stream:*` and `tool.*` members the codec
+            // vocabulary carries have no reducer here yet. They fall through
+            // as a no-op rather than crash this loop.
           }
           update(
             text

@@ -78,11 +78,22 @@ export const FIXTURE_ORIGIN = `http://127.0.0.1:${FIXTURE_PORT}`;
  *   (name known, arguments incomplete) while the test looks at the wire;
  *   plain text on every turn after it.
  */
-export type FixtureScenario = 'gated' | 'hold' | 'approval' | 'stepped' | 'tool';
+export type FixtureScenario =
+	| 'gated'
+	| 'hold'
+	| 'approval'
+	| 'stepped'
+	| 'tool'
+	| 'ratelimited'
+	| 'unauthorized'
+	| 'midstream';
 
 export const GATED_FIRST_CHUNK = 'Streaming first half.';
 export const GATED_SECOND_CHUNK = 'Streaming second half.';
 export const HOLD_PARTIAL_TEXT = 'Partial answer before the stop.';
+/** Rendered before the mid-stream failure, and must NOT survive it. */
+export const MIDSTREAM_PARTIAL_TEXT = 'Here is the first half';
+export const MIDSTREAM_ERROR_MESSAGE = 'The provider gave up mid-stream.';
 export const APPROVAL_NOTE_TEXT = 'Ship the release notes';
 export const APPROVAL_FOLLOW_UP_TEXT = 'Saved that note.';
 export const DEFAULT_REPLY_TEXT = 'Fixture default reply.';
@@ -105,7 +116,8 @@ export function fixtureMarker(scenario: FixtureScenario, marker: string): string
 	return `[fixture ${scenario} ${marker}]`;
 }
 
-const MARKER_PATTERN = /\[fixture (gated|hold|approval|stepped|tool) ([A-Za-z0-9-]+)\]/;
+const MARKER_PATTERN =
+	/\[fixture (gated|hold|approval|stepped|tool|ratelimited|unauthorized|midstream) ([A-Za-z0-9-]+)\]/;
 
 /** How many `/v1/messages` requests each marker has produced. */
 const requestCounts = new Map<string, number>();
@@ -232,6 +244,39 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 	const attempt = (requestCounts.get(marker) ?? 0) + 1;
 	if (marker) requestCounts.set(marker, attempt);
 
+	// Provider failures answer BEFORE the stream opens, which is how a real
+	// upstream rejects a request: the SDK raises an error carrying the status,
+	// and `classifyError` reads that status to decide whether a retry is worth
+	// offering. The two codes are chosen to land on opposite sides of that
+	// split — 429 is retryable, 401 never is — so a spec can tell a rendered
+	// classification from a rendered guess.
+	if (scenario === 'ratelimited' || scenario === 'unauthorized') {
+		const rateLimited = scenario === 'ratelimited';
+		res.writeHead(rateLimited ? 429 : 401, {
+			'Content-Type': 'application/json',
+			// `@anthropic-ai/sdk` retries a 429 on its own with exponential
+			// backoff, which took one turn to roughly 25 seconds of wall clock.
+			// `retry-after: 0` keeps the SDK's retry POLICY exactly as it is —
+			// same three attempts, same code path — while telling it there is
+			// nothing to wait for, so the scenario costs milliseconds. The
+			// alternative was a longer deadline on the assertion, which would
+			// have hidden the cost rather than removed it.
+			...(rateLimited ? { 'retry-after': '0' } : {})
+		});
+		res.end(
+			JSON.stringify({
+				type: 'error',
+				error: {
+					type: rateLimited ? 'rate_limit_error' : 'authentication_error',
+					message: rateLimited
+						? 'Rate limited by the fixture.'
+						: 'Invalid API key supplied to the fixture.'
+				}
+			})
+		);
+		return;
+	}
+
 	beginMessage(res);
 
 	// The turn AFTER an approval carries the same marker (the app re-sends the
@@ -328,6 +373,31 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 		});
 		sse(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
 		endMessage(res, 'end_turn');
+		return;
+	}
+
+	// A failure that arrives AFTER tokens are already on screen, which is a
+	// different code path from a rejected request: the stream opened, the
+	// client rendered part of a reply, and only then did the provider give up.
+	// The partial text has to be discarded rather than frozen in the
+	// transcript, because a half sentence reads as an answer the assistant
+	// gave rather than one it never finished.
+	if (scenario === 'midstream') {
+		sse(res, 'content_block_start', {
+			type: 'content_block_start',
+			index: 0,
+			content_block: { type: 'text', text: '' }
+		});
+		sse(res, 'content_block_delta', {
+			type: 'content_block_delta',
+			index: 0,
+			delta: { type: 'text_delta', text: MIDSTREAM_PARTIAL_TEXT }
+		});
+		sse(res, 'error', {
+			type: 'error',
+			error: { type: 'overloaded_error', message: MIDSTREAM_ERROR_MESSAGE }
+		});
+		if (!res.writableEnded && !res.destroyed) res.end();
 		return;
 	}
 

@@ -198,32 +198,33 @@ export const POST: RequestHandler = async ({ request }) => {
 
 			void (async () => {
 				try {
-					const envelope = await pumpChatRun(activeRun, writer);
+					// The envelope is no longer read here: `pumpChatRun` has already
+					// written the terminal frame that carries it, and every
+					// outcome now closes the stream the same way.
+					await pumpChatRun(activeRun, writer);
 
 					if (settled) return;
 					settled = true;
 
-					// A user-initiated stop (`kind: 'abort'`) is not a failure — the
-					// documented outcome of `cancel()`/`onRequestAbort`, which already
-					// settled the stream. Calling `controller.error` here would turn a
-					// normal stop into an error the user never caused, so both success
-					// and a clean abort close the stream the same way; every other
-					// failure becomes a stream error the client's adapter can surface.
+					// Every settled run closes the stream cleanly, including a failed
+					// one. `pumpChatRun` has already written the terminal frame —
+					// `run.completed`, `run.aborted`, `run.tripwire`, or `run.error`
+					// with its `{ kind, code, message, retryable? }` — and that frame
+					// is the outcome. The body is complete; there is nothing left to
+					// say by tearing the connection down.
 					//
-					// The `run.error` frame `pumpChatRun` wrote is already on the wire
-					// by now, so a client that understands the typed vocabulary has
-					// the structured `{ kind, code, message }`. Today's
-					// `session-controller.ts` does not read `run.*` frames yet — it
-					// surfaces failures only through the reader rejecting — which is
-					// why `controller.error` still follows the frame. CIN-438 (the
-					// client-side `run.*` reducer) removes this and closes cleanly
-					// once the frame alone is enough.
-					if (envelope.ok || envelope.error.kind === 'abort') {
-						controller.close();
-						return;
-					}
-
-					controller.error(new Error(envelope.error.message));
+					// This used to call `controller.error(...)` after writing the
+					// failure frame, because `session-controller.ts` had no reducer
+					// for `run.*` and a rejecting reader was the only way a client
+					// ever heard about a failure. That cure was worse than the
+					// disease: erroring a `ReadableStream` serving as a `Response`
+					// body destroys the connection, so the browser saw
+					// `net::ERR_EMPTY_RESPONSE` and the carefully typed frame went
+					// out with it — every provider failure arriving as "Failed to
+					// fetch" with no kind, no code, and no retryability. The reducer
+					// now reads those frames (CIN-438), which is what makes closing
+					// cleanly the correct thing rather than a silent drop.
+					controller.close();
 				} catch (cause) {
 					if (!settled) {
 						settled = true;

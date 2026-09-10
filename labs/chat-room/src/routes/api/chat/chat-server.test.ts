@@ -53,22 +53,33 @@ describe('chat stream cancellation guard', () => {
 
 	// A single generic `expect(source).toContain('if (settled) return;')` would
 	// still pass with `enqueueFrame`'s guard alone, even if the terminal guard
-	// before `controller.close()`/`controller.error()` or the catch-path guard
-	// before the second `controller.error()` were deleted — reintroducing the
-	// double-settlement race these guards exist to prevent. Each transition's
-	// own guard is asserted by name below instead.
-	test('guards the terminal close()/error() transition behind its own settled check', () => {
-		expect(source).toMatch(/if \(settled\) return;\s+settled = true;\s+\/\/ A user-initiated stop/);
+	// before `controller.close()` or the catch-path guard before
+	// `controller.error()` were deleted — reintroducing the double-settlement
+	// race these guards exist to prevent. Each transition's own guard is
+	// asserted by name below instead.
+	test('guards the terminal close() transition behind its own settled check', () => {
+		expect(source).toMatch(/if \(settled\) return;\s+settled = true;\s+\/\/ Every settled run/);
 	});
 
-	test('closes the stream for a successful or cleanly aborted envelope', () => {
+	test('closes the stream for every settled run, failed ones included', () => {
+		// This used to error the stream on failure, which destroys the
+		// connection serving the response body — so the terminal `run.error`
+		// frame went out with it and the browser saw `ERR_EMPTY_RESPONSE`. The
+		// frame IS the outcome; the body is complete once it is written.
 		expect(source).toMatch(
-			/envelope\.ok \|\| envelope\.error\.kind === 'abort'\) \{\s+controller\.close\(\);/
+			/settled = true;\s+\/\/ Every settled run[\s\S]*?controller\.close\(\);/
 		);
 	});
 
-	test('errors the stream for any other envelope failure', () => {
-		expect(source).toContain('controller.error(new Error(envelope.error.message));');
+	test('no longer tears the connection down to report a failure', () => {
+		// The only surviving `controller.error` is the catch path, where
+		// nothing was written and the client would otherwise hang.
+		// Statements only: the comment above that catch path explains why the
+		// old failure branch was removed, and naming it there must not count
+		// as calling it.
+		const errorCalls = source.match(/^\s*controller\.error\(/gm) ?? [];
+		expect(errorCalls).toHaveLength(1);
+		expect(source).not.toContain('controller.error(new Error(envelope.error.message));');
 	});
 
 	test('guards the catch-path controller.error() behind its own settled check', () => {

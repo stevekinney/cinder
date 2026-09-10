@@ -116,11 +116,25 @@ type ChatAgentRunErrorCode =
  * wire type — if a redacted, JSON-safe projection of it is ever needed, that
  * is a new, deliberately-named field, not this one made permissive again.
  */
-type ChatSerializedRunError = {
+export type ChatSerializedRunError = {
   name: string;
   message: string;
   kind: ChatAgentRunErrorKind;
   code: ChatAgentRunErrorCode;
+  /**
+   * Whether the failure is worth retrying, as the host classified it.
+   *
+   * `kind` cannot answer this. A rate-limited provider and a rejected API key
+   * are both `kind: 'generate'`, and one is worth a retry button while the
+   * other never is — so a client deriving retryability from `kind` alone would
+   * offer the wrong affordance for a whole category of failure.
+   *
+   * Optional because a host that does not classify its failures should not be
+   * forced to guess: absent means "not stated", which a client must render as
+   * neither retryable nor terminal rather than defaulting to either. Every
+   * producer written before this field existed keeps working unchanged.
+   */
+  retryable?: boolean;
 };
 
 /** Provider-neutral events emitted by a chat response stream. */
@@ -434,14 +448,18 @@ function projectChatSerializedRunError(rawError: ChatSerializedRunError): ChatSe
   //
   // Every field is read once up front, so an accessor cannot answer the
   // guards with one value and the returned frame with another.
-  const { name, message, kind, code } = error;
+  const { name, message, kind, code, retryable } = error;
   if (typeof name !== 'string' || typeof message !== 'string')
     throw new Error('Invalid chat stream event: run error name and message must be strings');
   if (!isChatAgentRunErrorKind(kind))
     throw new Error(`Invalid chat stream event: unsupported run error kind ${String(kind)}`);
   if (!isChatAgentRunErrorCode(code))
     throw new Error(`Invalid chat stream event: unsupported run error code ${String(code)}`);
-  return { name, message, kind, code };
+  // Absent is a meaning ("not stated"), so only a present non-boolean is
+  // wrong. Coercing here would invent a claim the host never made.
+  if (retryable !== undefined && typeof retryable !== 'boolean')
+    throw new Error('Invalid chat stream event: run error retryable must be a boolean');
+  return { name, message, kind, code, ...(retryable === undefined ? {} : { retryable }) };
 }
 
 /**
@@ -958,11 +976,14 @@ function toChatSerializedRunError(value: unknown): ChatSerializedRunError | unde
   if (typeof value['message'] !== 'string') return undefined;
   if (!isChatAgentRunErrorKind(value['kind'])) return undefined;
   if (!isChatAgentRunErrorCode(value['code'])) return undefined;
+  const retryable = value['retryable'];
+  if (retryable !== undefined && typeof retryable !== 'boolean') return undefined;
   return {
     name: value['name'],
     message: value['message'],
     kind: value['kind'],
     code: value['code'],
+    ...(retryable === undefined ? {} : { retryable }),
   };
 }
 
