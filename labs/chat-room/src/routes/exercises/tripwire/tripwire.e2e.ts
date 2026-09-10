@@ -56,9 +56,12 @@ test('surfaces the guardrail identity on both the event and the terminal error',
 test('the same detector under the default mode does not stop the run', async ({ page }) => {
 	await gotoHydrated(page, '/exercises/tripwire');
 
-	// The control. Same injection, same detector, `mode: 'validate'` — and a
-	// terminal shape indistinguishable from a successful run: no error, and
-	// the same `stop-condition` the benign panel reports.
+	// The control. Same injection, same detector, and NO `mode` passed — so
+	// this covers operative's own defaulting rather than an explicitly
+	// configured `'validate'`, which would leave the sentence this test is
+	// named after unverified. The result is a terminal shape indistinguishable
+	// from a successful run: no error, and the same `stop-condition` the
+	// benign panel reports.
 	await expect(page.locator(field('continued', 'finish'))).toHaveText('stop-condition');
 	await expect(page.locator(field('continued', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('continued', 'event'))).toHaveText('(none)');

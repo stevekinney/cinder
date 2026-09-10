@@ -61,6 +61,9 @@
 	type Observation = {
 		seededLengthBefore: number;
 		seededLengthAfter: number;
+		seededIdentical: boolean;
+		seededControlIdentical: boolean;
+		projectionDiffers: boolean;
 		seededHasPin: boolean;
 		seededHasFirstFiller: boolean;
 		projectionLength: number;
@@ -70,8 +73,24 @@
 		projectionRoles: string;
 	};
 
+	/**
+	 * A complete serialization of every message, used to answer "was ANY of
+	 * this rewritten?" rather than the narrower questions the individual
+	 * fields answer. Counting messages and looking for two strings would stay
+	 * green against a rewrite that preserved the length and those strings —
+	 * stripped `pinned` metadata, reordered messages, edited a message this
+	 * page never looks at.
+	 */
+	const snapshot = (messages: readonly Message[]): string => JSON.stringify(messages);
+
 	async function observe(): Promise<Observation> {
 		const before = getMessages(seeded);
+		const beforeSnapshot = snapshot(before);
+		// Positive control, taken before anything runs: two reads of an
+		// untouched history must already agree. Without it, "identical after
+		// the run" could just mean the serialization is insensitive to
+		// everything.
+		const controlSnapshot = snapshot(getMessages(seeded));
 
 		let projection: readonly Message[] = [];
 		const agent = createAgent({
@@ -101,6 +120,13 @@
 		return {
 			seededLengthBefore: before.length,
 			seededLengthAfter: after.length,
+			seededIdentical: snapshot(after) === beforeSnapshot,
+			seededControlIdentical: controlSnapshot === beforeSnapshot,
+			// Negative control: the projection IS a rewrite of the same
+			// transcript, so the comparison above must call it different. A
+			// comparison that returned "identical" for everything would pass
+			// the line above and fail this one.
+			projectionDiffers: snapshot(projection) !== beforeSnapshot,
 			seededHasPin: contains(after, PINNED_FACT),
 			seededHasFirstFiller: contains(after, FIRST_FILLER_QUESTION),
 			projectionLength: projection.length,
@@ -145,6 +171,12 @@
 				<dd data-testid="compaction-seeded-length-before">{result.seededLengthBefore}</dd>
 				<dt>length after the run</dt>
 				<dd data-testid="compaction-seeded-length-after">{result.seededLengthAfter}</dd>
+				<dt>every message byte-identical</dt>
+				<dd data-testid="compaction-seeded-identical">{result.seededIdentical}</dd>
+				<dt>control: two reads agree</dt>
+				<dd data-testid="compaction-seeded-control">{result.seededControlIdentical}</dd>
+				<dt>control: projection differs</dt>
+				<dd data-testid="compaction-projection-differs">{result.projectionDiffers}</dd>
 				<dt>pinned fact present</dt>
 				<dd data-testid="compaction-seeded-pin">{result.seededHasPin}</dd>
 				<dt>first follow-up present</dt>

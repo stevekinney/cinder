@@ -16,8 +16,8 @@
 	//
 	// The headline: "the wire tripped" and "the run stopped" are SEPARATE
 	// facts, and only one of them is what `mode: 'tripwire'` buys you. The
-	// third panel below runs the same detector over the same injection under
-	// the default `mode: 'validate'`. The detector fires there too — same
+	// third panel below runs the same detector over the same injection with
+	// no `mode` given at all. The detector fires there too — same
 	// name, same category, same 0.3 confidence — but the loop takes a step,
 	// appends a refusal, and settles `stop-condition`, which is the exact
 	// terminal shape a successful run has. A consumer that only checks
@@ -62,15 +62,18 @@
 	 * result sees. They are populated by different code paths, so displaying
 	 * one would leave the other unchecked.
 	 */
-	async function observe(
-		id: string,
-		prompt: string,
-		mode: 'tripwire' | 'validate'
-	): Promise<Observation> {
+	async function observe(id: string, prompt: string, mode?: 'tripwire'): Promise<Observation> {
 		let generateCalls = 0;
+		// `mode` is OMITTED rather than set to `'validate'` for the control
+		// panel, and that is the point of the panel: passing the default
+		// explicitly would only prove that explicitly-configured validation
+		// continues the run. Leaving it off exercises operative's own
+		// defaulting, so the panel's claim about what you get by reaching for
+		// `createGuardrails` without thinking about `mode` is the claim
+		// actually under test.
 		const guardrails = createGuardrails({
 			input: { detectors: [createPromptInjectionDetector()] },
-			mode
+			...(mode === undefined ? {} : { mode })
 		});
 		const conversation = appendUserMessage(
 			createConversationHistory({ id: `exercise-tripwire-${id}` }),
@@ -149,9 +152,9 @@
 		},
 		{
 			id: 'continued',
-			label: 'Injection, mode: validate (the default)',
+			label: 'Injection, no mode given',
 			note: 'The same detector fires — and the loop keeps going, substituting a refusal.',
-			promise: observe('continued', INJECTION, 'validate')
+			promise: observe('continued', INJECTION)
 		}
 	];
 </script>
@@ -161,7 +164,9 @@
 	<p>
 		A tripped detector and a halted run are two different things. Compare the first panel with the
 		third: same detector, same injection, same confidence — one settles <code>tripwire</code> with
-		nothing appended, the other settles <code>stop-condition</code> with a refusal in the transcript.
+		nothing appended, the other settles <code>stop-condition</code> with a refusal in the
+		transcript. The third passes no <code>mode</code> at all, so what it shows is the behavior you get
+		by default.
 	</p>
 
 	{#each panels as panel (panel.id)}

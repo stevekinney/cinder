@@ -45,12 +45,25 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 test("leaves the page's own transcript exactly as it was", async ({ page }) => {
 	await gotoHydrated(page, '/exercises/compaction');
 
+	// The whole-transcript claim, and the only assertion here that can catch
+	// a rewrite this page does not specifically look for: a reordering, a
+	// stripped `pinned` flag, an edit to a filler message. Count-and-two-
+	// strings would stay green through all three.
+	await expect(page.locator(field('seeded-identical'))).toHaveText('true');
+
+	// …which is worth nothing unless the comparison can come out both ways.
+	// The positive control reads two untouched snapshots and finds them
+	// equal; the negative control runs the same comparison against the
+	// compacted projection, which IS a rewrite of this transcript, and finds
+	// them different.
+	await expect(page.locator(field('seeded-control'))).toHaveText('true');
+	await expect(page.locator(field('projection-differs'))).toHaveText('true');
+
+	// Kept alongside the deep compare because they name WHAT survived, which
+	// is what a reader of a failure needs before the serialized diff means
+	// anything.
 	await expect(page.locator(field('seeded-length-before'))).toHaveText('14');
 	await expect(page.locator(field('seeded-length-after'))).toHaveText('14');
-
-	// Both the pinned message and the follow-up that compaction summarized
-	// away are still here. The count alone would not catch a rewrite that
-	// swapped content while preserving length.
 	await expect(page.locator(field('seeded-pin'))).toHaveText('true');
 	await expect(page.locator(field('seeded-filler'))).toHaveText('true');
 });
