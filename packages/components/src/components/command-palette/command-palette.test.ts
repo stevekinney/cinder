@@ -15,36 +15,39 @@ setupHappyDom();
 // place that releases the scroll lock/escape registration, restores focus,
 // and reports `onClose`, so tests must let a genuine `close` event reach it
 // rather than asserting those effects happened synchronously.
+//
+// Unconditionally redefined (not guarded behind `if (!HTMLDialogElement
+// .prototype.close)`) — Bun's test runner executes every matched file in one
+// shared process, so an EARLIER-loaded file's own (possibly less complete,
+// non-event-dispatching) stub would otherwise win and silently leave this
+// file's tests running against the wrong behavior. `configurable: true`
+// makes redefining safe regardless of what ran before this file.
 if (typeof HTMLDialogElement !== 'undefined') {
-  if (!HTMLDialogElement.prototype.showModal) {
-    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-      value: function () {
-        Object.defineProperty(this, 'open', {
-          value: true,
-          configurable: true,
-          writable: true,
-        });
-        this.setAttribute('open', '');
-      },
-      configurable: true,
-      writable: true,
-    });
-  }
-  if (!HTMLDialogElement.prototype.close) {
-    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
-      value: function () {
-        Object.defineProperty(this, 'open', {
-          value: false,
-          configurable: true,
-          writable: true,
-        });
-        this.removeAttribute('open');
-        this.dispatchEvent(new Event('close'));
-      },
-      configurable: true,
-      writable: true,
-    });
-  }
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    value: function () {
+      Object.defineProperty(this, 'open', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
+      this.setAttribute('open', '');
+    },
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+    value: function () {
+      Object.defineProperty(this, 'open', {
+        value: false,
+        configurable: true,
+        writable: true,
+      });
+      this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
+    },
+    configurable: true,
+    writable: true,
+  });
 }
 
 const { render, fireEvent, cleanup, waitFor } = await import('@testing-library/svelte');

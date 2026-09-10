@@ -36,36 +36,37 @@ setupHappyDom();
 // happy-dom does not implement HTMLDialogElement.showModal / close — stub
 // them (matches command-palette.test.ts's stub) so the post-hydration
 // $effect that opens the dialog doesn't throw for the open=true case.
+// Unconditionally redefined, not guarded behind `if (!HTMLDialogElement
+// .prototype.close)` — Bun's test runner executes every matched file in one
+// shared process, so an earlier-loaded file's own (possibly less complete)
+// stub would otherwise win. `configurable: true` makes redefining safe
+// regardless of load order.
 if (typeof HTMLDialogElement !== 'undefined') {
-  if (!HTMLDialogElement.prototype.showModal) {
-    Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
-      value: function () {
-        Object.defineProperty(this, 'open', {
-          value: true,
-          configurable: true,
-          writable: true,
-        });
-        this.setAttribute('open', '');
-      },
-      configurable: true,
-      writable: true,
-    });
-  }
-  if (!HTMLDialogElement.prototype.close) {
-    Object.defineProperty(HTMLDialogElement.prototype, 'close', {
-      value: function () {
-        Object.defineProperty(this, 'open', {
-          value: false,
-          configurable: true,
-          writable: true,
-        });
-        this.removeAttribute('open');
-        this.dispatchEvent(new Event('close'));
-      },
-      configurable: true,
-      writable: true,
-    });
-  }
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', {
+    value: function () {
+      Object.defineProperty(this, 'open', {
+        value: true,
+        configurable: true,
+        writable: true,
+      });
+      this.setAttribute('open', '');
+    },
+    configurable: true,
+    writable: true,
+  });
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', {
+    value: function () {
+      Object.defineProperty(this, 'open', {
+        value: false,
+        configurable: true,
+        writable: true,
+      });
+      this.removeAttribute('open');
+      this.dispatchEvent(new Event('close'));
+    },
+    configurable: true,
+    writable: true,
+  });
 }
 
 const { render } = await import('@testing-library/svelte');
@@ -97,7 +98,7 @@ describe('CommandPalette hydration', () => {
     }
   });
 
-  test('an initially-open palette still SSRs to empty markup (the CIN-426 regression)', async () => {
+  test('an initially-open palette still SSRs to empty markup (the CIN-426 regression), then mounts the real dialog on the client', async () => {
     const result = await renderThenHydrate(CommandPalette, sourcePath, {
       open: true,
       items: emptyItems,
@@ -114,6 +115,19 @@ describe('CommandPalette hydration', () => {
         w.toLowerCase().includes('hydration'),
       );
       expect(hydrationWarnings).toEqual([]);
+
+      // Per OVERLAY-POLICY.md's "Hydration tests" section, item 3: "Client
+      // hydration produces the correct overlay markup post-mount." An empty
+      // SSR pass alone does not prove the SAME hydrated instance actually
+      // mounts the dialog afterward — a hydration gate that never flips
+      // `hydrated`/`renderPanel` back on for an initially-open palette would
+      // also pass every assertion above while leaving the palette
+      // permanently empty on the client. Assert the post-hydrate DOM
+      // directly to rule that out.
+      const dialog = result.container.querySelector('dialog');
+      expect(dialog).not.toBeNull();
+      expect(dialog?.hasAttribute('open')).toBe(true);
+      expect(result.container.querySelector('[role="listbox"]')).not.toBeNull();
     } finally {
       result.cleanup();
     }

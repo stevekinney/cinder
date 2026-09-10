@@ -15,10 +15,17 @@
     border: none;
     background: transparent;
     color: var(--cinder-text-default);
-    /* The dialog's default overflow: auto produces a scroll container whose
-     box ignores the inner panel's border-radius, so child backgrounds bleed
-     past the rounded corners. Clip at the dialog level too. */
-    overflow: hidden;
+    /* `overflow: visible`, not `hidden` — the panel (below) is the clipping
+     boundary, matching modal.css's `.cinder-modal`/`.cinder-modal__panel`
+     split (see OVERLAY-POLICY.md's "Portal root" section: "its content panel
+     remains the clipping boundary for ordinary modal content"). The panel
+     already clips its own children via its own `overflow: hidden` and
+     `border-radius`, so nothing bleeds past the rounded corners. Keeping
+     `overflow: hidden` here instead would clip the panel's own
+     enter/exit `translate` motion at the dialog's box — round 1 review
+     caught this exact regression once the enter/exit motion moved from the
+     dialog itself (this element) onto the panel. */
+    overflow: visible;
     border-radius: var(--cinder-radius-lg);
     /* Anchor near the top of the viewport — top-layer elements use fixed
      positioning relative to the viewport. z-index is intentionally absent:
