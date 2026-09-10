@@ -164,13 +164,19 @@ type FocusPaint = Awaited<ReturnType<typeof focusPaint>>;
  * element can be focused and `:focus-visible`-matching before its own
  * component styles have been applied. A single rAF does not bound that
  * window; polling for the recipe's actual signature (transparent outline)
- * does, without touching the harness or raising any timeout.
+ * does, without touching the harness or changing any *config-level*
+ * timeout (`playwright.config.ts` sets neither `timeout` nor `retries`
+ * for this).
  *
- * The poll is bounded well under Playwright's 5s default `expect` timeout:
- * the settle window this guards against is normally a handful of
- * milliseconds (an effect flush), not seconds, so a genuinely broken recipe
- * should still fail fast rather than silently eating a multi-second wait
- * before surfacing.
+ * This function's own poll is intentionally a wait threshold — waiting on
+ * the target's real, observable state (its own outline actually reaching
+ * transparent), not a blind retry or a `--repeat-each`-style mask. It is
+ * bounded well under Playwright's 5s default `expect` timeout: the settle
+ * window this guards against is normally a handful of milliseconds (an
+ * effect flush), not seconds, so a genuinely broken recipe should still
+ * fail fast rather than silently eating a multi-second wait before
+ * surfacing. See PR #1530 review discussion for the fuller case against
+ * reverting this to a single immediate read.
  */
 const FOCUS_RING_SETTLE_TIMEOUT_MS = 500;
 const FOCUS_RING_SETTLE_POLL_INTERVALS_MS = [10, 25, 50, 100];
