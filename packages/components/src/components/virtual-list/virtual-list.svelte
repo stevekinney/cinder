@@ -447,11 +447,6 @@
         return;
       }
 
-      // Applied through the index rather than the raw offset: under `dynamicSize`
-      // the offsets table is still all estimates at mount, so the saved pixel
-      // offset points at a different row than it did when saved. Scrolling to the
-      // index lands on the row the reader was actually looking at, and the settle
-      // loop follows it as the rows above are measured.
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the
         // row's start edge and would lose where the reader was WITHIN a tall row —
@@ -461,35 +456,56 @@
         // position of the right row. That is the correct starting point: the
         // measurement-correction pass then holds this row still as the rows above it
         // are measured, which is precisely the job it already does.
-        const target =
-          locateRowStartOffset(saved.startIndex) + Math.max(0, saved.offsetWithinRow ?? 0);
-        writeScrollOffset(element, target, 'auto');
+        //
+        // The remainder is clamped to the row's CURRENT size. While that size is
+        // still an estimate a larger saved remainder would overshoot into the next
+        // row, and the correction pass would then hold the wrong row still.
+        const rowStart = locateRowStartOffset(saved.startIndex);
+        const rowSize = Math.max(
+          0,
+          locateRowStartOffset(saved.startIndex + 1) - rowStart || resolvedItemHeight,
+        );
+        const withinRow = Math.min(Math.max(0, saved.offsetWithinRow ?? 0), rowSize);
+        writeScrollOffset(element, rowStart + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       } else {
         writeScrollOffset(element, saved.scrollOffset, 'auto');
         scrollOffset = readScrollOffset(element);
       }
     });
+  });
+
+  /**
+   * Saves the position on teardown.
+   *
+   * Separate from the restore effect, and depending on nothing but the id. An
+   * `$effect` cleanup runs on INVALIDATION as well as teardown, so folding this into
+   * an effect that tracks the item count meant every append ran the saver and then
+   * re-ran the effect — which, already having restored, returned early and registered
+   * no new cleanup. After the first append the teardown save was simply gone.
+   */
+  $effect(() => {
+    const id = scrollRestorationId?.trim();
+    if (!id) return;
 
     return () => {
-      const storageAtTeardown = resolveRestorationStorage();
-      if (!storageAtTeardown) return;
+      const storage = resolveRestorationStorage();
+      if (!storage) return;
       untrack(() => {
         // Nothing to remember about an empty list, and writing one would overwrite a
         // real position with a placeholder if the component tears down mid-load.
         if (items.length === 0) return;
-        saveScrollPosition(storageAtTeardown, id, {
+        // Resolved once, so the index and its remainder cannot describe different rows.
+        const anchorIndex = resolveAnchorIndexAtOffset(scrollOffset);
+        saveScrollPosition(storage, id, {
           scrollOffset,
           // Derived from the live offset, not from the rendered window. The window's
           // first index carries overscan, and adding it back does not recover the
           // anchor either: near the top the leading overscan is clipped against 0,
           // so `startIndex + overscan` points several rows PAST the reader instead
           // of at them. The offset knows where they actually are.
-          startIndex: resolveAnchorIndexAtOffset(scrollOffset),
-          offsetWithinRow: Math.max(
-            0,
-            scrollOffset - locateRowStartOffset(resolveAnchorIndexAtOffset(scrollOffset)),
-          ),
+          startIndex: anchorIndex,
+          offsetWithinRow: Math.max(0, scrollOffset - locateRowStartOffset(anchorIndex)),
         });
       });
     };

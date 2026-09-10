@@ -2229,6 +2229,47 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('still saves on teardown after the list has grown', async () => {
+    // An $effect cleanup runs on INVALIDATION as well as teardown. With the saver
+    // folded into an effect that tracks the item count, the first append ran the
+    // cleanup and then re-ran the effect — which, already having restored, returned
+    // early and registered no new cleanup. From then on nothing saved at all.
+    const storage = createStorage();
+    await withStorage(storage, async () => {
+      const props = (count: number) => ({
+        items: makeItems(count),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      const { container, rerender, unmount } = render(VirtualList, props(1_000));
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      list.scrollTop = 4_000;
+      await fireEvent.scroll(list);
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      );
+
+      // The list grows, which is what invalidated the effect.
+      await rerender(props(1_010));
+      await tick();
+
+      unmount();
+      await tick();
+
+      const raw = storage.entries.get('cinder:virtual-list:feed');
+      expect(raw).toBeDefined();
+      expect(JSON.parse(raw as string).startIndex).toBe(200);
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {
