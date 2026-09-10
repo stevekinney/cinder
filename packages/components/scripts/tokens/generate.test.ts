@@ -2698,6 +2698,14 @@ describe('CIN-242: complete color values only', () => {
       // hid a real bypass: a `calc()` weight in front of the color.
       'color-mix(in oklch, calc(var(--weight) * 1%) var(--cinder-border-ink), transparent)',
       'color-mix(in oklch, clamp(10%, 20%, 30%) var(--cinder-polarity-ink), transparent)',
+      // A CSS `<percentage-token>` is a `<number-token>` and `%`, and a number
+      // may be signed or carry an exponent. A digits-and-dots pattern rejects
+      // three of these four.
+      'color-mix(in oklch, var(--cinder-border-ink) +40%, transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) -0%, transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) .5%, transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) 4e1%, transparent)',
+      'color-mix(in oklch, +40% var(--cinder-border-ink), transparent)',
     ];
     for (const recipe of accepted) {
       expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
@@ -2727,7 +2735,7 @@ describe('CIN-242: complete color values only', () => {
     // and `var()` both read as "a complete color" to the old discriminator,
     // because `findBareColorComponents` returns undefined for any function it
     // does not recognise.
-    for (const weight of ['calc(var(--w) * 1%)', 'var(--weight)', '30%']) {
+    for (const weight of ['calc(var(--w) * 1%)', 'var(--weight)', '30%', '+40%', '4e1%']) {
       expect(
         () =>
           serializeEntryValue(

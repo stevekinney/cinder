@@ -722,9 +722,17 @@ function splitTopLevelTokens(value: string): string[] {
   return tokens;
 }
 
+/**
+ * A CSS `<percentage-token>`: a `<number-token>` followed by `%`. The number may
+ * be signed and may carry an exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are
+ * all valid weights. A digits-and-dots pattern misses three of those four and
+ * rejects a recipe the browser accepts.
+ */
+const PERCENTAGE_LITERAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%$/;
+
 /** A token that can only be a `<percentage>`: a literal, or a math function. */
 function isUnambiguousPercentage(token: string): boolean {
-  if (/^[\d.]+%$/.test(token)) return true;
+  if (PERCENTAGE_LITERAL.test(token)) return true;
   const call = /^([a-zA-Z-]+)\(/.exec(token);
   return call !== null && PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
 }
