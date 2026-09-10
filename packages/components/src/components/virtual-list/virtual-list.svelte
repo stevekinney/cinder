@@ -440,6 +440,17 @@
 
       restoredId = id;
 
+      // Nothing queued for the old view may land after this. Two things can be in
+      // flight: a correction the growth effect queued to preserve the pre-prepend
+      // viewport — the saved row often arrives IN that prepended page — and a settle
+      // loop from a `scrollToIndex` started for a collection this component has
+      // since been reused away from. Either would write over the restored position
+      // a moment later, leaving the reader where they were while loading rather
+      // than where they left off.
+      pendingScrollTarget = null;
+      pendingReanchor = null;
+      retireSettleLoop();
+
       if (dynamicSize) {
         // Written directly rather than through `scrollToIndex`, which lands on the
         // row's start edge and would lose where the reader was WITHIN a tall row —

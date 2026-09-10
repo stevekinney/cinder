@@ -2311,6 +2311,55 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('restores the saved row when it arrives in a PREPENDED page', async () => {
+    // The saved row usually arrives in a page of older history, and a prepend queues
+    // its own correction to hold the pre-prepend viewport. That correction is applied
+    // by a later effect, so without retiring it the reader lands back on the row they
+    // were watching while loading rather than the one they left off at.
+    //
+    // The keys must form a genuine prepend — the previous sequence a SUFFIX of the
+    // next — or the growth classifies as `replaced` and queues no correction at all,
+    // which is what an earlier version of this test accidentally exercised.
+    const buildItems = (count: number, offset: number) =>
+      Array.from({ length: count }, (_, index) => ({ id: `key-${index - offset}` }));
+
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 100,
+        startIndex: 5,
+        offsetWithinRow: 0,
+        anchorKey: 'key--25',
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const props = (count: number, offset: number) => ({
+        items: buildItems(count, offset),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        getKey: (item: unknown) => (item as { id: string }).id,
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      // key-0 .. key-19. The saved `key--25` is not here yet.
+      const { container, rerender } = render(VirtualList, props(20, 0));
+      await tick();
+
+      // 30 older rows arrive at the front: key--30 .. key-19. The previous sequence
+      // is now the suffix, so this is a true prepend, and `key--25` sits at index 5.
+      await rerender(props(50, 30));
+      await waitFor(() =>
+        expect(renderedRows(container).some((node) => node.dataset['index'] === '5')).toBe(true),
+      );
+      // Not held at the pre-prepend view, where key-0 now lives at index 30.
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '30')).toBe(false);
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {
