@@ -14,7 +14,15 @@
     border-block-end: 1px solid var(--cinder-border-muted);
     background: var(--cinder-surface-raised);
   }
-  .cinder-find-bar .cinder-form-field {
+  /* Direct child, not a descendant selector: FindBar's own FormField renders
+     `.cinder-form-field` as a direct child of `.cinder-find-bar`, but since
+     CIN-511 the Input inside it *also* renders its own nested
+     `.cinder-form-field` (Input always frames itself when it has field
+     context now, with label/description/error simply absent). A descendant
+     selector would match that inner frame too, applying `flex`/
+     `min-inline-size` to it a second time inside the outer frame's own flex
+     column and distorting the row's layout. */
+  .cinder-find-bar > .cinder-form-field {
     flex: 1 1 12rem;
     min-inline-size: min(12rem, 100%);
   }
