@@ -123,6 +123,26 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	await expect(page.locator(field('continued', 'last-nonempty'))).toHaveText('true');
 });
 
+test('lets a benign request through under the default mode too', async ({ page }) => {
+	await gotoHydrated(page, '/exercises/tripwire');
+
+	// The fourth corner of {injection, benign} × {tripwire, default}, and the
+	// control that keeps the other three honest. Without it, a guardrail that
+	// refused EVERYTHING passes every assertion in this file: the only benign
+	// panel would be the one running in tripwire mode, and the only
+	// default-mode panel would be the one that is supposed to be refused. So
+	// "the default path refused the injection" would not distinguish a working
+	// detector from a broken one.
+	await expect(page.locator(field('permitted', 'finish'))).toHaveText('stop-condition');
+	await expect(page.locator(field('permitted', 'generate-calls'))).toHaveText('1');
+	await expect(page.locator(field('permitted', 'substituted'))).toHaveText('false');
+	await expect(page.locator(field('permitted', 'transcript-roles'))).toHaveText('user, assistant');
+	await expect(page.locator(field('permitted', 'prompt-seen'))).toHaveText(
+		'What is the capital of France?'
+	);
+	await expect(page.locator(field('permitted', 'event-count'))).toHaveText('0');
+});
+
 test('leaves a benign request alone', async ({ page }) => {
 	await gotoHydrated(page, '/exercises/tripwire');
 

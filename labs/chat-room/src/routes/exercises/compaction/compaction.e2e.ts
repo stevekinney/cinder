@@ -87,6 +87,19 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// the summarized history backwards.
 	await expect(page.locator(field('chunks-chronological'))).toHaveText('true');
 
+	// No empty chunk. That predicate accepts one trivially — `every` on an
+	// empty array is true and `Math.min()` of nothing is `Infinity`, which
+	// beats any previous chunk's maximum — so the guard needs its own
+	// assertion. An empty chunk is a wasted summarizer call and a meaningless
+	// summary in the model's context.
+	await expect(page.locator(field('empty-chunks'))).toHaveText('0');
+
+	// And no summary concatenated twice. Membership, the distinct-marker
+	// count, and the position lookups all survive a duplicated result while
+	// the model reads the same summarized context twice — the input-side
+	// duplicate counter says nothing about this side.
+	await expect(page.locator(field('marker-once'))).toHaveText('true');
+
 	// No message summarized twice. Distinct-id counting hides a repeat: the
 	// totals and the partition stay correct while the summary double-counts
 	// context and a real summarizer bills for the redundant call.

@@ -103,6 +103,9 @@
 		summariesInOrder: boolean;
 		chunkRanges: string;
 		chunksChronological: boolean;
+		emptyChunks: number;
+		everyMarkerOnce: boolean;
+		markerOccurrences: string;
 		generateCalls: number;
 	};
 
@@ -258,6 +261,13 @@
 			.map((message) => JSON.stringify(message.content))
 			.join('\n');
 		const markerPositions = markers.map((marker) => summaryText.indexOf(marker));
+		// Occurrences, not membership. A callback result concatenated twice
+		// leaves membership true, the distinct-marker count unchanged, and
+		// `indexOf` pointing at the first copy — while the model reads the same
+		// summarized context twice. The input-side duplicate counter says
+		// nothing about this; it is the same failure on the other side.
+		const markerCounts = markers.map((marker) => summaryText.split(marker).length - 1);
+		const everyMarkerOnce = markerCounts.length > 0 && markerCounts.every((count) => count === 1);
 		const summaryOrder = markers
 			.map((marker, index) => ({ call: index + 1, at: markerPositions[index] }))
 			.filter((entry) => entry.at >= 0)
@@ -278,15 +288,24 @@
 			})
 			.join(', ');
 		// Ascending within each chunk, and each chunk strictly after the last.
+		//
+		// `positions.length > 0` is load-bearing, not defensive: without it an
+		// EMPTY chunk passes trivially, because `every` on an empty array is
+		// true and `Math.min()` of nothing is `Infinity`, which beats any
+		// previous chunk's maximum. An empty chunk means a wasted summarizer
+		// call and a meaningless summary in the model's context, so it is also
+		// counted on its own line.
 		const chunksChronological =
 			chunkSeedPositions.length > 0 &&
 			chunkSeedPositions.every(
 				(positions, chunk) =>
+					positions.length > 0 &&
 					positions.every(
 						(position, index) => position >= 0 && (index === 0 || position > positions[index - 1])
 					) &&
 					(chunk === 0 || Math.min(...positions) > Math.max(...chunkSeedPositions[chunk - 1]))
 			);
+		const emptyChunks = chunkSeedPositions.filter((positions) => positions.length === 0).length;
 
 		const pinnedInProjection = projection.find((message) =>
 			JSON.stringify(message.content).includes(PINNED_FACT)
@@ -350,6 +369,9 @@
 			summariesInOrder,
 			chunkRanges,
 			chunksChronological,
+			emptyChunks,
+			everyMarkerOnce,
+			markerOccurrences: markerCounts.join(', '),
 			generateCalls
 		};
 	}
@@ -410,6 +432,12 @@
 				<dd data-testid="compaction-chunk-ranges">{result.chunkRanges}</dd>
 				<dt>chunks fed in chronological order</dt>
 				<dd data-testid="compaction-chunks-chronological">{result.chunksChronological}</dd>
+				<dt>empty chunks handed to <code>summarize</code></dt>
+				<dd data-testid="compaction-empty-chunks">{result.emptyChunks}</dd>
+				<dt>times each summary appears</dt>
+				<dd data-testid="compaction-marker-occurrences">{result.markerOccurrences}</dd>
+				<dt>every summary appears exactly once</dt>
+				<dd data-testid="compaction-marker-once">{result.everyMarkerOnce}</dd>
 				<dt>messages summarized more than once</dt>
 				<dd data-testid="compaction-duplicate-inputs">{result.duplicateSummarizerInputs}</dd>
 				<dt><code>generate</code> calls</dt>

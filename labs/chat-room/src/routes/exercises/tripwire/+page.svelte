@@ -30,6 +30,13 @@
 	// So the tripped panel asserts termination in the numbers, not the prose:
 	// zero generate calls, zero steps, and a transcript that never grew.
 	//
+	// Four panels rather than three, because two of them are controls for each
+	// other. The prompt varies against the mode — {injection, benign} ×
+	// {tripwire, default} — and without the benign/default corner, a guardrail
+	// that refused EVERYTHING would satisfy every assertion here: the only
+	// benign panel would be the one running in tripwire mode, and the only
+	// default-mode panel would be the one that is supposed to be refused.
+	//
 	// Everything is local: the detector is pattern-based, and `generate` is a
 	// function that returns a fixed string. No network, no key.
 
@@ -236,6 +243,12 @@
 			label: 'Injection, no mode given',
 			note: 'The same detector fires — and the loop keeps going, substituting a refusal.',
 			promise: observe('continued', INJECTION)
+		},
+		{
+			id: 'permitted',
+			label: 'Benign prompt, no mode given',
+			note: 'The fourth corner: the default path is not simply refusing everything.',
+			promise: observe('permitted', BENIGN)
 		}
 	];
 </script>
