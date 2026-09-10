@@ -48,6 +48,8 @@
 		errorIdentity: string;
 		eventIdentity: string;
 		eventStep: string;
+		eventCount: number;
+		firstMessage: string;
 		identityMatchesEvent: boolean;
 		transcriptLength: number;
 		transcriptRoles: string;
@@ -146,7 +148,12 @@
 		// `confidence` while every assertion stayed green.
 		let eventIdentity = '(none)';
 		let eventStep = '(none)';
+		// Counted, not just captured. A listener that only keeps the last
+		// event cannot tell one emission from two with the same identity, and
+		// a consumer wired to this would run its tripwire handling twice.
+		let eventCount = 0;
 		activeRun.addEventListener('run.tripwire', (event) => {
+			eventCount += 1;
 			eventIdentity = identityOf(event);
 			eventStep = String(event.step);
 		});
@@ -178,6 +185,17 @@
 			errorIdentity: tripped === undefined ? '(none)' : identityOf(tripped),
 			eventIdentity,
 			eventStep,
+			eventCount,
+			// The guarded panels short-circuit generation, so the generator's
+			// view cannot vouch for their prompt. This is the transcript's own
+			// answer: a `prepareStep` that rewrote or replaced the injection
+			// before halting would leave every count, role, and identity
+			// assertion green while the comments claimed the seeded message
+			// was still there.
+			firstMessage: ((): string => {
+				const content = messages.at(0)?.content;
+				return typeof content === 'string' ? content : JSON.stringify(content);
+			})(),
 			identityMatchesEvent: tripped !== undefined && identityOf(tripped) === eventIdentity,
 			transcriptLength: messages.length,
 			// Structure, not just the tail. A guardrail that appended an extra
@@ -268,6 +286,10 @@
 					<dd data-testid="tripwire-{panel.id}-last-nonempty">
 						{observation.lastMessageNonEmpty}
 					</dd>
+					<dt><code>run.tripwire</code> emissions</dt>
+					<dd data-testid="tripwire-{panel.id}-event-count">{observation.eventCount}</dd>
+					<dt>first message</dt>
+					<dd data-testid="tripwire-{panel.id}-first-message">{observation.firstMessage}</dd>
 					<dt>prompt <code>generate</code> received</dt>
 					<dd data-testid="tripwire-{panel.id}-prompt-seen">{observation.promptSeenByGenerate}</dd>
 					<dt>model's answer replaced</dt>

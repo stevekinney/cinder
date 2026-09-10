@@ -59,6 +59,18 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// messages, in the order they were seeded.
 	await expect(page.locator(field('projection-order'))).toHaveText('summary, 0, 1, 12, 13');
 
+	// Exactly one generation, and the projection above is the one IT received.
+	// The page captures on the first call and never overwrites, so a second
+	// provider call would otherwise leave no trace.
+	await expect(page.locator(field('generate-calls'))).toHaveText('1');
+
+	// Every chunk's summary reached the model. Compaction summarizes in
+	// chunks, and with each returning the same text a discarded result would
+	// be invisible — a summary-shaped message would still be there and every
+	// assertion above would hold. Asserted as a boolean, not a count: how many
+	// chunks compaction chose is an internal, whether it dropped one is not.
+	await expect(page.locator(field('summaries-survived'))).toHaveText('true');
+
 	// "Unchanged" above means role, content, and metadata — the whole of what
 	// survives. Message IDS are reassigned by compaction, which is why the
 	// comparison is by shape rather than by id, and why anything keyed to a
@@ -70,6 +82,12 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	// compaction — the exact failure the preserve policy exists to prevent,
 	// arriving one round later than anyone would look for it.
 	await expect(page.locator(field('pinned-metadata'))).toHaveText('true');
+
+	// And the other half of that sentence, made load-bearing: ids really are
+	// reassigned. If compaction started preserving them, every assertion above
+	// would stay green while this route's prose taught a contract that had
+	// changed underneath it.
+	await expect(page.locator(field('id-overlap'))).toHaveText('0');
 
 	// The pinned message is the second of fourteen — far outside
 	// `retainRecentMessages: 2`. It survives because the preserve policy

@@ -86,6 +86,10 @@
 		inNeitherBucket: number;
 		partitionExact: boolean;
 		pinnedMetadataSurvives: boolean;
+		carriedIdOverlap: number;
+		allSummariesReachProjection: boolean;
+		summaryChunks: string;
+		generateCalls: number;
 	};
 
 	/**
@@ -120,14 +124,28 @@
 		// messages make the linear scans free.
 		const seededIds = before.map((message) => message.id);
 		const seenIds: string[] = [];
+		// One distinct marker per call. Compaction summarizes in chunks, and
+		// with every chunk returning the same text a discarded result would be
+		// invisible — the projection would still contain a summary-shaped
+		// message and every other assertion would hold. Distinct markers make
+		// "every chunk's summary survived" checkable without pinning HOW MANY
+		// chunks there were, which is conversationalist's business.
+		const markers: string[] = [];
 
 		let projection: readonly Message[] = [];
+		// Captured on the FIRST call and not overwritten. The panel's claim is
+		// about the projection the first generation received; assigning on
+		// every call would quietly show a later one, and a second provider
+		// call would leave no trace at all — which is why the count is
+		// rendered and asserted alongside it.
+		let generateCalls = 0;
 		const agent = createAgent({
 			generate: async (context) => {
+				generateCalls += 1;
 				// The model-visible projection, read at the only moment it
 				// exists as such: inside the generate call, after the loop has
 				// applied compaction for this step.
-				projection = context.conversation.getMessages();
+				if (generateCalls === 1) projection = context.conversation.getMessages();
 				return { content: 'Understood.', toolCalls: [] };
 			},
 			toolbox: createToolbox([]),
@@ -136,7 +154,9 @@
 				onCompact: createContextCompactor({
 					summarize: async (messages) => {
 						for (const message of messages) seenIds.push(message.id);
-						return `[summary of ${messages.length} messages]`;
+						const marker = `[summary ${markers.length + 1} of ${messages.length} messages]`;
+						markers.push(marker);
+						return marker;
 					},
 					retainRecentMessages: 2
 				})
@@ -154,7 +174,7 @@
 		// from the seed", and hard-coding the first half would make the
 		// invariant agree with itself.
 		const injectedSummaries = projection.filter((message) =>
-			JSON.stringify(message.content).includes('[summary of')
+			JSON.stringify(message.content).includes('[summary ')
 		).length;
 		const distinct = (ids: readonly string[]): string[] =>
 			ids.filter((id, index) => ids.indexOf(id) === index);
@@ -245,7 +265,21 @@
 				carriedVerbatim + injectedSummaries === projection.length,
 			// The reason `metadata` is in the shape above, stated on its own
 			// so a failure names the cause rather than a shape mismatch.
-			pinnedMetadataSurvives: pinnedInProjection?.metadata?.pinned === true
+			pinnedMetadataSurvives: pinnedInProjection?.metadata?.pinned === true,
+			// Makes the page's claim that ids are reassigned load-bearing. If
+			// compaction started preserving them, every other field here would
+			// stay green while the prose taught a contract that had changed.
+			carriedIdOverlap: projection.filter((message) => seededIds.includes(message.id)).length,
+			// Every chunk's summary reached the model, asserted as a boolean
+			// rather than as a count — how many chunks compaction used is an
+			// internal, whether it dropped one is not.
+			allSummariesReachProjection:
+				markers.length > 0 &&
+				markers.every((marker) =>
+					projection.some((message) => JSON.stringify(message.content).includes(marker))
+				),
+			summaryChunks: `${markers.filter((marker) => projection.some((message) => JSON.stringify(message.content).includes(marker))).length} of ${markers.length}`,
+			generateCalls
 		};
 	}
 
@@ -289,6 +323,16 @@
 				<dd data-testid="compaction-partition">{result.partitionExact}</dd>
 				<dt><code>pinned</code> metadata survives</dt>
 				<dd data-testid="compaction-pinned-metadata">{result.pinnedMetadataSurvives}</dd>
+				<dt>seed ids reused in the projection</dt>
+				<dd data-testid="compaction-id-overlap">{result.carriedIdOverlap}</dd>
+				<dt>chunk summaries reaching the model</dt>
+				<dd data-testid="compaction-summary-chunks">{result.summaryChunks}</dd>
+				<dt>every chunk summary survived</dt>
+				<dd data-testid="compaction-summaries-survived">
+					{result.allSummariesReachProjection}
+				</dd>
+				<dt><code>generate</code> calls</dt>
+				<dd data-testid="compaction-generate-calls">{result.generateCalls}</dd>
 				<dt>pinned fact present</dt>
 				<dd data-testid="compaction-projection-pin">{result.projectionHasPin}</dd>
 				<dt>first follow-up present</dt>
