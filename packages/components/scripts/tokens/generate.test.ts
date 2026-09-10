@@ -2686,6 +2686,14 @@ describe('CIN-242: complete color values only', () => {
       'color-mix(in oklch, 30% var(--cinder-border-ink), transparent)',
       'color-mix(in oklch, light-dark(oklch(0% 0 0), oklch(100% 0 0)) 40%, transparent)',
       'color-mix(in oklch, var(--cinder-polarity-ink), transparent clamp(10%, 20%, 30%))',
+      // A weight supplied straight through a custom property, with the color
+      // spelled as a function rather than a `var()`. The grammar says a
+      // two-token argument is `<color> <percentage>` in some order, so the
+      // token that is not a complete color is the weight -- whatever it looks
+      // like.
+      'color-mix(in oklch, light-dark(oklch(0% 0 0), oklch(100% 0 0)) var(--weight), transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) var(--weight), transparent)',
+      'color-mix(in oklch, var(--weight) var(--cinder-border-ink), transparent)',
     ];
     for (const recipe of accepted) {
       expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
@@ -2701,6 +2709,12 @@ describe('CIN-242: complete color values only', () => {
     expect(() =>
       serializeEntryValue(
         recipeEntry('color-mix(in oklch, 0% 0 0 calc(var(--weight) * 1%), transparent)'),
+        new Map(),
+      ),
+    ).toThrow(/bare component list/);
+    expect(() =>
+      serializeEntryValue(
+        recipeEntry('color-mix(in oklch, 0% 0 0 var(--weight), transparent)'),
         new Map(),
       ),
     ).toThrow(/bare component list/);

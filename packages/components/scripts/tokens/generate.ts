@@ -679,7 +679,6 @@ function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry
  */
 const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
 
-/** Split on commas at paren depth zero, so nested function arguments stay whole. */
 /**
  * CSS math functions, which can stand in for the `<percentage>` mix weight in a
  * `color-mix()` argument. `color-mix()` accepts a general `<percentage>`, not
@@ -727,6 +726,24 @@ function splitTopLevelTokens(value: string): string[] {
 function stripMixPercentage(argument: string): string {
   const tokens = splitTopLevelTokens(argument);
   if (tokens.length < 2) return argument.trim();
+
+  // A `color-mix()` argument is `<color> && <percentage>?`, so with exactly two
+  // top-level tokens one of them IS the weight, whatever it is spelled as --
+  // `40%`, `calc(var(--w) * 1%)`, or a bare `var(--weight)`. Whichever token is
+  // not itself a complete color is the weight. If both are complete colors the
+  // pair is ambiguous, but then there is nothing to flag either way.
+  if (tokens.length === 2) {
+    const [first = '', second = ''] = tokens;
+    const firstIsColor = findBareColorComponents(first) === undefined;
+    const secondIsColor = findBareColorComponents(second) === undefined;
+    if (firstIsColor !== secondIsColor) return firstIsColor ? first : second;
+    if (firstIsColor && secondIsColor) return first;
+    return argument.trim();
+  }
+
+  // Three or more tokens is a component list with a weight somewhere in it, and
+  // the list is exactly what has to stay exposed. Drop only what is
+  // unambiguously a percentage.
   const remaining = tokens.filter((token) => {
     if (/^[\d.]+%$/.test(token)) return false;
     const call = /^([a-zA-Z-]+)\(/.exec(token);
@@ -735,6 +752,7 @@ function stripMixPercentage(argument: string): string {
   return remaining.length === 0 ? argument.trim() : remaining.join(' ');
 }
 
+/** Split on commas at paren depth zero, so nested function arguments stay whole. */
 function splitTopLevelArguments(value: string): string[] {
   const parts: string[] = [];
   let depth = 0;

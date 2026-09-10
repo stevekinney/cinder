@@ -189,8 +189,10 @@ from whatever surface it happened to sit on, which is the opposite of what a
 status color is for. `check-token-contrast.test.ts` enforces it — those four are
 read through the strict reader that throws on any alpha channel.
 
-`--cinder-status-neutral-border` is deliberately **not** in that list. It is a
-straight alias of `--cinder-border` and always has been, so it became
-translucent along with it. That is correct: the neutral status tier is neutral
+Two neutral borders wearing another name are deliberately **not** in that list.
+`--cinder-status-neutral-border` is a straight alias of `--cinder-border` and
+always has been, and `--cinder-border-inverse`'s dark arm is a straight alias of
+`--cinder-border-strong` (its light arm is `transparent`, so only one arm is
+affected). Both became translucent along with the tier they alias. That is correct: the neutral status tier is neutral
 structure wearing a status name, not a hue that needs protecting. Its contrast
 is measured composited over the soft neutral background in the same file.
