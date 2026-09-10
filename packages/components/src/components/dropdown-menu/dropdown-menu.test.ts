@@ -241,17 +241,19 @@ describe('DropdownMenu', () => {
   // popover visibly open even though `setOpen(false)` already ran.
   test('the native-popover branch registers a non-cancelling handler, not dismissMenu (review finding)', () => {
     expect(dropdownMenuSource).toContain(
-      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler(() => {',
+      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler((event) => {',
     );
-    // It must never call preventDefault()/stopPropagation() — doing so would
-    // cancel the browser's own Escape close-request for the top-layer
-    // popover. Only dismissMenu (the non-popover fallback's handler) may.
+    // It must never call preventDefault() — doing so would cancel the
+    // browser's own Escape close-request for the top-layer popover. Only
+    // dismissMenu (the non-popover fallback's handler) may. stopPropagation()
+    // is fine (and required — see the "stops propagation" test below):
+    // propagation and the native close-request default action are
+    // independent.
     const popoverBranch = dropdownMenuSource.slice(
       dropdownMenuSource.indexOf('if (!context.supportsPopover || !context.isOpen) return;'),
       dropdownMenuSource.indexOf('function handleKeydown'),
     );
     expect(popoverBranch).not.toContain('.preventDefault(');
-    expect(popoverBranch).not.toContain('.stopPropagation(');
   });
 });
 
@@ -344,5 +346,56 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
     expect(escapeEvent.defaultPrevented).toBe(false);
     expect(document.activeElement).toBe(trigger);
     outside.remove();
+  });
+
+  test('Escape stops propagation on the native-popover branch without cancelling native close (review finding)', async () => {
+    // Regression: the no-op stack handler left the event entirely
+    // unconsumed, so Escape continued to a focused input's own handler or a
+    // page-level listener while the browser also dismissed the dropdown —
+    // defeating the shared stack's topmost-overlay-only arbitration.
+    // stopPropagation() is independent of the browser's native popover
+    // close-request (that's governed by preventDefault(), which this branch
+    // still must not call).
+    const { container } = renderFixture();
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const openToggleEvent = new window.Event('toggle');
+    Object.defineProperty(openToggleEvent, 'newState', { value: 'open' });
+    menu.dispatchEvent(openToggleEvent);
+    await tick();
+
+    // A focused input elsewhere on the page, with its own Escape handling —
+    // the scenario the finding describes (e.g. a search field that clears
+    // itself on Escape). Dispatch on it directly so the event actually
+    // bubbles up through an ancestor, rather than dispatching on `window`
+    // itself (which has no bubble path to observe).
+    const outsideInput = document.createElement('input');
+    document.body.append(outsideInput);
+    outsideInput.focus();
+    expect(document.activeElement).toBe(outsideInput);
+
+    let outerHandlerFired = false;
+    const outerHandler = () => {
+      outerHandlerFired = true;
+    };
+    document.body.addEventListener('keydown', outerHandler);
+
+    try {
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      outsideInput.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(false);
+      expect(outerHandlerFired).toBe(false);
+    } finally {
+      document.body.removeEventListener('keydown', outerHandler);
+      outsideInput.remove();
+    }
   });
 });
