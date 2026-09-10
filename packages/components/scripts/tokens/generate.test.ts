@@ -2694,6 +2694,10 @@ describe('CIN-242: complete color values only', () => {
       'color-mix(in oklch, light-dark(oklch(0% 0 0), oklch(100% 0 0)) var(--weight), transparent)',
       'color-mix(in oklch, var(--cinder-border-ink) var(--weight), transparent)',
       'color-mix(in oklch, var(--weight) var(--cinder-border-ink), transparent)',
+      // Weight FIRST, computed. The mirror of the case above, and the one that
+      // hid a real bypass: a `calc()` weight in front of the color.
+      'color-mix(in oklch, calc(var(--weight) * 1%) var(--cinder-border-ink), transparent)',
+      'color-mix(in oklch, clamp(10%, 20%, 30%) var(--cinder-polarity-ink), transparent)',
     ];
     for (const recipe of accepted) {
       expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
@@ -2718,6 +2722,21 @@ describe('CIN-242: complete color values only', () => {
         new Map(),
       ),
     ).toThrow(/bare component list/);
+    // The bypass itself: a weight BEFORE the color meant the color was
+    // discarded as the weight, so the triplet was never looked at. `calc()`
+    // and `var()` both read as "a complete color" to the old discriminator,
+    // because `findBareColorComponents` returns undefined for any function it
+    // does not recognise.
+    for (const weight of ['calc(var(--w) * 1%)', 'var(--weight)', '30%']) {
+      expect(
+        () =>
+          serializeEntryValue(
+            recipeEntry(`color-mix(in oklch, ${weight} light-dark(100% 0 0, 0% 0 0), transparent)`),
+            new Map(),
+          ),
+        `a ${weight} weight before the color must not hide the triplet`,
+      ).toThrow(/bare component list/);
+    }
   });
 
   test('leaves non-color tokens alone -- a shadow recipe is a component list by nature', () => {

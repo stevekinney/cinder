@@ -108,26 +108,30 @@ A stacked pair would have produced a single row at their combined weight. The
 edge is 2px of two different weights, which is what it was before the tiers were
 composed — both layers simply track the surface now.
 
-Thirteen sites are a real area rather than a hairline. All thirteen now carry
-their tier's alpha over whatever surface is behind them. Two of them are outside
-`@lostgradient/cinder` — Chat's busy dot and the playground's stage dot — which
-is the third way this list was wrong before: the sweep stayed in one package.
+Fourteen sites are a real area rather than a hairline. All fourteen now carry
+their tier's alpha over whatever surface is behind them, and each of the three
+times this list was wrong, it was wrong the same way — the sweep only found
+sites shaped like the ones it had already found. Two of the fourteen are outside
+`@lostgradient/cinder` (Chat's busy dot, the playground's stage dot), and two
+never appear in a stylesheet at all: the Toggle track pair reaches the page as a
+corpus alias, through the generated token stylesheet.
 
-| site                            | tier             | how it is painted                                |
-| ------------------------------- | ---------------- | ------------------------------------------------ |
-| `toggle` track (light arm)      | `border.muted`   | the full track                                   |
-| `parameter-field` rail          | `border.muted`   | 3px wide, full body height                       |
-| `mega-menu` indicator track     | `border.muted`   | 2px tall                                         |
-| `media-controls` progress track | `border.control` | 4px tall                                         |
-| `drawer` drag-handle pill       | `border.control` | 40 × 4px                                         |
-| `slider` tick                   | `border.control` | 2 × 8px                                          |
-| `color-field` empty hatch       | `border.control` | a 6px `linear-gradient` repeat across the swatch |
-| `feed-event` dot                | `border.strong`  | 8 × 8px                                          |
-| `status-dot` neutral indicator  | `border.strong`  | `--cinder-status-dot-size`                       |
-| `rating` empty star             | `border.strong`  | a 1.5rem masked glyph                            |
-| `resizable-panels` grip         | `border.strong`  | `color:`, so the glyph paints in the tier        |
-| `entry-frame` busy dot (Chat)   | `border.control` | 8 × 8px                                          |
-| `dx-stage` dot (playground)     | `border.strong`  | 7 × 7px                                          |
+| site                             | tier             | how it is painted                                |
+| -------------------------------- | ---------------- | ------------------------------------------------ |
+| `toggle` track (light arm)       | `border.muted`   | the full track                                   |
+| `toggle` track hover (light arm) | `border.control` | the full track                                   |
+| `parameter-field` rail           | `border.muted`   | 3px wide, full body height                       |
+| `mega-menu` indicator track      | `border.muted`   | 2px tall                                         |
+| `media-controls` progress track  | `border.control` | 4px tall                                         |
+| `drawer` drag-handle pill        | `border.control` | 40 × 4px                                         |
+| `slider` tick                    | `border.control` | 2 × 8px                                          |
+| `color-field` empty hatch        | `border.control` | a 6px `linear-gradient` repeat across the swatch |
+| `feed-event` dot                 | `border.strong`  | 8 × 8px                                          |
+| `status-dot` neutral indicator   | `border.strong`  | `--cinder-status-dot-size`                       |
+| `rating` empty star              | `border.strong`  | a 1.5rem masked glyph                            |
+| `resizable-panels` grip          | `border.strong`  | `color:`, so the glyph paints in the tier        |
+| `entry-frame` busy dot (Chat)    | `border.control` | 8 × 8px                                          |
+| `dx-stage` dot (playground)      | `border.strong`  | 7 × 7px                                          |
 
 Four of those do not reach the tier through `background` at all, which is how two
 earlier passes of this document missed them: `color-field` uses
@@ -143,6 +147,13 @@ structural tier outside a `border`/`outline` declaration — in `.css` and in
 `packages/editor`, and `packages/playground` — requires each to be classified as
 a hairline, area, mix, occlusion, or alias, and requires every `area` to be named
 in this document. An unclassified site fails the suite.
+
+It scans the token corpus too, for the case no stylesheet sweep can reach: a
+component-facing token whose `$value` or `cssRecipe` resolves to a tier, which
+arrives through the generated `tokens-base.css` rather than through any file a
+grep would find. That is how the Toggle hover track was missed here until the
+guard went looking — `toggle.track.off-hover-resting` aliases `border.control`
+in its light arm, exactly as the resting track aliases `border.muted`.
 
 Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:

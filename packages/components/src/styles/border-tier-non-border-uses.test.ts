@@ -43,6 +43,48 @@ import { describe, expect, test } from 'bun:test';
 
 type Category = 'hairline' | 'area' | 'mix' | 'occlusion' | 'alias';
 
+/**
+ * A component-facing token in the DTCG corpus whose value or `cssRecipe`
+ * resolves to a structural tier. These never appear in a hand-authored
+ * stylesheet -- they reach the page through the generated `tokens-base.css`,
+ * which this guard skips because the corpus gates it -- so they have to be
+ * classified from the corpus side or they are invisible here. The Toggle track
+ * is why that matters: it is an area fill that no `.css` or `.svelte` file
+ * mentions.
+ */
+const CORPUS_ALIASES: Record<string, Classification> = {
+  // Consumed as borders by their own components, so they inherit the border case.
+  'button.border': { declaration: 'button.border', category: 'alias' },
+  'status.neutral.border': { declaration: 'status.neutral.border', category: 'alias' },
+  'border.inverse': { declaration: 'border.inverse', category: 'alias' },
+  'file-upload.border-color': { declaration: 'file-upload.border-color', category: 'alias' },
+
+  // The Toggle track: the tier fills the whole track in the light arm. The dark
+  // arm is an independent literal and is untouched.
+  'toggle.track.off-resting': {
+    declaration: 'toggle.track.off-resting',
+    category: 'area',
+    audit: 'toggle',
+  },
+  'toggle.track.off-hover-resting': {
+    declaration: 'toggle.track.off-hover-resting',
+    category: 'area',
+    audit: 'toggle',
+  },
+};
+
+/** Corpus documents whose entries can alias a tier. */
+const CORPUS_DOCUMENTS = [
+  'packages/components/src/tokens/themes/light.tokens.json',
+  'packages/components/src/tokens/themes/dark.tokens.json',
+  'packages/components/src/tokens/sets/components.tokens.json',
+  'packages/components/src/tokens/sets/colors.tokens.json',
+  'packages/components/src/tokens/sets/semantic.tokens.json',
+];
+
+const CORPUS_TIER =
+  /\{border\.(?:muted|control|strong)\}|var\(--cinder-border(?:-muted|-strong)?\)/;
+
 type Classification = {
   /** The trimmed declaration, exactly as it appears in the source. */
   readonly declaration: string;
@@ -282,6 +324,37 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     expect(stale, 'A classified site no longer exists; remove it.').toEqual([]);
   });
 
+  test('every corpus alias into a tier is classified', () => {
+    const unclassified: string[] = [];
+    for (const document of CORPUS_DOCUMENTS) {
+      const parsed: unknown = JSON.parse(readFileSync(join(REPOSITORY_ROOT, document), 'utf8'));
+      const walk = (node: unknown, path: string[]): void => {
+        if (typeof node !== 'object' || node === null) return;
+        const entry = node as Record<string, unknown>;
+        const extensions = entry['$extensions'] as Record<string, unknown> | undefined;
+        const cinder = extensions?.['com.lostgradient.cinder'] as
+          | Record<string, unknown>
+          | undefined;
+        for (const candidate of [cinder?.['cssRecipe'], entry['$value']]) {
+          if (typeof candidate !== 'string' || !CORPUS_TIER.test(candidate)) continue;
+          const name = path.join('.');
+          if (CORPUS_ALIASES[name] === undefined) unclassified.push(`${document}  ${name}`);
+        }
+        for (const [key, child] of Object.entries(entry)) {
+          if (key.startsWith('$')) continue;
+          walk(child, [...path, key]);
+        }
+      };
+      walk(parsed, []);
+    }
+    expect(
+      [...new Set(unclassified)],
+      'A corpus token aliases a structural tier. It reaches the page through the generated ' +
+        'stylesheet, so no hand-authored file mentions it and the scan above cannot see it. ' +
+        'Classify it here, and if it is an area fill, record it in the seam audit.',
+    ).toEqual([]);
+  });
+
   test('every area fill is named in the seam audit', () => {
     const audit = readFileSync(
       join(REPOSITORY_ROOT, 'packages/components/docs/css-audit/translucent-border-seams.md'),
@@ -292,6 +365,11 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
       const entry = classify(file, declaration);
       if (entry?.category !== 'area') continue;
       const name = entry.audit ?? file;
+      if (!audit.includes(name)) missing.add(name);
+    }
+    for (const entry of Object.values(CORPUS_ALIASES)) {
+      if (entry.category !== 'area') continue;
+      const name = entry.audit ?? entry.declaration;
       if (!audit.includes(name)) missing.add(name);
     }
     expect(

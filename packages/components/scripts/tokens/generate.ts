@@ -722,34 +722,38 @@ function splitTopLevelTokens(value: string): string[] {
   return tokens;
 }
 
-/** `argument` with any `color-mix()` mix weight removed, literal or computed. */
-function stripMixPercentage(argument: string): string {
+/** A token that can only be a `<percentage>`: a literal, or a math function. */
+function isUnambiguousPercentage(token: string): boolean {
+  if (/^[\d.]+%$/.test(token)) return true;
+  const call = /^([a-zA-Z-]+)\(/.exec(token);
+  return call !== null && PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
+}
+
+/**
+ * The tokens of a `color-mix()` argument that might be its `<color>`.
+ *
+ * The argument is `<color> && <percentage>?` in either order, so the weight has
+ * to be set aside before the color can be checked. The safe way to do that is
+ * to drop only what CANNOT be a color -- a literal percentage or a math
+ * function -- and check everything else.
+ *
+ * Guessing which token is the weight is what went wrong before. An earlier
+ * version picked "whichever token is not a complete color", but
+ * {@link findBareColorComponents} returns `undefined` for any function it does
+ * not recognise, `calc()` included, so a computed weight read as a complete
+ * color and the REAL color was discarded as the weight. That let the exact
+ * value CIN-242 exists to reject --
+ * `color-mix(in oklch, calc(var(--w) * 1%) light-dark(100% 0 0, 0% 0 0), transparent)`
+ * -- through the gate untouched.
+ *
+ * Returning every candidate costs nothing: a `var()` passes the check anyway,
+ * so including an ambiguous one is free, while every genuine color is checked.
+ */
+function mixColorCandidates(argument: string): string[] {
   const tokens = splitTopLevelTokens(argument);
-  if (tokens.length < 2) return argument.trim();
-
-  // A `color-mix()` argument is `<color> && <percentage>?`, so with exactly two
-  // top-level tokens one of them IS the weight, whatever it is spelled as --
-  // `40%`, `calc(var(--w) * 1%)`, or a bare `var(--weight)`. Whichever token is
-  // not itself a complete color is the weight. If both are complete colors the
-  // pair is ambiguous, but then there is nothing to flag either way.
-  if (tokens.length === 2) {
-    const [first = '', second = ''] = tokens;
-    const firstIsColor = findBareColorComponents(first) === undefined;
-    const secondIsColor = findBareColorComponents(second) === undefined;
-    if (firstIsColor !== secondIsColor) return firstIsColor ? first : second;
-    if (firstIsColor && secondIsColor) return first;
-    return argument.trim();
-  }
-
-  // Three or more tokens is a component list with a weight somewhere in it, and
-  // the list is exactly what has to stay exposed. Drop only what is
-  // unambiguously a percentage.
-  const remaining = tokens.filter((token) => {
-    if (/^[\d.]+%$/.test(token)) return false;
-    const call = /^([a-zA-Z-]+)\(/.exec(token);
-    return call === null || !PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
-  });
-  return remaining.length === 0 ? argument.trim() : remaining.join(' ');
+  if (tokens.length < 2) return [argument.trim()];
+  const candidates = tokens.filter((token) => !isUnambiguousPercentage(token));
+  return candidates.length === 0 ? [argument.trim()] : candidates;
 }
 
 /** Split on commas at paren depth zero, so nested function arguments stay whole. */
@@ -800,12 +804,18 @@ export function findBareColorComponents(value: string): string | undefined {
     const args = splitTopLevelArguments(body);
     // `color-mix()`'s first argument is its interpolation method (`in oklch`),
     // not a color; `light-dark()`'s arguments are all colors.
-    const colorArguments = name.toLowerCase() === 'color-mix' ? args.slice(1) : args;
+    const isMix = name.toLowerCase() === 'color-mix';
+    const colorArguments = isMix ? args.slice(1) : args;
     for (const argument of colorArguments) {
-      // A mix argument may carry a percentage on either side of the color:
-      // `var(--ink) 30%`, `30% var(--ink)`, `var(--ink) calc(var(--w) * 1%)`.
-      const bare = findBareColorComponents(stripMixPercentage(argument));
-      if (bare !== undefined) return bare;
+      // Only `color-mix()` arguments carry a weight -- `light-dark()` takes two
+      // colors and nothing else, so its arguments are checked whole. Splitting
+      // them would report the wrong fragment: a bare `100% 0 0` would be
+      // dissected into `0` rather than named as the component list it is.
+      const candidates = isMix ? mixColorCandidates(argument) : [argument.trim()];
+      for (const candidate of candidates) {
+        const bare = findBareColorComponents(candidate);
+        if (bare !== undefined) return bare;
+      }
     }
     return undefined;
   }
