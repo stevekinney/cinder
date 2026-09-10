@@ -377,17 +377,19 @@
    * Restores a remembered position on mount, and remembers the current one on
    * teardown.
    *
-   * Deliberately keyed on nothing reactive but the id: re-running this on an
-   * unrelated state change would re-apply a stale saved offset over wherever the
-   * reader had since scrolled to.
+   * Tracks the element and the item count deliberately — a list that fetches its own
+   * data has nothing to restore onto until those arrive. What keeps it from running
+   * twice is `restoredId`, not a lack of dependencies: re-applying a saved offset
+   * over wherever the reader had since scrolled to is the failure this guards.
    */
   $effect(() => {
     const id = scrollRestorationId?.trim();
     const element = scrollElement;
     // Tracked deliberately: a list that fetches its own data renders empty first, so
-    // there is nothing to restore onto until its items arrive. `hasRestored` is what
-    // makes this happen exactly once — without it, re-running on every item change
-    // would re-apply the saved position over wherever the reader had scrolled to.
+    // there is nothing to restore onto until its items arrive. `restoredId` is what
+    // makes this happen exactly once per collection — without it, re-running on every
+    // item change would re-apply the saved position over wherever the reader had
+    // since scrolled to.
     const itemCount = items.length;
     if (!element || !id || restoredId === id || itemCount === 0) return;
 
@@ -475,14 +477,23 @@
           0,
           locateRowStartOffset(anchorIndex + 1) - rowStart || resolvedItemHeight,
         );
-        const withinRow = Math.min(Math.max(0, saved.offsetWithinRow ?? 0), rowSize);
+        // Strictly inside the row. An inclusive clamp lands on exactly the next row's
+        // start — 30px into a 40px row becomes 20px into a 20px row, which IS row
+        // 201 — defeating the anchor this whole branch exists to honour.
+        const withinRow = Math.min(
+          Math.max(0, saved.offsetWithinRow ?? 0),
+          Math.max(0, rowSize - 1),
+        );
         writeScrollOffset(element, rowStart + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       } else {
         // From the row anchor, not the raw saved pixel offset. `itemHeight` can differ
         // between visits — a density setting, a responsive breakpoint — and the old
         // offset then points at a different row entirely.
-        const withinRow = Math.min(Math.max(0, saved.offsetWithinRow ?? 0), resolvedItemHeight);
+        const withinRow = Math.min(
+          Math.max(0, saved.offsetWithinRow ?? 0),
+          Math.max(0, resolvedItemHeight - 1),
+        );
         writeScrollOffset(element, anchorIndex * resolvedItemHeight + withinRow, 'auto');
         scrollOffset = readScrollOffset(element);
       }

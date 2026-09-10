@@ -159,9 +159,14 @@ export type VirtualListProps<Item = unknown> = Omit<
    *
    * Has no effect without a `scrollRestorationId` — see that prop for why.
    *
+   * Explicitly `| undefined`, like the other conditionally-supplied props: this
+   * package compiles with `exactOptionalPropertyTypes`, under which optional and
+   * undefined-valued differ, and `scrollRestoration={enabled ? true : undefined}`
+   * would otherwise fail to typecheck.
+   *
    * Defaults to false.
    */
-  scrollRestoration?: boolean;
+  scrollRestoration?: boolean | undefined;
   /**
    * Stable id under which `scrollRestoration` saves this list's position.
    *
@@ -171,7 +176,7 @@ export type VirtualListProps<Item = unknown> = Omit<
    * on one page would overwrite each other. Choose something tied to what the
    * list shows, such as a route or collection name.
    */
-  scrollRestorationId?: string;
+  scrollRestorationId?: string | undefined;
   /**
    * Override the default focus behavior. The component sets `tabindex="0"`
    * by default so keyboard users can reach the native scroll container for

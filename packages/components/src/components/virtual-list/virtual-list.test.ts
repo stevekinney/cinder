@@ -2438,6 +2438,37 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
     });
   });
 
+  test('keeps a remainder that no longer fits inside its own row', async () => {
+    // 30px into a 40px row, restored when rows are 20px tall. An inclusive clamp
+    // gives exactly 20 — which is row 201's start, not row 200's.
+    const storage = createStorage({
+      'cinder:virtual-list:feed': JSON.stringify({
+        scrollOffset: 8_030,
+        startIndex: 200,
+        offsetWithinRow: 30,
+      }),
+    });
+
+    await withStorage(storage, async () => {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        scrollRestoration: true,
+        scrollRestorationId: 'feed',
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      // Row 200 starts at 4000; anything from 4019 up would be row 201.
+      expect(list.scrollTop).toBeGreaterThanOrEqual(4_000);
+      expect(list.scrollTop).toBeLessThan(4_020);
+    });
+  });
+
   test('a whitespace-only id is not an id', async () => {
     const storage = createStorage();
     await withStorage(storage, async () => {
