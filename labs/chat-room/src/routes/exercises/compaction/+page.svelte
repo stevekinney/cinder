@@ -71,6 +71,9 @@
 		projectionHasFirstFiller: boolean;
 		projectionHasSummary: boolean;
 		projectionRoles: string;
+		summarizedMessages: number;
+		foreignMessages: number;
+		everyMessageAccountedFor: boolean;
 	};
 
 	/**
@@ -92,6 +95,20 @@
 		// everything.
 		const controlSnapshot = snapshot(getMessages(seeded));
 
+		// What actually reached the summarizer, counted by message id rather
+		// than by call. Compaction chunks its input, and the chunk sizes are
+		// conversationalist's business — asserting them would pin an internal.
+		// Distinct ids are the chunking-agnostic measure: they stay the same
+		// however the work is divided up.
+		//
+		// Plain arrays rather than a `Set`: `svelte/prefer-svelte-reactivity`
+		// flags a mutable `Set` in a component, and the reactive `SvelteSet`
+		// it points to would be the wrong instrument — nothing observes these,
+		// they are local accumulators inside one async function. Fourteen
+		// messages make the linear scans free.
+		const seededIds = before.map((message) => message.id);
+		const seenIds: string[] = [];
+
 		let projection: readonly Message[] = [];
 		const agent = createAgent({
 			generate: async (context) => {
@@ -105,7 +122,10 @@
 			contextManagement: {
 				maxTokens: 400,
 				onCompact: createContextCompactor({
-					summarize: async (messages) => `[summary of ${messages.length} messages]`,
+					summarize: async (messages) => {
+						for (const message of messages) seenIds.push(message.id);
+						return `[summary of ${messages.length} messages]`;
+					},
 					retainRecentMessages: 2
 				})
 			}
@@ -117,6 +137,17 @@
 		// transcript nothing touched. The count and the message text are what
 		// actually answer "was this rewritten?".
 		const after = getMessages(seeded);
+		// Counted rather than assumed to be one: the accounting below divides
+		// the projection into "injected by compaction" and "carried through
+		// from the seed", and hard-coding the first half would make the
+		// invariant agree with itself.
+		const injectedSummaries = projection.filter((message) =>
+			JSON.stringify(message.content).includes('[summary of')
+		).length;
+		const distinct = (ids: readonly string[]): string[] =>
+			ids.filter((id, index) => ids.indexOf(id) === index);
+		const summarizedIds = distinct(seenIds.filter((id) => seededIds.includes(id)));
+		const foreignIds = distinct(seenIds.filter((id) => !seededIds.includes(id)));
 		return {
 			seededLengthBefore: before.length,
 			seededLengthAfter: after.length,
@@ -132,8 +163,21 @@
 			projectionLength: projection.length,
 			projectionHasPin: contains(projection, PINNED_FACT),
 			projectionHasFirstFiller: contains(projection, FIRST_FILLER_QUESTION),
-			projectionHasSummary: contains(projection, '[summary of'),
-			projectionRoles: projection.map((message) => message.role).join(', ')
+			projectionHasSummary: injectedSummaries > 0,
+			projectionRoles: projection.map((message) => message.role).join(', '),
+			summarizedMessages: summarizedIds.length,
+			// Anything the summarizer saw that this page did not seed — a
+			// previous summary folded back in, say. Zero here is what makes
+			// the count above a clean partition rather than an overlapping
+			// tally.
+			foreignMessages: foreignIds.length,
+			// The invariant the two numbers above exist for: every seeded
+			// message either went into the summarizer or was carried into the
+			// projection verbatim, and none quietly vanished in between. A
+			// compaction that handed `summarize` a truncated slice would leave
+			// this short.
+			everyMessageAccountedFor:
+				summarizedIds.length + (projection.length - injectedSummaries) === before.length
 		};
 	}
 
@@ -159,6 +203,12 @@
 				<dd data-testid="compaction-projection-roles">{result.projectionRoles}</dd>
 				<dt>summary injected</dt>
 				<dd data-testid="compaction-projection-summary">{result.projectionHasSummary}</dd>
+				<dt>messages handed to <code>summarize</code></dt>
+				<dd data-testid="compaction-summarized-messages">{result.summarizedMessages}</dd>
+				<dt>of those, not from the seed</dt>
+				<dd data-testid="compaction-foreign-messages">{result.foreignMessages}</dd>
+				<dt>every message accounted for</dt>
+				<dd data-testid="compaction-accounted">{result.everyMessageAccountedFor}</dd>
 				<dt>pinned fact present</dt>
 				<dd data-testid="compaction-projection-pin">{result.projectionHasPin}</dd>
 				<dt>first follow-up present</dt>

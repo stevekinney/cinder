@@ -31,6 +31,22 @@ test('summarizes the transcript the model sees, and carries the pinned fact thro
 	);
 	await expect(page.locator(field('projection-summary'))).toHaveText('true');
 
+	// A summary-SHAPED message is not evidence that the context reached the
+	// summarizer: a compaction that handed it an empty or truncated slice
+	// would still produce one, and every other assertion here would hold.
+	// Ten is the complement of the four the projection carries verbatim — the
+	// system message, the pinned message, and the two retained recent ones.
+	//
+	// Counted by distinct message id, not by call. Compaction chunked this
+	// into 3/3/3/1, and those sizes are conversationalist's business; the id
+	// count is the same however the work is divided.
+	await expect(page.locator(field('summarized-messages'))).toHaveText('10');
+	await expect(page.locator(field('foreign-messages'))).toHaveText('0');
+
+	// 10 summarized + 4 carried through = the 14 that were seeded. Nothing
+	// went missing between the two halves.
+	await expect(page.locator(field('accounted'))).toHaveText('true');
+
 	// The pinned message is the second of fourteen — far outside
 	// `retainRecentMessages: 2`. It survives because the preserve policy
 	// carries it, not because it was recent.

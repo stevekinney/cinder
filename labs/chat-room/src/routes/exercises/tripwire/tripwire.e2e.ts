@@ -66,6 +66,13 @@ test('the same detector under the default mode does not stop the run', async ({ 
 	await expect(page.locator(field('continued', 'error'))).toHaveText('(none)');
 	await expect(page.locator(field('continued', 'event'))).toHaveText('(none)');
 
+	// Continuing is NOT the same as letting the prompt through. The input
+	// guardrail short-circuits generate even in the default mode, so the
+	// injection never reaches the model here either — and without this line a
+	// regression that started calling `generate` and then overwrote its answer
+	// would leave the step, transcript, and substitution assertions all green.
+	await expect(page.locator(field('continued', 'generate-calls'))).toHaveText('0');
+
 	// It took a step and grew the transcript, which is exactly what the
 	// tripped panel did not do.
 	await expect(page.locator(field('continued', 'steps'))).toHaveText('1');
