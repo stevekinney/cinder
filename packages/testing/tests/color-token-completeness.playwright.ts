@@ -105,9 +105,13 @@ test('every public color token parses in the color positions it is used in', asy
 
       function probeTokens(rootStyle: CSSStyleDeclaration, label: string) {
         for (const property of properties) {
-          // The token's RESOLVED value, exactly as the cascade hands it to a
-          // consumer -- not the authored recipe. `color-mix()`/`light-dark()`
-          // have already collapsed by the time this is read.
+          // The token's computed value: the token stream after `var()`
+          // substitution, which is exactly what a consumer's own declaration
+          // would receive. These are UNREGISTERED custom properties (no
+          // `@property` rule), so `color-mix()` and `light-dark()` are still
+          // present here rather than collapsed to a color -- collapsing happens
+          // when the value lands in a real color property, which is what the
+          // probe below does and what this test is actually checking.
           const resolved = rootStyle.getPropertyValue(property).trim();
           if (resolved === '') {
             dropped.push(`[${label}] ${property}: declared no value at :root`);
