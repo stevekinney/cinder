@@ -85,6 +85,22 @@ const CORPUS_DOCUMENTS = [
 const CORPUS_TIER =
   /\{border\.(?:muted|control|strong)\}|var\(--cinder-border(?:-muted|-strong)?\)/;
 
+/**
+ * Tier borders that sit in a rule which also sets `opacity`, so the element
+ * opacity compounds with the tier's own alpha. Each one's effective contrast is
+ * recorded in the seam audit.
+ */
+const OPACITY_COMPOUNDED: readonly string[] = [
+  // SortableList's drag placeholder: `opacity: 0.4` in the same rule.
+  'packages/components/src/components/sortable-list/sortable-list.css  outline: 2px dashed var(--cinder-border-muted);',
+  // A disabled Button. The block scan straddles rules inside `@layer` and finds
+  // this one imprecisely, but it belongs here on the merits either way: the
+  // border comes from `button.css` and `opacity: 0.6` from `foundation.css`'s
+  // shared disabled-visual rule, so it is genuinely compounded -- just not by
+  // anything visible in a single rule body.
+  'packages/components/src/components/button/button.css  border-color: var(--cinder-border-muted);',
+];
+
 type Classification = {
   /** The trimmed declaration, exactly as it appears in the source. */
   readonly declaration: string;
@@ -324,6 +340,55 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
       }
     }
     expect(stale, 'A classified site no longer exists; remove it.').toEqual([]);
+  });
+
+  test('a tier border under an element opacity is classified', () => {
+    // The scan above skips `border`/`outline` declarations, on the premise that
+    // a tier used as a border is exactly the intent. That premise breaks when
+    // the element also carries a fractional `opacity`: element opacity
+    // multiplies the tier's own alpha, so composing the tier compounds with it
+    // rather than replacing an opaque value. SortableList's drag placeholder is
+    // the case -- a `border.muted` outline under `opacity: 0.4` went from 40%
+    // effective ink to 7.6%.
+    //
+    // This catches the same-rule shape only, and deliberately claims no more
+    // than that. The opacity and the border can live in different files -- a
+    // disabled Button takes `border.muted` from `button.css` and `opacity: 0.6`
+    // from `foundation.css`'s shared disabled-visual rule -- and resolving that
+    // statically would mean modelling the cascade across files. That case is
+    // recorded in the seam audit by hand instead.
+    const offenders: string[] = [];
+    for (const root of SCAN_ROOTS) {
+      for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {
+        if (path.endsWith(GENERATED)) continue;
+        const source = readFileSync(path, 'utf8');
+        // Rule bodies, roughly: everything between a `{` and the next `}`.
+        for (const block of source.split('}')) {
+          const body = block.slice(block.lastIndexOf('{') + 1);
+          // A FRACTIONAL resting opacity. `opacity: 0` is the entry state of
+          // an animated overlay -- HoverCard, Popover, Modal, CommandPalette
+          // all declare it and all resolve to 1 once open -- and `opacity: 1`
+          // multiplies by nothing.
+          if (!/(?:^|[;\s])opacity\s*:\s*0?\.\d+\s*(?:;|$)/.test(body)) continue;
+          for (const rawFragment of body.split(';')) {
+            const fragment = rawFragment.trim();
+            if (!TIER_REFERENCE.test(fragment)) continue;
+            const colon = fragment.indexOf(':');
+            const property = colon === -1 ? '' : fragment.slice(0, colon).trim();
+            if (!BORDER_PROPERTY.test(property)) continue;
+            const site = `${relative(REPOSITORY_ROOT, path)}  ${fragment};`;
+            if (!OPACITY_COMPOUNDED.includes(site)) offenders.push(site);
+          }
+        }
+      }
+    }
+    expect(
+      offenders,
+      'A structural tier is used as a border or outline in a rule that also sets `opacity`. ' +
+        "Element opacity multiplies the tier's own alpha, so this is not the plain border case " +
+        'the scan above exempts -- record it here and give its effective contrast in the seam ' +
+        'audit.',
+    ).toEqual([]);
   });
 
   test('every corpus alias into a tier is classified', () => {

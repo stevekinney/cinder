@@ -211,6 +211,49 @@ rather than drifting across a 12% range, and its floor goes up rather than down.
 The dark arm's ≥3:1 shape-contrast requirement is unaffected — that arm is a
 literal, not an alias.
 
+## Tier borders under an element opacity
+
+A tier used as a border is normally the intended case and needs no entry here.
+The exception is an element that also carries a fractional `opacity`: that
+multiplies the tier's own alpha rather than replacing an opaque value, so
+composing the tier compounds with it. Two sites do this, and both lose ink in
+the dark arm.
+
+**SortableList's drag placeholder** — `outline: 2px dashed var(--cinder-border-muted)`
+under `opacity: 0.4`, so 19% × 0.4 ≈ 7.6% effective ink against 40% before. Its
+own comment notes the outline is what marks the current drop position.
+
+| dark surface     | before | after |
+| ---------------- | ------ | ----- |
+| `surface-inset`  | 1.220  | 1.113 |
+| `surface-canvas` | 1.229  | 1.136 |
+| `surface`        | 1.223  | 1.168 |
+| `surface-raised` | 1.155  | 1.199 |
+
+**A disabled Button** — `border-color: var(--cinder-border-muted)` from
+`button.css` with `opacity: 0.6` from `foundation.css`'s shared disabled-visual
+rule, so ≈11.4% effective ink against 60%.
+
+| dark surface     | before | after |
+| ---------------- | ------ | ----- |
+| `surface-inset`  | 1.422  | 1.201 |
+| `surface-canvas` | 1.418  | 1.236 |
+| `surface`        | 1.384  | 1.282 |
+| `surface-raised` | 1.247  | 1.321 |
+
+Both light arms improve slightly; only the dark arm loses. Neither was near
+1.4.11's 3:1 before — a 40%-opacity ghost and a disabled control are both
+deliberately faint, and disabled controls are exempt from the contrast floor
+outright — so this is the same shape as the muted area fills above: a
+pre-existing sub-floor value that composition moves further down in one arm,
+recorded rather than silently absorbed. The drop indicator is the one worth
+revisiting on its own, since it marks a live, functional position.
+
+`border-tier-non-border-uses.test.ts` catches the same-rule shape and claims no
+more: the two declarations can live in different files, as the Button case does,
+and resolving that statically would mean modelling the cascade across files.
+This section is the record for those.
+
 ## Border tokens used as an input to `color-mix()`
 
 A translucent token mixed into another color behaves differently from an opaque
