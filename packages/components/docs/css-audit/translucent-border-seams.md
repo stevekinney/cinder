@@ -78,16 +78,54 @@ of them stack.
 
 Most `background: var(--cinder-border*)` sites in the repository are 1px rules —
 a divider drawn as a filled element rather than as a border. Alpha behaves
-identically there, because the rule sits directly on one surface.
+identically there, because the rule sits directly on one surface. The hairline
+sites are `divider`, `steps` (connector), `timeline`, `run-step-timeline`,
+`feed-boundary`, `feed-event` (connector line), `button-group` (the
+`:not(:first-child)` seam), and the shared `_row-item` rule.
 
-One site is a real area rather than a hairline, and is worth naming.
+`statistic-group`'s `shared-borders` variant is a near-miss worth naming: it
+paints `--cinder-border` across the whole root, but the children paint over it
+with their own surface, so only the 1px grid gaps survive. The result is a
+hairline; the declaration is not.
+
+Eight sites are a real area rather than a hairline. All eight now carry their
+tier's alpha over whatever surface is behind them.
+
+| site                            | tier                     | size                       |
+| ------------------------------- | ------------------------ | -------------------------- |
+| `toggle` track (light arm)      | `border.muted`           | the full track             |
+| `parameter-field` rail          | `--cinder-border-muted`  | 3px wide, full body height |
+| `mega-menu` indicator track     | `--cinder-border-muted`  | 2px tall                   |
+| `media-controls` progress track | `--cinder-border`        | 4px tall                   |
+| `drawer` drag-handle pill       | `--cinder-border`        | 40 × 4px                   |
+| `slider` tick                   | `--cinder-border`        | 2 × 8px                    |
+| `feed-event` dot                | `--cinder-border-strong` | 8 × 8px                    |
+| `status-dot` neutral indicator  | `--cinder-border-strong` | `--cinder-status-dot-size` |
+
+`status-dot` reaches the tier through `--cinder-status-dot-color`; every other
+status maps to a `*-solid` token, and neutral borrows the border tier because
+there is no neutral solid.
+
+Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
+across all four surface tokens in both arms:
+
+- **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark.
+- **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark.
+- **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark. That
+  is unchanged in kind: the muted tier sat below 3:1 before this work too (the
+  light arm measured 1.408–1.581 opaque, against 1.492–1.502 now), so the two
+  sites that use it as an area fill — the ParameterField rail and the MegaMenu
+  indicator track — carry a pre-existing shortfall that composition neither
+  introduces nor worsens. It is out of scope for CIN-245, which enumerates the
+  three structural tiers rather than re-deciding what each is licensed for, but
+  it is real and should be picked up separately.
 
 ### Toggle track, light arm — intentional, and steadier than before
 
 `--cinder-toggle-track-off-resting` aliases `border.muted` in its light arm
-(the dark arm is an independent literal and is untouched). It is the only place
-a structural tier fills a visible area, so it is the only place the tier's alpha
-covers more than a hairline.
+(the dark arm is an independent literal and is untouched). It is the largest of
+the eight area fills, and the only one whose before/after was measured surface
+by surface, so it is worth showing in full.
 
 The track now tracks the surface underneath it instead of being a fixed grey,
 which is the same improvement the borders get:

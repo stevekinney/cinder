@@ -680,6 +680,61 @@ function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry
 const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
 
 /** Split on commas at paren depth zero, so nested function arguments stay whole. */
+/**
+ * CSS math functions, which can stand in for the `<percentage>` mix weight in a
+ * `color-mix()` argument. `color-mix()` accepts a general `<percentage>`, not
+ * only a literal, and the weight may sit on either side of the color, so the
+ * weight has to be recognised in computed form too -- otherwise a recipe the
+ * browser accepts reads as a bare component list and fails generation.
+ *
+ * `var()` is deliberately absent. A bare `var()` is ambiguous between the color
+ * and the weight, and reading it as the color is the safe direction: treating
+ * it as a weight would strip the only complete value out of the argument and
+ * flag what remains.
+ */
+const PERCENTAGE_FUNCTIONS = new Set([
+  'calc',
+  'clamp',
+  'min',
+  'max',
+  'round',
+  'mod',
+  'rem',
+  'abs',
+  'sign',
+]);
+
+/** `value` split on top-level whitespace, so `light-dark(a, b) 40%` is two tokens. */
+function splitTopLevelTokens(value: string): string[] {
+  const tokens: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const character of value) {
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    if (depth === 0 && /\s/.test(character)) {
+      if (current !== '') tokens.push(current);
+      current = '';
+      continue;
+    }
+    current += character;
+  }
+  if (current !== '') tokens.push(current);
+  return tokens;
+}
+
+/** `argument` with any `color-mix()` mix weight removed, literal or computed. */
+function stripMixPercentage(argument: string): string {
+  const tokens = splitTopLevelTokens(argument);
+  if (tokens.length < 2) return argument.trim();
+  const remaining = tokens.filter((token) => {
+    if (/^[\d.]+%$/.test(token)) return false;
+    const call = /^([a-zA-Z-]+)\(/.exec(token);
+    return call === null || !PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
+  });
+  return remaining.length === 0 ? argument.trim() : remaining.join(' ');
+}
+
 function splitTopLevelArguments(value: string): string[] {
   const parts: string[] = [];
   let depth = 0;
@@ -729,9 +784,9 @@ export function findBareColorComponents(value: string): string | undefined {
     // not a color; `light-dark()`'s arguments are all colors.
     const colorArguments = name.toLowerCase() === 'color-mix' ? args.slice(1) : args;
     for (const argument of colorArguments) {
-      // A mix argument may carry a trailing percentage: `var(--ink) 30%`.
-      const withoutPercentage = argument.replace(/\s+[\d.]+%$/, '').trim();
-      const bare = findBareColorComponents(withoutPercentage);
+      // A mix argument may carry a percentage on either side of the color:
+      // `var(--ink) 30%`, `30% var(--ink)`, `var(--ink) calc(var(--w) * 1%)`.
+      const bare = findBareColorComponents(stripMixPercentage(argument));
       if (bare !== undefined) return bare;
     }
     return undefined;

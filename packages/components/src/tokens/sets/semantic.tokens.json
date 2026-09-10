@@ -166,7 +166,7 @@
         "colorSpace": "oklch",
         "components": [0, 0, 0]
       },
-      "$description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together.",
+      "$description": "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it at :root or in a [data-theme] block re-polarizes all of them together; a subtree override does not reach them, because the washes are declared at :root and descendants inherit the already-resolved values.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-polarity-ink",
@@ -184,7 +184,7 @@
         "colorSpace": "oklch",
         "components": [0.2, 0.02, 255]
       },
-      "$description": "The single polarity-aware ink every neutral structural border tier is mixed from: a dark cool ink in light mode, a light cool ink in dark mode. `border.muted`, `border.control`, and `border.strong` are alpha steps over it, so each tier tracks the surface underneath it instead of being tuned per surface -- which is what holds each tier's contrast spread across the four legal surface tiers under 15% in both arms, against 29% for the opaque dark values it replaces. Overriding this one token re-tints all three together. Semantic and status borders are deliberately NOT derived from it: they stay opaque, because a translucent status border would take its hue from whatever it happened to sit on.",
+      "$description": "The single polarity-aware ink every neutral structural border tier is mixed from: a dark cool ink in light mode, a light cool ink in dark mode. `border.muted`, `border.control`, and `border.strong` are alpha steps over it, so each tier tracks the surface underneath it instead of being tuned per surface -- which is what holds each tier's contrast spread across the four legal surface tiers under 15% in both arms, against 29% for the opaque dark values it replaces. Overriding this one token at :root or in a [data-theme] block re-tints all three together; a subtree override does not reach them, because the tiers are declared at :root and descendants inherit the already-resolved values. Semantic and status borders are deliberately NOT derived from it: they stay opaque, because a translucent status border would take its hue from whatever it happened to sit on.",
       "$extensions": {
         "com.lostgradient.cinder": {
           "cssProperty": "--cinder-border-ink",

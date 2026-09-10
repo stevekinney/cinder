@@ -2676,6 +2676,36 @@ describe('CIN-242: complete color values only', () => {
     }
   });
 
+  test('accepts a color-mix weight in any position, literal or computed', () => {
+    // `color-mix()` takes a general `<percentage>`, and it may sit on either
+    // side of the color. Stripping only a trailing literal read every other
+    // spelling as a bare component list and failed generation on recipes the
+    // browser accepts.
+    const accepted = [
+      'color-mix(in oklch, var(--cinder-border-ink) calc(var(--weight) * 1%), transparent)',
+      'color-mix(in oklch, 30% var(--cinder-border-ink), transparent)',
+      'color-mix(in oklch, light-dark(oklch(0% 0 0), oklch(100% 0 0)) 40%, transparent)',
+      'color-mix(in oklch, var(--cinder-polarity-ink), transparent clamp(10%, 20%, 30%))',
+    ];
+    for (const recipe of accepted) {
+      expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
+    }
+  });
+
+  test('still catches a bare triplet that carries a mix weight', () => {
+    // The weight must not become a way to smuggle a component list past the
+    // gate -- stripping it has to leave the triplet exposed, not consumed.
+    expect(() =>
+      serializeEntryValue(recipeEntry('color-mix(in oklch, 0% 0 0 40%, transparent)'), new Map()),
+    ).toThrow(/bare component list/);
+    expect(() =>
+      serializeEntryValue(
+        recipeEntry('color-mix(in oklch, 0% 0 0 calc(var(--weight) * 1%), transparent)'),
+        new Map(),
+      ),
+    ).toThrow(/bare component list/);
+  });
+
   test('leaves non-color tokens alone -- a shadow recipe is a component list by nature', () => {
     const shadow = '0 1px 2px light-dark(oklch(0% 0 0 / 0.1), oklch(100% 0 0 / 0.09))';
     expect(serializeEntryValue(recipeEntry(shadow, 'shadow'), new Map())).toBe(shadow);

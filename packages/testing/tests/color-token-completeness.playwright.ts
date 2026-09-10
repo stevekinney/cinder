@@ -8,6 +8,11 @@
  * token's resolved value to the browser in the color positions that token is
  * actually used in and asserts the declaration STICKS.
  *
+ * Every arm is probed, not just the default one. `[data-theme='light']` and
+ * `[data-theme='dark']` each redeclare a large share of the corpus with their
+ * own `cssRecipe` values, so a token can be complete at `:root` and broken in
+ * one arm. Reading `:root` once would miss that entirely.
+ *
  * That distinction is the whole point of the ticket. A bare OKLCH component
  * triplet (`light-dark(0% 0 0, 100% 0 0)`, authored so a call site can staple
  * its own alpha on) is not a color: assigned to `color` or `border-color` it
@@ -61,51 +66,77 @@ const PUBLIC_COLOR_PROPERTIES: string[] = (() => {
  */
 const COLOR_PROPERTIES = ['color', 'background-color', 'border-color'] as const;
 
+/**
+ * The theme states a token can be declared in: the default (system-driven
+ * `light-dark()`), and each explicit `[data-theme]` override block.
+ */
+const THEMES = [null, 'light', 'dark'] as const;
+
 test('every public color token parses in the color positions it is used in', async ({ page }) => {
   await page.goto('/page/button?snapshot=1');
 
   expect(PUBLIC_COLOR_PROPERTIES.length).toBeGreaterThan(100);
 
   const failures = await page.evaluate(
-    ({ properties, colorProperties }) => {
+    ({ properties, colorProperties, themes }) => {
       const probe = document.createElement('div');
       document.body.append(probe);
       const dropped: string[] = [];
-      // Read once: `:root`'s computed style does not change during the probe,
-      // and this loop runs over every public color token.
-      const rootStyle = getComputedStyle(document.documentElement);
+      const root = document.documentElement;
+      const initialTheme = root.getAttribute('data-theme');
 
-      for (const property of properties) {
-        // The token's RESOLVED value, exactly as the cascade hands it to a
-        // consumer -- not the authored recipe. `color-mix()`/`light-dark()`
-        // have already collapsed by the time this is read.
-        const resolved = rootStyle.getPropertyValue(property).trim();
-        if (resolved === '') {
-          dropped.push(`${property}: declared no value at :root`);
-          continue;
-        }
-        for (const colorProperty of colorProperties) {
-          probe.style.setProperty(colorProperty, '');
-          probe.style.setProperty(colorProperty, resolved);
-          // An invalid color leaves the property unset: the assignment was
-          // dropped. This is the silent failure the ticket is about.
-          if (probe.style.getPropertyValue(colorProperty).trim() === '') {
-            dropped.push(`${property} (${resolved}) is not a valid ${colorProperty}`);
-          }
-        }
-        // A shadow color sits inside a shorthand, where an invalid color
-        // invalidates the entire declaration.
-        probe.style.setProperty('box-shadow', '');
-        probe.style.setProperty('box-shadow', `0 1px 2px ${resolved}`);
-        if (probe.style.getPropertyValue('box-shadow').trim() === '') {
-          dropped.push(`${property} (${resolved}) is not a valid box-shadow color`);
-        }
+      for (const theme of themes) {
+        if (theme === null) root.removeAttribute('data-theme');
+        else root.setAttribute('data-theme', theme);
+        const label = theme === null ? 'default' : `data-theme=${theme}`;
+        // Re-read per arm: the attribute above changes what `:root` resolves
+        // to. Within one arm it is stable, so this is hoisted out of the token
+        // loop rather than read per token.
+        const rootStyle = getComputedStyle(root);
+
+        probeTokens(rootStyle, label);
       }
+
+      if (initialTheme === null) root.removeAttribute('data-theme');
+      else root.setAttribute('data-theme', initialTheme);
 
       probe.remove();
       return dropped;
+
+      function probeTokens(rootStyle: CSSStyleDeclaration, label: string) {
+        for (const property of properties) {
+          // The token's RESOLVED value, exactly as the cascade hands it to a
+          // consumer -- not the authored recipe. `color-mix()`/`light-dark()`
+          // have already collapsed by the time this is read.
+          const resolved = rootStyle.getPropertyValue(property).trim();
+          if (resolved === '') {
+            dropped.push(`[${label}] ${property}: declared no value at :root`);
+            continue;
+          }
+          for (const colorProperty of colorProperties) {
+            probe.style.setProperty(colorProperty, '');
+            probe.style.setProperty(colorProperty, resolved);
+            // An invalid color leaves the property unset: the assignment was
+            // dropped. This is the silent failure the ticket is about.
+            if (probe.style.getPropertyValue(colorProperty).trim() === '') {
+              dropped.push(`[${label}] ${property} (${resolved}) is not a valid ${colorProperty}`);
+            }
+          }
+          // A shadow color sits inside a shorthand, where an invalid color
+          // invalidates the entire declaration.
+          probe.style.setProperty('box-shadow', '');
+          probe.style.setProperty('box-shadow', `0 1px 2px ${resolved}`);
+          if (probe.style.getPropertyValue('box-shadow').trim() === '') {
+            dropped.push(`[${label}] ${property} (${resolved}) is not a valid box-shadow color`);
+          }
+        }
+      }
     },
-    { properties: PUBLIC_COLOR_PROPERTIES, colorProperties: [...COLOR_PROPERTIES] },
+    {
+      properties: PUBLIC_COLOR_PROPERTIES,
+      colorProperties: [...COLOR_PROPERTIES],
+      themes: [...THEMES],
+    },
   );
 
   expect(failures).toEqual([]);
