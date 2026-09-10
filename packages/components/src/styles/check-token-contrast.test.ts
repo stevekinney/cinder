@@ -611,6 +611,7 @@ const borderFaint = readOklchToken('--cinder-border-faint');
 // ticket enumerates exactly these three, and faint answers to a different,
 // deliberately-below-3:1 floor.
 const borderInk = readOklchToken('--cinder-border-ink');
+const polarityInk = readOklchToken('--cinder-polarity-ink');
 const borderMuted = readTranslucentToken('--cinder-border-muted');
 const border = readTranslucentToken('--cinder-border');
 const borderStrong = readTranslucentToken('--cinder-border-strong');
@@ -1235,6 +1236,30 @@ describe('border-on-surface contrast', () => {
         tier.light.alpha,
       );
     }
+  });
+
+  it('the polarity ink actually contrasts with the surfaces of its own arm', () => {
+    // `--cinder-polarity-ink` promises one thing in its name: it is the ink
+    // that opposes whatever the theme paints underneath it. Nothing gated that
+    // promise -- the browser test proves only that its value PARSES -- so an
+    // arm authored backwards, or nudged toward its own surfaces, would ship.
+    //
+    // The floor is AA text contrast rather than a non-text floor: the ink is
+    // the basis for washes at arbitrary alpha, and a basis that only just
+    // clears 3:1 leaves nothing to dilute.
+    for (const arm of ['light', 'dark'] as const) {
+      for (const [surfaceName, surfaceToken] of Object.entries(surfaces)) {
+        expect(
+          contrastRatio(wcagLuminance(polarityInk[arm]), wcagLuminance(surfaceToken[arm])),
+          `polarity ink on ${surfaceName} (${arm})`,
+        ).toBeGreaterThanOrEqual(AA_TEXT);
+      }
+    }
+    // And it opposes the surface rather than matching it: the light arm is the
+    // darker of the two, the dark arm the lighter. A swapped `light-dark()`
+    // would still clear the ratios above, so polarity is asserted on its own.
+    expect(polarityInk.light.l, 'light arm must be the dark ink').toBeLessThan(surface.light.l);
+    expect(polarityInk.dark.l, 'dark arm must be the light ink').toBeGreaterThan(surface.dark.l);
   });
 
   it('semantic and status borders stay opaque', () => {

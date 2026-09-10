@@ -266,11 +266,26 @@ The three structural tiers — `--cinder-border-muted`, `--cinder-border`, and `
 }
 ```
 
+That works at `:root`, and inside a `[data-theme]` block, because those are the places the tiers themselves are declared. It does **not** reach down into an arbitrary subtree: `var()` inside a custom property is substituted where that property is _declared_, so `--cinder-border` computes against `:root`'s ink and descendants inherit the already-resolved value. Setting only the ink on a mid-tree ancestor changes nothing. To retint one branded region, redeclare the tiers alongside it:
+
+```css
+.branded-region {
+  --cinder-border-ink: oklch(50% 0.12 30);
+  --cinder-border-muted: color-mix(in oklch, var(--cinder-border-ink), transparent 81%);
+  --cinder-border: color-mix(in oklch, var(--cinder-border-ink), transparent 52%);
+  --cinder-border-strong: color-mix(in oklch, var(--cinder-border-ink), transparent 42%);
+}
+```
+
+This is not new behavior — every derived token in the corpus works this way, `--cinder-accent-border` and `--cinder-surface-hover` included — but the ink makes it easy to assume otherwise.
+
 An alpha border tracks the surface underneath it, and that uniformity is the point. The dark surface ramp spans L 0.11 to 0.28, so a single opaque border used to read 4.80:1 against `surface-inset` and 3.42:1 against `surface-raised` — a 29% spread that two consecutive retunes had to re-chase by eye. The composed tiers hold every tier under a 15% spread in both arms, and `check-token-contrast.test.ts` gates that number along with the per-surface floors.
 
 Two consequences worth knowing before you use them. A structural border mixed into another color inherits its transparency, so `color-mix(in oklch, var(--cinder-surface), var(--cinder-border-muted) 10%)` yields a slightly translucent result rather than an opaque one. And two of these borders painted on the same pixel stack their alpha — draw interior dividers as a single edge on one of the two adjacent elements, which is what the `interior-border-weight` stylelint rule already requires. [`docs/css-audit/translucent-border-seams.md`](../packages/components/docs/css-audit/translucent-border-seams.md) audits every seam in the repository against that rule.
 
-`--cinder-border-faint` and the `--cinder-status-*-border` family stay opaque. Faint answers to a different, deliberately-below-3:1 floor; a translucent status border would take its hue from whatever surface it happened to sit on, which is the opposite of what a status color is for.
+`--cinder-border-faint` stays opaque, and so do the four hued status borders — `--cinder-status-info-border`, `--cinder-status-success-border`, `--cinder-status-warning-border`, and `--cinder-status-danger-border`. Faint answers to a different, deliberately-below-3:1 floor; a translucent status border would take its hue from whatever surface it happened to sit on, which is the opposite of what a status color is for.
+
+`--cinder-status-neutral-border` is the exception, and always was: it is a straight alias of `--cinder-border`, so it is translucent now like every other use of that token. That is the intent — the neutral status tier is neutral structure, not a hue.
 
 ## Opacity
 

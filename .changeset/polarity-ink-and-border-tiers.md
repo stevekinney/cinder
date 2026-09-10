@@ -45,7 +45,10 @@ of these borders on the same pixel stack their alpha — draw interior dividers 
 single edge on one of the two adjacent elements, which the `interior-border-weight`
 stylelint rule already requires.
 
-`--cinder-border-faint` and the `--cinder-status-*-border` family stay opaque.
+`--cinder-border-faint` and the four hued status borders (`info`, `success`,
+`warning`, `danger`) stay opaque. `--cinder-status-neutral-border` does not — it
+is a straight alias of `--cinder-border` and becomes translucent with it, which
+is the intent: that tier is neutral structure, not a hue.
 
 Also fixes a pre-existing defect in the contrast gate itself: it composited
 translucent colors in linear-light sRGB, but browsers composite on

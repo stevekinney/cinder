@@ -71,14 +71,15 @@ test('every public color token parses in the color positions it is used in', asy
       const probe = document.createElement('div');
       document.body.append(probe);
       const dropped: string[] = [];
+      // Read once: `:root`'s computed style does not change during the probe,
+      // and this loop runs over every public color token.
+      const rootStyle = getComputedStyle(document.documentElement);
 
       for (const property of properties) {
         // The token's RESOLVED value, exactly as the cascade hands it to a
         // consumer -- not the authored recipe. `color-mix()`/`light-dark()`
         // have already collapsed by the time this is read.
-        const resolved = getComputedStyle(document.documentElement)
-          .getPropertyValue(property)
-          .trim();
+        const resolved = rootStyle.getPropertyValue(property).trim();
         if (resolved === '') {
           dropped.push(`${property}: declared no value at :root`);
           continue;

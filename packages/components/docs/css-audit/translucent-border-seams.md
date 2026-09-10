@@ -144,8 +144,15 @@ tiers, and faint answers to a different floor — it is deliberately below WCAG
 re-deciding that floor, which is not this ticket's call. It remains the one
 neutral border tier that does not follow `--cinder-border-ink` when overridden.
 
-`--cinder-status-*-border` stays opaque too, and that is the ratified hybrid
+The four **hued** status borders — `info`, `success`, `warning`, `danger` —
+stay opaque too, and that is the ratified hybrid
 model rather than an omission: a translucent status border would take its hue
 from whatever surface it happened to sit on, which is the opposite of what a
-status color is for. `check-token-contrast.test.ts` enforces it — those tokens
-are read through the strict reader that throws on any alpha channel.
+status color is for. `check-token-contrast.test.ts` enforces it — those four are
+read through the strict reader that throws on any alpha channel.
+
+`--cinder-status-neutral-border` is deliberately **not** in that list. It is a
+straight alias of `--cinder-border` and always has been, so it became
+translucent along with it. That is correct: the neutral status tier is neutral
+structure wearing a status name, not a hue that needs protecting. Its contrast
+is measured composited over the soft neutral background in the same file.
