@@ -1078,4 +1078,82 @@ describe('Input keeps its native element across addon toggles', () => {
     expect(input.selectionStart).toBe(2);
     expect(input.selectionEnd).toBe(5);
   });
+
+  // CIN-511: a second arm switch, one level up from the addon-toggle switch
+  // above — `Input` inside a `FormField` with none of its own label,
+  // description, or error moved into a nested `FormFieldFrame` the moment
+  // one of those three became truthy, recreating the native element. The
+  // `field` host (FormField with its own label, Input with none of its own)
+  // is exactly that case.
+  describe('CIN-511: Input inside a FormField with no own label/description/error', () => {
+    test('setting error reactively keeps the same <input>', async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: 'cin511-error', host: 'field' },
+      });
+      const before = nativeInput(container);
+      expect(
+        container.querySelector('.cinder-input-field__error')?.textContent ?? '',
+      ).not.toContain('Required');
+
+      await rerender({ error: 'Required' });
+      expect(container.querySelector('.cinder-input-field__error')?.textContent).toContain(
+        'Required',
+      );
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ error: undefined });
+      expect(nativeInput(container)).toBe(before);
+    });
+
+    test('setting description reactively keeps the same <input>', async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: 'cin511-description', host: 'field' },
+      });
+      const before = nativeInput(container);
+      expect(container.querySelector('.cinder-input-field__description')).toBeNull();
+
+      await rerender({ description: 'Helper text' });
+      expect(container.querySelector('.cinder-input-field__description')?.textContent).toContain(
+        'Helper text',
+      );
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ description: undefined });
+      expect(nativeInput(container)).toBe(before);
+    });
+
+    test("setting Input's own label reactively keeps the same <input>", async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: 'cin511-label', host: 'field' },
+      });
+      const before = nativeInput(container);
+
+      // The FormField's own label ("Field") already sets `context.labelId`,
+      // so Input's own label stays suppressed visually — the point here is
+      // that merely *passing* a `label` prop, which used to switch the
+      // template arm regardless of whether it rendered, must not recreate
+      // the element either.
+      await rerender({ ownLabel: 'Own label' });
+      expect(nativeInput(container)).toBe(before);
+
+      await rerender({ ownLabel: undefined });
+      expect(nativeInput(container)).toBe(before);
+    });
+
+    test('focus and the selection range survive error appearing on the field host', async () => {
+      const { container, rerender } = render(InputAddonToggleFixture, {
+        props: { id: 'cin511-selection', host: 'field' },
+      });
+      const input = nativeInput(container);
+      input.focus();
+      input.setSelectionRange(1, 4);
+      expect(document.activeElement).toBe(input);
+
+      await rerender({ error: 'Required' });
+      expect(nativeInput(container)).toBe(input);
+      expect(document.activeElement).toBe(input);
+      expect(input.selectionStart).toBe(1);
+      expect(input.selectionEnd).toBe(4);
+    });
+  });
 });

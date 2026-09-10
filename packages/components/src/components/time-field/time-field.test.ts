@@ -123,13 +123,18 @@ describe('TimeField', () => {
     const input = getInput(container);
     expect(input.classList.contains('cinder-input')).toBe(true);
     expect(input.classList.contains('cinder-time-field__input')).toBe(true);
-    // TimeField now composes FormFieldFrame itself, so Input inherits field
-    // context from TimeField's wrapper and renders bare — no redundant nested
-    // `.cinder-input-field` FormFieldFrame of its own.
-    expect(container.querySelector('.cinder-time-field__controls .cinder-input-field')).toBe(null);
+    // TimeField composes FormFieldFrame itself, and the nested Input inherits
+    // field context from TimeField's wrapper. Input always renders its own
+    // nested FormFieldFrame there (CIN-511: no more arm switch between a bare
+    // control and a framed one), with label/description/error absent since
+    // TimeField never gives Input its own — so `.cinder-input-field` is
+    // always present as a direct child of `.cinder-time-field__controls`.
+    expect(
+      container.querySelector('.cinder-time-field__controls > .cinder-input-field'),
+    ).not.toBeNull();
   });
 
-  test("the bare time input reaches .cinder-time-field__controls through Input's boxless host, so the CSS sizing still applies with a timezone select", async () => {
+  test('the time input reaches .cinder-time-field__controls through its own nested frame, so the CSS sizing still applies with a timezone select', async () => {
     const { container } = render(TimeField, {
       props: {
         id: 'reminder',
@@ -139,22 +144,19 @@ describe('TimeField', () => {
       },
     });
 
-    // Input renders bare (no `.cinder-input-field` wrapper) but always inside
-    // its control wrapper; without addons that is `.cinder-input-host`, which
-    // is `display: contents` and contributes no box. The fixed control-row
-    // width (`.cinder-time-field__controls > .cinder-input-host >
-    // .cinder-time-field__input` in time-field.css) has to reach through that
-    // host, or the timezone select gets pushed onto its own line by the
-    // input's own `width: 100%`. Pin both the DOM path and the selector.
+    // Input's own nested FormFieldFrame (CIN-511) always renders here, always
+    // carrying `.cinder-input-field`, and it is a direct child of this row —
+    // or the timezone select gets pushed onto its own line by the frame's
+    // `width: 100%`. Pin both the DOM path and the selector.
     const controls = container.querySelector<HTMLElement>('.cinder-time-field__controls');
     const input = getInput(container);
-    const host = input.parentElement;
-    expect(host?.classList.contains('cinder-input-host')).toBe(true);
-    expect(host?.parentElement).toBe(controls);
+    const frame = input.closest('.cinder-input-field');
+    expect(frame).not.toBeNull();
+    expect(frame?.parentElement).toBe(controls);
 
     const css = await Bun.file(new URL('./time-field.css', import.meta.url)).text();
     expect(css).toMatch(
-      /\.cinder-time-field__controls > \.cinder-input-host > \.cinder-time-field__input\s*\{[^}]*flex:\s*0 1 12rem;/,
+      /\.cinder-time-field__controls > \.cinder-input-field\s*\{[^}]*flex:\s*0 1 12rem;/,
     );
   });
 

@@ -20,7 +20,8 @@
      * Where the `Input` sits:
      * - `bare`: on its own, so it renders its own field frame.
      * - `field`: inside a `FormField` with no label/description/error of its
-     *   own, so it renders only the control (the `control()` snippet path).
+     *   own. Renders a nested field frame with label/description/error
+     *   absent, same as `field-with-own-label` (CIN-511).
      * - `field-with-own-label`: inside a `FormField` but with its own label,
      *   so it renders a nested field frame.
      */
@@ -32,6 +33,14 @@
     leading?: Snippet<[]> | undefined;
     trailing?: Snippet<[]> | undefined;
     error?: string | undefined;
+    // Input's own `description` and `label` props (as opposed to the
+    // FormField's own `label`, which is always set to `"Field"` on the
+    // `field`/`field-with-own-label` hosts below) — plumbed through so a
+    // test can toggle them reactively on the `field` host to prove CIN-511:
+    // setting either one, even while `context.labelId` already suppresses
+    // Input's own label visually, must not recreate the native element.
+    description?: string | undefined;
+    ownLabel?: string | undefined;
   };
 </script>
 
@@ -46,6 +55,8 @@
     leading,
     trailing,
     error,
+    description,
+    ownLabel,
   }: InputAddonToggleFixtureProps = $props();
 
   const addons = $derived(
@@ -57,7 +68,11 @@
           ? { trailing }
           : {},
   );
-  const optional = $derived(error !== undefined ? { error } : {});
+  const optional = $derived({
+    ...(error !== undefined ? { error } : {}),
+    ...(description !== undefined ? { description } : {}),
+    ...(ownLabel !== undefined ? { label: ownLabel } : {}),
+  });
 </script>
 
 {#if host === 'bare'}
