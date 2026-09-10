@@ -156,9 +156,40 @@ function deriveStatusTier(base: OklchColor, target: OklchColor): OklchColor {
   return { ...mixed, c: Math.min(mixed.c, 0.05) };
 }
 
+/** The sRGB transfer function and its inverse, used to move between the two spaces below. */
+function encodeSrgb(channel: number): number {
+  const clamped = Math.min(1, Math.max(0, channel));
+  return clamped <= 0.0031308 ? 12.92 * clamped : 1.055 * clamped ** (1 / 2.4) - 0.055;
+}
+
+function decodeSrgb(channel: number): number {
+  return channel <= 0.04045 ? channel / 12.92 : ((channel + 0.055) / 1.055) ** 2.4;
+}
+
+/**
+ * A translucent `foreground` painted over an opaque `background`, in and out of
+ * LINEAR sRGB.
+ *
+ * The composite itself happens on GAMMA-ENCODED channels, because that is what
+ * the browser does -- and until CIN-245 this function did it on the linear
+ * channels it is handed, which is a different color and, in the dark arm, a
+ * materially more optimistic one. Measured in Chromium (`page.screenshot` +
+ * pixel read-back, both arms, the exact tokens this file gates):
+ *
+ *   white @ 35% over `#1a2430`  ->  rendered 105,112,120
+ *                                   gamma composite 106,113,120   (matches)
+ *                                   linear composite 161,162,164  (does not)
+ *
+ * Compositing black over white in linear light OVERSTATES the result's
+ * lightness and so understates contrast; compositing white over a dark surface
+ * understates it and so OVERSTATES contrast. The second direction is the
+ * dangerous one: it is exactly the dark-arm, light-ink case the border tiers
+ * now use, and the old model reported ~1.5x more contrast than ships. Every
+ * assertion here that composites reads the browser's number now.
+ */
 function compositeOver(foreground: Rgb, background: Rgb, opacity: number): Rgb {
-  return foreground.map(
-    (channel, index) => channel * opacity + background[index]! * (1 - opacity),
+  return foreground.map((channel, index) =>
+    decodeSrgb(encodeSrgb(channel) * opacity + encodeSrgb(background[index]!) * (1 - opacity)),
   ) as Rgb;
 }
 
@@ -383,7 +414,36 @@ function parseResolvedColor(value: unknown, tokenName: string, arm: string): Okl
   return { l, c, h };
 }
 
+/**
+ * The same subset, but keeping an alpha channel instead of rejecting it.
+ *
+ * Deliberately a SECOND reader rather than a relaxation of the first. Since
+ * CIN-245 the neutral structural border tiers are translucent by design, but
+ * `--cinder-status-*-border` and the rest of the palette are opaque by
+ * decision -- a translucent status border would take its hue from whatever it
+ * happened to sit on. `parseResolvedColor`'s alpha rejection is what enforces
+ * that decision, so it stays strict and only the handful of tokens that are
+ * SUPPOSED to be translucent come through here.
+ */
+function parseResolvedColorWithAlpha(
+  value: unknown,
+  tokenName: string,
+  arm: string,
+): TranslucentColor {
+  if (typeof value !== 'object' || value === null) {
+    throw new Error(`${tokenName} (${arm}) has no object $value`);
+  }
+  const { alpha, ...rest } = value as { alpha?: unknown };
+  const color = parseResolvedColor({ ...rest }, tokenName, arm);
+  if (alpha !== undefined && typeof alpha !== 'number') {
+    throw new Error(`${tokenName} (${arm}) has a non-numeric alpha`);
+  }
+  return { ...color, alpha: alpha ?? 1 };
+}
+
 type TokenArms = { light: OklchColor; dark: OklchColor };
+type TranslucentColor = OklchColor & { alpha: number };
+type TranslucentTokenArms = { light: TranslucentColor; dark: TranslucentColor };
 
 /**
  * Both theme arms of one token, by its CSS custom-property name. Throws when a
@@ -403,6 +463,37 @@ function readOklchToken(tokenName: string): TokenArms {
     return parseResolvedColor(value, tokenName, arm);
   };
   return { light: read('light'), dark: read('dark') };
+}
+
+/** As {@link readOklchToken}, for the tokens that carry an alpha channel by design. */
+function readTranslucentToken(tokenName: string): TranslucentTokenArms {
+  const path = cssPropertyToPath[tokenName];
+  if (path === undefined) {
+    throw new Error(`${tokenName} has no corpus token in the generated registry`);
+  }
+  const read = (arm: 'light' | 'dark'): TranslucentColor => {
+    const value = readResolvedValue(arm, path);
+    if (value === undefined) {
+      throw new Error(`${tokenName} (${path}) is absent from the resolved ${arm} context`);
+    }
+    return parseResolvedColorWithAlpha(value, tokenName, arm);
+  };
+  return { light: read('light'), dark: read('dark') };
+}
+
+/**
+ * The contrast ratio between a translucent color painted over `ground` and
+ * `ground` itself -- what a reader actually sees at a border/surface seam.
+ */
+function translucentContrastOn(ink: TranslucentColor, ground: OklchColor): number {
+  const groundRgb = clampRgb(oklchToLinearSrgb(ground.l, ground.c, ground.h));
+  const painted = compositeOver(
+    clampRgb(oklchToLinearSrgb(ink.l, ink.c, ink.h)),
+    groundRgb,
+    ink.alpha,
+  );
+  const luminance = (rgb: Rgb) => 0.2126 * rgb[0] + 0.7152 * rgb[1] + 0.0722 * rgb[2];
+  return contrastRatio(luminance(painted), luminance(groundRgb));
 }
 
 /**
@@ -514,9 +605,15 @@ const surfaceInset = readOklchToken('--cinder-surface-inset');
 const surfaceRaised = readOklchToken('--cinder-surface-raised');
 const text = readOklchToken('--cinder-text-default');
 const borderFaint = readOklchToken('--cinder-border-faint');
-const borderMuted = readOklchToken('--cinder-border-muted');
-const border = readOklchToken('--cinder-border');
-const borderStrong = readOklchToken('--cinder-border-strong');
+// The three structural tiers are alpha steps over one polarity-aware ink
+// (CIN-245), so they have no contrast of their own -- only a contrast against
+// whatever they are painted on. `--cinder-border-faint` stays opaque: the
+// ticket enumerates exactly these three, and faint answers to a different,
+// deliberately-below-3:1 floor.
+const borderInk = readOklchToken('--cinder-border-ink');
+const borderMuted = readTranslucentToken('--cinder-border-muted');
+const border = readTranslucentToken('--cinder-border');
+const borderStrong = readTranslucentToken('--cinder-border-strong');
 const opacityDisabled = readNumberToken('--cinder-opacity-disabled');
 const opacityMuted = readNumberToken('--cinder-opacity-muted');
 const opacityFaint = readNumberToken('--cinder-opacity-faint');
@@ -536,7 +633,6 @@ describe('newly modeled component color tokens', () => {
     '--cinder-alert-info',
     '--cinder-code-block-background',
     '--cinder-file-upload-background',
-    '--cinder-file-upload-border-color',
     '--cinder-file-upload-progress-background',
     '--cinder-file-upload-progress-fill',
     '--cinder-kanban-column-background',
@@ -552,6 +648,22 @@ describe('newly modeled component color tokens', () => {
       const arms = readOklchToken(token);
       expect(Number.isFinite(arms.light.l)).toBe(true);
       expect(Number.isFinite(arms.dark.l)).toBe(true);
+    }
+  });
+
+  // Component tokens that ALIAS a structural border tier inherit its alpha
+  // (CIN-245), so they are read through the translucent reader. Keeping them
+  // in a separate list is the point: a component color that unexpectedly grows
+  // an alpha channel still fails in the list above.
+  it('keeps the border-aliasing component colors resolvable, and translucent', () => {
+    for (const token of ['--cinder-file-upload-border-color'] as const) {
+      const arms = readTranslucentToken(token);
+      for (const arm of ['light', 'dark'] as const) {
+        expect(Number.isFinite(arms[arm].l)).toBe(true);
+        expect(arms[arm].alpha, `${token} (${arm}) should inherit border.control's alpha`).toBe(
+          border[arm].alpha,
+        );
+      }
     }
   });
 
@@ -880,7 +992,11 @@ describe('status color contrast', () => {
   });
 
   it('every soft status tier provides readable foreground and perceptible border contrast', () => {
-    const statuses: Array<[string, TokenArms, TokenArms, TokenArms]> = [
+    // The neutral row's border aliases `--cinder-border`, which since CIN-245
+    // is translucent, so its ratio has to be measured COMPOSITED over the soft
+    // neutral background rather than read off the ink. The four status rows
+    // stay opaque, hence the two border shapes.
+    const statuses: Array<[string, TokenArms, TokenArms, TokenArms | TranslucentTokenArms]> = [
       ['neutral', neutralBg, text, border],
       ['info', infoBg, infoFg, infoBorder],
       ['success', successBg, successFg, successBorder],
@@ -889,14 +1005,18 @@ describe('status color contrast', () => {
     ];
     expect(readTokenValue(css, '--cinder-status-neutral-text')).toBe('var(--cinder-text-default)');
     expect(readTokenValue(css, '--cinder-status-neutral-border')).toBe('var(--cinder-border)');
-    for (const [name, background, foreground, border] of statuses) {
+    for (const [name, background, foreground, statusBorder] of statuses) {
       for (const arm of ['light', 'dark'] as const) {
         expect(
           contrastRatio(wcagLuminance(foreground[arm]), wcagLuminance(background[arm])),
           `${name} foreground ${arm}`,
         ).toBeGreaterThanOrEqual(AA_TEXT);
+        const edge = statusBorder[arm];
         expect(
-          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(background[arm])),
+          translucentContrastOn(
+            { ...edge, alpha: 'alpha' in edge ? edge.alpha : 1 },
+            background[arm],
+          ),
           `${name} border ${arm}`,
         ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
       }
@@ -1013,24 +1133,121 @@ describe('border-on-surface contrast', () => {
       });
 
       it(`${arm}: muted border is perceptible on ${surfaceName}`, () => {
-        expect(
-          contrastRatio(wcagLuminance(borderMuted[arm]), wcagLuminance(surfaceToken[arm])),
-        ).toBeGreaterThanOrEqual(DECORATIVE_BORDER);
+        expect(translucentContrastOn(borderMuted[arm], surfaceToken[arm])).toBeGreaterThanOrEqual(
+          DECORATIVE_BORDER,
+        );
       });
 
       it(`${arm}: functional border clears WCAG 1.4.11 on ${surfaceName}`, () => {
-        expect(
-          contrastRatio(wcagLuminance(border[arm]), wcagLuminance(surfaceToken[arm])),
-        ).toBeGreaterThanOrEqual(NON_TEXT);
+        expect(translucentContrastOn(border[arm], surfaceToken[arm])).toBeGreaterThanOrEqual(
+          NON_TEXT,
+        );
       });
 
       it(`${arm}: strong control border clears WCAG 1.4.11 on ${surfaceName}`, () => {
-        expect(
-          contrastRatio(wcagLuminance(borderStrong[arm]), wcagLuminance(surfaceToken[arm])),
-        ).toBeGreaterThanOrEqual(NON_TEXT);
+        expect(translucentContrastOn(borderStrong[arm], surfaceToken[arm])).toBeGreaterThanOrEqual(
+          NON_TEXT,
+        );
       });
     }
   }
+
+  // -------------------------------------------------------------------------
+  // CIN-245: the three structural tiers are alpha steps over ONE ink.
+  //
+  // The point of composing them that way is not economy, it is UNIFORMITY: an
+  // alpha border tracks the surface underneath it, so one tier reads the same
+  // weight everywhere it is used. The opaque values these replaced could not
+  // do that -- the dark arm's surface ramp spans L 0.11..0.28, so a single
+  // opaque border was 4.80:1 on `inset` and 3.42:1 on `raised`, a 29% spread,
+  // and every retune had to re-chase it by eye.
+  // -------------------------------------------------------------------------
+  const structuralTiers = {
+    'border.muted': borderMuted,
+    'border.control': border,
+    'border.strong': borderStrong,
+  } as const;
+
+  // Deliberately a proportion of the larger ratio rather than an absolute
+  // spread: the tiers sit at very different ratios (1.5:1 vs 4.9:1), so a
+  // fixed delta would be near-free for one and unreachable for another.
+  const MAX_SPREAD = 0.15;
+
+  for (const arm of ['light', 'dark'] as const) {
+    for (const [tierName, tier] of Object.entries(structuralTiers)) {
+      it(`${arm}: ${tierName} reads within ${MAX_SPREAD * 100}% across every legal surface`, () => {
+        const ratios = Object.entries(surfaces).map(
+          ([surfaceName, surfaceToken]) =>
+            [surfaceName, translucentContrastOn(tier[arm], surfaceToken[arm])] as const,
+        );
+        const values = ratios.map(([, ratio]) => ratio);
+        const spread = (Math.max(...values) - Math.min(...values)) / Math.max(...values);
+        expect(
+          spread,
+          ratios.map(([name, ratio]) => `${name}=${ratio.toFixed(3)}`).join(' '),
+        ).toBeLessThanOrEqual(MAX_SPREAD);
+      });
+    }
+
+    it(`${arm}: the tiers stay ordered on every surface`, () => {
+      for (const [surfaceName, surfaceToken] of Object.entries(surfaces)) {
+        const on = (tier: TranslucentColor) => translucentContrastOn(tier, surfaceToken[arm]);
+        expect(on(borderStrong[arm]), `strong > control on ${surfaceName}`).toBeGreaterThan(
+          on(border[arm]),
+        );
+        expect(on(border[arm]), `control > muted on ${surfaceName}`).toBeGreaterThan(
+          on(borderMuted[arm]),
+        );
+      }
+    });
+
+    it(`${arm}: every structural tier is the SAME ink, differing only in alpha`, () => {
+      // AC #1 as a tested property rather than an authoring convention: the
+      // corpus repeats the ink's components on each tier (matching how
+      // `accent.border` is authored), so nothing but this stops one tier from
+      // being nudged off the shared ink and quietly becoming a second source.
+      for (const [tierName, tier] of Object.entries(structuralTiers)) {
+        expect(
+          { l: tier[arm].l, c: tier[arm].c, h: tier[arm].h },
+          `${tierName} (${arm}) must resolve to border.ink`,
+        ).toEqual(borderInk[arm]);
+        expect(tier[arm].alpha, `${tierName} (${arm}) must be translucent`).toBeLessThan(1);
+      }
+    });
+  }
+
+  it('the emitted color-mix percentage agrees with the resolved alpha', () => {
+    // The CSS comes from `cssRecipe` and the resolved artifacts come from
+    // `$value`; the generator does not relate them. A recipe that says 52% and
+    // a `$value` that says 0.48 would ship a border the gate above never
+    // measured -- so the two are pinned to each other here.
+    const tierProperties = {
+      '--cinder-border-muted': borderMuted,
+      '--cinder-border': border,
+      '--cinder-border-strong': borderStrong,
+    } as const;
+    for (const [property, tier] of Object.entries(tierProperties)) {
+      const declaration = readTokenValue(css, property).replace(/\s+/g, ' ');
+      expect(declaration).toBe(
+        `color-mix(in oklch, var(--cinder-border-ink), transparent ${Math.round((1 - tier.light.alpha) * 100)}%)`,
+      );
+      expect(tier.dark.alpha, `${property} shares one alpha ladder across arms`).toBe(
+        tier.light.alpha,
+      );
+    }
+  });
+
+  it('semantic and status borders stay opaque', () => {
+    // The hybrid model CIN-245 ratified: alpha-composed neutral STRUCTURE,
+    // opaque semantics. A translucent status border would take its hue from
+    // whatever it happened to sit on, which is the opposite of what a status
+    // color is for. `readOklchToken` throws on any alpha channel, so simply
+    // reading these through it is the assertion.
+    for (const status of ['info', 'success', 'warning', 'danger'] as const) {
+      expect(() => readOklchToken(`--cinder-status-${status}-border`)).not.toThrow();
+    }
+    expect(() => readOklchToken('--cinder-border-faint')).not.toThrow();
+  });
 });
 
 describe('sRGB gamut integrity (no silent chroma clamping)', () => {

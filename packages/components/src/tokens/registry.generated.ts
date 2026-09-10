@@ -971,6 +971,16 @@ export const TOKEN_REGISTRY: TokenRegistry = {
         "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. Every polarity-aware wash in the corpus derives from this one token, so overriding it re-polarizes all of them together.",
     },
     {
+      path: 'border.ink',
+      cssProperty: '--cinder-border-ink',
+      category: 'color',
+      public: true,
+      themeAware: true,
+      deprecated: false,
+      description:
+        "The single polarity-aware ink every neutral structural border tier is mixed from: a dark cool ink in light mode, a light cool ink in dark mode. `border.muted`, `border.control`, and `border.strong` are alpha steps over it, so each tier tracks the surface underneath it instead of being tuned per surface -- which is what holds each tier's contrast spread across the four legal surface tiers under 15% in both arms, against 29% for the opaque dark values it replaces. Overriding this one token re-tints all three together. Semantic and status borders are deliberately NOT derived from it: they stay opaque, because a translucent status border would take its hue from whatever it happened to sit on.",
+    },
+    {
       path: 'border.control',
       cssProperty: '--cinder-border',
       category: 'color',
@@ -978,7 +988,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        'Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill.',
+        "Functional control boundary that clears WCAG 1.4.11's 3:1 floor against every supported surface. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. Composed as a 48% alpha step over `border.ink` rather than authored per arm, so it can no longer drift out of step with the other two tiers.",
     },
     {
       path: 'border.faint',
@@ -998,7 +1008,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        'Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop.',
+        'Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop. Composed as a 19% alpha step over `border.ink`.',
     },
     {
       path: 'border.strong',
@@ -1008,7 +1018,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`.",
+        "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`, with more weight. Composed as a 58% alpha step over `border.ink`.",
     },
     {
       path: 'border.inverse',
@@ -3083,6 +3093,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     'surface.upcoming-marker': '--cinder-surface-upcoming-marker',
     'surface.canvas': '--cinder-surface-canvas',
     'polarity.ink': '--cinder-polarity-ink',
+    'border.ink': '--cinder-border-ink',
     'border.control': '--cinder-border',
     'border.faint': '--cinder-border-faint',
     'border.muted': '--cinder-border-muted',
@@ -3397,6 +3408,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     '--cinder-surface-upcoming-marker': 'surface.upcoming-marker',
     '--cinder-surface-canvas': 'surface.canvas',
     '--cinder-polarity-ink': 'polarity.ink',
+    '--cinder-border-ink': 'border.ink',
     '--cinder-border': 'border.control',
     '--cinder-border-faint': 'border.faint',
     '--cinder-border-muted': 'border.muted',
@@ -3711,6 +3723,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     '--cinder-surface-upcoming-marker': ['surface.upcoming-marker'],
     '--cinder-surface-canvas': ['surface.canvas'],
     '--cinder-polarity-ink': ['polarity.ink'],
+    '--cinder-border-ink': ['border.ink'],
     '--cinder-border': ['border.control'],
     '--cinder-border-faint': ['border.faint'],
     '--cinder-border-muted': ['border.muted'],
@@ -4128,6 +4141,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       'surface.upcoming-marker',
       'surface.canvas',
       'polarity.ink',
+      'border.ink',
       'border.control',
       'border.faint',
       'border.muted',

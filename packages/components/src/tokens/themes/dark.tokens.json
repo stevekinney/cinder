@@ -91,10 +91,22 @@
   },
   "border": {
     "$type": "color",
+    "ink": {
+      "$value": {
+        "colorSpace": "oklch",
+        "components": [0.86, 0.065, 250]
+      }
+    },
     "control": {
       "$value": {
         "colorSpace": "oklch",
-        "components": [0.58, 0.05, 245]
+        "components": [0.86, 0.065, 250],
+        "alpha": 0.48
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)"
+        }
       }
     },
     "faint": {
@@ -106,13 +118,25 @@
     "muted": {
       "$value": {
         "colorSpace": "oklch",
-        "components": [0.38, 0.04, 245]
+        "components": [0.86, 0.065, 250],
+        "alpha": 0.19
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)"
+        }
       }
     },
     "strong": {
       "$value": {
         "colorSpace": "oklch",
-        "components": [0.66, 0.06, 245]
+        "components": [0.86, 0.065, 250],
+        "alpha": 0.58
+      },
+      "$extensions": {
+        "com.lostgradient.cinder": {
+          "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)"
+        }
       }
     },
     "inverse": {

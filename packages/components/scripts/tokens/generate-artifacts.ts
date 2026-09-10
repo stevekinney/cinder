@@ -276,6 +276,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
     slug: 'borders',
     headings: ['## Borders'],
     cssProperties: [
+      '--cinder-border-ink',
       '--cinder-border',
       '--cinder-border-faint',
       '--cinder-border-muted',

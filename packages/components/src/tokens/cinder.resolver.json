@@ -345,6 +345,10 @@
               "label": "Borders",
               "members": [
                 {
+                  "cssProperty": "--cinder-border-ink",
+                  "label": "Border ink"
+                },
+                {
                   "cssProperty": "--cinder-border",
                   "label": "Border"
                 },

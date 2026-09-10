@@ -1356,17 +1356,30 @@
     },
     "$type": "color"
   },
-  "border.control": {
-    "$value": { "colorSpace": "oklch", "components": [0.58, 0.05, 245] },
-    "$description": "Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill.",
+  "border.ink": {
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250] },
+    "$description": "The single polarity-aware ink every neutral structural border tier is mixed from: a dark cool ink in light mode, a light cool ink in dark mode. `border.muted`, `border.control`, and `border.strong` are alpha steps over it, so each tier tracks the surface underneath it instead of being tuned per surface -- which is what holds each tier's contrast spread across the four legal surface tiers under 15% in both arms, against 29% for the opaque dark values it replaces. Overriding this one token re-tints all three together. Semantic and status borders are deliberately NOT derived from it: they stay opaque, because a translucent status border would take its hue from whatever it happened to sit on.",
     "$extensions": {
       "com.lostgradient.cinder": {
+        "cssProperty": "--cinder-border-ink",
+        "public": true,
+        "category": "color"
+      }
+    },
+    "$type": "color"
+  },
+  "border.control": {
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.48 },
+    "$extensions": {
+      "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 52%)",
         "cssProperty": "--cinder-border",
         "public": true,
         "category": "color",
         "contrastPairs": ["surface.base", "surface.raised"]
       }
     },
+    "$description": "Functional control boundary that clears WCAG 1.4.11's 3:1 floor against every supported surface. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. Composed as a 48% alpha step over `border.ink` rather than authored per arm, so it can no longer drift out of step with the other two tiers.",
     "$type": "color"
   },
   "border.faint": {
@@ -1382,31 +1395,33 @@
     "$type": "color"
   },
   "border.muted": {
-    "$value": { "colorSpace": "oklch", "components": [0.38, 0.04, 245] },
-    "$description": "Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop.",
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.19 },
     "$extensions": {
       "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 81%)",
         "cssProperty": "--cinder-border-muted",
         "public": true,
         "category": "color"
       }
     },
+    "$description": "Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop. Composed as a 19% alpha step over `border.ink`.",
     "$type": "color"
   },
   "border.strong": {
-    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] },
-    "$description": "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`.",
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.58 },
     "$extensions": {
       "com.lostgradient.cinder": {
+        "cssRecipe": "color-mix(in oklch, var(--cinder-border-ink), transparent 42%)",
         "cssProperty": "--cinder-border-strong",
         "public": true,
         "category": "color"
       }
     },
+    "$description": "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`, with more weight. Composed as a 58% alpha step over `border.ink`.",
     "$type": "color"
   },
   "border.inverse": {
-    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] },
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.58 },
     "$description": "Border for surfaces using `surface.inverse` (Tooltip). Transparent in light mode; adds a 1px delineation in dark mode only.",
     "$extensions": {
       "com.lostgradient.cinder": {
@@ -2383,7 +2398,7 @@
   },
   "status.neutral.border": {
     "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.58, 0.05, 245] },
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.48 },
     "$description": "Border color on the soft neutral surface.",
     "$extensions": {
       "com.lostgradient.cinder": {
@@ -2645,7 +2660,7 @@
   },
   "button.border": {
     "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.66, 0.06, 245] },
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.58 },
     "$description": "Secondary (default) button border.",
     "$extensions": {
       "com.lostgradient.cinder": {
@@ -3480,7 +3495,7 @@
   },
   "file-upload.border-color": {
     "$type": "color",
-    "$value": { "colorSpace": "oklch", "components": [0.58, 0.05, 245] },
+    "$value": { "colorSpace": "oklch", "components": [0.86, 0.065, 250], "alpha": 0.48 },
     "$description": "Dropzone border color.",
     "$extensions": {
       "com.lostgradient.cinder": {
