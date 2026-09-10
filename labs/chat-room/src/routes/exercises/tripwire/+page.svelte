@@ -270,8 +270,12 @@
 			// operative's refusal wording.
 			lastMessageEchoesPrompt: typeof last === 'string' && last.includes(prompt),
 			promptSeenByGenerate,
-			// Whether the transcript ends in something other than this page's
-			// fixture answer, decided against its own constant.
+			// Whether the run APPENDED something, and that something is not
+			// this page's fixture answer — decided against its own constant.
+			// The append half is why the tripped panel reads `false`: nothing
+			// was added there at all, so there is no substitute to describe.
+			// A label about the last message alone would be wrong there, since
+			// the seeded prompt is also "not the fixture answer".
 			//
 			// NOT "the model's answer was replaced": on the default-mode
 			// injection panel `generate` is never called, so no answer ever
@@ -395,7 +399,7 @@
 					</dd>
 					<dt>prompt <code>generate</code> received</dt>
 					<dd data-testid="tripwire-{panel.id}-prompt-seen">{observation.promptSeenByGenerate}</dd>
-					<dt>last message is not the fixture answer</dt>
+					<dt>appended something other than the fixture answer</dt>
 					<dd data-testid="tripwire-{panel.id}-substituted">{observation.substituted}</dd>
 					<dt>last message</dt>
 					<dd data-testid="tripwire-{panel.id}-last-message">{observation.lastMessage}</dd>

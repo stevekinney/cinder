@@ -171,6 +171,12 @@
 		// "every chunk's summary survived" checkable without pinning HOW MANY
 		// chunks there were, which is conversationalist's business.
 		const markers: string[] = [];
+		// Reserved SYNCHRONOUSLY, before any await. Deriving the invocation
+		// index from `markers.length` after the delay defeated the skew
+		// entirely: under the parallel dispatch this is meant to detect, every
+		// callback reads the same length before any of them pushes, so all
+		// wait the same number of ticks and settle FIFO anyway.
+		let summarizeInvocations = 0;
 		// Each chunk's seed positions, so the ORDER THE CALLBACKS RECEIVED can
 		// be checked as well as the order their results landed in. Marker
 		// positions alone only prove the returned strings were concatenated in
@@ -239,12 +245,19 @@
 						// settle first. Microtasks rather than timers: no
 						// wall-clock cost, and fully deterministic. Sequential
 						// dispatch is unaffected beyond a few extra ticks.
-						const invocation = markers.length;
+						const invocation = summarizeInvocations;
+						summarizeInvocations += 1;
 						for (let tick = MAXIMUM_SUMMARY_SKEW - invocation; tick > 0; tick -= 1) {
 							await Promise.resolve();
 						}
 						for (const message of messages) seenIds.push(message.id);
-						chunkSeedPositions.push(messages.map((message) => seededIds.indexOf(message.id)));
+						// Bound to the RESERVED index rather than appended: under
+						// parallel dispatch an append would record these in
+						// completion order, which is precisely the order this
+						// fixture is trying to scramble.
+						chunkSeedPositions[invocation] = messages.map((message) =>
+							seededIds.indexOf(message.id)
+						);
 						// The full shape, not just the id. Recording only ids would
 						// let a compaction that preserved every id and its order
 						// while altering a role, content, or metadata hand a real
@@ -252,8 +265,8 @@
 						for (const message of messages) {
 							summarizerInputs.push({ id: message.id, shape: shapeOf(message) });
 						}
-						const marker = `[summary ${markers.length + 1} of ${messages.length} messages]`;
-						markers.push(marker);
+						const marker = `[summary ${invocation + 1} of ${messages.length} messages]`;
+						markers[invocation] = marker;
 						return marker;
 					},
 					retainRecentMessages: 2
