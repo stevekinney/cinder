@@ -51,8 +51,10 @@
 	 * What this page's `generate` always returns. Named so the panels can
 	 * report whether the transcript's last message is still the model's own
 	 * answer, without any panel — or any spec — quoting the refusal copy that
-	 * replaces it. That copy belongs to operative and would change without the
-	 * behavior here changing at all.
+	 * gets appended instead of it. Appended rather than "replacing": on the
+	 * default-mode path `generate` is never called, so there is no model
+	 * answer for a refusal to replace. That copy belongs to operative and
+	 * would change without the behavior here changing at all.
 	 */
 	const MODEL_ANSWER = 'The capital of France is Paris.';
 
@@ -124,7 +126,7 @@
 		// `mode` is OMITTED rather than set to `'validate'` for the control
 		// panel, and that is the point of the panel: passing the default
 		// explicitly would only prove that explicitly-configured validation
-		// continues the run. Leaving it off exercises operative's own
+		// proceeds past the guardrail. Leaving it off exercises operative's own
 		// defaulting, so the panel's claim about what you get by reaching for
 		// `createGuardrails` without thinking about `mode` is the claim
 		// actually under test.
@@ -326,7 +328,7 @@
 		{
 			id: 'continued',
 			label: 'Injection, no mode given',
-			note: 'The same detector fires — and the loop keeps going, substituting a refusal.',
+			note: 'The same detector fires — the loop proceeds past validation and appends a refusal.',
 			promise: observe('continued', INJECTION)
 		},
 		{

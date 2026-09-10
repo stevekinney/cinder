@@ -3,7 +3,9 @@
  *
  * "A detector fired" is the easy half and it is not what `mode: 'tripwire'`
  * buys you: the third panel fires the same detector, at the same confidence,
- * over the same injection, and the run keeps going. So the assertions here
+ * over the same injection, and the run proceeds past validation — appending a
+ * refusal and settling `stop-condition` after one step, without ever calling
+ * the model. So the assertions here
  * are paired — every claim about the tripped panel is checked against the
  * `validate` panel, where the same detection produced a different terminal
  * shape. Read on its own, `finishReason: 'tripwire'` would look like proof of
