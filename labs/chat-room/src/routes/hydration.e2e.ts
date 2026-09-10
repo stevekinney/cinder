@@ -58,8 +58,10 @@ const HYDRATING_ROUTES = [
 	'/exercises/diff-viewer',
 	'/exercises/history-scroll',
 	'/exercises/interleaving',
+	'/exercises/output',
 	'/exercises/markdown-editor',
 	'/exercises/message-lifecycle',
+	'/exercises/retry',
 	'/exercises/presentation',
 	'/exercises/review-anchoring',
 	'/exercises/review-basics',
@@ -74,6 +76,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/review-state-and-session',
 	'/exercises/review-views',
 	'/exercises/row-reconciliation',
+	'/exercises/stop-condition',
 	'/exercises/tool-approval',
 	'/exercises/utilities',
 	'/exercises/virtualization'
