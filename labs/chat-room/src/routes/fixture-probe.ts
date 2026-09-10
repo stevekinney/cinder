@@ -14,6 +14,20 @@
 import { FIXTURE_ORIGIN } from './streaming-fixture';
 
 /**
+ * Fetch a probe endpoint and fail with the status rather than with whatever
+ * `json()` makes of an error page. A 404 from a renamed route used to surface
+ * as a JSON parse error, which sends the reader looking at the wrong thing.
+ */
+async function probe<T>(path: string, init?: RequestInit): Promise<T> {
+	const url = `${FIXTURE_ORIGIN}${path}`;
+	const response = await fetch(url, init);
+	if (!response.ok) {
+		throw new Error(`Fixture probe ${url} responded ${response.status} ${response.statusText}`);
+	}
+	return (await response.json()) as T;
+}
+
+/**
  * How many times the fixture has been asked to generate for `marker`.
  *
  * This is the provider-call counter. One turn that ends in a tool call is one
@@ -21,16 +35,18 @@ import { FIXTURE_ORIGIN } from './streaming-fixture';
  * two, which is the difference between parking and looping.
  */
 export async function fixtureRequestCount(marker: string): Promise<number> {
-	const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/requests?marker=${marker}`);
-	const payload = (await response.json()) as { count: number };
-	return payload.count;
+	const { count } = await probe<{ count: number }>(
+		`/__fixture/requests?marker=${encodeURIComponent(marker)}`
+	);
+	return count;
 }
 
 /** Whether the fixture still holds an open response parked on `marker`'s gate. */
 export async function fixtureGateHeld(marker: string): Promise<boolean> {
-	const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/held?marker=${marker}`);
-	const payload = (await response.json()) as { held: boolean };
-	return payload.held;
+	const { held } = await probe<{ held: boolean }>(
+		`/__fixture/held?marker=${encodeURIComponent(marker)}`
+	);
+	return held;
 }
 
 /**
@@ -40,11 +56,11 @@ export async function fixtureGateHeld(marker: string): Promise<boolean> {
  * the call, which is what lets a spec assert ordering rather than sleep.
  */
 export async function releaseFixtureGate(marker: string): Promise<boolean> {
-	const response = await fetch(`${FIXTURE_ORIGIN}/__fixture/release?marker=${marker}`, {
-		method: 'POST'
-	});
-	const payload = (await response.json()) as { released: boolean };
-	return payload.released;
+	const { released } = await probe<{ released: boolean }>(
+		`/__fixture/release?marker=${encodeURIComponent(marker)}`,
+		{ method: 'POST' }
+	);
+	return released;
 }
 
 /** A fresh marker, so concurrent specs never share the fixture's counters. */

@@ -63,10 +63,19 @@ async function focusDecisionControl(
 	name: 'Approve' | 'Reject'
 ): Promise<void> {
 	const chat = page.locator('#chatroom-demo-chat');
-	const disclosure = chat.getByRole('button', { name: /^Expand remember_note/ });
+	// Matched on the tool name rather than on "Expand", so this keeps working if
+	// the group ever renders open by default and the label becomes "Collapse".
+	const disclosure = chat.getByRole('button', { name: /remember_note/ });
 	const target = chat.getByRole('button', { name });
 
-	await disclosure.press('Enter');
+	if ((await disclosure.getAttribute('aria-expanded')) === 'true') {
+		// Already open. Pressing would close it — and focusing is enough, since
+		// the claim under test is that the DECISION controls are reachable from
+		// here, not that this button is.
+		await disclosure.focus();
+	} else {
+		await disclosure.press('Enter');
+	}
 	await expect(target).toBeVisible();
 
 	if (!tabOrderIncludesButtons(projectName)) {
