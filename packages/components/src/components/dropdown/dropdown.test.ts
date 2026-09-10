@@ -282,6 +282,39 @@ describe('Dropdown', () => {
     outside.remove();
   });
 
+  test('CIN-428 (legacy non-popover branch): Escape restores focus to the trigger when focus already left the menu (review finding)', async () => {
+    // Regression: this branch only ran `open = false` on Escape, unlike the
+    // compound fallback's `dismissMenu()` — leaving focus stranded on
+    // whatever was outside the menu instead of returning it to the trigger,
+    // contrary to dropdown.a11y.md's Escape-returns-focus-to-trigger
+    // contract.
+    let openValue = true;
+    const { getByText } = render(Dropdown, {
+      props: {
+        get open() {
+          return openValue;
+        },
+        set open(value: boolean) {
+          openValue = value;
+        },
+        trigger: triggerSnippet,
+        children: textSnippet('Menu item'),
+      },
+    });
+    const trigger = getByText('Open Menu');
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+    expect(openValue).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
+  });
+
   test('data-cinder-placement reflects placement prop on root element', () => {
     const { container } = render(Dropdown, {
       props: {

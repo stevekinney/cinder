@@ -644,6 +644,50 @@ describe('CommandMenu escape-stack registration (CIN-427)', () => {
     }
   });
 
+  test('replacing a non-null anchor with another does not reorder the escape stack (review finding)', async () => {
+    // Regression: the $effect that registers the stack handler used to
+    // depend on `anchor` directly, so swapping one non-null anchor for
+    // another (e.g. a host retargeting which textarea owns the menu) while
+    // `open` stayed true tore the handler down and re-pushed it — moving it
+    // above any overlay that opened in the meantime. Gating on `hasAnchor`
+    // (a boolean) instead means only a null<->non-null transition changes
+    // registration, so a later overlay pushed onto the stack while the menu
+    // is open stays above it even after an anchor swap.
+    let dismissCount = 0;
+    let laterOverlayEscapeCount = 0;
+
+    const { getByTestId } = render(CommandMenuFixture, {
+      onDismissed: () => {
+        dismissCount += 1;
+      },
+    });
+    await waitFor(() => expect(queryMenu()).not.toBeNull());
+
+    // A second overlay opens after the menu — e.g. an editor/input swap
+    // surfacing its own popup — and sits above the menu on the stack.
+    const releaseLaterOverlay = pushEscapeHandler(() => {
+      laterOverlayEscapeCount += 1;
+    });
+
+    try {
+      await fireEvent.click(getByTestId('swap-anchor'));
+      await settleCommandMenu();
+      // The menu is still open and rendered against the new anchor.
+      expect(queryMenu()).not.toBeNull();
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      await settleCommandMenu();
+
+      // The later (visually higher) overlay handles Escape; the menu, still
+      // beneath it on the stack, is untouched.
+      expect(laterOverlayEscapeCount).toBe(1);
+      expect(dismissCount).toBe(0);
+      expect(queryMenu()).not.toBeNull();
+    } finally {
+      releaseLaterOverlay();
+    }
+  });
+
   test('escape-stack handler dismisses ghost text first, then falls through to close the menu', async () => {
     // Regression for the two-stage semantics routed explicitly through the
     // stack handler rather than the anchor's own keydown listener: dispatch

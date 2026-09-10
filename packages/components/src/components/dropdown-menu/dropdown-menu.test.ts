@@ -1,7 +1,7 @@
 /// <reference lib="dom" />
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { readFileSync } from 'node:fs';
-import { createRawSnippet } from 'svelte';
+import { createRawSnippet, tick } from 'svelte';
 
 import { setupHappyDom } from '../../test/happy-dom.ts';
 
@@ -239,10 +239,19 @@ describe('DropdownMenu', () => {
   // call `event.preventDefault()` for a Popover-API-backed menu, cancelling
   // the browser's own Escape close-request and leaving the top-layer
   // popover visibly open even though `setOpen(false)` already ran.
-  test('the native-popover branch registers a no-op, not dismissMenu (review finding)', () => {
+  test('the native-popover branch registers a non-cancelling handler, not dismissMenu (review finding)', () => {
     expect(dropdownMenuSource).toContain(
-      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler(() => {});',
+      'if (!context.supportsPopover || !context.isOpen) return;\n    const releaseEscape = pushEscapeHandler(() => {',
     );
+    // It must never call preventDefault()/stopPropagation() — doing so would
+    // cancel the browser's own Escape close-request for the top-layer
+    // popover. Only dismissMenu (the non-popover fallback's handler) may.
+    const popoverBranch = dropdownMenuSource.slice(
+      dropdownMenuSource.indexOf('if (!context.supportsPopover || !context.isOpen) return;'),
+      dropdownMenuSource.indexOf('function handleKeydown'),
+    );
+    expect(popoverBranch).not.toContain('.preventDefault(');
+    expect(popoverBranch).not.toContain('.stopPropagation(');
   });
 });
 
@@ -290,5 +299,50 @@ describe('DropdownMenu anchor-positioning style (popover path)', () => {
 
     const menu = container.querySelector('[role="menu"]') as HTMLElement;
     expect(menu.style.getPropertyValue('position-anchor')).toBe('--actions-menu-menu');
+  });
+
+  test('Escape restores focus to the trigger when focus already left the menu (review finding)', async () => {
+    // Regression: the native-popover branch's escape-stack handler must not
+    // preventDefault() (that would cancel the browser's own Escape
+    // close-request), but native focus restoration only returns focus to
+    // the invoker if focus was still *inside* the popover at the moment it
+    // closes. happy-dom's stubbed showPopover/hidePopover above don't
+    // simulate that native behavior at all, which is exactly why this case
+    // needs its own explicit restoration: without it, focus is silently
+    // left on whatever was outside, breaking dropdown.a11y.md's Escape ->
+    // focus-returns-to-trigger contract.
+    const { container } = renderFixture();
+    const trigger = container.querySelector('.trigger') as HTMLElement;
+    await fireEvent.click(trigger);
+    await waitFor(() => expect(container.querySelector('[role="menu"]')).not.toBeNull());
+
+    // happy-dom's stubbed showPopover() above is a pure no-op — a real
+    // browser dispatches a native `toggle` event when the popover actually
+    // opens, which is what `context.isOpen` (and thus this escape-stack
+    // registration) is driven by. Simulate that so the popover branch's
+    // effect actually engages.
+    const menu = container.querySelector('[role="menu"]') as HTMLElement;
+    const openToggleEvent = new window.Event('toggle');
+    Object.defineProperty(openToggleEvent, 'newState', { value: 'open' });
+    menu.dispatchEvent(openToggleEvent);
+    await tick();
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    const escapeEvent = new window.KeyboardEvent('keydown', {
+      key: 'Escape',
+      bubbles: true,
+      cancelable: true,
+    });
+    window.dispatchEvent(escapeEvent);
+
+    // Not cancelled: the browser's own native close-request must still run.
+    expect(escapeEvent.defaultPrevented).toBe(false);
+    expect(document.activeElement).toBe(trigger);
+    outside.remove();
   });
 });

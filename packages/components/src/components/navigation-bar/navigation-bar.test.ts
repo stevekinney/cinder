@@ -345,6 +345,23 @@ function allExcludedNavigationSnippet() {
   }));
 }
 
+/**
+ * Renders a search field inside the items region with its own local Escape
+ * handling, simulating a nested disclosure that wants first refusal on
+ * Escape (navigation-bar.a11y.md's "Cooperative Escape semantics").
+ */
+function nestedFieldSnippet(onFieldEscape: (event: KeyboardEvent) => void) {
+  return createRawSnippet(() => ({
+    render: () => '<input type="search" id="nested-search" />',
+    setup(element: Element) {
+      element.addEventListener('keydown', (event) => {
+        const keyboardEvent = event as KeyboardEvent;
+        if (keyboardEvent.key === 'Escape') onFieldEscape(keyboardEvent);
+      });
+    },
+  }));
+}
+
 function keyboardNavigationSnippet(clicks: Record<string, number>) {
   return createRawSnippet(() => ({
     render: () => `
@@ -1885,17 +1902,14 @@ describe('NavigationBar', () => {
     });
   });
 
-  test('CIN-428: Escape closes the mobile menu without reaching the composed rest-prop onkeydown', async () => {
-    // Behavior change from the escape-stack migration: the stack handler
-    // runs at the window capture phase and stopPropagation()s once it acts,
-    // so the keydown never reaches <nav>'s own bubble-phase onkeydown (where
-    // the consumer's composed handler used to run first) — and, as a direct
-    // consequence, a consumer can no longer cancel the close by calling
-    // preventDefault() from its own onkeydown for Escape specifically. This
-    // is the same uniform swallow-at-the-top tradeoff every other
-    // escape-stack overlay in this codebase already has (Combobox, Popover,
-    // etc.) — a consumer's onkeydown still composes normally for every other
-    // key (see the test above).
+  test('CIN-428 / cooperative Escape: a consumer onkeydown that calls preventDefault() cancels the close', async () => {
+    // The stack handler runs at the window capture phase — necessarily
+    // before the event reaches <nav>'s own bubble-phase onkeydown — but it
+    // no longer decides synchronously there. It stashes the event and lets
+    // it keep propagating so the composed consumer handler (which still
+    // runs first inside handleKeyDown, per navigation-bar.a11y.md's
+    // "Cooperative Escape semantics") gets to call preventDefault() and
+    // cancel the close, exactly as documented.
     let spyFired = false;
     await withResizeObserver(async () => {
       const { container } = render(NavigationBar, {
@@ -1924,7 +1938,78 @@ describe('NavigationBar', () => {
       nav.dispatchEvent(escapeEvent);
 
       expect(escapeEvent.defaultPrevented).toBe(true);
-      expect(spyFired).toBe(false);
+      expect(spyFired).toBe(true);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('cooperative Escape: a nested control inside the items region gets first refusal', async () => {
+    // navigation-bar.a11y.md: "If a component inside the navbar (a search
+    // field, combobox, or nested disclosure) calls event.preventDefault()
+    // on a keydown event, the menu's Escape handler is skipped." The nested
+    // field's own keydown listener fires at the target phase, before the
+    // event bubbles up through <nav> to the escape-stack's stashed decision
+    // — unlike the pre-fix behavior, where stopPropagation() at the window
+    // capture phase meant the nested field never saw the key at all.
+    let fieldSawEscape = false;
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: nestedFieldSnippet((event) => {
+          fieldSawEscape = true;
+          event.preventDefault();
+        }),
+        menuToggle: toggleSnippet(),
+      } as any);
+
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+      emitNavigationBarResize(nav, 640);
+      await tick();
+
+      await fireEvent.click(toggle);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+      const field = (container.querySelector('#nested-search') ??
+        document.body.querySelector('#nested-search')) as HTMLElement;
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      field.dispatchEvent(escapeEvent);
+
+      expect(fieldSawEscape).toBe(true);
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      // The nested field owned this Escape — the panel stays open.
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+    });
+  });
+
+  test('cooperative Escape: the panel still closes when no nested handler cancels it', async () => {
+    await withResizeObserver(async () => {
+      const { container } = render(NavigationBar, {
+        items: nestedFieldSnippet(() => {
+          // Sees Escape but does not call preventDefault() — the panel
+          // should still close, matching "pressing Escape on <nav> while
+          // open closes the menu" above.
+        }),
+        menuToggle: toggleSnippet(),
+      } as any);
+
+      await tick();
+      const toggle = container.querySelector('#toggle-btn') as HTMLElement;
+      const nav = container.querySelector('nav') as HTMLElement;
+      emitNavigationBarResize(nav, 640);
+      await tick();
+
+      await fireEvent.click(toggle);
+      expect(getItemsRegion(container).getAttribute('data-open')).toBe('true');
+
+      const field = (container.querySelector('#nested-search') ??
+        document.body.querySelector('#nested-search')) as HTMLElement;
+      await fireEvent.keyDown(field, { key: 'Escape' });
+
       expect(getItemsRegion(container).getAttribute('data-open')).toBe('false');
     });
   });

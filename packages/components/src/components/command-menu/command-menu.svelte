@@ -383,13 +383,24 @@
   // every window keydown regardless of focus location. That is a deliberate
   // behavior change: Escape now dismisses the menu even when focus has moved
   // elsewhere on the page while it's open.
+  //
+  // Depend on `hasAnchor` (a boolean), not `anchor` itself: a host that
+  // replaces one non-null anchor with another (e.g. swapping which
+  // textarea/input owns the menu) while `open` stays true must NOT tear down
+  // and re-push this registration — doing so would move it above any
+  // overlay that opened in the meantime, so a later Escape would dismiss
+  // this (visually lower) menu first instead of that newer, higher overlay.
+  // Only an actual null<->non-null transition should change registration —
+  // matching the menu's own render condition, which cares about presence,
+  // not identity.
+  const hasAnchor = $derived(anchor != null);
   $effect(() => {
     // Matches the menu's own render condition (`mounted && open && anchor`,
     // line ~487): when a host clears or unmounts `anchor` while `open` stays
     // true, nothing renders, so this stack entry must not either — otherwise
     // it silently swallows Escape for a menu that's no longer visible,
     // blocking whatever overlay is actually on screen beneath it.
-    if (!open || !anchor) return;
+    if (!open || !hasAnchor) return;
     const releaseEscape = pushEscapeHandler(handleEscape);
     return releaseEscape;
   });

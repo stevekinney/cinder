@@ -163,10 +163,29 @@
   // light-dismiss keeps working, and its `ontoggle` handler keeps `open` in
   // sync once the browser actually closes it.
 
+  // Same element the aria-expanded effect above resolves: the legacy
+  // snippet API has no bound trigger reference (unlike `compoundTriggerElement`),
+  // so the first focusable descendant of the consumer-supplied `trigger`
+  // snippet's wrapper is the closest thing to one.
+  function resolveLegacyTriggerElement(): HTMLElement | null {
+    return (
+      triggerWrapper?.querySelector<HTMLElement>(
+        'button, a, [tabindex]:not([tabindex="-1"]), input, select',
+      ) ?? null
+    );
+  }
+
   function dismissLegacyFallbackMenu(event?: KeyboardEvent): void {
     event?.preventDefault();
     event?.stopPropagation();
     open = false;
+    // Matches the compound fallback's `dismissMenu()` (dropdown-menu.svelte):
+    // this branch fully owns the close (no native light-dismiss to defer
+    // to), so restore focus to the trigger unconditionally, the same as
+    // dropdown.a11y.md's Escape-returns-focus-to-trigger contract requires —
+    // otherwise, when focus had tabbed outside the open menu before Escape,
+    // it's left on whatever was outside instead.
+    resolveLegacyTriggerElement()?.focus();
   }
 
   $effect(() => {
