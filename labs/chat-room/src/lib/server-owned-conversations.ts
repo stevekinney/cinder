@@ -39,7 +39,13 @@ export function titleOf(metadata: AgentSession['metadata']): string {
 	// migration — would render a blank heading and a blank list row rather than
 	// the fallback. The endpoint rejects `'   '` with a 400; this is the same
 	// rule applied where the value is read.
-	return typeof title === 'string' && title.trim().length > 0 ? title : 'Untitled conversation';
+	if (typeof title !== 'string') return 'Untitled conversation';
+	// The TRIMMED value, not the original. Validating `trim().length` and then
+	// returning the untrimmed string contradicted this function's own docblock
+	// and would have rendered leading or trailing whitespace in a heading and a
+	// link for any writer that stored one.
+	const trimmed = title.trim();
+	return trimmed.length > 0 ? trimmed : 'Untitled conversation';
 }
 
 /**

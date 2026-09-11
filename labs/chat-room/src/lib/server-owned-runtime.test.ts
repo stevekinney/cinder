@@ -195,6 +195,36 @@ describe('overlapping disposal', () => {
 	});
 });
 
+it('disposes a runtime built while an earlier disposal was still draining', async () => {
+	const first = serverOwnedRuntime();
+
+	// A teardown that reaches for a runtime, standing in for an in-flight
+	// request landing after the slot is cleared and before the teardowns
+	// finish. Disposal clears the slot BEFORE running anything, so this call
+	// builds a replacement.
+	let replacement: ReturnType<typeof serverOwnedRuntime> | undefined;
+	let replacementDisposed = false;
+	first.onDispose(() => {
+		replacement = serverOwnedRuntime();
+		replacement.onDispose(() => {
+			replacementDisposed = true;
+		});
+	});
+
+	// `drain`, which is what the signal handler passes. A plain disposal
+	// leaves the replacement alone on purpose — there it is the next
+	// caller's runtime rather than a straggler.
+	await disposeServerOwnedRuntime({ drain: true });
+
+	// The replacement was built, and disposed by the same call. Without the
+	// drain it survives — and the signal handler exits the moment the first
+	// disposal resolves, so its engine would be cut off with no teardown and
+	// no checkpoint flush.
+	expect(replacement).toBeDefined();
+	expect(replacement).not.toBe(first);
+	expect(replacementDisposed).toBe(true);
+});
+
 describe('process signals', () => {
 	/** Spawns the fixture and waits until it reports its handlers registered. */
 	async function readyFixture(environment: Record<string, string>) {

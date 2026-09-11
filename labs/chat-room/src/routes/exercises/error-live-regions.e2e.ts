@@ -14,9 +14,14 @@ import { gotoHydrated } from './hydration';
 // already activated.
 //
 // Collected here rather than scattered across the specs that own these routes,
-// because it is ONE invariant. A per-spec version would be five
-// assertions that each look incidental, and the next banner added would have no
-// obvious place to be checked.
+// because it is ONE invariant. A per-spec version would be one assertion per
+// entry below, each looking incidental where it sat, and the next banner added
+// would have no obvious place to be checked.
+//
+// The count is deliberately NOT restated in prose. It was written as "five",
+// the list has grown twice since, and the list is directly below — a number in
+// a comment beside the thing it counts is one more thing to keep in step, and
+// this one did not stay in step.
 //
 // This is the "before" half only. That each region actually receives its text
 // when the error happens is already covered by the specs that drive those

@@ -170,9 +170,7 @@
 						aria-label="{conversation.title}, {conversation.messageCount} message{conversation.messageCount ===
 						1
 							? ''
-							: 's'}, updated {new Date(
-							conversation.updatedAt
-						).toLocaleString()}, id {conversation.id.slice(0, 8)}">{conversation.title}</a
+							: 's'}, id {conversation.id.slice(0, 8)}">{conversation.title}</a
 					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}

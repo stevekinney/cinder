@@ -128,7 +128,28 @@ export function serverOwnedRuntime(): ServerOwnedRuntime {
  * rest still run, because a half-disposed runtime is the failure this
  * function exists to prevent.
  */
-export async function disposeServerOwnedRuntime(): Promise<{ failures: number }> {
+export async function disposeServerOwnedRuntime(
+	options: {
+		/**
+		 * Also dispose any runtime built WHILE this disposal was running.
+		 *
+		 * For termination only, which is why it is opt-in rather than the
+		 * default. During shutdown an in-flight request can reach
+		 * `serverOwnedRuntime()` after the slot is cleared and before the
+		 * teardowns finish, build a replacement, and start a durable engine on
+		 * it — and the signal handler exits as soon as the disposal it started
+		 * resolves, cutting that engine off with no teardown and no checkpoint
+		 * flush.
+		 *
+		 * Off by default because the same function is how the specs reset: there,
+		 * a runtime built after disposal is the NEXT test's, and draining it
+		 * would tear down the thing the caller just asked for. The difference is
+		 * whether the process intends to keep running, which only the caller
+		 * knows.
+		 */
+		drain?: boolean;
+	} = {}
+): Promise<{ failures: number }> {
 	const host = globalThis as RuntimeHost;
 
 	// An overlapping caller joins the disposal already running instead of
@@ -142,13 +163,54 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
 	const held = host[RUNTIME_SLOT];
 	if (held === undefined) return { failures: 0 };
 
-	const disposal = runDisposal(host, held);
+	const disposal = options.drain === true ? drainDisposal(host, held) : runDisposal(host, held);
 	host[DISPOSAL_SLOT] = disposal;
 	try {
 		return await disposal;
 	} finally {
 		host[DISPOSAL_SLOT] = undefined;
 	}
+}
+
+/**
+ * Disposes the held runtime, and then any GENERATION created while it drained.
+ *
+ * The window is real and the signal handler makes it consequential: disposal
+ * clears the runtime slot before running teardowns, so an in-flight request
+ * reaching `serverOwnedRuntime()` in between builds a replacement — and can
+ * start a durable engine on it. The handler awaits only the disposal it
+ * started and then calls `process.exit`, so that replacement engine is cut off
+ * with no teardown and no checkpoint flush.
+ *
+ * Draining rather than blocking: a request that is mid-flight needs a runtime,
+ * and refusing it would turn a shutdown into an error the client sees. Letting
+ * it build one and then disposing that too is the same guarantee without the
+ * failure.
+ *
+ * BOUNDED, and the bound is a real limit rather than a retry. Each pass
+ * disposes one generation; a request arriving during the last pass would
+ * create another, and a process being asked to stop should stop. Three passes
+ * is enough for the realistic case — one in-flight request, building one
+ * replacement — and anything beyond that is a process taking traffic while it
+ * shuts down, which is a load-balancer problem rather than one more pass.
+ */
+async function drainDisposal(
+	host: RuntimeHost,
+	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
+): Promise<{ failures: number }> {
+	const GENERATIONS = 3;
+	let failures = 0;
+	let generation: typeof held | undefined = held;
+
+	for (let pass = 0; pass < GENERATIONS && generation !== undefined; pass += 1) {
+		failures += (await runDisposal(host, generation)).failures;
+		// A replacement built while the pass above was running. `undefined`
+		// means nothing reached `serverOwnedRuntime()` in the window, which is
+		// the ordinary case.
+		generation = host[RUNTIME_SLOT];
+	}
+
+	return { failures };
 }
 
 async function runDisposal(
@@ -299,7 +361,10 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 			// Deliberately no watchdog timer. A disposal that never settles
 			// would hang, and the honest fix for that is whatever is hanging,
 			// not a timer that hides it.
-			void disposeServerOwnedRuntime().finally(() => {
+			// `drain`, because this one is terminating: a request that builds a
+			// replacement runtime while the teardowns run would otherwise be cut
+			// off by the exit below.
+			void disposeServerOwnedRuntime({ drain: true }).finally(() => {
 				process.exit(TERMINATION_STATUS[signal]);
 			});
 		});
