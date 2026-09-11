@@ -2904,4 +2904,33 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
       'var(--cinder-polarity-ink)',
     );
   });
+
+  test('a lone number in a color position is bare, not a keyword', () => {
+    // `5` is a `word` node, but it is neither a hex literal nor a keyword
+    // (the keyword grammar requires a leading letter) -- it falls through
+    // to the same bare-component-list result a triplet does.
+    expect(() =>
+      serializeEntryValue(recipeEntry('color-mix(in oklch, 5, transparent)'), new Map()),
+    ).toThrow(/bare component list/);
+  });
+
+  test('a value that is not a function, hex literal, or keyword is bare', () => {
+    // A quoted string can never be a color position, regardless of what kind
+    // of node the parser produces for it.
+    expect(() =>
+      serializeEntryValue(recipeEntry('color-mix(in oklch, "oops", transparent)'), new Map()),
+    ).toThrow(/bare component list/);
+  });
+
+  test('a non-function, non-word node (e.g. a quoted string) never counts as an unambiguous percentage', () => {
+    // Exercises the same fact from inside `color-mix()`'s weight-stripping
+    // step: a stray string sitting beside a real `var()` color is not
+    // mistaken for the weight, so it is left in as a (bare) candidate.
+    expect(() =>
+      serializeEntryValue(
+        recipeEntry('color-mix(in oklch, "oops" var(--cinder-border-ink), transparent)'),
+        new Map(),
+      ),
+    ).toThrow(/bare component list/);
+  });
 });
