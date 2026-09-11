@@ -3145,6 +3145,53 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     expect(requested).toEqual([4_020, 4_040]);
   });
 
+  test('drops the pending destination when a prepend shifts every index under it', async () => {
+    // The documented `onStartReached` flow. An index only names a row for as long as
+    // the collection holds still; prepending moves every existing row down, so a
+    // destination held across it points somewhere else and the next key jumps back by
+    // the whole prepend.
+    const initial = makeItems(1_000);
+    const { container, rerender } = render(VirtualList, {
+      items: initial,
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // Ten older rows arrive at the head, so every row the reader was looking at is
+    // now ten indexes further along. The browser keeps their position.
+    await rerender({ items: [...makeItems(10), ...initial] });
+    list.scrollTop = 4_200;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // From where the reader actually is, not from the index the destination named
+    // before the collection moved under it.
+    expect(requested.at(-1)).toBe(4_220);
+  });
+
   test('drops the pending destination when the reader takes the scroll back', async () => {
     // Otherwise the next key navigates from wherever the keys were heading before the
     // reader wheeled somewhere else entirely.

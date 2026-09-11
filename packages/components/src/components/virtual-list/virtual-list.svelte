@@ -1389,7 +1389,9 @@
     // Where the keys are, which is where the last one was heading if it has not
     // arrived yet. Falls back to the live position the moment nothing is in flight.
     const keyboardOriginIndex =
-      pendingKeyboardIndex !== null && pendingKeyboardIndex < items.length
+      pendingKeyboardIndex !== null &&
+      pendingKeyboardItemCount === items.length &&
+      pendingKeyboardIndex < items.length
         ? pendingKeyboardIndex
         : firstUncoveredIndex;
 
@@ -1436,6 +1438,7 @@
     // `dynamicSize` an End or Page jump into rows whose estimates changed as they
     // mounted stopped wherever the first write happened to land.
     pendingKeyboardIndex = target;
+    pendingKeyboardItemCount = items.length;
     void runScrollToIndex(target, { align: 'start' });
   }
 
@@ -1577,6 +1580,16 @@
    * never navigate from a position nobody is at.
    */
   let pendingKeyboardIndex = $state<number | null>(null);
+  /**
+   * The item count this destination was resolved against.
+   *
+   * An index only names a row for as long as the collection around it holds still.
+   * Prepending — the documented `onStartReached` flow — shifts every existing row
+   * down, so a destination held across it points somewhere else entirely and the next
+   * key jumps back by the whole prepend. Comparing the count catches that, and an
+   * append too, where it costs only a fall back to the live position.
+   */
+  let pendingKeyboardItemCount = $state(0);
 
   function scrollToIndex(index: number, options?: VirtualListScrollToIndexOptions): void {
     // A navigation of the consumer's own replaces any keyboard run in flight.
