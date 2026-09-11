@@ -17,6 +17,15 @@ import { join, relative } from 'node:path';
  * caught it. The constraint it claimed to enforce was unguarded the whole time.
  *
  * So the list is checked against the filesystem rather than trusted.
+ *
+ * INVOKED INDEPENDENTLY, via its own `test:unit-inventory` script that
+ * `validate` runs — not only through the `test:unit` list it audits. A guard
+ * reachable only through the thing it checks is self-defeating: deleting its
+ * entry from `test:unit` would silently disable the check that exists to
+ * report exactly that deletion, while every other named test kept running and
+ * the suite stayed green. It is still listed in `test:unit` as well, so a
+ * plain `bun run test` covers it; the separate script is what makes the
+ * invariant hold when someone edits that list.
  */
 
 const LAB_ROOT = join(import.meta.dir, '..');
@@ -33,12 +42,27 @@ const LAB_ROOT = join(import.meta.dir, '..');
  * other form able to reproduce exactly the failure this guard exists to
  * prevent.
  */
+/** Build output, vendored code, and VCS — never sources of unit tests. */
+const IGNORED_DIRECTORIES = new Set([
+	'node_modules',
+	'.svelte-kit',
+	'.git',
+	'build',
+	'dist',
+	'coverage',
+	'test-results',
+	'playwright-report'
+]);
+
 const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
 
 function unitTestFiles(directory: string): string[] {
 	const found: string[] = [];
 	for (const entry of readdirSync(directory)) {
-		if (entry === 'node_modules' || entry === '.svelte-kit') continue;
+		// Artifacts and vendored code only. Everything else is walked, so a new
+		// directory is covered the day it appears rather than the day someone
+		// remembers to add it here.
+		if (IGNORED_DIRECTORIES.has(entry)) continue;
 		const path = join(directory, entry);
 		if (statSync(path).isDirectory()) {
 			found.push(...unitTestFiles(path));
@@ -76,7 +100,7 @@ describe('test:unit', () => {
 		}
 	});
 
-	it('names every unit test under src/ and scripts/', () => {
+	it('names every unit test in the lab', () => {
 		const manifest = JSON.parse(readFileSync(join(LAB_ROOT, 'package.json'), 'utf8')) as {
 			scripts: Record<string, string>;
 		};
@@ -89,10 +113,12 @@ describe('test:unit', () => {
 				.map((token) => token.replace(/^\.\//, ''))
 		);
 
-		const onDisk = [
-			...unitTestFiles(join(LAB_ROOT, 'src')),
-			...unitTestFiles(join(LAB_ROOT, 'scripts'))
-		];
+		// The WHOLE lab, not two hand-picked roots. Restricting the walk to
+		// `src/` and `scripts/` left the same silent gap one directory over — a
+		// `tests/` folder, or a test at the lab root, would run under a bare
+		// `bun test` and never in CI. An allowlist of directories fails the same
+		// way an allowlist of extensions does: quietly.
+		const onDisk = unitTestFiles(LAB_ROOT);
 
 		// Named both ways, because the two failures need different fixes.
 		const unlisted = onDisk.filter((path) => !listed.has(path));
