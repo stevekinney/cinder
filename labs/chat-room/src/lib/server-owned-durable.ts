@@ -185,7 +185,21 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					// A build that never succeeded has no engine to stop, and its
 					// own rejection was already delivered to whoever awaited it.
 					// `build` already unregistered that attempt's teardown.
-					const stale = await held.promise.catch(() => undefined);
+					//
+					// But a memo's promise is NOT only a construction. On a
+					// chained reload it is the previous evaluation's whole
+					// retirement-and-build, so it can reject because an older
+					// engine refused to stop — and that engine is still running.
+					// Mapping that to `undefined` would report "nothing to
+					// retire" and build a second engine over the same storage
+					// beside it, which is the exact condition this module
+					// exists to prevent. Rethrown instead, so the failure
+					// survives every subsequent reload rather than being
+					// laundered into a fresh start by the next one.
+					const stale = await held.promise.catch((cause: unknown) => {
+						if (cause instanceof EngineRetirementError) throw cause;
+						return undefined;
+					});
 					if (stale === undefined) return;
 
 					await stale.engine.shutdown();
@@ -251,6 +265,13 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					try {
 						await retire();
 					} catch (cause) {
+						// Rewrapped so a LATER evaluation awaiting this promise
+						// can tell a refusing engine from a failed build. The
+						// original rejection has already been delivered to
+						// whoever awaited this call.
+						const failure =
+							cause instanceof EngineRetirementError ? cause : new EngineRetirementError();
+
 						// The stale memo is PUT BACK, not dropped. Clearing it
 						// would leave the next caller with no `held` value, so it
 						// would take the direct build path and start a second
@@ -259,7 +280,7 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 						// it means the next call tries to retire again, and keeps
 						// failing visibly until something is done about it.
 						if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = held;
-						throw cause;
+						throw failure;
 					}
 
 					// REVALIDATED after the await. A process disposal can begin
@@ -300,6 +321,30 @@ export async function durableRuntime(): Promise<DurableRuntime> {
  * during shutdown, not a bug in the turn, and a reader of that failure should
  * be able to tell the two apart.
  */
+/**
+ * A stale engine would not stop, so its replacement was not built.
+ *
+ * Distinct from a construction failure, and the distinction is load-bearing on
+ * a CHAINED reload. A memo's promise covers the whole retirement-and-build of
+ * the evaluation that created it, so a later evaluation awaiting it cannot tell
+ * "the engine never got built" from "the previous engine refused to die" —
+ * and those want opposite handling. The first means there is nothing to stop;
+ * the second means something is still running and must not be built alongside.
+ *
+ * Carries no `cause`: the underlying shutdown rejection is reported where it
+ * happened, and re-exporting it through a lifecycle error only widens what a
+ * caller might accidentally surface.
+ */
+export class EngineRetirementError extends Error {
+	override readonly name = 'EngineRetirementError';
+
+	constructor() {
+		super(
+			'A stale durable engine could not be shut down, so its replacement was not built. The previous engine is still running.'
+		);
+	}
+}
+
 export class RuntimeDisposedDuringBuildError extends Error {
 	override readonly name = 'RuntimeDisposedDuringBuildError';
 

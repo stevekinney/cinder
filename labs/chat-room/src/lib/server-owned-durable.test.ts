@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
 import {
+	EngineRetirementError,
 	RuntimeDisposedDuringBuildError,
 	durableRuntime,
 	forgetDurableRuntime
@@ -237,6 +238,79 @@ describe('server-owned durable runtime', () => {
 		// Still one. Without the unregister this is 2 — and with N reloads it is
 		// N redundant shutdowns plus N engines held alive until process exit.
 		expect(shutdowns).toBe(1);
+	});
+
+	it('does not build alongside an engine that refused to stop, across chained reloads', async () => {
+		// A memo's promise covers the whole retirement-and-build of the evaluation
+		// that created it — not just construction. So a later evaluation awaiting
+		// it cannot tell "the engine was never built" from "the previous engine
+		// refused to die" unless it is told, and those want opposite handling.
+		//
+		// The reachable shape is OVERLAPPING reloads, and nothing weaker will do:
+		// when reloads are sequential, the failing evaluation restores the stale
+		// memo on its way out and the next one simply retries the same retirement.
+		// It is only when a second evaluation has already replaced the slot token
+		// that the first one's restore is declined — leaving the slot holding a
+		// REJECTED chain promise, which a plain `.catch(() => undefined)` reads as
+		// "nothing to retire". That builds a second engine over the same storage
+		// beside one that is still running, which is the condition this memo
+		// exists to prevent.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+		const restamp = (): void => {
+			const slot = host[slotKey];
+			if (slot !== undefined) slot.module = Symbol('a-later-evaluation');
+		};
+
+		const first = await durableRuntime();
+
+		// The stale engine will not stop, and is held open so the second reload
+		// can overlap the first. A shutdown that hangs and then fails is exactly
+		// what the retirement path is written for.
+		let releaseShutdown: () => void = () => {};
+		const shutdownGate = new Promise<void>((resolve) => {
+			releaseShutdown = resolve;
+		});
+		first.engine.shutdown = async () => {
+			await shutdownGate;
+			throw new Error('this engine will not stop');
+		};
+
+		// Reload one, STARTED not awaited: it parks inside the failing shutdown
+		// with its own token installed in the slot.
+		restamp();
+		const reloadOne = durableRuntime();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		// Reload two lands on top of it and replaces the token, which is what
+		// makes reload one's restore decline.
+		restamp();
+		const reloadTwo = durableRuntime();
+
+		// Handlers attached BEFORE the gate opens. Both reject, and a rejection
+		// with nothing attached to it yet is an unhandled rejection that fails
+		// the run on its own — asserting them one after the other leaves the
+		// second unattended while the first is awaited.
+		const oneSettled = reloadOne.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+		const twoSettled = reloadTwo.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+
+		releaseShutdown();
+
+		expect(await oneSettled).toBeInstanceOf(EngineRetirementError);
+
+		// The one that matters. Without the failure surviving the hand-off this
+		// is `'resolved'` — a brand new engine running over the same storage as
+		// `first`, which never stopped.
+		expect(await twoSettled).toBeInstanceOf(EngineRetirementError);
+
+		// Restored so `afterEach` can dispose without the poisoned shutdown.
+		first.engine.shutdown = () => Promise.resolve(true);
 	});
 
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {
