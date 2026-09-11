@@ -1,7 +1,7 @@
 import { json } from '@sveltejs/kit';
+import { getMessages } from '@lostgradient/chat';
 
 import { loadConversation, messageCountOf, titleOf } from '$lib/server-owned-conversations';
-import { getMessages } from '@lostgradient/chat';
 
 import type { RequestHandler } from './$types';
 

@@ -186,10 +186,8 @@
 					<a
 						href={resolve('/server-owned/[id]', { id: conversation.id })}
 						data-testid="server-owned-conversation-title"
-						aria-label="{conversation.title}, {conversation.messageCount} message{conversation.messageCount ===
-						1
-							? ''
-							: 's'}, id {conversation.id.slice(-8)}">{conversation.title}</a
+						aria-label={`${conversation.title}, ${conversation.messageCount === 1 ? '1 message' : `${conversation.messageCount} messages`}, id ${conversation.id.slice(-8)}`}
+						>{conversation.title}</a
 					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}

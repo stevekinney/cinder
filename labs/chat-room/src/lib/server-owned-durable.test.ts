@@ -313,6 +313,72 @@ describe('server-owned durable runtime', () => {
 		first.engine.shutdown = () => Promise.resolve(true);
 	});
 
+	it('recognises a retirement failure thrown by a PREVIOUS module evaluation', async () => {
+		// The chained-reload test above cannot reach this: it restamps the memo
+		// within one evaluation, so every error it produces comes from this
+		// evaluation's `EngineRetirementError` class and `instanceof` happens to
+		// work. Vite re-evaluating the module creates a NEW class object, and an
+		// error from the previous one is not an instance of it — so `instanceof`
+		// answers "no" at exactly the moment the answer matters, swallows the
+		// failure, and builds a second engine beside one that would not stop.
+		//
+		// A foreign object carrying the same REGISTRY symbol is precisely what a
+		// previous evaluation's error looks like from here: same tag, different
+		// constructor. Nothing else reproduces constructor turnover in-process.
+		const tag = Symbol.for('cinder.chat-room.server-owned.retirement-failure');
+		const fromAnEarlierEvaluation = Object.assign(
+			new Error('a stale durable engine could not be shut down'),
+			{ [tag]: true }
+		);
+
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+		const restamp = (): void => {
+			const slot = host[slotKey];
+			if (slot !== undefined) slot.module = Symbol('a-later-evaluation');
+		};
+
+		const first = await durableRuntime();
+
+		let releaseShutdown: () => void = () => {};
+		const shutdownGate = new Promise<void>((resolve) => {
+			releaseShutdown = resolve;
+		});
+		first.engine.shutdown = async () => {
+			await shutdownGate;
+			throw fromAnEarlierEvaluation;
+		};
+
+		restamp();
+		const reloadOne = durableRuntime();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+
+		restamp();
+		const reloadTwo = durableRuntime();
+
+		const oneSettled = reloadOne.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+		const twoSettled = reloadTwo.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+
+		releaseShutdown();
+
+		// Passed through UNWRAPPED, because it already carries the tag — there is
+		// nothing to add by rewrapping an error that is already the right kind.
+		expect(await oneSettled).toBe(fromAnEarlierEvaluation);
+
+		// The one that discriminates. Under `instanceof`, the foreign error is
+		// not recognised, the failure is swallowed, and this is `'resolved'` —
+		// a second engine running beside one that never stopped.
+		expect(await twoSettled).toBe(fromAnEarlierEvaluation);
+
+		first.engine.shutdown = () => Promise.resolve(true);
+	});
+
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {
 		const before = await durableRuntime();
 

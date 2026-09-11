@@ -197,7 +197,7 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					// survives every subsequent reload rather than being
 					// laundered into a fresh start by the next one.
 					const stale = await held.promise.catch((cause: unknown) => {
-						if (cause instanceof EngineRetirementError) throw cause;
+						if (isRetirementFailure(cause)) throw cause;
 						return undefined;
 					});
 					if (stale === undefined) return;
@@ -220,7 +220,17 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					// Not on the failure path: if `shutdown()` rejected, that
 					// engine is still live and its registered teardown is the
 					// only remaining thing that would stop it.
-					held.unregisterTeardown.current?.();
+					//
+					// The CONTAINER is optional-chained too, not just `current`.
+					// A slot left on `globalThis` by an evaluation that predates
+					// this field has no `unregisterTeardown` at all, and this
+					// line runs AFTER the engine has been shut down — so
+					// throwing here would restore an incompatible memo and make
+					// every later request repeat the failure, with no
+					// replacement engine until the dev server restarts. There is
+					// nothing to unregister in that case, which is the correct
+					// outcome anyway.
+					held.unregisterTeardown?.current?.();
 				}
 			: undefined;
 
@@ -265,12 +275,30 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					try {
 						await retire();
 					} catch (cause) {
+						// REPORTED before it is wrapped, and this is the only
+						// place it can be. The wrapper is deliberately
+						// cause-free — a lifecycle error travelling back to a
+						// request must not carry a storage or engine failure
+						// with it — but that meant the underlying rejection was
+						// simply lost, and whoever hit it got a generic message
+						// with nothing to diagnose. Server-side, at the point of
+						// failure, is where it belongs.
+						//
+						// Skipped when the failure is already a retirement
+						// failure from an earlier evaluation: that one was
+						// reported when it first happened, and logging it again
+						// on every subsequent reload turns one problem into a
+						// growing pile of identical noise.
+						if (!isRetirementFailure(cause)) {
+							console.error(
+								'[server-owned] A stale durable engine could not be shut down during retirement.',
+								cause
+							);
+						}
+
 						// Rewrapped so a LATER evaluation awaiting this promise
-						// can tell a refusing engine from a failed build. The
-						// original rejection has already been delivered to
-						// whoever awaited this call.
-						const failure =
-							cause instanceof EngineRetirementError ? cause : new EngineRetirementError();
+						// can tell a refusing engine from a failed build.
+						const failure = isRetirementFailure(cause) ? cause : new EngineRetirementError();
 
 						// The stale memo is PUT BACK, not dropped. Clearing it
 						// would leave the next caller with no `held` value, so it
@@ -335,8 +363,29 @@ export async function durableRuntime(): Promise<DurableRuntime> {
  * happened, and re-exporting it through a lifecycle error only widens what a
  * caller might accidentally surface.
  */
+/**
+ * Process-stable marker for a retirement failure.
+ *
+ * `Symbol.for` rather than `Symbol`, and a tag rather than `instanceof`,
+ * because the check has to work ACROSS module evaluations. Vite re-evaluates
+ * this file on every edit, which creates a NEW `EngineRetirementError` class
+ * object — an error thrown by the previous evaluation is not an instance of
+ * this evaluation's class, so `instanceof` silently answers "no" at exactly
+ * the moment the answer matters, and the failure it was guarding gets
+ * swallowed. The registry symbol is the same value in every evaluation.
+ */
+const RETIREMENT_FAILURE = Symbol.for('cinder.chat-room.server-owned.retirement-failure');
+
+/** True for a retirement failure from ANY evaluation of this module. */
+function isRetirementFailure(cause: unknown): boolean {
+	return typeof cause === 'object' && cause !== null && RETIREMENT_FAILURE in cause;
+}
+
 export class EngineRetirementError extends Error {
 	override readonly name = 'EngineRetirementError';
+
+	/** Read by `isRetirementFailure`, which cannot use `instanceof`. */
+	readonly [RETIREMENT_FAILURE] = true;
 
 	constructor() {
 		super(
