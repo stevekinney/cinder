@@ -248,6 +248,13 @@ export async function disposeServerOwnedRuntime(
 		//
 		// Bounded: the latch is set, so at most the one generation admitted
 		// before it can be waiting here.
+		// Read and claimed with NO await in between, which is what makes a
+		// second terminating call joining the same `inFlight` safe: promise
+		// continuations run in order, and `drainDisposal` reaches
+		// `runDisposal`'s synchronous `RUNTIME_SLOT = undefined` before its
+		// first await. The next continuation therefore finds an empty slot and
+		// returns rather than disposing the same generation twice. Introducing
+		// an await between these two lines would break that.
 		const remaining = host[RUNTIME_SLOT];
 		if (remaining === undefined) return joined;
 

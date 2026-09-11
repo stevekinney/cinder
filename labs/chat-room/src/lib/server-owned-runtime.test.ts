@@ -288,6 +288,42 @@ it('drains a replacement created while an ordinary disposal was still running', 
 	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
 });
 
+it('disposes a replacement once when two terminating calls join the same disposal', async () => {
+	// Two signals can land together — SIGINT from a terminal that also sends
+	// SIGTERM, or a supervisor signalling twice. Both join the same in-flight
+	// ordinary disposal, and both resume when it settles. If the second
+	// re-read the slot after an await, it would drain a generation the first
+	// had already started on, running every teardown a second time: an engine
+	// shut down twice, a checkpoint flushed twice.
+	const first = serverOwnedRuntime();
+
+	let release: () => void = () => {};
+	const heldOpen = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	first.onDispose(() => heldOpen);
+
+	const ordinary = disposeServerOwnedRuntime();
+	const replacement = serverOwnedRuntime();
+
+	let disposals = 0;
+	replacement.onDispose(() => {
+		disposals += 1;
+	});
+
+	const both = Promise.all([
+		disposeServerOwnedRuntime({ drain: true }),
+		disposeServerOwnedRuntime({ drain: true })
+	]);
+
+	release();
+	await ordinary;
+	await both;
+
+	// Exactly once — not zero (the replacement was stranded) and not twice.
+	expect(disposals).toBe(1);
+});
+
 describe('process signals', () => {
 	/** Spawns the fixture and waits until it reports its handlers registered. */
 	async function readyFixture(environment: Record<string, string>) {
