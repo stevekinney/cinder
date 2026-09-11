@@ -1025,7 +1025,14 @@
     const isPinned = index === pinnedStickyIndex;
     const declarations: string[] = [];
     if (!dynamicSize || isPinned) declarations.push(`${rowLayout.sizeProperty}:${size}px`);
-    if (isPinned) declarations.push(`${rowLayout.offsetProperty}:${scrollOffset}px`);
+    if (isPinned) {
+      // Relative to the WINDOW, which is itself already translated by its leading
+      // size. Writing the raw scroll offset here compounded the two and put the row
+      // at `leadingSize + scrollOffset` — with no overscan and 20px rows at a scroll
+      // of 4000, that is 8000px, nowhere near the viewport.
+      const offsetWithinWindow = Math.max(0, scrollOffset - virtualWindow.leadingSize);
+      declarations.push(`${rowLayout.offsetProperty}:${offsetWithinWindow}px`);
+    }
     return declarations.length > 0 ? `${declarations.join(';')};` : undefined;
   }
 

@@ -2771,10 +2771,15 @@ describe('VirtualList — sticky and keyboard corrections', () => {
       expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
     );
 
-    // Offset inline to track the viewport's leading edge; `position: absolute` itself
-    // comes from the stylesheet, so the inline offset is what is observable here.
+    // The offset is relative to the WINDOW, which already carries its own leading
+    // translation — so it is the difference between them, not the raw scroll offset.
+    // Asserting the literal number I happened to write was how a compounded offset
+    // that put the header 4000px below the viewport passed for two rounds.
+    const windowElement = container.querySelector<HTMLElement>('.cinder-virtual-list__window');
     const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
-    expect(pinned?.style.insetBlockStart).toBe('4000px');
+    const leading = Number.parseFloat(windowElement?.style.insetBlockStart ?? '0');
+    const pinnedOffset = Number.parseFloat(pinned?.style.insetBlockStart ?? '');
+    expect(leading + pinnedOffset).toBe(4_000);
 
     // And those rows still begin where the window's leading offset says. Queried from
     // the row WRAPPERS: `renderedRows` returns the snippet's own element, which does
