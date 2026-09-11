@@ -34,6 +34,18 @@
  * renders cinder styles, where an unclassified site is a failing test rather
  * than a document nobody re-derives. Adding a site is fine; adding one
  * silently is not.
+ *
+ * This is still a SOURCE-TEXT scan, and CIN-602 exists because a source-text
+ * scan cannot see two shapes no matter how far it is widened: a tier
+ * reference that only exists once the cascade resolves it ACROSS files (an
+ * opacity in one file compounding with a tier border in another), and a
+ * non-border use reached through a custom-property alias whose own tier
+ * reference lives in a different rule entirely (often the generated
+ * `:root` block, which this scan deliberately excludes). Those two shapes are
+ * covered instead by
+ * `packages/testing/tests/border-tier-computed-audit.playwright.ts`, which
+ * reads the real, rendered cascade via CDP rather than grepping text -- see
+ * that file, and `border-tier-audit.ts` next to it, for the mechanism.
  */
 
 import { readdirSync, readFileSync, statSync } from 'node:fs';
@@ -460,12 +472,28 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     // `opacity: 0.6`, whose real contrast is ~1.9 rather than the 3.1-3.6 the
     // tier measures undiluted.
     //
-    // This catches the same-rule shape only, and deliberately claims no more
-    // than that. The opacity and the border can live in different files -- a
-    // disabled Button takes `border.muted` from `button.css` and `opacity: 0.6`
-    // from `foundation.css`'s shared disabled-visual rule -- and resolving that
-    // statically would mean modelling the cascade across files. That case is
-    // recorded in the seam audit by hand instead.
+    // This is meant to catch the same-rule shape only, and the Button entry in
+    // `OPACITY_COMPOUNDED` below is legitimately caught by it, but not for the
+    // reason its own comment gives. `button.css` has an icon-only-variant
+    // disabled rule that pairs `border-color: var(--cinder-border-muted)` and
+    // `opacity: 0.6` in ONE rule body -- a genuine same-rule match, which is
+    // what this scan actually finds. The disabled Button ALSO matches
+    // `foundation.css`'s broader shared disabled-visual rule at the same time
+    // (its selector list matches any disabled `.cinder-button`, icon-only
+    // variants included), which redundantly contributes the identical
+    // `opacity: 0.6` from a second file -- real, but not what this same-rule
+    // scan is seeing here. The shape this scan genuinely CANNOT see is the
+    // PLAIN (non-icon-only) disabled button: `button.css`'s base disabled rule
+    // sets `border-color` alone and says so explicitly ("opacity centralized
+    // in foundation.css disabled-visual rule"), relying entirely on that other
+    // file for its opacity -- no rule in either file pairs the two for that
+    // element. CIN-602's
+    // `packages/testing/tests/border-tier-computed-audit.playwright.ts` proves
+    // the icon-only Button's compound from the real cascade via CDP's
+    // `CSS.getMatchedStylesForNode` (both contributing rules, across both
+    // files); it does not yet audit the plain disabled button, so that
+    // cleaner cross-file-only case is proven by mechanism but not yet by a
+    // site in `AUDITED_SITES`.
     const offenders: string[] = [];
     for (const root of SCAN_ROOTS) {
       for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {
