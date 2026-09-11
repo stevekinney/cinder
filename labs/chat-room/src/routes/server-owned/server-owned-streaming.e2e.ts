@@ -178,17 +178,40 @@ test('the transcript scrolls, not the page, once the conversation outgrows the v
 		// a turn count, so this keeps meaning the same thing if row heights or
 		// the fixture's reply length change.
 		const log = page.getByRole('log', { name: 'Messages' });
+		const chat = page.locator('[data-testid="server-owned-chat"]');
 		const overflows = async (): Promise<boolean> =>
 			log.evaluate((element) => element.scrollHeight > element.clientHeight + 1);
 
-		while (!(await overflows())) {
-			const composer = page.getByRole('textbox', { name: 'Message' });
-			await composer.fill('Walk me through it');
+		// CAPPED. An unbounded send loop reports a regression as a bare 30-second
+		// timeout naming nothing; the cap plus the assertion below names the
+		// property that failed. Eight turns overflow both viewports with room to
+		// spare — this is a ceiling, not a target.
+		const MAXIMUM_TURNS = 12;
+		const messages = log.getByRole('article');
+		let sent = 0;
+
+		while (!(await overflows()) && sent < MAXIMUM_TURNS) {
+			await page.getByRole('textbox', { name: 'Message' }).fill('Walk me through it');
 			await page.getByRole('button', { name: 'Send message' }).click();
-			// The turn has unwound when Send is offered again.
-			await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
-			await expect(composer).toHaveValue('');
+			sent += 1;
+
+			// Both gates, in this order, and neither alone is enough. The count
+			// proves the assistant's reply has begun arriving — so streaming has
+			// definitely started — and only then does `data-streaming` going
+			// false mean the turn UNWOUND rather than never having begun.
+			//
+			// Send being enabled and the composer being empty are both true
+			// before a run starts too, so gating on those would let the next
+			// `fill` land mid-run, where the controller's already-running guard
+			// drops it silently. That silent drop is the same one this route
+			// disables Retry over.
+			await expect(messages).toHaveCount(sent * 2);
+			await expect(chat).toHaveAttribute('data-streaming', 'false');
 		}
+
+		// Named rather than left to the loop's exit condition: a transcript that
+		// never overflows is the defect itself, and it should say so.
+		expect(await overflows()).toBe(true);
 
 		// The transcript overflows — and the DOCUMENT still does not. Both halves
 		// are needed: page-scroll is what a collapsed viewport produces, and
@@ -199,6 +222,10 @@ test('the transcript scrolls, not the page, once the conversation outgrows the v
 			bodyScrollWidth: document.body.scrollWidth,
 			viewportWidth: window.innerWidth
 		}));
+
+		// `chat` is read above; referenced here so the wrapper's role in the
+		// gate is obvious to a reader scanning only the assertions.
+		await expect(chat).toHaveAttribute('data-streaming', 'false');
 
 		expect(metrics.documentScroll).toBeLessThanOrEqual(metrics.viewport);
 		// And nothing pushes the page sideways at 390px, which is where a
