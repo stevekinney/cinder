@@ -1,6 +1,14 @@
 /**
- * The multi-agent exercise: one parent agent, one `createSubagentTool`
- * delegation, and what actually crosses back.
+ * The multi-agent exercise: three independent runs, one per `returnMode`
+ * setting, each with its own parent agent, its own researcher subagent, and
+ * exactly one `createSubagentTool` delegation — and what actually crosses back
+ * from each.
+ *
+ * "One parent, one delegation" is PER PANEL. Loading the route starts all
+ * three, which is why the count assertions below are parameterised over every
+ * panel rather than reading the first one: the three share no state, so a loop
+ * re-entering the subagent on one of them would leave the others' numbers
+ * untouched.
  *
  * Network-free. The child agent's `generate` returns a fixed string and the
  * parent's returns one tool call and then a narration, so every number this
@@ -226,10 +234,22 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	await page.keyboard.press('Tab');
 	await expect(argumentsTrigger).not.toBeFocused();
 
-	// Space activates the second disclosure, since the two are independent and
-	// either key is a legitimate way to operate a button.
+	// The second disclosure is reached by CONTINUING the tab walk, for the same
+	// reason as the first: `focus()` would succeed on an untabbable trigger and
+	// prove only that Space activates it once focus is somehow there. The Tab
+	// assertion above shows focus left Arguments, which is a different claim
+	// from Result being reachable.
 	const resultTrigger = timeline.getByRole('button', { name: 'Result' });
-	await resultTrigger.focus();
+	reached = await resultTrigger.evaluate((element) => element === document.activeElement);
+	for (let step = 0; step < TAB_BUDGET && !reached; step += 1) {
+		await page.keyboard.press('Tab');
+		reached = await resultTrigger.evaluate((element) => element === document.activeElement);
+	}
+	expect(reached).toBe(true);
+	await expect(resultTrigger).toBeFocused();
+
+	// Space, since the two disclosures are independent and either key is a
+	// legitimate way to operate a button.
 	await page.keyboard.press('Space');
 	await expect(timeline.locator('.cinder-run-step-timeline__detail-content')).toHaveCount(2);
 });
