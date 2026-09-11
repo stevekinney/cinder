@@ -72,6 +72,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/interleaving',
 	'/exercises/markdown-editor',
 	'/exercises/message-lifecycle',
+	'/exercises/multi-agent',
 	'/exercises/output',
 	'/exercises/presentation',
 	'/exercises/retry',

@@ -171,6 +171,53 @@ describe('ChatMessage — tool-call rendering', () => {
     expect(container.textContent).toContain('Network unavailable');
   });
 
+  describe('counted strings agree with the count', () => {
+    // A single delegation is the ordinary case for a subagent tool, not an
+    // edge case — it is what `/exercises/multi-agent` renders — and the
+    // heading is in the document outline while the list label is an
+    // accessible name, so both are read aloud. Both used to say "1 tools" /
+    // "1 consecutive tool calls".
+    const pair: ToolCallPair = { call: { id: 'only', name: 'lookup', arguments: {} } };
+    const second: ToolCallPair = { call: { id: 'other', name: 'fetch', arguments: {} } };
+    const describeToolCall = (): ToolCallPresentation => ({
+      verb: 'Checking',
+      tense: 'present',
+      detail: 'records',
+      kind: 'search',
+    });
+
+    test('says "1 tool" for one pair and "2 tools" for two', () => {
+      const one = render(ToolCallTimeline, {
+        props: { pairs: [pair], messageId: 'count-one', describeToolCall },
+      });
+      expect(one.container.querySelector('h3')?.textContent).toContain('Called 1 tool');
+      // Not merely "contains 1 tool" — that is also true of "1 tools".
+      expect(one.container.querySelector('h3')?.textContent).not.toContain('1 tools');
+      cleanup();
+
+      const two = render(ToolCallTimeline, {
+        props: { pairs: [pair, second], messageId: 'count-two', describeToolCall },
+      });
+      expect(two.container.querySelector('h3')?.textContent).toContain('Called 2 tools');
+    });
+
+    test('names the list "1 consecutive tool call" for one pair', () => {
+      const one = render(ToolCallTimeline, {
+        props: { pairs: [pair], messageId: 'label-one', describeToolCall },
+      });
+      const list = one.container.querySelector('[role="list"]');
+      expect(list?.getAttribute('aria-label')).toBe('1 consecutive tool call');
+      cleanup();
+
+      const two = render(ToolCallTimeline, {
+        props: { pairs: [pair, second], messageId: 'label-two', describeToolCall },
+      });
+      expect(two.container.querySelector('[role="list"]')?.getAttribute('aria-label')).toBe(
+        '2 consecutive tool calls',
+      );
+    });
+  });
+
   test('namespaces grouped disclosure ids across separate timelines', async () => {
     const pair: ToolCallPair = { call: { id: 'reused', name: 'lookup', arguments: {} } };
     const describeToolCall = (): ToolCallPresentation => ({
