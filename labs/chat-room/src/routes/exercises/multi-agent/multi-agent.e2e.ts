@@ -28,8 +28,10 @@ import { expect, test } from '@playwright/test';
 import { gotoHydrated } from '../hydration';
 
 /** Every panel has settled, so no assertion below reads a pending state. */
-async function settled(page: import('@playwright/test').Page): Promise<void> {
-	await expect(page.getByTestId('multi-agent-status')).toHaveText('3 of 3 delegations settled.');
+async function settled(page: import('@playwright/test').Page, total = 3): Promise<void> {
+	await expect(page.getByTestId('multi-agent-status')).toHaveText(
+		`${total} of ${total} delegations settled.`
+	);
 }
 
 // Every panel, not just the one whose output the other tests read. Each runs
@@ -59,8 +61,41 @@ for (const panel of PANELS) {
 		const roles = await page.getByTestId(`multi-agent-${panel}-roles`).textContent();
 		expect(roles).toContain('tool-call');
 		expect(roles).toContain('tool-result');
+
+		// And the child was asked THIS question. The fixture records what
+		// reached it, because otherwise `createSubagentTool` dropping or
+		// corrupting whatever `toAgentInput` produced is undetectable: the child
+		// answers the same way regardless, and the transcript shows the parent's
+		// original tool-call arguments rather than what crossed the boundary.
+		await expect(page.getByTestId(`multi-agent-${panel}-received`)).toHaveText(
+			'What did we decide about the staging bucket?'
+		);
 	});
 }
+
+test('a failed delegation reaches the announcer', async ({ page }) => {
+	// The registry entry in `error-live-regions.e2e.ts` covers the "before"
+	// half — mounted and empty. This is the other half: without it, deleting the
+	// `announcement = ...` assignment would leave the whole suite green while a
+	// real failure became silent to assistive technology.
+	await gotoHydrated(page, '/exercises/multi-agent?fail=1');
+	await settled(page, 4);
+
+	const announcer = page.getByTestId('multi-agent-failure');
+	await expect(announcer).toHaveAttribute('role', 'alert');
+	await expect(announcer).toContainText('Induced delegation failure.');
+
+	// The visible per-panel message is separate from the region that announces,
+	// and is NOT itself a live region — two regions describing one failure would
+	// say it twice.
+	const visible = page.getByTestId('multi-agent-induced-failed');
+	await expect(visible).toBeVisible();
+	await expect(visible).not.toHaveAttribute('role', 'alert');
+
+	// The three real panels still settled, so the induced failure is additive
+	// rather than a way of skipping them.
+	await expect(page.getByTestId('multi-agent-summary-finish')).toHaveText('stop-condition');
+});
 
 test("the delegation renders as a tool-activity entry in Chat's transcript", async ({ page }) => {
 	await gotoHydrated(page, '/exercises/multi-agent');
@@ -133,10 +168,13 @@ test('expanding the entry shows the question sent and the summary that came back
 	// panel's, computed from the tool result, and the transcript's, rendered by
 	// Chat.
 	expect(disclosed.trim().length).toBe(reportedLength);
-	const sentence = 'The staging bucket was retained. ';
-	expect(
-		disclosed.trim().startsWith(sentence.repeat(Math.floor(reportedPrefix / sentence.length)))
-	).toBe(true);
+	// The WHOLE reported prefix, not a whole-sentence approximation of it.
+	// Flooring to complete sentences discarded up to one sentence of the
+	// comparison — and the sibling test establishes that this prefix ends
+	// mid-sentence, so the discarded remainder is exactly where a corrupted
+	// partial sentence would hide.
+	const childAnswer = 'The staging bucket was retained. '.repeat(30);
+	expect(disclosed.trim().slice(0, reportedPrefix)).toBe(childAnswer.slice(0, reportedPrefix));
 });
 
 test("'summary' caps the child's answer rather than condensing it", async ({ page }) => {

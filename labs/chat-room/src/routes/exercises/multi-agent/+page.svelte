@@ -1,5 +1,10 @@
 <script lang="ts">
-	import { createAgent, createSubagentTool, type StepResult } from '@lostgradient/operative';
+	import {
+		createAgent,
+		createSubagentTool,
+		type GenerateContext,
+		type StepResult
+	} from '@lostgradient/operative';
 	import {
 		Chat,
 		appendUserMessage,
@@ -8,6 +13,8 @@
 	} from '@lostgradient/chat';
 	import { createToolbox } from 'armorer';
 	import { z } from 'zod';
+
+	import { page } from '$app/state';
 
 	// Delegation to a subagent, and what `returnMode` actually controls.
 	//
@@ -73,6 +80,7 @@
 		parentGenerateCalls: number;
 		childGenerateCalls: number;
 		toolExecutions: number;
+		childReceived: string;
 		finishReason: string;
 		returnedLength: number;
 		keepsWholeAnswer: boolean;
@@ -100,10 +108,33 @@
 		let childGenerateCalls = 0;
 		let parentGenerateCalls = 0;
 
+		// What the child was actually ASKED. Without this the fixture ignores
+		// its input and returns the same answer regardless, so
+		// `createSubagentTool` dropping or corrupting whatever `toAgentInput`
+		// produced would be undetectable: the child still answers, and the
+		// transcript still shows the parent's original tool-call arguments
+		// rather than what crossed into the subagent.
+		let childReceived = '';
+
 		const child = createAgent({
 			name: 'researcher',
-			generate: async () => {
+			// `GenerateContext`, Operative's own type, rather than a structural
+			// stand-in — a hand-written shape compiled against what the runtime
+			// happens to pass today and would go on compiling after it changed,
+			// which is the same trap the durable wiring on the sibling pull
+			// request fell into.
+			generate: async (context: GenerateContext) => {
 				childGenerateCalls += 1;
+				// The last user message is what `toAgentInput` produced, having
+				// crossed the tool boundary into the subagent's own run.
+				const messages = context.conversation.getMessages();
+				for (let index = messages.length - 1; index >= 0; index -= 1) {
+					const message = messages[index];
+					if (message.role === 'user' && typeof message.content === 'string') {
+						childReceived = message.content;
+						break;
+					}
+				}
 				return { content: CHILD_ANSWER, toolCalls: [] };
 			}
 		});
@@ -179,6 +210,7 @@
 			parentGenerateCalls,
 			childGenerateCalls,
 			toolExecutions,
+			childReceived,
 			finishReason: result.finishReason,
 			returnedLength: returned.length,
 			keepsWholeAnswer: returned === CHILD_ANSWER,
@@ -197,6 +229,22 @@
 			history: result.conversation.current
 		};
 	}
+
+	/**
+	 * A fourth panel that FAILS, reachable only with `?fail=1`.
+	 *
+	 * The announcer below is registered in `error-live-regions.e2e.ts`, whose
+	 * check is the "before" half only — mounted and empty. Nothing drove it to
+	 * receive text, because every fixture here succeeds, so deleting the
+	 * assignment would have left the whole suite green while a real delegation
+	 * failure became silent to assistive technology.
+	 *
+	 * Query-gated rather than always present: the page's subject is what
+	 * `returnMode` controls, and a permanently broken panel beside the three
+	 * that work would teach the wrong thing. Off by default, the route is
+	 * exactly what it was.
+	 */
+	const failing = page.url.searchParams.get('fail') === '1';
 
 	const panels = [
 		{
@@ -218,6 +266,15 @@
 			promise: delegate('custom', { returnMode: 'summary', useCustomSummarizer: true })
 		}
 	];
+
+	if (failing) {
+		panels.push({
+			id: 'induced',
+			label: 'An induced failure',
+			note: 'Only reachable with ?fail=1, so the announcer has a path to exercise.',
+			promise: Promise.reject(new Error('Induced delegation failure.'))
+		});
+	}
 
 	let settledCount = $state(0);
 
@@ -332,6 +389,8 @@
 					<dd data-testid="multi-agent-{panel.id}-child-calls">{delegation.childGenerateCalls}</dd>
 					<dt>tool executions</dt>
 					<dd data-testid="multi-agent-{panel.id}-tool-executions">{delegation.toolExecutions}</dd>
+					<dt>question the child received</dt>
+					<dd data-testid="multi-agent-{panel.id}-received">{delegation.childReceived}</dd>
 					<dt>transcript roles</dt>
 					<dd data-testid="multi-agent-{panel.id}-roles">{delegation.transcriptRoles}</dd>
 					<dt>returned characters</dt>

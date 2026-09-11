@@ -57,9 +57,12 @@ const CROSS_ENGINE_SHARDS = [
 		// Placed by measurement, and the first attempt got this wrong: it went
 		// next to `review-imperative`, which is the 62 the ceiling note is
 		// about, taking that shard to 71. Without this entry `--list` per
-		// project reads 49/48/62/51/50, so its nine tests go to the smallest —
-		// 57, comfortably under the ceiling. Re-run `--list` when this spec's
-		// test count changes.
+		// project reads 49/48/62/51/50, so its tests go to the smallest. With
+		// its ten — the announcer case brought it from nine — the reading is
+		// 49/58/62/51/50, comfortably under the ceiling.
+		//
+		// Re-running `--list` is a STEP in adding a test here, not a reminder
+		// afterwards: this count has already gone stale once on this branch.
 		'**/multi-agent.e2e.ts'
 	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
