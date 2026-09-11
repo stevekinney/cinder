@@ -234,7 +234,26 @@ export async function disposeServerOwnedRuntime(
 	// would otherwise see "nothing to dispose" and carry on — which, from a
 	// signal handler, means exiting the process out from under it.
 	const inFlight = host[DISPOSAL_SLOT];
-	if (inFlight !== undefined) return inFlight;
+	if (inFlight !== undefined) {
+		const joined = await inFlight;
+		if (options.drain !== true) return joined;
+
+		// A TERMINATING call that joined an ORDINARY disposal is not finished.
+		// The latch above stops further replacements, but one may already exist:
+		// the ordinary disposal cleared the runtime slot, a request built a
+		// replacement, and then this call arrived. `runDisposal` never looks at
+		// that replacement, so returning here would let the signal handler exit
+		// the moment the joined promise settled — cutting the replacement's
+		// engine off with no teardown and no checkpoint flush.
+		//
+		// Bounded: the latch is set, so at most the one generation admitted
+		// before it can be waiting here.
+		const remaining = host[RUNTIME_SLOT];
+		if (remaining === undefined) return joined;
+
+		const drained = await drainDisposal(host, remaining);
+		return { failures: joined.failures + drained.failures };
+	}
 
 	const held = host[RUNTIME_SLOT];
 	if (held === undefined) return { failures: 0 };
@@ -412,8 +431,14 @@ async function runDisposal(
  * right shape for a deployment and is not available to this lab.
  */
 const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
+const DISPOSER_SLOT = Symbol.for('cinder.chat-room.server-owned.disposer');
 
-type SignalHost = typeof globalThis & { [SIGNALS_SLOT]?: true };
+type Disposer = (options?: { drain?: boolean }) => Promise<{ failures: number }>;
+
+type SignalHost = typeof globalThis & {
+	[SIGNALS_SLOT]?: true;
+	[DISPOSER_SLOT]?: Disposer;
+};
 
 /** The status a shell reports for a process killed by each signal. */
 const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
@@ -441,6 +466,21 @@ function reportBeforeExit(message: string): void {
 }
 
 const signalHost = globalThis as SignalHost;
+
+// REFRESHED on every module evaluation, and the listeners below dispatch
+// through it rather than closing over a function directly.
+//
+// Vite re-evaluates this module on edit while `globalThis` survives, so the
+// `SIGNALS_SLOT` guard correctly skips re-registering — but the listeners
+// installed by the FIRST evaluation keep calling that evaluation's
+// `disposeServerOwnedRuntime`. Changes to draining, teardown ordering, or
+// failure reporting then appear loaded while Ctrl-C still runs the old
+// shutdown path, which makes a lifecycle experiment measure code that is no
+// longer on disk — and can silently reintroduce a teardown bug that was just
+// fixed. The same shape as the durable memo surviving a reload, in the one
+// place where the symptom only appears at shutdown.
+signalHost[DISPOSER_SLOT] = disposeServerOwnedRuntime;
+
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
 
@@ -479,10 +519,14 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 			// Deliberately no watchdog timer. A disposal that never settles
 			// would hang, and the honest fix for that is whatever is hanging,
 			// not a timer that hides it.
+			// Read at FIRE time, so a reloaded module's implementation is the one
+			// that runs. See `DISPOSER_SLOT` above.
+			const dispose = (globalThis as SignalHost)[DISPOSER_SLOT] ?? disposeServerOwnedRuntime;
+
 			// `drain`, because this one is terminating: a request that builds a
 			// replacement runtime while the teardowns run would otherwise be cut
 			// off by the exit below.
-			void disposeServerOwnedRuntime({ drain: true })
+			void dispose({ drain: true })
 				.then(({ failures }) => {
 					// REPORTED, not discarded. `runDisposal` converts a rejecting
 					// teardown into a resolved count, so without this a failed

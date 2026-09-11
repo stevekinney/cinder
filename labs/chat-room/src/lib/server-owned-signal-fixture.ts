@@ -37,6 +37,12 @@
  * disposal to finish, which is what the engine's asynchronous shutdown and
  * checkpoint flushing depend on.
  *
+ * `RELOAD_MARKER=<path>` stands in for Vite re-evaluating the module: it
+ * replaces the process-global disposer reference the way a second evaluation
+ * does, after the handlers are already registered. If the handlers dispatch
+ * through that reference the replacement runs and writes the file; if they
+ * closed over the first evaluation's function, nothing does.
+ *
  * Run as a child process, never imported by a route.
  */
 import { writeFileSync } from 'node:fs';
@@ -98,6 +104,26 @@ if (marker !== undefined && marker !== '') {
 
 		writeFileSync(marker, 'disposed');
 	});
+}
+
+const reloadMarker = process.env['RELOAD_MARKER'];
+if (reloadMarker !== undefined && reloadMarker !== '') {
+	// What a second module evaluation does: `globalThis` survives the reload,
+	// so the slot is still populated and simply gets overwritten with the new
+	// evaluation's implementation. The handlers registered by the FIRST
+	// evaluation are the ones installed on `process` — `SIGNALS_SLOT` stops the
+	// second evaluation from adding its own.
+	const slot = Symbol.for('cinder.chat-room.server-owned.disposer');
+	const host = globalThis as Record<symbol, unknown>;
+	const previous = host[slot] as (options?: { drain?: boolean }) => Promise<{ failures: number }>;
+
+	host[slot] = async (options?: { drain?: boolean }) => {
+		// Synchronous, and BEFORE delegating: this marker is about which
+		// function the handler reached, not about disposal completing, and the
+		// process exits as soon as the delegate settles.
+		writeFileSync(reloadMarker, 'reloaded');
+		return previous(options);
+	};
 }
 
 const keepAlive = setInterval(() => {}, 1000);

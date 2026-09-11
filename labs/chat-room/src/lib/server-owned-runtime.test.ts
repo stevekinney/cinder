@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { beforeEach, describe, expect, it } from 'bun:test';
 import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -24,6 +24,20 @@ import {
  * registered teardown runs, a throwing one does not strand the rest, and a
  * fresh runtime is built afterwards.
  */
+/**
+ * The terminating latch is process-global and deliberately STICKY — once a
+ * terminating disposal starts, nothing may build a runtime again, which is the
+ * whole point of it. That makes it leak between tests: any spec that sets it
+ * refuses every `serverOwnedRuntime()` in every spec that runs after it, and
+ * the failure surfaces in the later test rather than the one that armed it.
+ *
+ * An ordinary disposal with no in-flight disposal clears the latch, so this
+ * hook is the reset. Without it, tests pass or fail by position in the file.
+ */
+beforeEach(async () => {
+	await disposeServerOwnedRuntime();
+});
+
 describe('server-owned runtime', () => {
 	it('returns one runtime per process rather than one per call', async () => {
 		await disposeServerOwnedRuntime();
@@ -228,6 +242,52 @@ it('refuses to build a runtime once a terminating disposal has started', async (
 	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
 });
 
+it('drains a replacement created while an ordinary disposal was still running', async () => {
+	// The window: an ordinary disposal clears the runtime slot and parks in a
+	// teardown; a request builds a replacement; THEN the signal arrives. The
+	// terminating call finds a disposal already in flight and joins it — but
+	// that promise is an ordinary disposal's, and it has never heard of the
+	// replacement. Returning the moment it settles reports "shut down" while a
+	// live runtime sits in the slot, and the signal handler exits on top of it.
+	const first = serverOwnedRuntime();
+
+	let release: () => void = () => {};
+	const heldOpen = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	first.onDispose(() => heldOpen);
+
+	// ORDINARY: no drain, so no latch — which is what leaves the door open for
+	// the replacement below.
+	const ordinary = disposeServerOwnedRuntime();
+
+	// The slot is cleared synchronously, so this is a genuinely new runtime,
+	// admitted before any latch is set.
+	const replacement = serverOwnedRuntime();
+	expect(replacement).not.toBe(first);
+
+	let replacementDisposed = false;
+	replacement.onDispose(() => {
+		replacementDisposed = true;
+	});
+
+	// The signal lands here. Started, not awaited: it is about to join
+	// `ordinary`, which is parked on the gate this test still holds.
+	const terminating = disposeServerOwnedRuntime({ drain: true });
+
+	release();
+	await ordinary;
+	await terminating;
+
+	// Without the drain-after-join, this is false: the terminating call
+	// returned `ordinary`'s result and the replacement was never touched.
+	expect(replacementDisposed).toBe(true);
+
+	// And the latch still holds afterwards, so nothing refilled the slot on
+	// the way out.
+	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
+});
+
 describe('process signals', () => {
 	/** Spawns the fixture and waits until it reports its handlers registered. */
 	async function readyFixture(environment: Record<string, string>) {
@@ -361,4 +421,44 @@ describe('process signals', () => {
 			}
 		});
 	}
+
+	it("runs the reloaded module's disposer rather than the one it registered with", async () => {
+		// Vite re-evaluates server modules on edit while `globalThis` survives, so
+		// the registration guard correctly declines to add a second pair of
+		// listeners — and the pair already on `process` belongs to the FIRST
+		// evaluation. Closing over `disposeServerOwnedRuntime` directly would make
+		// those listeners permanent: every later edit to draining, teardown
+		// ordering, or failure reporting would load and appear active while Ctrl-C
+		// still ran the shutdown path from before the edit. The symptom only shows
+		// at exit, which is the worst place to discover you have been measuring
+		// code that is no longer on disk.
+		const directory = mkdtempSync(join(tmpdir(), 'server-owned-reload-'));
+		const reloaded = join(directory, 'reloaded');
+		const marker = join(directory, 'disposed');
+
+		try {
+			const { child, reader } = await readyFixture({
+				RELOAD_MARKER: reloaded,
+				TEARDOWN_MARKER: marker
+			});
+
+			child.kill('SIGTERM');
+
+			for (;;) {
+				const { done } = await reader.read();
+				if (done) break;
+			}
+			await child.exited;
+
+			// The handler reached the CURRENT implementation, not the one that was
+			// in scope when it was registered.
+			expect(existsSync(reloaded)).toBe(true);
+
+			// And it still disposed: the indirection replaced how the handler finds
+			// the disposer, not what the disposer does.
+			expect(existsSync(marker)).toBe(true);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
 });
