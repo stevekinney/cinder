@@ -67,6 +67,14 @@
   );
   const completedCount = $derived(steps.filter((step) => step.status === 'succeeded').length);
   const hasActivityPresentations = $derived(activityPresentations.some(Boolean));
+
+  // Derived ONCE and used by both arms of the `hasActivityPresentations`
+  // branch below, which previously wrote the same sentence twice. Fixing the
+  // plural in one arm and not the other is exactly the drift that produced
+  // "1 consecutive tool calls" here in the first place.
+  const callsLabel = $derived(
+    `${pairs.length} consecutive tool ${pairs.length === 1 ? 'call' : 'calls'}`,
+  );
   const expandedCalls = new SvelteSet<string>();
 
   function toggleCall(occurrenceKey: string): void {
@@ -83,14 +91,12 @@
   tabindex="-1"
 >
   <h3 id={headingId}>
-    Called {pairs.length} tools{completedCount ? `, ${completedCount} complete` : ''}
+    Called {pairs.length === 1 ? '1 tool' : `${pairs.length} tools`}{completedCount
+      ? `, ${completedCount} complete`
+      : ''}
   </h3>
   {#if hasActivityPresentations}
-    <div
-      class="presented-tool-calls"
-      role="list"
-      aria-label={`${pairs.length} consecutive tool calls`}
-    >
+    <div class="presented-tool-calls" role="list" aria-label={callsLabel}>
       {#each pairs as pair, index (`${index}:${pair.call.id}`)}
         <div role="listitem">
           <ToolCallGroup
@@ -105,7 +111,7 @@
       {/each}
     </div>
   {:else}
-    <RunStepTimeline {steps} label={`${pairs.length} consecutive tool calls`} />
+    <RunStepTimeline {steps} label={callsLabel} />
   {/if}
 </section>
 
