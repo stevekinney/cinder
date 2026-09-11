@@ -1,4 +1,6 @@
 import { json } from '@sveltejs/kit';
+
+import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 import { z } from 'zod';
 
 import { createConversation, listConversations } from '$lib/server-owned-conversations';
@@ -16,7 +18,11 @@ const createSchema = z.object({
 });
 
 export const GET: RequestHandler = async () => {
-	return json({ conversations: await listConversations() });
+	try {
+		return json({ conversations: await listConversations() });
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
+	}
 };
 
 export const POST: RequestHandler = async ({ request }) => {
@@ -34,5 +40,9 @@ export const POST: RequestHandler = async ({ request }) => {
 		return json({ error: 'A title between 1 and 120 characters is required.' }, { status: 400 });
 	}
 
-	return json({ conversation: await createConversation(parsed.data.title) }, { status: 201 });
+	try {
+		return json({ conversation: await createConversation(parsed.data.title) }, { status: 201 });
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
+	}
 };

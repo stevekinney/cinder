@@ -95,7 +95,11 @@ const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
 type DurableSlot = {
 	token: symbol;
 	runtime: ServerOwnedRuntime;
-	module: symbol;
+	/**
+	 * Which module evaluation built this, as an ordinal. Compared, not just
+	 * matched — see `MODULE_GENERATION`.
+	 */
+	module: number;
 	promise: Promise<DurableRuntime>;
 
 	/**
@@ -125,7 +129,27 @@ type DurableSlot = {
  * runtime — reuse. New module — stop the old engine and build one from the
  * code now on disk.
  */
-const MODULE_GENERATION = Symbol('server-owned-durable-module');
+/**
+ * ORDINAL for this evaluation, not just an identity.
+ *
+ * Identity alone is symmetric, and that is a bug: "the slot's token differs
+ * from mine" is equally true for a NEWER evaluation looking at an old slot and
+ * for an OLDER evaluation's in-flight request looking at the new one. The
+ * second case had the stale caller retire the current engine, rebuild with the
+ * pre-edit workflow, and overwrite the slot — silently rolling the edit back
+ * until some later request rolled it forward again.
+ *
+ * A monotonic counter on `globalThis` survives re-evaluation, so generations
+ * can be COMPARED rather than merely distinguished. Newer wins; older defers.
+ */
+const GENERATION_COUNTER = Symbol.for('cinder.chat-room.server-owned.durable-generation');
+
+const MODULE_GENERATION = (() => {
+	const host = globalThis as typeof globalThis & { [GENERATION_COUNTER]?: number };
+	const next = (host[GENERATION_COUNTER] ?? 0) + 1;
+	host[GENERATION_COUNTER] = next;
+	return next;
+})();
 
 type DurableHost = typeof globalThis & {
 	[DURABLE_SLOT]?: DurableSlot | undefined;
@@ -157,6 +181,20 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// that evaluation's workflow and wiring. Reusing it makes an edit look
 	// applied while the old code keeps running.
 	if (held !== undefined && held.runtime === runtime && held.module === MODULE_GENERATION) {
+		return held.promise;
+	}
+
+	// A caller from an OLDER evaluation defers to the newer engine rather than
+	// retiring it. Without this, an in-flight request still running pre-edit
+	// code would see a token it does not recognise, shut down the engine the
+	// new evaluation had just built, rebuild with its own stale workflow, and
+	// overwrite the slot — rolling the edit back until the next request rolled
+	// it forward again, and shutting down a healthy engine each way.
+	//
+	// It gets the CURRENT engine, which is the newest correct answer anyone can
+	// give it. Refusing instead would fail a request that has done nothing
+	// wrong; what it must not do is replace what is there.
+	if (held !== undefined && held.runtime === runtime && held.module > MODULE_GENERATION) {
 		return held.promise;
 	}
 

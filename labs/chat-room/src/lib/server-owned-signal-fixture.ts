@@ -38,10 +38,10 @@
  * checkpoint flushing depend on.
  *
  * `RELOAD_MARKER=<path>` stands in for Vite re-evaluating the module: it
- * replaces the process-global disposer reference the way a second evaluation
- * does, after the handlers are already registered. If the handlers dispatch
- * through that reference the replacement runs and writes the file; if they
- * closed over the first evaluation's function, nothing does.
+ * replaces the process-global SIGNAL HANDLER reference the way a second
+ * evaluation does, after the listeners are already registered. If the listeners
+ * dispatch through that reference the replacement runs and writes the file; if
+ * they closed over the first evaluation's function, nothing does.
  *
  * Run as a child process, never imported by a route.
  */
@@ -113,16 +113,21 @@ if (reloadMarker !== undefined && reloadMarker !== '') {
 	// evaluation's implementation. The handlers registered by the FIRST
 	// evaluation are the ones installed on `process` — `SIGNALS_SLOT` stops the
 	// second evaluation from adding its own.
-	const slot = Symbol.for('cinder.chat-room.server-owned.disposer');
+	const slot = Symbol.for('cinder.chat-room.server-owned.signal-handler');
 	const host = globalThis as Record<symbol, unknown>;
-	const previous = host[slot] as (options?: { drain?: boolean }) => Promise<{ failures: number }>;
+	const previous = host[slot] as (signal: 'SIGTERM' | 'SIGINT', forced: boolean) => void;
 
-	host[slot] = async (options?: { drain?: boolean }) => {
+	host[slot] = (signal: 'SIGTERM' | 'SIGINT', forced: boolean) => {
 		// Synchronous, and BEFORE delegating: this marker is about which
 		// function the handler reached, not about disposal completing, and the
 		// process exits as soon as the delegate settles.
+		//
+		// The WHOLE handler is replaced, not just the disposer — which is the
+		// point. Reporting and exit handling live behind this reference too, so
+		// intercepting it proves the listener dispatches rather than closing
+		// over the evaluating module's copy of any of it.
 		writeFileSync(reloadMarker, 'reloaded');
-		return previous(options);
+		previous(signal, forced);
 	};
 }
 

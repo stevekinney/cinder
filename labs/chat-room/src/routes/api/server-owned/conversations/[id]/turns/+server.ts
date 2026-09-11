@@ -2,6 +2,7 @@ import { json } from '@sveltejs/kit';
 import { z } from 'zod';
 
 import { appendUserTurn, messageCountOf } from '$lib/server-owned-conversations';
+import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 
 import type { RequestHandler } from './$types';
 
@@ -22,7 +23,13 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ error: 'A message between 1 and 4000 characters is required.' }, { status: 400 });
 	}
 
-	const session = await appendUserTurn(params.id, parsed.data.text);
+	let session;
+	try {
+		session = await appendUserTurn(params.id, parsed.data.text);
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
+	}
+
 	// `undefined` means the conversation is gone, which is a 404 — distinct
 	// from a conversation that exists and happens to be empty. The service
 	// keeps those apart precisely so this endpoint can.

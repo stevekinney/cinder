@@ -2,11 +2,20 @@ import { json } from '@sveltejs/kit';
 import { getMessages } from '@lostgradient/chat';
 
 import { loadConversation, messageCountOf, titleOf } from '$lib/server-owned-conversations';
+import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ params }) => {
-	const session = await loadConversation(params.id);
+	try {
+		return await respond(params.id);
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
+	}
+};
+
+async function respond(id: string): Promise<Response> {
+	const session = await loadConversation(id);
 	if (session === undefined) {
 		return json({ error: 'No such conversation.' }, { status: 404 });
 	}
@@ -21,4 +30,4 @@ export const GET: RequestHandler = async ({ params }) => {
 			content: message.content
 		}))
 	});
-};
+}

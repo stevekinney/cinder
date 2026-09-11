@@ -380,8 +380,24 @@ async function runDisposal(
 	for (const teardown of [...held.teardowns].reverse()) {
 		try {
 			await teardown();
-		} catch {
+		} catch (cause) {
 			failures += 1;
+
+			// REPORTED, not just counted. This module's contract says a
+			// throwing teardown is isolated AND reported, and only the first
+			// half was true: the count told an operator that something failed
+			// to shut down without saying what or why, which for a rejected
+			// `engine.shutdown()` means losing the storage or engine error that
+			// is the entire diagnostic.
+			//
+			// `writeSync` rather than `console.error`, for the same reason
+			// `reportBeforeExit` uses it: this runs during a terminating
+			// disposal, and a pipe write can still be in flight when
+			// `process.exit` runs. Isolation is unchanged — the loop continues,
+			// so a failing teardown cannot strand the ones after it.
+			reportBeforeExit(
+				`[server-owned] A teardown rejected during disposal: ${describeCause(cause)}`
+			);
 		}
 	}
 
@@ -470,13 +486,13 @@ async function runDisposal(
  * right shape for a deployment and is not available to this lab.
  */
 const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
-const DISPOSER_SLOT = Symbol.for('cinder.chat-room.server-owned.disposer');
+const HANDLER_SLOT = Symbol.for('cinder.chat-room.server-owned.signal-handler');
 
-type Disposer = (options?: { drain?: boolean }) => Promise<{ failures: number }>;
+type TerminationHandler = (signal: 'SIGTERM' | 'SIGINT', forced: boolean) => void;
 
 type SignalHost = typeof globalThis & {
 	[SIGNALS_SLOT]?: true;
-	[DISPOSER_SLOT]?: Disposer;
+	[HANDLER_SLOT]?: TerminationHandler;
 };
 
 /** The status a shell reports for a process killed by each signal. */
@@ -496,6 +512,23 @@ const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
  * `console.error` for a runtime without it costs nothing and keeps this from
  * being the thing that throws during shutdown.
  */
+/**
+ * Renders a thrown value for a SERVER-SIDE log line.
+ *
+ * Name and message only, and no stack: this goes to stderr during shutdown,
+ * where the useful content is which error it was, and a multi-line stack
+ * interleaved with other teardowns' output is harder to read rather than
+ * easier. Nothing here reaches a client — that boundary is the route's
+ * responsibility, and this deliberately produces a string so a caller cannot
+ * accidentally forward a live error object across it.
+ */
+function describeCause(cause: unknown): string {
+	if (cause instanceof Error) {
+		return cause.name === 'Error' ? cause.message : `${cause.name}: ${cause.message}`;
+	}
+	return typeof cause === 'string' ? cause : String(cause);
+}
+
 function reportBeforeExit(message: string): void {
 	try {
 		writeSync(2, `${message}\n`);
@@ -506,19 +539,67 @@ function reportBeforeExit(message: string): void {
 
 const signalHost = globalThis as SignalHost;
 
-// REFRESHED on every module evaluation, and the listeners below dispatch
-// through it rather than closing over a function directly.
-//
-// Vite re-evaluates this module on edit while `globalThis` survives, so the
-// `SIGNALS_SLOT` guard correctly skips re-registering — but the listeners
-// installed by the FIRST evaluation keep calling that evaluation's
-// `disposeServerOwnedRuntime`. Changes to draining, teardown ordering, or
-// failure reporting then appear loaded while Ctrl-C still runs the old
-// shutdown path, which makes a lifecycle experiment measure code that is no
-// longer on disk — and can silently reintroduce a teardown bug that was just
-// fixed. The same shape as the durable memo surviving a reload, in the one
-// place where the symptom only appears at shutdown.
-signalHost[DISPOSER_SLOT] = disposeServerOwnedRuntime;
+/**
+ * The WHOLE signal implementation, refreshed on every module evaluation.
+ *
+ * An earlier version refreshed only `disposeServerOwnedRuntime` through a
+ * disposer slot, which fixed half the problem and left a subtler half behind:
+ * the listener installed by the first evaluation still closed over
+ * THAT evaluation's reporting — `reportBeforeExit`, the failure-count message,
+ * the `catch` wording, the exit status table. So an edit to how a failed
+ * checkpoint flush is surfaced would load, look active, and never run, which is
+ * exactly the class of bug that indirection was added to close. That slot is
+ * gone; one reference now carries everything.
+ *
+ * Everything that could be edited now lives behind one reference. The listener
+ * is a two-line dispatch that has no reason to change again.
+ */
+function handleTerminationSignal(signal: 'SIGTERM' | 'SIGINT', forced: boolean): void {
+	if (forced) {
+		// Asked twice. Give up on the orderly shutdown rather than ignoring the
+		// signal — whoever sent it a second time is telling us they are done
+		// waiting.
+		process.exit(TERMINATION_STATUS[signal]);
+	}
+
+	// `finally`, so a teardown that REJECTS still terminates. Disposal already
+	// isolates and counts each failing teardown, so a rejection here would be
+	// something outside that loop — and "cleanup failed" is not a reason to
+	// ignore a termination signal.
+	//
+	// Deliberately no watchdog timer. A disposal that never settles would hang,
+	// and the honest fix for that is whatever is hanging, not a timer that
+	// hides it.
+	//
+	// `drain`, because this one is terminating: a request that builds a
+	// replacement runtime while the teardowns run would otherwise be cut off by
+	// the exit below.
+	void disposeServerOwnedRuntime({ drain: true })
+		.then(({ failures }) => {
+			// REPORTED, not discarded. `runDisposal` converts a rejecting
+			// teardown into a resolved count, so without this a failed
+			// checkpoint flush exits exactly like a clean shutdown — and the one
+			// moment an operator needs to know the engine did not finish writing
+			// is the moment the process disappears. Each individual cause is
+			// reported by `runDisposal` as it happens; this is the summary.
+			if (failures > 0) {
+				reportBeforeExit(`server-owned runtime: ${failures} teardown(s) failed during shutdown`);
+			}
+		})
+		.catch((cause: unknown) => {
+			// Disposal itself throwing is outside the per-teardown isolation, so
+			// it has nowhere else to be seen.
+			reportBeforeExit(
+				`server-owned runtime: disposal failed during shutdown: ${describeCause(cause)}`
+			);
+		})
+		.finally(() => {
+			process.exit(TERMINATION_STATUS[signal]);
+		});
+}
+
+// REFRESHED every evaluation; the listeners below read it at fire time.
+signalHost[HANDLER_SLOT] = handleTerminationSignal;
 
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
@@ -536,60 +617,22 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	 *
 	 * `process.on` keeps a handler installed, and the second delivery is now an
 	 * explicit forced exit: the conventional "press it again to stop waiting".
-	 * The difference from before is that it is a choice, with a name, that a
-	 * test can hold.
+	 *
+	 * Held HERE rather than inside the handler, because it belongs to the
+	 * process's shutdown rather than to any one module evaluation's copy of the
+	 * logic.
 	 */
 	let terminating = false;
 
 	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 		process.on(signal, () => {
-			if (terminating) {
-				// Asked twice. Give up on the orderly shutdown rather than
-				// ignoring the signal — whoever sent it a second time is
-				// telling us they are done waiting.
-				process.exit(TERMINATION_STATUS[signal]);
-			}
+			const forced = terminating;
 			terminating = true;
-			// `finally`, so a teardown that REJECTS still terminates. Disposal
-			// already isolates and counts each failing teardown, so a rejection
-			// here would be something outside that loop — and "cleanup failed"
-			// is not a reason to ignore a termination signal.
-			//
-			// Deliberately no watchdog timer. A disposal that never settles
-			// would hang, and the honest fix for that is whatever is hanging,
-			// not a timer that hides it.
-			// Read at FIRE time, so a reloaded module's implementation is the one
-			// that runs. See `DISPOSER_SLOT` above.
-			const dispose = (globalThis as SignalHost)[DISPOSER_SLOT] ?? disposeServerOwnedRuntime;
 
-			// `drain`, because this one is terminating: a request that builds a
-			// replacement runtime while the teardowns run would otherwise be cut
-			// off by the exit below.
-			void dispose({ drain: true })
-				.then(({ failures }) => {
-					// REPORTED, not discarded. `runDisposal` converts a rejecting
-					// teardown into a resolved count, so without this a failed
-					// checkpoint flush exits exactly like a clean shutdown — and
-					// the one moment an operator needs to know the engine did not
-					// finish writing is the moment the process disappears.
-					if (failures > 0) {
-						reportBeforeExit(
-							`server-owned runtime: ${failures} teardown(s) failed during shutdown`
-						);
-					}
-				})
-				.catch((cause: unknown) => {
-					// Disposal itself throwing is outside the per-teardown
-					// isolation, so it has nowhere else to be seen.
-					reportBeforeExit(
-						`server-owned runtime: disposal failed during shutdown: ${
-							cause instanceof Error ? cause.message : String(cause)
-						}`
-					);
-				})
-				.finally(() => {
-					process.exit(TERMINATION_STATUS[signal]);
-				});
+			// Read at FIRE time, so a reloaded module's implementation is the
+			// one that runs — reporting included, not just disposal.
+			const handle = (globalThis as SignalHost)[HANDLER_SLOT] ?? handleTerminationSignal;
+			handle(signal, forced);
 		});
 	}
 }

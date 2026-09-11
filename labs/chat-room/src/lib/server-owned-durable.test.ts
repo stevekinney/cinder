@@ -210,7 +210,7 @@ describe('server-owned durable runtime', () => {
 		// symbol per evaluation, and the slot lives on `globalThis` under a
 		// `Symbol.for` key, so it outlives the module that wrote it.
 		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
-		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+		const host = globalThis as Record<symbol, { module: number } | undefined>;
 
 		const first = await durableRuntime();
 
@@ -224,7 +224,7 @@ describe('server-owned durable runtime', () => {
 		const slot = host[slotKey];
 		expect(slot).toBeDefined();
 		if (slot === undefined) return;
-		slot.module = Symbol('a-later-evaluation');
+		slot.module = 0;
 
 		// Retires the first engine and builds a replacement over the same runtime.
 		const second = await durableRuntime();
@@ -256,10 +256,12 @@ describe('server-owned durable runtime', () => {
 		// beside one that is still running, which is the condition this memo
 		// exists to prevent.
 		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
-		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+		const host = globalThis as Record<symbol, { module: number } | undefined>;
 		const restamp = (): void => {
+			// 0 is below any real generation, so the slot reads as built by an
+			// OLDER evaluation — which is what a reload leaves behind.
 			const slot = host[slotKey];
-			if (slot !== undefined) slot.module = Symbol('a-later-evaluation');
+			if (slot !== undefined) slot.module = 0;
 		};
 
 		const first = await durableRuntime();
@@ -332,10 +334,12 @@ describe('server-owned durable runtime', () => {
 		);
 
 		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
-		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+		const host = globalThis as Record<symbol, { module: number } | undefined>;
 		const restamp = (): void => {
+			// 0 is below any real generation, so the slot reads as built by an
+			// OLDER evaluation — which is what a reload leaves behind.
 			const slot = host[slotKey];
-			if (slot !== undefined) slot.module = Symbol('a-later-evaluation');
+			if (slot !== undefined) slot.module = 0;
 		};
 
 		const first = await durableRuntime();
@@ -377,6 +381,49 @@ describe('server-owned durable runtime', () => {
 		expect(await twoSettled).toBe(fromAnEarlierEvaluation);
 
 		first.engine.shutdown = () => Promise.resolve(true);
+	});
+
+	it('does not let an OLDER evaluation retire the engine a newer one built', async () => {
+		// The reverse of every other reload test here, and the direction they all
+		// missed: an in-flight request still executing PRE-EDIT code reaches
+		// `durableRuntime()` after the new evaluation has installed its slot.
+		//
+		// Under an identity check — "the slot's token is not mine" — that is
+		// indistinguishable from finding a stale slot, so the old caller shut down
+		// the engine the new evaluation had just built, rebuilt with its own
+		// pre-edit workflow, and overwrote the slot. The edit silently rolled back
+		// until some later request rolled it forward, shutting down a healthy
+		// engine in each direction. Generations have to be COMPARED, not matched.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: number } | undefined>;
+
+		const current = await durableRuntime();
+
+		let shutdowns = 0;
+		const realShutdown = current.engine.shutdown.bind(current.engine);
+		current.engine.shutdown = () => {
+			shutdowns += 1;
+			return realShutdown();
+		};
+
+		// A very high ordinal stands in for "this slot was installed by an
+		// evaluation NEWER than the caller about to run" — the caller here is this
+		// module evaluation, whose generation is far below it.
+		const slot = host[slotKey];
+		expect(slot).toBeDefined();
+		if (slot === undefined) return;
+		slot.module = Number.MAX_SAFE_INTEGER;
+
+		const served = await durableRuntime();
+
+		// The SAME engine, handed back rather than replaced.
+		expect(served).toBe(current);
+
+		// And nothing was retired. Without the ordering check this is 1: a
+		// healthy, current engine shut down by a request running old code.
+		expect(shutdowns).toBe(0);
+
+		slot.module = 0;
 	});
 
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {

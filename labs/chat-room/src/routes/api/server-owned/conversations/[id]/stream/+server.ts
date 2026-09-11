@@ -5,6 +5,7 @@ import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic
 import { z } from 'zod';
 
 import { chatRunResponse } from '$lib/chat-run-response';
+import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 import { AGENT_NAME, loadConversation } from '$lib/server-owned-conversations';
 import { durableRuntime } from '$lib/server-owned-durable';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
@@ -78,8 +79,18 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	//
 	// The cost is real and grows with transcript length, so this is a follow-up
 	// rather than a non-issue.
-	const { sessions } = serverOwnedRuntime();
-	const durable = await durableRuntime();
+	// Resolved BEFORE `chatRunResponse` opens a stream, and that ordering is
+	// what makes a clean 503 possible at all: once NDJSON frames are flowing
+	// the status is already sent, and a lifecycle failure could only truncate
+	// the body. Catching here keeps the failure a readable sentence.
+	let sessions;
+	let durable;
+	try {
+		({ sessions } = serverOwnedRuntime());
+		durable = await durableRuntime();
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
+	}
 
 	return chatRunResponse({
 		signal: request.signal,
