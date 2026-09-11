@@ -158,17 +158,22 @@ async function runDisposal(
 		}
 	}
 
-	// Counted like any other teardown rather than awaited bare. This function
-	// promises to isolate failures and report a count, and a rejecting `clear()`
-	// would have broken that promise from the one line not covered by the loop
-	// above — which matters because the signal handler calls this as a
-	// fire-and-forget promise, so the rejection would surface as an unhandled
-	// one during shutdown, at the moment least likely to be noticed.
-	try {
-		await held.runtime.storage.clear();
-	} catch {
-		failures += 1;
-	}
+	// The storage is NOT cleared here, and that is deliberate.
+	//
+	// It used to be, which was harmless only because the storage is
+	// `MemoryStorage` and dies with the process anyway. This module's own
+	// documentation says swapping that for a persistent Weft `Storage` is the
+	// single change a durable backing store needs — and under that swap, every
+	// SIGTERM would have deleted every session and every checkpoint
+	// immediately before exiting. A graceful restart would have been the most
+	// destructive thing the process could do, and the claim that the swap is
+	// the only step would have been false.
+	//
+	// Disposal's job is to STOP things: run the teardowns, let the engine
+	// finish its writes. Deleting data is a test-fixture concern, and the
+	// suites that need a clean slate get one for free — disposal clears the
+	// runtime slot, so the next `serverOwnedRuntime()` builds a new storage
+	// rather than reusing the old one's contents.
 	return { failures };
 }
 
@@ -247,8 +252,34 @@ const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
 const signalHost = globalThis as SignalHost;
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
+
+	/**
+	 * Whether a shutdown is already running, so a REPEATED signal is a
+	 * deliberate decision rather than an accident.
+	 *
+	 * `process.once` removed the listener after the first delivery, so a second
+	 * SIGINT — two impatient Ctrl-Cs while the engine is flushing — took Node's
+	 * default path and killed the process mid-disposal. That is the same
+	 * outcome a forced exit gives, but arrived at by the handler no longer
+	 * being installed rather than by anyone deciding it, and it could not be
+	 * tested or changed.
+	 *
+	 * `process.on` keeps a handler installed, and the second delivery is now an
+	 * explicit forced exit: the conventional "press it again to stop waiting".
+	 * The difference from before is that it is a choice, with a name, that a
+	 * test can hold.
+	 */
+	let terminating = false;
+
 	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-		process.once(signal, () => {
+		process.on(signal, () => {
+			if (terminating) {
+				// Asked twice. Give up on the orderly shutdown rather than
+				// ignoring the signal — whoever sent it a second time is
+				// telling us they are done waiting.
+				process.exit(TERMINATION_STATUS[signal]);
+			}
+			terminating = true;
 			// `finally`, so a teardown that REJECTS still terminates. Disposal
 			// already isolates and counts each failing teardown, so a rejection
 			// here would be something outside that loop — and "cleanup failed"

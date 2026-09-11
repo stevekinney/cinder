@@ -60,11 +60,20 @@ const runtime = serverOwnedRuntime();
 
 const marker = process.env['TEARDOWN_MARKER'];
 if (marker !== undefined && marker !== '') {
+	// `SLOW_TEARDOWN=<ms>` widens the window a second signal can land in. The
+	// default is a plain macrotask, which is all the "did disposal actually
+	// finish" assertion needs.
+	const teardownDelay = Number(process.env['SLOW_TEARDOWN'] ?? '0');
+
 	runtime.onDispose(async () => {
+		// Announced at the START of the teardown, so a test wanting to deliver a
+		// second signal DURING disposal can wait for this rather than guess at a
+		// delay.
+		console.log('disposing');
 		// A macrotask, not a microtask: `process.exit` runs after the current
 		// microtask checkpoint, so a bare `await Promise.resolve()` could still
 		// resolve before an unawaited disposal was cut off. A timer cannot.
-		await new Promise((resolve) => setTimeout(resolve, 0));
+		await new Promise((resolve) => setTimeout(resolve, teardownDelay));
 		writeFileSync(marker, 'disposed');
 	});
 }

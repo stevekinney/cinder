@@ -182,7 +182,11 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 	// landed on. One object rather than two locals because the teardown closes
 	// over it before either field has its final value, which is the whole
 	// mechanism.
-	const race: { engine?: DurableRuntime; disposed: boolean } = { disposed: false };
+	const race: { disposed: boolean } = { disposed: false };
+
+	// The construction promise itself, so the teardown can AWAIT it rather than
+	// look for an engine that does not exist yet.
+	let construction: Promise<DurableRuntime> | undefined;
 
 	const unregisterTeardown = runtime.onDispose(async () => {
 		race.disposed = true;
@@ -193,9 +197,18 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 		// reports the problem, but a stale memo turns one failure into every
 		// subsequent request's failure.
 		try {
-			// `undefined` when disposal won the race: there is no engine yet,
-			// and the tail of `build()` shuts down the one that arrives late.
-			await race.engine?.engine.shutdown();
+			// AWAITS the in-flight construction. Reading a nullable `engine`
+			// here returned immediately when disposal landed mid-build, so
+			// `disposeServerOwnedRuntime()` resolved with the engine still
+			// being created — and the signal handler exits as soon as that
+			// resolves, cutting off the initialization and any checkpoint I/O
+			// underway. Awaiting means disposal does not settle until the
+			// engine exists and has been shut down.
+			//
+			// A rejected construction is nothing to shut down, and its own
+			// error is already reported to the caller that asked for it.
+			const built = await construction?.catch(() => undefined);
+			await built?.engine.shutdown();
 		} finally {
 			releaseSlot(token);
 		}
@@ -209,7 +222,7 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 	// the callback fires either way and removing it afterwards changes nothing.
 	let built: DurableRuntime;
 	try {
-		built = await createRunEngine({
+		construction = createRunEngine({
 			storage: runtime.storage,
 			runWorkflow,
 			// The SAME checkpoint store the workflow writes through, injected
@@ -239,20 +252,20 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 				reason: 'The chat-room lab binds each run to one HTTP response, which cannot be rebuilt.'
 			})
 		});
+		built = await construction;
 	} catch (cause) {
 		unregisterTeardown();
 		throw cause;
 	}
 
-	race.engine = built;
-
-	// Disposal won the race. The teardown above already ran with nothing to
-	// shut down, so this engine would otherwise be unreachable and immortal.
+	// Disposal won the race. SHUTDOWN IS THE TEARDOWN'S, not this branch's: it
+	// awaits the same `construction` promise, so by the time disposal settles
+	// the engine has been created and stopped. Doing it here as well would shut
+	// the same engine down twice.
 	if (race.disposed) {
 		// Token-checked, so a request that arrived after the disposal keeps the
 		// build it installed rather than having it erased by this one.
 		releaseSlot(token);
-		await built.engine.shutdown();
 		// Rejecting rather than returning a live engine over a disposed
 		// runtime's storage: `durableRuntime()`'s catch clears the memo, so
 		// the next caller builds against whichever runtime exists then.

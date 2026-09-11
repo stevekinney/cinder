@@ -126,10 +126,17 @@ describe('server-owned durable runtime', () => {
 
 		const first = durableRuntime();
 
-		// A's teardown runs here with no engine to shut down, and clears the
-		// slot. The new runtime built afterwards has its own unpatched storage,
-		// so B is not affected by the gate above.
-		await disposeServerOwnedRuntime();
+		// STARTED, not awaited. Disposal clears the runtime slot synchronously
+		// and then parks in A's teardown, which now awaits the construction
+		// held open above — so awaiting disposal here would deadlock against
+		// the gate this test is holding. That the two wait on each other is the
+		// fix working: disposal is not allowed to settle before the engine it
+		// is disposing exists.
+		const disposal = disposeServerOwnedRuntime();
+
+		// The runtime slot is already cleared, so this builds against a fresh
+		// runtime with its own unpatched storage — B is not affected by the
+		// gate.
 		const second = durableRuntime();
 
 		// Only now does A's construction finish and discover it was disposed.
@@ -140,9 +147,52 @@ describe('server-owned durable runtime', () => {
 		release();
 
 		await expect(first).rejects.toBeInstanceOf(RuntimeDisposedDuringBuildError);
+		await disposal;
 
 		const third = await durableRuntime();
 		expect(third).toBe(await second);
+	});
+
+	it('does not settle disposal until an in-flight engine build has shut down', async () => {
+		const runtime = serverOwnedRuntime();
+
+		// Construction held at its first storage read, as above.
+		let release: () => void = () => {};
+		const heldOpen = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const storage = runtime.storage as unknown as {
+			get: (key: string) => Promise<Uint8Array | null>;
+		};
+		const realGet = storage.get.bind(runtime.storage);
+		let parked = false;
+		storage.get = async (key: string) => {
+			if (!parked) {
+				parked = true;
+				await heldOpen;
+			}
+			return realGet(key);
+		};
+
+		const building = durableRuntime();
+		const disposal = disposeServerOwnedRuntime();
+
+		// Disposal must NOT have settled: the engine it is responsible for
+		// stopping does not exist yet. Reading a nullable `engine` here used to
+		// return immediately, and the signal handler exits as soon as disposal
+		// resolves — so initialization and any checkpoint I/O underway were cut
+		// off.
+		let disposed = false;
+		void disposal.then(() => {
+			disposed = true;
+		});
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(disposed).toBe(false);
+
+		release();
+		await building.catch(() => undefined);
+		await disposal;
+		expect(disposed).toBe(true);
 	});
 
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {

@@ -101,7 +101,7 @@ describe('server-owned runtime', () => {
 		expect(settled).toBe(true);
 	});
 
-	it('clears the storage it owned', async () => {
+	it('leaves the data it owned alone, and hands the next runtime a fresh store', async () => {
 		await disposeServerOwnedRuntime();
 		const runtime = serverOwnedRuntime();
 		await runtime.store.set('conversation:1', 'a seeded value');
@@ -109,15 +109,24 @@ describe('server-owned runtime', () => {
 
 		await disposeServerOwnedRuntime();
 
-		// The same storage object, read after disposal: emptied rather than
-		// merely dereferenced, so anything still holding a reference sees an
-		// empty store instead of stale state.
+		// NOT deleted. This test used to assert the opposite, and the inversion
+		// is the point: disposal used to call `storage.clear()`, which is
+		// harmless only because this is `MemoryStorage` and dies with the
+		// process anyway. Under the persistent-storage swap this module
+		// documents as the single change a durable backing store needs, every
+		// SIGTERM would have deleted every session and checkpoint immediately
+		// before exiting — a graceful restart as the most destructive thing the
+		// process can do.
 		//
-		// `null`, not `undefined` — that is the text-value store's absent
-		// sentinel, measured rather than assumed. Asserting `toBeUndefined`
-		// here failed against a store that was correctly cleared, which is
-		// worth pinning so the next reader does not re-derive it.
-		expect(await runtime.store.get('conversation:1')).toBeNull();
+		// Disposal STOPS things. Deleting data is a fixture concern.
+		expect(await runtime.store.get('conversation:1')).toBe('a seeded value');
+
+		// And isolation still comes for free, which is why nothing needed the
+		// clear: disposal drops the runtime slot, so the next caller gets a new
+		// storage rather than the previous one's contents.
+		const next = serverOwnedRuntime();
+		expect(next).not.toBe(runtime);
+		expect(await next.store.get('conversation:1')).toBeNull();
 	});
 
 	it('is safe to dispose when nothing was ever created', async () => {
@@ -208,6 +217,73 @@ describe('process signals', () => {
 		expect(announced).toContain('ready');
 		return { child, reader };
 	}
+
+	it('a repeated signal forces the exit instead of being ignored', async () => {
+		// `process.once` removed the listener after the first delivery, so a
+		// second SIGINT took Node's default path and killed the process
+		// mid-disposal. Same outcome as a forced exit, but arrived at by the
+		// handler no longer being installed — untestable, and impossible to
+		// change without noticing it first.
+		//
+		// A slow teardown widens the window so the second signal genuinely
+		// lands during disposal rather than after it.
+		const directory = mkdtempSync(join(tmpdir(), 'server-owned-signal-'));
+		const marker = join(directory, 'disposed');
+
+		try {
+			// WITH a host listener, which is what makes this test able to tell
+			// the two implementations apart. Without one they are
+			// indistinguishable by outcome: under `process.once` the second
+			// delivery finds no listener and Node's default terminates, which
+			// looks exactly like a deliberate forced exit.
+			//
+			// Add a host listener and they diverge. `once`: our handler is gone,
+			// the host's no-op absorbs the second signal, the default is
+			// suppressed, and the process waits out the whole teardown. `on`:
+			// our handler is still installed and forces the exit. Verified both
+			// ways — this fails against `once`.
+			const { child, reader } = await readyFixture({
+				TEARDOWN_MARKER: marker,
+				SLOW_TEARDOWN: '2000',
+				HOST_LISTENER: '1'
+			});
+
+			child.kill('SIGTERM');
+
+			// The second signal is sent once the fixture ANNOUNCES that disposal
+			// has started, not after a guessed delay — signals delivered in the
+			// same tick can be coalesced, and the first attempt at this test
+			// sent both back to back and saw only one handled.
+			let announced = '';
+			const decoder = new TextDecoder();
+			while (!announced.includes('disposing')) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				announced += decoder.decode(value, { stream: true });
+			}
+			expect(announced).toContain('disposing');
+
+			child.kill('SIGTERM');
+
+			for (;;) {
+				const { done } = await reader.read();
+				if (done) break;
+			}
+			await child.exited;
+
+			// TERMINATED, and terminated promptly: the second signal gave up on
+			// the two-second teardown rather than waiting it out or being
+			// swallowed.
+			const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
+			expect(terminated).toBe(true);
+
+			// And the slow teardown did NOT complete, which is what "forced"
+			// means here — the marker is written at the end of it.
+			expect(existsSync(marker)).toBe(false);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
 
 	// Both cases, because the second is the one the first cannot speak for.
 	for (const [label, environment] of [
