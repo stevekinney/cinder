@@ -330,6 +330,21 @@ so this is a pre-existing shortfall pushed further down rather than a floor this
 change breaks, but it belongs with the live affordances rather than with the
 exempt states.
 
+**Chat's rollback preview** — the faintest of the compounded states, and an
+ancestor/child pair in the Chat workspace rather than in `@lostgradient/cinder`.
+When a rollback confirmation marks later messages as discarded,
+`chat-message.svelte:501-504` puts `opacity: 0.32` (and `saturate(0.35)`) on the
+wrapper, while the assistant bubble inside it draws `border: 1px solid
+var(--cinder-border-muted)`. That is 19% × 0.32 ≈ 6% ink — dark `surface-inset`
+1.158 → 1.085; the light arm improves slightly, 1.079 → 1.129.
+
+Recorded rather than flagged. This state exists to show content that is about to
+be thrown away: it is deliberately ghosted, desaturated, and `pointer-events:
+none`, so it is neither an interactive control nor an indicator carrying
+information the user must read. Its boundary was already ~1.16:1 at best before
+composition. Of every state in this section it has the strongest claim to being
+decorative by intent.
+
 **RunStepTimeline's rewound marker** — a cross-_component_ case. A step with
 `status: 'skipped'` maps through `statusDotStatus()` to the neutral StatusDot,
 whose indicator is `border.strong`; when that step is also `rewound: true`, an
