@@ -100,11 +100,23 @@ function scannable(source: string): string {
 	return source;
 }
 
+/**
+ * Whitespace OR a comment, which is what JavaScript actually allows between
+ * these tokens.
+ *
+ * `await import/* annotated *\/('openai')` is valid and executes — verified
+ * under Bun — so a pattern that accepts only whitespace between `import` and
+ * its parenthesis lets an annotated import through. Note this is the reverse of
+ * the earlier findings: those were comments hiding an import from a stripper,
+ * this is a comment sitting INSIDE the import syntax.
+ */
+const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
+
 /** Matches a real module specifier — `import … from`, `import(…)`, `require(…)`. */
 function importPattern(packageName: string): RegExp {
 	const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 	return new RegExp(
-		String.raw`(?:\bfrom\s*|\bimport\s*\(\s*|\brequire\s*\(\s*|\bimport\s*)['"\`]${escaped}(?:/[^'"\`]*)?['"\`]`
+		String.raw`(?:\bfrom${GAP}|\bimport${GAP}\(${GAP}|\brequire${GAP}\(${GAP}|\bimport${GAP})['"\`]${escaped}(?:/[^'"\`]*)?['"\`]`
 	);
 }
 
@@ -203,6 +215,22 @@ describe('Operative is the only engine', () => {
 		];
 
 		for (const offender of cases) {
+			expect(importPattern('openai').test(offender)).toBe(true);
+		}
+	});
+
+	it('matches an import annotated with comments between its tokens', () => {
+		// JavaScript allows comments wherever whitespace is allowed, and these
+		// all execute. A pattern accepting only whitespace between the tokens
+		// lets every one of them through.
+		const annotated = [
+			`await import/* c */('openai')`,
+			`import /* c */ OpenAI /* c */ from /* c */ 'openai';`,
+			`require/* c */(/* c */'openai')`,
+			`import// trailing\n'openai';`
+		];
+
+		for (const offender of annotated) {
 			expect(importPattern('openai').test(offender)).toBe(true);
 		}
 	});
