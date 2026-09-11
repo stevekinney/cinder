@@ -411,7 +411,7 @@ jobs:
       # unmatched glob survivable then swallows that failure. This image uses
       # deb822 `.sources` and has no `sources.list.d/*.list` at all, so that
       # version would have done nothing here, every time.
-      - name: Install Bun bootstrap dependency
+      - name: Pin apt to HTTPS and install the Bun bootstrap dependency
         run: |
           for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
             [ -f "$sources" ] || continue
