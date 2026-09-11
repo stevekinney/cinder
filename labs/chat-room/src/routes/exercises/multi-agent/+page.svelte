@@ -221,9 +221,20 @@
 
 	let settledCount = $state(0);
 	for (const panel of panels) {
-		void panel.promise.then(() => {
+		// SETTLED, both senses of it. Counting only fulfilment would leave the
+		// status line permanently short of three if a delegation rejected — and
+		// every spec here waits on "3 of 3" before asserting anything, so the
+		// suite would report a timeout naming the status line rather than the
+		// run that actually failed.
+		//
+		// The rejection handler is also what keeps a failed delegation from
+		// becoming an unhandled rejection: `void promise.then(onFulfilled)`
+		// creates a derived promise nothing observes, so a rejection has
+		// nowhere to go.
+		const settle = (): void => {
 			settledCount += 1;
-		});
+		};
+		panel.promise.then(settle, settle);
 	}
 
 	const summaryPanel = panels[0];
@@ -261,6 +272,16 @@
 			<div data-testid="multi-agent-chat">
 				<Chat id="multi-agent-chat" conversation={delegation.history} />
 			</div>
+		{:catch failure}
+			<!--
+				A `{:catch}` arm on every `{#await}`, so a failed delegation is
+				reported rather than rendering nothing. Without it the page shows
+				a silent gap and the specs report a missing element, which names
+				the symptom instead of the run that failed.
+			-->
+			<p role="alert" data-testid="multi-agent-transcript-failed">
+				The delegation failed: {failure instanceof Error ? failure.message : String(failure)}
+			</p>
 		{/await}
 	</section>
 
@@ -299,6 +320,10 @@
 					<dt>equals this page's summarizer output</dt>
 					<dd data-testid="multi-agent-{panel.id}-custom">{delegation.matchesCustomSummary}</dd>
 				</dl>
+			{:catch failure}
+				<p role="alert" data-testid="multi-agent-{panel.id}-failed">
+					The delegation failed: {failure instanceof Error ? failure.message : String(failure)}
+				</p>
 			{/await}
 		</section>
 	{/each}

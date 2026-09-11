@@ -200,12 +200,24 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	const timeline = page.locator('[data-testid="multi-agent-chat"] .chat-tool-call-timeline');
 	const argumentsTrigger = timeline.getByRole('button', { name: 'Arguments' });
 
-	// Reachable by focus and operable by key, not only by pointer. This route
-	// introduces these controls as the way to inspect a delegation's payload,
-	// so a pointer-only assertion would let them become keyboard-inert without
-	// the suite noticing.
-	await argumentsTrigger.focus();
+	// Reached by TAB, not by `.focus()`. Calling `focus()` succeeds on an
+	// element with `tabindex="-1"` or one skipped in document order, so a test
+	// that enters that way proves the control can be activated once focus is
+	// somehow on it — never that a keyboard user can get there. Walking the
+	// tab order is the only assertion that distinguishes the two.
+	//
+	// Bounded, and the bound is asserted: an unbounded walk would hang the run
+	// instead of reporting that the control is unreachable.
+	const TAB_BUDGET = 40;
+	let reached = false;
+	await page.locator('body').press('Tab');
+	for (let step = 0; step < TAB_BUDGET && !reached; step += 1) {
+		reached = await argumentsTrigger.evaluate((element) => element === document.activeElement);
+		if (!reached) await page.keyboard.press('Tab');
+	}
+	expect(reached).toBe(true);
 	await expect(argumentsTrigger).toBeFocused();
+
 	await page.keyboard.press('Enter');
 	await expect(timeline).toContainText('What did we decide about the staging bucket?');
 
