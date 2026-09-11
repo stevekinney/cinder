@@ -80,6 +80,7 @@ export class TerminalOutputParser {
   // never credits it with a hit even though `new TerminalOutputParser()` is
   // called throughout this file's own tests. An explicit (behavior-identical)
   // empty constructor gets credited normally.
+  // eslint-disable-next-line no-useless-constructor -- documented coverage-tool workaround above, not a real no-op constructor
   constructor() {}
 
   reset(): void {
