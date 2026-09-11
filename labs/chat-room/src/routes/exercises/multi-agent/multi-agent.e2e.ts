@@ -379,4 +379,37 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	// legitimate way to operate a button.
 	await page.keyboard.press('Space');
 	await expect(timeline.locator('.cinder-run-step-timeline__detail-content')).toHaveCount(2);
+
+	// FOCUS SURVIVES THE ACTIVATION, and can leave afterwards. Ending at the
+	// payload count would stay green if expanding Result dropped focus to
+	// `<body>` or began trapping Tab — the disclosure would open and the
+	// keyboard user would be at a dead end.
+	await expect(resultTrigger).toBeFocused();
+
+	if (reached.has('attachFile')) {
+		// One Tab, to a named control. Measured rather than assumed, and
+		// identical in Chromium and Firefox: the order after an expanded Result
+		// is `Copy message`, then the composer, then `Attach file`. Asserting
+		// the next stop is the same discipline as the Tab into Result — a
+		// budgeted walk would accept focus having gone somewhere wrong and
+		// wandered back.
+		await page.keyboard.press('Tab');
+
+		// Asserted by the FOCUSED element's accessible name rather than against
+		// a locator. The transcript renders one `Copy message` button per
+		// message, so `getByRole(...).first()` is a different button than the
+		// one Tab lands on — that mismatch failed this assertion while focus
+		// was in fact exactly where it should be.
+		//
+		// Naming the element that has focus states the real claim: focus left
+		// the disclosure and landed on a named control, not on `<body>` and not
+		// back on itself.
+		const landed = await page.evaluate(() => {
+			const active = document.activeElement;
+			return active === null || active === document.body
+				? '(no control)'
+				: (active.getAttribute('aria-label') ?? active.textContent ?? '').trim();
+		});
+		expect(landed).toBe('Copy message');
+	}
 });
