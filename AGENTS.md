@@ -24,7 +24,7 @@ The exception is bounded, and every bound is load-bearing:
 
 - **One retry.** Not a loop, not a configurable count, no backoff to tune.
 - **Installs only.** `testTimeout`, `--timeout`, Playwright `retries`, `waitFor` deadlines, and `slow()` multipliers remain forbidden with no exception whatsoever. A pull request that cites this section to justify one of those is misreading it — keep flagging those as blocking.
-- **Defined once.** Eight workflow steps reference the composite action; none of them contains a retry of its own. A retry written inline in a workflow is still a defect, however similar it looks to this one.
+- **Defined once.** Every install step that retries does so by referencing the composite action; none contains a retry of its own. A retry written inline in a workflow is still a defect, however similar it looks to this one. (One site deliberately does _not_ retry: `update-baselines` installs after checking out an arbitrary dispatched ref, where a local action reference would not resolve. It uses a plain install rather than an inlined copy — a job without the retry is a smaller cost than a second copy of the exception.)
 - **Annotated, never silent.** The retry emits a `::warning::`. If those annotations become common, the transient failure has become a standing one and the answer is a real fix, not a second retry.
 
 Granted by the project lead on 2026-09-11 for [CIN-607](https://linear.app/lost-gradient/issue/CIN-607). Widening it — a second retry, a new site, a different command — needs the same authority, not a reviewer's judgement.

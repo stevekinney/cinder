@@ -894,8 +894,27 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      # PLAIN install, deliberately — the one site that does not use
+      # `./.github/actions/install-dependencies`.
+      #
+      # `Checkout source ref` above replaced the workspace with an arbitrary
+      # dispatched branch, which may predate that action. A local `uses: ./…`
+      # resolves against the workspace, so it would fail to load on any
+      # long-lived source branch — and this dispatch is the only supported way
+      # to regenerate baselines, so breaking it for old branches is not a
+      # trade worth a retry.
+      #
+      # The retry is NOT inlined here instead. Copying those lines would put a
+      # second copy of the sanctioned exception in the tree, which AGENTS.md
+      # specifically rules out: eight sites share one definition so the
+      # exception stays auditable in one place. A job that misses the retry is
+      # a smaller cost than an exception that starts spreading.
+      #
+      # This job is also manually dispatched, so a transient install failure is
+      # seen by the person who dispatched it and costs a re-run, not a silently
+      # red required check.
       - name: Install dependencies
-        uses: ./.github/actions/install-dependencies
+        run: bun install --frozen-lockfile
 
       - name: Build Docker image and update baselines
         env:
