@@ -311,6 +311,18 @@ so this is a pre-existing shortfall pushed further down rather than a floor this
 change breaks, but it belongs with the live affordances rather than with the
 exempt states.
 
+**Select's empty state** — the other separate-rule case that is not a disabled
+control. With `options=[]`, `select.svelte` renders `data-cinder-empty="true"`
+but leaves `disabled` bound to the field, so an empty-and-enabled Select keeps
+`border: 1px solid var(--cinder-border)` and takes `opacity: 0.5` from the
+`[data-cinder-empty='true']` rule — 48% × 0.5 ≈ 24% ink, the same arithmetic as
+the MediaControls row below (dark `surface-inset` 1.963 → 1.688).
+
+The state does signal unavailability by other means — `border-style: dashed` and
+`cursor: not-allowed` — and a select with no options has nothing to choose. But
+it is not `disabled`, so it cannot claim the exemption, and the dashed border is
+the affordance carrying the "empty" meaning.
+
 Three more disabled states dilute a tier from a **separate rule in the same
 file**, which the same-rule scan also cannot see — the tier comes from the base
 rule and the opacity from a `:disabled` / `[aria-disabled]` / `[data-disabled]`
