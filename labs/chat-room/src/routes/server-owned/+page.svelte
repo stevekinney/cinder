@@ -62,7 +62,6 @@
 		<strong>Noncanonical variant.</strong> Conversations here are owned by the
 		<em>server</em> and persisted through Operative's session store. The canonical browser-owned
 		exemplar lives at
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a href={resolve('/')}>the root route</a>.
 	</aside>
 
@@ -83,9 +82,21 @@
 		</button>
 	</form>
 
-	{#if failure !== ''}
-		<p class="failure" role="alert" data-testid="server-owned-failure">{failure}</p>
-	{/if}
+	<!--
+		Mounted ALWAYS, empty until a create fails, rather than gated on
+		`{#if failure}`. Chat's own `chat-status-announcer.svelte` states the
+		rule — "mounting with pre-existing text is not reliably announced" — and
+		`error-live-regions.e2e.ts` enforces it across every banner in this
+		repository, this one included. Conditionally mounting the region would
+		leave a screen-reader user with a visible error and no announcement,
+		which is precisely the failure that spec was written after finding seven
+		times.
+	-->
+	<p class="failure" role="alert" data-testid="server-owned-failure">
+		{#if failure !== ''}
+			{failure}
+		{/if}
+	</p>
 
 	<h2>Conversations</h2>
 	{#if data.conversations.length === 0}
@@ -152,7 +163,13 @@
 		padding: 0.5rem 0.75rem;
 	}
 
+	/*
+		`margin: 0` because the region is now always in the layout: a default
+		paragraph margin would open a gap under the form on every visit, whether
+		or not anything failed.
+	*/
 	.failure {
+		margin: 0;
 		color: var(--cinder-color-danger-fg, currentColor);
 	}
 </style>

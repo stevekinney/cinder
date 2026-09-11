@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { loadConversation } from '$lib/server-owned-conversations';
+import { loadConversation, titleOf } from '$lib/server-owned-conversations';
 
 import type { PageServerLoad } from './$types';
 
@@ -17,7 +17,7 @@ export const load: PageServerLoad = async ({ params }) => {
 
 	return {
 		id: session.id,
-		title: typeof session.metadata?.title === 'string' ? session.metadata.title : 'Untitled',
+		title: titleOf(session.metadata),
 		conversation: session.conversationHistory
 	};
 };

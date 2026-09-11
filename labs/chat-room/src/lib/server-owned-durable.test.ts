@@ -1,6 +1,10 @@
 import { afterEach, describe, expect, it } from 'bun:test';
 
-import { durableRuntime, forgetDurableRuntime } from './server-owned-durable.ts';
+import {
+	RuntimeDisposedDuringBuildError,
+	durableRuntime,
+	forgetDurableRuntime
+} from './server-owned-durable.ts';
 import { disposeServerOwnedRuntime } from './server-owned-runtime.ts';
 
 /**
@@ -56,5 +60,36 @@ describe('server-owned durable runtime', () => {
 		const after = await durableRuntime();
 
 		expect(after).not.toBe(before);
+	});
+
+	it('does not strand an engine when disposal lands mid-build', async () => {
+		// DETERMINISTIC, not a timing gamble. `build()` runs synchronously up
+		// to its first `await`, and the teardown is registered before that
+		// await — so by the time `durableRuntime()` has returned its promise,
+		// the teardown is already in the list `disposeServerOwnedRuntime` is
+		// about to snapshot. Nothing here depends on how long the engine takes
+		// to construct.
+		const pending = durableRuntime();
+		await disposeServerOwnedRuntime();
+
+		// Registering the teardown AFTER construction instead — which is what
+		// this file was written against — makes this line fail rather than
+		// throw: the snapshot misses the teardown, the build resolves happily,
+		// and the engine it returns is registered against a runtime that has
+		// already been disposed and can never be disposed again. It runs, holds
+		// the process open, and nothing holds a reference to it.
+		await expect(pending).rejects.toBeInstanceOf(RuntimeDisposedDuringBuildError);
+
+		// And the memo is clear, so the next caller gets an engine over the
+		// runtime that exists NOW rather than the storage that was just torn
+		// down.
+		const after = await durableRuntime();
+		expect(typeof after.engine.shutdown).toBe('function');
+
+		// That the stranded engine was actually shut down has no direct
+		// assertion — it is unreachable by construction, which is the whole
+		// defect. The observable is this suite terminating: an engine left
+		// running keeps the `bun test` process alive, so a regression here
+		// shows up as a run that never exits.
 	});
 });

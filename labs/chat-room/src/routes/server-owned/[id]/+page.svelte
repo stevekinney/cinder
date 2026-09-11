@@ -4,10 +4,13 @@
 		createChatSessionController,
 		decodeChatStreamEvents,
 		getMessages,
+		type ChatAdapterErrorEvent,
 		type ConversationHistory
 	} from '@lostgradient/chat';
 	import { resolve } from '$app/paths';
 	import { onDestroy, untrack } from 'svelte';
+
+	import { toBannerFailure, type BannerFailure } from '$lib/chat-failure';
 
 	import type { PageData } from './$types';
 
@@ -23,6 +26,7 @@
 	// discard everything streamed since the load.
 	let conversation = $state<ConversationHistory>(untrack(() => data.conversation));
 	let streaming = $state(false);
+	let failure = $state<BannerFailure | null>(null);
 
 	const session = createChatSessionController({
 		getConversation: () => $state.snapshot(conversation),
@@ -62,11 +66,32 @@
 			return decodeChatStreamEvents(response.body);
 		},
 		hooks: {
-			onStreamingChange: (value) => (streaming = value)
+			onStreamingChange: (value) => {
+				streaming = value;
+				// Cleared when the NEXT turn starts, not when this one fails: a
+				// banner that outlived the send it described would read as a
+				// fresh failure of the turn now in flight.
+				if (value) failure = null;
+			},
+			// The controller reports a rejected turn here — the stream endpoint's
+			// 404, 400, or 503 body, and the provider's own typed terminal
+			// failure with its retryability classification. Without this the only
+			// thing a user sees is Chat's generic per-message marker, and the
+			// server's actual sentence is discarded.
+			onError: (cause) => (failure = toBannerFailure(cause))
 		}
 	});
 
 	const adapter = session.adapter;
+
+	// The OTHER error path. `onError` covers failures the controller raises;
+	// `onadaptererror` covers a command the adapter itself rejected. They are
+	// different sources and neither implies the other, which is why the
+	// canonical exemplar wires both and why wiring one here would leave a
+	// reachable silence.
+	function handleAdapterError(event: ChatAdapterErrorEvent): void {
+		failure = toBannerFailure(event.error);
+	}
 
 	// Leaving this page while a response is streaming destroys `<Chat>` but not
 	// the controller behind it: without this the run keeps going, its frames
@@ -82,13 +107,40 @@
 	<aside class="variant-banner" role="note" data-testid="server-owned-banner">
 		<strong>Noncanonical variant.</strong> This conversation is owned by the
 		<em>server</em>. Reloading re-reads it from the session store.
-		<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
 		<a href={resolve('/')}>The canonical exemplar</a> keeps its transcript in the browser.
 	</aside>
 
 	<h1 data-testid="server-owned-title">{data.title}</h1>
 
-	<div data-testid="server-owned-chat" data-streaming={streaming}>
+	<!--
+		Mounted ALWAYS, empty until there is something to say. Chat's own
+		`chat-status-announcer.svelte` states the rule this follows — a live
+		region mounted with its text already in place is not reliably
+		announced — and `error-live-regions.e2e.ts` enforces it across the
+		repository's banners.
+	-->
+	<p
+		class="failure"
+		role="alert"
+		data-testid="server-owned-turn-failure"
+		data-retryable={failure?.retryable === undefined ? undefined : String(failure.retryable)}
+	>
+		{#if failure}
+			{failure.message}
+			<!--
+				The classification, rendered rather than flattened away, exactly as
+				the canonical exemplar renders it: a reader should be able to tell
+				from the banner whether the turn is worth sending again.
+			-->
+			{#if failure.retryable === true}
+				<span data-testid="server-owned-turn-failure-disposition"> — you can try that again.</span>
+			{:else if failure.retryable === false}
+				<span data-testid="server-owned-turn-failure-disposition"> — retrying will not help.</span>
+			{/if}
+		{/if}
+	</p>
+
+	<div class="chat" data-testid="server-owned-chat" data-streaming={streaming}>
 		<!--
 			Capabilities are narrowed to what this variant can actually honour.
 			`Chat` enables all of them by default, and the defaults assume the
@@ -105,24 +157,67 @@
 			new turn's text. An attached file would appear in the composer, be
 			dropped on the way out, and never reach the model.
 
-			Both are reachable defaults rather than hypotheticals, which is why
-			they are turned off rather than left for a later issue to notice.
+			`retry`: Retry re-invokes the transport with the same text, and the
+			stream endpoint handles EVERY invocation as
+			`createSessionHandle(...).run(text)` — which appends a new user turn.
+			So a retry would not retry the failed turn; it would persist the same
+			prompt a second time, and a reload would show it twice. Retrying
+			properly needs a server-side operation that replaces the failed turn
+			rather than appending beside it, which is the same gap `editing`
+			leaves open.
+
+			All three are reachable defaults rather than hypotheticals, which is
+			why they are turned off rather than left for a later issue to notice.
+
+			`streaming` is forwarded for the opposite reason: it is not a
+			capability to withdraw but state the component cannot infer. Left at
+			its default the composer and Send button stay enabled through an
+			in-flight response, Stop generating never appears, and a second
+			submission is dropped by the controller's already-running guard with
+			nothing shown to the user.
 		-->
 		<Chat
 			id="server-owned-conversation"
 			{conversation}
 			{adapter}
-			capabilities={{ editing: false, attachments: false }}
+			{streaming}
+			capabilities={{ editing: false, attachments: false, retry: false }}
+			onadaptererror={handleAdapterError}
 		/>
 	</div>
 </main>
 
 <style>
+	/*
+		A DEFINITE height, because Chat's root is `height: 100%` and a percentage
+		height against an auto-height ancestor resolves to auto. Without this the
+		transcript viewport collapses to its intrinsic content height instead of
+		owning the page's remaining space — it renders, so it looks fine with two
+		messages and is wrong with twenty. The canonical exemplar does the same
+		thing inline; here it belongs in the stylesheet the page already has.
+	*/
 	main {
+		block-size: 100dvh;
 		padding: 1rem;
 		display: flex;
 		flex-direction: column;
 		gap: 1rem;
+	}
+
+	/*
+		`min-block-size: 0` alongside `flex: 1`: a flex item's automatic minimum
+		size is its content, so without this the wrapper refuses to shrink below
+		the transcript's full height and the page scrolls instead of the
+		transcript.
+	*/
+	.chat {
+		flex: 1;
+		min-block-size: 0;
+	}
+
+	.failure {
+		margin: 0;
+		color: var(--cinder-color-danger-fg, currentColor);
 	}
 
 	.variant-banner {

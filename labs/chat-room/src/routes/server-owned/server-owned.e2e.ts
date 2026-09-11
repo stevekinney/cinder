@@ -40,6 +40,34 @@ test('labels itself as the noncanonical variant', async ({ page }) => {
 	await expect(banner).toHaveAttribute('role', 'note');
 });
 
+test('server-renders the conversation list into the navigation response', async ({ request }) => {
+	// The defining contract of this route family, asserted where it is actually
+	// observable: in the bytes the server sends, before any script runs.
+	//
+	// Every other list assertion in this family runs after
+	// `body[data-hydrated="true"]`, so moving the list into browser-side
+	// startup would leave all of them green while deleting the one property
+	// that makes this variant different from the canonical exemplar. Reading
+	// the raw response is the only check that notices.
+	const title = uniqueTitle('Server rendered');
+	const created = await request.post('/api/server-owned/conversations', { data: { title } });
+	expect(created.status()).toBe(201);
+
+	const page = await request.get('/server-owned');
+	expect(page.status()).toBe(200);
+	const html = await page.text();
+
+	// The row markup AND this conversation's title, in the delivered document.
+	expect(html).toContain('data-testid="server-owned-list"');
+	expect(html).toContain(title);
+
+	// And the live region the create form announces through is in the document
+	// too, rather than mounted later by the browser — the same "exists before
+	// it has anything to say" rule `error-live-regions.e2e.ts` enforces, here
+	// pinned one step earlier, at the server.
+	expect(html).toContain('data-testid="server-owned-failure"');
+});
+
 test('rejects an empty title at the endpoint rather than storing it', async ({ request }) => {
 	const response = await request.post('/api/server-owned/conversations', {
 		data: { title: '   ' }

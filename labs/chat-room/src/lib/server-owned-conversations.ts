@@ -20,7 +20,18 @@ export type ConversationSummary = {
 	updatedAt: string;
 };
 
-function titleOf(metadata: AgentSession['metadata']): string {
+/**
+ * The one title fallback, shared by every surface that renders one.
+ *
+ * Exported rather than duplicated because the three call sites had drifted:
+ * the list said `'Untitled conversation'` while the detail page and its
+ * endpoint said `'Untitled'`, and both of those treated an EMPTY string as a
+ * title — so a conversation created with `{ title: '' }` rendered a blank
+ * heading on one route and a fallback on another. A shared function makes the
+ * two halves of the rule (a string, AND non-empty) impossible to apply to one
+ * surface and forget on the next.
+ */
+export function titleOf(metadata: AgentSession['metadata']): string {
 	const title = metadata?.title;
 	return typeof title === 'string' && title.length > 0 ? title : 'Untitled conversation';
 }
@@ -42,7 +53,10 @@ export async function createConversation(title: string): Promise<ConversationSum
 	await sessions.save(session);
 	return {
 		id: session.id,
-		title,
+		// Through the shared fallback, not the argument: an empty title is
+		// stored as given but RENDERS as the fallback, and the create response
+		// has to agree with the list it is about to appear in.
+		title: titleOf(session.metadata),
 		messageCount: 0,
 		updatedAt: session.updatedAt
 	};

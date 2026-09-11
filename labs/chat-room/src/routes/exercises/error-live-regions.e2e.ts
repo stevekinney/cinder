@@ -13,8 +13,8 @@ import { gotoHydrated } from './hydration';
 // `{#snippet failed}` boundary, which does not exist until the boundary has
 // already activated.
 //
-// Collected here rather than scattered across the five specs that own these
-// routes, because it is ONE invariant. A per-spec version would be five
+// Collected here rather than scattered across the specs that own these routes,
+// because it is ONE invariant. A per-spec version would be five
 // assertions that each look incidental, and the next banner added would have no
 // obvious place to be checked.
 //
@@ -30,7 +30,8 @@ const ERROR_REGIONS = [
 	{ route: '/exercises/adapter-push', testId: 'hazard-fixture-announcement' },
 	{ route: '/exercises/tool-approval', testId: 'fail-error' },
 	{ route: '/exercises/interleaving', testId: 'interleaving-error' },
-	{ route: '/exercises/multi-agent', testId: 'multi-agent-failure' }
+	{ route: '/exercises/multi-agent', testId: 'multi-agent-failure' },
+	{ route: '/server-owned', testId: 'server-owned-failure' }
 ];
 
 for (const { route, testId } of ERROR_REGIONS) {

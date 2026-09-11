@@ -35,7 +35,9 @@ import { STEPPED_CHUNKS, fixtureMarker } from '../streaming-fixture';
 const uniqueTitle = (label: string): string =>
 	`${label} ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-test('creates a conversation and renders it in the server-rendered list', async ({ page }) => {
+test('creates a conversation through the browser and finds it in the list after a reload', async ({
+	page
+}) => {
 	await gotoHydrated(page, '/server-owned');
 	const title = uniqueTitle('Release planning');
 
@@ -44,6 +46,11 @@ test('creates a conversation and renders it in the server-rendered list', async 
 
 	// The row for THIS conversation, located by its unique title — not the
 	// first row, and not a count.
+	//
+	// That the list is SERVER-rendered is not what this test shows: everything
+	// below runs after hydration, so a list moved into browser-side startup
+	// would keep it green. `server-owned.e2e.ts` asserts that separately,
+	// against the navigation response's raw HTML.
 	const row = page.locator('[data-testid="server-owned-conversation"]').filter({ hasText: title });
 	await expect(row).toHaveCount(1);
 	await expect(row.locator('[data-testid="server-owned-conversation-count"]')).toHaveText(
@@ -58,10 +65,24 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	const created = await request.post('/api/server-owned/conversations', {
 		data: { title: uniqueTitle('Incremental') }
 	});
+	// Asserted before the body is read. Without this, an endpoint returning a
+	// 500 or an HTML error page fails on the next line as a JSON parse or a
+	// destructure of `undefined` — a shape error that names nothing about the
+	// request that actually failed.
+	expect(created.status()).toBe(201);
 	const { conversation } = (await created.json()) as { conversation: { id: string } };
 
 	const marker = newFixtureMarker();
 	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	// The turn-failure live region exists BEFORE anything can fail, which is
+	// the invariant `error-live-regions.e2e.ts` enforces for every other banner
+	// in this repository. It cannot be asserted there because that spec walks
+	// static routes and this one needs a conversation to exist first.
+	const turnFailure = page.getByTestId('server-owned-turn-failure');
+	await expect(turnFailure).toHaveCount(1);
+	await expect(turnFailure).toBeEmpty();
+	await expect(turnFailure).toHaveAttribute('role', 'alert');
 
 	const log = page.getByRole('log', { name: 'Messages' });
 	await page
@@ -89,6 +110,18 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	// One chunk on screen, the rest not yet produced.
 	await expect(log).toContainText(STEPPED_CHUNKS[0]);
 	await expect(log).not.toContainText(STEPPED_CHUNKS[1]);
+
+	// Mid-stream, and this is where `streaming` proves it reached `<Chat>`
+	// rather than only the page's own attribute: Stop generating is a control
+	// the component renders from that prop alone. Left at its default the
+	// composer would still offer Send here, and a user with a slow response and
+	// no way to cancel it is the failure this assertion exists for.
+	await expect(page.getByRole('button', { name: 'Stop generating' })).toBeVisible();
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'true'
+	);
+
 	expect(await releaseFixtureGate(marker)).toBe(true);
 
 	// Two. `released: true` again proves the third did not exist when two were
@@ -100,6 +133,15 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	// Three, and the turn has unwound.
 	await expect(log).toContainText(STEPPED_CHUNKS.join(' '));
 	await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+
+	// `streaming` has unwound in the component too: Send is back, and Stop
+	// generating — which Chat renders only while a response is in flight — is
+	// gone.
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
+	await expect(page.getByRole('button', { name: 'Stop generating' })).toHaveCount(0);
 
 	// And the SERVER kept it: a reload re-reads the transcript from the session
 	// store. This is the assertion the canonical exemplar cannot make — there

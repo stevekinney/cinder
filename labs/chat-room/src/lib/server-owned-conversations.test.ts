@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { appendUserMessage } from '@lostgradient/chat';
+import { appendUserMessage, getMessages } from '@lostgradient/chat';
+import type { AgentSession } from '@lostgradient/operative';
 
 import {
 	appendUserTurn,
@@ -9,6 +10,21 @@ import {
 	messageCountOf
 } from './server-owned-conversations.ts';
 import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
+
+/**
+ * What was actually persisted, as an order-independent set.
+ *
+ * A count alone is not evidence for the claim these tests make. Two messages
+ * is equally consistent with both turns surviving, with one turn stored twice,
+ * and with both contents replaced by something else — so a store that
+ * corrupted every message body would keep these tests green. Concurrency is
+ * the one place where asserting on the CONTENT rather than the tally is the
+ * whole point.
+ */
+const contentsOf = (session: AgentSession): string[] =>
+	getMessages(session.conversationHistory)
+		.map((message) => (typeof message.content === 'string' ? message.content : ''))
+		.sort();
 
 describe('server-owned conversations', () => {
 	it('creates a conversation the list can see', async () => {
@@ -63,6 +79,7 @@ describe('server-owned conversations', () => {
 		const session = await loadConversation(created.id);
 		expect(session).toBeDefined();
 		expect(messageCountOf(session!)).toBe(1);
+		expect(contentsOf(session!)).toEqual(['What shipped this week?']);
 		expect((await listConversations())[0].messageCount).toBe(1);
 		await disposeServerOwnedRuntime();
 	});
@@ -94,6 +111,7 @@ describe('server-owned conversations', () => {
 
 		const session = await loadConversation(created.id);
 		expect(messageCountOf(session!)).toBe(2);
+		expect(contentsOf(session!)).toEqual(['from tab one', 'from tab two']);
 		await disposeServerOwnedRuntime();
 	});
 
@@ -127,6 +145,7 @@ describe('server-owned conversations', () => {
 		// warning that turns out to be false.
 		const session = await loadConversation(created.id);
 		expect(messageCountOf(session!)).toBe(2);
+		expect(contentsOf(session!)).toEqual(['from tab one', 'from tab two']);
 		await disposeServerOwnedRuntime();
 	});
 });

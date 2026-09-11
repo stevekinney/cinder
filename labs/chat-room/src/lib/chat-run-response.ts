@@ -124,14 +124,15 @@ export function chatRunResponse(options: {
 			options.signal.addEventListener('abort', onRequestAbort);
 
 			// Close the gap between the already-aborted guard at the top of `start`
-			// and the listener above. Everything in between — building the provider,
-			// creating the agent, and `startChatRun` itself — takes real time, and
-			// `startChatRun` is the call that opens a BILLED provider request. A
-			// client that disconnects inside that window fires `abort` with nothing
-			// listening yet, so without this re-check the event is simply lost: the
-			// run keeps going and being billed, and the stream never reaches a
-			// terminal state. `onRequestAbort` is a one-shot, so calling it directly
-			// here is safe even if the listener also fires.
+			// and the listener above. Everything in between is the caller's
+			// `start` — building a provider, creating an agent or a session
+			// handle, and launching the run — which takes real time and is the
+			// point at which a BILLED provider request opens. A client that
+			// disconnects inside that window fires `abort` with nothing listening
+			// yet, so without this re-check the event is simply lost: the run
+			// keeps going and being billed, and the stream never reaches a
+			// terminal state. `onRequestAbort` is a one-shot, so calling it
+			// directly here is safe even if the listener also fires.
 			//
 			// It deliberately does NOT return. Returning would skip the pump below,
 			// and with it the `finally` that removes this listener and disposes the

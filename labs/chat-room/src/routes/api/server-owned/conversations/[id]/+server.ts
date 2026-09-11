@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 
-import { loadConversation, messageCountOf } from '$lib/server-owned-conversations';
+import { loadConversation, messageCountOf, titleOf } from '$lib/server-owned-conversations';
 import { getMessages } from '@lostgradient/chat';
 
 import type { RequestHandler } from './$types';
@@ -13,7 +13,7 @@ export const GET: RequestHandler = async ({ params }) => {
 
 	return json({
 		id: session.id,
-		title: typeof session.metadata?.title === 'string' ? session.metadata.title : 'Untitled',
+		title: titleOf(session.metadata),
 		messageCount: messageCountOf(session),
 		messages: getMessages(session.conversationHistory).map((message) => ({
 			id: message.id,

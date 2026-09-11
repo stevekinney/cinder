@@ -19,7 +19,7 @@ import {
 	createChatStreamWriter,
 	pumpChatRun,
 	startChatRun
-} from '../src/routes/api/chat/chat-agent';
+} from '../src/lib/chat-agent.ts';
 
 import { decodeChatStreamEvent, type ChatStreamEvent } from '@lostgradient/chat';
 

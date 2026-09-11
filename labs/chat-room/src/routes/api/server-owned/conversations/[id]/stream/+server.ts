@@ -86,8 +86,8 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		start: (writer) =>
 			createSessionHandle(params.id, {
 				store: sessions,
-				engine: durable.engine as never,
-				checkpointStore: durable.checkpointStore as never,
+				engine: durable.engine,
+				checkpointStore: durable.checkpointStore,
 				agentName: AGENT_NAME,
 				runOptions: createChatRunOptions({
 					generate: createAnthropicProviderStream({
