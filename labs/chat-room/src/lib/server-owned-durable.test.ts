@@ -426,6 +426,34 @@ describe('server-owned durable runtime', () => {
 		slot.module = 0;
 	});
 
+	it('tolerates a slot stamped by a version that used symbols', async () => {
+		// The UPGRADE boundary, which every other reload test here steps over:
+		// they all write numeric stamps, so they model two evaluations of the
+		// current code rather than this code loading over the previous version.
+		//
+		// The stamp used to be a `symbol`, and the slot outlives the evaluation
+		// that wrote it. `symbol > number` does not compare false — it throws
+		// `TypeError: Cannot convert a Symbol value to a number` — so during the
+		// one reload that installs this code, every request would have failed
+		// until the dev server restarted.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: unknown } | undefined>;
+
+		const before = await durableRuntime();
+
+		const slot = host[slotKey];
+		expect(slot).toBeDefined();
+		if (slot === undefined) return;
+		slot.module = Symbol('a stamp written by the previous version');
+
+		// Must not throw. An unrecognised stamp reads as OLDER than any real
+		// generation, so the slot is retired and rebuilt — which is the correct
+		// answer for something a previous evaluation left behind.
+		const after = await durableRuntime();
+		expect(after).not.toBe(before);
+		expect(typeof after.engine.shutdown).toBe('function');
+	});
+
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {
 		const before = await durableRuntime();
 

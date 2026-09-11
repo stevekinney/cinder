@@ -54,8 +54,18 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	// Checked before the run rather than left to the handle: a missing
 	// conversation is a 404, and discovering it inside a streaming response
 	// would mean reporting it as a mid-stream failure instead.
-	if ((await loadConversation(params.id)) === undefined) {
-		return json({ error: 'No such conversation.' }, { status: 404 });
+	//
+	// GUARDED, because `loadConversation` reaches `serverOwnedRuntime()` too.
+	// This lookup runs before the lifecycle block below, so leaving it
+	// unguarded meant a POST arriving after termination latched still got a
+	// generic 500 — the shutdown mapping was in the route but not on the first
+	// line that could trigger it.
+	try {
+		if ((await loadConversation(params.id)) === undefined) {
+			return json({ error: 'No such conversation.' }, { status: 404 });
+		}
+	} catch (cause) {
+		return unavailableDuringShutdown(cause) ?? raise(cause);
 	}
 
 	if (!env.ANTHROPIC_API_KEY) {

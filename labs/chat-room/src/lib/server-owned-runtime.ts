@@ -487,12 +487,37 @@ async function runDisposal(
  */
 const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
 const HANDLER_SLOT = Symbol.for('cinder.chat-room.server-owned.signal-handler');
+const LISTENERS_SLOT = Symbol.for('cinder.chat-room.server-owned.signal-listeners');
+
+/**
+ * Dispatch protocol version for the installed listeners.
+ *
+ * Bump this whenever the listener's CONTRACT with the module changes — which
+ * slot it reads, what it passes, what it expects back. It is not a version of
+ * the handler's behaviour: that is refreshed through `HANDLER_SLOT` on every
+ * evaluation and needs no bump.
+ *
+ * Why it has to exist: `SIGNALS_SLOT` makes registration idempotent, which is
+ * right, but it also means listeners installed by an OLDER evaluation survive
+ * forever. Those listeners read whatever slot that version knew about — and
+ * when this module moved from a disposer slot to a handler slot, they went on
+ * reading a slot nothing writes any more. The new implementation was
+ * unreachable until a full restart, which is precisely the staleness the
+ * indirection was built to prevent, reintroduced at the upgrade boundary.
+ */
+const LISTENER_PROTOCOL = 2;
 
 type TerminationHandler = (signal: 'SIGTERM' | 'SIGINT', forced: boolean) => void;
 
+type InstalledListeners = {
+	protocol: number;
+	entries: ReadonlyArray<readonly ['SIGTERM' | 'SIGINT', NodeJS.SignalsListener]>;
+};
+
 type SignalHost = typeof globalThis & {
-	[SIGNALS_SLOT]?: true;
+	[SIGNALS_SLOT]?: true | undefined;
 	[HANDLER_SLOT]?: TerminationHandler;
+	[LISTENERS_SLOT]?: InstalledListeners;
 };
 
 /** The status a shell reports for a process killed by each signal. */
@@ -601,6 +626,22 @@ function handleTerminationSignal(signal: 'SIGTERM' | 'SIGINT', forced: boolean):
 // REFRESHED every evaluation; the listeners below read it at fire time.
 signalHost[HANDLER_SLOT] = handleTerminationSignal;
 
+// An older evaluation's listeners are REMOVED when they speak a different
+// protocol, rather than left installed beside the new ones. Leaving both would
+// run two shutdowns and two `process.exit` calls for one signal; leaving only
+// the old ones — which is what happened before this existed — makes every
+// later edit to shutdown unreachable until a restart.
+const installed = signalHost[LISTENERS_SLOT];
+if (
+	installed !== undefined &&
+	installed.protocol !== LISTENER_PROTOCOL &&
+	typeof process !== 'undefined'
+) {
+	for (const [signal, listener] of installed.entries) process.off(signal, listener);
+	signalHost[LISTENERS_SLOT] = undefined;
+	signalHost[SIGNALS_SLOT] = undefined;
+}
+
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
 
@@ -624,8 +665,10 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	 */
 	let terminating = false;
 
+	const entries: Array<readonly ['SIGTERM' | 'SIGINT', NodeJS.SignalsListener]> = [];
+
 	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
-		process.on(signal, () => {
+		const listener: NodeJS.SignalsListener = () => {
 			const forced = terminating;
 			terminating = true;
 
@@ -633,6 +676,14 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 			// one that runs — reporting included, not just disposal.
 			const handle = (globalThis as SignalHost)[HANDLER_SLOT] ?? handleTerminationSignal;
 			handle(signal, forced);
-		});
+		};
+
+		process.on(signal, listener);
+		entries.push([signal, listener]);
 	}
+
+	// RECORDED, so a future evaluation whose protocol differs can take these
+	// back off. Without the references there is no way to replace them, which
+	// is the position the previous version was in.
+	signalHost[LISTENERS_SLOT] = { protocol: LISTENER_PROTOCOL, entries };
 }

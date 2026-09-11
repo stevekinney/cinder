@@ -161,6 +161,28 @@ function releaseSlot(token: symbol): void {
 	if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = undefined;
 }
 
+/**
+ * The slot's generation, tolerant of a slot this code did not write.
+ *
+ * The stamp used to be a `symbol`, and a slot on `globalThis` outlives the
+ * evaluation that created it — so during the single reload that installs THIS
+ * code over the previous version, the slot still holds a symbol. `symbol >
+ * number` does not compare false; it throws `TypeError: Cannot convert a
+ * Symbol value to a number`, and every request would fail until the dev server
+ * restarted rather than retiring the engine and rebuilding.
+ *
+ * A slot of an unrecognised shape is treated as OLDER than any real
+ * generation, which is exactly right: it was written by a previous evaluation,
+ * so it should be retired rather than deferred to.
+ *
+ * The general rule, and the reason this is not a one-off patch: anything read
+ * from `globalThis` was written by code you are not looking at, possibly an
+ * older version of this file. Validate the shape rather than assuming it.
+ */
+function generationOf(held: DurableSlot): number {
+	return typeof held.module === 'number' ? held.module : Number.NEGATIVE_INFINITY;
+}
+
 export async function durableRuntime(): Promise<DurableRuntime> {
 	const host = globalThis as DurableHost;
 	// Read ONCE, and passed down, so this function and the build it starts
@@ -194,7 +216,7 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// It gets the CURRENT engine, which is the newest correct answer anyone can
 	// give it. Refusing instead would fail a request that has done nothing
 	// wrong; what it must not do is replace what is there.
-	if (held !== undefined && held.runtime === runtime && held.module > MODULE_GENERATION) {
+	if (held !== undefined && held.runtime === runtime && generationOf(held) > MODULE_GENERATION) {
 		return held.promise;
 	}
 

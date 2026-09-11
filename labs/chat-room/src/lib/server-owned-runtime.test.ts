@@ -501,7 +501,60 @@ describe('process signals', () => {
 		});
 	}
 
-	it("runs the reloaded module's disposer rather than the one it registered with", async () => {
+	it('replaces listeners left by an older dispatch protocol', async () => {
+		// `SIGNALS_SLOT` makes registration idempotent, which is right — and it
+		// also means listeners from an OLDER evaluation survive forever. When this
+		// module changed which slot the listener reads, those old listeners went on
+		// reading a slot nothing writes any more, leaving the new implementation
+		// unreachable until a full dev-server restart. That is the staleness the
+		// indirection exists to prevent, reappearing at the upgrade boundary.
+		//
+		// The sibling fixture starts cold and therefore cannot show this: its
+		// listeners are always the ones this evaluation installed. This one puts
+		// protocol-1 listeners in place BEFORE importing the module.
+		const directory = mkdtempSync(join(tmpdir(), 'server-owned-protocol-'));
+		const stale = join(directory, 'stale');
+		const marker = join(directory, 'disposed');
+
+		try {
+			const child = Bun.spawn(
+				['bun', join(import.meta.dir, 'server-owned-stale-listener-fixture.ts')],
+				{
+					stdout: 'pipe',
+					stderr: 'pipe',
+					env: { ...process.env, STALE_MARKER: stale, TEARDOWN_MARKER: marker }
+				}
+			);
+
+			const reader = child.stdout.getReader();
+			const decoder = new TextDecoder();
+			let announced = '';
+			while (!announced.includes('ready')) {
+				const { value, done } = await reader.read();
+				if (done) break;
+				announced += decoder.decode(value, { stream: true });
+			}
+			expect(announced).toContain('ready');
+
+			child.kill('SIGTERM');
+			for (;;) {
+				const { done } = await reader.read();
+				if (done) break;
+			}
+			await child.exited;
+
+			// The NEW handler ran: it disposed the runtime.
+			expect(existsSync(marker)).toBe(true);
+
+			// And the stale listener did NOT. Without the protocol check this is
+			// the one that fires, exiting 0 without disposing anything.
+			expect(existsSync(stale)).toBe(false);
+		} finally {
+			rmSync(directory, { recursive: true, force: true });
+		}
+	});
+
+	it("runs the reloaded module's signal handler rather than the one it registered with", async () => {
 		// Vite re-evaluates server modules on edit while `globalThis` survives, so
 		// the registration guard correctly declines to add a second pair of
 		// listeners — and the pair already on `process` belongs to the FIRST
