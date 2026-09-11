@@ -136,18 +136,21 @@
 
   const SCROLL_TO_INDEX_MAX_ATTEMPTS = 3;
   const SCROLL_TO_INDEX_SETTLED_EPSILON = 1;
-  /** Keys that scroll a native container. A letter keypress is not a viewport takeover. */
-  const SCROLLING_KEYS = new Set([
+  /**
+   * Keys the browser scrolls the BLOCK axis with. A letter keypress is not a viewport
+   * takeover, and neither is an arrow across an axis that does not overflow.
+   */
+  const BLOCK_AXIS_SCROLL_KEYS = new Set([
     'ArrowUp',
     'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
     'PageUp',
     'PageDown',
     'Home',
     'End',
     ' ',
   ]);
+  /** The inline-axis equivalent. Space still pages the block axis in either case. */
+  const INLINE_AXIS_SCROLL_KEYS = new Set(['ArrowLeft', 'ArrowRight', ' ']);
   /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
   const SCROLL_SETTLE_MAX_FRAMES = 30;
   /**
@@ -1367,10 +1370,23 @@
     if (typeof onTouchStart === 'function') onTouchStart(event);
   }
 
+  /**
+   * Whether a key scrolls the axis THIS list scrolls on.
+   *
+   * The cross axis does not overflow, so the arrows across it move nothing here: Left
+   * and Right in a vertical list, Up and Down in a horizontal one. Treating those as a
+   * takeover retires a settle loop that is still correcting a destination, and under
+   * `dynamicSize` the correction those later measurements were going to make never
+   * happens.
+   */
+  function scrollsMainAxis(key: string): boolean {
+    return horizontal ? INLINE_AXIS_SCROLL_KEYS.has(key) : BLOCK_AXIS_SCROLL_KEYS.has(key);
+  }
+
   function handleKeyDown(
     event: KeyboardEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
-    if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
+    if (scrollsMainAxis(event.key)) retireSettleLoop();
     if (typeof onKeyDown === 'function') onKeyDown(event);
     if (event.defaultPrevented) return;
 
@@ -1424,7 +1440,7 @@
       // nothing about, so the next Arrow or Page press has to start from wherever that
       // leaves the reader.
       //
-      // Deliberately not every key in `SCROLLING_KEYS`. The off-axis arrows land here
+      // Deliberately not every scrolling key. The off-axis arrows land here
       // too — Left and Right in a vertical list, Up and Down in a horizontal one — and
       // they scroll nothing at all, because the cross axis does not overflow. Treating
       // them as a takeover would drop a navigation still in flight behind them. On-axis

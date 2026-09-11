@@ -1221,8 +1221,10 @@ describe('VirtualList — dynamicSize', () => {
     ]) {
       expect(source).toContain(handler);
     }
-    // A letter keypress is not a viewport takeover; only scrolling keys are.
-    expect(source).toContain('SCROLLING_KEYS.has(event.key)');
+    // A letter keypress is not a viewport takeover, and neither is an arrow across an
+    // axis that does not overflow — it scrolls nothing, so retiring a settle loop for
+    // it abandons a correction still owed to the destination.
+    expect(source).toContain('scrollsMainAxis(event.key)');
   });
 
   test('still forwards consumer wheel, pointer, touch, and key handlers', async () => {
@@ -3108,6 +3110,40 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     // From row 211, where Space left the reader, rather than from 202 where the
     // arrow had been heading before it.
     expect(requested.at(-1)).toBe(4_220);
+  });
+
+  test('keeps correcting a dynamic destination through an off-axis arrow', async () => {
+    // An off-axis arrow scrolls nothing here, so it must not retire the settle loop.
+    // Under dynamicSize that loop is what re-derives the destination once the rows the
+    // jump landed among are measured; retired early, the scroll stops on the estimate
+    // it first computed and never comes back for the correction.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // End against all-estimates: 100 rows at 20px is 2000, less a 200px viewport.
+    const pressed = fireEvent.keyDown(list, { key: 'End' });
+    // Lands inside the settle loop's pending frames, which is where retiring it bites.
+    await fireEvent.keyDown(list, { key: 'ArrowRight' });
+    // A row turns out to be 120px rather than 20px, so the end of the list is 100px
+    // further on than the first write assumed.
+    reportRowSizes(new Map([[95, 120]]));
+    await pressed;
+    await tick();
+
+    await waitFor(() => expect(list.scrollTop).toBe(1_900));
+
+    restoreResizeObserver();
   });
 
   test('keeps the pending destination through an off-axis arrow', async () => {
