@@ -86,6 +86,14 @@ describe('styleSheetDeclaresDirection', () => {
     );
   });
 
+  test('finds a declaration nested inside a rule collection that is neither an array nor a CSSRuleList', () => {
+    // A `Set` (or any other generically-iterable object) must be recognized
+    // via its `Symbol.iterator`, not just the two concrete collection shapes
+    // Bun/happy-dom themselves produce.
+    const nestedRules = new Set([styleRule('.deep', 'ltr')]);
+    expect(styleSheetDeclaresDirection(sheet([groupRule(nestedRules)]))).toBe(true);
+  });
+
   test('finds a declaration nested inside a conditional rule', () => {
     expect(styleSheetDeclaresDirection(sheet([groupRule([styleRule('.deep', 'ltr')])]))).toBe(true);
   });

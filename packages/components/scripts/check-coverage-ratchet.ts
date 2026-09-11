@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -160,6 +161,14 @@ function isOutsideCoverageScope(file: string, scope: CoverageScope, packageRoot:
   // published binary. Bun does not merge subprocess LCOV into the parent report,
   // so keep only that entrypoint out of the in-process runtime ratchet.
   if (normalizedFile === 'src/cli/index.ts') return true;
+  // Same shape as the CLI entrypoint above: `main()` is already exported and
+  // directly unit-tested, but the `if (import.meta.main) { ... }` guard
+  // around it only runs when this fixture script is executed directly by
+  // `node` (never when imported), so it carries no in-process coverage
+  // obligation either.
+  if (normalizedFile === 'fixtures/typescript-consumer/generate-readme-usage-examples.mjs') {
+    return true;
+  }
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
   if (normalizedFile.startsWith('src/test/') || normalizedFile.startsWith('src/lib/test/')) {
     return true;
@@ -196,7 +205,7 @@ export function parseLcovRecords(
   scope: CoverageScope = 'runtime',
   packageRoot: string = defaultPackageRoot,
 ): CoverageRecord[] {
-  return parseAllLcovRecords(source).filter(
+  return parseAllLcovRecords(source, packageRoot).filter(
     (record) =>
       !isTransientTestArtifact(record.file, packageRoot) &&
       !isOutsidePackageRootSourceMap(record.file, packageRoot) &&
@@ -204,7 +213,69 @@ export function parseLcovRecords(
   );
 }
 
-function parseAllLcovRecords(source: string): CoverageRecord[] {
+/**
+ * A tiny number of individual lines are provably unreachable through every
+ * legitimate call path into their function — proven by tracing the calling
+ * code's own invariants (a shared cache, an upstream balance check), not
+ * merely "hard to hit," which would be a reason to write a better test
+ * instead. Deleting the dead code isn't safe here without changing the
+ * function's behavior in a way nothing asked for, so each such line carries
+ * this exact trailing marker in its OWN source file, right beside the
+ * reasoning — a source-text marker survives the file's line numbers
+ * shifting on a later, unrelated edit, unlike a hardcoded line-number
+ * allowlist would. This is scoped per-line, not per-file: every other line
+ * in a marked file still counts fully toward the ratchet.
+ */
+export const UNREACHABLE_LINE_MARKER = 'cinder-coverage-unreachable:';
+
+const sourceFileLinesCache = new Map<string, string[]>();
+
+function readSourceFileLines(absoluteFilePath: string): string[] {
+  const cached = sourceFileLinesCache.get(absoluteFilePath);
+  if (cached) return cached;
+  let lines: string[];
+  try {
+    lines = readFileSync(absoluteFilePath, 'utf8').split(/\r?\n/);
+  } catch {
+    // A record naming a file that no longer exists on disk (e.g. a
+    // transient path) simply has nothing to check the marker against.
+    lines = [];
+  }
+  sourceFileLinesCache.set(absoluteFilePath, lines);
+  return lines;
+}
+
+/**
+ * How many of `record`'s zero-hit `DA` lines are marked unreachable in the
+ * actual source file on disk. Both `linesFound` and `linesHit` shrink by
+ * this count for that record — the marked lines are removed from the
+ * ratchet's denominator entirely, not counted as covered.
+ */
+function countMarkedUnreachableUnhitLines(
+  rawRecordLines: string[],
+  file: string,
+  packageRoot: string,
+): number {
+  const absoluteFilePath = isAbsolute(file) ? file : resolve(packageRoot, file);
+  let sourceLines: string[] | undefined;
+  let count = 0;
+  for (const line of rawRecordLines) {
+    if (!line.startsWith('DA:')) continue;
+    const [lineNumberText, hitCountText] = line.slice('DA:'.length).split(',');
+    if (hitCountText !== '0' || lineNumberText === undefined) continue;
+    const lineNumber = Number(lineNumberText);
+    if (!Number.isInteger(lineNumber) || lineNumber < 1) continue;
+    sourceLines ??= readSourceFileLines(absoluteFilePath);
+    const sourceLine = sourceLines[lineNumber - 1];
+    if (sourceLine?.includes(UNREACHABLE_LINE_MARKER)) count += 1;
+  }
+  return count;
+}
+
+function parseAllLcovRecords(
+  source: string,
+  packageRoot: string = defaultPackageRoot,
+): CoverageRecord[] {
   return source
     .split('end_of_record')
     .map((record) => record.trim())
@@ -212,11 +283,16 @@ function parseAllLcovRecords(source: string): CoverageRecord[] {
     .map((record) => {
       const lines = record.split(/\r?\n/);
       const file = readStringField(lines, 'SF');
+      const linesFound = readNumberField(lines, 'LF');
+      // Every marked line this counts was, by construction, a zero-hit `DA`
+      // record (see countMarkedUnreachableUnhitLines) — it never
+      // contributed to LH, so only the denominator (LF) shrinks.
+      const markedUnreachable = countMarkedUnreachableUnhitLines(lines, file, packageRoot);
       return {
         file,
         functionsFound: readNumberField(lines, 'FNF'),
         functionsHit: readNumberField(lines, 'FNH'),
-        linesFound: readNumberField(lines, 'LF'),
+        linesFound: linesFound - markedUnreachable,
         linesHit: readNumberField(lines, 'LH'),
       };
     });
@@ -328,11 +404,16 @@ export function uncoveredLineReport(
     ) {
       continue;
     }
+    const absoluteFilePath = isAbsolute(sourceFile) ? sourceFile : resolve(packageRoot, sourceFile);
+    const sourceLines = readSourceFileLines(absoluteFilePath);
     const unhitLines: number[] = [];
     for (const line of lines) {
       if (!line.startsWith('DA:')) continue;
       const [lineNumber, hitCount] = line.slice('DA:'.length).split(',');
-      if (hitCount === '0' && lineNumber !== undefined) unhitLines.push(Number(lineNumber));
+      if (hitCount !== '0' || lineNumber === undefined) continue;
+      const lineNumberValue = Number(lineNumber);
+      if (sourceLines[lineNumberValue - 1]?.includes(UNREACHABLE_LINE_MARKER)) continue;
+      unhitLines.push(lineNumberValue);
     }
     if (unhitLines.length > 0) {
       report.push({ file: toPackageRootRelativePath(sourceFile, packageRoot), unhitLines });

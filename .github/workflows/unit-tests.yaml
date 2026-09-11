@@ -124,7 +124,7 @@ jobs:
           else
             bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor --filter=@lostgradient/cinder-mcp
           fi
-          bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
+          bunx turbo run test:coverage --filter=@lostgradient/chat --filter=@lostgradient/cinder $AFFECTED
 
   playground:
     needs: scope

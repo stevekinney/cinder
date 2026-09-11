@@ -5,6 +5,7 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 import {
   evaluateLogicalContainerCondition,
   isFullyParsedContainerCondition,
+  parseStyleQuery,
 } from './text-direction-container.ts';
 import {
   hasScopePseudoClass,
@@ -108,6 +109,11 @@ describe('resolveTextDirection', () => {
     expect(hasScopePseudoClass(':scopeX')).toBe(false);
     expect(hasScopePseudoClass(':scoped')).toBe(false);
     expect(replaceScopePseudoClass(':scopeX :scoped', '[data-root]')).toBe(':scopeX :scoped');
+    // A backslash-escaped colon is a literal character, not the start of a
+    // `:scope` token — the escape state machine must copy both the
+    // backslash and the escaped character through untouched rather than
+    // matching `:scope` starting one character later.
+    expect(replaceScopePseudoClass('\\:scope', '[data-root]')).toBe('\\:scope');
   });
 
   test('fails closed when a container condition contains unparsed syntax', () => {
@@ -177,6 +183,49 @@ describe('resolveTextDirection', () => {
     expect(evaluateLogicalContainerCondition(grouped, 30, 16, 30)).toBe(false);
   });
 
+  test('parseStyleQuery returns undefined for an unbalanced style() term', () => {
+    expect(parseStyleQuery('style(--x: (unclosed')).toBeUndefined();
+  });
+
+  test('resolves a value-first range comparison using the < operator', () => {
+    // Feature-first `<` is exercised elsewhere; this pins the value-first
+    // mirror, which the operand-flip ternary maps to `>`.
+    expect(evaluateLogicalContainerCondition('(20rem < width)', 400, 16, 400)).toBe(true);
+    expect(evaluateLogicalContainerCondition('(20rem < width)', 100, 16, 100)).toBe(false);
+  });
+
+  test('resolves a value-first range comparison using the >= operator', () => {
+    // Maps to `<=`.
+    expect(evaluateLogicalContainerCondition('(20rem >= width)', 300, 16, 300)).toBe(true);
+    expect(evaluateLogicalContainerCondition('(20rem >= width)', 400, 16, 400)).toBe(false);
+  });
+
+  test('resolves a value-first range comparison using the > operator', () => {
+    // Falls through the ternary's final else, mapping to `<` — also the
+    // fallback branch of the comparison evaluator itself.
+    expect(evaluateLogicalContainerCondition('(20rem > width)', 100, 16, 100)).toBe(true);
+    expect(evaluateLogicalContainerCondition('(20rem > width)', 400, 16, 400)).toBe(false);
+  });
+
+  test('evaluates a compound width + inline-size condition joined by "and"', () => {
+    expect(
+      evaluateLogicalContainerCondition(
+        '(min-width: 300px) and (min-inline-size: 200px)',
+        320,
+        16,
+        250,
+      ),
+    ).toBe(true);
+    expect(
+      evaluateLogicalContainerCondition(
+        '(min-width: 300px) and (min-inline-size: 200px)',
+        320,
+        16,
+        100,
+      ),
+    ).toBe(false);
+  });
+
   test('only treats unknown CSS rules with container at-rule text as container rules', () => {
     const unknownRule = { cssText: '@unknown (min-width: 1px) {}', type: 0 } as unknown as CSSRule;
     const containerRule = {
@@ -186,6 +235,113 @@ describe('resolveTextDirection', () => {
     expect(isContainerRule(unknownRule)).toBe(false);
     expect(isContainerRule(containerRule)).toBe(true);
   });
+  test('skips a rule whose parent selector cannot be read, rather than throwing', () => {
+    const element = document.createElement('div');
+    element.className = 'unreachable-because-parent-throws';
+    document.body.append(element);
+    const throwingParent: unknown = {};
+    Object.defineProperty(throwingParent, 'selectorText', {
+      get(): string {
+        throw new Error('cannot read parent selector');
+      },
+    });
+    const nestedRule = createStyleRule({
+      selectorText: '.unreachable-because-parent-throws',
+      direction: 'ltr',
+    });
+    Object.defineProperty(nestedRule, 'parentRule', { value: throwingParent, configurable: true });
+    expect(
+      withDocumentStyleSheets([{ cssRules: [nestedRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('rtl');
+    element.remove();
+  });
+
+  test('follows an @import rule to match a direction rule inside the imported stylesheet', () => {
+    const element = document.createElement('div');
+    element.className = 'imported-target';
+    document.body.append(element);
+    const importedStyleRule = createStyleRule({
+      selectorText: '.imported-target',
+      direction: 'ltr',
+    });
+    const importRule = {
+      type: 3,
+      cssText: '@import url("theme.css");',
+      styleSheet: { cssRules: [importedStyleRule] },
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [importRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+    element.remove();
+  });
+
+  test('treats a cross-origin @import whose cssRules access throws as inert, not a match', () => {
+    const element = document.createElement('div');
+    element.className = 'cross-origin-import-target';
+    document.body.append(element);
+    const importRule = {
+      type: 3,
+      cssText: '@import url("https://cross-origin.example/theme.css");',
+      styleSheet: createStyleSheetWithThrowingRules(),
+    } as unknown as CSSRule;
+    // A rule following the failed import still gets evaluated — the import
+    // being inert must not abort the whole rule list.
+    const fallbackRule = createStyleRule({
+      selectorText: '.cross-origin-import-target',
+      direction: 'ltr',
+    });
+    expect(
+      withDocumentStyleSheets([{ cssRules: [importRule, fallbackRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+    element.remove();
+  });
+
+  test('treats an unrecognized conditional at-rule as always active', () => {
+    // Neither a container, media, nor supports rule — the conditional-rule
+    // check has no way to evaluate its condition, so it fails open rather
+    // than silently dropping every direction rule nested inside an at-rule
+    // it doesn't recognize.
+    const element = document.createElement('div');
+    element.className = 'unrecognized-at-rule-target';
+    document.body.append(element);
+    const unrecognizedAtRule = {
+      type: 99,
+      cssText: '@unknown-condition (foo) {}',
+      conditionText: 'foo',
+      cssRules: [
+        createStyleRule({ selectorText: '.unrecognized-at-rule-target', direction: 'ltr' }),
+      ],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [unrecognizedAtRule] }], () =>
+        resolveTextDirection(element, 'rtl'),
+      ),
+    ).toBe('ltr');
+    element.remove();
+  });
+
+  test('records the document root itself as the styled-direction element when only it carries inline direction', () => {
+    // The document root is deliberately excluded from the loop's OTHER
+    // styled-direction check (which never runs for it), so this specific
+    // fallback check is the only thing that can ever record the root.
+    const originalDirection = document.documentElement.style.direction;
+    document.documentElement.style.direction = 'rtl';
+    const child = document.createElement('div');
+    document.body.append(child);
+    try {
+      expect(resolveTextDirection(child)).toBe('rtl');
+    } finally {
+      document.documentElement.style.direction = originalDirection;
+      child.remove();
+    }
+  });
+
   test('returns undefined when no element, fallback, or document direction is available', () => {
     expect(resolveTextDirection(null)).toBeUndefined();
   });
@@ -1978,6 +2134,192 @@ describe('resolveTextDirection', () => {
     ).toBe('rtl');
   });
 
+  test('uses native :scope querySelector support when the environment provides it', () => {
+    // happy-dom has no native `:scope` support, so this module falls back to
+    // a clone-based matcher everywhere else in this file's tests. Stubbing
+    // `querySelector`/`querySelectorAll` here simulates a real browser that
+    // DOES support `:scope` natively, exercising the fast path that skips
+    // the clone entirely.
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+
+    const originalQuerySelector = Element.prototype.querySelector;
+    const originalQuerySelectorAll = Element.prototype.querySelectorAll;
+    Element.prototype.querySelector = function (this: Element, selector: string) {
+      if (selector === ':scope') return this;
+      return originalQuerySelector.call(this, selector);
+    };
+    Element.prototype.querySelectorAll = function (this: Element, selector: string) {
+      // Approximate native `:scope`-relative matching for this test's one
+      // selector shape by resolving it against the scope root directly.
+      if (selector === ':scope .shell') return originalQuerySelectorAll.call(this, '.shell');
+      return originalQuerySelectorAll.call(this, selector);
+    };
+
+    try {
+      const scopeRule = {
+        type: 0,
+        cssText: '@scope (.theme) {}',
+        cssRules: [createStyleRule({ selectorText: ':scope .shell', direction: 'ltr' })],
+      } as unknown as CSSRule;
+      expect(
+        withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+          resolveTextDirection(target, 'rtl'),
+        ),
+      ).toBe('ltr');
+    } finally {
+      Element.prototype.querySelector = originalQuerySelector;
+      Element.prototype.querySelectorAll = originalQuerySelectorAll;
+      theme.remove();
+    }
+  });
+
+  test('fails closed on an @scope prelude whose bracket/paren nesting cannot be resolved into a group', () => {
+    // `parseScopePrelude`'s own outer scan tracks parens and brackets as two
+    // fully independent counters (a `)` always closes a paren, whatever the
+    // current bracket depth), so it sees `([)]` as net-balanced and accepts
+    // the prelude. But the group-unwrapping scan only counts a `)` as
+    // closing a paren when brackets === 0 — here the `)` lands while a
+    // bracket is still open, so it's never counted, and paren depth never
+    // returns to 0. The scope must fail closed rather than throw or match
+    // anything.
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope ([)] {}',
+      cssRules: [createStyleRule({ selectorText: '.shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+    theme.remove();
+  });
+
+  test('resolves a direct-child combinator (>) immediately before :scope', () => {
+    const parent = document.createElement('div');
+    parent.className = 'parent';
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    parent.append(theme);
+    document.body.append(parent);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.parent > :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('resolves an adjacent-sibling combinator (+) immediately before :scope', () => {
+    const wrapper = document.createElement('div');
+    const adjacent = document.createElement('div');
+    adjacent.className = 'adjacent';
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    wrapper.append(adjacent, theme);
+    document.body.append(wrapper);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.adjacent + :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('resolves a general-sibling combinator (~) immediately before :scope', () => {
+    const wrapper = document.createElement('div');
+    const earlier = document.createElement('div');
+    earlier.className = 'earlier';
+    const between = document.createElement('div');
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    // `between` sits between `earlier` and the scope root, proving `~`
+    // walks every preceding sibling rather than only the immediate one.
+    wrapper.append(earlier, between, theme);
+    document.body.append(wrapper);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.earlier ~ :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('ltr');
+  });
+
+  test('treats a scope combinator with nothing before it as no outside-ancestor context', () => {
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    document.body.append(theme);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '> :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+    theme.remove();
+  });
+
+  test('general-sibling combinator (~) fails closed when no preceding sibling matches', () => {
+    const wrapper = document.createElement('div');
+    const nonMatching = document.createElement('div');
+    const theme = document.createElement('section');
+    theme.className = 'theme';
+    const target = document.createElement('div');
+    target.className = 'shell';
+    theme.append(target);
+    wrapper.append(nonMatching, theme);
+    document.body.append(wrapper);
+    const scopeRule = {
+      type: 0,
+      cssText: '@scope (.theme) {}',
+      cssRules: [createStyleRule({ selectorText: '.absent ~ :scope .shell', direction: 'ltr' })],
+    } as unknown as CSSRule;
+    expect(
+      withDocumentStyleSheets([{ cssRules: [scopeRule] }], () =>
+        resolveTextDirection(target, 'rtl'),
+      ),
+    ).toBe('rtl');
+    wrapper.remove();
+  });
+
   test('evaluates each selector-list alternative independently around outside-ancestor context', () => {
     // `.shell, main :scope .other` — the SECOND alternative's `main`
     // outside-ancestor requirement must not gate the FIRST, unrelated
@@ -3001,6 +3343,38 @@ describe('resolveTextDirection', () => {
       ).toBe('ltr');
     } finally {
       namedContainer.remove();
+    }
+  });
+
+  test('fails closed when a named style() query finds no ancestor with a matching container-name', () => {
+    const container = document.createElement('section');
+    // No container-name set anywhere in the ancestor chain — the walk must
+    // reach the document root without ever matching "sidebar" and fail
+    // closed rather than looping forever or matching the wrong container.
+    const element = document.createElement('div');
+    element.className = 'unnamed-container-style-target';
+    container.appendChild(element);
+    document.body.appendChild(container);
+    const nestedRule = createStyleRule({
+      selectorText: '.unnamed-container-style-target',
+      direction: 'ltr',
+    });
+    const outerRule = {
+      cssText:
+        '@container sidebar style(--theme: dark) { .unnamed-container-style-target { direction: ltr; } }',
+      type: 0,
+      conditionText: 'style(--theme: dark)',
+      containerName: 'sidebar',
+      cssRules: [nestedRule],
+    } as unknown as CSSRule;
+    try {
+      expect(
+        withDocumentStyleSheets([{ cssRules: [outerRule] }], () =>
+          resolveTextDirection(element, 'rtl'),
+        ),
+      ).toBe('rtl');
+    } finally {
+      container.remove();
     }
   });
 
@@ -4274,6 +4648,121 @@ describe('resolveTextDirection', () => {
       expect(activeListenerCount).toBe(0);
     } finally {
       globalThis.matchMedia = originalMatchMedia;
+    }
+  });
+
+  test('collects media queries from a <style> element inside a shadow root', () => {
+    // The shadow-root branch also iterates `root.adoptedStyleSheets` (not
+    // exercised by this test, since none are constructed here); this
+    // specifically exercises the sibling `<style>`/`<link>` querySelectorAll
+    // loop, which walks elements adoptedStyleSheets alone would miss.
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const styleElement = document.createElement('style');
+    shadowRoot.append(styleElement);
+    const element = document.createElement('div');
+    shadowRoot.append(element);
+    document.body.append(host);
+
+    const mediaRule = {
+      cssText: '@media (prefers-color-scheme: dark) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-color-scheme: dark)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    Object.defineProperty(styleElement, 'sheet', {
+      configurable: true,
+      get: () => ({ cssRules: [mediaRule] }) as unknown as CSSStyleSheet,
+    });
+
+    globalThis.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+          activeListenerCount += 1;
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+          activeListenerCount -= 1;
+        },
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+
+    try {
+      const disconnect = withDocumentStyleSheets([], () =>
+        observeTextDirectionMediaQueries(element, () => {}),
+      );
+      expect(activeListenerCount).toBe(1);
+      disconnect?.();
+      expect(activeListenerCount).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+      host.remove();
+    }
+  });
+
+  test('ignores an import rule whose styleSheet cannot be read, without aborting the sheet scan', () => {
+    // Distinct from matchesDirectionStyleRuleList's own @import catch: this
+    // is observeTextDirectionMediaQueries's independent rule visitor, which
+    // walks the WHOLE sheet collecting media conditions rather than
+    // matching a direction rule. A rule after the inaccessible import must
+    // still be visited.
+    const originalMatchMedia = globalThis.matchMedia;
+    const listeners = new Set<EventListener>();
+    let activeListenerCount = 0;
+    const throwingImportRule: unknown = { type: 3, cssText: '@import url("blocked.css");' };
+    Object.defineProperty(throwingImportRule, 'styleSheet', {
+      get(): CSSStyleSheet {
+        throw new Error('cross-origin styleSheet access denied');
+      },
+    });
+    const mediaRule = {
+      cssText: '@media (prefers-reduced-motion: reduce) {}',
+      type: 4,
+      media: {},
+      conditionText: '(prefers-reduced-motion: reduce)',
+      cssRules: [],
+    } as unknown as CSSRule;
+    globalThis.matchMedia = ((query: string) =>
+      ({
+        matches: false,
+        media: query,
+        onchange: null,
+        addListener: () => {},
+        removeListener: () => {},
+        addEventListener: (_type: string, listener: EventListener) => {
+          listeners.add(listener);
+          activeListenerCount += 1;
+        },
+        removeEventListener: (_type: string, listener: EventListener) => {
+          listeners.delete(listener);
+          activeListenerCount -= 1;
+        },
+        dispatchEvent: () => true,
+      }) satisfies MediaQueryList) as typeof globalThis.matchMedia;
+    const element = document.createElement('div');
+    document.body.append(element);
+
+    try {
+      const disconnect = withDocumentStyleSheets(
+        [{ cssRules: [throwingImportRule as CSSRule, mediaRule] }],
+        () => observeTextDirectionMediaQueries(element, () => {}),
+      );
+      expect(activeListenerCount).toBe(1);
+      disconnect?.();
+      expect(activeListenerCount).toBe(0);
+    } finally {
+      globalThis.matchMedia = originalMatchMedia;
+      element.remove();
     }
   });
 

@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -10,6 +12,7 @@ import {
   parseLcovRecords,
   parseSvelteLcovRecords,
   uncoveredLineReport,
+  UNREACHABLE_LINE_MARKER,
 } from './check-coverage-ratchet.ts';
 
 const packageRoot = join(import.meta.dir, '..');
@@ -387,6 +390,13 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:fixtures/typescript-consumer/generate-readme-usage-examples.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
 SF:src/cli/output.ts
 FNF:4
 FNH:4
@@ -409,6 +419,80 @@ end_of_record
       'src/cli/output.ts',
       'src/components/button/button.ts',
     ]);
+  });
+
+  test('excludes a line marked provably unreachable from both the ratchet denominator and the diagnostic report', () => {
+    const scratchDirectory = mkdtempSync(join(tmpdir(), 'coverage-ratchet-unreachable-'));
+    const markedFilePath = join(scratchDirectory, 'marked.ts');
+    writeFileSync(
+      markedFilePath,
+      [
+        'export function example(): number {',
+        '  if (Math.random() > 2) {', // line 2 — genuinely unreachable, structurally
+        `    return 1; // ${UNREACHABLE_LINE_MARKER} exercised in this test only`,
+        '  }',
+        '  return 0;',
+        '}',
+      ].join('\n'),
+    );
+    const fixture = `TN:
+SF:${markedFilePath}
+FNF:1
+FNH:1
+DA:1,5
+DA:2,5
+DA:3,0
+DA:4,5
+DA:5,5
+LF:5
+LH:4
+end_of_record
+`;
+
+    const [record] = parseLcovRecords(fixture, 'runtime', scratchDirectory);
+    expect(record).toMatchObject({ linesFound: 4, linesHit: 4 });
+
+    const gaps = uncoveredLineReport(fixture, 'runtime', scratchDirectory);
+    expect(gaps).toEqual([]);
+  });
+
+  test('removing the unreachable-line marker from the source restores the line as a real gap', () => {
+    // Proves the exemption is keyed on the marker actually being present in
+    // the file, not merely on some other property of the line — deleting
+    // the marker (as if someone quietly widened what "unreachable" covers)
+    // must make the ratchet see the gap again.
+    const scratchDirectory = mkdtempSync(join(tmpdir(), 'coverage-ratchet-unreachable-removed-'));
+    const unmarkedFilePath = join(scratchDirectory, 'unmarked.ts');
+    writeFileSync(
+      unmarkedFilePath,
+      [
+        'export function example(): number {',
+        '  if (Math.random() > 2) {',
+        '    return 1; // no marker here',
+        '  }',
+        '  return 0;',
+        '}',
+      ].join('\n'),
+    );
+    const fixture = `TN:
+SF:${unmarkedFilePath}
+FNF:1
+FNH:1
+DA:1,5
+DA:2,5
+DA:3,0
+DA:4,5
+DA:5,5
+LF:5
+LH:4
+end_of_record
+`;
+
+    const [record] = parseLcovRecords(fixture, 'runtime', scratchDirectory);
+    expect(record).toMatchObject({ linesFound: 5, linesHit: 4 });
+
+    const gaps = uncoveredLineReport(fixture, 'runtime', scratchDirectory);
+    expect(gaps).toEqual([{ file: 'unmarked.ts', unhitLines: [3] }]);
   });
 
   test('applies runtime scope exclusions to absolute package-local LCOV paths', () => {

@@ -419,8 +419,14 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'fail-open sanity check with no test dispatch of its own.',
   },
   'test:coverage': {
-    layers: [],
-    reason: 'Local/package full-suite coverage + ratchet. Not part of any CI gate.',
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'CIN-604: the 100% runtime coverage ratchet is enforced on every pull request, not just ' +
+      'locally. unit-tests.yaml\'s "package" job and main-green.yaml\'s "workspace-gates" job both ' +
+      'run it via the same `turbo run test:coverage --filter=@lostgradient/chat ' +
+      '--filter=@lostgradient/cinder` step Chat already used, so a coverage regression fails the ' +
+      "same required `unit-tests` check Chat's coverage step already gated — no new branch-" +
+      'protection entry was needed.',
   },
   [`${chatPackageName}#lint`]: {
     layers: ['unit-tests', 'main-green'],

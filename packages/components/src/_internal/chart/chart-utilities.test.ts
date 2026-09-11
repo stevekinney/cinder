@@ -2,6 +2,7 @@ import { describe, expect, spyOn, test } from 'bun:test';
 import type { ChartXAxisConfiguration } from '../../components/chart.types.ts';
 
 import {
+  MAXIMUM_RENDERED_SERIES_POINTS,
   assertUniqueSeriesIds,
   assertValidChartNumber,
   assertValidNonNegativeInteger,
@@ -12,13 +13,16 @@ import {
   createBarModel,
   createCartesianModel,
   createChartGeometry,
+  createHorizontalCategoryLabelLayout,
   dataTableClass,
   decimatePlacedPoints,
+  decimationIndices,
   formatNumericValue,
   formatXValue,
   legendVisible,
   nearestTarget,
   normalizeXValue,
+  observeChartFontLoading,
   resolveChartTheme,
   toggleSeriesId,
   type ChartTarget,
@@ -155,6 +159,89 @@ describe('createChartGeometry', () => {
       }
       measurementElement.remove();
     }
+  });
+});
+
+describe('observeChartFontLoading', () => {
+  test('invokes the callback when the fonts finish loading and cleans up on teardown', async () => {
+    const listeners = new Map<string, Set<() => void>>();
+    let resolveReady: () => void = () => {};
+    const ready: Promise<void> = new Promise((resolve) => {
+      resolveReady = resolve;
+    });
+    const fakeFontFaceSet = {
+      addEventListener(type: string, listener: () => void) {
+        const set = listeners.get(type) ?? new Set();
+        set.add(listener);
+        listeners.set(type, set);
+      },
+      removeEventListener(type: string, listener: () => void) {
+        listeners.get(type)?.delete(listener);
+      },
+      get ready() {
+        return ready;
+      },
+    };
+    const originalFonts = (document as { fonts?: unknown }).fonts;
+    Object.defineProperty(document, 'fonts', {
+      configurable: true,
+      value: fakeFontFaceSet,
+    });
+
+    try {
+      let calls = 0;
+      const stop = observeChartFontLoading(() => {
+        calls += 1;
+      });
+
+      expect(listeners.get('loadingdone')?.size).toBe(1);
+
+      listeners.get('loadingdone')?.forEach((listener) => listener());
+      expect(calls).toBe(1);
+
+      resolveReady();
+      await ready;
+      // The `ready` promise resolving fires the callback a second time.
+      expect(calls).toBe(2);
+
+      stop();
+      expect(listeners.get('loadingdone')?.size).toBe(0);
+
+      // After teardown, a stray callback (e.g. a delayed event) must not fire.
+      listeners.get('loadingdone')?.forEach((listener) => listener());
+      expect(calls).toBe(2);
+    } finally {
+      if (originalFonts === undefined) {
+        Reflect.deleteProperty(document as object, 'fonts');
+      } else {
+        Object.defineProperty(document, 'fonts', { configurable: true, value: originalFonts });
+      }
+    }
+  });
+
+  test('returns a no-op cleanup when document.fonts is unavailable', () => {
+    const originalFonts = (document as { fonts?: unknown }).fonts;
+    Object.defineProperty(document, 'fonts', { configurable: true, value: undefined });
+    try {
+      const stop = observeChartFontLoading(() => {
+        throw new Error('must not be called when document.fonts is unavailable');
+      });
+      expect(() => stop()).not.toThrow();
+    } finally {
+      Object.defineProperty(document, 'fonts', { configurable: true, value: originalFonts });
+    }
+  });
+});
+
+describe('createHorizontalCategoryLabelLayout', () => {
+  test('falls back to an empty label when even a single ellipsis character does not fit', () => {
+    // A chartWidth this small clamps the reserved margin down to the fixed
+    // outer padding regardless of label length, leaving zero width available
+    // for any label content — not even a lone ellipsis character.
+    const layout = createHorizontalCategoryLabelLayout(['January'], 40);
+
+    expect(layout.marginLeft).toBe(16);
+    expect(layout.labels).toEqual(['']);
   });
 });
 
@@ -956,6 +1043,32 @@ describe('createCartesianModel', () => {
     );
   });
 
+  test('caps sampled rows at one per series when the series count alone meets the row cap', () => {
+    // When there are at least as many distinct series as the row cap, the
+    // proportional-allocation path never runs — each series can contribute at
+    // most one row, so the sampler takes the first row of each series and
+    // stops, rather than trying to divide remaining capacity across series.
+    const seriesCount = MAXIMUM_RENDERED_SERIES_POINTS;
+    const series = Array.from({ length: seriesCount }, (_, index) => ({
+      id: `series-${index}`,
+      label: `Series ${index}`,
+      data: [
+        { x: 0, y: index },
+        { x: 1, y: index + 1 },
+      ],
+    }));
+    const model = createCartesianModel({
+      componentId: 'line-chart',
+      series,
+      hiddenSeriesIds: [],
+      width: 640,
+      height: 280,
+    });
+
+    expect(model.tableRows).toHaveLength(seriesCount);
+    expect(new Set(model.tableRows.map((row) => row.seriesId)).size).toBe(seriesCount);
+  });
+
   test('passes sampled source indices to x-axis formatters', () => {
     const model = createCartesianModel({
       componentId: 'line-chart',
@@ -1105,6 +1218,31 @@ describe('createCartesianModel', () => {
     for (let index = 1; index < decimated.length; index++) {
       expect(decimated[index - 1]?.y === null || decimated[index]?.y === null).toBe(true);
     }
+  });
+
+  test('gap-heavy decimation re-picks the run representative when a later point has larger magnitude', () => {
+    // All-finite, no nulls: the entire series is one "finite run". A tiny
+    // maximumPoints (below what the extrema-bucket budget needs) forces the
+    // gap-heavy path even though nothing is null, so the run's representative
+    // reassignment loop actually walks multiple consecutive finite points.
+    const points: PlacedPoint[] = [1, 10, 3, 2].map((value, index) => ({
+      seriesId: 'dense',
+      seriesLabel: 'Dense',
+      color: 'red',
+      x: normalizeXValue(index),
+      y: value,
+      originalY: value,
+      index,
+      pixelX: index,
+      pixelY: index,
+      pixelY0: 100,
+    }));
+
+    const indices = decimationIndices(points, 3);
+
+    // The run's representative must be the largest-magnitude point (index 1,
+    // value 10) — not simply the first point in the run (index 0).
+    expect(indices).toEqual([1]);
   });
 
   test('stacked decimation shares x positions and preserves adjacent boundaries', () => {
