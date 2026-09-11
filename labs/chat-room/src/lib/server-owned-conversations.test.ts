@@ -120,12 +120,29 @@ describe('server-owned conversations', () => {
 		const created = await createConversation('Two tabs, the wrong way');
 		const { sessions } = serverOwnedRuntime();
 
+		// Both writers must have LOADED before either saves, and that is gated
+		// rather than hoped for. `Promise.all` alone does not order them: if the
+		// second `load()` resolved after the first `save()`, it would read the
+		// first turn and even a last-write-wins store would produce both
+		// contents — leaving the test green without ever reaching the
+		// optimistic-conflict merge it claims to measure.
+		let loaded = 0;
+		let releaseBoth: () => void = () => {};
+		const bothLoaded = new Promise<void>((resolve) => {
+			releaseBoth = resolve;
+		});
+
 		// The shape `appendUserTurn` does not use: read the session, build a
 		// new history from what was read, then save. Both writers start from
-		// the same zero-message history.
+		// the same zero-message history, which the gate is what guarantees.
 		const appendByLoadThenSave = async (text: string): Promise<void> => {
 			const session = await sessions.load(created.id);
 			if (session === undefined) return;
+
+			loaded += 1;
+			if (loaded === 2) releaseBoth();
+			await bothLoaded;
+
 			await sessions.save({
 				...session,
 				conversationHistory: appendUserMessage(session.conversationHistory, text)

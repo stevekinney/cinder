@@ -25,6 +25,15 @@
  * when `process.exit` runs; `writeFileSync` has completed by the time it
  * returns.
  *
+ * The teardown AWAITS before writing, and that is not decoration. Written
+ * synchronously, the marker would appear before `disposeServerOwnedRuntime()`
+ * reached its first `await` — so a regression to
+ * `void disposeServerOwnedRuntime(); process.exit(...)` would still produce
+ * it, and the test would prove only that disposal STARTED. Crossing an await
+ * first means the marker exists only if the handler actually waited for the
+ * disposal to finish, which is what the engine's asynchronous shutdown and
+ * checkpoint flushing depend on.
+ *
  * Run as a child process, never imported by a route.
  */
 import { writeFileSync } from 'node:fs';
@@ -51,7 +60,11 @@ const runtime = serverOwnedRuntime();
 
 const marker = process.env['TEARDOWN_MARKER'];
 if (marker !== undefined && marker !== '') {
-	runtime.onDispose(() => {
+	runtime.onDispose(async () => {
+		// A macrotask, not a microtask: `process.exit` runs after the current
+		// microtask checkpoint, so a bare `await Promise.resolve()` could still
+		// resolve before an unawaited disposal was cut off. A timer cannot.
+		await new Promise((resolve) => setTimeout(resolve, 0));
 		writeFileSync(marker, 'disposed');
 	});
 }

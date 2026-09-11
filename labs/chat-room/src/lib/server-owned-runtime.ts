@@ -122,7 +122,18 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
 			failures += 1;
 		}
 	}
-	await held.runtime.storage.clear();
+
+	// Counted like any other teardown rather than awaited bare. This function
+	// promises to isolate failures and report a count, and a rejecting `clear()`
+	// would have broken that promise from the one line not covered by the loop
+	// above — which matters because the signal handler calls this as a
+	// fire-and-forget promise, so the rejection would surface as an unhandled
+	// one during shutdown, at the moment least likely to be noticed.
+	try {
+		await held.runtime.storage.clear();
+	} catch {
+		failures += 1;
+	}
 	return { failures };
 }
 

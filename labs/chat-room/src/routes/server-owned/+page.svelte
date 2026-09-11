@@ -224,6 +224,29 @@
 	}
 
 	/*
+		A title is up to 120 characters and nothing forces them to contain a
+		space. A flex item's automatic minimum size is its MIN-CONTENT width, so
+		one unbroken 120-character title would push the row — and with it the
+		page — wider than the viewport, leaving a reader at 320px or high zoom
+		scrolling sideways to read a list.
+
+		`min-inline-size: 0` lets the item shrink below that intrinsic minimum,
+		and `overflow-wrap: anywhere` gives the text somewhere to break when
+		there is no space to break at. Both are needed: the first alone would
+		clip, the second alone never gets the chance.
+	*/
+	li a {
+		min-inline-size: 0;
+		overflow-wrap: anywhere;
+	}
+
+	/* The count must not be the thing that gets squeezed — it is short and
+	   fixed, so it keeps its intrinsic width while the title takes the slack. */
+	li span {
+		flex: none;
+	}
+
+	/*
 		`margin: 0` because the region is now always in the layout: a default
 		paragraph margin would open a gap under the form on every visit, whether
 		or not anything failed.

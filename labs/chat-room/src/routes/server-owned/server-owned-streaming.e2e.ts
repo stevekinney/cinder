@@ -254,3 +254,116 @@ test('the transcript scrolls, not the page, once the conversation outgrows the v
 		expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
 	}
 });
+
+test('moving between two conversations does not carry the first transcript into the second', async ({
+	page,
+	request
+}) => {
+	// SvelteKit REUSES a page component when only a route parameter changes, so
+	// a client-side `/server-owned/A` → `/server-owned/B` updates `data` without
+	// re-running the surface's one-time mirror seed. Left unfixed, the heading
+	// and the transport URL name B while `<Chat>` still renders A's transcript,
+	// and the next submission is persisted to B underneath A's visible history.
+	//
+	// LATENT rather than live today, and worth saying so plainly: nothing in the
+	// app links one conversation to another, and browser back between two
+	// separately-loaded documents is a real navigation rather than a routed one.
+	// It becomes live the moment any detail-to-detail link exists — a "next
+	// conversation" control, a sidebar, a search result. The `{#key}` makes it
+	// structurally impossible rather than waiting for that link to arrive.
+	const titles = [uniqueTitle('First'), uniqueTitle('Second')];
+	const ids: string[] = [];
+	for (const title of titles) {
+		const created = await request.post('/api/server-owned/conversations', { data: { title } });
+		expect(created.status()).toBe(201);
+		const { conversation } = (await created.json()) as { conversation: { id: string } };
+		ids.push(conversation.id);
+	}
+
+	// A distinguishing turn in the FIRST conversation only — the one navigated
+	// away from.
+	const onlyInFirst = 'Only the first conversation has this line';
+	const appended = await request.post(`/api/server-owned/conversations/${ids[0]}/turns`, {
+		data: { text: onlyInFirst }
+	});
+	expect(appended.status()).toBe(201);
+
+	await gotoHydrated(page, `/server-owned/${ids[0]}`);
+	const log = page.getByRole('log', { name: 'Messages' });
+	await expect(log).toContainText(onlyInFirst);
+
+	// The anchor stands in for the link this route family does not have yet.
+	// Clicking a same-origin anchor is what SvelteKit's router intercepts, so
+	// this drives the real client-side path rather than simulating it — and it
+	// is the path any future detail-to-detail link would take.
+	await page.evaluate((href) => {
+		const anchor = document.createElement('a');
+		anchor.href = href;
+		anchor.id = 'cross-conversation-probe';
+		anchor.textContent = 'probe';
+		document.body.append(anchor);
+	}, `/server-owned/${ids[1]}`);
+
+	// A marker that survives only if the document was NOT replaced. Without it
+	// this could pass for the wrong reason: a full reload rebuilds everything,
+	// so the test would go green while never exercising the component reuse the
+	// bug lives in.
+	await page.evaluate(() => {
+		(window as unknown as { sameDocument?: boolean }).sameDocument = true;
+	});
+	await page.locator('#cross-conversation-probe').click();
+
+	await expect(page.getByTestId('server-owned-title')).toHaveText(titles[1]);
+	expect(
+		await page.evaluate(
+			() => (window as unknown as { sameDocument?: boolean }).sameDocument === true
+		)
+	).toBe(true);
+
+	// The second conversation is empty, and the first one's turn is not on
+	// screen. Both halves — a surface that failed to reset shows the stale text,
+	// and one that reset to the wrong thing shows neither.
+	await expect(log).not.toContainText(onlyInFirst);
+	await expect(log.getByRole('article')).toHaveCount(0);
+});
+
+test('a long unbroken title wraps instead of widening the page', async ({ page, request }) => {
+	// 120 characters with no space in them — the longest the input accepts, and
+	// nothing requires a title to contain a break opportunity. A flex item's
+	// automatic minimum size is its min-content width, so without an explicit
+	// `min-inline-size: 0` and a wrapping rule this pushes the row and the page
+	// past the viewport, and a reader at 320px or high zoom has to scroll
+	// sideways to read a list.
+	const unbroken = `Unbreakable-${Date.now().toString(36)}-`.padEnd(120, 'x').slice(0, 120);
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: unbroken }
+	});
+	expect(created.status()).toBe(201);
+
+	// 320px is the narrowest viewport the repository's own responsive rules
+	// target, and it is where this shows up first.
+	await page.setViewportSize({ width: 320, height: 720 });
+	await gotoHydrated(page, '/server-owned');
+
+	const row = page
+		.locator('[data-testid="server-owned-conversation"]')
+		.filter({ hasText: unbroken });
+	await expect(row).toHaveCount(1);
+
+	const metrics = await page.evaluate(() => ({
+		bodyScrollWidth: document.body.scrollWidth,
+		documentScrollWidth: document.documentElement.scrollWidth,
+		viewportWidth: window.innerWidth
+	}));
+
+	// The page does not scroll sideways, which is the property. The title
+	// wrapping is the mechanism, and asserting the mechanism directly would
+	// break on any equivalent fix.
+	expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+	expect(metrics.documentScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+
+	// And it is still readable rather than clipped to nothing: the row grew
+	// taller to fit the wrapped title.
+	const height = await row.evaluate((element) => element.getBoundingClientRect().height);
+	expect(height).toBeGreaterThan(40);
+});
