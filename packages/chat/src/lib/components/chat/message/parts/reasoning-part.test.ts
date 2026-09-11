@@ -249,6 +249,18 @@ describe('ReasoningPart — token count display', () => {
     const label = container.querySelector('.chat-reasoning-label');
     // Should contain the approximate token count (10)
     expect(label?.textContent).toContain('10');
+    expect(label?.textContent).toContain('tokens');
+  });
+
+  test('says "1 token" when the estimate rounds to one', () => {
+    // 4 chars → 1 token, at the heuristic's own boundary. Reachable in
+    // practice: a reasoning block that has streamed only its first few
+    // characters passes through this count.
+    const part = makePart({ content: 'a'.repeat(4) });
+    const { container } = render(ReasoningPart, { props: { part } });
+    const label = container.querySelector('.chat-reasoning-label');
+    expect(label?.textContent).toContain('(1 token)');
+    expect(label?.textContent).not.toContain('1 tokens');
   });
 });
 

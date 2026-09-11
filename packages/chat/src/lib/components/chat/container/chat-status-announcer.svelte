@@ -26,7 +26,7 @@
 
 <!-- Screen reader status -->
 <div id={statusId} class="cinder-sr-only">
-  {messageCount} messages in conversation
+  {messageCount === 1 ? '1 message' : `${messageCount} messages`} in conversation
 </div>
 
 <!-- Screen reader announcements (polite — does not interrupt current reading) -->
