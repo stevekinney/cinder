@@ -7,15 +7,21 @@
 		type ConversationHistory
 	} from '@lostgradient/chat';
 	import { resolve } from '$app/paths';
+	import { untrack } from 'svelte';
 
 	import type { PageData } from './$types';
 
 	let { data }: { data: PageData } = $props();
 
-	// Seeded from the server's copy, then kept in step as frames arrive. The
-	// browser holds a MIRROR for rendering; the session store remains the
+	// Seeded from the server's copy ONCE, then kept in step as frames arrive.
+	// The browser holds a MIRROR for rendering; the session store remains the
 	// owner, and the endpoint writes the run's result back to it.
-	let conversation = $state<ConversationHistory>(data.conversation);
+	//
+	// `untrack` because the one-time read is the intent, not an oversight:
+	// referencing a prop inside `$state` warns precisely because it usually
+	// means someone expected reactivity. Here re-seeding from `data` would
+	// discard everything streamed since the load.
+	let conversation = $state<ConversationHistory>(untrack(() => data.conversation));
 	let streaming = $state(false);
 
 	const session = createChatSessionController({

@@ -5,7 +5,7 @@ import { appendUserMessage, createConversationHistory, getMessages } from '@lost
 import { serverOwnedRuntime } from './server-owned-runtime.ts';
 
 /** The agent identity every conversation in this variant is filed under. */
-const AGENT_NAME = 'chat-room-server-owned';
+export const AGENT_NAME = 'chat-room-server-owned';
 
 /**
  * What the conversation list renders. Deliberately narrower than
@@ -124,23 +124,4 @@ export async function appendUserTurn(id: string, text: string): Promise<AgentSes
 /** Message count for one conversation, for assertions and the list fallback. */
 export function messageCountOf(session: AgentSession): number {
 	return getMessages(session.conversationHistory).length;
-}
-
-/**
- * Replaces a conversation's history with what a run produced.
- *
- * Through `update()` for the same reason `appendUserTurn` uses it: this runs
- * after a streamed turn settles, and a second tab's turn can land in between.
- * Returns `undefined` when the conversation was deleted mid-run, which is not
- * an error — the client has already been told how its run ended, and there is
- * no longer anywhere to put the result.
- */
-export async function persistRunResult(
-	id: string,
-	conversationHistory: AgentSession['conversationHistory']
-): Promise<AgentSession | undefined> {
-	const { sessions } = serverOwnedRuntime();
-	return sessions.update(id, (session) =>
-		session === undefined ? undefined : { ...session, conversationHistory }
-	);
 }

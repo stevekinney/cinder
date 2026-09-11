@@ -51,7 +51,14 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 async function build(): Promise<DurableRuntime> {
 	const runtime = serverOwnedRuntime();
 	const checkpoints = createCheckpointStore(runtime.store);
-	const runWorkflow = createRunWorkflow({ checkpoints } as never);
+	// POSITIONAL. `createRunWorkflow(checkpointStore, { version })` takes the
+	// store as its first argument, not in an options bag — and it does not
+	// validate, so `createRunWorkflow({ checkpoints })` is accepted and returns
+	// a workflow whose activities close over an object with no
+	// `saveConversation`. The failure surfaces much later, mid-run, as
+	// `e.saveConversation is not a function`, naming nothing that points back
+	// to the call site.
+	const runWorkflow = createRunWorkflow(checkpoints as never);
 
 	const built = (await createRunEngine({
 		storage: runtime.storage,
@@ -62,6 +69,11 @@ async function build(): Promise<DurableRuntime> {
 	// Registered immediately, before anything can start a run on it. The
 	// runtime disposes teardowns in reverse order, so an engine registered
 	// after the store it writes to shuts down before that store is cleared.
+	// The handle needs the store we built, not `built.checkpointStore`. Both
+	// have the same shape, so this is not load-bearing today — it is recorded
+	// because the two being interchangeable is an assumption, not a contract.
+	built.checkpointStore = checkpoints as never;
+
 	runtime.onDispose(async () => {
 		await built.engine.shutdown();
 		building = undefined;
