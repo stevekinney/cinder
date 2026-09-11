@@ -2825,3 +2825,83 @@ describe('CIN-242: complete color values only', () => {
     expect(bare).toEqual([]);
   });
 });
+
+// ---------------------------------------------------------------------------
+// CIN-602: `findBareColorComponents` decides completeness from a PARSED value
+// tree (`postcss-value-parser`), not a function-name allowlist matched
+// against text. This describe block proves two things the CIN-242 suite
+// above cannot: that an unrecognised function now fails CLOSED (the
+// structural fix this ticket exists for), and that every one of the four
+// named bypasses is exercised at EVERY color position a real recipe can put
+// it in, not only the one position each bypass happened to be discovered in.
+// ---------------------------------------------------------------------------
+
+describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
+  function recipeEntry(cssRecipe: string): CorpusEntry {
+    return colorEntry({ path: 'polarity.ink', cssProperty: '--cinder-polarity-ink', cssRecipe });
+  }
+
+  test('an unrecognised function fails closed, at every color position a real recipe can reach', () => {
+    // The bug this ticket exists to retire: the string-matching version
+    // treated ANY function it did not recognise as a complete color, so a
+    // typo'd function name -- or a real future CSS color function this repo
+    // has not added to `COLOR_FUNCTIONS` yet -- silently passed. `unknown-fn`
+    // is not `light-dark`, `color-mix`, `var`, or any function in
+    // `COLOR_FUNCTIONS`, so every one of these must reject.
+    const templates = [
+      '%C%',
+      'light-dark(%C%, oklch(0% 0 0))',
+      'light-dark(oklch(0% 0 0), %C%)',
+      'color-mix(in oklch, %C%, transparent)',
+      'color-mix(in oklch, %C% 40%, transparent)',
+      'color-mix(in oklch, calc(var(--w) * 1%) %C%, transparent)',
+      'color-mix(in oklch, var(--w) %C%, transparent)',
+      'var(--x, %C%)',
+      'var(--a, var(--b, %C%))',
+      'color-mix(in oklch, light-dark(%C%, transparent) +40%, transparent)',
+    ];
+    for (const template of templates) {
+      const recipe = template.replace('%C%', 'unknown-fn(0% 0 0)');
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    }
+  });
+
+  test('every position in that same template set still accepts a real color and rejects a real bare triplet', () => {
+    const templates = [
+      '%C%',
+      'light-dark(%C%, oklch(0% 0 0))',
+      'light-dark(oklch(0% 0 0), %C%)',
+      'color-mix(in oklch, %C%, transparent)',
+      'color-mix(in oklch, %C% 40%, transparent)',
+      'color-mix(in oklch, calc(var(--w) * 1%) %C%, transparent)',
+      'color-mix(in oklch, var(--w) %C%, transparent)',
+      'var(--x, %C%)',
+      'var(--a, var(--b, %C%))',
+      'color-mix(in oklch, light-dark(%C%, transparent) +40%, transparent)',
+    ];
+    for (const template of templates) {
+      const complete = template.replace('%C%', 'oklch(50% 0.1 30)');
+      expect(serializeEntryValue(recipeEntry(complete), new Map()), complete).toBe(complete);
+
+      const bare = template.replace('%C%', '0% 0 0');
+      expect(() => serializeEntryValue(recipeEntry(bare), new Map()), bare).toThrow(
+        /bare component list/,
+      );
+    }
+  });
+
+  test('a corpus alias reference is presumed complete without recursing into what it names', () => {
+    // `var()` with no fallback is a bare reference: ambiguous between "this
+    // resolves to a color" and "this resolves to a weight" in a color-mix
+    // argument, and the safe direction is to accept it (see
+    // `mixColorCandidates`'s doc comment). This is not a gap the parser
+    // rewrite closes -- it is documented, existing behavior -- but it is the
+    // one place a bare `var()` still passes, and the fail-closed test above
+    // must not be read as claiming this case is covered too.
+    expect(serializeEntryValue(recipeEntry('var(--cinder-polarity-ink)'), new Map())).toBe(
+      'var(--cinder-polarity-ink)',
+    );
+  });
+});
