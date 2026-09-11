@@ -116,22 +116,22 @@ sites shaped like the ones it had already found. Two of the fourteen are outside
 never appear in a stylesheet at all: the Toggle track pair reaches the page as a
 corpus alias, through the generated token stylesheet.
 
-| site                             | tier             | how it is painted                                |
-| -------------------------------- | ---------------- | ------------------------------------------------ |
-| `toggle` track (light arm)       | `border.muted`   | the full track                                   |
-| `toggle` track hover (light arm) | `border.control` | the full track                                   |
-| `parameter-field` rail           | `border.muted`   | 3px wide, full body height                       |
-| `mega-menu` indicator track      | `border.muted`   | 2px tall                                         |
-| `media-controls` progress track  | `border.control` | 4px tall                                         |
-| `drawer` drag-handle pill        | `border.control` | 40 × 4px                                         |
-| `slider` tick                    | `border.control` | 2 × 8px, under `opacity: 0.6` — see below        |
-| `color-field` empty hatch        | `border.control` | a 6px `linear-gradient` repeat across the swatch |
-| `feed-event` dot                 | `border.strong`  | 8 × 8px                                          |
-| `status-dot` neutral indicator   | `border.strong`  | `--cinder-status-dot-size`                       |
-| `rating` empty star              | `border.strong`  | a 1.5rem masked glyph                            |
-| `resizable-panels` grip          | `border.strong`  | `color:`, so the glyph paints in the tier        |
-| `entry-frame` busy dot (Chat)    | `border.control` | 8 × 8px                                          |
-| `dx-stage` dot (playground)      | `border.strong`  | 7 × 7px                                          |
+| site                             | tier             | how it is painted                                            |
+| -------------------------------- | ---------------- | ------------------------------------------------------------ |
+| `toggle` track (light arm)       | `border.muted`   | the full track                                               |
+| `toggle` track hover (light arm) | `border.control` | the full track                                               |
+| `parameter-field` rail           | `border.muted`   | 3px wide, full body height                                   |
+| `mega-menu` indicator track      | `border.muted`   | 2px tall                                                     |
+| `media-controls` progress track  | `border.control` | 4px tall                                                     |
+| `drawer` drag-handle pill        | `border.control` | 40 × 4px                                                     |
+| `slider` tick                    | `border.control` | 2 × 8px, under `opacity: 0.6` — see below                    |
+| `color-field` empty hatch        | `border.control` | a 6px `linear-gradient` repeat across the swatch             |
+| `feed-event` dot                 | `border.strong`  | 8 × 8px                                                      |
+| `status-dot` neutral indicator   | `border.strong`  | `--cinder-status-dot-size`                                   |
+| `rating` empty star              | `border.strong`  | a 1.5rem masked glyph                                        |
+| `resizable-panels` grip          | `border.strong`  | `color:`, inherited by a child at `opacity: 0.5` — see below |
+| `entry-frame` busy dot (Chat)    | `border.control` | 8 × 8px                                                      |
+| `dx-stage` dot (playground)      | `border.strong`  | 7 × 7px                                                      |
 
 Four of those do not reach the tier through `background` at all, which is how two
 earlier passes of this document missed them: `color-field` uses
@@ -158,7 +158,7 @@ in its light arm, exactly as the resting track aliases `border.muted`.
 Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:
 
-- **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark.
+- **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark, with one exception: the ResizablePanels grip is diluted by a child `opacity: 0.5` and measures ~1.9–2.1. Recorded with the other compounded sites below.
 - **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark, with one exception: the Slider tick carries `opacity: 0.6` in the same rule, so its effective ink is 48% × 0.6 ≈ 29% and it measures ~1.9. Recorded with the other compounded sites below.
 - **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark, and
   in the dark arm this is a **regression** rather than a pre-existing shortfall
@@ -230,6 +230,22 @@ own comment notes the outline is what marks the current drop position.
 | `surface`        | 1.223  | 1.168 |
 | `surface-raised` | 1.155  | 1.199 |
 
+**ResizablePanels' grip** — the tier and the opacity are on _different
+elements_. `.cinder-resizable-panels__handle` sets `color: var(--cinder-border-strong)`;
+its child `.cinder-resizable-panels__handle-line` paints `background: currentColor`
+at `opacity: 0.5`. So 58% × 0.5 ≈ 29% effective ink, and the dark arm loses:
+
+| surface          | light before → after | dark before → after |
+| ---------------- | -------------------- | ------------------- |
+| `surface-inset`  | 1.314 → 1.891        | 2.369 → 1.974       |
+| `surface-canvas` | 1.356 → 1.904        | 2.400 → 2.042       |
+| `surface`        | 1.373 → 1.909        | 2.396 → 2.111       |
+| `surface-raised` | 1.383 → 1.912        | 2.236 → 2.100       |
+
+This is the grip's only visible affordance, which makes it the second site after
+the SortableList marker where the loss lands on something functional rather than
+decorative. Neither cleared 3:1 before either.
+
 **Three disabled states**, all taking `opacity: 0.6` from `foundation.css`'s
 shared disabled-visual rule (`foundation.css:315-324`) on top of a `border.muted`
 tier, so ≈11.4% effective ink against 60%:
@@ -275,7 +291,7 @@ recorded rather than silently absorbed. The drop indicator is the one worth
 revisiting on its own, since it marks a live, functional position.
 
 `border-tier-non-border-uses.test.ts` catches the same-rule shape and claims no
-more. All three disabled states above are **cross-file** — the tier is declared
+more. The grip's two halves sit on a parent and its child, and all three disabled states above are **cross-file** — the tier is declared
 in a component stylesheet and the opacity in `foundation.css` — so no same-rule
 scan can see them, and resolving that would mean modelling the cascade across
 files. This section is the record for those, and [CIN-602](https://linear.app/lost-gradient/issue/CIN-602)
