@@ -40,35 +40,70 @@ panel's opaque `--cinder-surface-raised`. The panel's border is _hidden_ under t
 arrow, not composited with it, so the two inks never sum. That was already true
 when both were opaque; making the border translucent does not change it.
 
+**Not just reasoned — verified.** [CIN-606](https://linear.app/lost-gradient/issue/CIN-606)'s
+premise named "HoverCard and Tooltip at minimum" as candidates for the same
+bug as Popover's arrow; neither actually is. `background: inherit` forces
+HoverCard's arrow to inherit the (non-inherited-by-default) `background`
+shorthand from its ancestor, which resolves to the panel's opaque
+`surface-raised` — confirmed by the same pixel probe that covers Popover
+(`popover-arrow-surface-parity.playwright.ts`): its arrow reads an IDENTICAL
+pixel across all three backdrop surfaces, proving the backdrop never reaches
+it. Tooltip has no arrow construction at all — no `arrow` class, no
+CSS-triangle rule anywhere in `tooltip.css`/`tooltip.svelte` — confirmed by
+asserting `.cinder-tooltip__arrow` has zero matches while a real Tooltip is
+open. Neither needed a change.
+
 ### Popover arrow — one layer of ink
 
-`popover.css` builds its arrow with the CSS-triangle technique: an 8px triangle in
-`var(--cinder-border)` with a 7px `--cinder-surface-raised` triangle laid over it,
-leaving a ~1px rim. The rim is one layer, not two — the opaque inner triangle
-covers everything else, so there is no alpha stacking here.
+`popover.css` builds its arrow with the CSS-triangle technique. **Before
+[CIN-606](https://linear.app/lost-gradient/issue/CIN-606)**, that was an 8px
+triangle in `var(--cinder-border)` with a 7px `--cinder-surface-raised`
+triangle laid over it, leaving a ~1px rim — one visible layer, not two, so
+there was no alpha stacking. But the rim and the panel border no longer
+composited over the same thing, which was a real regression:
+`background-clip` defaults to `border-box`, so the panel's own
+`--cinder-surface-raised` paints _underneath_ its translucent border, while
+the arrow's outer triangle was a zero-size box with borders and no
+background of its own, painting straight onto whatever the popover floated
+over. While both tokens were opaque the two edges rendered identically
+regardless of backdrop; once `--cinder-border` became 48% alpha they diverged
+whenever that backdrop was not `surface-raised`.
 
-**But the rim and the panel border no longer composite over the same thing, and
-that is a real regression.** `background-clip` defaults to `border-box`, so the
-panel's own `--cinder-surface-raised` paints _underneath_ its translucent
-border; the arrow's outer triangle is a zero-size box with borders and no
-background, so it paints straight onto whatever the popover floats over. While
-both tokens were opaque the two edges rendered identically regardless of
-backdrop. Now they diverge whenever that backdrop is not `surface-raised`.
+Measured with a probe carrying both (pre-fix) constructions over
+`surface-inset`:
 
-Measured with a probe carrying both constructions over `surface-inset`:
+| arm   | panel border       | arrow rim (pre-fix) |
+| ----- | ------------------ | ------------------- |
+| light | `rgb(141,144,148)` | `rgb(133,137,143)`  |
+| dark  | `rgb(95,124,152)`  | `rgb(85,104,127)`   |
 
-| arm   | panel border       | arrow rim          |
-| ----- | ------------------ | ------------------ |
-| light | `rgb(141,144,148)` | `rgb(133,137,143)` |
-| dark  | `rgb(95,124,152)`  | `rgb(85,104,127)`  |
+The light arm's difference was slight; the dark arm's was visible, because the
+dark surface ramp spans L 0.11–0.28 and the two edges were compositing over
+opposite ends of it.
 
-The light arm's difference is slight; the dark arm's is visible, because the
-dark surface ramp spans L 0.11–0.28 and the two edges are compositing over
-opposite ends of it. Tracked as [CIN-606](https://linear.app/lost-gradient/issue/CIN-606).
+**Shipped fix.** The arrow now gets its own backdrop rather than the panel
+changing how it paints. An element's own background/border always paints
+before its own `::before`/`::after`, so the three layers are built in that
+fixed order: the arrow's OWN border is now the opaque `surface-raised`
+backdrop (previously the translucent rim color); a new `::before` repeats the
+exact same triangle in the translucent `--cinder-border` ink, compositing
+over that backdrop; the existing `::after` (the opaque 7px inner triangle) is
+unchanged and still covers the middle, leaving only the outer ~1px rim
+visible — now backed by `surface-raised` in every placement, matching the
+panel edge on every backdrop instead of only on `surface-raised` itself. The
+panel's own rendering is untouched.
+
+Asserted by a Playwright pixel probe
+(`packages/testing/tests/popover-arrow-surface-parity.playwright.ts`) rather
+than by eye: it floats a real Popover over `surface-inset`, `surface-canvas`,
+and `surface` in both arms and reads the actual rendered pixels at the
+panel's border and the arrow's rim, asserting they match. Proven to fail
+against the pre-fix construction above (a ~55–75-per-channel gap in the dark
+arm) before the fix landed.
 
 An earlier draft of this section claimed the rim "composites against the page
 canvas the arrow floats over, the same way the panel's own border does". The
-first half is right and the second is not, which is exactly what hid this.
+first half was right and the second was not, which is exactly what hid this.
 
 ### ButtonGroup — already solved, and better now
 
@@ -135,22 +170,22 @@ sites shaped like the ones it had already found. Two of the fourteen are outside
 never appear in a stylesheet at all: the Toggle track pair reaches the page as a
 corpus alias, through the generated token stylesheet.
 
-| site                             | tier             | how it is painted                                            |
-| -------------------------------- | ---------------- | ------------------------------------------------------------ |
-| `toggle` track (light arm)       | `border.muted`   | the full track                                               |
-| `toggle` track hover (light arm) | `border.control` | the full track                                               |
-| `parameter-field` rail           | `border.muted`   | 3px wide, full body height                                   |
-| `mega-menu` indicator track      | `border.muted`   | 2px tall                                                     |
-| `media-controls` progress track  | `border.control` | 4px tall                                                     |
-| `drawer` drag-handle pill        | `border.control` | 40 × 4px                                                     |
-| `slider` tick                    | `border.control` | 2 × 8px, under `opacity: 0.6` — see below                    |
-| `color-field` empty hatch        | `border.control` | a 6px `linear-gradient` repeat across the swatch             |
-| `feed-event` dot                 | `border.strong`  | 8 × 8px                                                      |
-| `status-dot` neutral indicator   | `border.strong`  | `--cinder-status-dot-size`                                   |
-| `rating` empty star              | `border.strong`  | a 1.5rem masked glyph                                        |
-| `resizable-panels` grip          | `border.strong`  | `color:`, inherited by a child at `opacity: 0.5` — see below |
-| `entry-frame` busy dot (Chat)    | `border.control` | 8 × 8px                                                      |
-| `dx-stage` dot (playground)      | `border.strong`  | 7 × 7px                                                      |
+| site                             | tier                                                                                             | how it is painted                                                                                                                              |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| `toggle` track (light arm)       | `border.muted`                                                                                   | the full track                                                                                                                                 |
+| `toggle` track hover (light arm) | `border.control`                                                                                 | the full track                                                                                                                                 |
+| `parameter-field` rail           | `border.control` (was `border.muted`, [CIN-603](https://linear.app/lost-gradient/issue/CIN-603)) | 3px wide, full body height                                                                                                                     |
+| `mega-menu` indicator track      | `border.control` (was `border.muted`, [CIN-603](https://linear.app/lost-gradient/issue/CIN-603)) | 2px tall                                                                                                                                       |
+| `media-controls` progress track  | `border.control`                                                                                 | 4px tall                                                                                                                                       |
+| `drawer` drag-handle pill        | `border.control`                                                                                 | 40 × 4px                                                                                                                                       |
+| `slider` tick                    | `border.control`                                                                                 | 2 × 8px, undiluted — the redundant `opacity: 0.6` was removed ([CIN-603](https://linear.app/lost-gradient/issue/CIN-603))                      |
+| `color-field` empty hatch        | `border.control`                                                                                 | a 6px `linear-gradient` repeat across the swatch                                                                                               |
+| `feed-event` dot                 | `border.strong`                                                                                  | 8 × 8px                                                                                                                                        |
+| `status-dot` neutral indicator   | `border.strong`                                                                                  | `--cinder-status-dot-size`                                                                                                                     |
+| `rating` empty star              | `border.strong`                                                                                  | a 1.5rem masked glyph                                                                                                                          |
+| `resizable-panels` grip          | `border.strong`                                                                                  | `color:`, inherited by a child, undiluted — the child's `opacity: 0.5` was removed ([CIN-603](https://linear.app/lost-gradient/issue/CIN-603)) |
+| `entry-frame` busy dot (Chat)    | `border.control`                                                                                 | 8 × 8px                                                                                                                                        |
+| `dx-stage` dot (playground)      | `border.strong`                                                                                  | 7 × 7px                                                                                                                                        |
 
 Four of those do not reach the tier through `background` at all, which is how two
 earlier passes of this document missed them: `color-field` uses
@@ -177,8 +212,8 @@ in its light arm, exactly as the resting track aliases `border.muted`.
 Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:
 
-- **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark, with one exception: the ResizablePanels grip is diluted by a child `opacity: 0.5` and measures ~1.9–2.1. Recorded with the other compounded sites below.
-- **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark, with one exception: the Slider tick carries `opacity: 0.6` in the same rule, so its effective ink is 48% × 0.6 ≈ 29% and it measures ~1.9. Recorded with the other compounded sites below.
+- **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark. The ResizablePanels grip was a former exception here, diluted by a child `opacity: 0.5` to ~1.9–2.1; [CIN-603](https://linear.app/lost-gradient/issue/CIN-603) removed that opacity, so it now clears the same undiluted range as every other `border.strong` site. See the compounded-sites section below for the before/after.
+- **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark. The Slider tick was a former exception here, carrying `opacity: 0.6` in the same rule for an effective ~29% ink and ~1.9:1; [CIN-603](https://linear.app/lost-gradient/issue/CIN-603) removed that opacity as redundant, so it now clears the same undiluted range too. See the compounded-sites section below.
 - **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark, and
   in the dark arm this is a **regression** rather than a pre-existing shortfall
   carried forward. An earlier draft of this document compared only the light arm
@@ -196,17 +231,18 @@ across all four surface tokens in both arms:
   the worst case), and its spread collapses from 28.9% to 9.7%, which is what the
   ticket asks for. But the two sites that use the muted tier as an **area fill**
   rather than a hairline — the ParameterField rail and the MegaMenu indicator
-  track — were already below 1.4.11's 3:1 in the dark arm and are now further
-  below it on the three recessed surfaces.
+  track — were already below 1.4.11's 3:1 in the dark arm and were, at that
+  point, further below it on the three recessed surfaces.
 
-  Not fixed here, and flagged rather than absorbed. The muted tier's contract is
-  a 1.4:1 decorative hairline; filling a state indicator with it is a misuse that
-  predates this work, and the fix is to move those two sites onto `border.control`
-  (3.338–3.624 dark) or a purpose-built token — a visual change to two components
-  that CIN-245 does not scope and that deserves its own decision.
-  `toolbar-separator.svelte` reached the same conclusion independently: "the
-  muted variant looked invisible in dark mode (~1.4:1 against surface-raised)",
-  which is why it uses `border.control`.
+  **Resolved by [CIN-603](https://linear.app/lost-gradient/issue/CIN-603).** The
+  muted tier's contract is a 1.4:1 decorative hairline; filling a persistent
+  state indicator with it was a misuse that predated this work. Both sites
+  moved onto `border.control` (3.129–3.206 light, 3.338–3.624 dark — the same
+  range quoted for the tier throughout this document), which is exactly the fix
+  this section originally deferred rather than a new decision.
+  `toolbar-separator.svelte` reached the same conclusion independently, earlier:
+  "the muted variant looked invisible in dark mode (~1.4:1 against
+  surface-raised)", which is why it uses `border.control`.
 
 ### Toggle track, light arm — intentional, and steadier than before
 
@@ -265,12 +301,13 @@ times the opacity, so any combination can be read off directly.
 | `opacity: 0.32` | 6%            | 15%             | 19%            |
 
 What follows is therefore a record of the cases found, not a closed set. The
-ones that **matter for a decision** are the handful that are not disabled
+ones that **mattered for a decision** were the handful that are not disabled
 states, since WCAG exempts disabled controls from the contrast floor outright:
 the SortableList drop marker, the ResizablePanels grip, the chart legend
-toggles, and Select's empty state. Those four are what
-[CIN-603](https://linear.app/lost-gradient/issue/CIN-603) has to resolve. The
-disabled states below are recorded for completeness and are not defects.
+toggles, and Select's empty state. **[CIN-603](https://linear.app/lost-gradient/issue/CIN-603)
+resolved all four** — each is marked below with its retuned, undiluted value.
+The disabled states below are recorded for completeness and remain
+unretuned by design; they are not defects.
 
 Deriving the full inventory needs computed styles rather than source text, which
 is [CIN-602](https://linear.app/lost-gradient/issue/CIN-602); every arrangement
@@ -280,28 +317,45 @@ in the table above collapses into one measurement there.
 under `opacity: 0.4`, so 19% × 0.4 ≈ 7.6% effective ink against 40% before. Its
 own comment notes the outline is what marks the current drop position.
 
-| dark surface     | before | after |
-| ---------------- | ------ | ----- |
-| `surface-inset`  | 1.220  | 1.113 |
-| `surface-canvas` | 1.229  | 1.136 |
-| `surface`        | 1.223  | 1.168 |
-| `surface-raised` | 1.155  | 1.199 |
+| dark surface     | before (opaque) | CIN-245 (muted × 0.4) |
+| ---------------- | --------------- | --------------------- |
+| `surface-inset`  | 1.220           | 1.113                 |
+| `surface-canvas` | 1.229           | 1.136                 |
+| `surface`        | 1.223           | 1.168                 |
+| `surface-raised` | 1.155           | 1.199                 |
+
+**Resolved by CIN-603.** Neither value ever cleared the 3:1 functional floor
+this drop indicator needs — nothing here was a regression CIN-245 caused, it
+was ink loss on a value already below the floor. The fix moved the outline to
+`border.control` and removed the element `opacity` entirely: this box has no
+other visible content (children are `visibility: hidden`, background and
+box-shadow are already suppressed), so the opacity was diluting nothing but
+this outline, and dropping it puts the indicator at `border.control`'s full,
+undiluted 3.129–3.206 light / 3.338–3.624 dark — the same range quoted for
+the tier throughout this document.
 
 **ResizablePanels' grip** — the tier and the opacity are on _different
 elements_. `.cinder-resizable-panels__handle` sets `color: var(--cinder-border-strong)`;
 its child `.cinder-resizable-panels__handle-line` paints `background: currentColor`
 at `opacity: 0.5`. So 58% × 0.5 ≈ 29% effective ink, and the dark arm loses:
 
-| surface          | light before → after | dark before → after |
-| ---------------- | -------------------- | ------------------- |
-| `surface-inset`  | 1.314 → 1.891        | 2.369 → 1.974       |
-| `surface-canvas` | 1.356 → 1.904        | 2.400 → 2.042       |
-| `surface`        | 1.373 → 1.909        | 2.396 → 2.111       |
-| `surface-raised` | 1.383 → 1.912        | 2.236 → 2.100       |
+| surface          | light before (opaque) → CIN-245 (strong × 0.5) | dark before (opaque) → CIN-245 (strong × 0.5) |
+| ---------------- | ---------------------------------------------- | --------------------------------------------- |
+| `surface-inset`  | 1.314 → 1.891                                  | 2.369 → 1.974                                 |
+| `surface-canvas` | 1.356 → 1.904                                  | 2.400 → 2.042                                 |
+| `surface`        | 1.373 → 1.909                                  | 2.396 → 2.111                                 |
+| `surface-raised` | 1.383 → 1.912                                  | 2.236 → 2.100                                 |
 
-This is the grip's only visible affordance, which makes it the second site after
-the SortableList marker where the loss lands on something functional rather than
+This is the grip's only visible affordance, which made it the second site after
+the SortableList marker where the loss landed on something functional rather than
 decorative. Neither cleared 3:1 before either.
+
+**Resolved by CIN-603.** The child's `opacity: 0.5` was removed, leaving the
+line at `border.strong`'s full, undiluted alpha — 4.268–4.444 light,
+4.250–4.871 dark, the same range quoted for the tier throughout this
+document. The hover-state opacity bump (`0.5` → `0.9`) that existed only to
+partly undo this dilution on hover was removed along with it, since resting
+is now already at full strength.
 
 **Disabled states.** More of these exist than are listed here; the ones found so
 far, with the arithmetic from the table above:
@@ -331,22 +385,28 @@ All three share the same arithmetic, so one table covers them:
 | `surface`        | 1.384  | 1.282 |
 | `surface-raised` | 1.247  | 1.321 |
 
-**Slider's tick** — the one compounded site that is an area fill rather than a
+**Slider's tick** — the one compounded site that was an area fill rather than a
 border: `background: var(--cinder-border, currentColor)` with `opacity: 0.6` in
 the same rule, so 48% × 0.6 ≈ 29% effective ink.
 
-| surface          | light | dark  |
-| ---------------- | ----- | ----- |
-| `surface-inset`  | 1.881 | 1.961 |
-| `surface-canvas` | 1.894 | 2.029 |
-| `surface`        | 1.900 | 2.099 |
-| `surface-raised` | 1.903 | 2.089 |
+| surface          | light | dark (CIN-245, opacity still present) |
+| ---------------- | ----- | ------------------------------------- |
+| `surface-inset`  | 1.881 | 1.961                                 |
+| `surface-canvas` | 1.894 | 2.029                                 |
+| `surface`        | 1.900 | 2.099                                 |
+| `surface-raised` | 1.903 | 2.089                                 |
 
-That is the figure that matters for the tick, not the 3.129–3.206 / 3.338–3.624
-the tier measures undiluted — an earlier draft of the table above quoted the
-latter for it, which was wrong. Ticks are a decorative scale marking rather than
-a control boundary, so 3:1 is not the applicable floor, but the number should be
-the real one.
+That was the figure that mattered for the tick at the time, not the
+3.129–3.206 / 3.338–3.624 the tier measures undiluted — an earlier draft of
+the table above quoted the latter for it, which was wrong. Ticks are a
+decorative scale marking rather than a control boundary, so 3:1 was never the
+applicable floor here, but the number needed to be the real one.
+
+**Retuned by CIN-603 anyway.** The `opacity: 0.6` was redundant rather than
+load-bearing — nothing else in this rule depended on it — so it was removed
+even though the tick was never required to clear 3:1. It now measures the
+tier's full undiluted range, 3.129–3.206 light / 3.338–3.624 dark, which the
+"`border.control` sites clear it" bullet above already covers.
 
 Both light arms improve slightly; only the dark arm loses. Neither was near
 1.4.11's 3:1 before — a 40%-opacity ghost and a disabled control are both
@@ -363,19 +423,28 @@ buttons `border: 1px solid var(--cinder-border)` and then `opacity: 0.55` under
 `[aria-pressed='false']`, so a toggled-off series shows a 48% × 0.55 ≈ 26%
 boundary:
 
-| surface          | light before → after | dark before → after |
-| ---------------- | -------------------- | ------------------- |
-| `surface-inset`  | 1.200 → 1.774        | 2.152 → 1.818       |
-| `surface-canvas` | 1.244 → 1.785        | 2.169 → 1.884       |
-| `surface`        | 1.263 → 1.790        | 2.148 → 1.955       |
-| `surface-raised` | 1.274 → 1.792        | 1.978 → 1.962       |
+| surface          | light before (opaque) → CIN-245 (control × 0.55) | dark before (opaque) → CIN-245 (control × 0.55) |
+| ---------------- | ------------------------------------------------ | ----------------------------------------------- |
+| `surface-inset`  | 1.200 → 1.774                                    | 2.152 → 1.818                                   |
+| `surface-canvas` | 1.244 → 1.785                                    | 2.169 → 1.884                                   |
+| `surface`        | 1.263 → 1.790                                    | 2.148 → 1.955                                   |
+| `surface-raised` | 1.274 → 1.792                                    | 1.978 → 1.962                                   |
 
 These are enabled, persistent controls a user presses to toggle a series back
 on, so WCAG 1.4.11's 3:1 does apply to them — unlike the disabled states below,
 which are exempt. They did not clear it before either (2.15:1 at best in dark),
-so this is a pre-existing shortfall pushed further down rather than a floor this
-change breaks, but it belongs with the live affordances rather than with the
-exempt states.
+so this was a pre-existing shortfall pushed further down rather than a floor
+this change broke, but it belonged with the live affordances rather than with
+the exempt states.
+
+**Resolved by CIN-603.** A toggled-off series is still an enabled control, so
+its boundary can't simply be dimmed along with everything else. The fix
+decouples the dimming from the border: `[aria-pressed='false']` now sets
+`color` (dimming the label text) instead of `opacity`, and the swatch dot
+gets its own scoped `opacity: 0.55`, leaving the border at `border.control`'s
+full, undiluted alpha — 3.129–3.206 light, 3.338–3.624 dark. Applied
+identically across AreaChart, BarChart, and LineChart, which share this rule
+shape.
 
 **StatusDot's connecting pulse** — the opacity lives in a `@keyframes` body,
 which is a fifth arrangement the scan cannot reach. With
@@ -425,6 +494,11 @@ The state does signal unavailability by other means — `border-style: dashed` a
 `cursor: not-allowed` — and a select with no options has nothing to choose. But
 it is not `disabled`, so it cannot claim the exemption, and the dashed border is
 the affordance carrying the "empty" meaning.
+
+**Resolved by CIN-603.** The `[data-cinder-empty='true']` rule now sets
+`color: var(--cinder-text-muted)` instead of `opacity`, keeping the dimmed
+look on the text while leaving the dashed `border.control` boundary at its
+full, undiluted alpha — 3.129–3.206 light, 3.338–3.624 dark.
 
 These three are measured in full, as representative of the band — the tier comes
 from the base rule and the opacity from a `:disabled` / `[aria-disabled]` /
