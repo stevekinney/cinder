@@ -1,7 +1,7 @@
 <script lang="ts" module>
-  export const title = 'Arrow surface probe';
+  export const title = 'Arrow indicator';
   export const description =
-    'Deterministic, arrow-visible fixture for the CIN-606 pixel probe (packages/testing/tests/popover-arrow-surface-parity.playwright.ts), which asserts the arrow occludes rather than composites with the backdrop.';
+    'Opens with its pointer arrow visible, pointing back at the trigger that opened it.';
 </script>
 
 <script lang="ts">
