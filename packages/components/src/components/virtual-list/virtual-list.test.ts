@@ -3110,6 +3110,42 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     expect(requested.at(-1)).toBe(4_220);
   });
 
+  test('keeps the pending destination through an off-axis arrow', async () => {
+    // Left and Right are in the set of keys that scroll a container, but not THIS
+    // container while it is vertical: the cross axis does not overflow, so they move
+    // nothing. Taking them as a takeover would drop a navigation still in flight.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+    await fireEvent.keyDown(list, { key: 'ArrowRight' });
+    await tick();
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    expect(requested).toEqual([4_020, 4_040]);
+  });
+
   test('keeps the pending destination through a key that scrolls nothing', async () => {
     // A letter keypress is not a viewport takeover, and a smooth navigation may still
     // be in flight behind it.

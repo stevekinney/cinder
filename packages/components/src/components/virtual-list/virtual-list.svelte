@@ -1419,12 +1419,18 @@
       stickyIndexes: stickyIndexSet,
     });
     if (target === null) {
-      // A key this list does not resolve, but one the browser scrolls with anyway —
-      // Space and Shift+Space. It is about to move the viewport somewhere the pending
-      // destination knows nothing about, so the next Arrow or Page press has to start
-      // from wherever that leaves the reader. Keys that scroll nothing leave it alone,
-      // since a smooth navigation may still be in flight behind them.
-      if (SCROLLING_KEYS.has(event.key)) abandonKeyboardRun();
+      // Space and Shift+Space are the only keys that reach here and still scroll: the
+      // browser pages the container with them, somewhere the pending destination knows
+      // nothing about, so the next Arrow or Page press has to start from wherever that
+      // leaves the reader.
+      //
+      // Deliberately not every key in `SCROLLING_KEYS`. The off-axis arrows land here
+      // too — Left and Right in a vertical list, Up and Down in a horizontal one — and
+      // they scroll nothing at all, because the cross axis does not overflow. Treating
+      // them as a takeover would drop a navigation still in flight behind them. On-axis
+      // arrows and the Page, Home, and End keys never reach this branch, since they
+      // always resolve to a destination.
+      if (event.key === ' ') abandonKeyboardRun();
       return;
     }
     event.preventDefault();
