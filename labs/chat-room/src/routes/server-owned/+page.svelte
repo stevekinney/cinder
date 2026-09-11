@@ -169,13 +169,27 @@
 						row would be noise for a sighted reader while the
 						announcement is what actually lacks the context.
 					-->
+					<!--
+						The id is sliced from the TAIL, not the head. Operative mints
+						session ids with a constant `session-` prefix, so the first
+						eight characters are the same for every conversation and the
+						disambiguator disambiguated nothing — two conversations
+						sharing a title both announced "id session-". The tail is
+						where the entropy is.
+
+						Caught by `two conversations sharing a title are
+						distinguishable to a screen reader`, which compares the two
+						accessible names rather than pattern-matching one, and so
+						failed the moment 0.11.0's id format landed. A spec asserting
+						"contains an id" would have stayed green.
+					-->
 					<a
 						href={resolve('/server-owned/[id]', { id: conversation.id })}
 						data-testid="server-owned-conversation-title"
 						aria-label="{conversation.title}, {conversation.messageCount} message{conversation.messageCount ===
 						1
 							? ''
-							: 's'}, id {conversation.id.slice(0, 8)}">{conversation.title}</a
+							: 's'}, id {conversation.id.slice(-8)}">{conversation.title}</a
 					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}
