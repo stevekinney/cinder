@@ -128,9 +128,16 @@ test('appends a turn and reports the new count', async ({ request }) => {
 
 	const loaded = await request.get(`/api/server-owned/conversations/${conversation.id}`);
 	expect(loaded.status()).toBe(200);
-	const body = (await loaded.json()) as { messages: Array<{ role: string }> };
+	const body = (await loaded.json()) as { messages: Array<{ role: string; content: string }> };
 	expect(body.messages).toHaveLength(1);
 	expect(body.messages[0].role).toBe('user');
+
+	// The submitted TEXT, not just a message of the right role. A handler that
+	// passed a constant — or the wrong field of the request body — to
+	// `appendUserTurn` satisfies the count and the role, and the service-level
+	// tests call `appendUserTurn` directly, so nothing else covers the wiring
+	// from this request body to that argument.
+	expect(body.messages[0].content).toBe('What shipped this week?');
 });
 
 test('distinguishes a missing conversation from an empty one', async ({ request }) => {

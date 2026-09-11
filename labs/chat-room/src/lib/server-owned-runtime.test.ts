@@ -244,7 +244,7 @@ describe('process signals', () => {
 			// ways — this fails against `once`.
 			const { child, reader } = await readyFixture({
 				TEARDOWN_MARKER: marker,
-				SLOW_TEARDOWN: '2000',
+				BLOCK_TEARDOWN: '1',
 				HOST_LISTENER: '1'
 			});
 
@@ -271,14 +271,15 @@ describe('process signals', () => {
 			}
 			await child.exited;
 
-			// TERMINATED, and terminated promptly: the second signal gave up on
-			// the two-second teardown rather than waiting it out or being
-			// swallowed.
+			// TERMINATED while the teardown was still BLOCKED. The barrier never
+			// opens — the parent holds it closed — so the only way this process
+			// can exit is the second signal forcing it. No delay is involved,
+			// and no amount of waiting could satisfy this by accident.
 			const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
 			expect(terminated).toBe(true);
 
-			// And the slow teardown did NOT complete, which is what "forced"
-			// means here — the marker is written at the end of it.
+			// And the teardown did NOT complete, which is what "forced" means
+			// here — the marker is written at the end of it, past the barrier.
 			expect(existsSync(marker)).toBe(false);
 		} finally {
 			rmSync(directory, { recursive: true, force: true });

@@ -136,9 +136,43 @@
 		<ul role="list" data-testid="server-owned-list">
 			{#each data.conversations as conversation (conversation.id)}
 				<li data-testid="server-owned-conversation">
+					<!--
+						The accessible name carries the size, the time, AND a short
+						id fragment, because titles are not unique — the create
+						endpoint permits duplicates, and two conversations called
+						"Release planning" with the same message count render
+						identical rows. A screen reader's links list would then
+						offer two identically named destinations whose URLs are
+						opaque UUIDs, and the only way to tell them apart would be
+						to open both.
+
+						The id fragment is there because the timestamp is NOT
+						sufficient, which was measured rather than assumed: two
+						conversations created in the same second produce the same
+						`toLocaleString()`, and the test written for this failed on
+						exactly that. Sessions saved inside one millisecond share
+						`updatedAt` outright, so no timestamp precision fixes it.
+
+						Eight characters of a UUID are not meaningful to anyone,
+						and that is accepted: the claim is only that two rows can
+						be told apart, which nothing else on the row guarantees.
+						The name still LEADS with the title, so the announcement
+						opens with what the user was looking for.
+
+						`aria-label` rather than more visible text: the count is
+						already on screen beside the link, and repeating it in the
+						row would be noise for a sighted reader while the
+						announcement is what actually lacks the context.
+					-->
 					<a
 						href={resolve('/server-owned/[id]', { id: conversation.id })}
-						data-testid="server-owned-conversation-title">{conversation.title}</a
+						data-testid="server-owned-conversation-title"
+						aria-label="{conversation.title}, {conversation.messageCount} message{conversation.messageCount ===
+						1
+							? ''
+							: 's'}, updated {new Date(
+							conversation.updatedAt
+						).toLocaleString()}, id {conversation.id.slice(0, 8)}">{conversation.title}</a
 					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}

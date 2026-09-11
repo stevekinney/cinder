@@ -33,7 +33,13 @@ export type ConversationSummary = {
  */
 export function titleOf(metadata: AgentSession['metadata']): string {
 	const title = metadata?.title;
-	return typeof title === 'string' && title.length > 0 ? title : 'Untitled conversation';
+	// TRIMMED, matching the endpoint's own validation. Checking `length` alone
+	// treated a whitespace-only title as present, so any path that wrote
+	// `metadata.title` without trimming — a fixture, a future importer, a
+	// migration — would render a blank heading and a blank list row rather than
+	// the fallback. The endpoint rejects `'   '` with a 400; this is the same
+	// rule applied where the value is read.
+	return typeof title === 'string' && title.trim().length > 0 ? title : 'Untitled conversation';
 }
 
 /**

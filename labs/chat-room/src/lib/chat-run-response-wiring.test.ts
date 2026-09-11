@@ -54,6 +54,14 @@ describe('streaming endpoints share one stream lifecycle', () => {
 			// files; `json(...)` for the early 400/404/503 returns is fine and
 			// stays.
 			expect(source).not.toContain('new Response(');
+
+			// And the REQUEST'S OWN SIGNAL is what it hands over. Returning
+			// `chatRunResponse(...)` with a signal that never aborts satisfies
+			// every check above while severing the helper's request-abort path —
+			// so a client that disconnects cannot stop the run, and the provider
+			// keeps going and keeps billing. That is the failure these
+			// lifecycle tests exist for, reachable without touching the helper.
+			expect(source).toMatch(/signal:\s*request\.signal/);
 		});
 	}
 });

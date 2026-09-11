@@ -1,6 +1,7 @@
 import { createSessionStore } from '@lostgradient/operative';
 import type { SessionStore } from '@lostgradient/operative';
 import { MemoryStorage } from '@lostgradient/weft/storage/memory';
+import type { Storage } from '@lostgradient/weft/storage/interface';
 import { textValueStore } from '@lostgradient/weft/storage/text-value-store';
 import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-value-store';
 
@@ -19,7 +20,17 @@ import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-
  * what the variant is meant to show.
  */
 export type ServerOwnedRuntime = {
-	readonly storage: MemoryStorage;
+	/**
+	 * Weft's `Storage` interface, NOT `MemoryStorage`.
+	 *
+	 * The docblock below says swapping the implementation is the only change a
+	 * durable backing store needs, and pinning this field to the concrete class
+	 * would have made that false — every consumer would have been typed against
+	 * `MemoryStorage` and a swap would have meant widening them all first. The
+	 * interface is what `createRunEngine` takes, so nothing downstream needs the
+	 * narrower type.
+	 */
+	readonly storage: Storage;
 	readonly store: ConditionalTextValueStore;
 	readonly sessions: SessionStore;
 	/**

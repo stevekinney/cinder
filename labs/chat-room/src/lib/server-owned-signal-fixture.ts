@@ -15,6 +15,9 @@
  * nothing else is listening, rather than the property that the process
  * terminates either way.
  *
+ * `BLOCK_TEARDOWN=1` holds that teardown open on stdin until the parent writes
+ * — which, in the test that uses it, the parent never does.
+ *
  * `TEARDOWN_MARKER=<path>` registers a teardown that writes that file. It is
  * what makes "disposes AND terminates" two claims rather than one: without it,
  * replacing the handler's cleanup with a bare `process.exit(143)` would leave
@@ -60,20 +63,39 @@ const runtime = serverOwnedRuntime();
 
 const marker = process.env['TEARDOWN_MARKER'];
 if (marker !== undefined && marker !== '') {
-	// `SLOW_TEARDOWN=<ms>` widens the window a second signal can land in. The
-	// default is a plain macrotask, which is all the "did disposal actually
-	// finish" assertion needs.
-	const teardownDelay = Number(process.env['SLOW_TEARDOWN'] ?? '0');
+	// `BLOCK_TEARDOWN=1` holds the teardown open until the PARENT says
+	// otherwise — it waits on stdin, and the parent simply never writes.
+	//
+	// A barrier rather than a delay. The first version of this used
+	// `SLOW_TEARDOWN=2000` to widen the window a second signal could land in,
+	// which is a wait threshold added to make a race reproducible — exactly the
+	// padding this repository forbids, and a rule I had been applying to other
+	// people's code in the same review. A barrier is also STRICTER: the
+	// assertion becomes "it exited while the teardown was still blocked", which
+	// no amount of waiting could satisfy by accident.
+	const blockTeardown = process.env['BLOCK_TEARDOWN'] === '1';
 
 	runtime.onDispose(async () => {
 		// Announced at the START of the teardown, so a test wanting to deliver a
 		// second signal DURING disposal can wait for this rather than guess at a
 		// delay.
 		console.log('disposing');
-		// A macrotask, not a microtask: `process.exit` runs after the current
-		// microtask checkpoint, so a bare `await Promise.resolve()` could still
-		// resolve before an unawaited disposal was cut off. A timer cannot.
-		await new Promise((resolve) => setTimeout(resolve, teardownDelay));
+
+		if (blockTeardown) {
+			// Never resolves in the test that sets this: the parent holds the
+			// barrier closed and asserts the process dies anyway.
+			await new Promise<void>((resolve) => {
+				process.stdin.once('data', () => resolve());
+				process.stdin.resume();
+			});
+		} else {
+			// A macrotask, not a microtask: `process.exit` runs after the current
+			// microtask checkpoint, so a bare `await Promise.resolve()` could
+			// still resolve before an unawaited disposal was cut off. A timer
+			// cannot.
+			await new Promise((resolve) => setTimeout(resolve, 0));
+		}
+
 		writeFileSync(marker, 'disposed');
 	});
 }

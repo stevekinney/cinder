@@ -3,24 +3,28 @@
  * cross-engine shards can run these without also tripling the tests that do
  * not touch a browser.
  *
- * SIX tests here, each driving a real engine path: the create flow's `fetch`
- * plus reload, incremental rendering of a `ReadableStream` through the page's
- * session controller, transcript-versus-page scroll ownership, the
- * route-reuse reset, long-title overflow, and a rejected turn's error
- * envelope. That is what the cross-engine
+ * SEVEN tests here, each driving a real engine path: the create flow's
+ * `fetch` plus reload, incremental rendering of a `ReadableStream` through the
+ * page's session controller, transcript-versus-page scroll ownership, the
+ * route-reuse reset, long-title overflow, a rejected turn's error envelope,
+ * and duplicate-title distinguishability. That is what the cross-engine
  * shards exist for. The `request`-fixture tests stay in `server-owned.e2e.ts`,
  * where the chromium project's root matcher runs them once — that fixture is a
  * Node-side HTTP client, so three engines would execute identical code three
  * times.
  *
  * Placed in `webkit-2` by measurement: `--list` per project reads
- * 49/48/62/51/50 without this spec and 49/54/62/51/50 with it, and `webkit-3`
+ * 49/48/62/51/50 without this spec and 49/55/62/51/50 with it, and `webkit-3`
  * is already at the 62 the ceiling note describes.
  *
- * This inventory has gone stale twice. Re-running `--list` and updating BOTH
- * this docblock and `playwright.config.ts` is a step in adding a test here,
- * not a reminder afterwards — two places carrying the same count is two places
- * to correct.
+ * Re-running `--list` and updating BOTH this docblock and
+ * `playwright.config.ts` is a step in adding a test here, not a reminder
+ * afterwards — two places carrying the same count is two places to correct.
+ *
+ * The count has now been wrong four times on this branch, the last of them by
+ * someone adding one test and writing "eight" while listing seven. So: COUNT
+ * the `test(` declarations and READ the `--list` output. Do not add one to the
+ * number already in the comment; that is how three of the four happened.
  *
  * Every test works against a conversation it creates under a unique title.
  * The store is in-memory and per-process, so conversations outlive the test
@@ -434,4 +438,41 @@ test("a rejected turn shows the server's sentence, not its JSON envelope", async
 	// The sentence, and nothing of the envelope around it.
 	await expect(banner).not.toContainText('{');
 	await expect(banner).not.toContainText('"error"');
+});
+
+test('two conversations sharing a title are distinguishable to a screen reader', async ({
+	page,
+	request
+}) => {
+	// The create endpoint permits duplicate titles, so two rows can carry the
+	// same visible text and the same message count. Their URLs are opaque UUIDs,
+	// which means a links list would offer two identically named destinations
+	// and the only way to tell them apart would be to open both.
+	const shared = uniqueTitle('Shared');
+	for (let n = 0; n < 2; n += 1) {
+		const created = await request.post('/api/server-owned/conversations', {
+			data: { title: shared }
+		});
+		expect(created.status()).toBe(201);
+	}
+
+	await gotoHydrated(page, '/server-owned');
+
+	const links = page
+		.locator('[data-testid="server-owned-conversation"]')
+		.filter({ hasText: shared })
+		.locator('[data-testid="server-owned-conversation-title"]');
+	await expect(links).toHaveCount(2);
+
+	// The VISIBLE text is identical — that is the premise, not a defect.
+	const visible = await links.allInnerTexts();
+	expect(visible[0]).toBe(visible[1]);
+
+	// The ACCESSIBLE names are not, which is the property. Both still open with
+	// the title, so the announcement leads with what the user was looking for.
+	const names = await links.evaluateAll((elements) =>
+		elements.map((element) => element.getAttribute('aria-label') ?? '')
+	);
+	expect(names[0]).not.toBe(names[1]);
+	for (const name of names) expect(name.startsWith(shared)).toBe(true);
 });
