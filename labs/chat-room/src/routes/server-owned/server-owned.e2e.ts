@@ -160,3 +160,32 @@ test('distinguishes a missing conversation from an empty one', async ({ request 
 		).status()
 	).toBe(404);
 });
+
+test('centres its capped column instead of pinning it to the left edge', async ({ page }) => {
+	// The route caps `main` at 48rem for readability. Capping WITHOUT centring
+	// leaves that column against the left edge on any viewport wider than the
+	// cap, with the rest of the window empty — which is how it shipped, and is
+	// the one route in this lab that set a cap and not the centring.
+	//
+	// Asserted as symmetry rather than as a computed style: `margin-inline: auto`
+	// is one way to achieve it, and this should not fail if the layout is
+	// recentred by different means.
+	await page.setViewportSize({ width: 1400, height: 900 });
+	await page.goto('/server-owned');
+
+	const box = await page.locator('main').boundingBox();
+	expect(box).not.toBeNull();
+	if (box === null) return;
+
+	const viewport = page.viewportSize();
+	expect(viewport).not.toBeNull();
+	if (viewport === null) return;
+
+	// Narrower than the viewport, or the cap is not in effect and this asserts
+	// nothing.
+	expect(box.width).toBeLessThan(viewport.width);
+
+	const left = box.x;
+	const right = viewport.width - (box.x + box.width);
+	expect(Math.abs(left - right)).toBeLessThanOrEqual(2);
+});

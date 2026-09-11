@@ -193,6 +193,12 @@
 		flex-direction: column;
 		gap: 1rem;
 		max-width: 48rem;
+
+		/* Centred, not pinned left. Every other route in this lab that caps its
+		   width pairs the cap with `margin: 0 auto`; this one set the cap and
+		   not the centring, so on a wide viewport the 48rem column sat against
+		   the left edge with the rest of the window empty. */
+		margin-inline: auto;
 	}
 
 	.variant-banner {
