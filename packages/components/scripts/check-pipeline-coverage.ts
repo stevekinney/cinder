@@ -421,12 +421,19 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
   'test:coverage': {
     layers: ['unit-tests', 'main-green'],
     reason:
-      'CIN-604: the 100% runtime coverage ratchet is enforced on every pull request, not just ' +
-      'locally. unit-tests.yaml\'s "package" job and main-green.yaml\'s "workspace-gates" job both ' +
-      'run it via the same `turbo run test:coverage --filter=@lostgradient/chat ' +
-      '--filter=@lostgradient/cinder` step Chat already used, so a coverage regression fails the ' +
-      "same required `unit-tests` check Chat's coverage step already gated — no new branch-" +
-      'protection entry was needed.',
+      'CIN-604: the 100% runtime coverage ratchet is enforced on every pull request that reaches ' +
+      'the "package" lane — every pull request except one whose entire diff sits under ' +
+      'packages/components/scripts/ or packages/components/src/styles/, which the scope job routes ' +
+      'to the "static" lane alone (see packages/testing/scripts/changed-components.ts). ' +
+      'unit-tests.yaml\'s "package" job and main-green.yaml\'s "workspace-gates" job both run it via ' +
+      'the same `turbo run test:coverage --filter=@lostgradient/chat --filter=@lostgradient/cinder` ' +
+      'step Chat already used, so a coverage regression fails the same required `unit-tests` check ' +
+      "Chat's coverage step already gated — no new branch-protection entry was needed. Deliberately " +
+      'NOT run with `--affected`: that flag intersected with an explicit `--filter` drops the task ' +
+      "from turbo's graph entirely (not a cache replay) whenever the diff doesn't touch either " +
+      "package's own tracked inputs, which would silently skip the ratchet rather than evaluate it. " +
+      "Turbo's ordinary input-hash cache still gives an unrelated change a fast replay instead of a " +
+      'full run.',
   },
   [`${chatPackageName}#lint`]: {
     layers: ['unit-tests', 'main-green'],
