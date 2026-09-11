@@ -84,6 +84,14 @@ test('server-renders the conversation list into the navigation response', async 
 });
 
 test('rejects an empty title at the endpoint rather than storing it', async ({ request }) => {
+	// "rather than storing it" is half the claim, and the status code cannot
+	// speak to it: a handler that created an empty-titled session and THEN
+	// returned 400 would satisfy every assertion below except the last pair,
+	// while quietly polluting the list every run.
+	const before = await request.get('/api/server-owned/conversations');
+	expect(before.status()).toBe(200);
+	const listedBefore = (await before.json()) as { conversations: { id: string }[] };
+
 	const response = await request.post('/api/server-owned/conversations', {
 		data: { title: '   ' }
 	});
@@ -93,6 +101,16 @@ test('rejects an empty title at the endpoint rather than storing it', async ({ r
 	expect(response.status()).toBe(400);
 	const body: unknown = await response.json();
 	expect((body as { error?: string }).error).toContain('title');
+
+	// And nothing was written. Compared by ID rather than by count, so a
+	// concurrent create from another test in the same file cannot make this
+	// pass or fail for the wrong reason.
+	const after = await request.get('/api/server-owned/conversations');
+	const listedAfter = (await after.json()) as { conversations: { id: string }[] };
+	const added = listedAfter.conversations
+		.map((conversation) => conversation.id)
+		.filter((id) => !listedBefore.conversations.some((existing) => existing.id === id));
+	expect(added).toEqual([]);
 });
 
 test('appends a turn and reports the new count', async ({ request }) => {

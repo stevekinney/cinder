@@ -94,32 +94,55 @@ describe('server-owned durable runtime', () => {
 	});
 
 	it('does not let a disposed build erase the one that replaced it', async () => {
-		// The follow-on defect, and the reason every clear in that module is
-		// token-checked rather than unconditional. Three requests:
-		const first = durableRuntime();
-		await disposeServerOwnedRuntime();
+		const runtime = serverOwnedRuntime();
 
-		// ...a second one arrives after the disposal and installs its own build
-		// against the replacement runtime...
+		// Build A is held INSIDE `createRunEngine`, at its first storage read.
+		// Probed rather than guessed: construction touches `get`, `scan`, and
+		// `put`, in that order, so blocking the first `get` parks it with the
+		// teardown already registered and no engine yet — the exact state this
+		// race is about.
+		//
+		// The previous version of this test waited for disposal to finish and
+		// then hoped A was still pending. It usually was, because
+		// `createRunEngine` does real I/O while disposal is a few microtasks —
+		// but "usually" meant the test could silently stop exercising the path.
+		// Now nothing about it depends on relative speed.
+		let release: () => void = () => {};
+		const heldOpen = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		const storage = runtime.storage as unknown as {
+			get: (key: string) => Promise<Uint8Array | null>;
+		};
+		const realGet = storage.get.bind(runtime.storage);
+		let parked = false;
+		storage.get = async (key: string) => {
+			if (!parked) {
+				parked = true;
+				await heldOpen;
+			}
+			return realGet(key);
+		};
+
+		const first = durableRuntime();
+
+		// A's teardown runs here with no engine to shut down, and clears the
+		// slot. The new runtime built afterwards has its own unpatched storage,
+		// so B is not affected by the gate above.
+		await disposeServerOwnedRuntime();
 		const second = durableRuntime();
 
-		// ...and only then does the first build's construction finish and
-		// discover it was disposed. An unconditional `slot = undefined` there
-		// erases the second build's promise, and the third request below finds
-		// an empty slot and constructs ANOTHER engine over the same storage —
-		// two live engines, which is exactly what memoising was for.
-		await first.catch(() => undefined);
+		// Only now does A's construction finish and discover it was disposed.
+		// An unconditional `slot = undefined` there erases B's promise, and the
+		// third request below finds an empty slot and constructs ANOTHER engine
+		// over the same storage — two live engines, which is what memoising was
+		// for.
+		release();
+
+		await expect(first).rejects.toBeInstanceOf(RuntimeDisposedDuringBuildError);
 
 		const third = await durableRuntime();
 		expect(third).toBe(await second);
-
-		// The ordering this depends on — the first build still pending when the
-		// second is installed — is environmental rather than structural:
-		// `createRunEngine` does real I/O while disposal is a few microtasks.
-		// Confirmed by running this against the unconditional-clear version,
-		// where it fails. If that ordering ever inverted, this would go quiet
-		// rather than flaky: it cannot produce a false failure, only stop
-		// exercising the path.
 	});
 
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {

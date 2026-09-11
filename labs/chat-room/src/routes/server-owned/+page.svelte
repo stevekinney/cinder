@@ -45,6 +45,14 @@
 	}
 </script>
 
+<!--
+	A document title, because the heading is not one. Browser tabs, window
+	switchers, and screen-reader page-title navigation all read `<title>`, and
+	with several conversations open the tab strip is the only place they are
+	told apart. Neither the shared layout nor `app.html` supplies one.
+-->
+<svelte:head><title>Server-owned conversations · Chatroom</title></svelte:head>
+
 <main>
 	<!--
 		The label the acceptance criterion asks for, and it is deliberately

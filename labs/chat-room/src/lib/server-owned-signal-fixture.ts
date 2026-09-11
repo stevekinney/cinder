@@ -15,8 +15,20 @@
  * nothing else is listening, rather than the property that the process
  * terminates either way.
  *
+ * `TEARDOWN_MARKER=<path>` registers a teardown that writes that file. It is
+ * what makes "disposes AND terminates" two claims rather than one: without it,
+ * replacing the handler's cleanup with a bare `process.exit(143)` would leave
+ * the tests green while checkpoint flushing was silently cut off again.
+ *
+ * A FILE rather than a line on stdout, because the marker has to survive the
+ * exit that follows it immediately. Writes to a pipe can still be in flight
+ * when `process.exit` runs; `writeFileSync` has completed by the time it
+ * returns.
+ *
  * Run as a child process, never imported by a route.
  */
+import { writeFileSync } from 'node:fs';
+
 import { serverOwnedRuntime } from './server-owned-runtime.ts';
 
 if (process.env['HOST_LISTENER'] === '1') {
@@ -35,7 +47,14 @@ if (process.env['HOST_LISTENER'] === '1') {
 
 // Built so the signal handler has a runtime to dispose rather than an empty
 // slot — the path a deployment actually takes.
-serverOwnedRuntime();
+const runtime = serverOwnedRuntime();
+
+const marker = process.env['TEARDOWN_MARKER'];
+if (marker !== undefined && marker !== '') {
+	runtime.onDispose(() => {
+		writeFileSync(marker, 'disposed');
+	});
+}
 
 const keepAlive = setInterval(() => {}, 1000);
 

@@ -159,6 +159,6 @@ The session store owns the conversation-list index. `SessionStore.list()` return
 
 Ordering is by `updatedAt`, newest first, and the host states that explicitly rather than inheriting a default. Sessions written inside the same millisecond share a timestamp and fall back to key order, which is deterministic but unrelated to creation order — anything needing creation order carries it rather than inferring it from the list. A caller cannot work around that by supplying its own timestamps: the store owns `updatedAt` and overwrites what it is given.
 
-The host still reconstructs workflow services on restart, and still owns sweeping orphaned run references that can no longer be resumed.
+Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities — and they are **target state, not the shipped behaviour**. The variant supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which is the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. Nothing sweeps orphaned references, and `handle.recover()` is CIN-445's subject. This paragraph states what a host owning durable runs has to do; the rest of this document states what is true today, and the difference is deliberate here rather than an oversight.
 
 This variant must not import Bureau internals or locally recreate capabilities that belong in a published package.

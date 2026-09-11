@@ -27,8 +27,16 @@ export type ServerOwnedRuntime = {
 	 * outlives a single request — a subscription, a durable run, a provider
 	 * connection — registers here so disposal is exhaustive by construction
 	 * rather than by someone remembering to add a line.
+	 *
+	 * Returns an UNREGISTER function, because registration often happens before
+	 * the thing being torn down exists. A caller that registers a teardown and
+	 * then fails to construct its resource would otherwise leave a dead closure
+	 * in the list forever — and the durable engine's memo deliberately lets a
+	 * request retry a transient construction failure, so "forever" compounds:
+	 * one dead callback per failed attempt, every one of them running at
+	 * shutdown.
 	 */
-	readonly onDispose: (teardown: () => void | Promise<void>) => void;
+	readonly onDispose: (teardown: () => void | Promise<void>) => () => void;
 };
 
 /**
@@ -65,6 +73,10 @@ function createRuntime(): {
 			sessions,
 			onDispose: (teardown) => {
 				teardowns.push(teardown);
+				return () => {
+					const index = teardowns.indexOf(teardown);
+					if (index !== -1) teardowns.splice(index, 1);
+				};
 			}
 		},
 		teardowns
@@ -146,7 +158,7 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
  * guard would add another pair of listeners on every reload until Node warns
  * about a leak.
  *
- * The signal is RE-RAISED afterwards, and that half is not optional. Adding a
+ * The process is TERMINATED afterwards, and that half is not optional. Adding a
  * SIGTERM listener REPLACES Node's default behaviour for that signal, which is
  * to terminate — so a handler that only starts a cleanup and returns leaves
  * the process running. With an HTTP server still holding the event loop open,

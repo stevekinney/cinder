@@ -184,7 +184,7 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 	// mechanism.
 	const race: { engine?: DurableRuntime; disposed: boolean } = { disposed: false };
 
-	runtime.onDispose(async () => {
+	const unregisterTeardown = runtime.onDispose(async () => {
 		race.disposed = true;
 		// The slot is cleared in `finally`. If `shutdown()` rejects, the memo
 		// would otherwise still hold a promise for an engine that is gone, and
@@ -201,36 +201,48 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 		}
 	});
 
-	const built = await createRunEngine({
-		storage: runtime.storage,
-		runWorkflow,
-		// The SAME checkpoint store the workflow writes through, injected
-		// rather than left to the engine to build its own over `storage`.
-		// `handle.recover()` reads a run's transcript through the store it is
-		// given, so the two being the same object is what makes a recovered
-		// run see what the workflow wrote. Both would be built over one
-		// storage and would almost certainly agree — "almost certainly" being
-		// the reason to pass it explicitly.
-		checkpointStore: checkpoints,
-		// `'unavailable'`, stated rather than stubbed, and it is the honest
-		// answer rather than a placeholder. This resolver runs when the engine
-		// resumes a workflow a PREVIOUS process left in flight, and is asked
-		// to rebuild that run's non-serializable dependencies. Here those are
-		// a provider bound to a request-scoped API key and a writer bound to
-		// one HTTP response's `ReadableStream` controller — the response is
-		// gone, so there is nothing to rebuild. Returning `'unavailable'`
-		// fails just that recovered run; claiming `'available'` with empty
-		// services would resume it into a run that writes nowhere.
-		//
-		// Moot today — the storage is in-memory, so nothing survives a
-		// process to be recovered — and it stops being moot the moment the
-		// storage is swapped, which is the substitution this lab exists to
-		// make easy. Recovering usefully is CIN-445's subject.
-		resolveWorkflowServices: () => ({
-			status: 'unavailable',
-			reason: 'The chat-room lab binds each run to one HTTP response, which cannot be rebuilt.'
-		})
-	});
+	// Unregistered when construction FAILS. `onDispose` only appends, and the
+	// memo above deliberately lets a later request retry a transient failure —
+	// so without this, every failed attempt leaves another dead closure behind
+	// and another callback for shutdown to run. Disposal that has already taken
+	// ownership makes this a no-op: it snapshots the list before running it, so
+	// the callback fires either way and removing it afterwards changes nothing.
+	let built: DurableRuntime;
+	try {
+		built = await createRunEngine({
+			storage: runtime.storage,
+			runWorkflow,
+			// The SAME checkpoint store the workflow writes through, injected
+			// rather than left to the engine to build its own over `storage`.
+			// `handle.recover()` reads a run's transcript through the store it is
+			// given, so the two being the same object is what makes a recovered
+			// run see what the workflow wrote. Both would be built over one
+			// storage and would almost certainly agree — "almost certainly" being
+			// the reason to pass it explicitly.
+			checkpointStore: checkpoints,
+			// `'unavailable'`, stated rather than stubbed, and it is the honest
+			// answer rather than a placeholder. This resolver runs when the engine
+			// resumes a workflow a PREVIOUS process left in flight, and is asked
+			// to rebuild that run's non-serializable dependencies. Here those are
+			// a provider bound to a request-scoped API key and a writer bound to
+			// one HTTP response's `ReadableStream` controller — the response is
+			// gone, so there is nothing to rebuild. Returning `'unavailable'`
+			// fails just that recovered run; claiming `'available'` with empty
+			// services would resume it into a run that writes nowhere.
+			//
+			// Moot today — the storage is in-memory, so nothing survives a
+			// process to be recovered — and it stops being moot the moment the
+			// storage is swapped, which is the substitution this lab exists to
+			// make easy. Recovering usefully is CIN-445's subject.
+			resolveWorkflowServices: () => ({
+				status: 'unavailable',
+				reason: 'The chat-room lab binds each run to one HTTP response, which cannot be rebuilt.'
+			})
+		});
+	} catch (cause) {
+		unregisterTeardown();
+		throw cause;
+	}
 
 	race.engine = built;
 

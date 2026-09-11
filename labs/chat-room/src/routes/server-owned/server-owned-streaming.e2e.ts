@@ -42,15 +42,25 @@ test('creates a conversation through the browser and finds it in the list after 
 	const title = uniqueTitle('Release planning');
 
 	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+
+	// The RELOAD is the behaviour, not an implementation detail of it. The
+	// route reloads rather than splicing the POST response into the list
+	// precisely because the list is the server's to render — so a change to a
+	// client-side insertion would keep the row assertion below green while
+	// deleting the property the route exists to demonstrate. Waiting on the
+	// document navigation is what notices.
+	const reloaded = page.waitForNavigation({ waitUntil: 'load' });
 	await page.locator('[data-testid="server-owned-create"]').click();
+	const navigation = await reloaded;
+	expect(navigation?.url()).toContain('/server-owned');
+	await page.locator('body[data-hydrated="true"]').waitFor();
 
 	// The row for THIS conversation, located by its unique title — not the
 	// first row, and not a count.
 	//
-	// That the list is SERVER-rendered is not what this test shows: everything
-	// below runs after hydration, so a list moved into browser-side startup
-	// would keep it green. `server-owned.e2e.ts` asserts that separately,
-	// against the navigation response's raw HTML.
+	// That the list is SERVER-rendered is still not what this test shows: the
+	// assertions below run after hydration. `server-owned.e2e.ts` asserts that
+	// separately, against the navigation response's raw HTML.
 	const row = page.locator('[data-testid="server-owned-conversation"]').filter({ hasText: title });
 	await expect(row).toHaveCount(1);
 	await expect(row.locator('[data-testid="server-owned-conversation-count"]')).toHaveText(
@@ -85,9 +95,8 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	await expect(turnFailure).toHaveAttribute('role', 'alert');
 
 	const log = page.getByRole('log', { name: 'Messages' });
-	await page
-		.getByRole('textbox', { name: 'Message' })
-		.fill(`Walk me through it ${fixtureMarker('stepped', marker)}`);
+	const prompt = `Walk me through it ${fixtureMarker('stepped', marker)}`;
+	await page.getByRole('textbox', { name: 'Message' }).fill(prompt);
 	await page.getByRole('button', { name: 'Send message' }).click();
 
 	// Gates, not timing. The fixture parks between chunks until this test
@@ -148,7 +157,19 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	// the browser owns the transcript, so a reload starts empty.
 	await page.reload();
 	await page.locator('body[data-hydrated="true"]').waitFor();
-	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(STEPPED_CHUNKS.join(' '));
+
+	const reloadedLog = page.getByRole('log', { name: 'Messages' });
+	await expect(reloadedLog).toContainText(STEPPED_CHUNKS.join(' '));
+
+	// BOTH turns, with their roles. Asserting only the assistant's chunks would
+	// stay green on a session-handle path that persisted the reply while
+	// dropping or corrupting the prompt that produced it — and the prompt is
+	// the half this route family is about, since `handle.run(text)` is what
+	// appends it. The `/turns` endpoint test does not cover this path: it posts
+	// directly rather than going through the stream.
+	await expect(reloadedLog).toContainText(prompt);
+	await expect(reloadedLog.getByRole('article', { name: 'You' })).toHaveCount(1);
+	await expect(reloadedLog.getByRole('article', { name: 'Assistant' })).toHaveCount(1);
 });
 
 test('the transcript scrolls, not the page, once the conversation outgrows the viewport', async ({

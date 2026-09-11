@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'bun:test';
+import { existsSync, mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
@@ -152,14 +154,15 @@ describe('process signals', () => {
 		// Signalled only once the fixture says so, so this cannot race module
 		// evaluation.
 		const reader = child.stdout.getReader();
+		const decoder = new TextDecoder();
 		let announced = '';
 		while (!announced.includes('ready')) {
 			const { value, done } = await reader.read();
 			if (done) break;
-			announced += new TextDecoder().decode(value);
+			announced += decoder.decode(value, { stream: true });
 		}
 		expect(announced).toContain('ready');
-		return child;
+		return { child, reader };
 	}
 
 	// Both cases, because the second is the one the first cannot speak for.
@@ -168,17 +171,40 @@ describe('process signals', () => {
 		["alongside a host's own persistent listener", { HOST_LISTENER: '1' }]
 	] as const) {
 		it(`disposes and then terminates the process ${label}`, async () => {
-			const child = await readyFixture(environment);
+			// The marker is what makes this two claims rather than one. Asserting
+			// termination alone would stay green if the handler's cleanup were
+			// replaced by a bare `process.exit(143)` — and cutting off the disposal
+			// is the regression these handlers exist to prevent.
+			const directory = mkdtempSync(join(tmpdir(), 'server-owned-signal-'));
+			const marker = join(directory, 'disposed');
 
-			child.kill('SIGTERM');
-			await child.exited;
+			try {
+				const { child, reader } = await readyFixture({ ...environment, TEARDOWN_MARKER: marker });
 
-			// Terminated, and terminated the way a signal terminates: either the
-			// runtime reports the signal directly, or it surfaces as the
-			// conventional 128 + 15 status. Never a clean 0, which would mean
-			// something invented a success it had no basis for.
-			const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
-			expect(terminated).toBe(true);
+				expect(existsSync(marker)).toBe(false);
+
+				child.kill('SIGTERM');
+
+				// Drained to EOF rather than polled: the stream closes when the
+				// process does, so this waits on the exit without a timer.
+				for (;;) {
+					const { done } = await reader.read();
+					if (done) break;
+				}
+				await child.exited;
+
+				// DISPOSED: a teardown registered on the runtime actually ran.
+				expect(existsSync(marker)).toBe(true);
+
+				// AND TERMINATED, the way a signal terminates: either the runtime
+				// reports the signal directly, or it surfaces as the conventional
+				// 128 + 15 status. Never a clean 0, which would mean something
+				// invented a success it had no basis for.
+				const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
+				expect(terminated).toBe(true);
+			} finally {
+				rmSync(directory, { recursive: true, force: true });
+			}
 		});
 	}
 });

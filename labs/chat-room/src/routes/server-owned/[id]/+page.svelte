@@ -103,6 +103,13 @@
 	});
 </script>
 
+<!--
+	Titled by the CONVERSATION, so several open at once are distinguishable in
+	a tab strip and by screen-reader page-title navigation. The `<h1>` below is
+	not a substitute: nothing outside the document reads it.
+-->
+<svelte:head><title>{data.title} · Server-owned · Chatroom</title></svelte:head>
+
 <main>
 	<aside class="variant-banner" role="note" data-testid="server-owned-banner">
 		<strong>Noncanonical variant.</strong> This conversation is owned by the
