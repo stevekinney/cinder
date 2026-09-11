@@ -155,6 +155,10 @@ A labeled, non-canonical route family may own sessions server-side using Operati
 
 Its lifecycle boundary differs from the stateless route's and must be documented and tested on its own terms rather than borrowed by implication, because the host owns a session store, a run engine, checkpoint storage, and workflow-service reconstruction.
 
-Operative does not own the conversation-list index, so the host maintains the mapping from a user-visible conversation to its session, reconstructs workflow services on restart, and sweeps orphaned run references that can no longer be resumed.
+The session store owns the conversation-list index. `SessionStore.list()` returns conversation-shaped summaries — id, agent name, message count, timestamps, and metadata — so the host drives that call rather than maintaining a parallel index, which could only drift from the store it copies. Conversation titles live in session metadata for the same reason: a separate title store would be a second thing to keep in step.
+
+Ordering is by `updatedAt`, newest first, and the host states that explicitly rather than inheriting a default. Sessions written inside the same millisecond share a timestamp and fall back to key order, which is deterministic but unrelated to creation order — anything needing creation order carries it rather than inferring it from the list. A caller cannot work around that by supplying its own timestamps: the store owns `updatedAt` and overwrites what it is given.
+
+The host still reconstructs workflow services on restart, and still owns sweeping orphaned run references that can no longer be resumed.
 
 This variant must not import Bureau internals or locally recreate capabilities that belong in a published package.

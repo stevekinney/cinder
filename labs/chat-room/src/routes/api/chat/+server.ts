@@ -6,7 +6,7 @@ import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic
 
 import { requestContext, toolbox } from '$lib/toolbox';
 import { chatRunResponse } from '$lib/chat-run-response';
-import { createChatAgent, startChatRun } from './chat-agent';
+import { createChatAgent, startChatRun } from '$lib/chat-agent';
 
 import type { RequestHandler } from './$types';
 

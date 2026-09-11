@@ -97,8 +97,17 @@ async function build(): Promise<DurableRuntime> {
 	built.checkpointStore = checkpoints as never;
 
 	runtime.onDispose(async () => {
-		await built.engine.shutdown();
-		(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
+		// The slot is cleared in `finally`. If `shutdown()` rejects, the memo
+		// would otherwise still hold a promise for an engine that is gone, and
+		// every later `durableRuntime()` would hand back that dead engine —
+		// the runtime counts the failed teardown, so disposal itself already
+		// reports the problem, but a stale memo turns one failure into every
+		// subsequent request's failure.
+		try {
+			await built.engine.shutdown();
+		} finally {
+			(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
+		}
 	});
 
 	return built;

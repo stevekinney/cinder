@@ -33,6 +33,12 @@
 			// server-rendered, so re-rendering it on the server is what keeps
 			// the page honest about where the state lives.
 			location.reload();
+		} catch {
+			// A rejected `fetch` — connection reset, offline — reaches here, not
+			// the `!response.ok` branch. Without this the `finally` would reset
+			// the button and the form would look idle, as though nothing had
+			// been attempted.
+			failure = 'Could not reach the server. Check your connection and try again.';
 		} finally {
 			creating = false;
 		}
@@ -88,19 +94,9 @@
 		<ul data-testid="server-owned-list">
 			{#each data.conversations as conversation (conversation.id)}
 				<li data-testid="server-owned-conversation">
-					<!--
-						Built from a template literal rather than `resolve()`. The
-						exercise index hit the opposite problem — `resolve()` is
-						typed with one overload per known route and cannot take a
-						union — but a PARAMETERISED route has one overload taking the
-						id, so the constraint there does not apply here. The lint rule
-						is a syntactic check for a `resolve()` call at the href site,
-						so it is disabled for this line with the reason rather than
-						turned off in config.
-					-->
-					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
-					<a href={`/server-owned/${conversation.id}`} data-testid="server-owned-conversation-title"
-						>{conversation.title}</a
+					<a
+						href={resolve('/server-owned/[id]', { id: conversation.id })}
+						data-testid="server-owned-conversation-title">{conversation.title}</a
 					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}

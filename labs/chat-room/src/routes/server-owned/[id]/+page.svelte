@@ -32,9 +32,25 @@
 			// history because the browser owns it there; here the server holds
 			// it, and only the turn the user just typed has to cross — the
 			// server cannot know it any other way.
+			// The LAST message must be the user turn being sent. The session
+			// controller also calls this transport to CONTINUE a run after a
+			// tool result, and on that call the last message is a tool result,
+			// not a user turn — sending the previous user text again would
+			// duplicate it as a new turn.
+			//
+			// This route runs with an empty toolbox (see the stream endpoint's
+			// note: approval belongs to CIN-445), so no continuation can occur
+			// today. The guard is here so that stops being true loudly rather
+			// than silently, if a toolbox is ever added without the approval
+			// wiring that has to come with it.
 			const messages = getMessages(history);
-			const lastUser = [...messages].reverse().find((message) => message.role === 'user');
-			const text = typeof lastUser?.content === 'string' ? lastUser.content : '';
+			const last = messages.at(-1);
+			if (last?.role !== 'user' || typeof last.content !== 'string') {
+				throw new Error(
+					'The server-owned transport was called to continue a run. That path needs approval wiring (CIN-445) before a toolbox is enabled here.'
+				);
+			}
+			const text = last.content;
 
 			const response = await fetch(`/api/server-owned/conversations/${data.id}/stream`, {
 				method: 'POST',

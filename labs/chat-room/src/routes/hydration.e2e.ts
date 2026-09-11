@@ -189,3 +189,29 @@ for (const route of HYDRATING_ROUTES) {
 		expect(viaInitScript.length).toBe(viaConsoleEvent.length);
 	});
 }
+
+// `/server-owned/[id]` cannot be a `HYDRATING_ROUTES` entry: it needs a real
+// conversation id, and that list is a static inventory whose value is being
+// diffable against `ls`. A parameterised route in it would either carry a
+// hard-coded id that does not exist or force the list to become code.
+//
+// It is covered here instead, because the reason the list exists applies to it
+// just as much: the detail page server-renders and hydrates interactive state
+// (a Chat mount and a session controller), and that is the shape mismatches
+// come from.
+test('/server-owned/[id] hydrates without a mismatch', async ({ page, request }) => {
+	const created = await request.post(`${DEV_ORIGIN}/api/server-owned/conversations`, {
+		data: { title: `Hydration ${Date.now().toString(36)}` }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const { viaConsoleEvent, viaInitScript } = await collectHydrationMismatches(
+		page,
+		`/server-owned/${conversation.id}`
+	);
+
+	expect(viaInitScript).toEqual([]);
+	expect(viaConsoleEvent).toEqual([]);
+	expect(viaInitScript.length).toBe(viaConsoleEvent.length);
+});

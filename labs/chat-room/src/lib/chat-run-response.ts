@@ -1,6 +1,6 @@
-import { createChatStreamWriter, pumpChatRun } from '../routes/api/chat/chat-agent';
+import { createChatStreamWriter, pumpChatRun } from './chat-agent.ts';
 
-import type { ChatStreamWriter } from '../routes/api/chat/chat-agent';
+import type { ChatStreamWriter } from './chat-agent.ts';
 import type { AgentRun } from '@lostgradient/operative';
 
 /**

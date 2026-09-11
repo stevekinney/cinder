@@ -8,13 +8,15 @@
  * them. A `toHaveCount` on the list would pass alone and fail in a suite —
  * order-dependence dressed up as a flake.
  *
- * NOT added to the cross-engine shards, deliberately. Those exist for real
- * fetch/ReadableStream paths that behave differently per engine, and only one
- * test here is that: the create flow's browser `fetch` plus reload. The other
- * three drive Playwright's `request` fixture, which is a Node-side HTTP client
- * — running them under WebKit and Firefox would execute the identical code
- * three times and prove nothing. If cross-engine coverage of the create flow
- * is wanted, it belongs in its own small spec rather than tripling this file.
+ * Two tests here drive real browser paths: the create flow's `fetch` plus
+ * reload, and the incremental-rendering test, which streams a `ReadableStream`
+ * through the page's session controller. An earlier version of this comment
+ * claimed only the create flow used browser fetch, which was wrong about the
+ * file it sits in.
+ *
+ * The `request`-fixture tests stay out of the cross-engine shards: that
+ * fixture is a Node-side HTTP client, so running it under three engines
+ * executes identical code three times.
  */
 
 import { expect, test } from '@playwright/test';
@@ -135,7 +137,7 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	// releases it, so each state below is causally separated from the next
 	// rather than separated by a hopeful wait — three renders of one assistant
 	// message, which is what "incremental" has to mean to be worth asserting.
-	await expect.poll(async () => fixtureGateHeld(marker), { timeout: 10_000 }).toBe(true);
+	await expect.poll(() => fixtureGateHeld(marker)).toBe(true);
 
 	// One chunk on screen, the rest not yet produced.
 	await expect(log).toContainText(STEPPED_CHUNKS[0]);

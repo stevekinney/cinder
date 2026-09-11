@@ -6,13 +6,16 @@ import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-ru
  * The server-owned variant's disposal contract.
  *
  * This is the executable half of the "initialization, disposal, and hot-module
- * replacement leave nothing orphaned" requirement. The HMR hook itself cannot
- * run under `bun test` — there is no Vite client — so what is pinned here is
- * the behaviour that hook DEPENDS on: that a runtime is reused rather than
- * rebuilt, that disposing it runs every registered teardown, and that a fresh
- * one is built afterwards. If those hold, `import.meta.hot.dispose` calling
- * `disposeServerOwnedRuntime` is sufficient; if they do not, no amount of
- * correct hook wiring would save it.
+ * replacement leave nothing orphaned" requirement — but note there is NO
+ * `import.meta.hot.dispose` hook to exercise. Vite reloads server modules
+ * rather than hot-accepting them, so such a hook never fires; the `globalThis`
+ * slot surviving module replacement is what prevents the leak, and
+ * `server-owned-runtime.ts` records the measurement behind that.
+ *
+ * What is pinned here is the disposal path itself, which the specs and a
+ * process teardown both use: a runtime is reused rather than rebuilt, every
+ * registered teardown runs, a throwing one does not strand the rest, and a
+ * fresh runtime is built afterwards.
  */
 describe('server-owned runtime', () => {
 	it('returns one runtime per process rather than one per call', async () => {

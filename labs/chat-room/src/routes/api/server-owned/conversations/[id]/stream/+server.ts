@@ -8,8 +8,8 @@ import { chatRunResponse } from '$lib/chat-run-response';
 import { AGENT_NAME, loadConversation } from '$lib/server-owned-conversations';
 import { durableRuntime } from '$lib/server-owned-durable';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
-import { requestContext, toolbox } from '$lib/toolbox';
-import { createChatRunOptions } from '../../../../chat/chat-agent';
+import { emptyToolbox, requestContext } from '$lib/toolbox';
+import { createChatRunOptions } from '$lib/chat-agent';
 
 import type { RequestHandler } from './$types';
 
@@ -82,7 +82,23 @@ export const POST: RequestHandler = async ({ params, request }) => {
 						// send every Playwright spec at the real, billed API.
 						baseURL: env.ANTHROPIC_BASE_URL
 					}),
-					toolbox,
+					// EMPTY, deliberately, and this is a scope boundary rather
+					// than an omission.
+					//
+					// `$lib/toolbox` contains `remember_note`, which is
+					// approval-gated: a run that selects it parks with an
+					// `action_required` result, and the session controller then
+					// calls the transport again to continue. This route family
+					// has no approval UI, so such a run would park with no way
+					// to resolve it — and the continuation call would re-send
+					// the same user turn as a NEW one, duplicating it.
+					//
+					// Operative-native approval is CIN-445's subject. Wiring
+					// half of it here would ship a reachable dead end; wiring
+					// none of it keeps the variant honest about what it
+					// currently demonstrates, which is server-owned
+					// persistence and streaming.
+					toolbox: emptyToolbox,
 					requestContext,
 					writer
 				})

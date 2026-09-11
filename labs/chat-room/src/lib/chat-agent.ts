@@ -232,8 +232,15 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
 }
 
 /**
- * Builds the module-scoped-toolbox, request-local-writer agent for one
- * `/api/chat` request.
+ * The run options a chat turn needs, without the conversation.
+ *
+ * Split out of `createChatAgent` because `createSessionHandle` takes exactly
+ * this shape (`SessionRunOptions = Omit<RunOptions, 'conversation'>`) and
+ * supplies the conversation itself from the session store. Both callers get
+ * the same wire plumbing, the same stop conditions, and the same request
+ * context from one definition — the alternative was a second copy of the
+ * `withEnhancedStreaming` wiring, which is where the two vocabularies would
+ * start to diverge.
  *
  * The `TypedEventTarget` is created here rather than accepted, so the route
  * cannot accidentally share one across requests: every `stream:*` event the
@@ -250,17 +257,6 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
  * intent-at-a-glance, `pendingApproval()`. Without at least one condition
  * that stops on ordinary text, a plain reply would otherwise run to
  * `maximumSteps` — see the declarations' own example for the same pairing.
- */
-/**
- * The run options a chat turn needs, without the conversation.
- *
- * Split out of `createChatAgent` because `createSessionHandle` takes exactly
- * this shape (`SessionRunOptions = Omit<RunOptions, 'conversation'>`) and
- * supplies the conversation itself from the session store. Both callers get
- * the same wire plumbing, the same stop conditions, and the same request
- * context from one definition — the alternative was a second copy of the
- * `withEnhancedStreaming` wiring, which is where the two vocabularies would
- * start to diverge.
  */
 export function createChatRunOptions(options: {
 	generate: StreamingGenerateFunction;
