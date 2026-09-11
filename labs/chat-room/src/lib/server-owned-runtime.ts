@@ -130,3 +130,35 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
 //
 // Explicit disposal remains available — `disposeServerOwnedRuntime()` is what
 // the specs use, and what a process teardown would call.
+
+/**
+ * Tear the runtime down when the process is asked to stop.
+ *
+ * Without this nothing in production ever calls `disposeServerOwnedRuntime()`:
+ * the durable engine's `shutdown()` teardown is registered but only the specs
+ * reach it, so a deployed server would hold the engine open through SIGTERM
+ * and rely on the process being killed. That works, and it means an orderly
+ * shutdown never happens — in-flight checkpoint writes are cut off rather than
+ * finished.
+ *
+ * Registered once per process, guarded on `globalThis` for the same reason the
+ * runtime is: Vite re-evaluates server modules on edit, and a module-scoped
+ * guard would add another pair of listeners on every reload until Node warns
+ * about a leak.
+ */
+const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
+
+type SignalHost = typeof globalThis & { [SIGNALS_SLOT]?: true };
+
+const signalHost = globalThis as SignalHost;
+if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
+	signalHost[SIGNALS_SLOT] = true;
+	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+		process.once(signal, () => {
+			// Not awaited: a signal handler cannot hold the process open, and the
+			// teardown is best-effort by nature. What it buys is the engine being
+			// asked to stop rather than simply vanishing.
+			void disposeServerOwnedRuntime();
+		});
+	}
+}

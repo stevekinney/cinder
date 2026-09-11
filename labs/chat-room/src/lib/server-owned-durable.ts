@@ -60,7 +60,19 @@ type DurableHost = typeof globalThis & {
 
 export async function durableRuntime(): Promise<DurableRuntime> {
 	const host = globalThis as DurableHost;
-	host[DURABLE_SLOT] ??= build();
+	// A REJECTED promise must not be memoised. Without this, one transient
+	// failure — a misconfigured store, a storage hiccup during the first
+	// streamed turn — is cached forever: every later caller awaits the same
+	// rejected promise and fails identically until the process restarts, with
+	// nothing in the logs to suggest the cause was a single early error.
+	//
+	// Cleared on rejection and rethrown, so the next request rebuilds. The
+	// in-flight promise is still shared, so concurrent callers continue to
+	// await one build rather than racing several.
+	host[DURABLE_SLOT] ??= build().catch((cause: unknown) => {
+		host[DURABLE_SLOT] = undefined;
+		throw cause;
+	});
 	return host[DURABLE_SLOT];
 }
 

@@ -8,15 +8,11 @@
  * them. A `toHaveCount` on the list would pass alone and fail in a suite —
  * order-dependence dressed up as a flake.
  *
- * Two tests here drive real browser paths: the create flow's `fetch` plus
- * reload, and the incremental-rendering test, which streams a `ReadableStream`
- * through the page's session controller. An earlier version of this comment
- * claimed only the create flow used browser fetch, which was wrong about the
- * file it sits in.
- *
- * The `request`-fixture tests stay out of the cross-engine shards: that
- * fixture is a Node-side HTTP client, so running it under three engines
- * executes identical code three times.
+ * The BROWSER-driving tests live in `server-owned-streaming.e2e.ts`, which is
+ * in a cross-engine shard. What remains here drives Playwright's `request`
+ * fixture — a Node-side HTTP client — plus one pure rendering check, none of
+ * which differ per engine, so the chromium project's root matcher runs them
+ * once.
  */
 
 import { expect, test } from '@playwright/test';

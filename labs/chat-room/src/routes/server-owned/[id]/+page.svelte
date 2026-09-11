@@ -89,7 +89,31 @@
 	<h1 data-testid="server-owned-title">{data.title}</h1>
 
 	<div data-testid="server-owned-chat" data-streaming={streaming}>
-		<Chat id="server-owned-conversation" {conversation} {adapter} />
+		<!--
+			Capabilities are narrowed to what this variant can actually honour.
+			`Chat` enables all of them by default, and the defaults assume the
+			BROWSER owns the transcript — which is exactly what is not true here.
+
+			`editing`: the controller's edit flow rewinds the conversation and
+			re-sends. The transcript lives in the session store, and this family
+			has no endpoint that replaces a turn, so an edit would rewind the
+			browser's mirror while the server kept the original — the two would
+			silently disagree from that point on.
+
+			`attachments`: the controller supplies attachments to the transport
+			separately from the conversation, and this transport sends only the
+			new turn's text. An attached file would appear in the composer, be
+			dropped on the way out, and never reach the model.
+
+			Both are reachable defaults rather than hypotheticals, which is why
+			they are turned off rather than left for a later issue to notice.
+		-->
+		<Chat
+			id="server-owned-conversation"
+			{conversation}
+			{adapter}
+			capabilities={{ editing: false, attachments: false }}
+		/>
 	</div>
 </main>
 

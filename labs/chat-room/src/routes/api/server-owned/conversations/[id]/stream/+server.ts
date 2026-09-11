@@ -61,6 +61,23 @@ export const POST: RequestHandler = async ({ params, request }) => {
 		return json({ error: 'ANTHROPIC_API_KEY is not configured' }, { status: 503 });
 	}
 
+	// KNOWN DIFFERENCE from `/api/chat`: no prompt-cache boundary.
+	//
+	// The canonical route marks the newest message with `cacheBoundary` before
+	// the run, so each turn caches the prompt prefix and the next turn reads it
+	// back instead of reprocessing the transcript. Here the turn is appended by
+	// `handle.run()` inside the session, so there is no equivalent moment to
+	// mark it — the nearest seam is a `prepareStep` hook mutating the run's
+	// conversation.
+	//
+	// Not done, deliberately: a cache boundary's effect is only observable in a
+	// provider's `cache_read_input_tokens`, which the local fixture does not
+	// report, so the change could be written but not verified from this
+	// repository. Shipping an unverifiable optimization into the path that
+	// bills is worse than recording the gap.
+	//
+	// The cost is real and grows with transcript length, so this is a follow-up
+	// rather than a non-issue.
 	const { sessions } = serverOwnedRuntime();
 	const durable = await durableRuntime();
 
