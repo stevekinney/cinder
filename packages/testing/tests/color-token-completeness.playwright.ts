@@ -67,81 +67,106 @@ const PUBLIC_COLOR_PROPERTIES: string[] = (() => {
 const COLOR_PROPERTIES = ['color', 'background-color', 'border-color'] as const;
 
 /**
- * The theme states a token can be declared in: the default (system-driven
- * `light-dark()`), and each explicit `[data-theme]` override block.
+ * The states a token can resolve in.
+ *
+ * `[data-theme]` blocks REDECLARE tokens, so setting the attribute activates
+ * those declarations rather than the base `:root` recipe's matching arm. That
+ * means the base `light-dark()`'s dark arm is only ever evaluated by a consumer
+ * on the documented default path -- no attribute, OS in dark mode -- and is
+ * reached here only by emulating the media query. Probing `data-theme="dark"`
+ * alone would leave a broken dark arm in a base recipe entirely uncovered.
  */
-const THEMES = [null, 'light', 'dark'] as const;
+const STATES = [
+  { attribute: null, colorScheme: 'light' },
+  { attribute: null, colorScheme: 'dark' },
+  { attribute: 'light', colorScheme: 'light' },
+  { attribute: 'dark', colorScheme: 'dark' },
+] as const;
 
 test('every public color token parses in the color positions it is used in', async ({ page }) => {
   await page.goto('/page/button?snapshot=1');
 
   expect(PUBLIC_COLOR_PROPERTIES.length).toBeGreaterThan(100);
 
-  const failures = await page.evaluate(
-    ({ properties, colorProperties, themes }) => {
-      const probe = document.createElement('div');
-      document.body.append(probe);
-      const dropped: string[] = [];
-      const root = document.documentElement;
-      const initialTheme = root.getAttribute('data-theme');
+  const failures: string[] = [];
+  for (const state of STATES) {
+    // `emulateMedia` is a page-level API, so the loop lives here rather than in
+    // the browser: each arm needs its own `prefers-color-scheme` before the
+    // computed values are read.
+    await page.emulateMedia({ colorScheme: state.colorScheme });
+    const label =
+      state.attribute === null
+        ? `default, prefers ${state.colorScheme}`
+        : `data-theme=${state.attribute}`;
 
-      for (const theme of themes) {
-        if (theme === null) root.removeAttribute('data-theme');
-        else root.setAttribute('data-theme', theme);
-        const label = theme === null ? 'default' : `data-theme=${theme}`;
-        // Re-read per arm: the attribute above changes what `:root` resolves
-        // to. Within one arm it is stable, so this is hoisted out of the token
-        // loop rather than read per token.
-        const rootStyle = getComputedStyle(root);
+    failures.push(
+      ...(await page.evaluate(
+        ({ properties, colorProperties, attribute, label: armLabel }) => {
+          const probe = document.createElement('div');
+          document.body.append(probe);
+          const dropped: string[] = [];
+          const root = document.documentElement;
+          const initialTheme = root.getAttribute('data-theme');
 
-        probeTokens(rootStyle, label);
-      }
+          if (attribute === null) root.removeAttribute('data-theme');
+          else root.setAttribute('data-theme', attribute);
+          // Read once per arm: stable within it, and the loop below runs over
+          // every public color token.
+          probeTokens(getComputedStyle(root), armLabel);
 
-      if (initialTheme === null) root.removeAttribute('data-theme');
-      else root.setAttribute('data-theme', initialTheme);
+          if (initialTheme === null) root.removeAttribute('data-theme');
+          else root.setAttribute('data-theme', initialTheme);
 
-      probe.remove();
-      return dropped;
+          probe.remove();
+          return dropped;
 
-      function probeTokens(rootStyle: CSSStyleDeclaration, label: string) {
-        for (const property of properties) {
-          // The token's computed value: the token stream after `var()`
-          // substitution, which is exactly what a consumer's own declaration
-          // would receive. These are UNREGISTERED custom properties (no
-          // `@property` rule), so `color-mix()` and `light-dark()` are still
-          // present here rather than collapsed to a color -- collapsing happens
-          // when the value lands in a real color property, which is what the
-          // probe below does and what this test is actually checking.
-          const resolved = rootStyle.getPropertyValue(property).trim();
-          if (resolved === '') {
-            dropped.push(`[${label}] ${property}: declared no value at :root`);
-            continue;
-          }
-          for (const colorProperty of colorProperties) {
-            probe.style.setProperty(colorProperty, '');
-            probe.style.setProperty(colorProperty, resolved);
-            // An invalid color leaves the property unset: the assignment was
-            // dropped. This is the silent failure the ticket is about.
-            if (probe.style.getPropertyValue(colorProperty).trim() === '') {
-              dropped.push(`[${label}] ${property} (${resolved}) is not a valid ${colorProperty}`);
+          function probeTokens(rootStyle: CSSStyleDeclaration, label: string) {
+            for (const property of properties) {
+              // The token's computed value: the token stream after `var()`
+              // substitution, which is exactly what a consumer's own
+              // declaration would receive. These are UNREGISTERED custom
+              // properties (no `@property` rule), so `color-mix()` and
+              // `light-dark()` are still present rather than collapsed to a
+              // color -- collapsing happens when the value lands in a real
+              // color property, which is what the probe below does.
+              const resolved = rootStyle.getPropertyValue(property).trim();
+              if (resolved === '') {
+                dropped.push(`[${label}] ${property}: declared no value at :root`);
+                continue;
+              }
+              for (const colorProperty of colorProperties) {
+                probe.style.setProperty(colorProperty, '');
+                probe.style.setProperty(colorProperty, resolved);
+                // An invalid color leaves the property unset: the assignment
+                // was dropped. This is the silent failure the ticket is about.
+                if (probe.style.getPropertyValue(colorProperty).trim() === '') {
+                  dropped.push(
+                    `[${label}] ${property} (${resolved}) is not a valid ${colorProperty}`,
+                  );
+                }
+              }
+              // A shadow color sits inside a shorthand, where an invalid color
+              // invalidates the entire declaration.
+              probe.style.setProperty('box-shadow', '');
+              probe.style.setProperty('box-shadow', `0 1px 2px ${resolved}`);
+              if (probe.style.getPropertyValue('box-shadow').trim() === '') {
+                dropped.push(
+                  `[${label}] ${property} (${resolved}) is not a valid box-shadow color`,
+                );
+              }
             }
           }
-          // A shadow color sits inside a shorthand, where an invalid color
-          // invalidates the entire declaration.
-          probe.style.setProperty('box-shadow', '');
-          probe.style.setProperty('box-shadow', `0 1px 2px ${resolved}`);
-          if (probe.style.getPropertyValue('box-shadow').trim() === '') {
-            dropped.push(`[${label}] ${property} (${resolved}) is not a valid box-shadow color`);
-          }
-        }
-      }
-    },
-    {
-      properties: PUBLIC_COLOR_PROPERTIES,
-      colorProperties: [...COLOR_PROPERTIES],
-      themes: [...THEMES],
-    },
-  );
+        },
+        {
+          properties: PUBLIC_COLOR_PROPERTIES,
+          colorProperties: [...COLOR_PROPERTIES],
+          attribute: state.attribute,
+          label,
+        },
+      )),
+    );
+  }
+  await page.emulateMedia({ colorScheme: null });
 
   expect(failures).toEqual([]);
 });

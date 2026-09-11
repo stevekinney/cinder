@@ -330,6 +330,18 @@ so this is a pre-existing shortfall pushed further down rather than a floor this
 change breaks, but it belongs with the live affordances rather than with the
 exempt states.
 
+**StatusDot's connecting pulse** — the opacity lives in a `@keyframes` body,
+which is a fifth arrangement the scan cannot reach. With
+`status="neutral" connectionState="connecting"` the indicator resolves to
+`border.strong` and `cinder-status-dot-pulse` animates it to `opacity: 0.3` at
+the midpoint, so 58% × 0.3 ≈ 17% ink there — dark `surface-inset` 1.534 → 1.393,
+light 1.174 → 1.439.
+
+This is a transient trough rather than a resting value: the animation spends
+most of its cycle nearer `opacity: 1`, where the undiluted StatusDot row in the
+area table applies. Recorded so that row is not read as covering every state of
+the component.
+
 **Chat's rollback preview** — the faintest of the compounded states, and an
 ancestor/child pair in the Chat workspace rather than in `@lostgradient/cinder`.
 When a rollback confirmation marks later messages as discarded,
