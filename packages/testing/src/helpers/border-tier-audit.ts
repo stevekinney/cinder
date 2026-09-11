@@ -105,7 +105,7 @@ export type TierUse = {
   readonly isMix: boolean;
 };
 
-const TIER_PATTERN = /--cinder-border(?:-muted|-strong)?\b/;
+const TIER_PATTERN = /--cinder-border(?:-muted|-strong)?(?![\w-])/;
 const BORDER_PROPERTY = /^(?:border|outline)(?:-[a-z-]+)?$/;
 const CUSTOM_PROPERTY_REFERENCE = /var\(\s*(--[a-zA-Z0-9-]+)/g;
 

@@ -34,6 +34,18 @@ describe('referencesBorderTier', () => {
     expect(referencesBorderTier('var(--cinder-accent-solid)')).toBe(false);
   });
 
+  test('is false for real, distinct --cinder-border-* tokens that share the tier prefix but are not tiers', () => {
+    // --cinder-border-faint is a real production token (dropdown.css,
+    // toolbar.css) referenced for non-border backgrounds -- a naive
+    // `--cinder-border(?:-muted|-strong)?\b` regex matches it anyway because
+    // `\b` only checks for a word/non-word transition, and the hyphen before
+    // "faint" is itself a non-word character, so the boundary is satisfied
+    // one character too early. Same reasoning applies to -ink and -inverse.
+    expect(referencesBorderTier('var(--cinder-border-faint)')).toBe(false);
+    expect(referencesBorderTier('var(--cinder-border-ink)')).toBe(false);
+    expect(referencesBorderTier('var(--cinder-border-inverse)')).toBe(false);
+  });
+
   test('survives light-dark() desugaring into a buncss pair', () => {
     // The exact shape the CDP spike captured from the dev server for the
     // Toggle track's generated :root declaration.
@@ -60,6 +72,15 @@ describe('tierNameIn', () => {
 
   test('is undefined when the value names no tier', () => {
     expect(tierNameIn('var(--cinder-accent-solid)')).toBeUndefined();
+  });
+
+  test('is undefined for a real --cinder-border-* token that is not a tier', () => {
+    // Regression: the pre-fix `\b`-anchored pattern returned '--cinder-border'
+    // here -- the wrong name entirely -- instead of correctly reporting no
+    // tier match.
+    expect(tierNameIn('var(--cinder-border-faint)')).toBeUndefined();
+    expect(tierNameIn('var(--cinder-border-ink)')).toBeUndefined();
+    expect(tierNameIn('var(--cinder-border-inverse)')).toBeUndefined();
   });
 });
 
@@ -117,6 +138,17 @@ describe('tierUses', () => {
 
   test('a border use is exempt, even when it is the only declaration', () => {
     expect(tierUses([declaration('border-color', 'var(--cinder-border-muted)')])).toEqual([]);
+  });
+
+  test('a real --cinder-border-faint use is NOT reported -- it is a distinct, non-tier token', () => {
+    // The site this misreport would actually hit: dropdown.css:239 and
+    // toolbar.css:42 both declare `background: var(--cinder-border-faint)`
+    // -- a non-border use of a REAL, non-tier token that happens to share the
+    // `--cinder-border` prefix. The pre-fix `\b`-anchored TIER_PATTERN
+    // reported this as a use of `--cinder-border` itself (the wrong name
+    // entirely), which is exactly the defect class CIN-602 exists to retire,
+    // reintroduced one level up the call stack from `referencesBorderTier`.
+    expect(tierUses([declaration('background', 'var(--cinder-border-faint)')])).toEqual([]);
   });
 
   test('the Toggle track shape: a one-hop alias through a var() fallback resolves', () => {
