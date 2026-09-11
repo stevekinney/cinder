@@ -35,7 +35,11 @@ The component takes over Arrow, Page, Home, and End **only when `stickyItems` is
 
 ## Sticky rows
 
-A sticky row whose own index has scrolled out of the rendered window is re-rendered as a pinned copy so the heading does not vanish. That copy is `aria-hidden`: the row it duplicates is still counted in the list's semantics, and announcing both would double it.
+A sticky row whose own index has scrolled out of the rendered window stays mounted so the heading does not vanish. It is the same element throughout — kept in the keyed `{#each}` and switched to absolute positioning rather than moved into a block of its own, which would destroy and rebuild it at every crossing and take any local state or focused control inside it with it.
+
+It is not `aria-hidden`. Past its window this is the only instance of that row, so hiding it would remove a visible heading from the accessibility tree and leave anything focusable inside it reachable but invisible to a screen reader.
+
+It also keeps its place in index order among the rendered rows, because reading order is its position in the list. Ordering costs nothing visually: the row is positioned absolutely and stays above its siblings by `z-index`, not by coming last in the DOM.
 
 ## Scroll restoration
 
