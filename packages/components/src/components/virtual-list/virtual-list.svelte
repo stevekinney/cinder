@@ -293,40 +293,6 @@
    */
   const firstVisibleIndex = $derived(resolveAnchorIndexAtOffset(scrollOffset));
   const activeStickyIndex = $derived(resolveActiveStickyIndex(stickyIndexes, firstVisibleIndex));
-  const renderedItems = $derived.by(() => {
-    const windowed = virtualWindow.items.flatMap((virtualItem) => {
-      const item = items[virtualItem.index];
-      return item === undefined ? [] : [{ ...virtualItem, item }];
-    });
-    if (pinnedStickyIndex === null) return windowed;
-    const item = items[pinnedStickyIndex];
-    if (item === undefined) return windowed;
-    // Appended rather than sorted into place. The row is positioned absolutely, so
-    // its order here decides only paint order — and last means on top, over the rows
-    // sliding beneath it.
-    return [
-      ...windowed,
-      {
-        index: pinnedStickyIndex,
-        key: keyAt(pinnedStickyIndex),
-        start: locateRowStart(pinnedStickyIndex),
-        size: locateRowSize(pinnedStickyIndex),
-        item,
-      },
-    ];
-  });
-
-  /**
-   * The sticky row to pin when it has scrolled out of the rendered window.
-   *
-   * Rendered as its own element rather than folded back into the window. The window
-   * lays its rows out in flow from a single offset, so inserting a non-contiguous
-   * row there displaced every row after it by that row's height — the headings
-   * stayed visible and everything else was wrong by one row.
-   *
-   * A sticky row still INSIDE the window needs none of this: it is contiguous, and
-   * `position: sticky` holds it without leaving its flow box.
-   */
   const pinnedStickyIndex = $derived.by(() => {
     if (activeStickyIndex === null) return null;
     // Inside the window it needs nothing special: it is contiguous, and
@@ -341,6 +307,48 @@
     pinnedStickyIndex === null ? 0 : locateRowSize(pinnedStickyIndex),
   );
 
+  /** The first row not hidden behind a pinned header. */
+  const firstUncoveredIndex = $derived(
+    pinnedStickySize > 0
+      ? resolveAnchorIndexAtOffset(scrollOffset + pinnedStickySize)
+      : firstVisibleIndex,
+  );
+
+  const renderedItems = $derived.by(() => {
+    const windowed = virtualWindow.items.flatMap((virtualItem) => {
+      const item = items[virtualItem.index];
+      return item === undefined ? [] : [{ ...virtualItem, item }];
+    });
+    if (pinnedStickyIndex === null) return windowed;
+    const item = items[pinnedStickyIndex];
+    if (item === undefined) return windowed;
+    // In index order, because this element is exposed to assistive technology and
+    // reading order is its order in the list. Ordering costs nothing visually: the
+    // row is absolutely positioned, so it does not lay out among these siblings, and
+    // it stays above them by the sticky rule's `z-index` rather than by coming last.
+    const pinned = {
+      index: pinnedStickyIndex,
+      key: keyAt(pinnedStickyIndex),
+      start: locateRowStart(pinnedStickyIndex),
+      size: locateRowSize(pinnedStickyIndex),
+      item,
+    };
+    return pinnedStickyIndex < (windowed[0]?.index ?? 0)
+      ? [pinned, ...windowed]
+      : [...windowed, pinned];
+  });
+
+  /**
+   * The sticky row to pin when it has scrolled out of the rendered window.
+   *
+   * Rendered as its own element rather than folded back into the window. The window
+   * lays its rows out in flow from a single offset, so inserting a non-contiguous
+   * row there displaced every row after it by that row's height — the headings
+   * stayed visible and everything else was wrong by one row.
+   *
+   * A sticky row still INSIDE the window needs none of this: it is contiguous, and
+   * `position: sticky` holds it without leaving its flow box.
+   */
   /** Membership as a Set: a grouped list can have as many sticky rows as sections. */
   const stickyIndexSet = $derived(new Set(stickyIndexes));
 
@@ -1353,7 +1361,10 @@
       // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
       // carries overscan, so the first arrow press jumped relative to a row several
       // above the viewport.
-      currentIndex: firstVisibleIndex,
+      // The first row the header is not covering. When a sticky header is pinned it
+      // occupies the viewport's leading edge, so `firstVisibleIndex` IS that header —
+      // and advancing from it moves to the row underneath it rather than past it.
+      currentIndex: firstUncoveredIndex,
       itemCount: items.length,
       visibleCount: Math.max(1, Math.floor(viewportHeight / Math.max(1, resolvedItemHeight))),
       orientation: horizontal ? 'horizontal' : 'vertical',

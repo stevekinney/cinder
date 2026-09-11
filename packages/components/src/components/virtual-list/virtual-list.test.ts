@@ -2569,9 +2569,11 @@ describe('VirtualList — stickyItems', () => {
     expect(sticky?.getAttribute('data-cinder-sticky-active')).toBe('true');
   });
 
-  test('renders the pinned row last, which is what stacks it above the others', async () => {
-    // Stacking comes from DOM order rather than a `z-index` — that keeps the pinned
-    // header out of the floating-surface category the primitive guard polices.
+  test('renders the pinned row in index order, since it is read by assistive technology', async () => {
+    // Ordering costs nothing visually — the row is absolutely positioned, so it does
+    // not lay out among its siblings, and it stays above them by the sticky rule's
+    // `z-index` rather than by coming last. What ordering buys is reading order: this
+    // element is exposed to assistive technology, so it belongs where the row does.
     const { container } = render(VirtualList, {
       items: makeItems(1_000),
       itemHeight: 20,
@@ -2590,8 +2592,20 @@ describe('VirtualList — stickyItems', () => {
       expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
     );
 
-    const rows = renderedRows(container);
-    expect(rows[rows.length - 1]?.dataset['index']).toBe('0');
+    const indexes = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-cinder-virtual-index]'),
+    ).map((node) => Number(node.dataset['cinderVirtualIndex']));
+    expect(indexes[0]).toBe(0);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+  });
+
+  test('keeps the pinned row absolutely positioned despite the sticky rule matching it too', async () => {
+    // Both rules match a pinned row at equal specificity, so source order alone
+    // decided the winner — and `position: sticky` took it back, putting the row into
+    // flow and displacing every row after it. The selector carries both attributes so
+    // the outcome does not depend on which rule is written first.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    expect(source).toContain("[data-cinder-sticky='true'][data-cinder-sticky-pinned='true']");
   });
 
   test('keeps the very same DOM node as a sticky row crosses the window boundary', async () => {

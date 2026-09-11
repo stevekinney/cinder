@@ -117,14 +117,23 @@
    * It stays in the keyed `{#each}` rather than moving to an element of its own:
    * Svelte cannot carry identity across that boundary, so a row with local state or
    * a focused control would be destroyed and rebuilt every time it crossed.
+   *
+   * Both attributes are in the selector on purpose. A pinned row is always also a
+   * sticky row, so the rule below matches it too — at equal specificity, where source
+   * order alone decided the winner and `position: sticky` quietly took it back.
+   *
+   * It stays above the rows sliding under it by the `z-index: 1` that rule supplies,
+   * not by DOM order, which is why the element is free to sit in index order for
+   * assistive technology. That combination is what the primitive-composition record
+   * describes.
    */
-  .cinder-virtual-list__row[data-cinder-sticky-pinned='true'] {
+  .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
     position: absolute;
     inset-inline: 0;
   }
 
   .cinder-virtual-list[data-cinder-orientation='horizontal']
-    .cinder-virtual-list__row[data-cinder-sticky-pinned='true'] {
+    .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
     inset-inline: auto;
     inset-block: 0;
   }
