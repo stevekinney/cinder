@@ -379,45 +379,54 @@ jobs:
       # setup-bun downloads a zip release. The Playwright image deliberately
       # omits archive utilities, so install only the bootstrap tool before it
       # runs; browser and OS dependencies still come from the pinned image.
-      # POINTED AT THE AZURE MIRROR first, which is a fix rather than a retry.
+      # CANONICAL ARCHIVE OVER HTTPS, matching what this repository already
+      # decided. `main-green.yaml` rewrites the runner's mirror list the other
+      # way for a documented reason:
       #
-      # GitHub's hosted runners are Azure virtual machines, and their own image
-      # ships with `azure.archive.ubuntu.com` configured for exactly this
-      # reason. A job running inside a CONTAINER uses that image's sources
-      # instead — the generic `archive.ubuntu.com` pool — so this step is the
-      # only thing in the workflow reaching across the internet to a distant
-      # mirror, and it does so from every lane on every pull request.
+      #   GitHub's Ubuntu runner mirror list prefers azure.archive.ubuntu.com.
+      #   When that mirror is unreachable, apt can fetch release metadata from
+      #   its fallback but then hang indefinitely on package indexes.
       #
-      # Observed twice in one evening, on two different mirror IPs:
+      # A first attempt at this step pointed here AT Azure, reasoning that
+      # hosted runners are Azure virtual machines. That was wrong twice over:
+      # it ignored in-repo precedent that had already been paid for, and a
+      # container does not inherit the runner image's mirror list anyway — this
+      # image ships canonical `archive.ubuntu.com` sources of its own.
+      #
+      # What is actually wrong with those sources is the SCHEME. Over plain
+      # HTTP the observed failure was an index inconsistent with its own
+      # Release file, twice in one evening on two different IPs:
       #
       #   E: Failed to fetch .../Packages.gz  File has unexpected size
       #      (1563525 != 1563524). Mirror sync in progress?
       #
-      # That is a mirror serving an index inconsistent with its own Release
-      # file — a property of WHICH mirror is asked, not of how many times. See
-      # CIN-607.
+      # HTTP apt traffic is cacheable and can be served by a transparent proxy
+      # holding a partially-synced index. HTTPS is end to end, which is why
+      # `main-green.yaml` lands on `https://archive.ubuntu.com` rather than on
+      # a different host. Same destination, same conclusion. See CIN-607.
       #
-      # Rewritten FILE BY FILE, with a `[ -f ]` guard, because the obvious
-      # one-liner is a silent no-op: a single `sed -i` over three globs fails
-      # entirely when any one of them matches nothing, and the `|| true` that
-      # makes an unmatched glob survivable then swallows that failure. The
-      # sources would go unmodified and the step would still report success.
-      # Found by running it against a fixture rather than by reading it.
-      #
-      # The resulting sources are printed, so the log shows which mirror apt
-      # actually used — a rewrite that quietly matched nothing is otherwise
-      # indistinguishable from one that worked.
+      # Rewritten FILE BY FILE behind a `[ -f ]` guard, because the obvious
+      # one-liner is a silent no-op: a single `sed -i` over several globs fails
+      # entirely when any one matches nothing, and the `|| true` that makes an
+      # unmatched glob survivable then swallows that failure. This image uses
+      # deb822 `.sources` and has no `sources.list.d/*.list` at all, so that
+      # version would have done nothing here, every time.
       - name: Install Bun bootstrap dependency
         run: |
           for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
             [ -f "$sources" ] || continue
             sed -i \
-              -e 's|http://archive.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
-              -e 's|http://security.ubuntu.com/ubuntu|http://azure.archive.ubuntu.com/ubuntu|g' \
+              -e 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+              -e 's|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' \
               "$sources"
           done
+          # Logged so the job says which mirror and scheme apt actually used; a
+          # rewrite that quietly matched nothing is otherwise indistinguishable
+          # from one that worked. Guarded because this is diagnostics: under
+          # `bash -e -o pipefail` a missing file (grep exit 2) or no matches
+          # (exit 1) would fail the step for a non-functional reason.
           echo "apt sources in use:"
-          grep -rhE '^(deb |URIs:)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null | sort -u
+          grep -rhE '^(deb |URIs:)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null | sort -u || true
           apt-get update
           apt-get install --no-install-recommends --yes unzip
 
