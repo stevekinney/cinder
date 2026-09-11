@@ -7,6 +7,7 @@
 		| 'stop-condition'
 		| 'tripwire'
 		| 'compaction'
+		| 'multi-agent'
 		| 'attachments'
 		| 'adapter-push'
 		| 'message-lifecycle'
@@ -177,6 +178,13 @@
 			title: 'Context compaction',
 			description:
 				'A pinned fact crosses into the summarized projection, and the page keeps its whole transcript.'
+		},
+		{
+			slug: 'multi-agent',
+			href: resolve('/exercises/multi-agent'),
+			title: 'Multi-agent — delegating to a subagent',
+			description:
+				"With the default summarizer, 'summary' caps the child's answer rather than condensing it."
 		},
 		{
 			slug: 'contracts',

@@ -2,12 +2,17 @@
  * The typed-agent result contract, asserted against what the runtime does
  * rather than what a reader would assume.
  *
- * CIN-439 specified `status=failed` with `kind`/`code` on the terminal
- * result. Measured against `@lostgradient/operative@0.10.0`, that is not the
- * behavior: a schema-invalid run settles `stop-condition` with no
- * `result.error`, exactly like a valid one. These specs pin the real
- * asymmetry, because it is the trap — a consumer reading `finishReason`
- * alone cannot tell a garbage answer from a good one.
+ * CIN-439 specified `status=failed` with `kind`/`code` on the terminal result.
+ * That is not the behavior: a schema-invalid run settles `stop-condition` with
+ * no `result.error`, exactly like a valid one. These specs pin the real
+ * asymmetry, because it is the trap — a consumer reading `finishReason` alone
+ * cannot tell a garbage answer from a good one.
+ *
+ * CURRENT as of `@lostgradient/operative@0.11.0`, not a historical note. First
+ * measured against 0.10.0 and re-verified on the 0.11.0 bump (CIN-441) by
+ * running these five specs against it unchanged — the contract they describe
+ * is what the installed runtime does today, which is the only thing that makes
+ * them worth reading.
  */
 
 import { expect, test } from '@playwright/test';
