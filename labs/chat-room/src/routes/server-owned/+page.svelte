@@ -88,7 +88,20 @@
 		<ul data-testid="server-owned-list">
 			{#each data.conversations as conversation (conversation.id)}
 				<li data-testid="server-owned-conversation">
-					<span data-testid="server-owned-conversation-title">{conversation.title}</span>
+					<!--
+						Built from a template literal rather than `resolve()`. The
+						exercise index hit the opposite problem — `resolve()` is
+						typed with one overload per known route and cannot take a
+						union — but a PARAMETERISED route has one overload taking the
+						id, so the constraint there does not apply here. The lint rule
+						is a syntactic check for a `resolve()` call at the href site,
+						so it is disabled for this line with the reason rather than
+						turned off in config.
+					-->
+					<!-- eslint-disable-next-line svelte/no-navigation-without-resolve -->
+					<a href={`/server-owned/${conversation.id}`} data-testid="server-owned-conversation-title"
+						>{conversation.title}</a
+					>
 					<span data-testid="server-owned-conversation-count">
 						{conversation.messageCount} message{conversation.messageCount === 1 ? '' : 's'}
 					</span>
