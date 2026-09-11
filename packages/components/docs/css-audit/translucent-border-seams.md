@@ -230,9 +230,17 @@ own comment notes the outline is what marks the current drop position.
 | `surface`        | 1.223  | 1.168 |
 | `surface-raised` | 1.155  | 1.199 |
 
-**A disabled Button** — `border-color: var(--cinder-border-muted)` from
-`button.css` with `opacity: 0.6` from `foundation.css`'s shared disabled-visual
-rule, so ≈11.4% effective ink against 60%.
+**Three disabled states**, all taking `opacity: 0.6` from `foundation.css`'s
+shared disabled-visual rule (`foundation.css:315-324`) on top of a `border.muted`
+tier, so ≈11.4% effective ink against 60%:
+
+- a **Button** — `border-color: var(--cinder-border-muted)` from `button.css`
+- a **SegmentedControl**, attached or detached — `border: 1px solid var(--cinder-border-muted)`
+- an off **Toggle** — its track resolves through `--cinder-toggle-track-off-resting`,
+  which aliases `border.muted` in the light arm; the dark arm is an independent
+  literal and is untouched, so only the light arm moves here
+
+All three share the same arithmetic, so one table covers them:
 
 | dark surface     | before | after |
 | ---------------- | ------ | ----- |
@@ -267,9 +275,12 @@ recorded rather than silently absorbed. The drop indicator is the one worth
 revisiting on its own, since it marks a live, functional position.
 
 `border-tier-non-border-uses.test.ts` catches the same-rule shape and claims no
-more: the two declarations can live in different files, as the Button case does,
-and resolving that statically would mean modelling the cascade across files.
-This section is the record for those.
+more. All three disabled states above are **cross-file** — the tier is declared
+in a component stylesheet and the opacity in `foundation.css` — so no same-rule
+scan can see them, and resolving that would mean modelling the cascade across
+files. This section is the record for those, and [CIN-602](https://linear.app/lost-gradient/issue/CIN-602)
+covers deriving the whole audit from computed styles instead, which would find
+them without a hand-maintained list.
 
 ## Border tokens used as an input to `color-mix()`
 

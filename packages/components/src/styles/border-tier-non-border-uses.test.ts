@@ -135,81 +135,80 @@ const GENERATED = 'tokens-base.css';
 const TIER_REFERENCE = /var\(--cinder-border(?:-muted|-strong)?[\s,)]/;
 const BORDER_PROPERTY = /^(?:border|outline)(?:-[a-z-]+)?$/;
 
-const CLASSIFIED: readonly Classification[] = [
-  // --- hairlines: a 1px rule drawn as a filled element or an inset shadow ---
-  { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
-  { declaration: 'background-color: var(--cinder-border-muted);', category: 'hairline' },
-  { declaration: 'background-color: var(--cinder-border-strong);', category: 'hairline' },
-  { declaration: 'background: var(--cinder-border);', category: 'hairline' },
-  // Kbd's keycap underline and Steps' skipped-marker ring. An inset shadow is
-  // clipped to the padding box, so it lands on the pixel BESIDE a border rather
-  // than on it -- measured, not assumed: the two rows at Kbd's bottom edge read
-  // rgb(210,211,213) and rgb(141,144,148) rather than one combined row.
-  { declaration: 'box-shadow: inset 0 -1px 0 var(--cinder-border-muted);', category: 'hairline' },
-  { declaration: 'box-shadow: inset 0 0 0 1px var(--cinder-border-muted);', category: 'hairline' },
-  // DataGrid's pinned columns: same adjacency, on the cell's inline-end edge.
-  { declaration: 'inset -1px 0 0 var(--cinder-border),', category: 'hairline' },
-  { declaration: 'inset 1px 0 0 var(--cinder-border),', category: 'hairline' },
-
-  // --- areas: the tier's alpha is visible over whatever is behind it ---
-  {
-    declaration: 'background: var(--cinder-border, currentColor);',
-    category: 'area',
-    audit: 'slider',
-  },
-  {
-    declaration: 'background-color: var(--cinder-border);',
-    category: 'area',
-    audit: 'media-controls',
-  },
-  {
-    declaration: 'color: var(--cinder-border-strong);',
-    category: 'area',
-    audit: 'resizable-panels',
-  },
-  {
-    declaration: 'background: var(--cinder-border-strong);',
-    category: 'area',
-    audit: 'feed-event',
-  },
-  {
-    declaration: '--_cinder-rating-empty: var(--cinder-border-strong);',
-    category: 'area',
-    audit: 'rating',
-  },
-  {
-    declaration: '--cinder-status-dot-color: var(--cinder-border-strong);',
-    category: 'area',
-    audit: 'status-dot',
-  },
-  { declaration: 'var(--cinder-border) 45%,', category: 'area', audit: 'color-field' },
-  { declaration: 'var(--cinder-border) 55%,', category: 'area', audit: 'color-field' },
-
-  // --- component-token aliases, consumed as borders by their own components ---
-  { declaration: '--cinder-chat-reasoning-border: var(--cinder-border);', category: 'alias' },
-  { declaration: '--cinder-chat-suggestion-border: var(--cinder-border);', category: 'alias' },
-  { declaration: '--cinder-chat-tool-approval-border: var(--cinder-border);', category: 'alias' },
-
-  // --- mixes and occlusions ---
-  { declaration: 'var(--cinder-border) 65%', category: 'mix' },
-  {
-    declaration:
-      'background: color-mix(in oklch, var(--cinder-surface), var(--cinder-border-muted) 10%);',
-    category: 'mix',
-  },
-];
-
 /**
- * Sites whose classification depends on the FILE, not just the declaration
- * text -- `background: var(--cinder-border-muted)` is a 1px rule in most
- * places and a 3px rail in ParameterField.
+ * Every classified site, keyed by FILE and declaration.
+ *
+ * Keyed by file deliberately. An earlier version matched on declaration text
+ * alone, with a per-file map layered on top for the exceptions -- which meant a
+ * NEW multi-pixel fill spelled `background: var(--cinder-border);` silently
+ * inherited the generic `hairline` entry and sailed through both this test and
+ * the area-audit gate without anyone looking at it. The guard defaulted to the
+ * permissive answer, which is the one thing a guard must never do. Now an
+ * unlisted site is an unlisted site, whatever it is spelled like.
  */
-const BY_FILE: Record<string, readonly Classification[]> = {
-  'packages/components/src/components/parameter-field/parameter-field.css': [
+const CLASSIFIED: Record<string, readonly Classification[]> = {
+  'packages/chat/src/lib/components/chat/message/chat-date-separator.svelte': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/chat/src/lib/components/chat/message/chat-message.svelte': [
     {
-      declaration: 'background: var(--cinder-border-muted);',
+      declaration:
+        'background: color-mix(in oklch, var(--cinder-surface), var(--cinder-border-muted) 10%);',
+      category: 'mix',
+    },
+  ],
+  'packages/chat/src/lib/components/chat/message/entry-frame.svelte': [
+    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'entry-frame' },
+  ],
+  'packages/chat/src/lib/components/chat/message/parts/reasoning-part.svelte': [
+    { declaration: '--cinder-chat-reasoning-border: var(--cinder-border);', category: 'alias' },
+  ],
+  'packages/chat/src/lib/components/chat/message/parts/suggestion-part.svelte': [
+    { declaration: '--cinder-chat-suggestion-border: var(--cinder-border);', category: 'alias' },
+  ],
+  'packages/chat/src/lib/components/chat/message/parts/tool-approval-part.svelte': [
+    { declaration: '--cinder-chat-tool-approval-border: var(--cinder-border);', category: 'alias' },
+  ],
+  'packages/components/src/components/button-group/button-group.css': [
+    { declaration: 'background: var(--cinder-border);', category: 'hairline' },
+  ],
+  'packages/components/src/components/chip/chip.css': [
+    { declaration: 'var(--cinder-border) 65%', category: 'mix' },
+  ],
+  'packages/components/src/components/color-field/color-field.css': [
+    { declaration: 'var(--cinder-border) 45%,', category: 'area', audit: 'color-field' },
+    { declaration: 'var(--cinder-border) 55%,', category: 'area', audit: 'color-field' },
+  ],
+  'packages/components/src/components/data-grid/data-grid.css': [
+    { declaration: 'inset -1px 0 0 var(--cinder-border),', category: 'hairline' },
+    { declaration: 'inset 1px 0 0 var(--cinder-border),', category: 'hairline' },
+  ],
+  'packages/components/src/components/divider/divider.css': [
+    { declaration: 'background-color: var(--cinder-border-muted);', category: 'hairline' },
+    { declaration: 'background-color: var(--cinder-border-strong);', category: 'hairline' },
+  ],
+  'packages/components/src/components/drawer/drawer.css': [
+    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'drawer' },
+  ],
+  'packages/components/src/components/feed-boundary/feed-boundary.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/components/src/components/feed-event/feed-event.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+    {
+      declaration: 'background: var(--cinder-border-strong);',
       category: 'area',
-      audit: 'parameter-field',
+      audit: 'feed-event',
+    },
+  ],
+  'packages/components/src/components/kbd/kbd.css': [
+    { declaration: 'box-shadow: inset 0 -1px 0 var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/components/src/components/media-controls/media-controls.css': [
+    {
+      declaration: 'background-color: var(--cinder-border);',
+      category: 'area',
+      audit: 'media-controls',
     },
   ],
   'packages/components/src/components/mega-menu/mega-menu.css': [
@@ -219,14 +218,65 @@ const BY_FILE: Record<string, readonly Classification[]> = {
       audit: 'mega-menu',
     },
   ],
-  'packages/components/src/components/drawer/drawer.css': [
-    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'drawer' },
+  'packages/components/src/components/parameter-field/parameter-field.css': [
+    {
+      declaration: 'background: var(--cinder-border-muted);',
+      category: 'area',
+      audit: 'parameter-field',
+    },
+  ],
+  'packages/components/src/components/rating/rating.css': [
+    {
+      declaration: '--_cinder-rating-empty: var(--cinder-border-strong);',
+      category: 'area',
+      audit: 'rating',
+    },
+  ],
+  'packages/components/src/components/resizable-panels/resizable-panels.css': [
+    {
+      declaration: 'color: var(--cinder-border-strong);',
+      category: 'area',
+      audit: 'resizable-panels',
+    },
+  ],
+  'packages/components/src/components/run-step-timeline/run-step-timeline.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/components/src/components/slider/slider.css': [
+    {
+      declaration: 'background: var(--cinder-border, currentColor);',
+      category: 'area',
+      audit: 'slider',
+    },
   ],
   'packages/components/src/components/statistic-group/statistic-group.css': [
     { declaration: 'background: var(--cinder-border);', category: 'occlusion' },
   ],
-  'packages/chat/src/lib/components/chat/message/entry-frame.svelte': [
-    { declaration: 'background: var(--cinder-border);', category: 'area', audit: 'entry-frame' },
+  'packages/components/src/components/status-dot/status-dot.css': [
+    {
+      declaration: '--cinder-status-dot-color: var(--cinder-border-strong);',
+      category: 'area',
+      audit: 'status-dot',
+    },
+  ],
+  'packages/components/src/components/steps/steps.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+    {
+      declaration: 'box-shadow: inset 0 0 0 1px var(--cinder-border-muted);',
+      category: 'hairline',
+    },
+  ],
+  'packages/components/src/components/timeline/timeline.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/components/src/styles/components/_row-item.css': [
+    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+  ],
+  'packages/editor/src/lib/components/markdown-editor/editor-toolbar/toolbar-separator.svelte': [
+    { declaration: 'background: var(--cinder-border);', category: 'hairline' },
+  ],
+  'packages/editor/src/lib/components/review-editor/review-editor-controls.svelte': [
+    { declaration: 'background: var(--cinder-border);', category: 'hairline' },
   ],
   'packages/playground/src/component-page.svelte': [
     { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
@@ -237,6 +287,17 @@ const BY_FILE: Record<string, readonly Classification[]> = {
     },
   ],
 };
+
+/**
+ * The documentation placeholder hatch, built out of a doubly-diluted tier in
+ * eleven `packages/playground/src/examples/**` files. One shape, many copies,
+ * and not part of the shipped component surface. Matched by shape rather than
+ * transcribed eleven times -- the pattern requires a `repeating-linear-gradient`
+ * whose stops are `color-mix()` dilutions of the tier, so an ordinary fill
+ * cannot fall into it.
+ */
+const PLACEHOLDER_HATCH =
+  /^background: repeating-linear-gradient\(-45deg,.*color-mix\(in oklch, var\(--cinder-border-muted\), transparent \d+%\)/;
 
 function styleFiles(directory: string): string[] {
   const found: string[] = [];
@@ -297,20 +358,9 @@ function allUseSites(): Array<readonly [string, string]> {
   return sites;
 }
 
-/**
- * The documentation placeholder hatch, built out of a doubly-diluted tier in
- * eleven `packages/playground/src/examples/**` files. One shape, many copies,
- * and not part of the shipped component surface -- matched by shape rather
- * than transcribed eleven times.
- */
-const PLACEHOLDER_HATCH =
-  /^background: repeating-linear-gradient\(-45deg,.*color-mix\(in oklch, var\(--cinder-border-muted\), transparent \d+%\)/;
-
 function classify(file: string, declaration: string): Classification | undefined {
-  const byFile = BY_FILE[file]?.find((entry) => entry.declaration === declaration);
-  if (byFile !== undefined) return byFile;
-  const exact = CLASSIFIED.find((entry) => entry.declaration === declaration);
-  if (exact !== undefined) return exact;
+  const listed = CLASSIFIED[file]?.find((entry) => entry.declaration === declaration);
+  if (listed !== undefined) return listed;
   if (file.startsWith('packages/playground/src/examples/') && PLACEHOLDER_HATCH.test(declaration)) {
     return { declaration, category: 'mix' };
   }
@@ -333,10 +383,10 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     ).toEqual([]);
   });
 
-  test('the file-specific classifications all still exist', () => {
+  test('the classifications all still exist', () => {
     const sites = new Set(allUseSites().map(([file, declaration]) => `${file}  ${declaration}`));
     const stale: string[] = [];
-    for (const [file, entries] of Object.entries(BY_FILE)) {
+    for (const [file, entries] of Object.entries(CLASSIFIED)) {
       for (const entry of entries) {
         if (!sites.has(`${file}  ${entry.declaration}`))
           stale.push(`${file}  ${entry.declaration}`);
