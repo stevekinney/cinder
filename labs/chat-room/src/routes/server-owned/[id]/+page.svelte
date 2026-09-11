@@ -7,7 +7,7 @@
 		type ConversationHistory
 	} from '@lostgradient/chat';
 	import { resolve } from '$app/paths';
-	import { untrack } from 'svelte';
+	import { onDestroy, untrack } from 'svelte';
 
 	import type { PageData } from './$types';
 
@@ -67,6 +67,15 @@
 	});
 
 	const adapter = session.adapter;
+
+	// Leaving this page while a response is streaming destroys `<Chat>` but not
+	// the controller behind it: without this the run keeps going, its frames
+	// keep arriving for a component that is gone, and the provider request
+	// stays open and billed. `dispose()` stops the active run and releases the
+	// controller's own subscriptions.
+	onDestroy(() => {
+		session.dispose();
+	});
 </script>
 
 <main>

@@ -36,6 +36,15 @@ const CROSS_ENGINE_SHARDS = [
 		'**/interleaving.e2e.ts'
 	],
 	[
+		// The server-owned family's browser paths: a `fetch` plus reload, and a
+		// `ReadableStream` streamed through the page's session controller. Its
+		// `request`-fixture siblings stay out — that fixture is a Node-side HTTP
+		// client, so three engines would run identical code three times.
+		//
+		// Placed here by measurement, not by eye: `--list` per project read
+		// 49/48/62/51/50, so its two tests go to the smallest shard rather than
+		// to `webkit-3`, which is already at the 62 the ceiling note describes.
+		'**/server-owned-streaming.e2e.ts',
 		'**/markdown-editor.e2e.ts',
 		'**/message-lifecycle.e2e.ts',
 		'**/review-comment-creation.e2e.ts',
