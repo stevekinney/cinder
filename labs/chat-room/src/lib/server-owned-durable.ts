@@ -86,14 +86,27 @@ const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
  * clears the runtime slot BEFORE running any teardown while this memo survives
  * until the durable teardown's `engine.shutdown()` resolves. In that window a
  * request would take a fresh `SessionStore` from a new runtime and an engine
- * and checkpoint store from the old one, which is then shut down and its
- * storage cleared out from under the request before it ever calls `run()`.
+ * and checkpoint store from the old one, which is then shut down under it
+ * before it ever calls `run()`. (The STORAGE is not touched — `runDisposal`
+ * deliberately leaves it alone so a graceful shutdown cannot erase persistent
+ * sessions and checkpoints once the in-memory store is swapped out. The hazard
+ * is the mismatched pairing, not deletion.)
  */
 type DurableSlot = {
 	token: symbol;
 	runtime: ServerOwnedRuntime;
 	module: symbol;
 	promise: Promise<DurableRuntime>;
+
+	/**
+	 * `build()`'s `runtime.onDispose` handle, so a MANUAL retirement can take
+	 * the retired engine's teardown back out of the list.
+	 *
+	 * A box rather than the function itself: `build` is async and registers
+	 * the teardown synchronously, before its first await, so there is no way
+	 * to return the handle alongside the promise. It fills this in instead.
+	 */
+	unregisterTeardown: { current?: () => void };
 };
 
 /**
@@ -160,16 +173,40 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	//
 	// A failed retirement is NOT swallowed. If the stale engine will not stop,
 	// building its replacement is how one store ends up with two engines for
-	// the life of the process — so the rejection propagates, the memo is
-	// cleared by `durableRuntime`'s catch, and the next caller tries again
-	// against whatever state exists then.
+	// the life of the process — so the rejection propagates and the STALE memo
+	// is put back (see the catch below), which makes the next caller retry
+	// retiring that same engine rather than build alongside it. Clearing the
+	// memo there instead would send the next caller down the direct-build path
+	// with nothing to retire, which is exactly the second engine this refuses
+	// to create.
 	const retire =
 		held !== undefined && held.runtime === runtime
 			? async (): Promise<void> => {
 					// A build that never succeeded has no engine to stop, and its
 					// own rejection was already delivered to whoever awaited it.
+					// `build` already unregistered that attempt's teardown.
 					const stale = await held.promise.catch(() => undefined);
-					if (stale !== undefined) await stale.engine.shutdown();
+					if (stale === undefined) return;
+
+					await stale.engine.shutdown();
+
+					// UNREGISTERED, and only once the shutdown has succeeded.
+					//
+					// `build` registers a teardown that closes over the engine it
+					// constructs, and leaves it registered on success — which is
+					// right for the ordinary case, where that teardown is what
+					// stops the engine at process exit. A manual retirement stops
+					// the engine WITHOUT going through it, so without this the
+					// closure stays in the list holding a dead engine. Vite
+					// re-evaluates this module on every edit, so an afternoon's
+					// work leaves one retired engine per reload reachable from
+					// the runtime, and the eventual disposal calls `shutdown()`
+					// on every one of them again.
+					//
+					// Not on the failure path: if `shutdown()` rejected, that
+					// engine is still live and its registered teardown is the
+					// only remaining thing that would stop it.
+					held.unregisterTeardown.current?.();
 				}
 			: undefined;
 
@@ -183,6 +220,11 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// in-flight promise is still shared, so concurrent callers continue to
 	// await one build rather than racing several.
 	const token = Symbol('server-owned-durable-build');
+
+	// Filled in synchronously by `build`, and stored on the slot below so the
+	// NEXT module evaluation can unregister this generation's teardown when it
+	// retires the engine.
+	const teardownHandle: { current?: () => void } = {};
 
 	// `build()` is called SYNCHRONOUSLY when there is nothing to retire, and
 	// that is load-bearing rather than an optimisation: it runs to its first
@@ -201,7 +243,7 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// disposal landing in the window still has something to drain.
 	const promise =
 		retire === undefined
-			? build(token, runtime).catch((cause: unknown) => {
+			? build(token, runtime, teardownHandle).catch((cause: unknown) => {
 					releaseSlot(token);
 					throw cause;
 				})
@@ -234,13 +276,19 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					}
 
 					try {
-						return await build(token, runtime);
+						return await build(token, runtime, teardownHandle);
 					} catch (cause) {
 						releaseSlot(token);
 						throw cause;
 					}
 				})();
-	host[DURABLE_SLOT] = { token, runtime, module: MODULE_GENERATION, promise };
+	host[DURABLE_SLOT] = {
+		token,
+		runtime,
+		module: MODULE_GENERATION,
+		promise,
+		unregisterTeardown: teardownHandle
+	};
 	return promise;
 }
 
@@ -260,7 +308,11 @@ export class RuntimeDisposedDuringBuildError extends Error {
 	}
 }
 
-async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<DurableRuntime> {
+async function build(
+	token: symbol,
+	runtime: ServerOwnedRuntime,
+	teardownHandle: { current?: () => void }
+): Promise<DurableRuntime> {
 	// POSITIONAL. `createRunWorkflow(checkpointStore, { version })` takes the
 	// store as its first argument, not in an options bag. That used to be
 	// stated here as a warning because the call was cast: `createRunWorkflow`
@@ -294,7 +346,7 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 	// look for an engine that does not exist yet.
 	let construction: Promise<DurableRuntime> | undefined;
 
-	const unregisterTeardown = runtime.onDispose(async () => {
+	const unregisterTeardown: () => void = runtime.onDispose(async () => {
 		race.disposed = true;
 		// The slot is cleared in `finally`. If `shutdown()` rejects, the memo
 		// would otherwise still hold a promise for an engine that is gone, and
@@ -319,6 +371,11 @@ async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<Durabl
 			releaseSlot(token);
 		}
 	});
+
+	// Published to the caller BEFORE the first await, so a later module
+	// evaluation can take this teardown back out when it retires the engine
+	// manually. See `DurableSlot.unregisterTeardown`.
+	teardownHandle.current = unregisterTeardown;
 
 	// Unregistered when construction FAILS. `onDispose` only appends, and the
 	// memo above deliberately lets a later request retry a transient failure —

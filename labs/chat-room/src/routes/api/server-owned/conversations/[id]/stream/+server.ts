@@ -107,8 +107,17 @@ export const POST: RequestHandler = async ({ params, request }) => {
 					// `action_required` result, and the session controller then
 					// calls the transport again to continue. This route family
 					// has no approval UI, so such a run would park with no way
-					// to resolve it — and the continuation call would re-send
-					// the same user turn as a NEW one, duplicating it.
+					// to resolve it.
+					//
+					// What that continuation actually hits is a THROWN error,
+					// not a duplicated turn. The transport checks that the last
+					// message is a string-valued user message and rejects before
+					// it reaches `fetch` (see `conversation-surface.svelte`),
+					// because on a continuation the last message is a tool
+					// result. So enabling a toolbox here without the approval
+					// wiring fails loudly at the boundary rather than quietly
+					// re-sending the previous turn — which is the behaviour
+					// CIN-445 has to design around.
 					//
 					// Operative-native approval is CIN-445's subject. Wiring
 					// half of it here would ship a reachable dead end; wiring

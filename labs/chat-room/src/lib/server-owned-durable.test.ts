@@ -195,6 +195,50 @@ describe('server-owned durable runtime', () => {
 		expect(disposed).toBe(true);
 	});
 
+	it("unregisters a retired engine's teardown instead of leaving it in the list", async () => {
+		// Vite re-evaluates this module on every edit, and each evaluation that
+		// finds a stale memo retires its engine MANUALLY — `shutdown()` directly,
+		// not through the teardown `build` registered. That teardown closes over
+		// the engine, so leaving it registered keeps every retired engine
+		// reachable from the runtime for the life of the process, and the eventual
+		// disposal calls `shutdown()` on all of them again. An afternoon of edits
+		// is an afternoon of accumulated dead engines.
+		//
+		// A reload is simulated by rewriting the memo's module stamp, which is
+		// precisely what a re-evaluation changes — `MODULE_GENERATION` is a fresh
+		// symbol per evaluation, and the slot lives on `globalThis` under a
+		// `Symbol.for` key, so it outlives the module that wrote it.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: symbol } | undefined>;
+
+		const first = await durableRuntime();
+
+		let shutdowns = 0;
+		const realShutdown = first.engine.shutdown.bind(first.engine);
+		first.engine.shutdown = () => {
+			shutdowns += 1;
+			return realShutdown();
+		};
+
+		const slot = host[slotKey];
+		expect(slot).toBeDefined();
+		if (slot === undefined) return;
+		slot.module = Symbol('a-later-evaluation');
+
+		// Retires the first engine and builds a replacement over the same runtime.
+		const second = await durableRuntime();
+		expect(second).not.toBe(first);
+		expect(shutdowns).toBe(1);
+
+		// The retired engine's teardown must be GONE from the list, so disposing
+		// the runtime does not reach it again.
+		await disposeServerOwnedRuntime();
+
+		// Still one. Without the unregister this is 2 — and with N reloads it is
+		// N redundant shutdowns plus N engines held alive until process exit.
+		expect(shutdowns).toBe(1);
+	});
+
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {
 		const before = await durableRuntime();
 
