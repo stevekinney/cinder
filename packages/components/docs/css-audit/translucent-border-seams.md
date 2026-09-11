@@ -235,8 +235,46 @@ literal, not an alias.
 A tier used as a border is normally the intended case and needs no entry here.
 The exception is an element that also carries a fractional `opacity`: that
 multiplies the tier's own alpha rather than replacing an opaque value, so
-composing the tier compounds with it. Two sites do this, and both lose ink in
-the dark arm.
+composing the tier compounds with it.
+
+**This section does not claim to enumerate every such site, and cannot.** Three
+successive attempts to list them exhaustively were each incomplete, because the
+tier and the opacity are related by the cascade rather than by proximity in the
+source. Review of this PR alone turned up five distinct arrangements, none of
+which a text scan can follow:
+
+| arrangement              | example                                              |
+| ------------------------ | ---------------------------------------------------- |
+| same rule                | SortableList's drag placeholder                      |
+| separate rule, same file | Select's empty state                                 |
+| cross-file               | a disabled Button, via `foundation.css`              |
+| parent to child          | the ResizablePanels grip                             |
+| cross-component          | RunStepTimeline's rewound marker composing StatusDot |
+| inside `@keyframes`      | StatusDot's connecting pulse                         |
+
+The arithmetic, at least, is fully determined: effective ink is the tier's alpha
+times the opacity, so any combination can be read off directly.
+
+|                 | `muted` (19%) | `control` (48%) | `strong` (58%) |
+| --------------- | ------------- | --------------- | -------------- |
+| `opacity: 0.7`  | 13%           | 34%             | 41%            |
+| `opacity: 0.6`  | 11%           | 29%             | 35%            |
+| `opacity: 0.55` | 10%           | 26%             | 32%            |
+| `opacity: 0.5`  | 10%           | 24%             | 29%            |
+| `opacity: 0.4`  | 8%            | 19%             | 23%            |
+| `opacity: 0.32` | 6%            | 15%             | 19%            |
+
+What follows is therefore a record of the cases found, not a closed set. The
+ones that **matter for a decision** are the handful that are not disabled
+states, since WCAG exempts disabled controls from the contrast floor outright:
+the SortableList drop marker, the ResizablePanels grip, the chart legend
+toggles, and Select's empty state. Those four are what
+[CIN-603](https://linear.app/lost-gradient/issue/CIN-603) has to resolve. The
+disabled states below are recorded for completeness and are not defects.
+
+Deriving the full inventory needs computed styles rather than source text, which
+is [CIN-602](https://linear.app/lost-gradient/issue/CIN-602); every arrangement
+in the table above collapses into one measurement there.
 
 **SortableList's drag placeholder** — `outline: 2px dashed var(--cinder-border-muted)`
 under `opacity: 0.4`, so 19% × 0.4 ≈ 7.6% effective ink against 40% before. Its
@@ -265,9 +303,18 @@ This is the grip's only visible affordance, which makes it the second site after
 the SortableList marker where the loss lands on something functional rather than
 decorative. Neither cleared 3:1 before either.
 
-**Three disabled states**, all taking `opacity: 0.6` from `foundation.css`'s
-shared disabled-visual rule (`foundation.css:315-324`) on top of a `border.muted`
-tier, so ≈11.4% effective ink against 60%:
+**Disabled states.** More of these exist than are listed here; the ones found so
+far, with the arithmetic from the table above:
+
+- `tree` expand/select buttons — `border.control` × 0.5 → 24%
+- `invocation-rule-builder` icon buttons — `border.muted` × 0.4 → 8%
+- `chat-history-trigger` — `border.control` × 0.7 → 34%
+- `color-picker` preview, via a disabled ancestor — `border.control` × 0.6 → 29%
+
+Three more are measured in full below (`rating`, `media-controls`,
+`file-upload`), and three share `opacity: 0.6` from `foundation.css`'s shared disabled-visual
+rule (`foundation.css:315-324`) on top of a `border.muted` tier, so ≈11.4%
+effective ink against 60%:
 
 - a **Button** — `border-color: var(--cinder-border-muted)` from `button.css`
 - a **SegmentedControl**, attached or detached — `border: 1px solid var(--cinder-border-muted)`
@@ -379,10 +426,9 @@ The state does signal unavailability by other means — `border-style: dashed` a
 it is not `disabled`, so it cannot claim the exemption, and the dashed border is
 the affordance carrying the "empty" meaning.
 
-Three more disabled states dilute a tier from a **separate rule in the same
-file**, which the same-rule scan also cannot see — the tier comes from the base
-rule and the opacity from a `:disabled` / `[aria-disabled]` / `[data-disabled]`
-rule on the same element:
+These three are measured in full, as representative of the band — the tier comes
+from the base rule and the opacity from a `:disabled` / `[aria-disabled]` /
+`[data-disabled]` rule on the same element:
 
 | state                          | tier × opacity         | effective | dark `surface-inset` before → after |
 | ------------------------------ | ---------------------- | --------- | ----------------------------------- |
