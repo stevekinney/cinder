@@ -150,3 +150,59 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	await page.locator('body[data-hydrated="true"]').waitFor();
 	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(STEPPED_CHUNKS.join(' '));
 });
+
+test('the transcript scrolls, not the page, once the conversation outgrows the viewport', async ({
+	page,
+	request
+}) => {
+	// Chat's root is `height: 100%`, which against an auto-height ancestor
+	// resolves to auto — the transcript viewport then sizes to its content and
+	// the PAGE scrolls instead. That renders, and looks correct with two
+	// messages, so it is only wrong once there are enough of them: exactly the
+	// regression a screenshot would miss and a reader would hit immediately.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Layout') }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	for (const size of [
+		{ width: 1280, height: 860 },
+		{ width: 390, height: 844 }
+	]) {
+		await page.setViewportSize(size);
+		await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+		// Enough turns that an auto-height transcript would grow past the
+		// viewport. Gated on the transcript actually overflowing rather than on
+		// a turn count, so this keeps meaning the same thing if row heights or
+		// the fixture's reply length change.
+		const log = page.getByRole('log', { name: 'Messages' });
+		const overflows = async (): Promise<boolean> =>
+			log.evaluate((element) => element.scrollHeight > element.clientHeight + 1);
+
+		while (!(await overflows())) {
+			const composer = page.getByRole('textbox', { name: 'Message' });
+			await composer.fill('Walk me through it');
+			await page.getByRole('button', { name: 'Send message' }).click();
+			// The turn has unwound when Send is offered again.
+			await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+			await expect(composer).toHaveValue('');
+		}
+
+		// The transcript overflows — and the DOCUMENT still does not. Both halves
+		// are needed: page-scroll is what a collapsed viewport produces, and
+		// asserting only that the page fits would pass on an empty conversation.
+		const metrics = await page.evaluate(() => ({
+			documentScroll: document.documentElement.scrollHeight,
+			viewport: window.innerHeight,
+			bodyScrollWidth: document.body.scrollWidth,
+			viewportWidth: window.innerWidth
+		}));
+
+		expect(metrics.documentScroll).toBeLessThanOrEqual(metrics.viewport);
+		// And nothing pushes the page sideways at 390px, which is where a
+		// `max-content` track or an uncapped payload would show up first.
+		expect(metrics.bodyScrollWidth).toBeLessThanOrEqual(metrics.viewportWidth);
+	}
+});
