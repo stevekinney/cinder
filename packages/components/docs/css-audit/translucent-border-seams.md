@@ -291,10 +291,24 @@ recorded rather than silently absorbed. The drop indicator is the one worth
 revisiting on its own, since it marks a live, functional position.
 
 `border-tier-non-border-uses.test.ts` catches the same-rule shape and claims no
-more. The grip's two halves sit on a parent and its child, and all three disabled states above are **cross-file** — the tier is declared
-in a component stylesheet and the opacity in `foundation.css` — so no same-rule
-scan can see them, and resolving that would mean modelling the cascade across
-files. This section is the record for those, and [CIN-602](https://linear.app/lost-gradient/issue/CIN-602)
+more. Three more disabled states dilute a tier from a **separate rule in the same
+file**, which the same-rule scan also cannot see — the tier comes from the base
+rule and the opacity from a `:disabled` / `[aria-disabled]` / `[data-disabled]`
+rule on the same element:
+
+| state                          | tier × opacity         | effective | dark `surface-inset` before → after |
+| ------------------------------ | ---------------------- | --------- | ----------------------------------- |
+| Rating, disabled               | `border.strong` × 0.55 | 32%       | 2.649 → 2.166                       |
+| MediaControls button, disabled | `border.control` × 0.5 | 24%       | 1.963 → 1.688                       |
+| FileUpload dropzone, disabled  | `border.control` × 0.7 | 34%       | 2.841 → 2.288                       |
+
+All three are disabled states, which WCAG exempts from the contrast floor
+outright, so none is a compliance problem — but all three lose ink in the dark
+arm and the numbers belong on the record with the rest.
+
+The grip's two halves sit on a parent and its child; the Button, Toggle and SegmentedControl states are **cross-file**; and the three above are same-file but in separate rules. None of those is a textual relationship — the tier is declared
+in a component stylesheet and the opacity in `foundation.css` — so no same-rule scan can see any of them, and
+resolving that would mean matching selectors and following the cascade. This section is the record for those, and [CIN-602](https://linear.app/lost-gradient/issue/CIN-602)
 covers deriving the whole audit from computed styles instead, which would find
 them without a hand-maintained list.
 

@@ -345,8 +345,20 @@ function tierUses(source: string): string[] {
   return uses;
 }
 
-/** Every use site in the repository, as `[relativePath, declaration]`. */
+/**
+ * Every use site in the repository, as `[relativePath, declaration]`.
+ *
+ * Memoised: every test in this file needs the whole list, and the walk reads
+ * ~250 `.css` and `.svelte` files across six workspace roots. The filesystem
+ * does not change during a run.
+ */
+let cachedUseSites: Array<readonly [string, string]> | undefined;
+
 function allUseSites(): Array<readonly [string, string]> {
+  return (cachedUseSites ??= scanUseSites());
+}
+
+function scanUseSites(): Array<readonly [string, string]> {
   const sites: Array<readonly [string, string]> = [];
   for (const root of SCAN_ROOTS) {
     for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {

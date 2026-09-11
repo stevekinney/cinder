@@ -435,10 +435,26 @@ function parseResolvedColorWithAlpha(
   }
   const { alpha, ...rest } = value as { alpha?: unknown };
   const color = parseResolvedColor({ ...rest }, tokenName, arm);
-  if (alpha !== undefined && typeof alpha !== 'number') {
-    throw new Error(`${tokenName} (${arm}) has a non-numeric alpha`);
+  // A MISSING alpha is not the same as an opaque one. This reader exists for
+  // tokens that are supposed to be translucent, so defaulting to 1 would let a
+  // tier that lost its alpha channel read as opaque and quietly pass every
+  // assertion below -- the drift this file exists to catch. Demand it.
+  if (alpha === undefined) {
+    throw new Error(
+      `${tokenName} (${arm}) has no alpha channel. Read an opaque token with ` +
+        '`parseResolvedColor`; this reader is for the translucent tiers.',
+    );
   }
-  return { ...color, alpha: alpha ?? 1 };
+  if (typeof alpha !== 'number') {
+    throw new Error(`${tokenName} (${arm}) has a non-numeric alpha: ${JSON.stringify(alpha)}`);
+  }
+  if (!Number.isFinite(alpha) || alpha < 0 || alpha > 1) {
+    throw new Error(
+      `${tokenName} (${arm}) has alpha ${alpha}, which is not a finite number in [0, 1]. ` +
+        'A NaN or out-of-range alpha composites to nonsense rather than failing.',
+    );
+  }
+  return { ...color, alpha };
 }
 
 type TokenArms = { light: OklchColor; dark: OklchColor };
