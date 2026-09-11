@@ -95,6 +95,34 @@ test('a failed delegation reaches the announcer', async ({ page }) => {
 	// The three real panels still settled, so the induced failure is additive
 	// rather than a way of skipping them.
 	await expect(page.getByTestId('multi-agent-summary-finish')).toHaveText('stop-condition');
+
+	// And the gate is REACTIVE, not read once at init. SvelteKit reuses this
+	// component across a client-side navigation to the same route, so a
+	// one-time read would leave the panel set frozen at whatever `?fail=` was
+	// present on first load. Driven through the router's own path — a
+	// same-origin anchor click — with a marker proving the document was not
+	// replaced, since a full reload would rebuild everything and prove nothing.
+	await page.evaluate(() => {
+		(window as unknown as { sameDocument?: boolean }).sameDocument = true;
+		const anchor = document.createElement('a');
+		anchor.href = '/exercises/multi-agent';
+		anchor.id = 'clear-fail-probe';
+		anchor.textContent = 'probe';
+		document.body.append(anchor);
+	});
+	await page.locator('#clear-fail-probe').click();
+
+	await settled(page, 3);
+	expect(
+		await page.evaluate(
+			() => (window as unknown as { sameDocument?: boolean }).sameDocument === true
+		)
+	).toBe(true);
+
+	// The induced panel is gone, and the announcer cleared with it rather than
+	// holding a failure that no longer has a panel.
+	await expect(page.getByTestId('multi-agent-induced-failed')).toHaveCount(0);
+	await expect(announcer).toBeEmpty();
 });
 
 test("the delegation renders as a tool-activity entry in Chat's transcript", async ({ page }) => {
@@ -253,45 +281,37 @@ test('a caller-supplied summarizer is what actually condenses', async ({ page })
 	await expect(page.getByTestId('multi-agent-custom-mid-sentence')).toHaveText('false');
 });
 
-/**
- * Whether this platform puts BUTTONS in the tab order at all.
- *
- * Measured on the page rather than branched on engine name, because it is a
- * platform setting rather than a browser behaviour: macOS ships Full Keyboard
- * Access off, and with it Safari/WebKit tabs only between text fields and
- * lists. Probed here, WebKit's tab order on this route is
- * `log → textarea → body` — it reaches no button at all, including Chat's own
- * Send. Chromium reaches every one.
- *
- * So "reachable by Tab" is not a claim the app can satisfy everywhere, and
- * asserting it under WebKit would be asserting the operating system's
- * preference. The probe uses Chat's Send button as the control: if THAT is not
- * in the tab order, nothing on the page is, and the reachability half of the
- * test below is meaningless rather than failing.
- */
-async function tabOrderIncludesButtons(page: import('@playwright/test').Page): Promise<boolean> {
-	const send = page.getByRole('button', { name: 'Send message' });
-	await page.locator('body').press('Tab');
-	for (let step = 0; step < TAB_BUDGET; step += 1) {
-		if (await send.evaluate((element) => element === document.activeElement)) return true;
-		await page.keyboard.press('Tab');
-	}
-	return false;
-}
-
 /** Bounded so an unreachable control reports rather than hanging the run. */
 const TAB_BUDGET = 40;
 
-/** Tabs until `locator` has focus, or the budget runs out. */
-async function tabUntilFocused(
+/**
+ * Walks the tab order ONCE and reports which of the named controls it reached.
+ *
+ * One walk rather than a probe walk plus a second walk, because the second
+ * would start from wherever the first left focus and would depend on how the
+ * engine wraps past the end of the document. Chromium cycles back into the
+ * page; Firefox does not, within any budget worth waiting for — which is
+ * exactly how the two-walk version failed there while passing in Chromium.
+ */
+async function tabOrderReaches(
 	page: import('@playwright/test').Page,
-	locator: import('@playwright/test').Locator
-): Promise<boolean> {
-	for (let step = 0; step < TAB_BUDGET; step += 1) {
-		if (await locator.evaluate((element) => element === document.activeElement)) return true;
+	controls: Record<string, import('@playwright/test').Locator>
+): Promise<Set<string>> {
+	const reached = new Set<string>();
+	const names = Object.keys(controls);
+
+	await page.locator('body').press('Tab');
+	for (let step = 0; step < TAB_BUDGET && reached.size < names.length; step += 1) {
+		for (const name of names) {
+			if (reached.has(name)) continue;
+			if (await controls[name].evaluate((element) => element === document.activeElement)) {
+				reached.add(name);
+			}
+		}
+		if (reached.size === names.length) break;
 		await page.keyboard.press('Tab');
 	}
-	return false;
+	return reached;
 }
 
 test('the transcript disclosures are operable from the keyboard', async ({ page }) => {
@@ -302,22 +322,35 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	const argumentsTrigger = timeline.getByRole('button', { name: 'Arguments' });
 	const resultTrigger = timeline.getByRole('button', { name: 'Result' });
 
-	// REACHABLE, where the platform tabs to controls at all. `focus()` would
-	// succeed on an element with `tabindex="-1"` or one skipped in document
-	// order, so it proves activation once focus is somehow there and never that
-	// a keyboard user can arrive. Walking the tab order is the only assertion
-	// that separates the two — and it is skipped, with the reason recorded,
-	// only where no button is tabbable.
-	const tabbable = await tabOrderIncludesButtons(page);
-	if (tabbable) {
-		await page.locator('body').press('Tab');
-		expect(await tabUntilFocused(page, argumentsTrigger)).toBe(true);
-		await expect(argumentsTrigger).toBeFocused();
-	} else {
-		await argumentsTrigger.focus();
+	// `Attach file` is the CONTROL CONTROL: an ordinary enabled button that is
+	// unambiguously supposed to be tabbable. If the walk does not reach it, this
+	// platform does not put buttons in the tab order at all — macOS ships Full
+	// Keyboard Access off, and Safari then tabs only between text fields and
+	// lists. Probed on this route: Chromium and Firefox reach it, WebKit reaches
+	// no button at all (`log → textarea → body`).
+	//
+	// NOT Send, which was the first choice and silently disabled this entire
+	// test: Chat disables Send while the composer is empty, and a disabled button
+	// never receives sequential focus — so the probe returned false in Chromium
+	// too, and both branches fell through to programmatic `focus()`.
+	const attachFile = page.getByRole('button', { name: 'Attach file' });
+	const reached = await tabOrderReaches(page, {
+		attachFile,
+		argumentsTrigger,
+		resultTrigger
+	});
+
+	if (reached.has('attachFile')) {
+		// REACHABLE. `focus()` would succeed on an element with `tabindex="-1"`
+		// or one skipped in document order, so it proves activation once focus is
+		// somehow there and never that a keyboard user can arrive.
+		expect(reached.has('argumentsTrigger')).toBe(true);
+		expect(reached.has('resultTrigger')).toBe(true);
 	}
 
-	// OPERABLE, everywhere. Enter on the first disclosure.
+	// OPERABLE, everywhere — including where the platform excludes buttons from
+	// the tab order, since the controls are still focusable and still respond.
+	await argumentsTrigger.focus();
 	await expect(argumentsTrigger).toBeFocused();
 	await page.keyboard.press('Enter');
 	await expect(timeline).toContainText('What did we decide about the staging bucket?');
@@ -326,18 +359,9 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	await page.keyboard.press('Tab');
 	await expect(argumentsTrigger).not.toBeFocused();
 
-	// The second disclosure, reached the same way as the first for the same
-	// reason — the Tab above shows focus LEFT Arguments, which is a different
-	// claim from Result being reachable.
-	if (tabbable) {
-		expect(await tabUntilFocused(page, resultTrigger)).toBe(true);
-	} else {
-		await resultTrigger.focus();
-	}
-	await expect(resultTrigger).toBeFocused();
-
-	// Space, since the two disclosures are independent and either key is a
+	// Space on the second, since the two are independent and either key is a
 	// legitimate way to operate a button.
+	await resultTrigger.focus();
 	await page.keyboard.press('Space');
 	await expect(timeline.locator('.cinder-run-step-timeline__detail-content')).toHaveCount(2);
 });

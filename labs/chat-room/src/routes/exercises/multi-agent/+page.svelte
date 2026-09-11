@@ -244,37 +244,55 @@
 	 * that work would teach the wrong thing. Off by default, the route is
 	 * exactly what it was.
 	 */
-	const failing = page.url.searchParams.get('fail') === '1';
+	const failing = $derived(page.url.searchParams.get('fail') === '1');
 
-	const panels = [
-		{
-			id: 'summary',
-			label: "returnMode: 'summary' (cap 40)",
-			note: 'The default summarizer caps the answer. It does not condense it.',
-			promise: delegate('summary', { returnMode: 'summary' })
-		},
-		{
-			id: 'full',
-			label: "returnMode: 'full'",
-			note: "The child's answer crosses back whole, at whatever length it happens to be.",
-			promise: delegate('full', { returnMode: 'full' })
-		},
-		{
-			id: 'custom',
-			label: "returnMode: 'summary' with a caller-supplied summarizer",
-			note: 'Where real condensation lives — the seam the default fills with a cap.',
-			promise: delegate('custom', { returnMode: 'summary', useCustomSummarizer: true })
+	/**
+	 * REBUILT when the query changes, not computed once at init.
+	 *
+	 * SvelteKit reuses this component across a client-side navigation to the
+	 * same route, so a one-time read of `page.url` would leave the panel set
+	 * frozen at whatever `?fail=` was present on first load — adding or
+	 * clearing the flag would change the URL and nothing else. The same shape
+	 * of bug as the route-parameter one on the sibling pull request, in a much
+	 * smaller place.
+	 *
+	 * Deriving the whole list means a query change restarts the delegations,
+	 * which is the right behaviour: the panels ARE the page's state, and a
+	 * different query is a different page.
+	 */
+	const panels = $derived.by(() => {
+		const built = [
+			{
+				id: 'summary',
+				label: "returnMode: 'summary' (cap 40)",
+				note: 'The default summarizer caps the answer. It does not condense it.',
+				promise: delegate('summary', { returnMode: 'summary' })
+			},
+			{
+				id: 'full',
+				label: "returnMode: 'full'",
+				note: "The child's answer crosses back whole, at whatever length it happens to be.",
+				promise: delegate('full', { returnMode: 'full' })
+			},
+			{
+				id: 'custom',
+				label: "returnMode: 'summary' with a caller-supplied summarizer",
+				note: 'Where real condensation lives — the seam the default fills with a cap.',
+				promise: delegate('custom', { returnMode: 'summary', useCustomSummarizer: true })
+			}
+		];
+
+		if (failing) {
+			built.push({
+				id: 'induced',
+				label: 'An induced failure',
+				note: 'Only reachable with ?fail=1, so the announcer has a path to exercise.',
+				promise: Promise.reject(new Error('Induced delegation failure.'))
+			});
 		}
-	];
 
-	if (failing) {
-		panels.push({
-			id: 'induced',
-			label: 'An induced failure',
-			note: 'Only reachable with ?fail=1, so the announcer has a path to exercise.',
-			promise: Promise.reject(new Error('Induced delegation failure.'))
-		});
-	}
+		return built;
+	});
 
 	let settledCount = $state(0);
 
@@ -290,32 +308,52 @@
 	 * mounted empty from the first paint.
 	 */
 	let announcement = $state('');
-	for (const panel of panels) {
-		// SETTLED, both senses of it. Counting only fulfilment would leave the
-		// status line permanently short of three if a delegation rejected — and
-		// every spec here waits on "3 of 3" before asserting anything, so the
-		// suite would report a timeout naming the status line rather than the
-		// run that actually failed.
-		//
-		// The rejection handler is also what keeps a failed delegation from
-		// becoming an unhandled rejection: `void promise.then(onFulfilled)`
-		// creates a derived promise nothing observes, so a rejection has
-		// nowhere to go.
-		const settle = (): void => {
-			settledCount += 1;
-		};
-		panel.promise.then(settle, (cause: unknown) => {
-			// One region for every panel: three live regions describing three
-			// failures would announce over each other, and the visible per-panel
-			// message below already says which one broke.
-			announcement = `The ${panel.id} delegation failed: ${
-				cause instanceof Error ? cause.message : String(cause)
-			}`;
-			settle();
-		});
-	}
 
-	const summaryPanel = panels[0];
+	$effect(() => {
+		// Re-runs whenever the panel set is rebuilt, and resets the bookkeeping
+		// with it — otherwise a query change would leave the counter carrying
+		// the previous run's tally and the announcer holding a stale failure.
+		const current = panels;
+		settledCount = 0;
+		announcement = '';
+
+		// `live` gates the handlers so a superseded set cannot write into the
+		// state of the one that replaced it: its promises are still in flight
+		// and will settle after this effect has been torn down.
+		let live = true;
+
+		for (const panel of current) {
+			// SETTLED, both senses of it. Counting only fulfilment would leave
+			// the status line permanently short — and every spec here waits on
+			// "N of N" before asserting anything, so the suite would report a
+			// timeout naming the status line rather than the run that failed.
+			//
+			// The rejection handler is also what keeps a failed delegation from
+			// becoming an unhandled rejection: `void promise.then(onFulfilled)`
+			// creates a derived promise nothing observes, so a rejection has
+			// nowhere to go.
+			const settle = (): void => {
+				if (live) settledCount += 1;
+			};
+			panel.promise.then(settle, (cause: unknown) => {
+				// One region for every panel: several live regions describing
+				// several failures would announce over each other, and the
+				// visible per-panel message already says which one broke.
+				if (live) {
+					announcement = `The ${panel.id} delegation failed: ${
+						cause instanceof Error ? cause.message : String(cause)
+					}`;
+				}
+				settle();
+			});
+		}
+
+		return () => {
+			live = false;
+		};
+	});
+
+	const summaryPanel = $derived(panels[0]);
 </script>
 
 <main>
