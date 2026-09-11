@@ -2,12 +2,16 @@ import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic';
 
+import { z } from 'zod';
+
 import { chatRunResponse } from '$lib/chat-run-response';
-import { loadConversation, persistRunResult } from '$lib/server-owned-conversations';
+import { appendUserTurn, persistRunResult } from '$lib/server-owned-conversations';
 import { requestContext, toolbox } from '$lib/toolbox';
 import { createChatAgent, startChatRun } from '../../../../chat/chat-agent';
 
 import type { RequestHandler } from './$types';
+
+const turnSchema = z.object({ text: z.string().trim().min(1).max(4000) });
 
 const MODEL = 'claude-sonnet-5';
 const MAX_TOKENS = 4096;
@@ -28,7 +32,29 @@ const MAX_TOKENS = 4096;
  * replayed it.
  */
 export const POST: RequestHandler = async ({ params, request }) => {
-	const session = await loadConversation(params.id);
+	let body: unknown;
+	try {
+		body = await request.json();
+	} catch {
+		return json({ error: 'Request body must be JSON.' }, { status: 400 });
+	}
+
+	const parsed = turnSchema.safeParse(body);
+	if (!parsed.success) {
+		return json({ error: 'A message between 1 and 4000 characters is required.' }, { status: 400 });
+	}
+
+	// The new turn is appended SERVER-side before the run starts. The browser
+	// sends one message, never a transcript — which is the distinction this
+	// variant exists to show, and also what makes the run's history the
+	// store's rather than something the client asserted.
+	//
+	// An earlier version ran over the stored history alone and never saw the
+	// turn the user had just typed: the browser had appended it to its own
+	// mirror, and nothing carried it across. The incremental-rendering spec
+	// caught it, because the fixture was never reached with that turn's
+	// marker.
+	const session = await appendUserTurn(params.id, parsed.data.text);
 	if (session === undefined) {
 		return json({ error: 'No such conversation.' }, { status: 404 });
 	}

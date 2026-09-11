@@ -3,6 +3,7 @@
 		Chat,
 		createChatSessionController,
 		decodeChatStreamEvents,
+		getMessages,
 		type ConversationHistory
 	} from '@lostgradient/chat';
 	import { resolve } from '$app/paths';
@@ -20,14 +21,19 @@
 	const session = createChatSessionController({
 		getConversation: () => $state.snapshot(conversation),
 		setConversation: (next) => (conversation = next),
-		transport: async ({ signal }) => {
-			// No transcript in the body. `/api/chat` sends one because the
-			// browser owns it there; here the server reads it from the session,
-			// which is what makes this variant noncanonical.
+		transport: async ({ conversation: history, signal }) => {
+			// ONE message, never a transcript. `/api/chat` sends the whole
+			// history because the browser owns it there; here the server holds
+			// it, and only the turn the user just typed has to cross — the
+			// server cannot know it any other way.
+			const messages = getMessages(history);
+			const lastUser = [...messages].reverse().find((message) => message.role === 'user');
+			const text = typeof lastUser?.content === 'string' ? lastUser.content : '';
+
 			const response = await fetch(`/api/server-owned/conversations/${data.id}/stream`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
-				body: '{}',
+				body: JSON.stringify({ text }),
 				signal
 			});
 			if (!response.ok || !response.body) throw new Error(await response.text());

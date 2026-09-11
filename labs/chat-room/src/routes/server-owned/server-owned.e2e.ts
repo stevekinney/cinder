@@ -20,6 +20,8 @@
 import { expect, test } from '@playwright/test';
 
 import { gotoHydrated } from '../exercises/hydration';
+import { fixtureGateHeld, newFixtureMarker, releaseFixtureGate } from '../fixture-probe';
+import { STEPPED_CHUNKS, fixtureMarker } from '../streaming-fixture';
 
 /** A title no other test will collide with, in this run or a previous one. */
 const uniqueTitle = (label: string): string =>
@@ -109,4 +111,51 @@ test('distinguishes a missing conversation from an empty one', async ({ request 
 			await request.post('/api/server-owned/conversations/nope/turns', { data: { text: 'hi' } })
 		).status()
 	).toBe(404);
+});
+
+test('renders a server-owned reply incrementally, not as a buffered whole', async ({
+	page,
+	request
+}) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Incremental') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const marker = newFixtureMarker();
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	const log = page.getByRole('log', { name: 'Messages' });
+	await page
+		.getByRole('textbox', { name: 'Message' })
+		.fill(`Walk me through it ${fixtureMarker('stepped', marker)}`);
+	await page.getByRole('button', { name: 'Send message' }).click();
+
+	// Gates, not timing. The fixture parks between chunks until this test
+	// releases it, so each state below is causally separated from the next
+	// rather than separated by a hopeful wait — three renders of one assistant
+	// message, which is what "incremental" has to mean to be worth asserting.
+	await expect.poll(async () => fixtureGateHeld(marker), { timeout: 10_000 }).toBe(true);
+
+	// One chunk on screen, the rest not yet produced.
+	await expect(log).toContainText(STEPPED_CHUNKS[0]);
+	await expect(log).not.toContainText(STEPPED_CHUNKS[1]);
+	expect(await releaseFixtureGate(marker)).toBe(true);
+
+	// Two. `released: true` again proves the third did not exist when two were
+	// rendered — a buffered whole could not produce this state at all.
+	await expect(log).toContainText(`${STEPPED_CHUNKS[0]} ${STEPPED_CHUNKS[1]}`);
+	await expect(log).not.toContainText(STEPPED_CHUNKS[2]);
+	expect(await releaseFixtureGate(marker)).toBe(true);
+
+	// Three, and the turn has unwound.
+	await expect(log).toContainText(STEPPED_CHUNKS.join(' '));
+	await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+
+	// And the SERVER kept it: a reload re-reads the transcript from the session
+	// store. This is the assertion the canonical exemplar cannot make — there
+	// the browser owns the transcript, so a reload starts empty.
+	await page.reload();
+	await page.locator('body[data-hydrated="true"]').waitFor();
+	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(STEPPED_CHUNKS.join(' '));
 });
