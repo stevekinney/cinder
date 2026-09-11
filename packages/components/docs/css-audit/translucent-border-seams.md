@@ -48,7 +48,14 @@ shorthand from its ancestor, which resolves to the panel's opaque
 `surface-raised` — confirmed by the same pixel probe that covers Popover
 (`popover-arrow-surface-parity.playwright.ts`): its arrow reads an IDENTICAL
 pixel across all three backdrop surfaces, proving the backdrop never reaches
-it. Tooltip has no arrow construction at all — no `arrow` class, no
+it. (The sample point is the upper quarter of the arrow's bounding box, not
+its center: the un-rotated square is deliberately centered ON the panel
+edge, so the diamond's geometric center sits exactly on that edge too and
+can read the panel's own fill underneath rather than the arrow's own paint
+— a gap in the first draft of this probe, caught in review and confirmed
+by forcing `background: transparent` on the arrow, which the corrected
+sample point now fails against and the original center-point sample did
+not.) Tooltip has no arrow construction at all — no `arrow` class, no
 CSS-triangle rule anywhere in `tooltip.css`/`tooltip.svelte` — confirmed by
 asserting `.cinder-tooltip__arrow` has zero matches while a real Tooltip is
 open. Neither needed a change.
@@ -88,18 +95,47 @@ fixed order: the arrow's OWN border is now the opaque `surface-raised`
 backdrop (previously the translucent rim color); a new `::before` repeats the
 exact same triangle in the translucent `--cinder-border` ink, compositing
 over that backdrop; the existing `::after` (the opaque 7px inner triangle) is
-unchanged and still covers the middle, leaving only the outer ~1px rim
+unchanged and still covers the middle, leaving only the outer ~2px rim
 visible — now backed by `surface-raised` in every placement, matching the
 panel edge on every backdrop instead of only on `surface-raised` itself. The
 panel's own rendering is untouched.
+
+The `::before` triangle's `left`/`top` offset needed a second correction,
+also caught in review: the containing block for an absolutely positioned
+pseudo-element of a zero-size (`width:0`/`height:0`) parent is a POINT at
+that parent's _padding_ edge, not its border-box origin — and that point is
+inset from the parent's own top-left corner by the parent's own border
+widths (8px here). `left: 0`/`top: 0` therefore started the repeated
+triangle 8px off from the outer triangle it's meant to sit on top of; each
+placement now offsets by `-8px` on whichever axis that parent's own border
+adds the inset, canceling it back to 0. Confirmed empirically with a
+`border-bottom-color: red !important` override that mapped the pseudo-
+element's true rendered position pixel-by-pixel against the outer triangle's
+bounding box.
 
 Asserted by a Playwright pixel probe
 (`packages/testing/tests/popover-arrow-surface-parity.playwright.ts`) rather
 than by eye: it floats a real Popover over `surface-inset`, `surface-canvas`,
 and `surface` in both arms and reads the actual rendered pixels at the
-panel's border and the arrow's rim, asserting they match. Proven to fail
-against the pre-fix construction above (a ~55–75-per-channel gap in the dark
-arm) before the fix landed.
+panel's border and the two slanted edges of the arrow's rim (scanned as
+separate left/right regions, not one — a single region spanning the whole
+triangle is exactly as wide as a coincidentally-misplaced repeated triangle,
+so it can still contain half the wrong-colored rim and pass; this was caught
+by reverting only the offset fix above and watching the original whole-
+region version pass anyway). The probe runs at `deviceScaleFactor: 2`: at
+1x, the ~2-CSS-px rim never owns a whole device pixel, so every sampled
+pixel is a partial-coverage blend of the rim color with whatever's behind it
+and no absolute-color tolerance can admit that correct rendering without
+also admitting the bug (confirmed by running the pre-2x version of this
+probe against the genuine, unfixed `origin/main` construction, where it
+passed). At 2x the rim has an interior at full strength, measured at an
+exact 0-per-channel gap to the panel border on the corrected construction,
+so the assertion combines a tight (5) absolute ceiling with a
+backdrop-to-backdrop stability check. Proven against three separate,
+individually-reverted defects: the `origin/main` construction above (a
+correctly discriminating ~8–25-per-channel gap, matching the table),
+the `::before` offset bug on its own (~90–98-per-channel gap), and the
+HoverCard sample point (see above).
 
 An earlier draft of this section claimed the rim "composites against the page
 canvas the arrow floats over, the same way the panel's own border does". The
@@ -440,11 +476,24 @@ the exempt states.
 **Resolved by CIN-603.** A toggled-off series is still an enabled control, so
 its boundary can't simply be dimmed along with everything else. The fix
 decouples the dimming from the border: `[aria-pressed='false']` now sets
-`color` (dimming the label text) instead of `opacity`, and the swatch dot
-gets its own scoped `opacity: 0.55`, leaving the border at `border.control`'s
-full, undiluted alpha — 3.129–3.206 light, 3.338–3.624 dark. Applied
-identically across AreaChart, BarChart, and LineChart, which share this rule
-shape.
+`color`, and the swatch dot gets its own scoped `opacity: 0.55`, leaving the
+border at `border.control`'s full, undiluted alpha — 3.129–3.206 light,
+3.338–3.624 dark. Applied identically across AreaChart, BarChart, and
+LineChart, which share this rule shape.
+
+The `color` source is `--_cinder-chart-muted` — the same chart-local custom
+property every other "muted" element in these three files already reads
+(the series description, axis labels, tick labels) — not the global
+`--cinder-text-muted` token. An earlier draft of this fix used the global
+token, which is a theme-consistency regression caught in review: a consumer
+supplying their own `theme.muted` to color-customize a chart would have that
+override silently ignored for the one label where a series is toggled off,
+potentially illegible against a custom chart background the global token
+was never chosen against. `--_cinder-chart-muted` defaults to `currentColor`
+(`chart-model-utilities`'s `theme?.muted ?? 'currentColor'`) when no
+consumer theme is supplied, so with no override the label now reads at
+full, undimmed contrast — the swatch's own `opacity: 0.55` is what still
+marks the series as toggled off in that default case.
 
 **StatusDot's connecting pulse** — the opacity lives in a `@keyframes` body,
 which is a fifth arrangement the scan cannot reach. With

@@ -42,10 +42,21 @@ function manifestRoute(slug: string): string {
 
 type Rgb = { r: number; g: number; b: number };
 
+// A 2x device pixel ratio, not 1x: at 1x, a ~2-CSS-px diagonal rim never
+// owns a whole device pixel, so every sampled pixel is a partial-coverage
+// blend and no absolute-color tolerance can both admit the correctly-fixed
+// rendering and reject the bug (confirmed empirically -- the 1x version of
+// this test, even split into per-edge regions, PASSED against the real
+// pre-fix `origin/main` construction). At 2x the rim is ~4 device pixels
+// wide with an inner pair at full, unblended strength, which is what the
+// tolerances below are calibrated against.
+const DEVICE_SCALE_FACTOR = 2;
+
 async function openPage(browser: Browser, slug: string, theme: Theme): Promise<Page> {
   const context = await browser.newContext({
     ...themeContextOptions(theme),
     viewport: { width: 960, height: 720 },
+    deviceScaleFactor: DEVICE_SCALE_FACTOR,
     baseURL: PLAYGROUND_URL,
   });
   await context.addInitScript(
@@ -72,9 +83,24 @@ async function openPage(browser: Browser, slug: string, theme: Theme): Promise<P
  * page's static content while still sitting under a portaled overlay. An
  * inline override on `<body>` itself sidesteps that whole stacking question:
  * every floating panel on the page, fixed or not, composites over it.
+ *
+ * `?snapshot=1` mode (which every test in this file uses) wraps the whole
+ * page in `.snapshot-examples`, which `component-page.svelte` gives its OWN
+ * explicit opaque background -- a deliberate choice so translucent
+ * component fills always composite over the same white/canvas surface the
+ * committed baselines were captured against. That's exactly what makes it
+ * invisible to a body-only repaint: `.snapshot-examples` sits in front of
+ * `<body>` at every coordinate the Popover/HoverCard trigger occupies, so
+ * without this second override every "backdrop" in this file would
+ * silently be the same opaque snapshot surface regardless of which CSS
+ * variable was requested -- discovered via code review, then confirmed by
+ * the `backdropReadings` pairwise-difference check in the Popover parity
+ * test below, which fails without this line.
  */
 async function setBackdropSurface(page: Page, cssVariable: string): Promise<void> {
   await page.evaluate((variable) => {
+    const snapshotExamples = document.querySelector<HTMLElement>('.snapshot-examples');
+    if (snapshotExamples) snapshotExamples.style.backgroundColor = `var(${variable})`;
     document.body.style.backgroundColor = `var(${variable})`;
   }, cssVariable);
 }
@@ -93,7 +119,13 @@ function pixelAt(png: PNG, x: number, y: number): Rgb {
   };
 }
 
-/** Screenshots the page and reads one absolute-page-coordinate pixel. */
+/**
+ * Screenshots the page and reads one absolute-page-coordinate (CSS-pixel)
+ * pixel. `page.screenshot({ clip })` takes `clip` in CSS pixels but returns
+ * an image at device-pixel resolution, so at `DEVICE_SCALE_FACTOR: 2` the
+ * PNG is 2x the clip's width/height -- the index into it must scale by the
+ * same factor.
+ */
 async function readOnePixel(page: Page, point: { x: number; y: number }): Promise<Rgb> {
   const padding = 6;
   const clip = {
@@ -104,7 +136,11 @@ async function readOnePixel(page: Page, point: { x: number; y: number }): Promis
   };
   const buffer = await page.screenshot({ clip });
   const png = PNG.sync.read(buffer);
-  return pixelAt(png, Math.round(point.x - clip.x), Math.round(point.y - clip.y));
+  return pixelAt(
+    png,
+    Math.round((point.x - clip.x) * DEVICE_SCALE_FACTOR),
+    Math.round((point.y - clip.y) * DEVICE_SCALE_FACTOR),
+  );
 }
 
 /** Screenshots a page-coordinate box (with padding) and returns every pixel in it. */
@@ -145,35 +181,20 @@ function expectSameColor(actual: Rgb, expected: Rgb, label: string): void {
 }
 
 /**
- * Asserts SOME pixel in `region` reads within `tolerance` of `expected`.
+ * The smallest per-channel max-diff between any pixel in `region` and
+ * `expected`.
  *
- * The arrow's visible rim is a genuine ~1px-wide diagonal band whose exact
- * device-pixel position depends on the trigger's (often fractional, e.g.
+ * The arrow's visible rim is a genuine device-pixel-wide diagonal band whose
+ * exact position depends on the trigger's (often fractional, e.g.
  * proportional-font-width-driven) layout — real, but not something a single
- * precomputed sample coordinate can hit reliably without anti-aliasing noise.
- * Scanning the whole triangle's bounding box for a close match is still a
- * real assertion about the RENDERED pixels: if the rim still composited over
- * the wrong backdrop, its color would differ from the panel border by the
- * same double-digit-per-channel margin the ticket measured, and nothing in
- * the crop would come close — anti-aliasing blends toward that same wrong
- * color, not away from it.
+ * precomputed sample coordinate can hit reliably without anti-aliasing
+ * noise, so this scans the whole candidate region for the closest match
+ * rather than reading one point.
  */
-function expectRegionContainsColor(region: readonly Rgb[], expected: Rgb, label: string): void {
+function closestChannelDiff(region: readonly Rgb[], expected: Rgb): number {
   let best = Infinity;
   for (const pixel of region) best = Math.min(best, channelMaxDiff(pixel, expected));
-  // The CIN-606 bug's own measured signature is a 10-31-per-channel gap (see
-  // the ticket's dark/inset measurement: panel 95,124,152 vs arrow
-  // 85,104,127). Real anti-aliasing residue even on the correctly-fixed
-  // rendering can land a couple of pixels short of an exact match (observed
-  // up to ~10) since every edge pixel of a sub-pixel-positioned diagonal
-  // triangle blends toward its neighbor by some amount. 16 sits comfortably
-  // above that residue and well below the bug's real margin.
-  const tolerance = 16;
-  expect(
-    best,
-    `${label}: closest pixel in the sampled region was ${best} away (per-channel max) from ` +
-      `expected rgb(${expected.r},${expected.g},${expected.b})`,
-  ).toBeLessThanOrEqual(tolerance);
+  return best;
 }
 
 const SURFACES = {
@@ -229,22 +250,124 @@ test.describe('CIN-606: Popover arrow rim composites over the same surface as th
         // without the fix — and the assertion below would pass either way.
         // Trimming the bottom two rows keeps every scanned pixel inside the
         // arrow's own paint.
-        const arrowScanBox = {
+        //
+        // Split into LEFT and RIGHT halves and require the rim color in
+        // BOTH independently, rather than scanning the whole triangle as
+        // one region. A single region that spans the full width is exactly
+        // as wide as the outer triangle, but the repeated `::before`
+        // triangle that paints the rim is also that same width — an 8px
+        // horizontal misplacement of `::before` (e.g. `left: 0` instead of
+        // `-8px`, forgetting the padding-edge inset a zero-size parent's
+        // border puts between its own border-box and its pseudo-elements'
+        // containing block) still leaves HALF of it inside a whole-triangle
+        // scan, so a "closest pixel anywhere in the region" check passes
+        // regardless. Two half-width regions each isolate one slanted edge:
+        // that same 8px shift empties one half of the rim color entirely
+        // (proven by reverting to `left: 0`/`top: 0` and re-running this
+        // spec, which the previous whole-region version did not catch).
+        const arrowScanBoxLeft = {
           x: arrowBox.x,
           y: arrowBox.y,
-          width: arrowBox.width,
+          width: arrowBox.width / 2,
           height: arrowBox.height - 2,
         };
+        const arrowScanBoxRight = {
+          x: arrowBox.x + arrowBox.width / 2,
+          y: arrowBox.y,
+          width: arrowBox.width / 2,
+          height: arrowBox.height - 2,
+        };
+
+        // A point clearly outside the panel, on the page's own backdrop --
+        // proves `setBackdropSurface` actually reached the paint layer the
+        // popover composites over. Without this, a harness bug that leaves
+        // some occluding layer unpainted (exactly the `.snapshot-examples`
+        // bug this file's `setBackdropSurface` comment describes) would
+        // silently test the same one backdrop three times and still pass.
+        const backdropSample = {
+          x: Math.round(panelBox.x + panelBox.width) + 20,
+          y: panelSample.y,
+        };
+        const backdropReadings: Rgb[] = [];
+        const panelRgbs: Record<string, Rgb> = {};
+        const leftGaps: Record<string, number> = {};
+        const rightGaps: Record<string, number> = {};
 
         for (const [surfaceName, cssVariable] of Object.entries(SURFACES)) {
           await setBackdropSurface(page, cssVariable);
           const panelRgb = await readOnePixel(page, panelSample);
-          const arrowRegion = await readPixelRegion(page, arrowScanBox, 0);
-          expectRegionContainsColor(
-            arrowRegion,
-            panelRgb,
-            `${theme}/${surfaceName}: arrow rim vs panel border`,
-          );
+          panelRgbs[surfaceName] = panelRgb;
+          backdropReadings.push(await readOnePixel(page, backdropSample));
+          const leftRegion = await readPixelRegion(page, arrowScanBoxLeft, 0);
+          const rightRegion = await readPixelRegion(page, arrowScanBoxRight, 0);
+          leftGaps[surfaceName] = closestChannelDiff(leftRegion, panelRgb);
+          rightGaps[surfaceName] = closestChannelDiff(rightRegion, panelRgb);
+        }
+
+        // Two checks per half, not one: an absolute ceiling AND
+        // cross-backdrop stability.
+        //
+        // At `deviceScaleFactor: 1`, this rim (a ~2-CSS-px-wide diagonal
+        // band) never owns a whole device pixel, so every sampled pixel is
+        // a partial-coverage blend and no absolute tolerance can admit the
+        // correctly-fixed rendering while still rejecting the bug --
+        // confirmed empirically: at 1x, this exact split-region assertion
+        // PASSED against the real pre-fix `origin/main` construction (`git
+        // diff origin/main -- popover.css`, reverted and re-run). At
+        // `deviceScaleFactor: 2` (set on `openPage`'s context), the rim is
+        // wide enough to have an interior at FULL, unblended strength --
+        // measured at an exact 0-per-channel gap to `panelRgb`, in both
+        // arms, on every surface, with the CSS fix applied. 5 leaves a
+        // small margin for anti-aliasing noise across environments without
+        // reopening the 1x false-pass.
+        //
+        // A correctly-composited rim also shouldn't change with the page
+        // backdrop: it composites against the arrow's own opaque border in
+        // every case, so its distance from panelRgb should stay flat across
+        // the three surfaces. Under the bug (a 'left: 0'/'top: 0' revert),
+        // the RIM ITSELF shifts 8px out of the scanned half, so that half's
+        // closest match becomes whatever opaque `surface-raised` pixels are
+        // left -- far outside the ceiling below regardless of backdrop
+        // (proven the same way as the split-region change itself: revert
+        // the four offsets and re-run this spec).
+        const ABSOLUTE_CEILING = 5;
+        const STABILITY_TOLERANCE = 5;
+        for (const [label, gaps] of [
+          ['left edge', leftGaps],
+          ['right edge', rightGaps],
+        ] as const) {
+          const values = Object.values(gaps);
+          for (const [surfaceName, gap] of Object.entries(gaps)) {
+            const panelRgb = panelRgbs[surfaceName] as Rgb;
+            expect(
+              gap,
+              `${theme}/${surfaceName}: arrow rim (${label}) closest pixel was ${gap} away ` +
+                `(per-channel max) from panel border rgb(${panelRgb.r},${panelRgb.g},${panelRgb.b}) ` +
+                `-- above the ${ABSOLUTE_CEILING} ceiling`,
+            ).toBeLessThanOrEqual(ABSOLUTE_CEILING);
+          }
+          const spread = Math.max(...values) - Math.min(...values);
+          expect(
+            spread,
+            `${theme}: arrow rim (${label}) distance from the panel border varies by ${spread} ` +
+              `across backdrops (${JSON.stringify(gaps)}) -- should be backdrop-independent`,
+          ).toBeLessThanOrEqual(STABILITY_TOLERANCE);
+        }
+
+        // Assert the three requested backdrops actually painted three
+        // different colors -- see the `setBackdropSurface` doc comment
+        // above for what this catches.
+        for (let i = 0; i < backdropReadings.length; i += 1) {
+          for (let j = i + 1; j < backdropReadings.length; j += 1) {
+            const a = backdropReadings[i] as Rgb;
+            const b = backdropReadings[j] as Rgb;
+            expect(
+              channelMaxDiff(a, b),
+              `${theme}: backdrop sample didn't change between surfaces ${i} and ${j} ` +
+                `(rgb(${a.r},${a.g},${a.b}) vs rgb(${b.r},${b.g},${b.b})) -- setBackdropSurface ` +
+                `isn't reaching the layer the popover actually composites over`,
+            ).toBeGreaterThan(2);
+          }
         }
       } finally {
         await page.context().close();
@@ -268,19 +391,34 @@ test.describe('CIN-606: other CSS-triangle-arrow components', () => {
 
         const card = page.locator('.cinder-hover-card');
         await expect(card).toHaveAttribute('data-cinder-position-ready', 'true');
+        // The sample point below (upper quarter of the arrow's bounding
+        // box) is only the EXPOSED half for the default 'bottom-*'
+        // placement the probe example uses — fails loudly rather than
+        // silently sampling the panel-covered half if that ever changes.
+        await expect(card).toHaveAttribute('data-cinder-placement', /^bottom/);
 
         const arrow = page.locator('.cinder-hover-card__arrow');
         await expect(arrow).toBeVisible();
         const arrowBox = await requireBox(arrow, 'hover card arrow');
-        const arrowCenter = {
+        // hover-card.css centers the un-rotated square ON the panel edge
+        // (`top: -0.3125rem` = `-size / 2`), so the rotated diamond's
+        // GEOMETRIC CENTER -- and therefore `arrowBox`'s center, since
+        // `boundingBox()` reflects the rotated box -- sits exactly on that
+        // edge. A pixel sampled there can read the panel's own opaque fill
+        // underneath rather than the arrow's own paint, which would pass
+        // this test even with `background: inherit` removed. Sampling in
+        // the upper quarter of the bounding box instead lands solidly
+        // inside the corner that pokes OUT past the panel (the only part of
+        // the diamond this test can actually attribute to the arrow).
+        const arrowSample = {
           x: Math.round(arrowBox.x + arrowBox.width / 2),
-          y: Math.round(arrowBox.y + arrowBox.height / 2),
+          y: Math.round(arrowBox.y + arrowBox.height / 4),
         };
 
         const readings: Rgb[] = [];
         for (const cssVariable of Object.values(SURFACES)) {
           await setBackdropSurface(page, cssVariable);
-          readings.push(await readOnePixel(page, arrowCenter));
+          readings.push(await readOnePixel(page, arrowSample));
         }
 
         // If the arrow composited with the backdrop (the CIN-606 bug shape),
