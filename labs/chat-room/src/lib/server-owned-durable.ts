@@ -34,18 +34,34 @@ export type DurableRuntime = {
 };
 
 /**
- * Memoised on the PROMISE, not on the resolved value.
+ * Memoised on the PROMISE, and held on `globalThis` rather than in a
+ * module-level `let`.
  *
- * Two requests arriving together would both find "not built yet" if the guard
- * were the settled engine, and both would build one — two engines over one
- * storage, each recovering the other's workflows. Holding the in-flight
- * promise makes the second caller wait for the first caller's engine.
+ * The promise, not the settled value: two requests arriving together would
+ * both find "not built yet" if the guard were the resolved engine, and both
+ * would build one — two engines over a single storage, each recovering the
+ * other's workflows. Holding the in-flight promise makes the second caller
+ * wait for the first caller's engine.
+ *
+ * `globalThis`, for the same reason the runtime's store is held there, and
+ * the omission was a real leak until an HMR exercise found it. Vite
+ * invalidates a server module on edit and re-evaluates it on the next
+ * request — logged as `(ssr) page reload`, not a hot accept. A module-scoped
+ * memo comes back `undefined` in the new module instance, so the next request
+ * builds a SECOND engine while the first is still running and still holding
+ * the process open. Each edit would add one, invisibly, for the life of the
+ * dev server.
  */
-let building: Promise<DurableRuntime> | undefined;
+const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
+
+type DurableHost = typeof globalThis & {
+	[DURABLE_SLOT]?: Promise<DurableRuntime> | undefined;
+};
 
 export async function durableRuntime(): Promise<DurableRuntime> {
-	building ??= build();
-	return building;
+	const host = globalThis as DurableHost;
+	host[DURABLE_SLOT] ??= build();
+	return host[DURABLE_SLOT];
 }
 
 async function build(): Promise<DurableRuntime> {
@@ -69,6 +85,12 @@ async function build(): Promise<DurableRuntime> {
 	// Registered immediately, before anything can start a run on it. The
 	// runtime disposes teardowns in reverse order, so an engine registered
 	// after the store it writes to shuts down before that store is cleared.
+	//
+	// This fires on explicit disposal — tests, and process teardown — not on
+	// edit. Vite reloads server modules rather than hot-accepting them, so the
+	// slot above is what keeps one engine alive across an edit; without it the
+	// shutdown registered here would never run for the stranded one, because
+	// nothing would hold a reference to it.
 	// The handle needs the store we built, not `built.checkpointStore`. Both
 	// have the same shape, so this is not load-bearing today — it is recorded
 	// because the two being interchangeable is an assumption, not a contract.
@@ -76,7 +98,7 @@ async function build(): Promise<DurableRuntime> {
 
 	runtime.onDispose(async () => {
 		await built.engine.shutdown();
-		building = undefined;
+		(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
 	});
 
 	return built;
@@ -84,5 +106,5 @@ async function build(): Promise<DurableRuntime> {
 
 /** Forgets the memoised engine without disposing the runtime, for tests. */
 export function forgetDurableRuntime(): void {
-	building = undefined;
+	(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
 }

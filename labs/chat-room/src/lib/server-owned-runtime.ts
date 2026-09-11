@@ -114,12 +114,19 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
 	return { failures };
 }
 
-// Vite calls this on the OUTGOING module before the replacement evaluates,
-// which is the only point where the previous runtime is still reachable.
-// Without it every hot update strands a store; with it the next
-// `serverOwnedRuntime()` builds a clean one.
-if (import.meta.hot) {
-	import.meta.hot.dispose(() => {
-		void disposeServerOwnedRuntime();
-	});
-}
+// NO `import.meta.hot.dispose` hook here, deliberately, and the reason was
+// measured rather than assumed.
+//
+// Vite does not hot-accept server modules: editing one logs
+// `(ssr) page reload` and re-evaluates it on the next request. A dispose hook
+// therefore never fires in this setup — verified by creating a conversation,
+// editing this file, and finding the conversation still listed afterwards.
+//
+// It would also be the wrong behaviour if it did fire: disposing on every
+// edit would clear the store mid-session, so a developer would lose their
+// conversations each time they touched a file. The `globalThis` slot above is
+// what actually prevents the leak, by surviving the module replacement that
+// would otherwise strand a store.
+//
+// Explicit disposal remains available — `disposeServerOwnedRuntime()` is what
+// the specs use, and what a process teardown would call.
