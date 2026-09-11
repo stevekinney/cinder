@@ -1,3 +1,5 @@
+import { writeSync } from 'node:fs';
+
 import { createSessionStore } from '@lostgradient/operative';
 import type { SessionStore } from '@lostgradient/operative';
 import { MemoryStorage } from '@lostgradient/weft/storage/memory';
@@ -175,11 +177,24 @@ export async function disposeServerOwnedRuntime(
 		 * resolves, cutting that engine off with no teardown and no checkpoint
 		 * flush.
 		 *
+		 * Draining LATCHES termination: `serverOwnedRuntime()` refuses with
+		 * `RuntimeTerminatingError` for the rest of the process, and the drain
+		 * runs until the slot is empty rather than for a fixed number of passes.
+		 * That is what makes it finite — after the pass disposing the last
+		 * generation admitted before the latch, nothing can create another.
+		 *
+		 * An earlier version let requests keep building replacements and capped
+		 * the drain at three passes instead. That could not work: a loop whose
+		 * exit condition is "nothing new appeared" cannot be fixed by giving up
+		 * after N tries, and the generation left undisposed was cut off by the
+		 * exit anyway.
+		 *
 		 * Off by default because the same function is how the specs reset: there,
-		 * a runtime built after disposal is the NEXT test's, and draining it
-		 * would tear down the thing the caller just asked for. The difference is
-		 * whether the process intends to keep running, which only the caller
-		 * knows.
+		 * a runtime built after disposal is the NEXT test's, and refusing it
+		 * would fail the thing the caller just asked for. A non-draining
+		 * disposal also LIFTS the latch, since it means "tear down and carry
+		 * on". The difference is whether the process intends to keep running,
+		 * which only the caller knows.
 		 */
 		drain?: boolean;
 	} = {}
@@ -387,6 +402,28 @@ type SignalHost = typeof globalThis & { [SIGNALS_SLOT]?: true };
 /** The status a shell reports for a process killed by each signal. */
 const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
 
+/**
+ * Writes a diagnostic that survives the `process.exit` immediately after it.
+ *
+ * `console.error` to a PIPE is asynchronous — a container or a supervisor
+ * capturing stderr gets a pipe, not a terminal — so the write can still be in
+ * flight when the process is killed, and the one message saying a checkpoint
+ * flush failed is exactly the one that disappears. This module's own signal
+ * fixture already records that hazard for its marker file; the same applies
+ * here.
+ *
+ * `writeSync` has completed by the time it returns. Falling back to
+ * `console.error` for a runtime without it costs nothing and keeps this from
+ * being the thing that throws during shutdown.
+ */
+function reportBeforeExit(message: string): void {
+	try {
+		writeSync(2, `${message}\n`);
+	} catch {
+		console.error(message);
+	}
+}
+
 const signalHost = globalThis as SignalHost;
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
@@ -437,13 +474,19 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 					// the one moment an operator needs to know the engine did not
 					// finish writing is the moment the process disappears.
 					if (failures > 0) {
-						console.error(`server-owned runtime: ${failures} teardown(s) failed during shutdown`);
+						reportBeforeExit(
+							`server-owned runtime: ${failures} teardown(s) failed during shutdown`
+						);
 					}
 				})
 				.catch((cause: unknown) => {
 					// Disposal itself throwing is outside the per-teardown
 					// isolation, so it has nowhere else to be seen.
-					console.error('server-owned runtime: disposal failed during shutdown', cause);
+					reportBeforeExit(
+						`server-owned runtime: disposal failed during shutdown: ${
+							cause instanceof Error ? cause.message : String(cause)
+						}`
+					);
 				})
 				.finally(() => {
 					process.exit(TERMINATION_STATUS[signal]);

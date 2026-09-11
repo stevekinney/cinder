@@ -147,22 +147,31 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 		return held.promise;
 	}
 
-	// A memo from a previous module evaluation is STOPPED, not abandoned. The
-	// runtime is the same one, so its `onDispose` teardown is still registered
-	// and would eventually run — but "eventually" is process exit, and until
-	// then the stale engine is live over the same storage as the new one. Two
+	// A memo from a previous module evaluation is STOPPED before its
+	// replacement is built, not alongside it.
+	//
+	// The runtime is the same one, so the stale engine's `onDispose` teardown is
+	// still registered and would eventually run — but "eventually" is process
+	// exit, and until then it is live over the same storage as the new one. Two
 	// engines over one store is the exact condition this memo exists to
-	// prevent.
-	if (held !== undefined && held.runtime === runtime) {
-		void held.promise
-			.then(async (stale) => {
-				await stale.engine.shutdown();
-			})
-			.catch(() => {
-				// A build that never succeeded has no engine to stop, and its
-				// own rejection was already delivered to whoever awaited it.
-			});
-	}
+	// prevent, so retiring it as a detached promise only narrows the window
+	// rather than closing it: `shutdown()` is asynchronous, and the successor
+	// would start inside it.
+	//
+	// A failed retirement is NOT swallowed. If the stale engine will not stop,
+	// building its replacement is how one store ends up with two engines for
+	// the life of the process — so the rejection propagates, the memo is
+	// cleared by `durableRuntime`'s catch, and the next caller tries again
+	// against whatever state exists then.
+	const retire =
+		held !== undefined && held.runtime === runtime
+			? async (): Promise<void> => {
+					// A build that never succeeded has no engine to stop, and its
+					// own rejection was already delivered to whoever awaited it.
+					const stale = await held.promise.catch(() => undefined);
+					if (stale !== undefined) await stale.engine.shutdown();
+				}
+			: undefined;
 
 	// A REJECTED promise must not be memoised. Without this, one transient
 	// failure — a misconfigured store, a storage hiccup during the first
@@ -174,10 +183,34 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// in-flight promise is still shared, so concurrent callers continue to
 	// await one build rather than racing several.
 	const token = Symbol('server-owned-durable-build');
-	const promise = build(token, runtime).catch((cause: unknown) => {
-		releaseSlot(token);
-		throw cause;
-	});
+
+	// `build()` is called SYNCHRONOUSLY when there is nothing to retire, and
+	// that is load-bearing rather than an optimisation: it runs to its first
+	// await before returning, which is what registers the disposal teardown
+	// before `durableRuntime()` hands back its promise. Chaining it behind a
+	// resolved promise unconditionally pushes that registration onto a
+	// microtask — and a `disposeServerOwnedRuntime()` called immediately after
+	// would then snapshot a teardown list without it, which is the stranded
+	// engine this module already fixed once. Two race tests caught the
+	// regression.
+	//
+	// The retirement path does delay it, and cannot avoid doing so: the stale
+	// engine has to stop before its replacement starts over the same storage.
+	// That path only runs on a module re-evaluation, where the previous
+	// generation's teardown is still registered against the same runtime, so a
+	// disposal landing in the window still has something to drain.
+	const promise =
+		retire === undefined
+			? build(token, runtime).catch((cause: unknown) => {
+					releaseSlot(token);
+					throw cause;
+				})
+			: retire()
+					.then(() => build(token, runtime))
+					.catch((cause: unknown) => {
+						releaseSlot(token);
+						throw cause;
+					});
 	host[DURABLE_SLOT] = { token, runtime, module: MODULE_GENERATION, promise };
 	return promise;
 }
