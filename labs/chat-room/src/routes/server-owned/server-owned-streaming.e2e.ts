@@ -280,13 +280,21 @@ test('moving between two conversations does not carry the first transcript into 
 		ids.push(conversation.id);
 	}
 
-	// A distinguishing turn in the FIRST conversation only — the one navigated
-	// away from.
-	const onlyInFirst = 'Only the first conversation has this line';
-	const appended = await request.post(`/api/server-owned/conversations/${ids[0]}/turns`, {
-		data: { text: onlyInFirst }
-	});
-	expect(appended.status()).toBe(201);
+	// A DISTINCT turn in each, not just the one being navigated away from. With
+	// an empty destination, a broken remount that always initialised a fresh
+	// empty history would satisfy "A's text is gone and no articles remain" —
+	// it would be discarding B's real transcript and passing for it.
+	const turns = [
+		'Only the first conversation has this line',
+		'Only the second conversation has this line'
+	];
+	for (const [index, text] of turns.entries()) {
+		const appended = await request.post(`/api/server-owned/conversations/${ids[index]}/turns`, {
+			data: { text }
+		});
+		expect(appended.status()).toBe(201);
+	}
+	const onlyInFirst = turns[0];
 
 	await gotoHydrated(page, `/server-owned/${ids[0]}`);
 	const log = page.getByRole('log', { name: 'Messages' });
@@ -320,11 +328,13 @@ test('moving between two conversations does not carry the first transcript into 
 		)
 	).toBe(true);
 
-	// The second conversation is empty, and the first one's turn is not on
-	// screen. Both halves — a surface that failed to reset shows the stale text,
-	// and one that reset to the wrong thing shows neither.
+	// THREE claims, and each rules out a different wrong behaviour: the stale
+	// transcript is gone (no reset), the destination's own transcript is present
+	// (reset to empty rather than to B), and exactly one turn is rendered
+	// (neither merged).
 	await expect(log).not.toContainText(onlyInFirst);
-	await expect(log.getByRole('article')).toHaveCount(0);
+	await expect(log).toContainText(turns[1]);
+	await expect(log.getByRole('article')).toHaveCount(1);
 });
 
 test('a long unbroken title wraps instead of widening the page', async ({ page, request }) => {

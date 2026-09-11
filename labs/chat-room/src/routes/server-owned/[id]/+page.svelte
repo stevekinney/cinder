@@ -60,9 +60,9 @@
 	}
 
 	.variant-banner {
-		border: 1px solid var(--cinder-color-warning-border, currentColor);
+		border: 1px solid var(--cinder-status-warning-border, currentColor);
 		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
-		background: var(--cinder-color-warning-bg, transparent);
+		background: var(--cinder-status-warning-background, transparent);
 	}
 </style>

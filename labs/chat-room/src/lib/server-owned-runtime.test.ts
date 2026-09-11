@@ -142,6 +142,50 @@ describe('server-owned runtime', () => {
  * timeout — a child that never exits fails on the runner's own default, which
  * is the correct report rather than a number invented here.
  */
+describe('overlapping disposal', () => {
+	it('joins a disposal already in flight rather than reporting nothing to do', async () => {
+		const runtime = serverOwnedRuntime();
+
+		// A teardown that parks, standing in for the asynchronous engine shutdown
+		// and checkpoint flush a real disposal awaits.
+		let release: () => void = () => {};
+		const parked = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+		let finished = false;
+		runtime.onDispose(async () => {
+			await parked;
+			finished = true;
+		});
+
+		const first = disposeServerOwnedRuntime();
+		const second = disposeServerOwnedRuntime();
+
+		// The assertion that matters is about the SECOND caller alone: it must not
+		// settle while the first disposal is still working. Awaiting both would
+		// pass either way, since the first one finishes the teardown regardless —
+		// which is exactly how the first version of this test managed to pass
+		// against the unfixed code.
+		let secondSettled = false;
+		void second.then(() => {
+			secondSettled = true;
+		});
+
+		// A macrotask, so every pending microtask has run. Without the memo the
+		// second call returns `{ failures: 0 }` immediately — the first has already
+		// cleared the runtime slot — and would have settled by now. From a signal
+		// handler that is `process.exit` firing while the first teardown is still
+		// awaiting a checkpoint flush.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(secondSettled).toBe(false);
+		expect(finished).toBe(false);
+
+		release();
+		await Promise.all([first, second]);
+		expect(finished).toBe(true);
+	});
+});
+
 describe('process signals', () => {
 	/** Spawns the fixture and waits until it reports its handlers registered. */
 	async function readyFixture(environment: Record<string, string>) {

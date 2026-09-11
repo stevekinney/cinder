@@ -211,6 +211,6 @@
 
 	.failure {
 		margin: 0;
-		color: var(--cinder-color-danger-fg, currentColor);
+		color: var(--cinder-status-danger-text, currentColor);
 	}
 </style>

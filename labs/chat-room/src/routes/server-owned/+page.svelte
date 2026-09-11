@@ -85,7 +85,21 @@
 			placeholder="Release planning"
 			required
 		/>
-		<button type="submit" data-testid="server-owned-create" disabled={creating}>
+		<!--
+			A STABLE accessible name plus `aria-busy`, rather than swapping the
+			label to "Creating…" alone. A control whose name changes and which
+			then goes disabled reads to a screen reader as a different,
+			unavailable control — no confirmation that anything started. The
+			visible text still changes, since that is the right affordance for a
+			sighted user; the accessible name does not.
+		-->
+		<button
+			type="submit"
+			data-testid="server-owned-create"
+			aria-label="Create conversation"
+			aria-busy={creating}
+			disabled={creating}
+		>
 			{creating ? 'Creating…' : 'Create'}
 		</button>
 	</form>
@@ -110,7 +124,16 @@
 	{#if data.conversations.length === 0}
 		<p data-testid="server-owned-empty">No conversations yet.</p>
 	{:else}
-		<ul data-testid="server-owned-list">
+		<!--
+			`role="list"` restated, because `list-style: none` below removes it.
+			Safari with VoiceOver drops a list from the accessibility tree once
+			its markers are gone, so the conversations would be announced as
+			unrelated links and text rather than as a collection with a count.
+			This repository's own `DataList` handles the same browser behaviour
+			the same way, which is why this is a convention here rather than a
+			workaround.
+		-->
+		<ul role="list" data-testid="server-owned-list">
 			{#each data.conversations as conversation (conversation.id)}
 				<li data-testid="server-owned-conversation">
 					<a
@@ -136,10 +159,10 @@
 	}
 
 	.variant-banner {
-		border: 1px solid var(--cinder-color-warning-border, currentColor);
+		border: 1px solid var(--cinder-status-warning-border, currentColor);
 		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
-		background: var(--cinder-color-warning-bg, transparent);
+		background: var(--cinder-status-warning-background, transparent);
 	}
 
 	form {
@@ -218,7 +241,7 @@
 		display: flex;
 		justify-content: space-between;
 		gap: 1rem;
-		border: 1px solid var(--cinder-color-border, currentColor);
+		border: 1px solid var(--cinder-border, currentColor);
 		border-radius: 0.5rem;
 		padding: 0.5rem 0.75rem;
 	}
@@ -253,6 +276,6 @@
 	*/
 	.failure {
 		margin: 0;
-		color: var(--cinder-color-danger-fg, currentColor);
+		color: var(--cinder-status-danger-text, currentColor);
 	}
 </style>

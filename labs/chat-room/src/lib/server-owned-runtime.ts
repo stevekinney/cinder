@@ -52,9 +52,22 @@ export type ServerOwnedRuntime = {
  * unrelated global, and survives the module identity change that HMR causes.
  */
 const RUNTIME_SLOT = Symbol.for('cinder.chat-room.server-owned.runtime');
+const DISPOSAL_SLOT = Symbol.for('cinder.chat-room.server-owned.disposal');
 
 type RuntimeHost = typeof globalThis & {
 	[RUNTIME_SLOT]?: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> };
+	/**
+	 * The disposal currently in flight, so overlapping callers await it rather
+	 * than each concluding there is nothing to do.
+	 *
+	 * Without this, the second of two disposals returns immediately — the first
+	 * clears the runtime slot before running any teardown — and with two signal
+	 * handlers registered that is a live sequence: SIGTERM starts an
+	 * asynchronous engine shutdown, SIGINT arrives before it settles, finds an
+	 * empty slot, and reaches `process.exit` while the first disposal is still
+	 * awaiting a checkpoint flush. The exit wins, and the flush is lost.
+	 */
+	[DISPOSAL_SLOT]?: Promise<{ failures: number }> | undefined;
 };
 
 function createRuntime(): {
@@ -106,9 +119,31 @@ export function serverOwnedRuntime(): ServerOwnedRuntime {
  */
 export async function disposeServerOwnedRuntime(): Promise<{ failures: number }> {
 	const host = globalThis as RuntimeHost;
+
+	// An overlapping caller joins the disposal already running instead of
+	// returning a vacuous success. Read before the slot check below, because by
+	// then the first caller has already cleared the runtime and a second one
+	// would otherwise see "nothing to dispose" and carry on — which, from a
+	// signal handler, means exiting the process out from under it.
+	const inFlight = host[DISPOSAL_SLOT];
+	if (inFlight !== undefined) return inFlight;
+
 	const held = host[RUNTIME_SLOT];
 	if (held === undefined) return { failures: 0 };
 
+	const disposal = runDisposal(host, held);
+	host[DISPOSAL_SLOT] = disposal;
+	try {
+		return await disposal;
+	} finally {
+		host[DISPOSAL_SLOT] = undefined;
+	}
+}
+
+async function runDisposal(
+	host: RuntimeHost,
+	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
+): Promise<{ failures: number }> {
 	// Cleared BEFORE the teardowns run: a teardown that reaches for the
 	// runtime gets a fresh one rather than the half-disposed one it is in the
 	// middle of tearing down.
