@@ -3,7 +3,11 @@ import { existsSync, mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
+import {
+	RuntimeTerminatingError,
+	disposeServerOwnedRuntime,
+	serverOwnedRuntime
+} from './server-owned-runtime.ts';
 
 /**
  * The server-owned variant's disposal contract.
@@ -195,34 +199,33 @@ describe('overlapping disposal', () => {
 	});
 });
 
-it('disposes a runtime built while an earlier disposal was still draining', async () => {
+it('refuses to build a runtime once a terminating disposal has started', async () => {
 	const first = serverOwnedRuntime();
 
 	// A teardown that reaches for a runtime, standing in for an in-flight
 	// request landing after the slot is cleared and before the teardowns
-	// finish. Disposal clears the slot BEFORE running anything, so this call
-	// builds a replacement.
-	let replacement: ReturnType<typeof serverOwnedRuntime> | undefined;
-	let replacementDisposed = false;
+	// finish. Under a TERMINATING disposal it is refused rather than served.
+	let refusal: unknown;
 	first.onDispose(() => {
-		replacement = serverOwnedRuntime();
-		replacement.onDispose(() => {
-			replacementDisposed = true;
-		});
+		try {
+			serverOwnedRuntime();
+		} catch (cause) {
+			refusal = cause;
+			throw cause;
+		}
 	});
 
-	// `drain`, which is what the signal handler passes. A plain disposal
-	// leaves the replacement alone on purpose — there it is the next
-	// caller's runtime rather than a straggler.
-	await disposeServerOwnedRuntime({ drain: true });
+	const { failures } = await disposeServerOwnedRuntime({ drain: true });
 
-	// The replacement was built, and disposed by the same call. Without the
-	// drain it survives — and the signal handler exits the moment the first
-	// disposal resolves, so its engine would be cut off with no teardown and
-	// no checkpoint flush.
-	expect(replacement).toBeDefined();
-	expect(replacement).not.toBe(first);
-	expect(replacementDisposed).toBe(true);
+	// Refused, and counted. The earlier version of this let the teardown build
+	// a replacement and relied on a bounded drain to catch it — which could not
+	// work: a loop that ends by giving up leaves the last generation
+	// undisposed, and the signal handler exits the moment it returns.
+	expect(refusal).toBeInstanceOf(RuntimeTerminatingError);
+	expect(failures).toBe(1);
+
+	// And nothing was left behind for the exit to cut off.
+	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
 });
 
 describe('process signals', () => {

@@ -92,8 +92,27 @@ const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
 type DurableSlot = {
 	token: symbol;
 	runtime: ServerOwnedRuntime;
+	module: symbol;
 	promise: Promise<DurableRuntime>;
 };
+
+/**
+ * Identity of THIS evaluation of this module.
+ *
+ * `globalThis` is what keeps the engine alive across a Vite server reload —
+ * that is the leak the slot was introduced to fix. But it works too well: the
+ * runtime is unchanged too, so the identity check above is satisfied and every
+ * call after an edit keeps returning the engine the PREVIOUS module instance
+ * built. Changes to the workflow, the checkpoint wiring, or
+ * `resolveWorkflowServices` appear to reload and stay inactive until the whole
+ * dev server restarts, which is worse than not reloading at all: an experiment
+ * silently exercises stale code.
+ *
+ * A fresh symbol per evaluation distinguishes the two cases. Same module, same
+ * runtime — reuse. New module — stop the old engine and build one from the
+ * code now on disk.
+ */
+const MODULE_GENERATION = Symbol('server-owned-durable-module');
 
 type DurableHost = typeof globalThis & {
 	[DURABLE_SLOT]?: DurableSlot | undefined;
@@ -112,13 +131,38 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	const runtime = serverOwnedRuntime();
 	const held = host[DURABLE_SLOT];
 
-	// Identity, not presence. A memo whose runtime is not the one a caller will
-	// now be handed belongs to a disposed generation: its engine is stopping and
-	// its storage is being cleared. Returning it would pair a live session store
-	// with a dying engine. Left alone rather than cleared — its own teardown
-	// still needs it, and `releaseSlot` will find a different token and decline
-	// to erase the replacement installed below.
-	if (held !== undefined && held.runtime === runtime) return held.promise;
+	// Identity, not presence, on BOTH axes.
+	//
+	// Runtime: a memo whose runtime is not the one a caller will now be handed
+	// belongs to a disposed generation — its engine is stopping and its storage
+	// is going away. Returning it would pair a live session store with a dying
+	// engine. Left alone rather than cleared: its own teardown still needs it,
+	// and `releaseSlot` will find a different token and decline to erase the
+	// replacement installed below.
+	//
+	// Module: an engine built by a previous evaluation of this file closes over
+	// that evaluation's workflow and wiring. Reusing it makes an edit look
+	// applied while the old code keeps running.
+	if (held !== undefined && held.runtime === runtime && held.module === MODULE_GENERATION) {
+		return held.promise;
+	}
+
+	// A memo from a previous module evaluation is STOPPED, not abandoned. The
+	// runtime is the same one, so its `onDispose` teardown is still registered
+	// and would eventually run — but "eventually" is process exit, and until
+	// then the stale engine is live over the same storage as the new one. Two
+	// engines over one store is the exact condition this memo exists to
+	// prevent.
+	if (held !== undefined && held.runtime === runtime) {
+		void held.promise
+			.then(async (stale) => {
+				await stale.engine.shutdown();
+			})
+			.catch(() => {
+				// A build that never succeeded has no engine to stop, and its
+				// own rejection was already delivered to whoever awaited it.
+			});
+	}
 
 	// A REJECTED promise must not be memoised. Without this, one transient
 	// failure — a misconfigured store, a storage hiccup during the first
@@ -134,7 +178,7 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 		releaseSlot(token);
 		throw cause;
 	});
-	host[DURABLE_SLOT] = { token, runtime, promise };
+	host[DURABLE_SLOT] = { token, runtime, module: MODULE_GENERATION, promise };
 	return promise;
 }
 

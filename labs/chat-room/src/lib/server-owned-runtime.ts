@@ -64,6 +64,7 @@ export type ServerOwnedRuntime = {
  */
 const RUNTIME_SLOT = Symbol.for('cinder.chat-room.server-owned.runtime');
 const DISPOSAL_SLOT = Symbol.for('cinder.chat-room.server-owned.disposal');
+const TERMINATING_SLOT = Symbol.for('cinder.chat-room.server-owned.terminating');
 
 type RuntimeHost = typeof globalThis & {
 	[RUNTIME_SLOT]?: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> };
@@ -79,7 +80,37 @@ type RuntimeHost = typeof globalThis & {
 	 * awaiting a checkpoint flush. The exit wins, and the flush is lost.
 	 */
 	[DISPOSAL_SLOT]?: Promise<{ failures: number }> | undefined;
+	/**
+	 * Set once a TERMINATING disposal starts, and lifted only by a non-draining
+	 * disposal — which means "tear down and carry on" rather than "stop".
+	 *
+	 * This is what makes draining provably finite. The previous version capped
+	 * the drain at three generations, which broke the promise `drain` makes —
+	 * a request creating a replacement during each pass leaves the last one
+	 * undisposed, and the signal handler exits the moment the loop ends. A cap
+	 * cannot fix that, because the loop only terminates by giving up.
+	 *
+	 * Refusing new runtimes ends it instead: after the pass that disposes the
+	 * final generation, nothing can create another.
+	 */
+	[TERMINATING_SLOT]?: true | undefined;
 };
+
+/**
+ * Thrown by `serverOwnedRuntime()` once termination has begun.
+ *
+ * A request arriving during shutdown gets an error rather than a runtime that
+ * is about to be torn down underneath it. That is the honest outcome: the
+ * alternative is a run whose engine is stopped mid-flight, which the client
+ * sees as a truncated stream with no explanation.
+ */
+export class RuntimeTerminatingError extends Error {
+	override readonly name = 'RuntimeTerminatingError';
+
+	constructor() {
+		super('The server-owned runtime is shutting down and is not accepting new work.');
+	}
+}
 
 function createRuntime(): {
 	runtime: ServerOwnedRuntime;
@@ -112,6 +143,9 @@ function createRuntime(): {
  */
 export function serverOwnedRuntime(): ServerOwnedRuntime {
 	const host = globalThis as RuntimeHost;
+	// Refused rather than built. See `TERMINATING_SLOT`: admitting one more
+	// runtime here is what made the drain unable to finish.
+	if (host[TERMINATING_SLOT] === true) throw new RuntimeTerminatingError();
 	host[RUNTIME_SLOT] ??= createRuntime();
 	return host[RUNTIME_SLOT].runtime;
 }
@@ -151,6 +185,21 @@ export async function disposeServerOwnedRuntime(
 	} = {}
 ): Promise<{ failures: number }> {
 	const host = globalThis as RuntimeHost;
+
+	// Lifted FIRST, above every early return below — this has to run even when
+	// there is no runtime to dispose, which is the ordinary case for a spec's
+	// `afterEach`.
+	//
+	// A NON-draining disposal means "tear down and carry on"; it is how the
+	// specs reset between cases, so it clears the termination latch. Only a
+	// draining disposal sets that latch, and in production only the signal
+	// handler drains, so it stays set exactly where the process really is
+	// leaving.
+	//
+	// Placing it lower was the first attempt and did nothing: disposal returns
+	// early when nothing is held, so the latch survived into the next test and
+	// four unrelated suites went red at once.
+	if (options.drain !== true) host[TERMINATING_SLOT] = undefined;
 
 	// An overlapping caller joins the disposal already running instead of
 	// returning a vacuous success. Read before the slot check below, because by
@@ -198,15 +247,26 @@ async function drainDisposal(
 	host: RuntimeHost,
 	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
 ): Promise<{ failures: number }> {
-	const GENERATIONS = 3;
-	let failures = 0;
-	let generation: typeof held | undefined = held;
+	// Latched BEFORE the first pass, so nothing new can be admitted while this
+	// runs. That is what bounds the loop: each pass disposes one generation and
+	// no further generation can be created, so the slot is empty within one
+	// pass of the last request that got in.
+	//
+	// The previous version capped this at three passes instead, which could not
+	// work — a loop that ends by giving up leaves the final runtime undisposed,
+	// and the signal handler exits the moment it returns. The cap contradicted
+	// the promise `drain` makes.
+	host[TERMINATING_SLOT] = true;
 
-	for (let pass = 0; pass < GENERATIONS && generation !== undefined; pass += 1) {
+	let failures = 0;
+	let generation:
+		| { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
+		| undefined = host[RUNTIME_SLOT] ?? held;
+
+	while (generation !== undefined) {
 		failures += (await runDisposal(host, generation)).failures;
-		// A replacement built while the pass above was running. `undefined`
-		// means nothing reached `serverOwnedRuntime()` in the window, which is
-		// the ordinary case.
+		// A replacement built by a request that got in before the latch, during
+		// the pass above. `undefined` is the ordinary case.
 		generation = host[RUNTIME_SLOT];
 	}
 
@@ -217,9 +277,14 @@ async function runDisposal(
 	host: RuntimeHost,
 	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
 ): Promise<{ failures: number }> {
-	// Cleared BEFORE the teardowns run: a teardown that reaches for the
-	// runtime gets a fresh one rather than the half-disposed one it is in the
-	// middle of tearing down.
+	// Cleared BEFORE the teardowns run, so a teardown cannot reach the
+	// half-disposed runtime it is in the middle of tearing down.
+	//
+	// What it gets INSTEAD depends on why disposal is happening. An ordinary
+	// disposal — the specs' reset — hands it a fresh runtime. A terminating one
+	// refuses, because admitting a new generation is what stopped the drain
+	// finishing; the teardown sees `RuntimeTerminatingError`, which disposal
+	// isolates and counts like any other teardown failure.
 	host[RUNTIME_SLOT] = undefined;
 
 	let failures = 0;
@@ -364,9 +429,25 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 			// `drain`, because this one is terminating: a request that builds a
 			// replacement runtime while the teardowns run would otherwise be cut
 			// off by the exit below.
-			void disposeServerOwnedRuntime({ drain: true }).finally(() => {
-				process.exit(TERMINATION_STATUS[signal]);
-			});
+			void disposeServerOwnedRuntime({ drain: true })
+				.then(({ failures }) => {
+					// REPORTED, not discarded. `runDisposal` converts a rejecting
+					// teardown into a resolved count, so without this a failed
+					// checkpoint flush exits exactly like a clean shutdown — and
+					// the one moment an operator needs to know the engine did not
+					// finish writing is the moment the process disappears.
+					if (failures > 0) {
+						console.error(`server-owned runtime: ${failures} teardown(s) failed during shutdown`);
+					}
+				})
+				.catch((cause: unknown) => {
+					// Disposal itself throwing is outside the per-teardown
+					// isolation, so it has nowhere else to be seen.
+					console.error('server-owned runtime: disposal failed during shutdown', cause);
+				})
+				.finally(() => {
+					process.exit(TERMINATION_STATUS[signal]);
+				});
 		});
 	}
 }
