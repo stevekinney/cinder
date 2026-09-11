@@ -345,8 +345,24 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      # The same bounded retry as `playwright-lane`, because `typecheck` is a
+      # REQUIRED context: a transient registry failure here does not just fail
+      # a lane, it blocks the merge. Duplicated rather than shared — Actions
+      # has no anchors, and two copies is the point at which a composite action
+      # is not yet worth the indirection. A third would change that. See
+      # CIN-607.
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            if bun install --frozen-lockfile; then
+              exit 0
+            fi
+            echo "::warning::bun install attempt ${attempt} of 3 failed; clearing the cache and retrying"
+            bun pm cache rm || true
+            sleep $((attempt * 5))
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Typecheck workspace
         run: bun run typecheck
@@ -379,16 +395,71 @@ jobs:
       # setup-bun downloads a zip release. The Playwright image deliberately
       # omits archive utilities, so install only the bootstrap tool before it
       # runs; browser and OS dependencies still come from the pinned image.
+      #
+      # RETRIED, because this one line reaches archive.ubuntu.com from every
+      # lane and every visual shard — 24 chances per pull request to catch the
+      # mirror mid-sync. Two distinct failures were observed in one evening:
+      #
+      #   E: Failed to fetch .../Packages.gz  File has unexpected size
+      #      (1563525 != 1563524). Mirror sync in progress?
+      #
+      # and, earlier, a bare connection failure to the same host. Each one
+      # failed an otherwise-green lane and read as a branch failure until
+      # someone opened the log.
+      #
+      # The index is cleared between attempts, which is what actually fixes the
+      # size-mismatch case: apt's own `Acquire::Retries` re-fetches against the
+      # same cached, already-wrong index. The backoff is for the connection
+      # case — it is a bounded retry of a network fetch, not a timeout raised
+      # to make something slow look healthy.
+      #
+      # Three attempts, then a loud failure naming the step. See CIN-607.
       - name: Install Bun bootstrap dependency
-        run: apt-get update && apt-get install --no-install-recommends --yes unzip
+        run: |
+          for attempt in 1 2 3; do
+            rm -rf /var/lib/apt/lists/*
+            if apt-get -o Acquire::Retries=3 update \
+              && apt-get install --no-install-recommends --yes unzip; then
+              exit 0
+            fi
+            echo "::warning::apt bootstrap attempt ${attempt} of 3 failed; retrying"
+            sleep $((attempt * 5))
+          done
+          echo "::error::apt could not install the Bun bootstrap dependency after 3 attempts"
+          exit 1
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      # RETRIED for the same reason as the apt step above, and observed the
+      # same evening on the same lane:
+      #
+      #   error: Integrity check failed for tarball: zod
+      #   error: IntegrityCheckFailed extracting tarball from zod
+      #
+      # The cache is cleared between attempts, because that is where a
+      # corrupt tarball lives — retrying without clearing re-reads the same
+      # bad bytes and fails identically. `|| true` so a runner whose bun
+      # predates `bun pm cache rm` still retries rather than failing on the
+      # cleanup itself.
+      #
+      # `--frozen-lockfile` is preserved on every attempt: this retries a
+      # network fetch, and must never become a path that quietly resolves
+      # something the lockfile did not pin. See CIN-607.
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        run: |
+          for attempt in 1 2 3; do
+            if bun install --frozen-lockfile; then
+              exit 0
+            fi
+            echo "::warning::bun install attempt ${attempt} of 3 failed; clearing the cache and retrying"
+            bun pm cache rm || true
+            sleep $((attempt * 5))
+          done
+          echo "::error::bun install failed after 3 attempts"
+          exit 1
 
       - name: Restore workspace builds through Turbo
         env:
