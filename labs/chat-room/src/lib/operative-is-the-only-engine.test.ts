@@ -70,94 +70,34 @@ const NON_PROVIDER_OPTIONAL_PEERS = ['@opentelemetry/api', 'zod'] as const;
 const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.svelte'];
 
 /**
- * Blanks out comments and string CONTENTS, leaving everything else in place.
+ * NOTHING IS STRIPPED. The scan runs against raw source, deliberately.
  *
- * A tiny lexer rather than more regular expressions, and the reason is four
- * rounds of review on this one function. Deleting `/* … *\/` spans with a
- * regex cannot tell a comment from a string that merely contains the
- * delimiters, so `const marker = '/*'; import OpenAI from 'openai';` had the
- * real import deleted along with the "comment" — a FALSE NEGATIVE, which is the
- * dangerous direction: the guard reports clean while the import is right there.
- * Patching that with another pattern would have been the fifth attempt at
- * lexing with a language that is not regular.
+ * This function used to remove comments before matching, and that design lost
+ * five rounds of review in a row: a string containing `/*`, a Svelte markup
+ * comment, a regex literal whose character class contains `/*`. Each fix
+ * admitted the next construct, because deciding what is a comment in
+ * JavaScript means lexing JavaScript — strings, template literals with nested
+ * expressions, regex literals versus division, JSX — and a half-lexer is a
+ * source of FALSE NEGATIVES. A false negative here is silent: the guard says
+ * clean while a provider import sits in the file.
  *
- * Characters are replaced with spaces rather than removed, so offsets and line
- * structure survive and the import pattern still sees the specifier quotes it
- * needs.
+ * So the trade is inverted. Any import-shaped text naming a provider is
+ * flagged, wherever it appears — including inside a comment. There is no
+ * construct that can hide an import from this, because nothing is interpreted.
  *
- * Strings are walked past rather than erased, because a real import's module
- * specifier is a string — erasing contents would blind the guard to exactly
- * what it looks for. Walking past them is what removes the false negative: a
- * string containing `/*` can no longer open a comment.
+ * The cost is real and bounded: you cannot write an example provider import in
+ * a comment in this lab. That is a loud, immediate failure with an obvious fix
+ * (describe the import instead of spelling it), and it is the reason the two
+ * prose mentions in this lab describe the provider transport by role rather
+ * than by package name — which they should do anyway, since the package is
+ * Operative's choice and not ours.
  *
- * The remaining limitation is unchanged and still documented rather than
- * hidden: a string whose CONTENTS contain exact import syntax is flagged. That
- * is the safe direction — a false positive fails loudly on the next run, while
- * a false negative is silent, and silence is the whole failure mode here.
+ * A guard protects against mistakes, not against an author deliberately hiding
+ * an import; that is what review is for. What it must never do is report clean
+ * when the import is there.
  */
-function withoutComments(source: string): string {
-	const out = source.split('');
-	let index = 0;
-
-	const blank = (from: number, to: number): void => {
-		for (let at = from; at < to && at < out.length; at += 1) {
-			if (out[at] !== '\n') out[at] = ' ';
-		}
-	};
-
-	while (index < source.length) {
-		const two = source.slice(index, index + 2);
-
-		if (two === '//') {
-			const end = source.indexOf('\n', index);
-			const stop = end === -1 ? source.length : end;
-			blank(index, stop);
-			index = stop;
-			continue;
-		}
-
-		if (two === '/*') {
-			const end = source.indexOf('*/', index + 2);
-			const stop = end === -1 ? source.length : end + 2;
-			blank(index, stop);
-			index = stop;
-			continue;
-		}
-
-		// Svelte markup comments. `.svelte` files are scanned, and
-		// `<!-- import X from 'openai' -->` is prose.
-		if (source.startsWith('<!--', index)) {
-			const end = source.indexOf('-->', index + 4);
-			const stop = end === -1 ? source.length : end + 3;
-			blank(index, stop);
-			index = stop;
-			continue;
-		}
-
-		const quote = source[index];
-		if (quote === "'" || quote === '"' || quote === '`') {
-			let at = index + 1;
-			while (at < source.length) {
-				if (source[at] === '\\') {
-					at += 2;
-					continue;
-				}
-				if (source[at] === quote) break;
-				at += 1;
-			}
-			// SKIPPED, not blanked. A real import's module specifier is itself a
-			// string, so erasing string contents would erase the very thing
-			// this is looking for. Walking past it is what matters: it means a
-			// string containing `/*` cannot open a comment, which is the false
-			// negative this lexer exists to remove.
-			index = Math.min(at + 1, source.length);
-			continue;
-		}
-
-		index += 1;
-	}
-
-	return out.join('');
+function scannable(source: string): string {
+	return source;
 }
 
 /** Matches a real module specifier — `import … from`, `import(…)`, `require(…)`. */
@@ -200,7 +140,7 @@ describe('Operative is the only engine', () => {
 			// make this file fail to exclude itself and go permanently red.
 			.filter((path) => path.replaceAll('\\', '/') !== import.meta.path.replaceAll('\\', '/'))
 			.filter((path) => {
-				const code = withoutComments(readFileSync(path, 'utf8'));
+				const code = scannable(readFileSync(path, 'utf8'));
 				return patterns.some((pattern) => pattern.test(code));
 			});
 
@@ -235,57 +175,36 @@ describe('Operative is the only engine', () => {
 		}
 	});
 
-	it('matches an import but not a mention in prose or a commented-out import', () => {
+	it('matches every import form', () => {
 		const anthropic = importPattern('@anthropic-ai/sdk');
 
-		expect(anthropic.test(withoutComments(`import Anthropic from '@anthropic-ai/sdk';`))).toBe(
-			true
-		);
-		expect(
-			anthropic.test(withoutComments(`import type { ContentBlock } from '@anthropic-ai/sdk';`))
-		).toBe(true);
-		expect(anthropic.test(withoutComments(`const sdk = await import('@anthropic-ai/sdk');`))).toBe(
-			true
-		);
-		expect(anthropic.test(withoutComments(`require('@anthropic-ai/sdk/resources')`))).toBe(true);
-		expect(anthropic.test(withoutComments(`import '@anthropic-ai/sdk';`))).toBe(true);
+		expect(anthropic.test(`import Anthropic from '@anthropic-ai/sdk';`)).toBe(true);
+		expect(anthropic.test(`import type { ContentBlock } from '@anthropic-ai/sdk';`)).toBe(true);
+		expect(anthropic.test(`const sdk = await import('@anthropic-ai/sdk');`)).toBe(true);
+		expect(anthropic.test(`require('@anthropic-ai/sdk/resources')`)).toBe(true);
+		expect(anthropic.test(`import '@anthropic-ai/sdk';`)).toBe(true);
 
-		// A plain mention, and — the case the first version of this guard got
-		// wrong — a commented-out import, which is prose however much it looks
-		// like code.
-		expect(anthropic.test(withoutComments(`// @anthropic-ai/sdk retries a 429 on its own`))).toBe(
-			false
-		);
-		expect(
-			anthropic.test(withoutComments(`// Never import Anthropic from '@anthropic-ai/sdk'`))
-		).toBe(false);
-		expect(
-			anthropic.test(withoutComments(`/* import Anthropic from '@anthropic-ai/sdk'; */`))
-		).toBe(false);
-
-		// A URL is not a line comment.
-		expect(withoutComments(`const u = 'https://example.com/x';`)).toContain('https://example.com');
-
-		// A Svelte MARKUP comment is prose too — `.svelte` files are scanned,
-		// so this is the form the guard would otherwise trip over.
-		expect(
-			importPattern('openai').test(withoutComments(`<!-- Never import OpenAI from 'openai' -->`))
-		).toBe(false);
+		// A bare mention is still not an import — the pattern needs `from`,
+		// `import(`, `require(`, or `import` before the specifier, so prose that
+		// merely names a package is unaffected.
+		expect(anthropic.test(`// the transport retries a 429 on its own`)).toBe(false);
+		expect(anthropic.test(`const note = 'we use @anthropic-ai/sdk indirectly';`)).toBe(false);
 	});
 
-	it('is not fooled by comment delimiters inside strings', () => {
-		// The FALSE NEGATIVE a regex stripper cannot avoid: `'/*'` opened a
-		// "comment" that swallowed the real import after it, so the guard
-		// reported clean while the import sat in plain sight. False negatives
-		// are the dangerous direction — nothing fails, and nobody looks.
-		const offender = `const marker = '/*'; import OpenAI from 'openai'; const close = '*/';`;
-		expect(importPattern('openai').test(withoutComments(offender))).toBe(true);
+	it('cannot be hidden behind any construct, because nothing is interpreted', () => {
+		// Each of these defeated a previous version of this guard by making the
+		// stripper treat the real import as part of a comment. Against raw
+		// source they all still match, and no future construct can change that.
+		const cases = [
+			`const marker = '/*'; import OpenAI from 'openai'; const close = '*/';`,
+			`const punctuation = /[/*]/; import OpenAI from 'openai';`,
+			`<!-- --> import OpenAI from 'openai';`,
+			`/* a real comment */ import OpenAI from 'openai';`
+		];
 
-		// And the ordinary cases still behave: a genuine comment containing an
-		// import is still prose.
-		expect(
-			importPattern('openai').test(withoutComments(`/* import OpenAI from 'openai'; */`))
-		).toBe(false);
+		for (const offender of cases) {
+			expect(importPattern('openai').test(offender)).toBe(true);
+		}
 	});
 
 	it('matches the other providers too, not just Anthropic', () => {

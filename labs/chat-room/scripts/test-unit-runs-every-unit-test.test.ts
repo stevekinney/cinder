@@ -42,17 +42,22 @@ const LAB_ROOT = join(import.meta.dir, '..');
  * other form able to reproduce exactly the failure this guard exists to
  * prevent.
  */
-/** Build output, vendored code, and VCS — never sources of unit tests. */
-const IGNORED_DIRECTORIES = new Set([
-	'node_modules',
-	'.svelte-kit',
-	'.git',
-	'build',
-	'dist',
-	'coverage',
-	'test-results',
-	'playwright-report'
-]);
+/**
+ * Vendored code and VCS, excluded at ANY depth — a nested `node_modules` is
+ * still vendored, and nobody writes the lab's tests inside one.
+ */
+const IGNORED_ANYWHERE = new Set(['node_modules', '.svelte-kit', '.git']);
+
+/**
+ * Build artifacts, excluded only at the LAB ROOT.
+ *
+ * Matching these by basename at every depth was too broad: `build`, `dist`, and
+ * `coverage` are ordinary words, so a route or module directory named
+ * `src/build/` would have been skipped and a test inside it would run under a
+ * bare `bun test` while staying invisible to CI — recreating the exact gap this
+ * guard exists to close, one directory deeper.
+ */
+const IGNORED_AT_ROOT = new Set(['build', 'dist', 'coverage', 'test-results', 'playwright-report']);
 
 const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
 
@@ -62,7 +67,8 @@ function unitTestFiles(directory: string): string[] {
 		// Artifacts and vendored code only. Everything else is walked, so a new
 		// directory is covered the day it appears rather than the day someone
 		// remembers to add it here.
-		if (IGNORED_DIRECTORIES.has(entry)) continue;
+		if (IGNORED_ANYWHERE.has(entry)) continue;
+		if (directory === LAB_ROOT && IGNORED_AT_ROOT.has(entry)) continue;
 		const path = join(directory, entry);
 		if (statSync(path).isDirectory()) {
 			found.push(...unitTestFiles(path));
