@@ -6,6 +6,7 @@ import {
 import type { RunEngine } from '@lostgradient/operative/durable';
 
 import { serverOwnedRuntime } from './server-owned-runtime.ts';
+import type { ServerOwnedRuntime } from './server-owned-runtime.ts';
 
 /**
  * The durable half of the server-owned variant.
@@ -77,8 +78,22 @@ const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
  *
  * Comparing the token before clearing makes steps 4 and 5 no-ops: a build only
  * ever retracts its own memo.
+ *
+ * It also holds the RUNTIME the memo was built over, which the token alone
+ * cannot stand in for. The token answers "is this still my memo?"; the runtime
+ * answers "is this memo still about the runtime a caller is going to get?" —
+ * and those come apart during disposal, because `disposeServerOwnedRuntime`
+ * clears the runtime slot BEFORE running any teardown while this memo survives
+ * until the durable teardown's `engine.shutdown()` resolves. In that window a
+ * request would take a fresh `SessionStore` from a new runtime and an engine
+ * and checkpoint store from the old one, which is then shut down and its
+ * storage cleared out from under the request before it ever calls `run()`.
  */
-type DurableSlot = { token: symbol; promise: Promise<DurableRuntime> };
+type DurableSlot = {
+	token: symbol;
+	runtime: ServerOwnedRuntime;
+	promise: Promise<DurableRuntime>;
+};
 
 type DurableHost = typeof globalThis & {
 	[DURABLE_SLOT]?: DurableSlot | undefined;
@@ -92,8 +107,18 @@ function releaseSlot(token: symbol): void {
 
 export async function durableRuntime(): Promise<DurableRuntime> {
 	const host = globalThis as DurableHost;
+	// Read ONCE, and passed down, so this function and the build it starts
+	// cannot end up describing two different runtimes.
+	const runtime = serverOwnedRuntime();
 	const held = host[DURABLE_SLOT];
-	if (held !== undefined) return held.promise;
+
+	// Identity, not presence. A memo whose runtime is not the one a caller will
+	// now be handed belongs to a disposed generation: its engine is stopping and
+	// its storage is being cleared. Returning it would pair a live session store
+	// with a dying engine. Left alone rather than cleared — its own teardown
+	// still needs it, and `releaseSlot` will find a different token and decline
+	// to erase the replacement installed below.
+	if (held !== undefined && held.runtime === runtime) return held.promise;
 
 	// A REJECTED promise must not be memoised. Without this, one transient
 	// failure — a misconfigured store, a storage hiccup during the first
@@ -105,11 +130,11 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// in-flight promise is still shared, so concurrent callers continue to
 	// await one build rather than racing several.
 	const token = Symbol('server-owned-durable-build');
-	const promise = build(token).catch((cause: unknown) => {
+	const promise = build(token, runtime).catch((cause: unknown) => {
 		releaseSlot(token);
 		throw cause;
 	});
-	host[DURABLE_SLOT] = { token, promise };
+	host[DURABLE_SLOT] = { token, runtime, promise };
 	return promise;
 }
 
@@ -129,8 +154,7 @@ export class RuntimeDisposedDuringBuildError extends Error {
 	}
 }
 
-async function build(token: symbol): Promise<DurableRuntime> {
-	const runtime = serverOwnedRuntime();
+async function build(token: symbol, runtime: ServerOwnedRuntime): Promise<DurableRuntime> {
 	// POSITIONAL. `createRunWorkflow(checkpointStore, { version })` takes the
 	// store as its first argument, not in an options bag. That used to be
 	// stated here as a warning because the call was cast: `createRunWorkflow`

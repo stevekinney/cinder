@@ -118,6 +118,21 @@
 		region mounted with its text already in place is not reliably
 		announced — and `error-live-regions.e2e.ts` enforces it across the
 		repository's banners.
+
+		No RETRY DISPOSITION here, unlike the canonical exemplar, and the
+		difference is not an oversight. There the banner says "you can try that
+		again" because Retry works: the browser owns the transcript, so retrying
+		rewinds and re-sends the same turn. Here `retry` is disabled, because the
+		stream endpoint's only verb appends — so the sole way a user could act on
+		such an invitation is to retype the message, which persists the prompt a
+		second time beside the one that already failed. Telling someone to try
+		again when the only available "again" corrupts their transcript is worse
+		than saying nothing.
+
+		`data-retryable` stays: the classification is real and worth exposing to
+		a reader or a spec. What is withheld is the INSTRUCTION, until there is a
+		server-side operation that replaces a failed turn rather than appending
+		beside it.
 	-->
 	<p
 		class="failure"
@@ -127,16 +142,6 @@
 	>
 		{#if failure}
 			{failure.message}
-			<!--
-				The classification, rendered rather than flattened away, exactly as
-				the canonical exemplar renders it: a reader should be able to tell
-				from the banner whether the turn is worth sending again.
-			-->
-			{#if failure.retryable === true}
-				<span data-testid="server-owned-turn-failure-disposition"> — you can try that again.</span>
-			{:else if failure.retryable === false}
-				<span data-testid="server-owned-turn-failure-disposition"> — retrying will not help.</span>
-			{/if}
 		{/if}
 	</p>
 

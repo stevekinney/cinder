@@ -36,14 +36,22 @@ const CROSS_ENGINE_SHARDS = [
 		'**/interleaving.e2e.ts'
 	],
 	[
-		// The server-owned family's browser paths: a `fetch` plus reload, and a
-		// `ReadableStream` streamed through the page's session controller. Its
-		// `request`-fixture siblings stay out — that fixture is a Node-side HTTP
-		// client, so three engines would run identical code three times.
+		// The server-owned family's browser paths: a `fetch` plus reload, a
+		// `ReadableStream` streamed through the page's session controller, and
+		// the transcript-versus-page scroll ownership case. Its `request`-fixture
+		// siblings stay out — that fixture is a Node-side HTTP client, so three
+		// engines would run identical code three times.
 		//
-		// Placed here by measurement, not by eye: `--list` per project read
-		// 49/48/62/51/50, so its two tests go to the smallest shard rather than
-		// to `webkit-3`, which is already at the 62 the ceiling note describes.
+		// Placed here by measurement, not by eye. Without this entry `--list`
+		// per project reads 49/48/62/51/50, so its three tests go to the
+		// smallest shard rather than to `webkit-3`, which is already at the 62
+		// the ceiling note describes. With it, the reading is 49/51/62/51/50 —
+		// re-measured when the third test was added, and `webkit-2` is still
+		// the right home.
+		//
+		// Re-run `--list` per project when this spec gains or loses a test: a
+		// placement rationale carrying a count that no longer matches the file
+		// is worse than none, because the next person will trust it.
 		'**/server-owned-streaming.e2e.ts',
 		'**/markdown-editor.e2e.ts',
 		'**/message-lifecycle.e2e.ts',

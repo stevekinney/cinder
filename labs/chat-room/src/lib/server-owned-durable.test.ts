@@ -5,7 +5,7 @@ import {
 	durableRuntime,
 	forgetDurableRuntime
 } from './server-owned-durable.ts';
-import { disposeServerOwnedRuntime } from './server-owned-runtime.ts';
+import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
 
 /**
  * The durable engine holds the process open until `shutdown()`, so every test
@@ -120,5 +120,35 @@ describe('server-owned durable runtime', () => {
 		// where it fails. If that ordering ever inverted, this would go quiet
 		// rather than flaky: it cannot produce a false failure, only stop
 		// exercising the path.
+	});
+
+	it('does not hand out an engine belonging to a runtime being disposed', async () => {
+		const before = await durableRuntime();
+
+		// A teardown registered AFTER the durable one, so reverse order runs it
+		// FIRST — the window this test is about. By the time it fires, the
+		// runtime slot has already been cleared (disposal clears it before
+		// running anything) while the durable memo is still set, because the
+		// durable teardown has not reached its `engine.shutdown()` yet.
+		//
+		// A request landing here takes a fresh `SessionStore` from the new
+		// runtime. Handing it the memoised engine would pair that store with an
+		// engine about to stop, over storage about to be cleared.
+		let during: { engine: unknown } | undefined;
+		let sawFreshRuntime = false;
+		serverOwnedRuntime().onDispose(async () => {
+			sawFreshRuntime = serverOwnedRuntime() !== undefined;
+			during = await durableRuntime();
+		});
+
+		await disposeServerOwnedRuntime();
+
+		expect(sawFreshRuntime).toBe(true);
+		// A DIFFERENT engine: the memo was rejected because its runtime was not
+		// the one that call would have been given. Returning `before` here is
+		// the defect — and is what an identity-free `if (held !== undefined)`
+		// does.
+		expect(during).toBeDefined();
+		expect(during).not.toBe(before);
 	});
 });
