@@ -29,7 +29,8 @@ const ERROR_REGIONS = [
 	{ route: '/exercises/adapter-push', testId: 'adapter-push-error' },
 	{ route: '/exercises/adapter-push', testId: 'hazard-fixture-announcement' },
 	{ route: '/exercises/tool-approval', testId: 'fail-error' },
-	{ route: '/exercises/interleaving', testId: 'interleaving-error' }
+	{ route: '/exercises/interleaving', testId: 'interleaving-error' },
+	{ route: '/exercises/multi-agent', testId: 'multi-agent-failure' }
 ];
 
 for (const { route, testId } of ERROR_REGIONS) {

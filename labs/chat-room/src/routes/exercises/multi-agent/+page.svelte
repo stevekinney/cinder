@@ -220,6 +220,19 @@
 	];
 
 	let settledCount = $state(0);
+
+	/**
+	 * The failure announcer, kept OUTSIDE the `{#await}` blocks.
+	 *
+	 * A `role="alert"` inserted by a `{:catch}` arm arrives with its text
+	 * already in place, which is exactly what
+	 * `exercises/error-live-regions.e2e.ts` exists to forbid — Chat's own
+	 * `chat-status-announcer.svelte` states the rule: "mounting with
+	 * pre-existing text is not reliably announced". The catch arms still render
+	 * a visible message, but they are not the live region; this is, and it is
+	 * mounted empty from the first paint.
+	 */
+	let announcement = $state('');
 	for (const panel of panels) {
 		// SETTLED, both senses of it. Counting only fulfilment would leave the
 		// status line permanently short of three if a delegation rejected — and
@@ -234,7 +247,15 @@
 		const settle = (): void => {
 			settledCount += 1;
 		};
-		panel.promise.then(settle, settle);
+		panel.promise.then(settle, (cause: unknown) => {
+			// One region for every panel: three live regions describing three
+			// failures would announce over each other, and the visible per-panel
+			// message below already says which one broke.
+			announcement = `The ${panel.id} delegation failed: ${
+				cause instanceof Error ? cause.message : String(cause)
+			}`;
+			settle();
+		});
 	}
 
 	const summaryPanel = panels[0];
@@ -258,6 +279,14 @@
 		{settledCount} of {panels.length} delegations settled.
 	</p>
 
+	<!--
+		Mounted ALWAYS, empty until a delegation rejects. Registered in
+		`exercises/error-live-regions.e2e.ts`, whose list is exhaustive by its
+		own contract — a new error region that is not in it is the omission that
+		spec was written after finding seven times.
+	-->
+	<p role="alert" data-testid="multi-agent-failure">{announcement}</p>
+
 	<section data-testid="multi-agent-transcript">
 		<h2>The delegation, in Chat's transcript</h2>
 		<p>
@@ -279,7 +308,7 @@
 				a silent gap and the specs report a missing element, which names
 				the symptom instead of the run that failed.
 			-->
-			<p role="alert" data-testid="multi-agent-transcript-failed">
+			<p data-testid="multi-agent-transcript-failed">
 				The delegation failed: {failure instanceof Error ? failure.message : String(failure)}
 			</p>
 		{/await}
@@ -321,7 +350,7 @@
 					<dd data-testid="multi-agent-{panel.id}-custom">{delegation.matchesCustomSummary}</dd>
 				</dl>
 			{:catch failure}
-				<p role="alert" data-testid="multi-agent-{panel.id}-failed">
+				<p data-testid="multi-agent-{panel.id}-failed">
 					The delegation failed: {failure instanceof Error ? failure.message : String(failure)}
 				</p>
 			{/await}

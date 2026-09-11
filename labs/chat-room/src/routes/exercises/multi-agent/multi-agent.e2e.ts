@@ -116,13 +116,27 @@ test('expanding the entry shows the question sent and the summary that came back
 	// this page's question rather than something the loop synthesized.
 	await expect(timeline).toContainText('What did we decide about the staging bucket?');
 
-	// And the summary content that crossed back. The child's answer is that
-	// sentence repeated thirty times; under the cap the entry carries the
-	// opening and not the thirtieth repetition.
-	const shown = (await timeline.textContent()) ?? '';
-	const occurrences = shown.split('The staging bucket was retained.').length - 1;
-	expect(occurrences).toBeGreaterThan(0);
-	expect(occurrences).toBeLessThan(30);
+	// And the summary content that crossed back — compared against what the
+	// panel REPORTS came back, rather than against a range. An occurrence count
+	// anywhere from 1 to 29 is satisfied by any shortened-but-wrong payload,
+	// including the first sentence alone, so it could not support this test's
+	// own claim that the disclosure shows the summary that crossed the tool
+	// boundary.
+	const payload = timeline.locator('.cinder-run-step-timeline__detail-content');
+	const disclosed = (await payload.last().textContent()) ?? '';
+
+	const reportedLength = Number(await page.getByTestId('multi-agent-summary-length').textContent());
+	const reportedPrefix = Number(await page.getByTestId('multi-agent-summary-prefix').textContent());
+
+	// Same length, and the same verbatim prefix of the child's answer, as the
+	// value the run reported. Two independent readings of one string: the
+	// panel's, computed from the tool result, and the transcript's, rendered by
+	// Chat.
+	expect(disclosed.trim().length).toBe(reportedLength);
+	const sentence = 'The staging bucket was retained. ';
+	expect(
+		disclosed.trim().startsWith(sentence.repeat(Math.floor(reportedPrefix / sentence.length)))
+	).toBe(true);
 });
 
 test("'summary' caps the child's answer rather than condensing it", async ({ page }) => {
@@ -201,51 +215,87 @@ test('a caller-supplied summarizer is what actually condenses', async ({ page })
 	await expect(page.getByTestId('multi-agent-custom-mid-sentence')).toHaveText('false');
 });
 
+/**
+ * Whether this platform puts BUTTONS in the tab order at all.
+ *
+ * Measured on the page rather than branched on engine name, because it is a
+ * platform setting rather than a browser behaviour: macOS ships Full Keyboard
+ * Access off, and with it Safari/WebKit tabs only between text fields and
+ * lists. Probed here, WebKit's tab order on this route is
+ * `log → textarea → body` — it reaches no button at all, including Chat's own
+ * Send. Chromium reaches every one.
+ *
+ * So "reachable by Tab" is not a claim the app can satisfy everywhere, and
+ * asserting it under WebKit would be asserting the operating system's
+ * preference. The probe uses Chat's Send button as the control: if THAT is not
+ * in the tab order, nothing on the page is, and the reachability half of the
+ * test below is meaningless rather than failing.
+ */
+async function tabOrderIncludesButtons(page: import('@playwright/test').Page): Promise<boolean> {
+	const send = page.getByRole('button', { name: 'Send message' });
+	await page.locator('body').press('Tab');
+	for (let step = 0; step < TAB_BUDGET; step += 1) {
+		if (await send.evaluate((element) => element === document.activeElement)) return true;
+		await page.keyboard.press('Tab');
+	}
+	return false;
+}
+
+/** Bounded so an unreachable control reports rather than hanging the run. */
+const TAB_BUDGET = 40;
+
+/** Tabs until `locator` has focus, or the budget runs out. */
+async function tabUntilFocused(
+	page: import('@playwright/test').Page,
+	locator: import('@playwright/test').Locator
+): Promise<boolean> {
+	for (let step = 0; step < TAB_BUDGET; step += 1) {
+		if (await locator.evaluate((element) => element === document.activeElement)) return true;
+		await page.keyboard.press('Tab');
+	}
+	return false;
+}
+
 test('the transcript disclosures are operable from the keyboard', async ({ page }) => {
 	await gotoHydrated(page, '/exercises/multi-agent');
 	await settled(page);
 
 	const timeline = page.locator('[data-testid="multi-agent-chat"] .chat-tool-call-timeline');
 	const argumentsTrigger = timeline.getByRole('button', { name: 'Arguments' });
+	const resultTrigger = timeline.getByRole('button', { name: 'Result' });
 
-	// Reached by TAB, not by `.focus()`. Calling `focus()` succeeds on an
-	// element with `tabindex="-1"` or one skipped in document order, so a test
-	// that enters that way proves the control can be activated once focus is
-	// somehow on it — never that a keyboard user can get there. Walking the
-	// tab order is the only assertion that distinguishes the two.
-	//
-	// Bounded, and the bound is asserted: an unbounded walk would hang the run
-	// instead of reporting that the control is unreachable.
-	const TAB_BUDGET = 40;
-	let reached = false;
-	await page.locator('body').press('Tab');
-	for (let step = 0; step < TAB_BUDGET && !reached; step += 1) {
-		reached = await argumentsTrigger.evaluate((element) => element === document.activeElement);
-		if (!reached) await page.keyboard.press('Tab');
+	// REACHABLE, where the platform tabs to controls at all. `focus()` would
+	// succeed on an element with `tabindex="-1"` or one skipped in document
+	// order, so it proves activation once focus is somehow there and never that
+	// a keyboard user can arrive. Walking the tab order is the only assertion
+	// that separates the two — and it is skipped, with the reason recorded,
+	// only where no button is tabbable.
+	const tabbable = await tabOrderIncludesButtons(page);
+	if (tabbable) {
+		await page.locator('body').press('Tab');
+		expect(await tabUntilFocused(page, argumentsTrigger)).toBe(true);
+		await expect(argumentsTrigger).toBeFocused();
+	} else {
+		await argumentsTrigger.focus();
 	}
-	expect(reached).toBe(true);
-	await expect(argumentsTrigger).toBeFocused();
 
+	// OPERABLE, everywhere. Enter on the first disclosure.
+	await expect(argumentsTrigger).toBeFocused();
 	await page.keyboard.press('Enter');
 	await expect(timeline).toContainText('What did we decide about the staging bucket?');
 
-	// And focus is not trapped inside what just expanded: Tab continues to the
-	// next control rather than cycling back.
+	// Focus is not trapped inside what just expanded.
 	await page.keyboard.press('Tab');
 	await expect(argumentsTrigger).not.toBeFocused();
 
-	// The second disclosure is reached by CONTINUING the tab walk, for the same
-	// reason as the first: `focus()` would succeed on an untabbable trigger and
-	// prove only that Space activates it once focus is somehow there. The Tab
-	// assertion above shows focus left Arguments, which is a different claim
-	// from Result being reachable.
-	const resultTrigger = timeline.getByRole('button', { name: 'Result' });
-	reached = await resultTrigger.evaluate((element) => element === document.activeElement);
-	for (let step = 0; step < TAB_BUDGET && !reached; step += 1) {
-		await page.keyboard.press('Tab');
-		reached = await resultTrigger.evaluate((element) => element === document.activeElement);
+	// The second disclosure, reached the same way as the first for the same
+	// reason — the Tab above shows focus LEFT Arguments, which is a different
+	// claim from Result being reachable.
+	if (tabbable) {
+		expect(await tabUntilFocused(page, resultTrigger)).toBe(true);
+	} else {
+		await resultTrigger.focus();
 	}
-	expect(reached).toBe(true);
 	await expect(resultTrigger).toBeFocused();
 
 	// Space, since the two disclosures are independent and either key is a
