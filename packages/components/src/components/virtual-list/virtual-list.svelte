@@ -293,12 +293,28 @@
    */
   const firstVisibleIndex = $derived(resolveAnchorIndexAtOffset(scrollOffset));
   const activeStickyIndex = $derived(resolveActiveStickyIndex(stickyIndexes, firstVisibleIndex));
-  const renderedItems = $derived(
-    virtualWindow.items.flatMap((virtualItem) => {
+  const renderedItems = $derived.by(() => {
+    const windowed = virtualWindow.items.flatMap((virtualItem) => {
       const item = items[virtualItem.index];
       return item === undefined ? [] : [{ ...virtualItem, item }];
-    }),
-  );
+    });
+    if (pinnedStickyIndex === null) return windowed;
+    const item = items[pinnedStickyIndex];
+    if (item === undefined) return windowed;
+    // Appended rather than sorted into place. The row is positioned absolutely, so
+    // its order here decides only paint order — and last means on top, over the rows
+    // sliding beneath it.
+    return [
+      ...windowed,
+      {
+        index: pinnedStickyIndex,
+        key: keyAt(pinnedStickyIndex),
+        start: locateRowStart(pinnedStickyIndex),
+        size: locateRowSize(pinnedStickyIndex),
+        item,
+      },
+    ];
+  });
 
   /**
    * The sticky row to pin when it has scrolled out of the rendered window.
@@ -311,14 +327,19 @@
    * A sticky row still INSIDE the window needs none of this: it is contiguous, and
    * `position: sticky` holds it without leaving its flow box.
    */
-  const pinnedStickyItem = $derived.by(() => {
-    if (activeStickyIndex === null) return undefined;
+  const pinnedStickyIndex = $derived.by(() => {
+    if (activeStickyIndex === null) return null;
+    // Inside the window it needs nothing special: it is contiguous, and
+    // `position: sticky` holds it without leaving its flow box.
     if (activeStickyIndex >= virtualWindow.startIndex && activeStickyIndex < virtualWindow.endIndex)
-      return undefined;
-    const item = items[activeStickyIndex];
-    if (item === undefined) return undefined;
-    return { index: activeStickyIndex, key: keyAt(activeStickyIndex), item };
+      return null;
+    return activeStickyIndex;
   });
+
+  /** Main-axis size of the pinned header, which covers the viewport's leading edge. */
+  const pinnedStickySize = $derived(
+    pinnedStickyIndex === null ? 0 : locateRowSize(pinnedStickyIndex),
+  );
 
   /** Membership as a Set: a grouped list can have as many sticky rows as sections. */
   const stickyIndexSet = $derived(new Set(stickyIndexes));
@@ -984,6 +1005,22 @@
     return Math.min(Math.max(0, saved.startIndex), lastIndex);
   }
 
+  /**
+   * Inline style for one row: its main-axis size under fixed sizing, plus the offset
+   * that pins it when it is the active sticky row outside the window.
+   *
+   * The pinned row keeps its size even under `dynamicSize`, where rows are normally
+   * left unsized so they can be measured — out of flow it has no siblings to size it
+   * against, so without this it would collapse to its content.
+   */
+  function resolveRowStyle(index: number, size: number): string | undefined {
+    const isPinned = index === pinnedStickyIndex;
+    const declarations: string[] = [];
+    if (!dynamicSize || isPinned) declarations.push(`${rowLayout.sizeProperty}:${size}px`);
+    if (isPinned) declarations.push(`${rowLayout.offsetProperty}:${scrollOffset}px`);
+    return declarations.length > 0 ? `${declarations.join(';')};` : undefined;
+  }
+
   /** Where a row begins, from the measured table when there is one. */
   function locateRowStartOffset(index: number): number {
     const table = offsets?.offsets;
@@ -1324,6 +1361,20 @@
     });
     if (target === null) return;
     event.preventDefault();
+
+    // Offset by the pinned header, which covers the viewport's leading edge. Aligning
+    // the destination to that edge puts it directly UNDERNEATH the header — in a
+    // fixed-size list where header and rows share a height, entirely underneath — and
+    // every key after that navigates relative to a row the reader cannot see.
+    if (pinnedStickySize > 0 && scrollElement) {
+      writeScrollOffset(
+        scrollElement,
+        Math.max(0, locateRowStart(target) - pinnedStickySize),
+        smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
+      );
+      scrollOffset = readScrollOffset(scrollElement);
+      return;
+    }
     scrollToIndex(target, { align: 'start' });
   }
 
@@ -1565,13 +1616,14 @@
           data-cinder-virtual-index={virtualItem.index}
           data-cinder-sticky={stickyIndexSet.has(virtualItem.index) ? 'true' : undefined}
           data-cinder-sticky-active={virtualItem.index === activeStickyIndex ? 'true' : undefined}
+          data-cinder-sticky-pinned={virtualItem.index === pinnedStickyIndex ? 'true' : undefined}
           aria-posinset={rowSemanticsApply
             ? resolveRowSemantics(virtualItem.index, items.length).ariaPosInSet
             : undefined}
           aria-setsize={rowSemanticsApply
             ? resolveRowSemantics(virtualItem.index, items.length).ariaSetSize
             : undefined}
-          style={dynamicSize ? undefined : `${rowLayout.sizeProperty}:${virtualItem.size}px;`}
+          style={resolveRowStyle(virtualItem.index, virtualItem.size)}
           {@attach observeRow}
         >
           {@render row(virtualItem.item, {
@@ -1583,29 +1635,5 @@
         </div>
       {/each}
     </div>
-    {#if pinnedStickyItem}
-      <!--
-        Positioned at the current scroll offset rather than left to `position: sticky`.
-        The row is outside the rendered window, so it has no flow box near the
-        viewport to stick from — and putting one there would displace every row after
-        it. Absolute keeps it out of flow entirely; the offset is what makes it track
-        the viewport's leading edge.
-      -->
-      <div
-        class="cinder-virtual-list__pinned"
-        style={`${rowLayout.offsetProperty}:${scrollOffset}px;`}
-        data-cinder-virtual-index={pinnedStickyItem.index}
-        data-cinder-sticky="true"
-        data-cinder-sticky-active="true"
-        aria-hidden="true"
-      >
-        {@render row(pinnedStickyItem.item, {
-          index: pinnedStickyItem.index,
-          key: pinnedStickyItem.key,
-          start: locateRowStart(pinnedStickyItem.index),
-          size: locateRowSize(pinnedStickyItem.index),
-        })}
-      </div>
-    {/if}
   </div>
 </svelte:element>

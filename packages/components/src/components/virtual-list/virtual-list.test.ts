@@ -2569,11 +2569,9 @@ describe('VirtualList — stickyItems', () => {
     expect(sticky?.getAttribute('data-cinder-sticky-active')).toBe('true');
   });
 
-  test('renders the pinned row after the window, which is what stacks it above', async () => {
+  test('renders the pinned row last, which is what stacks it above the others', async () => {
     // Stacking comes from DOM order rather than a `z-index` — that keeps the pinned
-    // header out of the floating-surface category the primitive guard polices, and
-    // gives the right handoff for free: a sticky row still inside the window carries
-    // `z-index: 1` and so rises above this one as it scrolls up to replace it.
+    // header out of the floating-surface category the primitive guard polices.
     const { container } = render(VirtualList, {
       items: makeItems(1_000),
       itemHeight: 20,
@@ -2589,19 +2587,42 @@ describe('VirtualList — stickyItems', () => {
     list.scrollTop = 4_000;
     await fireEvent.scroll(list);
     await waitFor(() =>
-      expect(container.querySelector('.cinder-virtual-list__pinned')).not.toBeNull(),
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
     );
 
-    const spacer = container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
-    const children = Array.from(spacer.children);
-    const windowPosition = children.findIndex((node) =>
-      node.classList.contains('cinder-virtual-list__window'),
+    const rows = renderedRows(container);
+    expect(rows[rows.length - 1]?.dataset['index']).toBe('0');
+  });
+
+  test('keeps the very same DOM node as a sticky row crosses the window boundary', async () => {
+    // The reason the pinned row stays in the keyed each rather than moving to an
+    // element of its own: Svelte cannot carry identity across that boundary, so a row
+    // holding local state or a focused control would be destroyed and rebuilt every
+    // time it crossed.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const before = container.querySelector('[data-cinder-virtual-index="0"]');
+    expect(before).not.toBeNull();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
     );
-    const pinnedPosition = children.findIndex((node) =>
-      node.classList.contains('cinder-virtual-list__pinned'),
-    );
-    expect(windowPosition).toBeGreaterThan(-1);
-    expect(pinnedPosition).toBeGreaterThan(windowPosition);
+
+    const after = container.querySelector('[data-cinder-virtual-index="0"]');
+    expect(after).toBe(before);
   });
 
   test('leaves the sticky attributes off when no sticky items are configured', async () => {
@@ -2716,8 +2737,8 @@ describe('VirtualList — adaptiveOverscan', () => {
 
 describe('VirtualList — sticky and keyboard corrections', () => {
   test('pins an out-of-window sticky row without displacing the window', async () => {
-    // Folded into the window, a non-contiguous row lays out in flow ahead of the
-    // rows around the reader and pushes every one of them down by its own height.
+    // Left in flow, a non-contiguous row lays out ahead of the rows around the reader
+    // and pushes every one of them down by its own height.
     const { container } = render(VirtualList, {
       items: makeItems(1_000),
       itemHeight: 20,
@@ -2733,19 +2754,24 @@ describe('VirtualList — sticky and keyboard corrections', () => {
     list.scrollTop = 4_000;
     await fireEvent.scroll(list);
     await waitFor(() =>
-      expect(container.querySelector('.cinder-virtual-list__pinned')).not.toBeNull(),
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
     );
 
-    // The pinned copy lives outside the window entirely.
-    const windowElement = container.querySelector('.cinder-virtual-list__window') as HTMLElement;
-    expect(windowElement.querySelector('.cinder-virtual-list__pinned')).toBeNull();
+    // Offset inline to track the viewport's leading edge; `position: absolute` itself
+    // comes from the stylesheet, so the inline offset is what is observable here.
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
+    expect(pinned?.style.insetBlockStart).toBe('4000px');
 
-    // And the window still starts where its own leading offset says it does.
-    const indexes = Array.from(windowElement.querySelectorAll('[data-cinder-virtual-index]')).map(
-      (node) => Number((node as HTMLElement).dataset['cinderVirtualIndex']),
-    );
-    expect(indexes[0]).toBe(200);
-    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+    // And those rows still begin where the window's leading offset says. Queried from
+    // the row WRAPPERS: `renderedRows` returns the snippet's own element, which does
+    // not carry the component's data attributes.
+    const flowIndexes = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-cinder-virtual-index]'),
+    )
+      .filter((node) => node.dataset['cinderStickyPinned'] !== 'true')
+      .map((node) => Number(node.dataset['cinderVirtualIndex']));
+    expect(flowIndexes[0]).toBe(200);
+    expect(flowIndexes).toEqual([...flowIndexes].sort((left, right) => left - right));
   });
 
   test('activates the sticky row for the VISIBLE row, not the overscanned edge', async () => {
@@ -2768,7 +2794,7 @@ describe('VirtualList — sticky and keyboard corrections', () => {
     await fireEvent.scroll(list);
     await tick();
 
-    const pinned = container.querySelector<HTMLElement>('.cinder-virtual-list__pinned');
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
     expect(pinned?.dataset['cinderVirtualIndex']).toBe('0');
   });
 

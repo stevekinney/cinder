@@ -107,25 +107,24 @@
   }
 
   /*
-   * The pinned copy of a sticky row whose own index has scrolled out of the window.
-   * Out of flow, so it cannot displace the rows the window is laying out, and its
-   * offset is written inline to track the viewport's leading edge.
+   * The active sticky row once its own index has left the window.
    *
-   * `aria-hidden` in the markup: the row it duplicates is still counted in the list's
-   * semantics, and announcing both would double it.
+   * Absolute, so it does not displace the rows the window is laying out in flow —
+   * that displacement is why it cannot simply stay in place — and offset inline to
+   * track the viewport's leading edge, which is what `position: sticky` would have
+   * done for it had it still had a flow box nearby.
    *
-   * Stacking comes from DOM order — it is rendered after the window — rather than a
-   * `z-index`. That keeps it out of the floating-surface category the primitive
-   * guard polices, and gives the right behaviour for free: a sticky row still inside
-   * the window carries `z-index: 1` and so rises above this one as it scrolls up to
-   * replace it, which is exactly the handoff between consecutive section headers.
+   * It stays in the keyed `{#each}` rather than moving to an element of its own:
+   * Svelte cannot carry identity across that boundary, so a row with local state or
+   * a focused control would be destroyed and rebuilt every time it crossed.
    */
-  .cinder-virtual-list__pinned {
+  .cinder-virtual-list__row[data-cinder-sticky-pinned='true'] {
     position: absolute;
     inset-inline: 0;
   }
 
-  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__pinned {
+  .cinder-virtual-list[data-cinder-orientation='horizontal']
+    .cinder-virtual-list__row[data-cinder-sticky-pinned='true'] {
     inset-inline: auto;
     inset-block: 0;
   }
