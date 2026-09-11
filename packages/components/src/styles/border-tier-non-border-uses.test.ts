@@ -489,11 +489,10 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     // file for its opacity -- no rule in either file pairs the two for that
     // element. CIN-602's
     // `packages/testing/tests/border-tier-computed-audit.playwright.ts` proves
-    // the icon-only Button's compound from the real cascade via CDP's
-    // `CSS.getMatchedStylesForNode` (both contributing rules, across both
-    // files); it does not yet audit the plain disabled button, so that
-    // cleaner cross-file-only case is proven by mechanism but not yet by a
-    // site in `AUDITED_SITES`.
+    // BOTH shapes from the real cascade via CDP's `CSS.getMatchedStylesForNode`:
+    // the icon-only Button's same-rule-plus-shared-rule compound, and the
+    // plain (secondary-variant) disabled Button's cross-file-only compound,
+    // each with its own `AUDITED_SITES` entry.
     const offenders: string[] = [];
     for (const root of SCAN_ROOTS) {
       for (const path of styleFiles(join(REPOSITORY_ROOT, root))) {

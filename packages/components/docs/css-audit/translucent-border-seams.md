@@ -467,12 +467,16 @@ them without a hand-maintained list.
 
 | site | property | tier reference | how it was found |
 | --- | --- | --- | --- |
-| disabled icon-only ghost Button (`/page/button`) | `border-color` | `var(--cinder-border-muted)` | cross-file opacity compound: a border declaration from `button.css`, `opacity: 0.6` from `foundation.css`'s shared disabled-visual rule, matched on the same element via CDP |
+| disabled icon-only ghost Button (`/page/button`) | `border-color` | `var(--cinder-border-muted)` | opacity compound: a variant-specific rule in `button.css` pairs `border-color` and `opacity: 0.6` in the SAME rule (also caught by the source-text scan), while `foundation.css`'s shared disabled-visual rule redundantly contributes the identical opacity from a second file; matched via CDP |
+| disabled secondary Button (`/page/button`) | `border-color` | `var(--cinder-border-muted)` | cross-file-only opacity compound: `button.css`'s base disabled rule sets `border-color: var(--cinder-border-muted)` alone (no same-rule `opacity`), and `opacity: 0.6` comes entirely from `foundation.css`'s shared disabled-visual rule -- the two declarations never appear together as literal text in any one file, matched on the same element via CDP |
 | resting Toggle track (`/page/toggle`) | `background` | `--cinder-toggle-track-off-resting` → `var(--cinder-border-muted)` | one-hop alias: a non-border property's `var()` fallback names a custom property whose own declaration (inherited from the generated `:root` block) names the tier |
 
-Coverage note: this table currently audits the two sites CIN-602 was scoped to
-prove (a cross-file opacity compound, and a corpus-alias area fill invisible to
-static source text). It is not yet a full replacement for the hand-maintained
+Coverage note: this table currently audits, across three sites, the two shapes
+CIN-602 was scoped to prove (an opacity compound, and a corpus-alias area fill
+invisible to static source text) -- one of the three (the icon-only Button) is
+ALSO caught by the same-rule case in `border-tier-non-border-uses.test.ts`; the
+plain (secondary) disabled Button is the one the text scan cannot see even in
+principle. It is not yet a full replacement for the hand-maintained
 tables elsewhere in this document -- extending `AUDITED_SITES` to the rest of the
 sites listed by hand above (SortableList, ResizablePanels, SegmentedControl, the
 disabled-state list, the fourteen-site area-fill table) has not been done.

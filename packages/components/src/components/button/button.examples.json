@@ -10,6 +10,12 @@
       "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<div class=\"example-preview-row\">\n  <Button href=\"https://svelte.dev\" target=\"_blank\" rel=\"noopener noreferrer\" label=\"Svelte docs\" />\n  <Button href=\"#\" variant=\"ghost\" label=\"Internal link\" />\n</div>\n"
     },
     {
+      "id": "disabled",
+      "title": "Disabled button",
+      "description": "A plain (non-icon-only) disabled button. The secondary variant has no variant-specific disabled override, so its border color comes from the base disabled rule in button.css while its opacity comes from the shared disabled-visual rule in foundation.css.",
+      "code": "<script lang=\"ts\">\n  import { Button } from '@lostgradient/cinder/button';\n</script>\n\n<div class=\"example-preview-row\">\n  <Button disabled={true} label=\"Disabled\" data-testid=\"button-secondary-disabled\" />\n</div>\n"
+    },
+    {
       "id": "icon-only",
       "title": "Icon-only buttons",
       "description": "Icon-only buttons keep the visual surface compact while still carrying an accessible name through label or aria-label.",
