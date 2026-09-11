@@ -3067,6 +3067,84 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     expect(requested).toEqual([4_020, 4_040]);
   });
 
+  test('drops the pending destination when a key scrolls the container natively', async () => {
+    // Space and Shift+Space are left to the browser, which moves the viewport
+    // somewhere the pending destination knows nothing about. Without clearing it the
+    // next Arrow press navigates from before the Space and jumps back about a page.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // Space pages the container natively, and the browser lands it a page on.
+    await fireEvent.keyDown(list, { key: ' ' });
+    list.scrollTop = 4_200;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // From row 211, where Space left the reader, rather than from 202 where the
+    // arrow had been heading before it.
+    expect(requested.at(-1)).toBe(4_220);
+  });
+
+  test('keeps the pending destination through a key that scrolls nothing', async () => {
+    // A letter keypress is not a viewport takeover, and a smooth navigation may still
+    // be in flight behind it.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+    await fireEvent.keyDown(list, { key: 'a' });
+    await tick();
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    expect(requested).toEqual([4_020, 4_040]);
+  });
+
   test('drops the pending destination when the reader takes the scroll back', async () => {
     // Otherwise the next key navigates from wherever the keys were heading before the
     // reader wheeled somewhere else entirely.

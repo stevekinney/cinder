@@ -1416,7 +1416,15 @@
       writingDirection,
       stickyIndexes: stickyIndexSet,
     });
-    if (target === null) return;
+    if (target === null) {
+      // A key this list does not resolve, but one the browser scrolls with anyway —
+      // Space and Shift+Space. It is about to move the viewport somewhere the pending
+      // destination knows nothing about, so the next Arrow or Page press has to start
+      // from wherever that leaves the reader. Keys that scroll nothing leave it alone,
+      // since a smooth navigation may still be in flight behind them.
+      if (SCROLLING_KEYS.has(event.key)) abandonKeyboardRun();
+      return;
+    }
     event.preventDefault();
 
     // `runScrollToIndex` rather than the `scrollToIndex` wrapper: the wrapper clears
