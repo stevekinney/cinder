@@ -2933,4 +2933,33 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
       ),
     ).toThrow(/bare component list/);
   });
+
+  test('every entry in COLOR_FUNCTIONS is accepted as a complete color, standalone and inside light-dark()/color-mix()', () => {
+    // rgb, rgba, hsl, hsla, hwb, lab, lch, oklab, and color are all allowlisted
+    // in COLOR_FUNCTIONS, but every existing accept-side table only ever
+    // exercises oklch/light-dark/color-mix/var/hex/keyword. All seven of the
+    // untested entries currently behave correctly, but a typo in that set
+    // (or a name silently dropped during a future edit) would make a color
+    // function permanently rejected with zero test failures until this.
+    const colorLiterals = [
+      'rgb(255 0 0)',
+      'rgba(255 0 0 / 0.5)',
+      'hsl(120deg 100% 50%)',
+      'hsla(120deg 100% 50% / 0.5)',
+      'hwb(120deg 50% 50%)',
+      'lab(50% 40 59.5)',
+      'lch(50% 40 130)',
+      'oklab(50% 0.1 0.1)',
+      'color(display-p3 1 0 0)',
+    ];
+    for (const literal of colorLiterals) {
+      expect(serializeEntryValue(recipeEntry(literal), new Map()), literal).toBe(literal);
+
+      const lightDark = `light-dark(${literal}, oklch(0% 0 0))`;
+      expect(serializeEntryValue(recipeEntry(lightDark), new Map()), lightDark).toBe(lightDark);
+
+      const mix = `color-mix(in oklch, ${literal}, transparent 20%)`;
+      expect(serializeEntryValue(recipeEntry(mix), new Map()), mix).toBe(mix);
+    }
+  });
 });
