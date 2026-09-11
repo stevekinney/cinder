@@ -146,6 +146,58 @@
 		font-weight: 600;
 	}
 
+	/*
+		Styled, because cinder's base stylesheet resets `button` and this page
+		otherwise rendered its only action as bare text — no border, no fill,
+		nothing to say it could be pressed. The visual pass this project ends
+		with caught it, and "the primary control does not look like a control"
+		is not something to leave in a route that ships.
+		
+		Composed from cinder's own tokens rather than a cinder `Button`
+		component: no route in this lab imports one, and every exercise here is
+		deliberately plain scaffolding around the component actually under
+		demonstration. Introducing the first component import in this one route
+		would make it the odd one out without making it better. The tokens give
+		the affordance and stay on the design system's ramp.
+
+		Worth noting for someone doing the same pass later: every other bare
+		`<button>` in this lab has the same problem, and fixing them is not this
+		pull request's job.
+	*/
+	button {
+		padding: var(--cinder-space-1-5) var(--cinder-space-4);
+		border: 1px solid transparent;
+		border-radius: var(--cinder-radius-md);
+		background: var(--cinder-accent-solid);
+		color: var(--cinder-accent-contrast);
+		font: inherit;
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	button:hover:not(:disabled) {
+		background: var(--cinder-accent-solid-hover);
+	}
+
+	/* Disabled while a create is in flight — it has to read as unavailable
+	   rather than merely unchanged, since the label also swaps to "Creating…". */
+	button:disabled {
+		background: var(--cinder-surface-inset);
+		color: var(--cinder-text-disabled);
+		cursor: not-allowed;
+	}
+
+	/* The input is given the same border and radius so the two read as one
+	   control pair rather than a styled button beside a browser default. */
+	input {
+		padding: var(--cinder-space-1-5) var(--cinder-space-2);
+		border: 1px solid var(--cinder-border);
+		border-radius: var(--cinder-radius-md);
+		background: var(--cinder-surface);
+		color: var(--cinder-text-default);
+		font: inherit;
+	}
+
 	ul {
 		list-style: none;
 		padding: 0;
