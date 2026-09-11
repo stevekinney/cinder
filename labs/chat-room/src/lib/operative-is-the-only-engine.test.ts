@@ -109,8 +109,15 @@ function scannable(source: string): string {
  * its parenthesis lets an annotated import through. Note this is the reverse of
  * the earlier findings: those were comments hiding an import from a stripper,
  * this is a comment sitting INSIDE the import syntax.
+ *
+ * A line comment ends at ANY JavaScript line terminator, not just `\n`:
+ * carriage return, and the Unicode separators U+2028 and U+2029. Matching only
+ * `\n` made `await import// c\r('openai')` — which executes, verified — run
+ * off to end of file and swallow the specifier. That set is closed and finite,
+ * which is why enumerating it here settles the case rather than inviting the
+ * next variant.
  */
-const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n]*\n)*`;
+const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n\r\u2028\u2029]*[\n\r\u2028\u2029])*`;
 
 /** Matches a real module specifier — `import … from`, `import(…)`, `require(…)`. */
 function importPattern(packageName: string): RegExp {
@@ -120,10 +127,23 @@ function importPattern(packageName: string): RegExp {
 	);
 }
 
+const LAB_ROOT = join(import.meta.dir, '..', '..');
+
+/** Vendored code and VCS, excluded at any depth. */
+const IGNORED_ANYWHERE = new Set(['node_modules', '.svelte-kit', '.git']);
+
+/**
+ * Build artifacts, excluded only at the LAB ROOT — `build`, `dist`, and
+ * `coverage` are ordinary words, and a route directory named `src/build/` is
+ * source that must still be scanned.
+ */
+const IGNORED_AT_ROOT = new Set(['build', 'dist', 'coverage', 'test-results', 'playwright-report']);
+
 function sourceFiles(directory: string): string[] {
 	const found: string[] = [];
 	for (const entry of readdirSync(directory)) {
-		if (entry === 'node_modules' || entry === '.svelte-kit') continue;
+		if (IGNORED_ANYWHERE.has(entry)) continue;
+		if (directory === LAB_ROOT && IGNORED_AT_ROOT.has(entry)) continue;
 		const path = join(directory, entry);
 		if (statSync(path).isDirectory()) {
 			found.push(...sourceFiles(path));
@@ -135,12 +155,15 @@ function sourceFiles(directory: string): string[] {
 }
 
 describe('Operative is the only engine', () => {
-	it('no file under src/ or scripts/ imports a provider SDK directly', () => {
-		const roots = [join(import.meta.dir, '..'), join(import.meta.dir, '..', '..', 'scripts')];
+	it('no file in the lab imports a provider SDK directly', () => {
+		// The WHOLE lab, not two hand-picked roots. Executable code outside
+		// `src/` and `scripts/` — a helper under `tests/`, or a file at the lab
+		// root — was never visited, so it could import a provider and pass. The
+		// inventory guard had the identical hole and was fixed the same way; I
+		// did not carry the fix across at the time.
 		const patterns = PROVIDER_PACKAGES.map(importPattern);
 
-		const offenders = roots
-			.flatMap((root) => sourceFiles(root))
+		const offenders = sourceFiles(LAB_ROOT)
 			// THIS file is excluded, and it is the only exclusion. The file
 			// defining the rule necessarily contains examples of breaking it —
 			// the assertions below are literally import statements as strings —
@@ -232,6 +255,11 @@ describe('Operative is the only engine', () => {
 
 		for (const offender of annotated) {
 			expect(importPattern('openai').test(offender)).toBe(true);
+		}
+
+		// Every line terminator, not just `\n` — all of these execute.
+		for (const terminator of ['\n', '\r', '\u2028', '\u2029']) {
+			expect(importPattern('openai').test(`await import//c${terminator}('openai')`)).toBe(true);
 		}
 	});
 

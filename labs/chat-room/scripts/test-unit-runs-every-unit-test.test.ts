@@ -35,12 +35,17 @@ const LAB_ROOT = join(import.meta.dir, '..');
  * locally while being absent from CI, and therefore the set this guard has to
  * recognise.
  *
- * Verified empirically rather than assumed: nine forms were created in a
- * scratch directory and `bun test` collected all nine —
- * `.test.ts`, `.test.js`, `.test.tsx`, `.test.mts`, `.test.mjs`, `.test.cjs`,
- * `.spec.ts`, `_test.ts`, `_spec.ts`. Matching only `.test.ts` left every
- * other form able to reproduce exactly the failure this guard exists to
- * prevent.
+ * Verified empirically rather than assumed, twice. The runnable extensions are
+ * `js`, `jsx`, `ts`, `tsx`, `mjs`, `cjs`, `mts`, `cts`, each with `.test.`,
+ * `.spec.`, `_test.`, or `_spec.` — all confirmed collected by a bare
+ * `bun test`.
+ *
+ * Enumerated rather than written compactly, and that is the point of the second
+ * check: `[cm]?[jt]sx?` also generates `.mtsx`, `.ctsx`, `.mjsx`, and `.cjsx`,
+ * which Bun does NOT run. A file with one of those names would satisfy both
+ * assertions below while Bun silently skipped it — an inert test that looks
+ * registered, which is precisely the failure this guard exists to prevent, so
+ * a too-WIDE pattern here is as bad as a too-narrow one.
  */
 /**
  * Vendored code and VCS, excluded at ANY depth — a nested `node_modules` is
@@ -59,7 +64,7 @@ const IGNORED_ANYWHERE = new Set(['node_modules', '.svelte-kit', '.git']);
  */
 const IGNORED_AT_ROOT = new Set(['build', 'dist', 'coverage', 'test-results', 'playwright-report']);
 
-const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:[cm]?[jt]sx?)$/;
+const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:jsx?|tsx?|[cm][jt]s)$/;
 
 function unitTestFiles(directory: string): string[] {
 	const found: string[] = [];
@@ -89,23 +94,22 @@ describe('test:unit', () => {
 	it('recognises every filename a bare `bun test` would discover', () => {
 		// The pattern is the load-bearing part of this guard: anything it fails
 		// to match is a test that runs locally and not in CI, silently.
-		for (const name of [
-			'a.test.ts',
-			'b.test.js',
-			'c.test.tsx',
-			'd.spec.ts',
-			'e_test.ts',
-			'f_spec.ts',
-			'g.test.mts',
-			'h.test.cjs',
-			'i.test.mjs'
-		]) {
-			expect(UNIT_TEST_FILENAME.test(name)).toBe(true);
+		for (const extension of ['js', 'jsx', 'ts', 'tsx', 'mjs', 'cjs', 'mts', 'cts']) {
+			for (const separator of ['.test.', '.spec.', '_test.', '_spec.']) {
+				expect(UNIT_TEST_FILENAME.test(`a${separator}${extension}`)).toBe(true);
+			}
 		}
 
 		// And Playwright's specs stay out, which is why the list is explicit
 		// rather than a glob in the first place.
 		for (const name of ['a.e2e.ts', 'hydration.ts', 'notes.md']) {
+			expect(UNIT_TEST_FILENAME.test(name)).toBe(false);
+		}
+
+		// Extensions Bun does NOT run must not match either. A file named this
+		// way would satisfy both assertions in the test below while Bun skipped
+		// it silently — registered, inert, and invisible.
+		for (const name of ['a.test.mtsx', 'a.test.ctsx', 'a.test.mjsx', 'a.test.cjsx']) {
 			expect(UNIT_TEST_FILENAME.test(name)).toBe(false);
 		}
 	});
