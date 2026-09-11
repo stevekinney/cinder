@@ -69,7 +69,11 @@ function unitTestFiles(directory: string): string[] {
 		} else if (UNIT_TEST_FILENAME.test(entry)) {
 			// `.e2e.ts` specs belong to Playwright and do not match this
 			// pattern, which is what keeps them out of the Bun runner's half.
-			found.push(relative(LAB_ROOT, path));
+			// Separator-normalized, matching `toolbox-ownership.test.ts`: the
+			// `test:unit` list uses forward slashes, so a Windows walk would
+			// otherwise produce backslashes and fail the comparison even when
+			// the two sets agree.
+			found.push(relative(LAB_ROOT, path).replaceAll('\\', '/'));
 		}
 	}
 	return found;
@@ -128,8 +132,14 @@ describe('test:unit', () => {
 		expect(unlisted).toEqual([]);
 
 		// A test named but gone — a rename or deletion that left the script
-		// pointing at nothing, which Bun reports as a non-zero exit rather
-		// than as a helpful message.
+		// pointing at nothing.
+		//
+		// THIS assertion is the only thing that catches it. Bun treats the
+		// positional arguments as patterns and silently ignores ones that match
+		// nothing: `bun test ./real.test.ts ./gone.test.ts` exits 0 with one
+		// pass. So a stale entry does not fail the suite, it just quietly stops
+		// running whatever used to be there — verified rather than assumed,
+		// because an earlier version of this comment claimed the opposite.
 		expect(missing).toEqual([]);
 	});
 });
