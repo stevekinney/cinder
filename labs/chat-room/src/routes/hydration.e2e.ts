@@ -33,7 +33,8 @@ const DEV_ORIGIN = 'http://localhost:5175';
 // The invariant, so a new exercise gets added as a matter of course rather than
 // by a later sweep: **every directory under `src/routes/exercises/` appears
 // here, plus `/`.** Ordered to match the directory listing so `ls` against this
-// array is a trivial diff.
+// array is a trivial diff. Routes outside `exercises/` that server-render and
+// hydrate belong here too, appended after them.
 //
 // Deliberately NOT globbed at test time: Playwright needs test names at
 // collection time, and an explicit list makes a missing route a reviewable diff
@@ -93,7 +94,12 @@ const HYDRATING_ROUTES = [
 	'/exercises/tool-approval',
 	'/exercises/tripwire',
 	'/exercises/utilities',
-	'/exercises/virtualization'
+	'/exercises/virtualization',
+	// Not an exercise: the server-owned variant's landing page. It renders on
+	// the server and hydrates interactive state (a create form), so a mismatch
+	// there is exactly what this spec exists to catch — the `exercises/`
+	// invariant above is a floor, not a ceiling.
+	'/server-owned'
 ];
 
 /**
