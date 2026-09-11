@@ -11,6 +11,10 @@
 
 	async function create(event: SubmitEvent): Promise<void> {
 		event.preventDefault();
+		// The ONLY double-submit guard now. The button uses `aria-disabled`
+		// rather than `disabled` so it stays focusable — see the note at the
+		// markup — which means the browser no longer refuses the second
+		// activation and this early return has to.
 		if (creating) return;
 		creating = true;
 		failure = '';
@@ -93,12 +97,26 @@
 			visible text still changes, since that is the right affordance for a
 			sighted user; the accessible name does not.
 		-->
+		<!--
+			`aria-disabled`, NOT the native `disabled` attribute.
+			A disabled element is not focusable, so activating this button with
+			the keyboard moves focus to `<body>` — and when the request fails,
+			re-enabling it leaves focus there. The next Tab starts from the top
+			of the page rather than at the form whose alert just announced the
+			failure, which is the moment a keyboard user most needs to stay put.
+
+			`aria-disabled` keeps the control focusable and still announces it as
+			unavailable, so the guard against a double submit has to be in the
+			handler rather than in the markup — see the early return in
+			`create`. That is the trade: the browser no longer enforces it, so
+			the code must.
+		-->
 		<button
 			type="submit"
 			data-testid="server-owned-create"
 			aria-label="Create conversation"
 			aria-busy={creating}
-			disabled={creating}
+			aria-disabled={creating}
 		>
 			{creating ? 'Creating…' : 'Create'}
 		</button>

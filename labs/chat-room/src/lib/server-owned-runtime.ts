@@ -99,14 +99,6 @@ type RuntimeHost = typeof globalThis & {
 };
 
 /**
- * Thrown by `serverOwnedRuntime()` once termination has begun.
- *
- * A request arriving during shutdown gets an error rather than a runtime that
- * is about to be torn down underneath it. That is the honest outcome: the
- * alternative is a run whose engine is stopped mid-flight, which the client
- * sees as a truncated stream with no explanation.
- */
-/**
  * Process-stable marker for "the runtime is going away".
  *
  * Same reasoning as `RETIREMENT_FAILURE`, and carried here because the same
@@ -118,6 +110,14 @@ type RuntimeHost = typeof globalThis & {
  */
 export const SHUTDOWN_FAILURE = Symbol.for('cinder.chat-room.server-owned.shutdown-failure');
 
+/**
+ * Thrown by `serverOwnedRuntime()` once termination has begun.
+ *
+ * A request arriving during shutdown gets an error rather than a runtime that
+ * is about to be torn down underneath it. That is the honest outcome: the
+ * alternative is a run whose engine is stopped mid-flight, which the client
+ * sees as a truncated stream with no explanation.
+ */
 export class RuntimeTerminatingError extends Error {
 	readonly [SHUTDOWN_FAILURE] = true;
 
@@ -551,6 +551,14 @@ const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
  * `console.error` for a runtime without it costs nothing and keeps this from
  * being the thing that throws during shutdown.
  */
+function reportBeforeExit(message: string): void {
+	try {
+		writeSync(2, `${message}\n`);
+	} catch {
+		console.error(message);
+	}
+}
+
 /**
  * Renders a thrown value for a SERVER-SIDE log line.
  *
@@ -566,14 +574,6 @@ function describeCause(cause: unknown): string {
 		return cause.name === 'Error' ? cause.message : `${cause.name}: ${cause.message}`;
 	}
 	return typeof cause === 'string' ? cause : String(cause);
-}
-
-function reportBeforeExit(message: string): void {
-	try {
-		writeSync(2, `${message}\n`);
-	} catch {
-		console.error(message);
-	}
 }
 
 const signalHost = globalThis as SignalHost;

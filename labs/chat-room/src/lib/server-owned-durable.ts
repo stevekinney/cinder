@@ -129,11 +129,8 @@ type DurableSlot = {
  * runtime — reuse. An older generation in the slot — stop that engine and build
  * one from the code now on disk. A NEWER generation in the slot — defer to it,
  * because the caller is the stale one.
- */
-/**
- * ORDINAL for this evaluation, not just an identity.
  *
- * Identity alone is symmetric, and that is a bug: "the slot's token differs
+ * An ordinal rather than a bare identity, and the difference is load-bearing: "the slot's token differs
  * from mine" is equally true for a NEWER evaluation looking at an old slot and
  * for an OLDER evaluation's in-flight request looking at the new one. The
  * second case had the stale caller retire the current engine, rebuild with the
@@ -410,28 +407,6 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 }
 
 /**
- * Thrown when the runtime is disposed while its engine is still being built.
- *
- * A named class rather than a bare `Error` because the caller this reaches is
- * a streaming endpoint: a turn that loses this race is a request arriving
- * during shutdown, not a bug in the turn, and a reader of that failure should
- * be able to tell the two apart.
- */
-/**
- * A stale engine would not stop, so its replacement was not built.
- *
- * Distinct from a construction failure, and the distinction is load-bearing on
- * a CHAINED reload. A memo's promise covers the whole retirement-and-build of
- * the evaluation that created it, so a later evaluation awaiting it cannot tell
- * "the engine never got built" from "the previous engine refused to die" —
- * and those want opposite handling. The first means there is nothing to stop;
- * the second means something is still running and must not be built alongside.
- *
- * Carries no `cause`: the underlying shutdown rejection is reported where it
- * happened, and re-exporting it through a lifecycle error only widens what a
- * caller might accidentally surface.
- */
-/**
  * Process-stable marker for a retirement failure.
  *
  * `Symbol.for` rather than `Symbol`, and a tag rather than `instanceof`,
@@ -449,6 +424,20 @@ function isRetirementFailure(cause: unknown): boolean {
 	return typeof cause === 'object' && cause !== null && RETIREMENT_FAILURE in cause;
 }
 
+/**
+ * A stale engine would not stop, so its replacement was not built.
+ *
+ * Distinct from a construction failure, and the distinction is load-bearing on
+ * a CHAINED reload. A memo's promise covers the whole retirement-and-build of
+ * the evaluation that created it, so a later evaluation awaiting it cannot tell
+ * "the engine never got built" from "the previous engine refused to die" —
+ * and those want opposite handling. The first means there is nothing to stop;
+ * the second means something is still running and must not be built alongside.
+ *
+ * Carries no `cause`: the underlying shutdown rejection is reported where it
+ * happened, and re-exporting it through a lifecycle error only widens what a
+ * caller might accidentally surface.
+ */
 export class EngineRetirementError extends Error {
 	override readonly name = 'EngineRetirementError';
 
@@ -462,6 +451,14 @@ export class EngineRetirementError extends Error {
 	}
 }
 
+/**
+ * Thrown when the runtime is disposed while its engine is still being built.
+ *
+ * A named class rather than a bare `Error` because the caller this reaches is
+ * a streaming endpoint: a turn that loses this race is a request arriving
+ * during shutdown, not a bug in the turn, and a reader of that failure should
+ * be able to tell the two apart.
+ */
 export class RuntimeDisposedDuringBuildError extends Error {
 	/** See `SHUTDOWN_FAILURE` — `instanceof` cannot survive a module reload. */
 	readonly [SHUTDOWN_FAILURE] = true;
