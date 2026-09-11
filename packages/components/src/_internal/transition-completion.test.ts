@@ -465,6 +465,54 @@ describe('waitForTransitionCompletion', () => {
     }
   });
 
+  test('attaches the transitioncancel listener immediately when requestAnimationFrame is unavailable', () => {
+    // The double-rAF deferral above exists to survive a real browser's
+    // render pipeline. Without `requestAnimationFrame` at all, there is no
+    // frame to wait for — the listener must attach synchronously instead,
+    // so a transitioncancel is never silently missed there. (This stubs rAF
+    // away in happy-dom to exercise that fallback branch; it doesn't
+    // reproduce an actual SSR environment.)
+    const element = document.createElement('div');
+    document.body.appendChild(element);
+    const originalGetComputedStyle = window.getComputedStyle;
+    window.getComputedStyle = ((target: Element) => {
+      if (target === element) {
+        return {
+          transitionProperty: 'opacity',
+          transitionDuration: '150ms',
+          transitionDelay: '0ms',
+        } as CSSStyleDeclaration;
+      }
+      return originalGetComputedStyle(target);
+    }) as typeof window.getComputedStyle;
+    const originalRequestAnimationFrame = globalThis.requestAnimationFrame;
+    const originalCancelAnimationFrame = globalThis.cancelAnimationFrame;
+    // @ts-expect-error deliberately simulating an environment without rAF/cAF
+    globalThis.requestAnimationFrame = undefined;
+    // @ts-expect-error deliberately simulating an environment without rAF/cAF
+    globalThis.cancelAnimationFrame = undefined;
+
+    try {
+      let completionCount = 0;
+      waitForTransitionCompletion({
+        element,
+        reducedMotion: false,
+        onComplete: () => {
+          completionCount += 1;
+        },
+      });
+
+      // No frame wait at all — if the listener were still deferred, this
+      // synchronous dispatch would be missed and completionCount would stay 0.
+      element.dispatchEvent(createTransitionCancelEvent('opacity'));
+      expect(completionCount).toBe(1);
+    } finally {
+      window.getComputedStyle = originalGetComputedStyle;
+      globalThis.requestAnimationFrame = originalRequestAnimationFrame;
+      globalThis.cancelAnimationFrame = originalCancelAnimationFrame;
+    }
+  });
+
   test('ignoreCancel: true ignores transitioncancel and still waits for transitionend', () => {
     const element = document.createElement('div');
     document.body.appendChild(element);

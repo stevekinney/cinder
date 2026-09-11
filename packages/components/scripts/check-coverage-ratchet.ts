@@ -225,6 +225,14 @@ export function parseLcovRecords(
  * shifting on a later, unrelated edit, unlike a hardcoded line-number
  * allowlist would. This is scoped per-line, not per-file: every other line
  * in a marked file still counts fully toward the ratchet.
+ *
+ * This only adjusts the *line* ratchet (LF/LH). Bun's `--coverage-reporter
+ * lcov` output carries no per-function `FN:`/`FNDA:` records, only a file's
+ * aggregate `FNF`/`FNH` totals, so there is no way to map a marked line back
+ * to "the function it's in" and adjust FNF for it. An exempted block must
+ * therefore contain no nested function or callback of its own — restructure
+ * to a plain loop/statement instead — or it silently drags down the
+ * functions ratchet with no diagnostic naming which function.
  */
 export const UNREACHABLE_LINE_MARKER = 'cinder-coverage-unreachable:';
 
@@ -247,9 +255,11 @@ function readSourceFileLines(absoluteFilePath: string): string[] {
 
 /**
  * How many of `record`'s zero-hit `DA` lines are marked unreachable in the
- * actual source file on disk. Both `linesFound` and `linesHit` shrink by
- * this count for that record — the marked lines are removed from the
- * ratchet's denominator entirely, not counted as covered.
+ * actual source file on disk. Only `linesFound` (the denominator) needs to
+ * shrink by this count: every line this counts was already a zero-hit `DA`
+ * record by construction (see the `hitCountText !== '0'` guard below), so it
+ * never contributed to `linesHit` in the first place. The marked lines are
+ * removed from the ratchet's denominator entirely, not counted as covered.
  */
 function countMarkedUnreachableUnhitLines(
   rawRecordLines: string[],

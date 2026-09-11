@@ -236,19 +236,20 @@ export function waitForTransitionCompletion({
   // browser has committed to and rendered that frame — guaranteeing any
   // `transitioncancel` from the interrupted enter transition has already
   // been dispatched and missed (nothing was listening yet).
-  if (!ignoreCancel && typeof requestAnimationFrame === 'function') {
-    cancelListenerFrame = requestAnimationFrame(() => {
+  if (!ignoreCancel) {
+    if (typeof requestAnimationFrame === 'function') {
       cancelListenerFrame = requestAnimationFrame(() => {
-        cancelListenerFrame = undefined;
-        if (completed) return;
-        element.addEventListener('transitioncancel', handleTransitionCancel);
+        cancelListenerFrame = requestAnimationFrame(() => {
+          cancelListenerFrame = undefined;
+          if (completed) return;
+          element.addEventListener('transitioncancel', handleTransitionCancel);
+        });
       });
-    });
-  }
-  // No `requestAnimationFrame` (SSR/non-browser environment) — attach
-  // immediately, matching the prior behavior there.
-  if (!ignoreCancel && typeof requestAnimationFrame !== 'function') {
-    element.addEventListener('transitioncancel', handleTransitionCancel);
+    } else {
+      // No `requestAnimationFrame` (SSR/non-browser environment) — attach
+      // immediately, matching the prior behavior there.
+      element.addEventListener('transitioncancel', handleTransitionCancel);
+    }
   }
 
   fallbackTimer = setTimeout(finish, totalTransitionTime + 50);
