@@ -198,7 +198,16 @@
 		// second is added the length comparisons below would silently start
 		// measuring an unrelated result.
 		const execution = executions.find((entry) => entry.toolCallId === `${id}-call`);
-		const returned = String(execution?.result ?? '');
+
+		// `content`, not `result`, because that is what the rest of this
+		// repository reads: `chat-agent.ts`'s `toChatToolResult` projects a
+		// step's results through `result.content`, and the wire format follows
+		// from it. Both fields are present on an armorer `ToolExecutionResult`
+		// and are identical here — measured, 160 characters each — so this is a
+		// consistency choice rather than a correction. It matters because the
+		// two could diverge for a tool whose payload is not a plain string, and
+		// the panel below computes lengths and prefixes from whichever this is.
+		const returned = String(execution?.content ?? '');
 
 		// How much of what came back is the child's answer VERBATIM from the
 		// start. A character cap leaves nearly all of it; an extractive

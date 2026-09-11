@@ -411,5 +411,22 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 				: (active.getAttribute('aria-label') ?? active.textContent ?? '').trim();
 		});
 		expect(landed).toBe('Copy message');
+	} else {
+		// The SAME escape check on the platform that excludes buttons. Skipping
+		// it here left a WebKit-only trap — focus retained on Result, or dropped
+		// to `<body>` — invisible to a cross-engine suite, which is the one
+		// thing running this spec in three engines is for.
+		//
+		// The destination differs because the tab order does: with no button
+		// tabbable, the next stop after Result is the composer. Measured under
+		// `webkit-2`, not assumed.
+		await page.keyboard.press('Tab');
+		const landed = await page.evaluate(() => {
+			const active = document.activeElement;
+			return active === null || active === document.body
+				? '(no control)'
+				: `${active.tagName}[${active.getAttribute('aria-label') ?? ''}]`;
+		});
+		expect(landed).toBe('TEXTAREA[Message]');
 	}
 });
