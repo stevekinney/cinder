@@ -202,15 +202,16 @@ function collectComposedElements(root: ParentNode): Element[] {
     if (!fromSlot && element.assignedSlot) return;
     visited.add(element);
     elements.push(element);
-    // A slot assigned only text nodes has no assigned *elements*, but native
-    // fallback content only renders when the slot has no assigned *nodes* at
-    // all. Gate on assignedNodes, not assignedElements, so an all-text
-    // assignment still suppresses the slot's fallback children from being
-    // treated as reachable focus targets. `isSlotElement` short-circuits
-    // first so `assignedNodes` is only ever called on an actual slot.
-    if (isSlotElement(element) && element.assignedNodes({ flatten: false }).length > 0) {
-      for (const child of element.assignedElements({ flatten: true })) visit(child, true);
-      return;
+    if (isSlotElement(element)) {
+      // A slot assigned only text nodes has no assigned *elements*, but
+      // native fallback content only renders when the slot has no assigned
+      // *nodes* at all. Gate on assignedNodes, not assignedElements, so an
+      // all-text assignment still suppresses the slot's fallback children
+      // from being treated as reachable focus targets.
+      if (element.assignedNodes({ flatten: false }).length > 0) {
+        for (const child of element.assignedElements({ flatten: true })) visit(child, true);
+        return;
+      }
     }
     const childRoot = element.shadowRoot ?? element;
     for (const child of Array.from(childRoot.children)) visit(child);
@@ -561,6 +562,13 @@ function isSearchableRoot(node: Node): node is Document | ShadowRoot {
 export function* composedFocusScopes(anchor: Element): Generator<ComposedFocusScope> {
   let referenceNode: Element = anchor;
   let rootNode: Node = anchor.getRootNode();
+  // `hasEnclosingShadowHost` gives the loop a reachable exit edge.
+  // `isSearchableRoot`'s own condition can never be false here: every node
+  // `anchor.getRootNode()` (or a shadow host's `getRootNode()`) can produce —
+  // an Element, Document, ShadowRoot, or DocumentFragment — has
+  // `querySelectorAll`, so the loop's only real exit is "no enclosing shadow
+  // host left," tracked explicitly instead of relying on a condition that
+  // can't go false.
   let hasEnclosingShadowHost = true;
 
   while (hasEnclosingShadowHost && isSearchableRoot(rootNode)) {
