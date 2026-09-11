@@ -7,9 +7,31 @@
  * process would exit on its own once the module finished evaluating, and the
  * test could not tell a handler that terminates from one that merely returns.
  *
+ * `HOST_LISTENER=1` installs a PERSISTENT listener for the same signals. That
+ * is the condition re-raising the signal could not survive: the second delivery
+ * reaches the host's listener, which suppresses Node's default exactly as this
+ * module's own listener did, and the process stays alive one level further
+ * down. Without this switch the test would only confirm the assumption that
+ * nothing else is listening, rather than the property that the process
+ * terminates either way.
+ *
  * Run as a child process, never imported by a route.
  */
 import { serverOwnedRuntime } from './server-owned-runtime.ts';
+
+if (process.env['HOST_LISTENER'] === '1') {
+	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
+		// `on`, not `once`, and deliberately empty: a host that keeps its own
+		// handler registered across deliveries is the realistic shape, and
+		// suppressing the default is what any such handler does.
+		//
+		// Registered after the import rather than before it — ESM evaluates
+		// imported modules first regardless, and the order does not matter:
+		// what the property depends on is that BOTH listeners exist when the
+		// signal arrives, not which was added first.
+		process.on(signal, () => {});
+	}
+}
 
 // Built so the signal handler has a runtime to dispose rather than an empty
 // slot — the path a deployment actually takes.

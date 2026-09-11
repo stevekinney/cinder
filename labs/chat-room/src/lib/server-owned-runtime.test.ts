@@ -141,14 +141,16 @@ describe('server-owned runtime', () => {
  * is the correct report rather than a number invented here.
  */
 describe('process signals', () => {
-	it('disposes and then lets the signal terminate the process', async () => {
+	/** Spawns the fixture and waits until it reports its handlers registered. */
+	async function readyFixture(environment: Record<string, string>) {
 		const child = Bun.spawn(['bun', join(import.meta.dir, 'server-owned-signal-fixture.ts')], {
 			stdout: 'pipe',
-			stderr: 'pipe'
+			stderr: 'pipe',
+			env: { ...process.env, ...environment }
 		});
 
-		// Signalled only once the fixture says its handlers are registered, so
-		// this cannot race module evaluation.
+		// Signalled only once the fixture says so, so this cannot race module
+		// evaluation.
 		const reader = child.stdout.getReader();
 		let announced = '';
 		while (!announced.includes('ready')) {
@@ -157,16 +159,26 @@ describe('process signals', () => {
 			announced += new TextDecoder().decode(value);
 		}
 		expect(announced).toContain('ready');
+		return child;
+	}
 
-		child.kill('SIGTERM');
-		await child.exited;
+	// Both cases, because the second is the one the first cannot speak for.
+	for (const [label, environment] of [
+		['as the only signal listener', {}],
+		["alongside a host's own persistent listener", { HOST_LISTENER: '1' }]
+	] as const) {
+		it(`disposes and then terminates the process ${label}`, async () => {
+			const child = await readyFixture(environment);
 
-		// Terminated by the signal, one way or the other: either the runtime
-		// reports the signal directly, or it surfaces as the conventional
-		// 128 + 15 status. What matters is that it is NOT still running, and not
-		// a clean 0 that would mean something called `process.exit` and invented
-		// a success it had no basis for.
-		const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
-		expect(terminated).toBe(true);
-	});
+			child.kill('SIGTERM');
+			await child.exited;
+
+			// Terminated, and terminated the way a signal terminates: either the
+			// runtime reports the signal directly, or it surfaces as the
+			// conventional 128 + 15 status. Never a clean 0, which would mean
+			// something invented a success it had no basis for.
+			const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
+			expect(terminated).toBe(true);
+		});
+	}
 });

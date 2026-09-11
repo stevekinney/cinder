@@ -154,15 +154,37 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
  * handler at all: an orchestrator's SIGTERM would be absorbed and the process
  * would sit until the SIGKILL that follows it.
  *
- * Re-raising rather than `process.exit()`: `process.once` has already removed
- * this listener by the time it runs, so re-delivering the signal finds no
- * handler and Node terminates with the conventional 128 + signal status. An
- * explicit exit code would have to invent one, and would skip any other
- * listener a host had registered.
+ * Terminating EXPLICITLY rather than re-raising the signal, which was the
+ * first attempt and rested on an assumption this module has no right to make.
+ * Re-raising works only if nothing else is listening: `process.once` has
+ * removed this listener, so a second delivery finds none and Node's default
+ * runs. But a host with its own PERSISTENT listener for the same signal
+ * receives that second delivery too, and suppresses the default exactly as
+ * this module did — leaving the process alive after all, for the same reason
+ * and one level further down.
+ *
+ * So this takes ownership instead of hoping. Registering a signal handler at
+ * import already claims responsibility for that signal; the only coherent
+ * positions are to own termination or to register nothing at all, and
+ * "register a handler that does not terminate" is the bug this replaced.
+ *
+ * 128 + the signal's number is the status a shell reports for a process killed
+ * by that signal, so nothing about the exit code is invented — it is the value
+ * the default behaviour would have produced.
+ *
+ * The cost, stated rather than hidden: any other listener's still-in-flight
+ * async cleanup is cut off at the exit. Those listeners have already RUN — the
+ * first delivery reached every one of them — so what is lost is work that had
+ * not finished. A host that needs more than that should remove these handlers
+ * and drive `disposeServerOwnedRuntime()` from its own lifecycle, which is the
+ * right shape for a deployment and is not available to this lab.
  */
 const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
 
 type SignalHost = typeof globalThis & { [SIGNALS_SLOT]?: true };
+
+/** The status a shell reports for a process killed by each signal. */
+const TERMINATION_STATUS = { SIGTERM: 143, SIGINT: 130 } as const;
 
 const signalHost = globalThis as SignalHost;
 if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
@@ -178,7 +200,7 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 			// would hang, and the honest fix for that is whatever is hanging,
 			// not a timer that hides it.
 			void disposeServerOwnedRuntime().finally(() => {
-				process.kill(process.pid, signal);
+				process.exit(TERMINATION_STATUS[signal]);
 			});
 		});
 	}
