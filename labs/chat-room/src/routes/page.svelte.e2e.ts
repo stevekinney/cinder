@@ -394,7 +394,7 @@ test.describe('production streaming path', () => {
 		// Verification alone would leave the transcript pending: the tool has to
 		// have actually run on resume, the client has to have swapped the result
 		// in, and the follow-up turn has to have fired.
-		await expect(chat.getByRole('region', { name: 'Called 1 tools, 1 complete' })).toBeVisible();
+		await expect(chat.getByRole('region', { name: 'Called 1 tool, 1 complete' })).toBeVisible();
 		await expect(page.getByRole('log', { name: 'Messages' })).toContainText(
 			APPROVAL_FOLLOW_UP_TEXT
 		);

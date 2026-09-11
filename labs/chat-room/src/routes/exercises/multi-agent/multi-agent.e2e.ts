@@ -145,9 +145,16 @@ test("the delegation renders as a tool-activity entry in Chat's transcript", asy
 
 	// ONE call, and it completed. The heading counts both, so a call left
 	// unpaired with its result — which renders the same row — says "Called 1
-	// tools" with no completion clause.
+	// tool" with no completion clause.
+	//
+	// `tool`, singular. This asserted "Called 1 tools" when it was written,
+	// because that is what Chat rendered: the count was interpolated in front
+	// of a hardcoded plural (CIN-611). A spec pinning an exact user-visible
+	// string will pin whatever the string currently is, bug included, which is
+	// how the wrong text ended up asserted in the first place — and is worth
+	// remembering the next time one of these is written from observed output.
 	await expect(timeline).toHaveAttribute('data-cinder-tool-call-count', '1');
-	await expect(timeline.getByRole('heading')).toHaveText('Called 1 tools, 1 complete');
+	await expect(timeline.getByRole('heading')).toHaveText('Called 1 tool, 1 complete');
 
 	// Named, and reported as succeeded.
 	await expect(timeline.locator('.cinder-run-step-timeline__label')).toHaveText(

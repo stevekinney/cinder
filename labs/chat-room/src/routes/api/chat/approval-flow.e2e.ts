@@ -245,7 +245,7 @@ test('denying reaches a terminal state without resuming', async ({ page }, testI
 	await expect(chat.locator('.tool-call-group')).toHaveCount(0);
 	await expect(chat.getByRole('button', { name: 'Approve' })).toHaveCount(0);
 	await expect(chat.getByRole('button', { name: 'Reject' })).toHaveCount(0);
-	const settled = chat.getByRole('region', { name: 'Called 1 tools' });
+	const settled = chat.getByRole('region', { name: 'Called 1 tool' });
 	await expect(settled).toContainText('remember_note');
 	await expect(settled).toContainText('Failed');
 	await expect(page.getByTestId('demo-error')).toBeEmpty();
