@@ -288,40 +288,83 @@ it('drains a replacement created while an ordinary disposal was still running', 
 	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
 });
 
-it('disposes a replacement once when two terminating calls join the same disposal', async () => {
-	// Two signals can land together — SIGINT from a terminal that also sends
+it('holds every terminating caller behind the replacement teardown', async () => {
+	// Two signals can land together — a terminal sending SIGINT alongside
 	// SIGTERM, or a supervisor signalling twice. Both join the same in-flight
-	// ordinary disposal, and both resume when it settles. If the second
-	// re-read the slot after an await, it would drain a generation the first
-	// had already started on, running every teardown a second time: an engine
-	// shut down twice, a checkpoint flushed twice.
+	// ordinary disposal and both resume when it settles. The first starts the
+	// drain, which clears the runtime slot SYNCHRONOUSLY, so the second finds
+	// an empty slot.
+	//
+	// An empty slot is not the same as a finished shutdown. Treating it as one
+	// resolves the second caller while the replacement's teardown is still
+	// running, and whichever caller the signal handler happens to be awaiting
+	// then exits mid-teardown — cutting off exactly the checkpoint flush the
+	// drain was added to protect.
+	//
+	// This asserts the SECOND caller specifically, and deliberately does not
+	// use `Promise.all`: awaiting both together makes the first caller's
+	// correct timing mask the second's premature resolution, which is how an
+	// earlier version of this test passed against the bug.
 	const first = serverOwnedRuntime();
 
-	let release: () => void = () => {};
-	const heldOpen = new Promise<void>((resolve) => {
-		release = resolve;
+	let releaseOrdinary: () => void = () => {};
+	const ordinaryGate = new Promise<void>((resolve) => {
+		releaseOrdinary = resolve;
 	});
-	first.onDispose(() => heldOpen);
+	first.onDispose(() => ordinaryGate);
 
 	const ordinary = disposeServerOwnedRuntime();
-	const replacement = serverOwnedRuntime();
 
-	let disposals = 0;
-	replacement.onDispose(() => {
-		disposals += 1;
+	// Admitted before the latch, which is the only generation a drain has to
+	// cover.
+	const replacement = serverOwnedRuntime();
+	expect(replacement).not.toBe(first);
+
+	let releaseReplacement: () => void = () => {};
+	const replacementGate = new Promise<void>((resolve) => {
+		releaseReplacement = resolve;
+	});
+	let replacementDisposed = false;
+	replacement.onDispose(async () => {
+		await replacementGate;
+		replacementDisposed = true;
 	});
 
-	const both = Promise.all([
-		disposeServerOwnedRuntime({ drain: true }),
-		disposeServerOwnedRuntime({ drain: true })
-	]);
+	const firstCaller = disposeServerOwnedRuntime({ drain: true });
+	const secondCaller = disposeServerOwnedRuntime({ drain: true });
 
-	release();
+	let firstSettled = false;
+	let secondSettled = false;
+	void firstCaller.then(() => {
+		firstSettled = true;
+	});
+	void secondCaller.then(() => {
+		secondSettled = true;
+	});
+
+	releaseOrdinary();
 	await ordinary;
-	await both;
+	// A macrotask, so every continuation waiting on the ordinary disposal has
+	// certainly run — a microtask tick would not prove the second caller had
+	// reached its decision.
+	await new Promise((resolve) => setTimeout(resolve, 0));
 
-	// Exactly once — not zero (the replacement was stranded) and not twice.
-	expect(disposals).toBe(1);
+	// The drain is parked on the replacement's teardown. NEITHER caller may
+	// have resolved: the second one returning here is the defect.
+	expect(replacementDisposed).toBe(false);
+	expect(firstSettled).toBe(false);
+	expect(secondSettled).toBe(false);
+
+	releaseReplacement();
+	await firstCaller;
+	await secondCaller;
+
+	expect(replacementDisposed).toBe(true);
+	expect(firstSettled).toBe(true);
+	expect(secondSettled).toBe(true);
+
+	// And the latch still holds, so nothing refilled the slot on the way out.
+	expect(() => serverOwnedRuntime()).toThrow(RuntimeTerminatingError);
 });
 
 describe('process signals', () => {

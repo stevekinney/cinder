@@ -248,18 +248,42 @@ export async function disposeServerOwnedRuntime(
 		//
 		// Bounded: the latch is set, so at most the one generation admitted
 		// before it can be waiting here.
-		// Read and claimed with NO await in between, which is what makes a
-		// second terminating call joining the same `inFlight` safe: promise
-		// continuations run in order, and `drainDisposal` reaches
-		// `runDisposal`'s synchronous `RUNTIME_SLOT = undefined` before its
-		// first await. The next continuation therefore finds an empty slot and
-		// returns rather than disposing the same generation twice. Introducing
-		// an await between these two lines would break that.
 		const remaining = host[RUNTIME_SLOT];
-		if (remaining === undefined) return joined;
+		if (remaining === undefined) {
+			// EMPTY IS NOT THE SAME AS FINISHED. Two terminating calls can join
+			// one ordinary disposal and both resume when it settles; the first
+			// starts the drain, which clears the runtime slot synchronously,
+			// and this one then finds nothing. Returning here would resolve it
+			// while that replacement's teardown is still running — and a signal
+			// handler awaiting THIS promise exits mid-teardown, cutting off the
+			// checkpoint flush the drain exists to protect.
+			//
+			// So join the follow-on drain rather than reporting success on the
+			// strength of an empty slot.
+			const followOn = host[DISPOSAL_SLOT];
+			if (followOn === undefined) return joined;
 
-		const drained = await drainDisposal(host, remaining);
-		return { failures: joined.failures + drained.failures };
+			const drained = await followOn;
+			return { failures: joined.failures + drained.failures };
+		}
+
+		// PUBLISHED before anything can await it, so the sibling above finds it.
+		// `drainDisposal` runs its synchronous prefix — through `runDisposal`'s
+		// `RUNTIME_SLOT = undefined` — and returns a promise without yielding,
+		// so these two lines are one atomic step as far as other continuations
+		// are concerned. The ordinary disposal has already cleared this slot in
+		// its own `finally` by the time any joiner resumes, so nothing is being
+		// overwritten. An await between them would reopen the hole.
+		const drain = drainDisposal(host, remaining);
+		host[DISPOSAL_SLOT] = drain;
+		try {
+			const drained = await drain;
+			return { failures: joined.failures + drained.failures };
+		} finally {
+			// Identity-checked, like every other slot release here: clearing
+			// unconditionally would erase a successor's promise.
+			if (host[DISPOSAL_SLOT] === drain) host[DISPOSAL_SLOT] = undefined;
+		}
 	}
 
 	const held = host[RUNTIME_SLOT];
@@ -284,10 +308,18 @@ export async function disposeServerOwnedRuntime(
  * started and then calls `process.exit`, so that replacement engine is cut off
  * with no teardown and no checkpoint flush.
  *
- * Draining rather than blocking: a request that is mid-flight needs a runtime,
- * and refusing it would turn a shutdown into an error the client sees. Letting
- * it build one and then disposing that too is the same guarantee without the
- * failure.
+ * What the drain covers is the generation admitted BEFORE the latch. Once
+ * termination has latched, `serverOwnedRuntime()` does not hand out a
+ * replacement at all — it throws `RuntimeTerminatingError`, and a teardown that
+ * reaches for one has that counted as a teardown failure like any other. So
+ * this is not "let requests keep building runtimes and dispose those too": it
+ * is refusal from the latch onward, and a finite drain of whatever slipped in
+ * before it.
+ *
+ * That is the reverse of how this paragraph originally read. Serving late
+ * requests was the first design, and it could not terminate — each served
+ * request could produce another generation, so the loop had no exit condition
+ * that did not amount to giving up.
  *
  * FINITE by the latch, not by a pass count. `serverOwnedRuntime()` refuses once
  * termination begins, so after the pass that disposes the last generation
