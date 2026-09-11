@@ -26,6 +26,25 @@ describe('unavailableDuringShutdown', () => {
 		expect(body.error).toBe('The server is shutting down. Try again in a moment.');
 	});
 
+	it('recognises a shutdown error from a DIFFERENT module evaluation', async () => {
+		// Not hypothetical under HMR: an older evaluation is deliberately handed
+		// a newer evaluation's in-flight promise, so a rejection from that build
+		// reaches this predicate carrying the newer evaluation's constructor.
+		// `instanceof` answers "no" there and the route rethrows a clean
+		// shutdown as a generic 500.
+		//
+		// A foreign object carrying the same REGISTRY symbol is what such an
+		// error looks like from here — same tag, different class.
+		const tag = Symbol.for('cinder.chat-room.server-owned.shutdown-failure');
+		const fromAnotherEvaluation = Object.assign(new Error('the runtime is going away'), {
+			[tag]: true
+		});
+
+		const response = unavailableDuringShutdown(fromAnotherEvaluation);
+		expect(response).toBeDefined();
+		expect(response?.status).toBe(503);
+	});
+
 	it('does not swallow anything else', () => {
 		// The failure mode worth guarding: a helper that returned a 503 for
 		// every error would convert real crashes into "try again shortly" and

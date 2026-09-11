@@ -106,7 +106,21 @@ type RuntimeHost = typeof globalThis & {
  * alternative is a run whose engine is stopped mid-flight, which the client
  * sees as a truncated stream with no explanation.
  */
+/**
+ * Process-stable marker for "the runtime is going away".
+ *
+ * Same reasoning as `RETIREMENT_FAILURE`, and carried here because the same
+ * mistake was made twice: a module re-evaluation creates a NEW class object, so
+ * an error thrown by one evaluation is not `instanceof` another's. With HMR
+ * that is not hypothetical — an older evaluation can be handed a newer
+ * evaluation's rejected promise, and an `instanceof` check on it answers "no"
+ * and turns a shutdown into a generic 500.
+ */
+export const SHUTDOWN_FAILURE = Symbol.for('cinder.chat-room.server-owned.shutdown-failure');
+
 export class RuntimeTerminatingError extends Error {
+	readonly [SHUTDOWN_FAILURE] = true;
+
 	override readonly name = 'RuntimeTerminatingError';
 
 	constructor() {

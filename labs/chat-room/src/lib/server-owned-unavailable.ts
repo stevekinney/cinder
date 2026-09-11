@@ -1,7 +1,6 @@
 import { json } from '@sveltejs/kit';
 
-import { RuntimeDisposedDuringBuildError } from './server-owned-durable.ts';
-import { RuntimeTerminatingError } from './server-owned-runtime.ts';
+import { SHUTDOWN_FAILURE } from './server-owned-runtime.ts';
 
 /**
  * Turns a shutdown into a 503 rather than an opaque 500.
@@ -63,7 +62,15 @@ export function raise(cause: unknown): never {
  * which is the part that would silently diverge.
  */
 export function isShutdown(cause: unknown): boolean {
-	return (
-		cause instanceof RuntimeTerminatingError || cause instanceof RuntimeDisposedDuringBuildError
-	);
+	// The TAG, not `instanceof`. A module re-evaluation creates new class
+	// objects, and this predicate is reached with errors from a different
+	// evaluation as a matter of course: an older evaluation is deliberately
+	// handed a newer one's in-flight promise, so a rejection from that build
+	// arrives here carrying the newer evaluation's constructor. `instanceof`
+	// answers "no" and the route rethrows a shutdown as a generic 500.
+	//
+	// The retirement path was made process-stable for exactly this reason, and
+	// this helper was written afterwards with `instanceof` anyway — the lesson
+	// is at the symbol now, so the next error type gets it for free.
+	return typeof cause === 'object' && cause !== null && SHUTDOWN_FAILURE in cause;
 }

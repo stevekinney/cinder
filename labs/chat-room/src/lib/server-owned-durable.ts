@@ -5,7 +5,7 @@ import {
 } from '@lostgradient/operative/durable';
 import type { RunEngine } from '@lostgradient/operative/durable';
 
-import { serverOwnedRuntime } from './server-owned-runtime.ts';
+import { SHUTDOWN_FAILURE, serverOwnedRuntime } from './server-owned-runtime.ts';
 import type { ServerOwnedRuntime } from './server-owned-runtime.ts';
 
 /**
@@ -463,6 +463,9 @@ export class EngineRetirementError extends Error {
 }
 
 export class RuntimeDisposedDuringBuildError extends Error {
+	/** See `SHUTDOWN_FAILURE` — `instanceof` cannot survive a module reload. */
+	readonly [SHUTDOWN_FAILURE] = true;
+
 	override readonly name = 'RuntimeDisposedDuringBuildError';
 
 	constructor() {
