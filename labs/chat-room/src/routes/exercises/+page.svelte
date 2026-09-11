@@ -5,6 +5,8 @@
 		| 'output'
 		| 'retry'
 		| 'stop-condition'
+		| 'tripwire'
+		| 'compaction'
 		| 'attachments'
 		| 'adapter-push'
 		| 'message-lifecycle'
@@ -161,6 +163,20 @@
 			title: 'Stop conditions',
 			description:
 				'A named condition ends the loop after one step — the counter is the only proof of the second generation that did not happen.'
+		},
+		{
+			slug: 'tripwire',
+			href: resolve('/exercises/tripwire'),
+			title: 'Guardrails — tripwire mode',
+			description:
+				'The same injection trips the same detector twice — only one of the two halts before the loop runs.'
+		},
+		{
+			slug: 'compaction',
+			href: resolve('/exercises/compaction'),
+			title: 'Context compaction',
+			description:
+				'A pinned fact crosses into the summarized projection, and the page keeps its whole transcript.'
 		},
 		{
 			slug: 'contracts',

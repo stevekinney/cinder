@@ -16,10 +16,16 @@ const DEV_ORIGIN = 'http://localhost:5175';
 // is server-rendered and hydrated exactly like the handful that used to be
 // checked here.
 //
-// Most render `<Chat>` or `<ReviewEditor>`. The result-contract exercises
-// (`output`, `retry`, `stop-condition`) render plain markup around a local
-// Operative run instead, which is a weaker guarantee about WHAT hydrates but
-// the same guarantee that hydration happens — and the same reason to check it. It used to list five exercises out of 25, which
+// Most render `<Chat>` or `<ReviewEditor>`. A growing minority render plain
+// markup around a local Operative run instead — the result-contract exercises
+// (`output`, `retry`, `stop-condition`) and the guardrail and context ones
+// (`tripwire`, `compaction`). Those are a weaker guarantee about WHAT hydrates
+// but the same guarantee that hydration happens — and the same reason to check
+// it. Keep this list current as routes are added: a hydration failure gets
+// triaged against the surface actually under test, and a stale rationale sends
+// that triage at a component neither route mounts.
+//
+// It used to list five exercises out of 25, which
 // meant `review-front-matter`'s nine ReviewEditor instances seeded with
 // edge-case YAML front matter went unchecked, and so did `review-ssr-and-a11y`,
 // the route built specifically to audit SSR and hydration.
@@ -57,6 +63,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/assistant-metadata',
 	'/exercises/attachments',
 	'/exercises/chat-transcript-navigation',
+	'/exercises/compaction',
 	'/exercises/composer-popover',
 	'/exercises/contracts',
 	'/exercises/conversation-list',
@@ -83,6 +90,7 @@ const HYDRATING_ROUTES = [
 	'/exercises/row-reconciliation',
 	'/exercises/stop-condition',
 	'/exercises/tool-approval',
+	'/exercises/tripwire',
 	'/exercises/utilities',
 	'/exercises/virtualization'
 ];
