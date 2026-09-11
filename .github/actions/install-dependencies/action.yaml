@@ -1,0 +1,67 @@
+name: Install dependencies
+description: >
+  Installs workspace dependencies with `bun install --frozen-lockfile`, retrying
+  exactly once — with the package cache cleared — if the first attempt fails.
+
+# THE ONE SANCTIONED EXCEPTION TO THE NO-RETRY RULE. See AGENTS.md.
+#
+# The rule exists so a retry cannot mask a flaky or slow test. This retry
+# cannot, and that is the whole basis for the exception: a dependency install
+# runs before any spec is collected, so there is no test for it to hide. If
+# `bun install` fails, nothing about the code under test has been exercised
+# yet.
+#
+# Scoped deliberately:
+#
+#   - ONE retry, not a loop and not a configurable count.
+#   - The install step only. It does not apply to `testTimeout`, `--timeout`,
+#     Playwright `retries`, `waitFor` deadlines, or `slow()` multipliers, all
+#     of which remain forbidden with no exception.
+#   - Defined ONCE, here, and referenced by every install site that retries —
+#     so the exception is auditable in a single place rather than copied into
+#     each workflow step, where it would drift and invite imitation. No count
+#     is stated here on purpose: a number beside the thing it describes only
+#     ever drifts, and `grep -c` answers it exactly.
+#
+# The cache is cleared before the retry because the failure that motivated this
+# was `Integrity check failed for tarball: zod` (CIN-607). A corrupted tarball
+# is cached, so retrying without clearing it re-extracts the same corruption
+# and fails identically — a retry that cannot succeed is worse than no retry,
+# because it costs a minute and still reads as a branch failure.
+#
+# The retry ANNOTATES the run. A silent retry turns a registry problem into an
+# invisible one, and the frequency of these failures is the thing that decides
+# whether the real fix is worth building.
+
+runs:
+  using: composite
+  steps:
+    - name: Install workspace dependencies
+      shell: bash
+      run: |
+        # `-e` included, matching the repo's other workflow bash blocks. It does
+        # not interfere with the guarded first attempt: a command used as an
+        # `if` condition is exempt from `-e`, which is the whole reason the
+        # attempt is written as a condition rather than a bare call.
+        set -euo pipefail
+
+        if bun install --frozen-lockfile; then
+          exit 0
+        fi
+
+        echo "::warning title=Dependency install retried::The first \`bun install --frozen-lockfile\` failed. Retrying once with the package cache cleared (CIN-607). If this annotation appears often, the transient registry failure has become a standing one and needs a real fix rather than a retry."
+
+        # UNGUARDED, and that is the point. An absent or already-empty cache
+        # already exits 0, so `|| true` here would only ever swallow a real
+        # failure — a permissions or I/O error — and then launch the retry
+        # against the same corrupted cache it was supposed to clear. That is a
+        # retry that cannot succeed for the integrity-check failure it exists
+        # to recover from: it costs a minute and still reads as a branch
+        # failure. Under `set -e` a genuine cleanup failure stops here instead,
+        # which is the honest outcome.
+        bun pm cache rm
+        rm -rf node_modules
+
+        # Unguarded, so a second failure fails the job. The exception buys one
+        # more attempt, not tolerance for a broken install.
+        bun install --frozen-lockfile
