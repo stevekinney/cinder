@@ -22,8 +22,6 @@
 import { expect, test } from '@playwright/test';
 
 import { gotoHydrated } from '../exercises/hydration';
-import { fixtureGateHeld, newFixtureMarker, releaseFixtureGate } from '../fixture-probe';
-import { STEPPED_CHUNKS, fixtureMarker } from '../streaming-fixture';
 
 /** A title no other test will collide with, in this run or a previous one. */
 const uniqueTitle = (label: string): string =>

@@ -73,6 +73,17 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	// releases it, so each state below is causally separated from the next
 	// rather than separated by a hopeful wait — three renders of one assistant
 	// message, which is what "incremental" has to mean to be worth asserting.
+	// Separated from the assertions below on purpose: "the preview server never
+	// reached the fixture" and "the stream rendered wrong" are different
+	// failures, and without this they are indistinguishable from whichever
+	// assertion happens to fail first. (This guard was lost once already, in
+	// the edit that removed an over-eager polling timeout from the line below.)
+	await expect
+		.poll(() => fixtureRequestCount(marker), {
+			message: `the preview server never reached the fixture for ${marker} — is ANTHROPIC_BASE_URL set on its webServer entry?`
+		})
+		.toBeGreaterThan(0);
+
 	await expect.poll(() => fixtureGateHeld(marker)).toBe(true);
 
 	// One chunk on screen, the rest not yet produced.
