@@ -206,8 +206,9 @@ describe('server-owned durable runtime', () => {
 		// is an afternoon of accumulated dead engines.
 		//
 		// A reload is simulated by rewriting the memo's module stamp, which is
-		// precisely what a re-evaluation changes — `MODULE_GENERATION` is a fresh
-		// symbol per evaluation, and the slot lives on `globalThis` under a
+		// precisely what a re-evaluation changes — `MODULE_GENERATION` is an
+		// ORDINAL claimed from a process-global counter, so a lower number reads
+		// as an older evaluation. The slot lives on `globalThis` under a
 		// `Symbol.for` key, so it outlives the module that wrote it.
 		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
 		const host = globalThis as Record<symbol, { module: number } | undefined>;
@@ -465,7 +466,13 @@ describe('server-owned durable runtime', () => {
 		//
 		// A request landing here takes a fresh `SessionStore` from the new
 		// runtime. Handing it the memoised engine would pair that store with an
-		// engine about to stop, over storage about to be cleared.
+		// engine and checkpoint store that are being STOPPED.
+		//
+		// The storage is not the hazard and is not touched: `runDisposal`
+		// deliberately leaves it alone so a graceful shutdown cannot erase
+		// persistent sessions or checkpoints once the in-memory store is
+		// swapped. An earlier version of this comment said it was about to be
+		// cleared, describing behaviour that was removed on purpose.
 		let during: { engine: unknown } | undefined;
 		let sawFreshRuntime = false;
 		serverOwnedRuntime().onDispose(async () => {

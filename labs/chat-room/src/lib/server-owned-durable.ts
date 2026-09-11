@@ -125,9 +125,10 @@ type DurableSlot = {
  * dev server restarts, which is worse than not reloading at all: an experiment
  * silently exercises stale code.
  *
- * A fresh symbol per evaluation distinguishes the two cases. Same module, same
- * runtime — reuse. New module — stop the old engine and build one from the
- * code now on disk.
+ * A per-evaluation ORDINAL separates the three cases. Same generation, same
+ * runtime — reuse. An older generation in the slot — stop that engine and build
+ * one from the code now on disk. A NEWER generation in the slot — defer to it,
+ * because the caller is the stale one.
  */
 /**
  * ORDINAL for this evaluation, not just an identity.
@@ -141,6 +142,13 @@ type DurableSlot = {
  *
  * A monotonic counter on `globalThis` survives re-evaluation, so generations
  * can be COMPARED rather than merely distinguished. Newer wins; older defers.
+ *
+ * An ORDINAL, not a fresh symbol per evaluation — which is what this used to be
+ * and what an earlier version of this paragraph still described. Restoring a
+ * symbol would restore the symmetric identity check with it, and with that the
+ * bug: a stale caller retiring a newer engine, rebuilding with pre-edit code,
+ * and rolling the edit back. The comparison is the point; a value that can only
+ * be matched cannot express it.
  */
 const GENERATION_COUNTER = Symbol.for('cinder.chat-room.server-owned.durable-generation');
 

@@ -26,10 +26,13 @@
 	<!--
 		KEYED on the conversation id, and this is load-bearing rather than
 		defensive. SvelteKit reuses a page component when only a route parameter
-		changes — browser back and forward between two conversations does exactly
-		that — so without the key, `data` would name B while the child's
-		one-time-seeded mirror still held A's transcript, and the next
+		changes. `data` updated while the one-time initializer did not, so the next
 		submission would be persisted to B underneath A's visible history.
+
+		LATENT: there is no detail-to-detail link in this route family yet, and
+		browser history between two separately loaded documents is a real
+		navigation rather than a parameter-only update. See
+		`conversation-surface.svelte` for the full note.
 
 		A key rather than an effect that resets each field: the surface owns a
 		mirror, a streaming flag, a failure banner, and a session controller with

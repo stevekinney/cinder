@@ -1,5 +1,6 @@
 import { json } from '@sveltejs/kit';
 
+import { RuntimeDisposedDuringBuildError } from './server-owned-durable.ts';
 import { RuntimeTerminatingError } from './server-owned-runtime.ts';
 
 /**
@@ -20,7 +21,13 @@ import { RuntimeTerminatingError } from './server-owned-runtime.ts';
  * server-side, where the signal handler already reports it.
  */
 export function unavailableDuringShutdown(cause: unknown): Response | undefined {
-	if (!(cause instanceof RuntimeTerminatingError)) return undefined;
+	// BOTH shutdown rejections, not just the latch. A request that was already
+	// awaiting `createRunEngine` when disposal began is rejected with
+	// `RuntimeDisposedDuringBuildError` instead — a different error for a
+	// different moment, but the same answer to the client: the server is going
+	// away, try again. Recognising only the latch turned that race into the
+	// generic 500 this helper exists to prevent.
+	if (!isShutdown(cause)) return undefined;
 
 	return json(
 		{ error: 'The server is shutting down. Try again in a moment.' },
@@ -44,4 +51,19 @@ export function unavailableDuringShutdown(cause: unknown): Response | undefined 
  */
 export function raise(cause: unknown): never {
 	throw cause;
+}
+
+/**
+ * True for either rejection that means "the runtime is going away".
+ *
+ * Exported because SvelteKit PAGE loaders cannot use the `Response` above —
+ * they signal status through `error()` so the framework renders an error page
+ * rather than returning JSON to a navigation. Sharing the predicate rather than
+ * the response keeps the two surfaces from drifting on WHICH errors count,
+ * which is the part that would silently diverge.
+ */
+export function isShutdown(cause: unknown): boolean {
+	return (
+		cause instanceof RuntimeTerminatingError || cause instanceof RuntimeDisposedDuringBuildError
+	);
 }

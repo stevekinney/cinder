@@ -45,13 +45,25 @@
 	 *
 	 * Split out of `+page.svelte` and mounted under `{#key data.id}` because
 	 * SvelteKit REUSES a page component when only a route parameter changes.
-	 * Navigating `/server-owned/A` straight to `/server-owned/B` — browser
-	 * back and forward between two conversations does exactly that — updated
+	 * Navigating `/server-owned/A` straight to `/server-owned/B` updated
 	 * `data` while leaving the one-time `conversation` initializer alone. The
 	 * heading and the transport URL then named B while `<Chat>` still rendered
 	 * A's transcript, and the next submission was persisted to B underneath A's
 	 * visible history. Keying on the id makes the reset structural rather than
 	 * something every piece of per-conversation state has to remember.
+	 *
+	 * LATENT today, and worth saying so rather than implying otherwise. This
+	 * route family has no detail-to-detail link, and browser back/forward
+	 * between two separately loaded conversation documents performs a real
+	 * navigation rather than a parameter-only update — so nothing a user can do
+	 * right now reaches this path. The spec has to inject a same-origin anchor
+	 * to exercise it at all.
+	 *
+	 * Kept because the path becomes reachable the moment client-side
+	 * detail-to-detail navigation exists, and the failure it prevents is
+	 * silent data loss: a turn persisted to B underneath A's visible history.
+	 * An earlier version of this comment claimed back/forward already covered
+	 * it, which would have read as proof the case was exercised.
 	 */
 	let { id, conversation: initialConversation }: { id: string; conversation: ConversationHistory } =
 		$props();
