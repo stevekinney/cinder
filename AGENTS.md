@@ -14,6 +14,21 @@ There is no exception. It does not matter whether the pull request explains the 
 
 This rule applies even when the rest of the diff looks reasonable and the timeout change is buried in an otherwise unrelated pull request. Flag it as a blocking comment, not a suggestion.
 
+### The one sanctioned exception: dependency installs
+
+`.github/actions/install-dependencies` retries `bun install --frozen-lockfile` exactly once, with the package cache cleared. This is the only retry in the repository that is not a defect, and it is recorded here so reviewers do not have to relitigate it on every pull request that touches CI.
+
+It is an exception because the rule's rationale does not reach it. A retry is forbidden because it masks a flaky or slow test. A dependency install runs _before any spec is collected_, so a failure there has exercised nothing about the code under test and there is no test outcome for the retry to hide. `Integrity check failed for tarball` is a corrupted download, not a race in our code.
+
+The exception is bounded, and every bound is load-bearing:
+
+- **One retry.** Not a loop, not a configurable count, no backoff to tune.
+- **Installs only.** `testTimeout`, `--timeout`, Playwright `retries`, `waitFor` deadlines, and `slow()` multipliers remain forbidden with no exception whatsoever. A pull request that cites this section to justify one of those is misreading it — keep flagging those as blocking.
+- **Defined once.** Eight workflow steps reference the composite action; none of them contains a retry of its own. A retry written inline in a workflow is still a defect, however similar it looks to this one.
+- **Annotated, never silent.** The retry emits a `::warning::`. If those annotations become common, the transient failure has become a standing one and the answer is a real fix, not a second retry.
+
+Granted by the project lead on 2026-09-11 for [CIN-607](https://linear.app/lost-gradient/issue/CIN-607). Widening it — a second retry, a new site, a different command — needs the same authority, not a reviewer's judgement.
+
 ## Component authoring pre-flight
 
 Before adding a component, load the repository-local `cinder-component-authoring`
