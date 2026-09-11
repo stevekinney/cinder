@@ -1,6 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 
-import { normalizeStickyIndexes, resolveActiveStickyIndex } from './sticky-items.ts';
+import {
+  normalizeStickyIndexes,
+  resolveActiveStickyIndex,
+  resolveObstructingStickyIndex,
+} from './sticky-items.ts';
 
 describe('normalizeStickyIndexes', () => {
   test('returns an empty array when stickyItems is undefined', () => {
@@ -77,5 +81,25 @@ describe('resolveActiveStickyIndex', () => {
     expect(resolveActiveStickyIndex(stickyIndexes, 0)).toBe(0);
     expect(resolveActiveStickyIndex(stickyIndexes, 5017)).toBe(5015);
     expect(resolveActiveStickyIndex(stickyIndexes, 9995)).toBe(9995);
+  });
+});
+
+describe('resolveObstructingStickyIndex', () => {
+  test('reports the header above the row', () => {
+    expect(resolveObstructingStickyIndex([0, 10, 20], 15)).toBe(10);
+  });
+
+  test('reports nothing for a sticky row, which is the header rather than covered by one', () => {
+    // The distinction the whole helper exists for. Treating a header as covered by
+    // itself makes `scrollToIndex(10)` inset by its own height, landing a row early.
+    expect(resolveObstructingStickyIndex([0, 10, 20], 10)).toBeNull();
+  });
+
+  test('reports nothing before the first sticky row', () => {
+    expect(resolveObstructingStickyIndex([10, 20], 4)).toBeNull();
+  });
+
+  test('reports nothing when no row is sticky', () => {
+    expect(resolveObstructingStickyIndex([], 7)).toBeNull();
   });
 });

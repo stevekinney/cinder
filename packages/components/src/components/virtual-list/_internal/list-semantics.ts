@@ -89,24 +89,55 @@ export function resolveKeyboardTargetIndex(options: {
   visibleCount: number;
   orientation: VirtualListOrientation;
   writingDirection?: 'ltr' | 'rtl';
+  /**
+   * Indexes rendered as sticky headers. Stepping keys move between content rows
+   * and pass over these.
+   */
+  stickyIndexes?: ReadonlySet<number>;
 }): number | null {
   if (options.itemCount <= 0) return null;
 
   const lastIndex = options.itemCount - 1;
   const clampToListRange = (index: number): number => Math.max(0, Math.min(lastIndex, index));
 
+  /**
+   * Steps past sticky rows in the direction of travel.
+   *
+   * A sticky header is held at the leading edge for as long as its section is in
+   * view, so it is on screen already and scrolling to it moves nothing. Worse, it
+   * is the row a step lands on coming back UP to a section: the destination's
+   * inset is zero exactly there, so the target resolves to the position the reader
+   * is already at and the key does nothing at all.
+   *
+   * Running off the end means every row that way is sticky, so there is no content
+   * row to reach; the boundary itself is as close as the reader gets.
+   */
+  const skipStickyRows = (index: number, direction: number): number => {
+    const sticky = options.stickyIndexes;
+    if (sticky === undefined || sticky.size === 0) return index;
+    let candidate = index;
+    while (candidate >= 0 && candidate <= lastIndex && sticky.has(candidate)) {
+      candidate += direction;
+    }
+    return candidate < 0 || candidate > lastIndex ? index : candidate;
+  };
+
+  // Home and End are absolute: they mean the ends of the list, sticky or not.
   if (options.key === 'Home') return 0;
   if (options.key === 'End') return lastIndex;
 
   if (options.key === 'PageDown' || options.key === 'PageUp') {
     const pageStep = Math.max(1, Math.floor(options.visibleCount));
     const signedStep = options.key === 'PageDown' ? pageStep : -pageStep;
-    return clampToListRange(options.currentIndex + signedStep);
+    const direction = options.key === 'PageDown' ? 1 : -1;
+    return skipStickyRows(clampToListRange(options.currentIndex + signedStep), direction);
   }
 
   if (options.orientation === 'vertical') {
-    if (options.key === 'ArrowDown') return clampToListRange(options.currentIndex + 1);
-    if (options.key === 'ArrowUp') return clampToListRange(options.currentIndex - 1);
+    if (options.key === 'ArrowDown')
+      return skipStickyRows(clampToListRange(options.currentIndex + 1), 1);
+    if (options.key === 'ArrowUp')
+      return skipStickyRows(clampToListRange(options.currentIndex - 1), -1);
     return null;
   }
 
@@ -116,8 +147,10 @@ export function resolveKeyboardTargetIndex(options: {
   const forwardKey = isRightToLeft ? 'ArrowLeft' : 'ArrowRight';
   const backwardKey = isRightToLeft ? 'ArrowRight' : 'ArrowLeft';
 
-  if (options.key === forwardKey) return clampToListRange(options.currentIndex + 1);
-  if (options.key === backwardKey) return clampToListRange(options.currentIndex - 1);
+  if (options.key === forwardKey)
+    return skipStickyRows(clampToListRange(options.currentIndex + 1), 1);
+  if (options.key === backwardKey)
+    return skipStickyRows(clampToListRange(options.currentIndex - 1), -1);
 
   return null;
 }

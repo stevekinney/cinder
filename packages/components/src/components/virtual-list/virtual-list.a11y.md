@@ -21,7 +21,9 @@ The scroll container is focusable (`tabindex="0"` by default) so keyboard users 
 The component takes over Arrow, Page, Home, and End **only when `stickyItems` is set**, where native scrolling would leave the pinned header's relationship to the rows ambiguous. In that mode:
 
 - Arrow keys move by one row; Page keys by one viewport; Home and End go to the collection's ends.
-- Navigation is relative to the first **visible** row, not the first rendered one. The rendered window carries overscan, so using its edge would move the reader relative to a row they cannot see.
+- Navigation is relative to the first **uncovered** row — the first one the pinned header is not sitting on top of. The rendered window carries overscan, so its edge would move the reader relative to a row they cannot see; and the first _visible_ row is the header itself whenever one is pinned, so advancing from that lands on the row hidden underneath it.
+- Destinations clear the header rather than aligning flush to the container's edge, which is the space the header occupies.
+- Arrow and Page keys pass **over** sticky rows, which Home and End do not. A pinned header is on screen for as long as its section is, so scrolling to it moves nothing; skipping it also keeps the two directions symmetric at a section boundary, where the header is both the first visible row and the thing covering the edge.
 - Under `horizontal` with a right-to-left writing direction, Left and Right are exchanged, per the WAI-ARIA Authoring Practices. `KeyboardEvent.key` is not remapped by `dir`, so the widget must do this itself.
 - Keys that originate **inside a row** are left alone. A row containing a text input, slider, or select uses the arrow keys itself, and the list only claims events targeted at its own scroll container.
 

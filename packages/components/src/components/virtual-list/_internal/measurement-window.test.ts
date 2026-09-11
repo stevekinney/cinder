@@ -668,3 +668,125 @@ describe('round-eleven engine regressions', () => {
     expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: first })).toBe(first);
   });
 });
+
+describe('computeScrollToIndexOffset — leadingInset', () => {
+  const insetOffsets = buildVirtualOffsets({
+    itemCount: 5,
+    estimateSize: 20,
+    getKey: keyAt,
+    measuredSizes: new Map([
+      [keyAt(1), 30],
+      [keyAt(3), 10],
+    ]),
+  });
+  // insetOffsets.offsets = [0, 20, 50, 70, 80, 100]; sizes = [20, 30, 20, 10, 20]
+  const insetLocator: VirtualItemLocator = {
+    getStart: (index) => insetOffsets.offsets[index]!,
+    getSize: (index) => insetOffsets.offsets[index + 1]! - insetOffsets.offsets[index]!,
+  };
+
+  function offsetFor(options: {
+    index: number;
+    align: VirtualListScrollAlign;
+    viewportSize: number;
+    currentScrollOffset?: number;
+    leadingInset?: number;
+  }): number {
+    return computeScrollToIndexOffset({
+      index: options.index,
+      itemCount: 5,
+      locator: insetLocator,
+      totalSize: insetOffsets.totalSize,
+      viewportSize: options.viewportSize,
+      currentScrollOffset: options.currentScrollOffset ?? 0,
+      align: options.align,
+      ...(options.leadingInset === undefined ? {} : { leadingInset: options.leadingInset }),
+    });
+  }
+
+  test('align "start" leaves room for the header above the row', () => {
+    // Row 3 starts at 70. Flush to the edge it would sit under a 20px header; the
+    // reader should see it just below one instead.
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: 20 })).toBe(50);
+  });
+
+  test('align "end" ignores the inset, because nothing covers the trailing edge', () => {
+    const withoutHeader = offsetFor({ index: 3, align: 'end', viewportSize: 50 });
+    expect(offsetFor({ index: 3, align: 'end', viewportSize: 50, leadingInset: 20 })).toBe(
+      withoutHeader,
+    );
+  });
+
+  test('align "center" centers within what the header leaves visible', () => {
+    // Row 2 spans [50, 70). The visible band is 30px of the 50px viewport, so a 20px
+    // row centers with 5px above it: target = 50 - 20 - 5.
+    expect(offsetFor({ index: 2, align: 'center', viewportSize: 50, leadingInset: 20 })).toBe(25);
+  });
+
+  test('align "auto" treats a row behind the header as offscreen and pulls it clear', () => {
+    // At offset 45 row 2 ([50, 70)) is inside the raw viewport, so with no inset auto
+    // holds still. A 20px header covers through 65, hiding most of it.
+    expect(offsetFor({ index: 2, align: 'auto', viewportSize: 50, currentScrollOffset: 45 })).toBe(
+      45,
+    );
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 45,
+        leadingInset: 20,
+      }),
+    ).toBe(30);
+  });
+
+  test('align "auto" still aligns the trailing edge for a row below the viewport', () => {
+    // Row 4 spans [80, 100); at offset 0 in a 50px viewport it is past the end, and an
+    // inset does not move a trailing-edge alignment.
+    expect(offsetFor({ index: 4, align: 'auto', viewportSize: 50, leadingInset: 20 })).toBe(50);
+  });
+
+  test('align "auto" holds a row taller than the visible band once the reader is inside it', () => {
+    // Row 2 is 20px and the band below a 35px header is 15px, so it can never fit.
+    // Holding is what stops start and end alignment from alternating forever.
+    //
+    // At offset 20 the band is [55, 70) and the row spans [50, 70), so the reader is
+    // looking at part of it — hold. Aligning instead would move to 15.
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 20,
+        leadingInset: 35,
+      }),
+    ).toBe(20);
+  });
+
+  test('align "auto" brings a too-tall row into view when the reader is not inside it yet', () => {
+    // Same row and header, but at offset 0 the band is [35, 50) and the row starts at
+    // 50 — nothing of it is visible, so bring its start to the top of the band.
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 0,
+        leadingInset: 35,
+      }),
+    ).toBe(15);
+  });
+
+  test('treats a negative inset as no header at all', () => {
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: -40 })).toBe(
+      offsetFor({ index: 3, align: 'start', viewportSize: 50 }),
+    );
+  });
+
+  test('clamps an inset taller than the viewport, which would otherwise invert the band', () => {
+    // A 200px header in a 50px viewport leaves nothing visible. Clamped to the
+    // viewport the target stays well-defined rather than scrolling backwards past the
+    // row by the overshoot.
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: 200 })).toBe(20);
+  });
+});

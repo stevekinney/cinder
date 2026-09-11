@@ -87,3 +87,25 @@ export function resolveActiveStickyIndex(
   const position = findGreatestIndexAtOrBefore(stickyIndexes, firstVisibleIndex);
   return position === -1 ? null : stickyIndexes[position]!;
 }
+
+/**
+ * The sticky header that covers row `index` once that row reaches the leading
+ * edge, or `null` when nothing does.
+ *
+ * A sticky row covers nothing at its own index: it IS the header there, so there
+ * is no obstruction above it.
+ *
+ * This asks a different question from `resolveActiveStickyIndex`, which answers
+ * "what is pinned right now" from the current scroll position. Scroll destinations
+ * must not be keyed on the current position: the inset would change as the scroll
+ * moved, so a settle loop would recompute a different target on each pass and a
+ * header taller than a row makes it oscillate between the header's start and the
+ * row's, landing wherever the attempt cap happened to stop.
+ */
+export function resolveObstructingStickyIndex(
+  stickyIndexes: readonly number[],
+  index: number,
+): number | null {
+  const header = resolveActiveStickyIndex(stickyIndexes, index);
+  return header === null || header === index ? null : header;
+}

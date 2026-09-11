@@ -439,3 +439,118 @@ describe('resolveKeyboardTargetIndex — right-to-left', () => {
     }
   });
 });
+
+describe('resolveKeyboardTargetIndex — sticky rows', () => {
+  const base = {
+    itemCount: 100,
+    visibleCount: 10,
+    orientation: 'vertical' as const,
+  };
+
+  test('steps over a sticky row on the way down', () => {
+    // A sticky header is held at the leading edge while its section is in view, so it
+    // is already on screen and scrolling to it moves nothing.
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'ArrowDown',
+        currentIndex: 9,
+        stickyIndexes: new Set([10]),
+      }),
+    ).toBe(11);
+  });
+
+  test('steps over a sticky row on the way up', () => {
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'ArrowUp',
+        currentIndex: 11,
+        stickyIndexes: new Set([10]),
+      }),
+    ).toBe(9);
+  });
+
+  test('steps over a run of consecutive sticky rows', () => {
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'ArrowDown',
+        currentIndex: 9,
+        stickyIndexes: new Set([10, 11, 12]),
+      }),
+    ).toBe(13);
+  });
+
+  test('holds at the boundary when every row beyond it is sticky', () => {
+    // Nothing to reach that way, so the boundary is as close as the reader gets.
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        itemCount: 12,
+        key: 'ArrowDown',
+        currentIndex: 10,
+        stickyIndexes: new Set([11]),
+      }),
+    ).toBe(11);
+  });
+
+  test('applies to the Page keys too, stepping one further past the header', () => {
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'PageDown',
+        currentIndex: 0,
+        stickyIndexes: new Set([10]),
+      }),
+    ).toBe(11);
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'PageUp',
+        currentIndex: 30,
+        stickyIndexes: new Set([20]),
+      }),
+    ).toBe(19);
+  });
+
+  test('applies to the horizontal arrows, in the direction the reader is travelling', () => {
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        orientation: 'horizontal',
+        key: 'ArrowRight',
+        currentIndex: 9,
+        stickyIndexes: new Set([10]),
+      }),
+    ).toBe(11);
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        orientation: 'horizontal',
+        key: 'ArrowLeft',
+        currentIndex: 11,
+        stickyIndexes: new Set([10]),
+      }),
+    ).toBe(9);
+  });
+
+  test('leaves Home and End on the true ends, sticky or not', () => {
+    // These mean "the start" and "the end" of the list, not "the nearest content row".
+    const sticky = { ...base, itemCount: 50, stickyIndexes: new Set([0, 49]) };
+    expect(resolveKeyboardTargetIndex({ ...sticky, key: 'Home', currentIndex: 20 })).toBe(0);
+    expect(resolveKeyboardTargetIndex({ ...sticky, key: 'End', currentIndex: 20 })).toBe(49);
+  });
+
+  test('is unchanged when no sticky set is supplied, or it is empty', () => {
+    expect(resolveKeyboardTargetIndex({ ...base, key: 'ArrowDown', currentIndex: 9 })).toBe(10);
+    expect(
+      resolveKeyboardTargetIndex({
+        ...base,
+        key: 'ArrowDown',
+        currentIndex: 9,
+        stickyIndexes: new Set<number>(),
+      }),
+    ).toBe(10);
+  });
+});

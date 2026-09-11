@@ -245,6 +245,12 @@ disappear at exactly the moment it is meant to be pinned. The component keeps th
 active sticky row in the DOM past its window, and re-sorts the rendered set by index
 so a keyed `{#each}` does not move it behind the rows that follow it.
 
+Setting `stickyItems` also makes `scrollToIndex` header-aware. A pinned header covers
+the leading edge, so a row aligned flush to it lands underneath — in a list where the
+header and its rows share a height, completely underneath. Destinations are offset by
+the header that will cover them, which applies to the component's keyboard navigation
+and to `scrollToIndex` calls of your own.
+
 Invalid entries — duplicates, non-integers, indexes outside the list — are dropped
 rather than throwing. A bad sticky index is a cosmetic problem, not a correctness one.
 

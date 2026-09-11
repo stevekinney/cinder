@@ -64,7 +64,11 @@
     type VirtualItemLocator,
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
-  import { normalizeStickyIndexes, resolveActiveStickyIndex } from './_internal/sticky-items.ts';
+  import {
+    normalizeStickyIndexes,
+    resolveActiveStickyIndex,
+    resolveObstructingStickyIndex,
+  } from './_internal/sticky-items.ts';
   import { resolveKeyboardTargetIndex, resolveRowSemantics } from './_internal/list-semantics.ts';
   import {
     createVelocityTracker,
@@ -302,15 +306,23 @@
     return activeStickyIndex;
   });
 
-  /** Main-axis size of the pinned header, which covers the viewport's leading edge. */
-  const pinnedStickySize = $derived(
-    pinnedStickyIndex === null ? 0 : locateRowSize(pinnedStickyIndex),
+  /**
+   * Main-axis size of the sticky row occupying the viewport's leading edge.
+   *
+   * Keyed on the ACTIVE sticky row rather than the pinned one. `pinnedStickyIndex`
+   * is null while the header is still inside the overscanned window — but CSS has
+   * been holding it over the leading edge that whole time, so measuring the
+   * obstruction as zero there reported a covered row as visible. With a measured
+   * 100px header over 20px rows that is five rows the reader cannot see.
+   */
+  const stickyObstructionSize = $derived(
+    activeStickyIndex === null ? 0 : locateRowSize(activeStickyIndex),
   );
 
-  /** The first row not hidden behind a pinned header. */
+  /** The first row the sticky header is not covering. */
   const firstUncoveredIndex = $derived(
-    pinnedStickySize > 0
-      ? resolveAnchorIndexAtOffset(scrollOffset + pinnedStickySize)
+    stickyObstructionSize > 0
+      ? resolveAnchorIndexAtOffset(scrollOffset + stickyObstructionSize)
       : firstVisibleIndex,
   );
 
@@ -1368,31 +1380,23 @@
       // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
       // carries overscan, so the first arrow press jumped relative to a row several
       // above the viewport.
-      // The first row the header is not covering. When a sticky header is pinned it
-      // occupies the viewport's leading edge, so `firstVisibleIndex` IS that header —
-      // and advancing from it moves to the row underneath it rather than past it.
+      // The first row the header is not covering. A sticky header occupies the
+      // viewport's leading edge, so `firstVisibleIndex` IS that header — and
+      // advancing from it moves to the row underneath it rather than past it.
       currentIndex: firstUncoveredIndex,
       itemCount: items.length,
       visibleCount: Math.max(1, Math.floor(viewportHeight / Math.max(1, resolvedItemHeight))),
       orientation: horizontal ? 'horizontal' : 'vertical',
       writingDirection,
+      stickyIndexes: stickyIndexSet,
     });
     if (target === null) return;
     event.preventDefault();
 
-    // Offset by the pinned header, which covers the viewport's leading edge. Aligning
-    // the destination to that edge puts it directly UNDERNEATH the header — in a
-    // fixed-size list where header and rows share a height, entirely underneath — and
-    // every key after that navigates relative to a row the reader cannot see.
-    if (pinnedStickySize > 0 && scrollElement) {
-      writeScrollOffset(
-        scrollElement,
-        Math.max(0, locateRowStart(target) - pinnedStickySize),
-        smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
-      );
-      scrollOffset = readScrollOffset(scrollElement);
-      return;
-    }
+    // Through the normal path, which clears the header itself. An earlier version
+    // wrote the offset directly here to apply that inset; under `dynamicSize` that
+    // skipped the settle loop, so an End or Page jump into rows whose estimates
+    // changed as they mounted stopped wherever the first write happened to land.
     scrollToIndex(target, { align: 'start' });
   }
 
@@ -1526,6 +1530,23 @@
   }
 
   /**
+   * Main-axis size of the sticky header that will cover row `index` once it reaches
+   * the leading edge. Without it every destination lands underneath the header.
+   *
+   * Keyed on the DESTINATION rather than on the current scroll position. A
+   * position-keyed inset changes as the scroll moves, so the settle loop below would
+   * compute a different target on each pass; with a header taller than a row it
+   * oscillates between the header's start and the row's, and the attempt cap decides
+   * where the reader ends up.
+   */
+  function resolveLeadingInset(index: number): number {
+    if (stickyIndexes.length === 0 || items.length === 0) return 0;
+    const clampedIndex = Math.max(0, Math.min(items.length - 1, Math.floor(index)));
+    const header = resolveObstructingStickyIndex(stickyIndexes, clampedIndex);
+    return header === null ? 0 : locateRowSize(header);
+  }
+
+  /**
    * Under `dynamicSize` a scroll target can move while the scroll is happening:
    * rows that were only estimated get mounted, measured, and resized, shifting
    * everything after them. Each pass re-derives the target from the freshly
@@ -1564,6 +1585,9 @@
         // all by comparing against it.
         currentScrollOffset: readScrollOffset(element),
         align,
+        // Re-read each pass: the header's identity is fixed by the destination, but
+        // under `dynamicSize` its SIZE changes as it mounts and is measured.
+        leadingInset: resolveLeadingInset(index),
       });
 
       writeScrollOffset(element, target, behavior);
@@ -1590,6 +1614,9 @@
         // all by comparing against it.
         currentScrollOffset: readScrollOffset(element),
         align,
+        // Re-read each pass: the header's identity is fixed by the destination, but
+        // under `dynamicSize` its SIZE changes as it mounts and is measured.
+        leadingInset: resolveLeadingInset(index),
       });
       // Compared against the element, not the state, for the same reason the target
       // is computed from it: the state lags a smooth or externally-driven scroll,
