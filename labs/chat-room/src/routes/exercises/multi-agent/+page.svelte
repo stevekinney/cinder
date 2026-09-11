@@ -25,14 +25,49 @@
 	// lowered so the truncation is observable at all, which is the point of
 	// the panel.
 	//
-	// Everything is local: the child agent returns a fixed string, the parent
+	// Everything is local: each child agent returns a fixed string, each parent
 	// asks for one delegation and then narrates. No network, no key.
+	//
+	// THREE RUNS, not one. Each panel calls `delegate(...)`, which builds its
+	// own parent, its own child, and its own toolbox — so "one delegation" is
+	// per panel, and the status line's "3 of 3" is counting panels rather than
+	// contradicting it.
 
+	/** One sentence of the child's answer, repeated to build it. */
+	const CHILD_SENTENCE = 'The staging bucket was retained. ';
 	/** What the child always answers. Long enough to exceed the 40-token cap. */
-	const CHILD_ANSWER = 'The staging bucket was retained. '.repeat(30);
-	/** What this page's own summarizer condenses that down to. */
-	const CUSTOM_SUMMARY = 'condensed: The staging bucket was retained.';
+	const CHILD_ANSWER = CHILD_SENTENCE.repeat(30);
 	const QUESTION = 'What did we decide about the staging bucket?';
+
+	/**
+	 * This page's own summarizer, and it DERIVES its output from the child's
+	 * answer rather than returning a canned string.
+	 *
+	 * That distinction is the whole point of the third panel. A summarizer that
+	 * ignores its argument demonstrates replacement, not condensation — and if
+	 * `createSubagentTool` stopped passing the child's result to the callback,
+	 * or passed the wrong one, a canned string would keep every assertion
+	 * green. Folding the source length into the output makes the panel fail
+	 * loudly in exactly that case.
+	 */
+	const condense = (text: string): string =>
+		`condensed from ${text.length} characters: ${text.split('.')[0]}.`;
+
+	/** What the summarizer above produces for this page's child answer. */
+	const CUSTOM_SUMMARY = condense(CHILD_ANSWER);
+
+	/** How much of `candidate` is a verbatim prefix of `source`. */
+	function verbatimPrefixLength(candidate: string, source: string): number {
+		let index = 0;
+		while (
+			index < candidate.length &&
+			index < source.length &&
+			candidate[index] === source[index]
+		) {
+			index += 1;
+		}
+		return index;
+	}
 
 	type Delegation = {
 		parentGenerateCalls: number;
@@ -43,6 +78,8 @@
 		keepsWholeAnswer: boolean;
 		shortenedFromChild: boolean;
 		keepsChildOpening: boolean;
+		verbatimPrefixLength: number;
+		cutsMidSentence: boolean;
 		matchesCustomSummary: string;
 		transcriptRoles: string;
 		history: ConversationHistory;
@@ -80,7 +117,10 @@
 			toAgentInput: (input) => input.question,
 			returnMode: options.returnMode,
 			summaryTokenCap: 40,
-			...(options.useCustomSummarizer === true ? { summarizer: () => CUSTOM_SUMMARY } : {})
+			// The child's own result, not a closed-over constant.
+			...(options.useCustomSummarizer === true
+				? { summarizer: (result: { content: string }) => condense(result.content) }
+				: {})
 		});
 
 		const parent = createAgent({
@@ -129,6 +169,12 @@
 		const execution = executions.find((entry) => entry.toolCallId === `${id}-call`);
 		const returned = String(execution?.result ?? '');
 
+		// How much of what came back is the child's answer VERBATIM from the
+		// start. A character cap leaves nearly all of it; an extractive
+		// summarizer that returned the first sentence would leave one
+		// sentence's worth, and a rewriting one would leave almost none.
+		const prefix = verbatimPrefixLength(returned, CHILD_ANSWER);
+
 		return {
 			parentGenerateCalls,
 			childGenerateCalls,
@@ -137,6 +183,11 @@
 			returnedLength: returned.length,
 			keepsWholeAnswer: returned === CHILD_ANSWER,
 			shortenedFromChild: returned.length < CHILD_ANSWER.length,
+			verbatimPrefixLength: prefix,
+			// A cap cuts wherever the budget runs out, which is almost never a
+			// sentence boundary. Anything that respected sentences would land
+			// on a multiple of the repeated unit.
+			cutsMidSentence: prefix > 0 && prefix % CHILD_SENTENCE.length !== 0,
 			// A head truncation keeps the child's opening verbatim. A real
 			// summarizer need not, which is what separates the two panels
 			// beyond their lengths.
@@ -181,9 +232,10 @@
 <main>
 	<h1>Multi-agent — delegating to a subagent</h1>
 	<p>
-		One parent agent, one <code>createSubagentTool</code> delegation, three settings for what comes
-		back across the boundary. With the default summarizer, <code>'summary'</code> hard-truncates; condensation
-		is something the caller supplies.
+		Three independent runs, one per setting below. Each builds its own parent agent, its own
+		researcher subagent, and makes exactly one <code>createSubagentTool</code> delegation — they
+		differ only in what is asked to come back across the boundary. With the default summarizer,
+		<code>'summary'</code> hard-truncates; condensation is something the caller supplies.
 	</p>
 
 	<!--
@@ -240,6 +292,10 @@
 					<dd data-testid="multi-agent-{panel.id}-shortened">{delegation.shortenedFromChild}</dd>
 					<dt>opens with the child's own words</dt>
 					<dd data-testid="multi-agent-{panel.id}-opening">{delegation.keepsChildOpening}</dd>
+					<dt>verbatim prefix of the child's answer</dt>
+					<dd data-testid="multi-agent-{panel.id}-prefix">{delegation.verbatimPrefixLength}</dd>
+					<dt>cuts mid-sentence</dt>
+					<dd data-testid="multi-agent-{panel.id}-mid-sentence">{delegation.cutsMidSentence}</dd>
 					<dt>equals this page's summarizer output</dt>
 					<dd data-testid="multi-agent-{panel.id}-custom">{delegation.matchesCustomSummary}</dd>
 				</dl>

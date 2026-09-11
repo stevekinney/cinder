@@ -24,25 +24,35 @@ async function settled(page: import('@playwright/test').Page): Promise<void> {
 	await expect(page.getByTestId('multi-agent-status')).toHaveText('3 of 3 delegations settled.');
 }
 
-test('the parent delegates exactly once and the child runs exactly once', async ({ page }) => {
-	await gotoHydrated(page, '/exercises/multi-agent');
-	await settled(page);
+// Every panel, not just the one whose output the other tests read. Each runs
+// its OWN parent and child, so a loop that re-entered the subagent on the
+// `full` or custom path would leave those panels' output assertions green —
+// the same string can come back after one delegation or after three.
+const PANELS = ['summary', 'full', 'custom'] as const;
 
-	// Two parent turns: the one that emits the tool call, and the one after the
-	// result comes back. One child turn, from the single delegation. A loop
-	// that re-entered the subagent would move the second number, and a stop
-	// condition that never fired would move the first.
-	await expect(page.getByTestId('multi-agent-summary-parent-calls')).toHaveText('2');
-	await expect(page.getByTestId('multi-agent-summary-child-calls')).toHaveText('1');
-	await expect(page.getByTestId('multi-agent-summary-tool-executions')).toHaveText('1');
-	await expect(page.getByTestId('multi-agent-summary-finish')).toHaveText('stop-condition');
+for (const panel of PANELS) {
+	test(`the ${panel} panel delegates exactly once and its child runs exactly once`, async ({
+		page
+	}) => {
+		await gotoHydrated(page, '/exercises/multi-agent');
+		await settled(page);
 
-	// The delegation is in the transcript as a call and a result, not only in
-	// the counters above.
-	const roles = await page.getByTestId('multi-agent-summary-roles').textContent();
-	expect(roles).toContain('tool-call');
-	expect(roles).toContain('tool-result');
-});
+		// Two parent turns: the one that emits the tool call, and the one after
+		// the result comes back. One child turn, from the single delegation. A
+		// loop that re-entered the subagent would move the second number, and a
+		// stop condition that never fired would move the first.
+		await expect(page.getByTestId(`multi-agent-${panel}-parent-calls`)).toHaveText('2');
+		await expect(page.getByTestId(`multi-agent-${panel}-child-calls`)).toHaveText('1');
+		await expect(page.getByTestId(`multi-agent-${panel}-tool-executions`)).toHaveText('1');
+		await expect(page.getByTestId(`multi-agent-${panel}-finish`)).toHaveText('stop-condition');
+
+		// The delegation is in the transcript as a call and a result, not only in
+		// the counters above.
+		const roles = await page.getByTestId(`multi-agent-${panel}-roles`).textContent();
+		expect(roles).toContain('tool-call');
+		expect(roles).toContain('tool-result');
+	});
+}
 
 test("the delegation renders as a tool-activity entry in Chat's transcript", async ({ page }) => {
 	await gotoHydrated(page, '/exercises/multi-agent');
@@ -124,6 +134,28 @@ test("'summary' caps the child's answer rather than condensing it", async ({ pag
 	const whole = Number(await page.getByTestId('multi-agent-full-length').textContent());
 	expect(capped).toBeGreaterThan(0);
 	expect(capped).toBeLessThan(whole);
+
+	// The assertions above are all satisfied by an EXTRACTIVE summarizer too —
+	// one returning the child's first sentence is nonempty, shorter, starts
+	// with the same words, and differs from the custom panel. They would stay
+	// green while this page's central claim became false, so the shape of the
+	// cut has to be asserted directly.
+	//
+	// Nearly everything returned is the child's answer verbatim from the
+	// start. A first-sentence extractor would leave one sentence's worth (33
+	// characters); a rewriting summarizer, almost none.
+	const prefix = Number(await page.getByTestId('multi-agent-summary-prefix').textContent());
+	expect(prefix).toBeGreaterThan(100);
+
+	// And the cut lands where the budget ran out rather than where a sentence
+	// ended. Anything that respected sentence boundaries would stop on a
+	// multiple of the repeated unit.
+	await expect(page.getByTestId('multi-agent-summary-mid-sentence')).toHaveText('true');
+
+	// The vendor's truncation marker is deliberately NOT matched — it is copy
+	// that can change without any of this behaviour changing, which is why the
+	// prefix is measured instead of the whole string being compared.
+	expect(prefix).toBeLessThanOrEqual(capped);
 });
 
 test("'full' returns the child's answer unchanged", async ({ page }) => {
@@ -149,4 +181,43 @@ test('a caller-supplied summarizer is what actually condenses', async ({ page })
 	const condensed = Number(await page.getByTestId('multi-agent-custom-length').textContent());
 	const capped = Number(await page.getByTestId('multi-agent-summary-length').textContent());
 	expect(condensed).toBeLessThan(capped);
+
+	// DERIVED from the child's result, not a canned string. The summary carries
+	// the source's length, so `matchesCustomSummary` above can only read `yes`
+	// if the callback received this child's actual answer — a callback handed
+	// nothing, or the wrong run's result, produces a different number and
+	// fails. Almost none of it is the child's text verbatim, which is what
+	// separates condensation from the cap.
+	const prefix = Number(await page.getByTestId('multi-agent-custom-prefix').textContent());
+	expect(prefix).toBeLessThan(5);
+	await expect(page.getByTestId('multi-agent-custom-mid-sentence')).toHaveText('false');
+});
+
+test('the transcript disclosures are operable from the keyboard', async ({ page }) => {
+	await gotoHydrated(page, '/exercises/multi-agent');
+	await settled(page);
+
+	const timeline = page.locator('[data-testid="multi-agent-chat"] .chat-tool-call-timeline');
+	const argumentsTrigger = timeline.getByRole('button', { name: 'Arguments' });
+
+	// Reachable by focus and operable by key, not only by pointer. This route
+	// introduces these controls as the way to inspect a delegation's payload,
+	// so a pointer-only assertion would let them become keyboard-inert without
+	// the suite noticing.
+	await argumentsTrigger.focus();
+	await expect(argumentsTrigger).toBeFocused();
+	await page.keyboard.press('Enter');
+	await expect(timeline).toContainText('What did we decide about the staging bucket?');
+
+	// And focus is not trapped inside what just expanded: Tab continues to the
+	// next control rather than cycling back.
+	await page.keyboard.press('Tab');
+	await expect(argumentsTrigger).not.toBeFocused();
+
+	// Space activates the second disclosure, since the two are independent and
+	// either key is a legitimate way to operate a button.
+	const resultTrigger = timeline.getByRole('button', { name: 'Result' });
+	await resultTrigger.focus();
+	await page.keyboard.press('Space');
+	await expect(timeline.locator('.cinder-run-step-timeline__detail-content')).toHaveCount(2);
 });
