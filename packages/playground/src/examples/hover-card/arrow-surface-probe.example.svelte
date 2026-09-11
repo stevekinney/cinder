@@ -6,7 +6,7 @@
 
 <script lang="ts">
   import { Button } from '@lostgradient/cinder/button';
-  import { HoverCard } from '@lostgradient/cinder';
+  import { HoverCard } from '@lostgradient/cinder/hover-card';
 
   let open = $state(false);
 </script>
