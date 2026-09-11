@@ -61,7 +61,13 @@ const PROVIDER_PACKAGES = ['@anthropic-ai/sdk', '@google/genai', 'openai'] as co
  */
 const NON_PROVIDER_OPTIONAL_PEERS = ['@opentelemetry/api', 'zod'] as const;
 
-const SOURCE_EXTENSIONS = ['.ts', '.svelte', '.js'];
+/**
+ * Every extension this lab can execute. Enumerated wide rather than narrow: an
+ * allowlist that misses `.mjs` does not fail loudly, it silently stops
+ * guarding — a maintenance script added as `scripts/debug-provider.mjs` would
+ * import a provider SDK and pass.
+ */
+const SOURCE_EXTENSIONS = ['.ts', '.tsx', '.mts', '.cts', '.js', '.jsx', '.mjs', '.cjs', '.svelte'];
 
 /**
  * Comments removed before matching, so an import written INSIDE a comment —
@@ -79,6 +85,11 @@ const SOURCE_EXTENSIONS = ['.ts', '.svelte', '.js'];
 function withoutComments(source: string): string {
 	return (
 		source
+			// Svelte MARKUP comments, stripped first — `.svelte` is in the
+			// extension list above, and `<!-- Never import OpenAI from 'openai' -->`
+			// is prose the import pattern would otherwise read as a real
+			// specifier and fail CI over.
+			.replace(/<!--[\s\S]*?-->/g, ' ')
 			.replace(/\/\*[\s\S]*?\*\//g, ' ')
 			// `[^:]` so a `https://` URL is not mistaken for a line comment.
 			.replace(/(^|[^:])\/\/[^\n]*/g, '$1')
@@ -187,6 +198,12 @@ describe('Operative is the only engine', () => {
 
 		// A URL is not a line comment.
 		expect(withoutComments(`const u = 'https://example.com/x';`)).toContain('https://example.com');
+
+		// A Svelte MARKUP comment is prose too — `.svelte` files are scanned,
+		// so this is the form the guard would otherwise trip over.
+		expect(
+			importPattern('openai').test(withoutComments(`<!-- Never import OpenAI from 'openai' -->`))
+		).toBe(false);
 	});
 
 	it('matches the other providers too, not just Anthropic', () => {
