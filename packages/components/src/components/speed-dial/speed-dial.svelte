@@ -23,6 +23,7 @@
   import type { Placement } from '@floating-ui/dom';
   import { untrack } from 'svelte';
   import { createAnchoredOverlay } from '../../_internal/anchored-overlay.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { handleRovingKeydown } from '../../utilities/roving-tabindex.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -279,13 +280,30 @@
     queueMicrotask(() => getEnabledActionButtons()[0]?.focus());
   }
 
-  function handleActionsKeydown(event: KeyboardEvent): void {
-    if (event.key === 'Escape') {
-      event.preventDefault();
-      close({ focusTrigger: true });
-      return;
-    }
+  // Escape ownership (CIN-428). The local Escape branch (previously here,
+  // only reachable while focus was inside the portalled actions panel) is
+  // deleted — the escape-stack registration below is the single Escape
+  // dispatch path, firing whenever the speed dial is open regardless of
+  // focus location.
+  function dismissSpeedDial(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    close({ focusTrigger: true });
+  }
 
+  $effect(() => {
+    // A consumer can set `hidden` on an already-open dial (or supply
+    // `open={true}` together with `hidden={true}`): the control and its
+    // actions go `aria-hidden`/`inert` but `open` itself doesn't flip. Gate
+    // on `!hidden` too, consistent with the other `hidden`-gated effects
+    // above, so this invisible dial doesn't sit on top of the escape stack
+    // and swallow Escape meant for whatever overlay is actually visible.
+    if (!open || hidden) return;
+    const releaseEscape = pushEscapeHandler(dismissSpeedDial);
+    return releaseEscape;
+  });
+
+  function handleActionsKeydown(event: KeyboardEvent): void {
     const target = event.target instanceof HTMLButtonElement ? event.target : null;
     if (!target) return;
 

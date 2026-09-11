@@ -16,6 +16,7 @@ const {
 const { default: MultiSelect } = await import('./multi-select.svelte');
 const { default: FormFieldMultiSelectFixture } =
   await import('../../test/fixtures/form-field-multi-select-fixture.svelte');
+const { pushEscapeHandler, _resetEscapeStack } = await import('../../_internal/overlay.ts');
 
 // The panel now portals to `document.body` (see multi-select.svelte) so an
 // ancestor with `overflow: hidden` cannot clip it. Render into the shared
@@ -37,7 +38,10 @@ beforeEach(() => {
   document.body.replaceChildren();
 });
 
-afterEach(() => cleanup());
+afterEach(() => {
+  cleanup();
+  _resetEscapeStack();
+});
 
 async function openMenu(container: HTMLElement): Promise<void> {
   const trigger = container.querySelector<HTMLButtonElement>('#fruits');
@@ -473,6 +477,86 @@ describe('MultiSelect', () => {
     } finally {
       Element.prototype.scrollIntoView = originalScrollIntoView;
     }
+  });
+
+  test('Escape closes the open menu and returns focus to the trigger', async () => {
+    const { container } = render(MultiSelect, { id: 'fruits', items });
+    await openMenu(container);
+    const trigger = container.querySelector<HTMLButtonElement>('#fruits')!;
+    const listbox = container.querySelector('[role="listbox"]')!;
+
+    await fireEvent.keyDown(listbox, { key: 'Escape' });
+
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    expect(document.activeElement).toBe(trigger);
+  });
+
+  test('holds a pushEscapeHandler registration (via commandList.bindDismissal) while open and releases it on close', async () => {
+    // MultiSelect already registers on the shared escape stack through
+    // `commandList.bindDismissal` (multi-select.svelte ~line 386). This
+    // proves the registration itself, not just the visible close.
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = render(MultiSelect, { id: 'fruits', items });
+      await openMenu(container);
+
+      const escapeEvent = new window.KeyboardEvent('keydown', {
+        key: 'Escape',
+        bubbles: true,
+        cancelable: true,
+      });
+      container.querySelector('[role="listbox"]')!.dispatchEvent(escapeEvent);
+
+      expect(escapeEvent.defaultPrevented).toBe(true);
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+
+      // Released when close begins: the parent handler (now top-most) sees
+      // the very next Escape.
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+      expect(parentEscapeCount).toBe(1);
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('with the menu open above another stack registration, Escape dismisses only the menu (canonical harness)', async () => {
+    let parentEscapeCount = 0;
+    const releaseParent = pushEscapeHandler(() => {
+      parentEscapeCount += 1;
+    });
+
+    try {
+      const { container } = render(MultiSelect, { id: 'fruits', items });
+      await openMenu(container);
+
+      window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+      expect(parentEscapeCount).toBe(0);
+      await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    } finally {
+      releaseParent();
+    }
+  });
+
+  test('Escape closes the menu with focus outside the control and panel', async () => {
+    const { container } = render(MultiSelect, { id: 'fruits', items });
+    await openMenu(container);
+
+    const outside = document.createElement('button');
+    outside.textContent = 'Outside';
+    document.body.append(outside);
+    outside.focus();
+    expect(document.activeElement).toBe(outside);
+
+    window.dispatchEvent(new window.KeyboardEvent('keydown', { key: 'Escape', bubbles: true }));
+
+    await waitFor(() => expect(container.querySelector('[role="listbox"]')).toBeNull());
+    outside.remove();
   });
 
   test('disabled option cannot be selected', async () => {

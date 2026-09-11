@@ -18,6 +18,7 @@
 <script lang="ts">
   import { onDestroy } from 'svelte';
   import { createAnchoredOverlayExitState } from '../../_internal/anchored-overlay-exit.svelte.ts';
+  import { pushEscapeHandler } from '../../_internal/overlay.ts';
   import { createClickOutside } from '../../utilities/attachments.ts';
   import { classNames } from '../../utilities/class-names.ts';
   import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
@@ -146,23 +147,85 @@
       CSS.supports('top: anchor(bottom)');
   });
 
-  function handleKeydown(event: KeyboardEvent) {
-    // The inner DropdownMenu's keydown handler closes the menu and calls
-    // preventDefault. When defaultPrevented is true, the menu already
-    // handled this keystroke — skip to avoid a second close+focus pass.
-    // Svelte 5 delegates onkeydown to the document, so the child handler
-    // runs first when the event path traverses the menu element.
-    if (event.defaultPrevented) return;
+  // Escape ownership (CIN-428).
+  //
+  // Compound / modern branch (`compoundOpen`): covered transitively — the
+  // inner DropdownMenu registers its own escape-stack handler unconditionally
+  // on `context.isOpen`, which here reads `compoundOpen`, so it fires
+  // regardless of where focus sits (including on the trigger). No fallback
+  // handling is needed here anymore.
+  //
+  // Legacy `usesLegacySnippetApi` branch has two sub-branches sharing the
+  // `open` prop, each registering directly below: the non-popover
+  // `exitState.renderPanel` fallback gets a straightforward registration
+  // that dismisses; the native `supportsPopover` branch registers WITHOUT
+  // calling `preventDefault()` so the browser's own `popover="auto"`
+  // light-dismiss keeps working, and its `ontoggle` handler keeps `open` in
+  // sync once the browser actually closes it.
 
-    if (event.key === 'Escape' && open) {
-      open = false;
-    } else if (event.key === 'Escape' && compoundOpen) {
-      // Compound fallback path: focus was outside the menu (e.g. on the
-      // trigger), so the menu's onkeydown never fired. Close from here.
-      closeCompoundMenu();
-      focusCompoundTrigger();
-    }
+  // Same element the aria-expanded effect above resolves: the legacy
+  // snippet API has no bound trigger reference (unlike `compoundTriggerElement`),
+  // so the first focusable descendant of the consumer-supplied `trigger`
+  // snippet's wrapper is the closest thing to one.
+  function resolveLegacyTriggerElement(): HTMLElement | null {
+    return (
+      triggerWrapper?.querySelector<HTMLElement>(
+        'button, a, [tabindex]:not([tabindex="-1"]), input, select',
+      ) ?? null
+    );
   }
+
+  function dismissLegacyFallbackMenu(event?: KeyboardEvent): void {
+    event?.preventDefault();
+    event?.stopPropagation();
+    open = false;
+    // Matches the compound fallback's `dismissMenu()` (dropdown-menu.svelte):
+    // this branch fully owns the close (no native light-dismiss to defer
+    // to), so restore focus to the trigger unconditionally, the same as
+    // dropdown.a11y.md's Escape-returns-focus-to-trigger contract requires —
+    // otherwise, when focus had tabbed outside the open menu before Escape,
+    // it's left on whatever was outside instead.
+    resolveLegacyTriggerElement()?.focus();
+  }
+
+  $effect(() => {
+    if (!usesLegacySnippetApi || supportsPopover || !open) return;
+    const releaseEscape = pushEscapeHandler(dismissLegacyFallbackMenu);
+    return releaseEscape;
+  });
+
+  // NOTE: `supportsPopover` is almost certainly `false` under happy-dom (no
+  // `showPopover`/CSS Anchor Positioning support in the test DOM — see the
+  // NOTE atop dropdown.test.ts), so this sub-branch cannot be meaningfully
+  // unit-tested in this repo's suite today. Registering here still matters
+  // in a real browser: without an entry on the stack while this popover is
+  // open, a LOWER escape-stack overlay would incorrectly react to the same
+  // Escape keystroke (our LIFO stack only ever invokes the top-most
+  // handler). The callback never calls `preventDefault()` — the browser's
+  // native close-request path for the top-layer popover is left completely
+  // alone — but it DOES call `stopPropagation()`: the two are independent
+  // (propagation only controls whether the event keeps reaching other
+  // listeners in its path; only `preventDefault()` cancels the browser's own
+  // default action), so this keeps a focused descendant's own keydown
+  // listener, or a page-level Escape handler, from also reacting to the same
+  // keystroke while this top-most overlay is supposed to own it.
+  $effect(() => {
+    if (!usesLegacySnippetApi || !supportsPopover || !open) return;
+    const releaseEscape = pushEscapeHandler((event?: KeyboardEvent) => {
+      event?.stopPropagation();
+      // Native focus restoration only returns focus to the invoker if focus
+      // was still *inside* the popover at the moment it closes; if focus had
+      // already moved outside before Escape, native restoration doesn't
+      // apply, leaving focus on the unrelated element instead of the
+      // trigger — contrary to dropdown.a11y.md:14's Escape contract. Restore
+      // it ourselves in that case only, the same conditional restoration the
+      // compound branch's (dropdown-menu.svelte) native-popover handler uses.
+      if (menuElement && !menuElement.contains(document.activeElement)) {
+        resolveLegacyTriggerElement()?.focus();
+      }
+    });
+    return releaseEscape;
+  });
 
   const dismissOnOutsideClick = $derived(
     createClickOutside({
@@ -231,7 +294,6 @@
   {id}
   class={classNames('cinder-dropdown', customClassName)}
   data-cinder-placement={placement}
-  onkeydown={handleKeydown}
   {@attach dismissOnOutsideClick}
   {...rest}
 >

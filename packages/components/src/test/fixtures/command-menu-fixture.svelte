@@ -42,10 +42,21 @@
   let open = $state(initialOpen);
   let caretIndex = $state(initialValue.length);
   let textareaElement: HTMLTextAreaElement | null = $state(null);
+  let alternateTextareaElement: HTMLTextAreaElement | null = $state(null);
   let listboxId = $state('fixture-command-listbox');
 </script>
 
 <textarea bind:this={textareaElement} bind:value data-testid="anchor"></textarea>
+<textarea bind:this={alternateTextareaElement} data-testid="alternate-anchor"></textarea>
+<button
+  type="button"
+  data-testid="swap-anchor"
+  onclick={() => {
+    if (alternateTextareaElement) textareaElement = alternateTextareaElement;
+  }}
+>
+  Swap anchor
+</button>
 <button type="button" data-testid="empty-query" onclick={() => (query = 'zzz')}>
   Empty query
 </button>

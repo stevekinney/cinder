@@ -17,6 +17,8 @@
 
 /// <reference lib="dom" />
 
+import { flushSync } from 'svelte';
+
 /**
  * Z-index layer constants. Mirror the `--cinder-z-*` CSS custom properties.
  * Components should prefer the CSS variables in stylesheets; these JS constants
@@ -132,7 +134,18 @@ function onEscapeKeydown(event: KeyboardEvent): void {
   // the topmost handler's call, so we pass the event through and let it decide
   // (a nested popup that owns Escape calls event.preventDefault(); a plain
   // overlay that's fine letting native dialog ESC also fire does not).
-  handler(event);
+  //
+  // `handler` is invoked via a plain `window.addEventListener` callback, not
+  // one of Svelte's own event-delegated listeners, so state writes inside it
+  // (e.g. `open = false`) wouldn't otherwise flush to the DOM — or release
+  // this handler's own stack entry via its owning `$effect`'s cleanup — until
+  // the next microtask. `flushSync` forces that update (and this handler's
+  // release, if it closes synchronously) to land within this same keydown
+  // dispatch, so a second Escape immediately after reaches the next handler
+  // down the stack rather than the one that just closed.
+  flushSync(() => {
+    handler(event);
+  });
 }
 
 /**
