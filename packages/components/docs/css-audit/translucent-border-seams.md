@@ -291,7 +291,27 @@ recorded rather than silently absorbed. The drop indicator is the one worth
 revisiting on its own, since it marks a live, functional position.
 
 `border-tier-non-border-uses.test.ts` catches the same-rule shape and claims no
-more. Three more disabled states dilute a tier from a **separate rule in the same
+more. **Chart legend toggles, series off** — the one separate-rule case that is _not_
+a disabled state. AreaChart, BarChart and LineChart each give their legend
+buttons `border: 1px solid var(--cinder-border)` and then `opacity: 0.55` under
+`[aria-pressed='false']`, so a toggled-off series shows a 48% × 0.55 ≈ 26%
+boundary:
+
+| surface          | light before → after | dark before → after |
+| ---------------- | -------------------- | ------------------- |
+| `surface-inset`  | 1.200 → 1.774        | 2.152 → 1.818       |
+| `surface-canvas` | 1.244 → 1.785        | 2.169 → 1.884       |
+| `surface`        | 1.263 → 1.790        | 2.148 → 1.955       |
+| `surface-raised` | 1.274 → 1.792        | 1.978 → 1.962       |
+
+These are enabled, persistent controls a user presses to toggle a series back
+on, so WCAG 1.4.11's 3:1 does apply to them — unlike the disabled states below,
+which are exempt. They did not clear it before either (2.15:1 at best in dark),
+so this is a pre-existing shortfall pushed further down rather than a floor this
+change breaks, but it belongs with the live affordances rather than with the
+exempt states.
+
+Three more disabled states dilute a tier from a **separate rule in the same
 file**, which the same-rule scan also cannot see — the tier comes from the base
 rule and the opacity from a `:disabled` / `[aria-disabled]` / `[data-disabled]`
 rule on the same element:
