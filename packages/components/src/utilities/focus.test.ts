@@ -223,6 +223,21 @@ describe('getSequentialFocusTargets', () => {
     host.remove();
   });
 
+  test('traverses slot fallback content when the host assigns nothing to the slot at all', () => {
+    // The complement of the case above: with no host children at all,
+    // `assignedNodes()` is empty (not merely empty of elements), so native
+    // fallback content renders and the slot's own declared children become
+    // reachable focus targets.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot><button id="fallback"></button></slot>';
+    document.body.append(host);
+
+    const fallbackButton = shadow.querySelector('#fallback') as HTMLButtonElement;
+    expect(getSequentialFocusTargets(shadow)).toContain(fallbackButton);
+    host.remove();
+  });
+
   test('filters before and after a reference in flattened composed-tree order', () => {
     const region = document.createElement('div');
     const beforeHost = document.createElement('div');
