@@ -124,7 +124,7 @@ corpus alias, through the generated token stylesheet.
 | `mega-menu` indicator track      | `border.muted`   | 2px tall                                         |
 | `media-controls` progress track  | `border.control` | 4px tall                                         |
 | `drawer` drag-handle pill        | `border.control` | 40 × 4px                                         |
-| `slider` tick                    | `border.control` | 2 × 8px                                          |
+| `slider` tick                    | `border.control` | 2 × 8px, under `opacity: 0.6` — see below        |
 | `color-field` empty hatch        | `border.control` | a 6px `linear-gradient` repeat across the swatch |
 | `feed-event` dot                 | `border.strong`  | 8 × 8px                                          |
 | `status-dot` neutral indicator   | `border.strong`  | `--cinder-status-dot-size`                       |
@@ -159,7 +159,7 @@ Against WCAG 1.4.11's 3:1 floor for meaningful non-text graphics, measured
 across all four surface tokens in both arms:
 
 - **`border.strong` sites clear it comfortably** — 4.268–4.444 light, 4.250–4.871 dark.
-- **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark.
+- **`border.control` sites clear it** — 3.129–3.206 light, 3.338–3.624 dark, with one exception: the Slider tick carries `opacity: 0.6` in the same rule, so its effective ink is 48% × 0.6 ≈ 29% and it measures ~1.9. Recorded with the other compounded sites below.
 - **`border.muted` sites do not**, at 1.493–1.503 light and 1.445–1.580 dark, and
   in the dark arm this is a **regression** rather than a pre-existing shortfall
   carried forward. An earlier draft of this document compared only the light arm
@@ -240,6 +240,23 @@ rule, so ≈11.4% effective ink against 60%.
 | `surface-canvas` | 1.418  | 1.236 |
 | `surface`        | 1.384  | 1.282 |
 | `surface-raised` | 1.247  | 1.321 |
+
+**Slider's tick** — the one compounded site that is an area fill rather than a
+border: `background: var(--cinder-border, currentColor)` with `opacity: 0.6` in
+the same rule, so 48% × 0.6 ≈ 29% effective ink.
+
+| surface          | light | dark  |
+| ---------------- | ----- | ----- |
+| `surface-inset`  | 1.881 | 1.961 |
+| `surface-canvas` | 1.894 | 2.029 |
+| `surface`        | 1.900 | 2.099 |
+| `surface-raised` | 1.903 | 2.089 |
+
+That is the figure that matters for the tick, not the 3.129–3.206 / 3.338–3.624
+the tier measures undiluted — an earlier draft of the table above quoted the
+latter for it, which was wrong. Ticks are a decorative scale marking rather than
+a control boundary, so 3:1 is not the applicable floor, but the number should be
+the real one.
 
 Both light arms improve slightly; only the dark arm loses. Neither was near
 1.4.11's 3:1 before — a 40%-opacity ghost and a disabled control are both

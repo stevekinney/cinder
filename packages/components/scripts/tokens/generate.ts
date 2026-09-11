@@ -808,6 +808,15 @@ export function findBareColorComponents(value: string): string | undefined {
   const functionCall = /^([a-zA-Z-]+)\(([\s\S]*)\)$/.exec(trimmed);
   if (functionCall) {
     const [, name = '', body = ''] = functionCall;
+    // `var()`'s FALLBACK sits in the same color position as the reference
+    // itself, so a bare list there is the same defect one level down:
+    // `var(--x, 0% 0 0)` is a silently dropped declaration whenever `--x` is
+    // unset. The custom-property name is not a color and is skipped.
+    if (name.toLowerCase() === 'var') {
+      const [, ...fallback] = splitTopLevelArguments(body);
+      if (fallback.length === 0) return undefined;
+      return findBareColorComponents(fallback.join(','));
+    }
     if (!COLOR_ARGUMENT_FUNCTIONS.has(name.toLowerCase())) return undefined;
     const args = splitTopLevelArguments(body);
     // `color-mix()`'s first argument is its interpolation method (`in oklch`),

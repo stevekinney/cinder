@@ -2712,6 +2712,34 @@ describe('CIN-242: complete color values only', () => {
     }
   });
 
+  test('a bare triplet in a var() fallback is caught', () => {
+    // `var()`'s fallback sits in the same color position as the reference, so a
+    // bare list there is the same silently-dropped declaration one level down --
+    // it just waits for the variable to be unset. Any function the checker does
+    // not recognise returns `undefined`, so `var()` was a way past the gate.
+    for (const recipe of [
+      'var(--x, 0% 0 0)',
+      'var(--a, var(--b, 0% 0 0))',
+      'light-dark(var(--a, 100% 0 0), oklch(0% 0 0))',
+      'color-mix(in oklch, var(--ink, 0% 0 0), transparent 96%)',
+    ]) {
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    }
+  });
+
+  test('a complete var() fallback is still accepted', () => {
+    for (const recipe of [
+      // The shape the corpus actually ships, from `slider.css`.
+      'var(--cinder-border, currentColor)',
+      'var(--a, var(--b, oklch(0% 0 0)))',
+      'var(--cinder-polarity-ink)',
+    ]) {
+      expect(serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toBe(recipe);
+    }
+  });
+
   test('still catches a bare triplet that carries a mix weight', () => {
     // The weight must not become a way to smuggle a component list past the
     // gate -- stripping it has to leave the triplet exposed, not consumed.

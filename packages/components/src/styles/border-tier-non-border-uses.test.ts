@@ -99,6 +99,9 @@ const OPACITY_COMPOUNDED: readonly string[] = [
   // shared disabled-visual rule, so it is genuinely compounded -- just not by
   // anything visible in a single rule body.
   'packages/components/src/components/button/button.css  border-color: var(--cinder-border-muted);',
+  // Slider's tick: an AREA fill, not a border, under `opacity: 0.6` in the same
+  // rule. The audit records its compounded contrast rather than the tier's.
+  'packages/components/src/components/slider/slider.css  background: var(--cinder-border, currentColor);',
 ];
 
 type Classification = {
@@ -342,14 +345,16 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
     expect(stale, 'A classified site no longer exists; remove it.').toEqual([]);
   });
 
-  test('a tier border under an element opacity is classified', () => {
-    // The scan above skips `border`/`outline` declarations, on the premise that
-    // a tier used as a border is exactly the intent. That premise breaks when
-    // the element also carries a fractional `opacity`: element opacity
-    // multiplies the tier's own alpha, so composing the tier compounds with it
-    // rather than replacing an opaque value. SortableList's drag placeholder is
-    // the case -- a `border.muted` outline under `opacity: 0.4` went from 40%
-    // effective ink to 7.6%.
+  test('a tier under an element opacity is classified', () => {
+    // A fractional element `opacity` multiplies the tier's own alpha, so
+    // composing the tier compounds with it rather than replacing an opaque
+    // value. That matters for EVERY tier declaration, not only the borders the
+    // scan above exempts -- an area fill under an opacity is measured wrong by
+    // the audit unless the opacity is folded in. Both shapes are here:
+    // SortableList's `border.muted` outline under `opacity: 0.4` (40% effective
+    // ink to 7.6%), and Slider's tick, a `border.control` FILL under
+    // `opacity: 0.6`, whose real contrast is ~1.9 rather than the 3.1-3.6 the
+    // tier measures undiluted.
     //
     // This catches the same-rule shape only, and deliberately claims no more
     // than that. The opacity and the border can live in different files -- a
@@ -373,9 +378,6 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
           for (const rawFragment of body.split(';')) {
             const fragment = rawFragment.trim();
             if (!TIER_REFERENCE.test(fragment)) continue;
-            const colon = fragment.indexOf(':');
-            const property = colon === -1 ? '' : fragment.slice(0, colon).trim();
-            if (!BORDER_PROPERTY.test(property)) continue;
             const site = `${relative(REPOSITORY_ROOT, path)}  ${fragment};`;
             if (!OPACITY_COMPOUNDED.includes(site)) offenders.push(site);
           }
