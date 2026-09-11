@@ -2706,6 +2706,12 @@ describe('CIN-242: complete color values only', () => {
       'color-mix(in oklch, var(--cinder-border-ink) .5%, transparent)',
       'color-mix(in oklch, var(--cinder-border-ink) 4e1%, transparent)',
       'color-mix(in oklch, +40% var(--cinder-border-ink), transparent)',
+      // A `var()` weight whose FALLBACK is a percentage. Ambiguous as a bare
+      // reference, unambiguous once the fallback is read -- and checking it as
+      // a color position would descend into the fallback and report `40%`.
+      'color-mix(in oklch, var(--weight, 40%) var(--cinder-border-ink), transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) var(--weight, 40%), transparent)',
+      'color-mix(in oklch, var(--w, calc(1% * 2)) var(--cinder-border-ink), transparent)',
     ];
     for (const recipe of accepted) {
       expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
@@ -2727,6 +2733,16 @@ describe('CIN-242: complete color values only', () => {
         /bare component list/,
       );
     }
+  });
+
+  test('a percentage-valued var() weight does not shield a bare color', () => {
+    // The weight is skipped, so the COLOR beside it still gets checked.
+    expect(() =>
+      serializeEntryValue(
+        recipeEntry('color-mix(in oklch, var(--w, 40%) light-dark(100% 0 0, 0% 0 0), transparent)'),
+        new Map(),
+      ),
+    ).toThrow(/bare component list/);
   });
 
   test('a complete var() fallback is still accepted', () => {

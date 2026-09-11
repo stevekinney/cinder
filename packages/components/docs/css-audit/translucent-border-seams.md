@@ -45,11 +45,30 @@ when both were opaque; making the border translucent does not change it.
 `popover.css` builds its arrow with the CSS-triangle technique: an 8px triangle in
 `var(--cinder-border)` with a 7px `--cinder-surface-raised` triangle laid over it,
 leaving a ~1px rim. The rim is one layer, not two — the opaque inner triangle
-covers everything else. It composites against the page canvas the arrow floats
-over, the same way the panel's own border does.
+covers everything else, so there is no alpha stacking here.
 
-Captured at 4× in both arms during this audit: the rim and the panel border read
-as one continuous outline of even weight, with no denser pixel at the junction.
+**But the rim and the panel border no longer composite over the same thing, and
+that is a real regression.** `background-clip` defaults to `border-box`, so the
+panel's own `--cinder-surface-raised` paints _underneath_ its translucent
+border; the arrow's outer triangle is a zero-size box with borders and no
+background, so it paints straight onto whatever the popover floats over. While
+both tokens were opaque the two edges rendered identically regardless of
+backdrop. Now they diverge whenever that backdrop is not `surface-raised`.
+
+Measured with a probe carrying both constructions over `surface-inset`:
+
+| arm   | panel border       | arrow rim          |
+| ----- | ------------------ | ------------------ |
+| light | `rgb(141,144,148)` | `rgb(133,137,143)` |
+| dark  | `rgb(95,124,152)`  | `rgb(85,104,127)`  |
+
+The light arm's difference is slight; the dark arm's is visible, because the
+dark surface ramp spans L 0.11–0.28 and the two edges are compositing over
+opposite ends of it. Tracked as [CIN-606](https://linear.app/lost-gradient/issue/CIN-606).
+
+An earlier draft of this section claimed the rim "composites against the page
+canvas the arrow floats over, the same way the panel's own border does". The
+first half is right and the second is not, which is exactly what hid this.
 
 ### ButtonGroup — already solved, and better now
 
@@ -310,6 +329,16 @@ which are exempt. They did not clear it before either (2.15:1 at best in dark),
 so this is a pre-existing shortfall pushed further down rather than a floor this
 change breaks, but it belongs with the live affordances rather than with the
 exempt states.
+
+**RunStepTimeline's rewound marker** — a cross-_component_ case. A step with
+`status: 'skipped'` maps through `statusDotStatus()` to the neutral StatusDot,
+whose indicator is `border.strong`; when that step is also `rewound: true`, an
+ancestor rule applies `opacity: 0.55` to the marker. So 58% × 0.55 ≈ 32% ink,
+dark `surface-inset` 2.649 → 2.166 — the same arithmetic as the disabled Rating
+below, reached through two components rather than one file.
+
+The StatusDot row in the area table measures the tier undiluted, which is right
+for every other status; this combination is the exception.
 
 **Select's empty state** — the other separate-rule case that is not a disabled
 control. With `options=[]`, `select.svelte` renders `data-cinder-empty="true"`

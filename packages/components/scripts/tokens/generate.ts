@@ -730,6 +730,24 @@ function splitTopLevelTokens(value: string): string[] {
  */
 const PERCENTAGE_LITERAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%$/;
 
+/**
+ * A `var()` whose FALLBACK is a percentage, so the reference resolves to one
+ * either way: `var(--weight, 40%)`.
+ *
+ * In a `color-mix()` argument a bare `var()` is ambiguous between the color and
+ * the weight, and this is the case where it stops being ambiguous. Without it,
+ * checking the `var()` as a color position descends into the fallback and
+ * reports `40%` as a bare component list -- rejecting a recipe the browser
+ * accepts.
+ */
+function isPercentageValuedVar(token: string): boolean {
+  const call = /^var\(([\s\S]*)\)$/.exec(token);
+  if (call === null) return false;
+  const [, ...fallback] = splitTopLevelArguments(call[1] ?? '');
+  if (fallback.length === 0) return false;
+  return isUnambiguousPercentage(fallback.join(',').trim());
+}
+
 /** A token that can only be a `<percentage>`: a literal, or a math function. */
 function isUnambiguousPercentage(token: string): boolean {
   if (PERCENTAGE_LITERAL.test(token)) return true;
@@ -760,7 +778,9 @@ function isUnambiguousPercentage(token: string): boolean {
 function mixColorCandidates(argument: string): string[] {
   const tokens = splitTopLevelTokens(argument);
   if (tokens.length < 2) return [argument.trim()];
-  const candidates = tokens.filter((token) => !isUnambiguousPercentage(token));
+  const candidates = tokens.filter(
+    (token) => !isUnambiguousPercentage(token) && !isPercentageValuedVar(token),
+  );
   return candidates.length === 0 ? [argument.trim()] : candidates;
 }
 

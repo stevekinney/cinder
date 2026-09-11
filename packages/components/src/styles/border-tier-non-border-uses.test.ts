@@ -110,6 +110,17 @@ type Classification = {
   readonly category: Category;
   /** For an `area`, the name the seam audit has to mention. */
   readonly audit?: string;
+  /**
+   * How many times this exact declaration appears in this file. Defaults to 1.
+   *
+   * `(file, declaration)` is not a unique key -- `component-page.svelte` already
+   * carries `background: var(--cinder-border-muted);` twice, for two different
+   * rules. Both are hairlines today, so the shared entry is correct, but a THIRD
+   * occurrence that happened to be an area fill would silently inherit the
+   * hairline category. Pinning the count means a new occurrence fails until
+   * someone looks at it.
+   */
+  readonly occurrences?: number;
 };
 
 const REPOSITORY_ROOT = join(import.meta.dirname, '..', '..', '..', '..');
@@ -279,7 +290,12 @@ const CLASSIFIED: Record<string, readonly Classification[]> = {
     { declaration: 'background: var(--cinder-border);', category: 'hairline' },
   ],
   'packages/playground/src/component-page.svelte': [
-    { declaration: 'background: var(--cinder-border-muted);', category: 'hairline' },
+    // Two rules, both 1px: the eyebrow rule and the section rule.
+    {
+      declaration: 'background: var(--cinder-border-muted);',
+      category: 'hairline',
+      occurrences: 2,
+    },
     {
       declaration: 'background: var(--cinder-border-strong);',
       category: 'area',
@@ -392,6 +408,32 @@ describe('CIN-245: structural border tiers used outside a border declaration', (
         'decide whether it is a hairline, an area, a mix, or an occlusion, add it here, and ' +
         'record an area in docs/css-audit/translucent-border-seams.md with its measured ' +
         'contrast.',
+    ).toEqual([]);
+  });
+
+  test('no file grew a new occurrence of an already-classified declaration', () => {
+    const counts = new Map<string, number>();
+    for (const [file, declaration] of allUseSites()) {
+      const key = `${file}  ${declaration}`;
+      counts.set(key, (counts.get(key) ?? 0) + 1);
+    }
+
+    const drifted: string[] = [];
+    for (const [file, entries] of Object.entries(CLASSIFIED)) {
+      for (const entry of entries) {
+        const key = `${file}  ${entry.declaration}`;
+        const actual = counts.get(key) ?? 0;
+        const expected = entry.occurrences ?? 1;
+        if (actual !== expected) drifted.push(`${key}  expected ${expected}, found ${actual}`);
+      }
+    }
+
+    expect(
+      drifted,
+      'A classified declaration appears a different number of times than recorded. The same ' +
+        'declaration text in one file can belong to two rules with different geometry, so a new ' +
+        'occurrence has to be looked at rather than inheriting the existing category. Check what ' +
+        'the new one paints, then update `occurrences` (or split the entry).',
     ).toEqual([]);
   });
 
