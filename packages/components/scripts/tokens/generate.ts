@@ -717,6 +717,23 @@ const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
  * weight has to be recognised in computed form too -- otherwise a recipe the
  * browser accepts reads as a bare component list and fails generation.
  *
+ * This set is deliberately narrower than "every CSS Values L4 math function":
+ * only the functions the spec defines as TYPE-PRESERVING (a `<percentage>`
+ * argument yields a `<percentage>` result) belong here. `calc()`, `min()`,
+ * `max()`, `clamp()`, `round()`, `mod()`, `rem()`, `abs()`, and `sign()` are
+ * all type-preserving per the spec's calculation-type rules. `hypot()` is too
+ * -- its arguments "must be the same type... either <number>, <percentage>,
+ * or <dimension>" and the result matches that type, so `hypot(1%, 2%)` is
+ * itself a `<percentage>`, exactly like a `color-mix()` weight the browser
+ * accepts. The exponential and trigonometric functions `pow()`, `sqrt()`,
+ * `log()`, and `exp()` are NOT included: the spec requires their arguments
+ * (and result) to be a plain `<number>`, never a `<percentage>`, so they can
+ * never legitimately stand in for a mix weight. The trigonometric functions
+ * `sin()`, `cos()`, and `tan()` always return a `<number>`, and `asin()`,
+ * `acos()`, `atan()`, and `atan2()` always return an `<angle>` -- none of the
+ * seven ever produce a `<percentage>` either, so they are excluded for the
+ * same reason.
+ *
  * `var()` is deliberately absent. A bare `var()` is ambiguous between the color
  * and the weight, and reading it as the color is the safe direction: treating
  * it as a weight would strip the only complete value out of the argument and
@@ -732,6 +749,7 @@ const PERCENTAGE_FUNCTIONS = new Set([
   'rem',
   'abs',
   'sign',
+  'hypot',
 ]);
 
 /** `nodes` with every whitespace divider removed, so only meaningful tokens remain. */

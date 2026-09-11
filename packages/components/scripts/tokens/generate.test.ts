@@ -2962,4 +2962,31 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
       expect(serializeEntryValue(recipeEntry(mix), new Map()), mix).toBe(mix);
     }
   });
+
+  test('hypot() is recognised as a color-mix weight, so it no longer shadows the real color as the bare offender', () => {
+    // Confirmed defect: PERCENTAGE_FUNCTIONS previously omitted `hypot`, a
+    // browser-supported, type-preserving CSS math function (a <percentage>
+    // argument yields a <percentage> result per the CSS Values L4 spec), so
+    // `hypot(1%, 2%)` sitting beside a genuinely complete color was left in
+    // as an unrecognised "color candidate" and reported as the bare offender
+    // instead of being recognised as the weight.
+    const recipe = 'color-mix(in oklch, hypot(1%, 2%) oklch(50% 0.1 30), transparent)';
+    expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
+
+    const weightSecond = 'color-mix(in oklch, oklch(50% 0.1 30) hypot(1%, 2%), transparent)';
+    expect(serializeEntryValue(recipeEntry(weightSecond), new Map())).toBe(weightSecond);
+  });
+
+  test('pow(), sqrt(), log(), and exp() are still rejected as a color-mix weight -- they cannot legitimately produce a percentage', () => {
+    // Unlike hypot(), these exponential functions are defined by the spec to
+    // take and return a plain <number>, never a <percentage>, so they must
+    // NOT be added to PERCENTAGE_FUNCTIONS -- a "the more math functions the
+    // better" fix would be wrong here, not just incomplete.
+    for (const weight of ['pow(2, 3)', 'sqrt(4)', 'log(8, 2)', 'exp(1)']) {
+      const recipe = `color-mix(in oklch, ${weight} oklch(50% 0.1 30), transparent)`;
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    }
+  });
 });
