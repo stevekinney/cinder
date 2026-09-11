@@ -137,27 +137,32 @@
 			{#each data.conversations as conversation (conversation.id)}
 				<li data-testid="server-owned-conversation">
 					<!--
-						The accessible name carries the size, the time, AND a short
-						id fragment, because titles are not unique — the create
-						endpoint permits duplicates, and two conversations called
-						"Release planning" with the same message count render
-						identical rows. A screen reader's links list would then
-						offer two identically named destinations whose URLs are
-						opaque UUIDs, and the only way to tell them apart would be
-						to open both.
+						The accessible name carries the message count and a short
+						id fragment as well as the title, because titles are not
+						unique — the create endpoint permits duplicates, and two
+						conversations called "Release planning" with the same
+						message count render identical rows. A screen reader's
+						links list would then offer two identically named
+						destinations whose URLs are opaque UUIDs, and the only way
+						to tell them apart would be to open both.
 
-						The id fragment is there because the timestamp is NOT
-						sufficient, which was measured rather than assumed: two
-						conversations created in the same second produce the same
-						`toLocaleString()`, and the test written for this failed on
-						exactly that. Sessions saved inside one millisecond share
-						`updatedAt` outright, so no timestamp precision fixes it.
+						NO TIMESTAMP, and it was removed for two reasons that
+						arrived in that order. It was measured not to distinguish
+						anything: two conversations created in the same second
+						produce the same `toLocaleString()`, which is how the test
+						for this first failed, and sessions saved inside one
+						millisecond share `updatedAt` outright. And it was a
+						hydration hazard — `toLocaleString()` renders against the
+						server's locale and time zone during SSR and the browser's
+						on hydration, so the attribute differed whenever the two
+						disagreed.
 
-						Eight characters of a UUID are not meaningful to anyone,
-						and that is accepted: the claim is only that two rows can
-						be told apart, which nothing else on the row guarantees.
-						The name still LEADS with the title, so the announcement
-						opens with what the user was looking for.
+						The id carries the whole distinguishing claim. Eight
+						characters of a UUID are not meaningful to anyone, and
+						that is accepted: the claim is only that two rows can be
+						told apart, which nothing else on the row guarantees. The
+						name still LEADS with the title, so the announcement opens
+						with what the user was looking for.
 
 						`aria-label` rather than more visible text: the count is
 						already on screen beside the link, and repeating it in the

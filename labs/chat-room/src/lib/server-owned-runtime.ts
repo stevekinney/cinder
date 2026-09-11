@@ -201,20 +201,32 @@ export async function disposeServerOwnedRuntime(
 ): Promise<{ failures: number }> {
 	const host = globalThis as RuntimeHost;
 
-	// Lifted FIRST, above every early return below — this has to run even when
-	// there is no runtime to dispose, which is the ordinary case for a spec's
-	// `afterEach`.
+	// The latch is decided FIRST, above every early return below — including the
+	// in-flight join. Both directions were wrong before, in opposite ways:
 	//
-	// A NON-draining disposal means "tear down and carry on"; it is how the
-	// specs reset between cases, so it clears the termination latch. Only a
-	// draining disposal sets that latch, and in production only the signal
-	// handler drains, so it stays set exactly where the process really is
-	// leaving.
+	//   * A terminating call that JOINED an in-flight ordinary disposal never
+	//     reached `drainDisposal`, which was the only place that set the latch.
+	//     The joined disposal had already cleared the runtime slot, so a request
+	//     could still build a replacement and the signal handler would exit
+	//     without disposing it.
+	//   * An ordinary call arriving while a drain was in flight LIFTED the
+	//     latch, re-admitting runtimes in the middle of the shutdown that had
+	//     just closed the door.
 	//
-	// Placing it lower was the first attempt and did nothing: disposal returns
-	// early when nothing is held, so the latch survived into the next test and
-	// four unrelated suites went red at once.
-	if (options.drain !== true) host[TERMINATING_SLOT] = undefined;
+	// Set unconditionally when draining; lifted only when nothing is in flight,
+	// which is exactly the specs' reset — a plain disposal with no shutdown
+	// underway means "tear down and carry on". A plain disposal that joins a
+	// drain leaves the latch alone and gets the drain's result.
+	//
+	// It also has to run when there is no runtime to dispose, which is the
+	// ordinary case for a spec's `afterEach`. Placing it lower was an earlier
+	// attempt and did nothing: disposal returns early when nothing is held, so
+	// the latch survived into the next test and four unrelated suites went red.
+	if (options.drain === true) {
+		host[TERMINATING_SLOT] = true;
+	} else if (host[DISPOSAL_SLOT] === undefined) {
+		host[TERMINATING_SLOT] = undefined;
+	}
 
 	// An overlapping caller joins the disposal already running instead of
 	// returning a vacuous success. Read before the slot check below, because by
@@ -251,26 +263,30 @@ export async function disposeServerOwnedRuntime(
  * it build one and then disposing that too is the same guarantee without the
  * failure.
  *
- * BOUNDED, and the bound is a real limit rather than a retry. Each pass
- * disposes one generation; a request arriving during the last pass would
- * create another, and a process being asked to stop should stop. Three passes
- * is enough for the realistic case — one in-flight request, building one
- * replacement — and anything beyond that is a process taking traffic while it
- * shuts down, which is a load-balancer problem rather than one more pass.
+ * FINITE by the latch, not by a pass count. `serverOwnedRuntime()` refuses once
+ * termination begins, so after the pass that disposes the last generation
+ * admitted before the latch, nothing can create another and the loop ends
+ * because the slot is empty.
+ *
+ * An earlier version bounded it at three passes, which is what this comment
+ * used to describe. That could not work: a loop whose exit condition is
+ * "nothing new appeared" cannot be fixed by giving up after N tries, and the
+ * generation it left undisposed was cut off by the exit anyway.
  */
 async function drainDisposal(
 	host: RuntimeHost,
 	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
 ): Promise<{ failures: number }> {
-	// Latched BEFORE the first pass, so nothing new can be admitted while this
-	// runs. That is what bounds the loop: each pass disposes one generation and
-	// no further generation can be created, so the slot is empty within one
-	// pass of the last request that got in.
+	// The latch is already set by `disposeServerOwnedRuntime`, before any early
+	// return, so that a terminating call which JOINS an in-flight disposal
+	// latches too. Reasserted here rather than assumed, because this function's
+	// termination argument depends on it: nothing can be admitted while the
+	// loop runs, so each pass disposes one generation and the slot is empty
+	// within one pass of the last request that got in.
 	//
-	// The previous version capped this at three passes instead, which could not
+	// An earlier version capped this at three passes instead, which could not
 	// work — a loop that ends by giving up leaves the final runtime undisposed,
-	// and the signal handler exits the moment it returns. The cap contradicted
-	// the promise `drain` makes.
+	// and the signal handler exits the moment it returns.
 	host[TERMINATING_SLOT] = true;
 
 	let failures = 0;

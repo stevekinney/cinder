@@ -205,12 +205,41 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 					releaseSlot(token);
 					throw cause;
 				})
-			: retire()
-					.then(() => build(token, runtime))
-					.catch((cause: unknown) => {
+			: (async (): Promise<DurableRuntime> => {
+					try {
+						await retire();
+					} catch (cause) {
+						// The stale memo is PUT BACK, not dropped. Clearing it
+						// would leave the next caller with no `held` value, so it
+						// would take the direct build path and start a second
+						// engine over the same storage beside one that would not
+						// stop — without ever retrying its retirement. Restoring
+						// it means the next call tries to retire again, and keeps
+						// failing visibly until something is done about it.
+						if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = held;
+						throw cause;
+					}
+
+					// REVALIDATED after the await. A process disposal can begin
+					// while retirement is pending: `runDisposal` clears the
+					// runtime slot and snapshots only the old teardown, so a
+					// successor built here would register its teardown after that
+					// snapshot, keep `race.disposed` false, and resolve into an
+					// engine the exit never shuts down. `serverOwnedRuntime()`
+					// also throws outright once termination has latched, which is
+					// the same answer arrived at sooner.
+					if (serverOwnedRuntime() !== runtime) {
+						releaseSlot(token);
+						throw new RuntimeDisposedDuringBuildError();
+					}
+
+					try {
+						return await build(token, runtime);
+					} catch (cause) {
 						releaseSlot(token);
 						throw cause;
-					});
+					}
+				})();
 	host[DURABLE_SLOT] = { token, runtime, module: MODULE_GENERATION, promise };
 	return promise;
 }
