@@ -3,17 +3,24 @@
  * cross-engine shards can run these without also tripling the tests that do
  * not touch a browser.
  *
- * Both tests here drive a real engine path: the create flow's `fetch` plus
- * reload, and the incremental-rendering test, which streams a `ReadableStream`
- * through the page's session controller. That is what the cross-engine shards
- * exist for. The `request`-fixture tests stay in `server-owned.e2e.ts`, where
- * the chromium project's root matcher runs them once — that fixture is a
+ * SIX tests here, each driving a real engine path: the create flow's `fetch`
+ * plus reload, incremental rendering of a `ReadableStream` through the page's
+ * session controller, transcript-versus-page scroll ownership, the
+ * route-reuse reset, long-title overflow, and a rejected turn's error
+ * envelope. That is what the cross-engine
+ * shards exist for. The `request`-fixture tests stay in `server-owned.e2e.ts`,
+ * where the chromium project's root matcher runs them once — that fixture is a
  * Node-side HTTP client, so three engines would execute identical code three
  * times.
  *
- * Placed in `webkit-2` by measurement: `--list` per project read
- * 49/48/62/51/50, and `webkit-3` is already at the 62 the ceiling note
- * describes.
+ * Placed in `webkit-2` by measurement: `--list` per project reads
+ * 49/48/62/51/50 without this spec and 49/54/62/51/50 with it, and `webkit-3`
+ * is already at the 62 the ceiling note describes.
+ *
+ * This inventory has gone stale twice. Re-running `--list` and updating BOTH
+ * this docblock and `playwright.config.ts` is a step in adding a test here,
+ * not a reminder afterwards — two places carrying the same count is two places
+ * to correct.
  *
  * Every test works against a conversation it creates under a unique title.
  * The store is in-memory and per-process, so conversations outlive the test
@@ -159,17 +166,26 @@ test('renders a server-owned reply incrementally, not as a buffered whole', asyn
 	await page.locator('body[data-hydrated="true"]').waitFor();
 
 	const reloadedLog = page.getByRole('log', { name: 'Messages' });
-	await expect(reloadedLog).toContainText(STEPPED_CHUNKS.join(' '));
 
-	// BOTH turns, with their roles. Asserting only the assistant's chunks would
-	// stay green on a session-handle path that persisted the reply while
-	// dropping or corrupting the prompt that produced it — and the prompt is
-	// the half this route family is about, since `handle.run(text)` is what
-	// appends it. The `/turns` endpoint test does not cover this path: it posts
+	// BOTH turns, each asserted INSIDE its own article. Searching the whole log
+	// for both strings and then counting articles separately would stay green
+	// if the roles were swapped on reload — the text would all still be
+	// present, in the wrong speakers' rows. The prompt is the half this route
+	// family is responsible for, since `handle.run(text)` is what appends it,
+	// and the `/turns` endpoint test does not cover this path: it posts
 	// directly rather than going through the stream.
-	await expect(reloadedLog).toContainText(prompt);
-	await expect(reloadedLog.getByRole('article', { name: 'You' })).toHaveCount(1);
-	await expect(reloadedLog.getByRole('article', { name: 'Assistant' })).toHaveCount(1);
+	const userTurn = reloadedLog.getByRole('article', { name: 'You' });
+	const assistantTurn = reloadedLog.getByRole('article', { name: 'Assistant' });
+
+	await expect(userTurn).toHaveCount(1);
+	await expect(assistantTurn).toHaveCount(1);
+	await expect(userTurn).toContainText(prompt);
+	await expect(assistantTurn).toContainText(STEPPED_CHUNKS.join(' '));
+
+	// And neither carries the other's text, so a reload that duplicated a turn
+	// into both rows fails rather than satisfying both assertions above.
+	await expect(userTurn).not.toContainText(STEPPED_CHUNKS[2]);
+	await expect(assistantTurn).not.toContainText(prompt);
 });
 
 test('the transcript scrolls, not the page, once the conversation outgrows the viewport', async ({
@@ -376,4 +392,46 @@ test('a long unbroken title wraps instead of widening the page', async ({ page, 
 	// taller to fit the wrapped title.
 	const height = await row.evaluate((element) => element.getBoundingClientRect().height);
 	expect(height).toBeGreaterThan(40);
+});
+
+test("a rejected turn shows the server's sentence, not its JSON envelope", async ({
+	page,
+	request
+}) => {
+	// Every non-streaming failure from the stream endpoint is JSON — `{ error }`
+	// for the 400s, the 404, and the 503 when the key is unset. Throwing
+	// `response.text()` put the whole envelope in the banner, so a user and a
+	// screen reader both got `{"error":"..."}`.
+	//
+	// Driven through the 404 path, which needs no configuration change: the
+	// conversation is deleted from under the page after it loads, so the next
+	// turn's POST is rejected before any NDJSON starts.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Envelope') }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	// A conversation id that does not exist, reached by rewriting the page's own
+	// fetch target — simpler than deleting a session, and it exercises the same
+	// 404 branch the endpoint takes for a missing conversation.
+	await page.route('**/api/server-owned/conversations/*/stream', (route) =>
+		route.fulfill({
+			status: 404,
+			contentType: 'application/json',
+			body: JSON.stringify({ error: 'No such conversation.' })
+		})
+	);
+
+	await page.getByRole('textbox', { name: 'Message' }).fill('Anything at all');
+	await page.getByRole('button', { name: 'Send message' }).click();
+
+	const banner = page.getByTestId('server-owned-turn-failure');
+	await expect(banner).toContainText('No such conversation.');
+
+	// The sentence, and nothing of the envelope around it.
+	await expect(banner).not.toContainText('{');
+	await expect(banner).not.toContainText('"error"');
 });

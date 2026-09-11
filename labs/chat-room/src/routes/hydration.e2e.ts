@@ -206,10 +206,32 @@ test('/server-owned/[id] hydrates without a mismatch', async ({ page, request })
 	expect(created.status()).toBe(201);
 	const { conversation } = (await created.json()) as { conversation: { id: string } };
 
+	// NONEMPTY, and that is the point of the test rather than a detail. An
+	// empty conversation mounts an empty Chat, so the SSR-to-client
+	// reconciliation of pre-rendered message rows — where a mismatch would
+	// actually come from — is never exercised, and a mismatch conditional on a
+	// populated `ConversationHistory` would pass. The nonempty case elsewhere
+	// runs against the `preview` build, where Svelte strips the warning
+	// entirely, so this dev-server test is the only place it can be seen.
+	//
+	// Appended through `DEV_ORIGIN`, because the two servers hold separate
+	// in-memory stores and a turn written to the preview one would not exist
+	// for the page this test loads.
+	const turn = `Hydration probe ${Date.now().toString(36)}`;
+	const appended = await request.post(
+		`${DEV_ORIGIN}/api/server-owned/conversations/${conversation.id}/turns`,
+		{ data: { text: turn } }
+	);
+	expect(appended.status()).toBe(201);
+
 	const { viaConsoleEvent, viaInitScript } = await collectHydrationMismatches(
 		page,
 		`/server-owned/${conversation.id}`
 	);
+
+	// The row really was server-rendered and survived hydration — otherwise
+	// this would be an empty-Chat test wearing a nonempty fixture.
+	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(turn);
 
 	expect(viaInitScript).toEqual([]);
 	expect(viaConsoleEvent).toEqual([]);

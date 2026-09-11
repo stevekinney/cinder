@@ -12,6 +12,33 @@
 	import { toBannerFailure, type BannerFailure } from '$lib/chat-failure';
 
 	/**
+	 * The sentence a failed request meant to say, not the envelope it arrived
+	 * in.
+	 *
+	 * Every non-streaming failure from this endpoint is JSON — `{ error }` for
+	 * the 400s, the 404, and the 503 when `ANTHROPIC_API_KEY` is unset. Reading
+	 * `response.text()` and throwing that put the raw body into the banner, so
+	 * a user and a screen reader both got
+	 * `{"error":"ANTHROPIC_API_KEY is not configured"}` — the right
+	 * information wrapped in something nobody should have to read past.
+	 *
+	 * Falls back to the body text, then to a status line, because a failure
+	 * that is not this endpoint's own — a proxy, a gateway — has no `error`
+	 * field and an empty banner would be worse than an ugly one.
+	 */
+	async function failureMessage(response: Response): Promise<string> {
+		const body = await response.text();
+		try {
+			const parsed: unknown = JSON.parse(body);
+			const message = (parsed as { error?: unknown }).error;
+			if (typeof message === 'string' && message.length > 0) return message;
+		} catch {
+			// Not JSON. The text itself is the best available answer.
+		}
+		return body.length > 0 ? body : `The server responded ${response.status}.`;
+	}
+
+	/**
 	 * One conversation's live surface: its browser-side mirror, its session
 	 * controller, and everything that resets when you move to a different
 	 * conversation.
@@ -77,7 +104,7 @@
 				body: JSON.stringify({ text }),
 				signal
 			});
-			if (!response.ok || !response.body) throw new Error(await response.text());
+			if (!response.ok || !response.body) throw new Error(await failureMessage(response));
 			return decodeChatStreamEvents(response.body);
 		},
 		hooks: {

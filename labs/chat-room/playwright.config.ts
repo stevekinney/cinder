@@ -39,14 +39,15 @@ const CROSS_ENGINE_SHARDS = [
 		// The server-owned family's browser paths: the create flow's `fetch` plus
 		// reload, a `ReadableStream` streamed through the page's session
 		// controller, transcript-versus-page scroll ownership, the route-reuse
-		// reset, and the long-title overflow case — five tests. Its
-		// `request`-fixture siblings stay out; that fixture is a Node-side HTTP
-		// client, so three engines would run identical code three times.
+		// reset, long-title overflow, and a rejected turn's error envelope —
+		// six tests. Its `request`-fixture siblings stay out; that fixture is a
+		// Node-side HTTP client, so three engines would run identical code
+		// three times.
 		//
 		// Placed here by measurement, not by eye. Without this entry `--list`
 		// per project reads 49/48/62/51/50, so its tests go to the smallest
 		// shard rather than to `webkit-3`, which is already at the 62 the
-		// ceiling note describes. With it: 49/53/62/51/50.
+		// ceiling note describes. With it: 49/54/62/51/50.
 		//
 		// Re-run `--list` per project when this spec gains or loses a test. That
 		// instruction has now been ignored twice in one branch — the count went
