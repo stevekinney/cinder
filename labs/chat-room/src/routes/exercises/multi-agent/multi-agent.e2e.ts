@@ -284,18 +284,6 @@ test('a caller-supplied summarizer is what actually condenses', async ({ page })
 /** Bounded so an unreachable control reports rather than hanging the run. */
 const TAB_BUDGET = 40;
 
-/** Tabs forward from wherever focus is until `locator` has it. */
-async function tabUntilFocused(
-	page: import('@playwright/test').Page,
-	locator: import('@playwright/test').Locator
-): Promise<boolean> {
-	for (let step = 0; step < TAB_BUDGET; step += 1) {
-		if (await locator.evaluate((element) => element === document.activeElement)) return true;
-		await page.keyboard.press('Tab');
-	}
-	return false;
-}
-
 /**
  * Walks the tab order ONCE and reports which of the named controls it reached.
  *
@@ -367,16 +355,21 @@ test('the transcript disclosures are operable from the keyboard', async ({ page 
 	await page.keyboard.press('Enter');
 	await expect(timeline).toContainText('What did we decide about the staging bucket?');
 
-	// Focus continues to RESULT from the expanded Arguments, which is the claim
-	// that matters and the one the previous version missed. Asserting only that
-	// Tab leaves Arguments passes if expansion makes Result untabbable, sends
-	// focus to `body`, or traps it on something inside the panel — and the
-	// programmatic `focus()` that followed then masked all three.
+	// ONE Tab, and Result must have focus — not "Result is reachable within a
+	// budget". A bounded walk answers the weaker question, and would pass the
+	// regression this test is named for: if expanding Arguments dropped focus
+	// to `<body>`, the walk would traverse the rest of the document, wrap in
+	// Chromium, and eventually arrive.
+	//
+	// Asserting the next stop is legitimate because the expanded panel holds a
+	// `pre` and nothing focusable, so Result genuinely is next in order. If
+	// that ever stops being true this fails loudly, which is the right outcome
+	// for a change to what the disclosure renders.
 	//
 	// Only where the platform tabs to controls at all; WebKit reaches no button
 	// and the operability half below still runs there.
 	if (reached.has('attachFile')) {
-		expect(await tabUntilFocused(page, resultTrigger)).toBe(true);
+		await page.keyboard.press('Tab');
 		await expect(resultTrigger).toBeFocused();
 	} else {
 		await resultTrigger.focus();
