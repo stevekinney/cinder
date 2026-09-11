@@ -512,6 +512,15 @@ describe('process signals', () => {
 		// The sibling fixture starts cold and therefore cannot show this: its
 		// listeners are always the ones this evaluation installed. This one puts
 		// protocol-1 listeners in place BEFORE importing the module.
+		//
+		// What this proves, precisely: the migration works when the previous
+		// evaluation RECORDED its listeners. It does not model the one upgrade
+		// that cannot be migrated — a version predating the registry, which set
+		// `SIGNALS_SLOT` and recorded nothing, leaving no references to remove
+		// by. The fixture seeds the registry deliberately, so this is coverage
+		// for every protocol change from here on rather than for the one that
+		// introduced it. That boundary is documented at the migration itself and
+		// needs a dev-server restart.
 		const directory = mkdtempSync(join(tmpdir(), 'server-owned-protocol-'));
 		const stale = join(directory, 'stale');
 		const marker = join(directory, 'disposed');

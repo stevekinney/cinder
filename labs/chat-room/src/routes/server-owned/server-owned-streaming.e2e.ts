@@ -408,8 +408,13 @@ test("a rejected turn shows the server's sentence, not its JSON envelope", async
 	// screen reader both got `{"error":"..."}`.
 	//
 	// Driven through the 404 path, which needs no configuration change: the
-	// conversation is deleted from under the page after it loads, so the next
-	// turn's POST is rejected before any NDJSON starts.
+	// page's own fetch target is rewritten to a conversation id that does not
+	// exist, so the next turn's POST is rejected before any NDJSON starts.
+	//
+	// Nothing is deleted. An earlier version of this comment said the session
+	// was removed from under the page, which would have made this read as
+	// coverage for a real load-to-submit deletion race — it is not, and
+	// treating it as such would leave that race untested while looking tested.
 	const created = await request.post('/api/server-owned/conversations', {
 		data: { title: uniqueTitle('Envelope') }
 	});

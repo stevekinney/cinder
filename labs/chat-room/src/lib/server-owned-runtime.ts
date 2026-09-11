@@ -631,6 +631,23 @@ signalHost[HANDLER_SLOT] = handleTerminationSignal;
 // run two shutdowns and two `process.exit` calls for one signal; leaving only
 // the old ones — which is what happened before this existed — makes every
 // later edit to shutdown unreachable until a restart.
+//
+// ONE UPGRADE THIS CANNOT MIGRATE, stated rather than papered over: an
+// evaluation that predates this registry set `SIGNALS_SLOT` without recording
+// its listeners, so hot-updating from such a version leaves `LISTENERS_SLOT`
+// undefined and there is nothing to remove them by. `removeAllListeners` is
+// not an acceptable substitute — a host may have installed its own SIGTERM
+// handler (see `HOST_LISTENER` in the signal fixture), and tearing that off
+// would be a far worse bug than the staleness being fixed. Taking listeners we
+// did not install is not ours to do.
+//
+// The consequence is bounded: that old listener still disposes, through its own
+// closed-over implementation, so shutdown is not broken — only stale. One
+// dev-server restart clears it, and from this protocol forward the migration
+// works without one.
+//
+// A restart is required only when crossing THIS boundary, because from here on
+// every evaluation records what it installed.
 const installed = signalHost[LISTENERS_SLOT];
 if (
 	installed !== undefined &&
