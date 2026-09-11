@@ -82,12 +82,49 @@
     height: 0;
   }
 
+  /*
+   * CIN-606: `background-clip` defaults to `border-box`, so the PANEL's own
+   * `background: var(--cinder-surface-raised)` paints under its translucent
+   * `border.control` edge — the panel border always composites over
+   * `surface-raised`. The arrow, being a zero-size border-triangle with no
+   * background of its own, used to paint its outer (`--cinder-border`)
+   * triangle straight onto whatever the popover floats over instead — the
+   * same translucent ink composited over a different backdrop than the
+   * panel edge, which was invisible while both tokens were opaque and is
+   * not now.
+   *
+   * The fix gives the outer triangle a backdrop rather than changing what
+   * the panel does. An element's own background/border always paints
+   * before its own `::before`/`::after`, so the three layers are built in
+   * that fixed order: this rule (the arrow's OWN border) is now the OPAQUE
+   * `surface-raised` backdrop, painted first; `::before` repeats the exact
+   * same triangle in the translucent `--cinder-border` ink, composited over
+   * that backdrop; `::after` is unchanged, the existing opaque 7px triangle
+   * that covers the inner two-thirds and leaves only the outer ~1px rim
+   * showing the (now correctly backed) translucent color. The net result:
+   * the visible rim composites over `surface-raised` in every placement,
+   * matching the panel edge on every backdrop instead of only on
+   * `surface-raised` itself.
+   */
+
   /* Panel is BELOW trigger - arrow tip points UP.
    Floating UI's arrow middleware writes `left` directly to center the
    border-box (offsetWidth=16 because of the 8px L+R borders) on the
    reference. Do not add a negative margin — that would double-shift it. */
   .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow {
     top: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
     /* stylelint-disable csstools/use-logical */
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
@@ -111,6 +148,18 @@
    note above re: Floating UI offsetWidth centering. */
   .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
     bottom: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 0;
     /* stylelint-disable csstools/use-logical */
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
@@ -138,6 +187,18 @@
     /* stylelint-disable csstools/use-logical */
     border-top: 8px solid transparent;
     border-bottom: 8px solid transparent;
+    border-right: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
     border-right: 8px solid var(--cinder-border);
     /* stylelint-enable csstools/use-logical */
   }
@@ -158,6 +219,18 @@
    right-placement note above re: Floating UI offsetHeight centering. */
   .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
     right: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    right: 0;
     /* stylelint-disable csstools/use-logical */
     border-top: 8px solid transparent;
     border-bottom: 8px solid transparent;
