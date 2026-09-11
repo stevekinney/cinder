@@ -2918,40 +2918,41 @@ describe('VirtualList — keyboard navigation past a sticky header', () => {
     // rules disagree: the header is simultaneously the first visible row and the
     // thing covering the leading edge, and whichever way that is resolved, one of
     // the two directions stops moving unless stepping passes over sticky rows.
-    const { container } = render(VirtualList, {
-      items: makeItems(1_000),
-      itemHeight: 20,
-      height: '200px',
-      overscan: 0,
-      stickyItems: [0, 10],
-      row: rowSnippet(),
-      'aria-label': 'Feed',
-    });
+    // A render each, rather than one list rewound between the two presses. Setting
+    // the offset back to where a keypress started is indistinguishable from that
+    // press not having moved yet, which is a state only the test can produce.
+    async function pressFromHeaderStart(key: string): Promise<number> {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        stickyItems: [0, 10],
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
 
-    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
-    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
-    const scrollTop = instrumentScrollTop(list);
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      const scrollTop = instrumentScrollTop(list);
 
-    // start(10) === 200, with header 10 held at the leading edge.
-    list.scrollTop = 200;
-    await fireEvent.scroll(list);
-    await tick();
+      // start(10) === 200, with header 10 held at the leading edge.
+      list.scrollTop = 200;
+      await fireEvent.scroll(list);
+      await tick();
+
+      await fireEvent.keyDown(list, { key });
+      await tick();
+      return scrollTop.value();
+    }
 
     // Down: row 11 is uncovered, so the step goes to 12 and clears header 10.
-    await fireEvent.keyDown(list, { key: 'ArrowDown' });
-    await tick();
-    expect(scrollTop.value()).toBe(220);
-
-    list.scrollTop = 200;
-    await fireEvent.scroll(list);
-    await tick();
+    expect(await pressFromHeaderStart('ArrowDown')).toBe(220);
 
     // Up: the step from 11 reaches 10, which IS the header — its own inset is zero,
     // so the target resolves to 200 and the key does nothing. Passing over it reaches
     // row 9, cleared of header 0.
-    await fireEvent.keyDown(list, { key: 'ArrowUp' });
-    await tick();
-    expect(scrollTop.value()).toBe(160);
+    expect(await pressFromHeaderStart('ArrowUp')).toBe(160);
   });
 
   test('re-derives a keyboard destination as the rows it jumps into are measured', async () => {
@@ -2985,5 +2986,126 @@ describe('VirtualList — keyboard navigation past a sticky header', () => {
     // Total is 100 rows: row 0 at 100px and 99 at 20px, so 2080 against a 200px
     // viewport. End settles at the bottom rather than at a stale estimate's idea of it.
     await waitFor(() => expect(list.scrollTop).toBe(1_880));
+  });
+});
+
+describe('VirtualList — paging and key repeat past a sticky header', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('pages by the rows the header leaves visible, not by the whole viewport', async () => {
+    // A 200px viewport over 20px rows fits ten, but a 20px header covers one of them,
+    // so only nine are exposed. Paging by ten steps over the row under the header:
+    // covered before the press and covered after it, so it is never read.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    // start(200) === 4000, with header 0 pinned over the leading edge.
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // Row 201 is the first uncovered one, so a nine-row page reaches 210 — which is
+    // exactly the row a ten-row page would have jumped over. It lands below the
+    // header: start(210) - 20.
+    expect(scrollTop.value()).toBe(4_180);
+  });
+
+  test('advances a second key press from where the first one was heading', async () => {
+    // Under smoothScroll the element's offset lags the animation, so a press arriving
+    // before the first has crossed a row boundary reads the same leading row, resolves
+    // the same destination, and the two presses advance one row between them. Holding
+    // an arrow key does this continuously.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Stand in for an animation in flight: record where the scroll was asked to go
+    // without moving there, which is what a real smooth scroll looks like to the
+    // very next keypress.
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // Row 201 is the first uncovered one, so the presses target 202 and then 203,
+    // each landing below the 20px header: start(202) - 20 and start(203) - 20.
+    expect(requested).toEqual([4_020, 4_040]);
+  });
+
+  test('drops the pending destination when the reader takes the scroll back', async () => {
+    // Otherwise the next key navigates from wherever the keys were heading before the
+    // reader wheeled somewhere else entirely.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      smoothScroll: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const requested: number[] = [];
+    list.scrollTo = ((options: ScrollToOptions) => {
+      requested.push(options.top ?? 0);
+    }) as typeof list.scrollTo;
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // The reader wheels away, and the scroll actually lands somewhere else.
+    await fireEvent.wheel(list);
+    list.scrollTop = 2_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // From row 100 — where the reader now is — not from 202, where the keys had been
+    // heading before the wheel.
+    expect(requested.at(-1)).toBe(2_020);
   });
 });
