@@ -450,6 +450,12 @@ describe('overflowShadow', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(node.hasAttribute('data-cinder-overflows-block')).toBe(true);
 
+    // Schedule another pending fallback timer, then tear down WHILE it is
+    // still pending — this is what exercises the fallback's own
+    // `cancelAnimationFrame` substitute (`window.clearTimeout`), which the
+    // await above already let run to completion once.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    FakeResizeObserver.instances[0]?.trigger();
     cleanup?.();
   });
 });
@@ -566,6 +572,12 @@ describe('overflowFadeEdges', () => {
     await new Promise((resolve) => setTimeout(resolve, 0));
     expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
 
+    // Schedule another pending fallback timer, then tear down WHILE it is
+    // still pending — this is what exercises the fallback's own
+    // `cancelAnimationFrame` substitute (`window.clearTimeout`), which the
+    // await above already let run to completion once.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100, scrollTop: 0 });
+    node.dispatchEvent(new Event('scroll'));
     cleanup?.();
   });
 });

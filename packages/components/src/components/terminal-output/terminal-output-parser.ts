@@ -75,6 +75,13 @@ export class TerminalOutputParser {
   #pending = '';
   #pendingGrapheme = '';
 
+  // Bun's LCOV coverage counts the constructor JSC synthesizes for a class
+  // with private-field initializers as one of the file's functions, but
+  // never credits it with a hit even though `new TerminalOutputParser()` is
+  // called throughout this file's own tests. An explicit (behavior-identical)
+  // empty constructor gets credited normally.
+  constructor() {}
+
   reset(): void {
     this.#lines = [[]];
     this.#line = 0;

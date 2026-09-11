@@ -10,10 +10,13 @@ import {
   chartPalette,
   chartPaletteColor,
   chartResourceId,
+  createBandScale,
   createBarModel,
   createCartesianModel,
   createChartGeometry,
   createHorizontalCategoryLabelLayout,
+  createLinearScale,
+  createPointScale,
   dataTableClass,
   decimatePlacedPoints,
   decimationIndices,
@@ -1954,5 +1957,26 @@ describe('createBarModel', () => {
 
     expect(model.bars.map((bar) => bar.categoryLabel)).toEqual(['category-0', 'category-1']);
     expect(model.bars.map((bar) => bar.valueLabel)).toEqual(['value-0', 'value-1']);
+  });
+});
+
+describe('scale factories', () => {
+  test('createLinearScale maps a domain value into the range and reports ticks', () => {
+    const scale = createLinearScale([0, 100], [0, 200]);
+    expect(scale(50)).toBe(100);
+    expect(scale.ticks(3)).toEqual([0, 50, 100]);
+  });
+
+  test('createPointScale positions each domain entry within the range', () => {
+    const scale = createPointScale(['a', 'b', 'c'], [0, 100], 0);
+    expect(scale('a')).toBeCloseTo(0);
+    expect(scale('c')).toBeCloseTo(100);
+  });
+
+  test('createBandScale positions each band and reports a positive bandwidth', () => {
+    const scale = createBandScale(['a', 'b'], [0, 100], 0);
+    expect(scale('a')).toBeCloseTo(0);
+    expect(scale('b')).toBeCloseTo(50);
+    expect(scale.bandwidth()).toBeCloseTo(50);
   });
 });
