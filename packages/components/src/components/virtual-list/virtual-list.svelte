@@ -41,6 +41,7 @@
   import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type {
     VirtualListProps,
@@ -216,6 +217,13 @@
    * resolves `inset-inline-start` to the right edge on its own.
    */
   const rowLayout = $derived(resolveRowLayoutDescriptor(horizontal ? 'horizontal' : 'vertical'));
+  /**
+   * The shared hook rather than an inline media query, per OVERLAY-POLICY and the
+   * `check:no-inline-match-media` guard. It is reactive, so a preference changed
+   * mid-session takes effect, and it carries the SSR fallback — both of which an
+   * inline `matchMedia` call gets wrong.
+   */
+  const reducedMotion = useReducedMotion();
   let writingDirection: WritingDirection = $state('ltr');
   let previousEstimate = 0;
   let pendingReanchor: { index: number; offsetWithinRow: number } | null = null;
@@ -1319,24 +1327,6 @@
     scrollToIndex(target, { align: 'start' });
   }
 
-  /**
-   * Whether the reader has asked for reduced motion.
-   *
-   * Queried at the call site rather than cached: the preference can change while the
-   * page is open, and a scroll is infrequent enough that the media query costs
-   * nothing. Absent `matchMedia` — a server render, an old engine — the answer is no,
-   * which leaves the configured behaviour intact.
-   */
-  function prefersReducedMotion(): boolean {
-    const view = scrollElement?.ownerDocument.defaultView;
-    if (!view || typeof view.matchMedia !== 'function') return false;
-    try {
-      return view.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    } catch {
-      return false;
-    }
-  }
-
   function maxScrollOffset(totalSize: number, height: number): number {
     return Math.max(0, totalSize - height);
   }
@@ -1481,7 +1471,7 @@
     // An explicit behavior in the call always wins; `smoothScroll` only supplies
     // the default — and only for readers who have not asked for less motion.
     const behavior =
-      options?.behavior ?? (smoothScroll && !prefersReducedMotion() ? 'smooth' : 'auto');
+      options?.behavior ?? (smoothScroll && !reducedMotion.current ? 'smooth' : 'auto');
     // Each call supersedes any settle loop still running. Without this, two
     // overlapping loops write competing targets and the older one can land last,
     // finishing rapid navigation on the wrong item.
@@ -1564,30 +1554,6 @@
     style={`${rowLayout.sizeProperty}:${virtualWindow.totalSize}px;`}
     aria-hidden={items.length === 0 ? 'true' : undefined}
   >
-    {#if pinnedStickyItem}
-      <!--
-        Positioned at the current scroll offset rather than left to `position: sticky`.
-        The row is outside the rendered window, so it has no flow box near the
-        viewport to stick from — and putting one there would displace every row after
-        it. Absolute keeps it out of flow entirely; the offset is what makes it track
-        the viewport's leading edge.
-      -->
-      <div
-        class="cinder-virtual-list__pinned"
-        style={`${rowLayout.offsetProperty}:${scrollOffset}px;`}
-        data-cinder-virtual-index={pinnedStickyItem.index}
-        data-cinder-sticky="true"
-        data-cinder-sticky-active="true"
-        aria-hidden="true"
-      >
-        {@render row(pinnedStickyItem.item, {
-          index: pinnedStickyItem.index,
-          key: pinnedStickyItem.key,
-          start: locateRowStart(pinnedStickyItem.index),
-          size: locateRowSize(pinnedStickyItem.index),
-        })}
-      </div>
-    {/if}
     <div
       class="cinder-virtual-list__window"
       style={`${rowLayout.offsetProperty}:${virtualWindow.leadingSize}px;`}
@@ -1617,5 +1583,29 @@
         </div>
       {/each}
     </div>
+    {#if pinnedStickyItem}
+      <!--
+        Positioned at the current scroll offset rather than left to `position: sticky`.
+        The row is outside the rendered window, so it has no flow box near the
+        viewport to stick from — and putting one there would displace every row after
+        it. Absolute keeps it out of flow entirely; the offset is what makes it track
+        the viewport's leading edge.
+      -->
+      <div
+        class="cinder-virtual-list__pinned"
+        style={`${rowLayout.offsetProperty}:${scrollOffset}px;`}
+        data-cinder-virtual-index={pinnedStickyItem.index}
+        data-cinder-sticky="true"
+        data-cinder-sticky-active="true"
+        aria-hidden="true"
+      >
+        {@render row(pinnedStickyItem.item, {
+          index: pinnedStickyItem.index,
+          key: pinnedStickyItem.key,
+          start: locateRowStart(pinnedStickyItem.index),
+          size: locateRowSize(pinnedStickyItem.index),
+        })}
+      </div>
+    {/if}
   </div>
 </svelte:element>

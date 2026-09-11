@@ -113,11 +113,16 @@
    *
    * `aria-hidden` in the markup: the row it duplicates is still counted in the list's
    * semantics, and announcing both would double it.
+   *
+   * Stacking comes from DOM order — it is rendered after the window — rather than a
+   * `z-index`. That keeps it out of the floating-surface category the primitive
+   * guard polices, and gives the right behaviour for free: a sticky row still inside
+   * the window carries `z-index: 1` and so rises above this one as it scrolls up to
+   * replace it, which is exactly the handoff between consecutive section headers.
    */
   .cinder-virtual-list__pinned {
     position: absolute;
     inset-inline: 0;
-    z-index: 1;
   }
 
   .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__pinned {

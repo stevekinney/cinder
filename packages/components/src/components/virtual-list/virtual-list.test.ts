@@ -2569,9 +2569,11 @@ describe('VirtualList — stickyItems', () => {
     expect(sticky?.getAttribute('data-cinder-sticky-active')).toBe('true');
   });
 
-  test('renders sticky rows in index order, not appended after the window', async () => {
-    // The each block is keyed, so appending the reattached row would move it after
-    // rows that follow it in the list.
+  test('renders the pinned row after the window, which is what stacks it above', async () => {
+    // Stacking comes from DOM order rather than a `z-index` — that keeps the pinned
+    // header out of the floating-surface category the primitive guard polices, and
+    // gives the right handoff for free: a sticky row still inside the window carries
+    // `z-index: 1` and so rises above this one as it scrolls up to replace it.
     const { container } = render(VirtualList, {
       items: makeItems(1_000),
       itemHeight: 20,
@@ -2587,12 +2589,19 @@ describe('VirtualList — stickyItems', () => {
     list.scrollTop = 4_000;
     await fireEvent.scroll(list);
     await waitFor(() =>
-      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+      expect(container.querySelector('.cinder-virtual-list__pinned')).not.toBeNull(),
     );
 
-    const indexes = renderedRows(container).map((node) => Number(node.dataset['index']));
-    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
-    expect(indexes[0]).toBe(0);
+    const spacer = container.querySelector('.cinder-virtual-list__spacer') as HTMLElement;
+    const children = Array.from(spacer.children);
+    const windowPosition = children.findIndex((node) =>
+      node.classList.contains('cinder-virtual-list__window'),
+    );
+    const pinnedPosition = children.findIndex((node) =>
+      node.classList.contains('cinder-virtual-list__pinned'),
+    );
+    expect(windowPosition).toBeGreaterThan(-1);
+    expect(pinnedPosition).toBeGreaterThan(windowPosition);
   });
 
   test('leaves the sticky attributes off when no sticky items are configured', async () => {
