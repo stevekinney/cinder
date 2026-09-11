@@ -307,6 +307,10 @@
                 {
                   "cssProperty": "--cinder-surface-inverse",
                   "label": "Inverse surface"
+                },
+                {
+                  "cssProperty": "--cinder-polarity-ink",
+                  "label": "Polarity ink"
                 }
               ]
             },
@@ -344,6 +348,10 @@
               "id": "borders",
               "label": "Borders",
               "members": [
+                {
+                  "cssProperty": "--cinder-border-ink",
+                  "label": "Border ink"
+                },
                 {
                   "cssProperty": "--cinder-border",
                   "label": "Border"

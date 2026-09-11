@@ -961,6 +961,26 @@ export const TOKEN_REGISTRY: TokenRegistry = {
         'Page canvas background, distinct from `surface.base` (a card body). Sits on the surface ramp that runs inset -> bg -> surface -> raised. Light mode anchors that ramp at white (0.960 -> 0.984 -> 0.994 -> 1.000); dark mode runs the same ordering at low lightness.',
     },
     {
+      path: 'polarity.ink',
+      cssProperty: '--cinder-polarity-ink',
+      category: 'color',
+      public: true,
+      themeAware: true,
+      deprecated: false,
+      description:
+        "The neutral ink that contrasts with the current theme's surfaces: black in light mode, white in dark mode. It is a complete color value, not a bare component triplet, so it can be assigned directly to any color-valued property and mixed with `color-mix()` to build a wash at any alpha. The scrollbar washes (track, thumb, thumb-hover) derive from this one token, so overriding it at :root or in a [data-theme] block re-polarizes them together; a subtree override does not reach them, because the washes are declared at :root and descendants inherit the already-resolved values. The shadow tokens are NOT derived from it and do not follow an override: shadow.small/medium/large carry independently tuned per-arm alphas (0.10 light against 0.09 dark, and so on) that one ink cannot express without changing what they paint.",
+    },
+    {
+      path: 'border.ink',
+      cssProperty: '--cinder-border-ink',
+      category: 'color',
+      public: true,
+      themeAware: true,
+      deprecated: false,
+      description:
+        "The single polarity-aware ink every neutral structural border tier is mixed from: a dark cool ink in light mode, a light cool ink in dark mode. `border.muted`, `border.control`, and `border.strong` are alpha steps over it, so each tier tracks the surface underneath it instead of being tuned per surface -- which is what holds each tier's contrast spread across the four legal surface tiers under 15% in both arms, against 29% for the opaque dark values it replaces. Overriding this one token at :root or in a [data-theme] block re-tints all three together; a subtree override does not reach them, because the tiers are declared at :root and descendants inherit the already-resolved values. The four HUED status borders (info, success, warning, danger) are deliberately NOT derived from it and stay opaque, because a translucent status border would take its hue from whatever it happened to sit on. Two neutral aliases do follow it and become translucent with it: status.neutral.border aliases border.control, and border.inverse's dark arm aliases border.strong.",
+    },
+    {
       path: 'border.control',
       cssProperty: '--cinder-border',
       category: 'color',
@@ -968,7 +988,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        'Functional control boundary that clears 3:1 against supported surfaces. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. In light mode it must not be lightened past ~0.85 or it stops clearing 3:1 against that near-white fill.',
+        "Functional control boundary that clears WCAG 1.4.11's 3:1 floor against every supported surface. It is the border of the secondary Button, whose fill is `surface.raised` -- white in light mode, a raised dark surface in dark mode -- so in both themes it is the only thing making that control read as a control. Composed as a 48% alpha step over `border.ink` rather than authored per arm, so it can no longer drift out of step with the other two tiers.",
     },
     {
       path: 'border.faint',
@@ -988,7 +1008,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        'Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop.',
+        'Decorative divider that wants less weight than `border.control`. Clears a separate 1.4:1 floor against its backdrop. Composed as a 19% alpha step over `border.ink`.',
     },
     {
       path: 'border.strong',
@@ -998,7 +1018,7 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       themeAware: true,
       deprecated: false,
       description:
-        "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`.",
+        "Stronger control boundary. Clears WCAG 1.4.11's 3:1 floor against every supported surface, like `border.control`, with more weight. Composed as a 58% alpha step over `border.ink`.",
     },
     {
       path: 'border.inverse',
@@ -3072,6 +3092,8 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     'surface.inverse': '--cinder-surface-inverse',
     'surface.upcoming-marker': '--cinder-surface-upcoming-marker',
     'surface.canvas': '--cinder-surface-canvas',
+    'polarity.ink': '--cinder-polarity-ink',
+    'border.ink': '--cinder-border-ink',
     'border.control': '--cinder-border',
     'border.faint': '--cinder-border-faint',
     'border.muted': '--cinder-border-muted',
@@ -3385,6 +3407,8 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     '--cinder-surface-inverse': 'surface.inverse',
     '--cinder-surface-upcoming-marker': 'surface.upcoming-marker',
     '--cinder-surface-canvas': 'surface.canvas',
+    '--cinder-polarity-ink': 'polarity.ink',
+    '--cinder-border-ink': 'border.ink',
     '--cinder-border': 'border.control',
     '--cinder-border-faint': 'border.faint',
     '--cinder-border-muted': 'border.muted',
@@ -3698,6 +3722,8 @@ export const TOKEN_REGISTRY: TokenRegistry = {
     '--cinder-surface-inverse': ['surface.inverse'],
     '--cinder-surface-upcoming-marker': ['surface.upcoming-marker'],
     '--cinder-surface-canvas': ['surface.canvas'],
+    '--cinder-polarity-ink': ['polarity.ink'],
+    '--cinder-border-ink': ['border.ink'],
     '--cinder-border': ['border.control'],
     '--cinder-border-faint': ['border.faint'],
     '--cinder-border-muted': ['border.muted'],
@@ -4114,6 +4140,8 @@ export const TOKEN_REGISTRY: TokenRegistry = {
       'surface.inverse',
       'surface.upcoming-marker',
       'surface.canvas',
+      'polarity.ink',
+      'border.ink',
       'border.control',
       'border.faint',
       'border.muted',

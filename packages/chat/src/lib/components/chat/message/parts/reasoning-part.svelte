@@ -22,7 +22,9 @@
   // Approximate token count — 1 token ≈ 4 characters (rough heuristic for display).
   const approximateTokenCount = $derived(Math.round(part.content.length / 4));
   const tokenDisplay = $derived(
-    approximateTokenCount > 0 ? ` (${approximateTokenCount.toLocaleString()} tokens)` : '',
+    approximateTokenCount > 0
+      ? ` (${approximateTokenCount.toLocaleString()} ${approximateTokenCount === 1 ? 'token' : 'tokens'})`
+      : '',
   );
 
   // The polite "Reasoning complete." announcement fires ONLY on a streaming

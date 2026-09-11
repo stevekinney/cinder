@@ -12,7 +12,12 @@ const SURFACE_TOKEN_NAME = '--cinder-surface';
 // 84 -> 83 in CIN-33: `--cinder-color-accent-fg` was a pure alias of
 // `--cinder-accent-text` and folded into it, so the panel no longer lists the
 // same property in two groups. One token left the panel; none lost editability.
-const EXPECTED_COLOR_TOKEN_COUNT = 83;
+//
+// 83 -> 85 in CIN-242/CIN-245: `--cinder-polarity-ink` (Surfaces) and
+// `--cinder-border-ink` (Borders) are the two new roots that every
+// polarity-aware wash and every neutral border tier is mixed from, so they are
+// the tokens a reader most wants a swatch for.
+const EXPECTED_COLOR_TOKEN_COUNT = 85;
 const LIGHT_ADVANCED_OVERRIDE = 'oklch(60% 0.2 195)';
 const LIGHT_BULK_OVERRIDE = '#118833';
 const DARK_BULK_OVERRIDE = '#884422';

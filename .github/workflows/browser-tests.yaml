@@ -346,7 +346,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/install-dependencies
 
       - name: Typecheck workspace
         run: bun run typecheck
@@ -379,8 +379,56 @@ jobs:
       # setup-bun downloads a zip release. The Playwright image deliberately
       # omits archive utilities, so install only the bootstrap tool before it
       # runs; browser and OS dependencies still come from the pinned image.
-      - name: Install Bun bootstrap dependency
-        run: apt-get update && apt-get install --no-install-recommends --yes unzip
+      # CANONICAL ARCHIVE OVER HTTPS, matching what this repository already
+      # decided. `main-green.yaml` rewrites the runner's mirror list the other
+      # way for a documented reason:
+      #
+      #   GitHub's Ubuntu runner mirror list prefers azure.archive.ubuntu.com.
+      #   When that mirror is unreachable, apt can fetch release metadata from
+      #   its fallback but then hang indefinitely on package indexes.
+      #
+      # A first attempt at this step pointed here AT Azure, reasoning that
+      # hosted runners are Azure virtual machines. That was wrong twice over:
+      # it ignored in-repo precedent that had already been paid for, and a
+      # container does not inherit the runner image's mirror list anyway — this
+      # image ships canonical `archive.ubuntu.com` sources of its own.
+      #
+      # What is actually wrong with those sources is the SCHEME. Over plain
+      # HTTP the observed failure was an index inconsistent with its own
+      # Release file, twice in one evening on two different IPs:
+      #
+      #   E: Failed to fetch .../Packages.gz  File has unexpected size
+      #      (1563525 != 1563524). Mirror sync in progress?
+      #
+      # HTTP apt traffic is cacheable and can be served by a transparent proxy
+      # holding a partially-synced index. HTTPS is end to end, which is why
+      # `main-green.yaml` lands on `https://archive.ubuntu.com` rather than on
+      # a different host. Same destination, same conclusion. See CIN-607.
+      #
+      # Rewritten FILE BY FILE behind a `[ -f ]` guard, because the obvious
+      # one-liner is a silent no-op: a single `sed -i` over several globs fails
+      # entirely when any one matches nothing, and the `|| true` that makes an
+      # unmatched glob survivable then swallows that failure. This image uses
+      # deb822 `.sources` and has no `sources.list.d/*.list` at all, so that
+      # version would have done nothing here, every time.
+      - name: Pin apt to HTTPS and install the Bun bootstrap dependency
+        run: |
+          for sources in /etc/apt/sources.list /etc/apt/sources.list.d/*.list /etc/apt/sources.list.d/*.sources; do
+            [ -f "$sources" ] || continue
+            sed -i \
+              -e 's|http://archive.ubuntu.com/ubuntu|https://archive.ubuntu.com/ubuntu|g' \
+              -e 's|http://security.ubuntu.com/ubuntu|https://security.ubuntu.com/ubuntu|g' \
+              "$sources"
+          done
+          # Logged so the job says which mirror and scheme apt actually used; a
+          # rewrite that quietly matched nothing is otherwise indistinguishable
+          # from one that worked. Guarded because this is diagnostics: under
+          # `bash -e -o pipefail` a missing file (grep exit 2) or no matches
+          # (exit 1) would fail the step for a non-functional reason.
+          echo "apt sources in use:"
+          grep -rhE '^(deb |URIs:)' /etc/apt/sources.list /etc/apt/sources.list.d/ 2>/dev/null | sort -u || true
+          apt-get update
+          apt-get install --no-install-recommends --yes unzip
 
       - name: Setup Bun
         uses: oven-sh/setup-bun@v2
@@ -388,7 +436,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/install-dependencies
 
       - name: Restore workspace builds through Turbo
         env:
@@ -562,7 +610,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/install-dependencies
       - name: Run visual-regression Docker wrapper
         env:
           CI: 'true'
@@ -631,7 +679,7 @@ jobs:
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: ${{ env.BUN_VERSION }}
-      - run: bun install --frozen-lockfile
+      - uses: ./.github/actions/install-dependencies
       - name: Download blob reports
         if: "always() && needs.playwright-lane.result != 'skipped'"
         uses: actions/download-artifact@v8
@@ -745,7 +793,7 @@ jobs:
           bun-version: ${{ env.BUN_VERSION }}
 
       - name: Install dependencies
-        run: bun install --frozen-lockfile
+        uses: ./.github/actions/install-dependencies
 
       - name: Prepare manifest
         # baseline-coverage-check reads the cached manifest; ensure it's fresh.
@@ -846,6 +894,25 @@ jobs:
         with:
           bun-version: ${{ env.BUN_VERSION }}
 
+      # PLAIN install, deliberately — the one site that does not use
+      # `./.github/actions/install-dependencies`.
+      #
+      # `Checkout source ref` above replaced the workspace with an arbitrary
+      # dispatched branch, which may predate that action. A local `uses: ./…`
+      # resolves against the workspace, so it would fail to load on any
+      # long-lived source branch — and this dispatch is the only supported way
+      # to regenerate baselines, so breaking it for old branches is not a
+      # trade worth a retry.
+      #
+      # The retry is NOT inlined here instead. Copying those lines would put a
+      # second copy of the sanctioned exception in the tree, which AGENTS.md
+      # specifically rules out: eight sites share one definition so the
+      # exception stays auditable in one place. A job that misses the retry is
+      # a smaller cost than an exception that starts spreading.
+      #
+      # This job is also manually dispatched, so a transient install failure is
+      # seen by the person who dispatched it and costs a re-run, not a silently
+      # red required check.
       - name: Install dependencies
         run: bun install --frozen-lockfile
 

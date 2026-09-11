@@ -47,7 +47,23 @@ const CROSS_ENGINE_SHARDS = [
 		// approval tests, `--list` per project counts 49/48/62/44/50. The
 		// obvious-looking home next to `review-imperative` was already at the
 		// 62 the ceiling note describes, and would have gone to 67.
-		'**/approval-flow.e2e.ts'
+		'**/approval-flow.e2e.ts',
+		// FOCUS coverage, which is the first category this list exists for:
+		// `multi-agent.e2e.ts` walks the tab order to prove the transcript's
+		// disclosures are keyboard-reachable, and tab order plus focus-on-click
+		// are exactly where WebKit and Chromium diverge. Chromium-only coverage
+		// of it would be the silent reduction these shards prevent.
+		//
+		// Placed by measurement, and the first attempt got this wrong: it went
+		// next to `review-imperative`, which is the 62 the ceiling note is
+		// about, taking that shard to 71. Without this entry `--list` per
+		// project reads 49/48/62/51/50, so its tests go to the smallest. With
+		// its ten — the announcer case brought it from nine — the reading is
+		// 49/58/62/51/50, comfortably under the ceiling.
+		//
+		// Re-running `--list` is a STEP in adding a test here, not a reminder
+		// afterwards: this count has already gone stale once on this branch.
+		'**/multi-agent.e2e.ts'
 	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
 	[

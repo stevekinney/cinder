@@ -242,6 +242,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
       '--cinder-surface-inverse',
       '--cinder-text-inverse',
       '--cinder-border-inverse',
+      '--cinder-polarity-ink',
     ],
   },
   {
@@ -275,6 +276,7 @@ const DOC_SECTIONS: readonly DocSection[] = [
     slug: 'borders',
     headings: ['## Borders'],
     cssProperties: [
+      '--cinder-border-ink',
       '--cinder-border',
       '--cinder-border-faint',
       '--cinder-border-muted',

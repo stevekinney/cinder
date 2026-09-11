@@ -111,6 +111,7 @@ export const COLOR_TOKEN_GROUPS = [
       { name: '--cinder-surface-hover', label: 'Surface hover' },
       { name: '--cinder-surface-pressed', label: 'Surface pressed' },
       { name: '--cinder-surface-inverse', label: 'Inverse surface' },
+      { name: '--cinder-polarity-ink', label: 'Polarity ink' },
     ],
   },
   {
@@ -129,6 +130,7 @@ export const COLOR_TOKEN_GROUPS = [
     id: 'borders',
     label: 'Borders',
     tokens: [
+      { name: '--cinder-border-ink', label: 'Border ink' },
       { name: '--cinder-border', label: 'Border' },
       { name: '--cinder-border-faint', label: 'Faint border' },
       { name: '--cinder-border-muted', label: 'Muted border' },

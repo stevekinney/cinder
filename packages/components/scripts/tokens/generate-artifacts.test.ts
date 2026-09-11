@@ -812,6 +812,12 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
   // `cssRecipe` is emitted verbatim by `serializeEntryValue` (cssRecipe > alias >
   // typed `$value`, see generate.ts), so it is the clean way to inject an exact
   // string into a cell without a typed `$value`/serialization detour.
+  //
+  // Typed `fontFamily` rather than `color`: these values (`foo|bar`,
+  // `*<em>`|&</em>*`) are Markdown-escaping fixtures, not colors, and CIN-242's
+  // complete-color-value gate rejects a color token that serializes to
+  // something which is not a CSS color. The escaping this exercises is
+  // type-independent.
   function recipeEntry(
     path: string,
     cssProperty: string,
@@ -822,7 +828,7 @@ describe('CIN-470: toTableCell escapes pipes by backslash parity, not unconditio
       {
         path,
         value: undefined,
-        type: 'color',
+        type: 'fontFamily',
         description: undefined,
         cssProperty,
         cssRecipe,

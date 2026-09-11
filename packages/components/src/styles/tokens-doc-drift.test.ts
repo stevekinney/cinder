@@ -286,7 +286,11 @@ describe('docs/tokens.md drift', () => {
       '--cinder-surface',
       '--cinder-surface-raised',
       '--cinder-text-default',
-      '--cinder-border',
+      // `--cinder-border-ink`, not `--cinder-border`: since CIN-245 the three
+      // structural tiers are one arm-independent `color-mix()` over the ink, so
+      // the ink is the token that carries the two theme arms and the one a
+      // scoped-theme example has to redeclare.
+      '--cinder-border-ink',
       '--cinder-accent-solid',
     ]) {
       const [light, dark] =

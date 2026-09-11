@@ -669,11 +669,226 @@ function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry
   return baseIndex.get(wholeTokenIndexPath(reference))?.cssProperty !== undefined;
 }
 
+/**
+ * The two color functions whose ARGUMENTS are themselves `<color>` values, and
+ * so have to be checked recursively by {@link findBareColorComponents}.
+ *
+ * Every other color function -- `oklch()`, `rgb()`, `color()`, and the
+ * relative-color `oklch(from … l c h)` form -- takes numbers, so descending
+ * into one would flag the bare component list it is SUPPOSED to contain.
+ */
+const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
+
+/**
+ * CSS math functions, which can stand in for the `<percentage>` mix weight in a
+ * `color-mix()` argument. `color-mix()` accepts a general `<percentage>`, not
+ * only a literal, and the weight may sit on either side of the color, so the
+ * weight has to be recognised in computed form too -- otherwise a recipe the
+ * browser accepts reads as a bare component list and fails generation.
+ *
+ * `var()` is deliberately absent. A bare `var()` is ambiguous between the color
+ * and the weight, and reading it as the color is the safe direction: treating
+ * it as a weight would strip the only complete value out of the argument and
+ * flag what remains.
+ */
+const PERCENTAGE_FUNCTIONS = new Set([
+  'calc',
+  'clamp',
+  'min',
+  'max',
+  'round',
+  'mod',
+  'rem',
+  'abs',
+  'sign',
+]);
+
+/** `value` split on top-level whitespace, so `light-dark(a, b) 40%` is two tokens. */
+function splitTopLevelTokens(value: string): string[] {
+  const tokens: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const character of value) {
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    if (depth === 0 && /\s/.test(character)) {
+      if (current !== '') tokens.push(current);
+      current = '';
+      continue;
+    }
+    current += character;
+  }
+  if (current !== '') tokens.push(current);
+  return tokens;
+}
+
+/**
+ * A CSS `<percentage-token>`: a `<number-token>` followed by `%`. The number may
+ * be signed and may carry an exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are
+ * all valid weights. A digits-and-dots pattern misses three of those four and
+ * rejects a recipe the browser accepts.
+ */
+const PERCENTAGE_LITERAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%$/;
+
+/**
+ * A `var()` whose FALLBACK is a percentage, so the reference resolves to one
+ * either way: `var(--weight, 40%)`.
+ *
+ * In a `color-mix()` argument a bare `var()` is ambiguous between the color and
+ * the weight, and this is the case where it stops being ambiguous. Without it,
+ * checking the `var()` as a color position descends into the fallback and
+ * reports `40%` as a bare component list -- rejecting a recipe the browser
+ * accepts.
+ */
+function isPercentageValuedVar(token: string): boolean {
+  const call = /^var\(([\s\S]*)\)$/.exec(token);
+  if (call === null) return false;
+  const [, ...fallback] = splitTopLevelArguments(call[1] ?? '');
+  if (fallback.length === 0) return false;
+  return isUnambiguousPercentage(fallback.join(',').trim());
+}
+
+/** A token that can only be a `<percentage>`: a literal, or a math function. */
+function isUnambiguousPercentage(token: string): boolean {
+  if (PERCENTAGE_LITERAL.test(token)) return true;
+  const call = /^([a-zA-Z-]+)\(/.exec(token);
+  return call !== null && PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
+}
+
+/**
+ * The tokens of a `color-mix()` argument that might be its `<color>`.
+ *
+ * The argument is `<color> && <percentage>?` in either order, so the weight has
+ * to be set aside before the color can be checked. The safe way to do that is
+ * to drop only what CANNOT be a color -- a literal percentage or a math
+ * function -- and check everything else.
+ *
+ * Guessing which token is the weight is what went wrong before. An earlier
+ * version picked "whichever token is not a complete color", but
+ * {@link findBareColorComponents} returns `undefined` for any function it does
+ * not recognise, `calc()` included, so a computed weight read as a complete
+ * color and the REAL color was discarded as the weight. That let the exact
+ * value CIN-242 exists to reject --
+ * `color-mix(in oklch, calc(var(--w) * 1%) light-dark(100% 0 0, 0% 0 0), transparent)`
+ * -- through the gate untouched.
+ *
+ * Returning every candidate costs nothing: a `var()` passes the check anyway,
+ * so including an ambiguous one is free, while every genuine color is checked.
+ */
+function mixColorCandidates(argument: string): string[] {
+  const tokens = splitTopLevelTokens(argument);
+  if (tokens.length < 2) return [argument.trim()];
+  const candidates = tokens.filter(
+    (token) => !isUnambiguousPercentage(token) && !isPercentageValuedVar(token),
+  );
+  return candidates.length === 0 ? [argument.trim()] : candidates;
+}
+
+/** Split on commas at paren depth zero, so nested function arguments stay whole. */
+function splitTopLevelArguments(value: string): string[] {
+  const parts: string[] = [];
+  let depth = 0;
+  let current = '';
+  for (const character of value) {
+    if (character === '(') depth += 1;
+    else if (character === ')') depth -= 1;
+    if (character === ',' && depth === 0) {
+      parts.push(current);
+      current = '';
+      continue;
+    }
+    current += character;
+  }
+  parts.push(current);
+  return parts.map((part) => part.trim());
+}
+
+/**
+ * The first fragment of `value` that sits in a `<color>` position but is not a
+ * complete CSS color -- or `undefined` when every color position is complete.
+ *
+ * This exists for one failure mode, from CIN-242's decision record: a token
+ * authored as a BARE OKLCH COMPONENT TRIPLET (`light-dark(0% 0 0, 100% 0 0)`,
+ * so a call site can staple its own alpha on with `oklch(var(--token) / 0.4)`)
+ * is not a color. Assigned directly to `color`/`background-color`/
+ * `border-color` it produces an invalid declaration, which CSS drops SILENTLY
+ * -- the element keeps its inherited or initial color and nothing anywhere
+ * reports a problem. A complete value that is mis-referenced instead paints a
+ * visibly wrong color, which is catchable. Hence: complete values only.
+ *
+ * A color position is complete when it starts a function (`oklch(`, `var(`,
+ * `color-mix(`, …), a hex literal, or a bare keyword (`transparent`,
+ * `currentColor`). A component list starts with a number, so it is exactly
+ * what falls through.
+ */
+export function findBareColorComponents(value: string): string | undefined {
+  const trimmed = value.trim();
+  if (trimmed === '') return undefined;
+
+  const functionCall = /^([a-zA-Z-]+)\(([\s\S]*)\)$/.exec(trimmed);
+  if (functionCall) {
+    const [, name = '', body = ''] = functionCall;
+    // `var()`'s FALLBACK sits in the same color position as the reference
+    // itself, so a bare list there is the same defect one level down:
+    // `var(--x, 0% 0 0)` is a silently dropped declaration whenever `--x` is
+    // unset. The custom-property name is not a color and is skipped.
+    if (name.toLowerCase() === 'var') {
+      const [, ...fallback] = splitTopLevelArguments(body);
+      if (fallback.length === 0) return undefined;
+      return findBareColorComponents(fallback.join(','));
+    }
+    if (!COLOR_ARGUMENT_FUNCTIONS.has(name.toLowerCase())) return undefined;
+    const args = splitTopLevelArguments(body);
+    // `color-mix()`'s first argument is its interpolation method (`in oklch`),
+    // not a color; `light-dark()`'s arguments are all colors.
+    const isMix = name.toLowerCase() === 'color-mix';
+    const colorArguments = isMix ? args.slice(1) : args;
+    for (const argument of colorArguments) {
+      // Only `color-mix()` arguments carry a weight -- `light-dark()` takes two
+      // colors and nothing else, so its arguments are checked whole. Splitting
+      // them would report the wrong fragment: a bare `100% 0 0` would be
+      // dissected into `0` rather than named as the component list it is.
+      const candidates = isMix ? mixColorCandidates(argument) : [argument.trim()];
+      for (const candidate of candidates) {
+        const bare = findBareColorComponents(candidate);
+        if (bare !== undefined) return bare;
+      }
+    }
+    return undefined;
+  }
+
+  // A hex literal, or a bare keyword such as `transparent` / `currentColor`.
+  if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) return undefined;
+  if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(trimmed)) return undefined;
+
+  return trimmed;
+}
+
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
 export function serializeEntryValue(
   entry: CorpusEntry,
   baseIndex: Map<string, CorpusEntry>,
   resolveReferences: ValueResolver = (raw) => raw,
+): string {
+  const serialized = serializeEntryValueUnchecked(entry, baseIndex, resolveReferences);
+  if (entry.type === 'color') {
+    const bare = findBareColorComponents(serialized);
+    if (bare !== undefined) {
+      throw new Error(
+        `Color token at "${entry.path}" serializes to "${serialized}", whose color position ` +
+          `"${bare}" is a bare component list rather than a complete CSS color. A bare triplet ` +
+          'is an invalid declaration that the browser drops silently; author the token as a ' +
+          'complete `light-dark()`/`color-mix()`/`oklch()` value instead (CIN-242).',
+      );
+    }
+  }
+  return serialized;
+}
+
+function serializeEntryValueUnchecked(
+  entry: CorpusEntry,
+  baseIndex: Map<string, CorpusEntry>,
+  resolveReferences: ValueResolver,
 ): string {
   if (typeof entry.cssRecipe === 'string') return entry.cssRecipe;
   if (isAliasReference(entry.value)) {
