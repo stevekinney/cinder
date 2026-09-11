@@ -2,7 +2,44 @@ import { spawn, spawnSync, type ChildProcess } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { REQUIRED_BASELINE_ARCHITECTURE } from './baseline-provenance.ts';
 import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+
+/** The exact CI dispatch every architecture-refusal message must name. */
+export const BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND =
+  'gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main';
+
+export type HostArchitectureGuardResult = { ok: true } | { ok: false; message: string };
+
+/**
+ * Refuses to even build the Docker image when the host architecture does not
+ * match the one every committed baseline was captured on. The base image is
+ * multi-arch, so `docker build` without `--platform` on an Apple Silicon (or
+ * other arm64) host silently succeeds and produces an image whose rasterizer
+ * differs from CI's amd64 one — `docker-authenticity.ts` catches this too,
+ * from inside the container, but failing here first skips a wasted image
+ * build entirely and guarantees no PNG is ever at risk.
+ */
+export function hostArchitectureGuardResult(
+  hostArchitecture: string,
+  requiredArchitecture: string = REQUIRED_BASELINE_ARCHITECTURE,
+): HostArchitectureGuardResult {
+  if (hostArchitecture === requiredArchitecture) return { ok: true };
+  return {
+    ok: false,
+    message: [
+      `Refusing to update visual baselines: host architecture "${hostArchitecture}" does not match`,
+      `the required "${requiredArchitecture}" (packages/testing/snapshots/provenance.json records every`,
+      "committed baseline as x64, and CI's canonical cinder-playwright image is amd64). This wrapper",
+      'does not pin --platform, so building here would silently produce a mismatched image and rewrite',
+      'every PNG with a different rasterizer before anything caught it.',
+      '',
+      'Use the supported CI route instead:',
+      `  ${BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND}`,
+      '(update-baselines is a job inside browser-tests.yaml, not its own workflow file.)',
+    ].join('\n'),
+  };
+}
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');
@@ -290,6 +327,12 @@ export async function buildPlaywrightDockerImage(
  * forbidden by the plan.
  */
 async function main(): Promise<void> {
+  const architectureGuard = hostArchitectureGuardResult(process.arch);
+  if (!architectureGuard.ok) {
+    console.error(architectureGuard.message);
+    process.exit(1);
+  }
+
   let activeChild: ChildProcess | null = null;
   installSignalCleanupHandlers(async () => {
     if (activeChild !== null) {

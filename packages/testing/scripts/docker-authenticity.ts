@@ -1,4 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
+import { REQUIRED_BASELINE_ARCHITECTURE } from './baseline-provenance.ts';
 
 export type AuthenticityFailure = {
   check: string;
@@ -52,8 +53,29 @@ async function readInstalledPlaywrightVersion(): Promise<string | undefined> {
   }
 }
 
+/**
+ * Checks 1-3 below all still pass on an arm64 build of the canonical image:
+ * the `mcr.microsoft.com/playwright` base is multi-arch, so an image built
+ * without `--platform` on an Apple Silicon Docker host reports the same
+ * Ubuntu codename, the same installed Playwright version, and the same baked
+ * `CINDER_PLAYWRIGHT_VERSION` as the amd64 image CI uses — yet its rasterizer
+ * differs from every committed baseline PNG. Runtime `process.arch` is the
+ * only signal that distinguishes them from inside the running container.
+ */
+export function architectureAuthenticityFailure(
+  hostArchitecture: string,
+): AuthenticityFailure | undefined {
+  if (hostArchitecture === REQUIRED_BASELINE_ARCHITECTURE) return undefined;
+  return {
+    check: 'container architecture',
+    expected: REQUIRED_BASELINE_ARCHITECTURE,
+    actual: hostArchitecture,
+  };
+}
+
 export async function checkDockerAuthenticity(
   packageJsonPath: string,
+  hostArchitecture: string = process.arch,
 ): Promise<AuthenticityResult> {
   const failures: AuthenticityFailure[] = [];
   const pinned = readPinnedPlaywrightVersion(packageJsonPath);
@@ -91,6 +113,12 @@ export async function checkDockerAuthenticity(
     });
   }
 
+  // Check 4: the container's own architecture matches every committed
+  // baseline. See architectureAuthenticityFailure's doc comment for why this
+  // cannot be inferred from checks 1-3.
+  const architectureFailure = architectureAuthenticityFailure(hostArchitecture);
+  if (architectureFailure) failures.push(architectureFailure);
+
   if (failures.length > 0) return { ok: false, failures };
   return { ok: true, playwrightVersion: pinned };
 }
@@ -108,10 +136,23 @@ export function formatFailures(failures: AuthenticityFailure[]): string {
       `      actual:   ${failure.actual}`,
     );
   }
-  lines.push(
-    '',
-    'macOS / Linux dev hosts cannot author baselines — pixel rendering differs from CI.',
-    'Run "bun run --filter=@cinder/testing test:browser:update:docker" instead.',
-  );
+  lines.push('');
+  if (failures.some((failure) => failure.check === 'container architecture')) {
+    // Re-running test:browser:update:docker here would just rebuild the same
+    // mismatched-architecture image again — that is not the fix.
+    lines.push(
+      'This image was built for the wrong architecture (the Docker wrapper does not pin --platform,',
+      'so it silently built for the host CPU instead of the amd64 architecture every committed',
+      'baseline was captured on). Re-running test:browser:update:docker here reproduces the same',
+      'mismatch — use the supported CI route instead:',
+      '  gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main',
+      '(update-baselines is a job inside browser-tests.yaml, not its own workflow file.)',
+    );
+  } else {
+    lines.push(
+      'macOS / Linux dev hosts cannot author baselines — pixel rendering differs from CI.',
+      'Run "bun run --filter=@cinder/testing test:browser:update:docker" instead.',
+    );
+  }
   return lines.join('\n');
 }

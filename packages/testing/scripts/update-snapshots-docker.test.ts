@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 
 import { dockerBrowserEnvironment } from './run-browser-docker.ts';
 import {
+  BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND,
   CONTAINER_WRITTEN_PATHS,
   dockerBrowserCommand,
   dockerImageTagForVersion,
@@ -12,6 +13,7 @@ import {
   dockerUpdateCommand,
   gitMetadataEnvironment,
   gitMetadataMountPaths,
+  hostArchitectureGuardResult,
   hostOwnershipEnvironment,
   ownershipReclaimSuffix,
 } from './update-snapshots-docker.ts';
@@ -53,6 +55,33 @@ describe('update-snapshots-docker helpers', () => {
     expect(dockerBrowserCommand(['--grep', 'Button > dark desktop'])).toBe(
       "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run test:browser -- '--grep' 'Button > dark desktop'" +
         RECLAIM_TAIL,
+    );
+  });
+});
+
+describe('host architecture guard', () => {
+  it('passes when the host matches the required baseline architecture', () => {
+    expect(hostArchitectureGuardResult('x64', 'x64')).toEqual({ ok: true });
+  });
+
+  it('uses x64 as the default required architecture', () => {
+    // No explicit second argument: exercises the real default, which is
+    // wired to the committed baselines' recorded architecture.
+    expect(hostArchitectureGuardResult('x64')).toEqual({ ok: true });
+  });
+
+  it('refuses on a mismatched host, names both architectures, and points at the CI dispatch route', () => {
+    const result = hostArchitectureGuardResult('arm64', 'x64');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected refusal');
+    expect(result.message).toContain('arm64');
+    expect(result.message).toContain('x64');
+    expect(result.message).toContain(BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND);
+  });
+
+  it('pins the exact supported command string, not a nonexistent standalone workflow', () => {
+    expect(BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND).toBe(
+      'gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main',
     );
   });
 });
