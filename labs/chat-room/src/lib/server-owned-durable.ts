@@ -58,12 +58,43 @@ export type DurableRuntime = RunEngine;
  */
 const DURABLE_SLOT = Symbol.for('cinder.chat-room.server-owned.durable');
 
+/**
+ * The slot holds a TOKEN beside the promise, so a build can tell whether the
+ * memo still refers to it.
+ *
+ * Without that, every `= undefined` in this module is an unconditional erase,
+ * and a build that lost the disposal race erases its SUCCESSOR. The sequence
+ * is three requests long and ends with the exact failure the memo exists to
+ * prevent:
+ *
+ *   1. Build A starts and awaits `createRunEngine`.
+ *   2. Disposal runs. A's teardown fires, finds no engine yet, clears the slot.
+ *   3. A new request installs build B against the replacement runtime.
+ *   4. A's construction finishes, sees it was disposed, and clears the slot —
+ *      erasing B, which is neither disposed nor finished.
+ *   5. The next request finds an empty slot and builds C. B and C are now two
+ *      engines over one storage, each recovering the other's workflows.
+ *
+ * Comparing the token before clearing makes steps 4 and 5 no-ops: a build only
+ * ever retracts its own memo.
+ */
+type DurableSlot = { token: symbol; promise: Promise<DurableRuntime> };
+
 type DurableHost = typeof globalThis & {
-	[DURABLE_SLOT]?: Promise<DurableRuntime> | undefined;
+	[DURABLE_SLOT]?: DurableSlot | undefined;
 };
+
+/** Clears the memo only if it still holds THIS build's promise. */
+function releaseSlot(token: symbol): void {
+	const host = globalThis as DurableHost;
+	if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = undefined;
+}
 
 export async function durableRuntime(): Promise<DurableRuntime> {
 	const host = globalThis as DurableHost;
+	const held = host[DURABLE_SLOT];
+	if (held !== undefined) return held.promise;
+
 	// A REJECTED promise must not be memoised. Without this, one transient
 	// failure — a misconfigured store, a storage hiccup during the first
 	// streamed turn — is cached forever: every later caller awaits the same
@@ -73,11 +104,13 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 	// Cleared on rejection and rethrown, so the next request rebuilds. The
 	// in-flight promise is still shared, so concurrent callers continue to
 	// await one build rather than racing several.
-	host[DURABLE_SLOT] ??= build().catch((cause: unknown) => {
-		host[DURABLE_SLOT] = undefined;
+	const token = Symbol('server-owned-durable-build');
+	const promise = build(token).catch((cause: unknown) => {
+		releaseSlot(token);
 		throw cause;
 	});
-	return host[DURABLE_SLOT];
+	host[DURABLE_SLOT] = { token, promise };
+	return promise;
 }
 
 /**
@@ -96,7 +129,7 @@ export class RuntimeDisposedDuringBuildError extends Error {
 	}
 }
 
-async function build(): Promise<DurableRuntime> {
+async function build(token: symbol): Promise<DurableRuntime> {
 	const runtime = serverOwnedRuntime();
 	// POSITIONAL. `createRunWorkflow(checkpointStore, { version })` takes the
 	// store as its first argument, not in an options bag. That used to be
@@ -140,7 +173,7 @@ async function build(): Promise<DurableRuntime> {
 			// and the tail of `build()` shuts down the one that arrives late.
 			await race.engine?.engine.shutdown();
 		} finally {
-			(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
+			releaseSlot(token);
 		}
 	});
 
@@ -180,7 +213,9 @@ async function build(): Promise<DurableRuntime> {
 	// Disposal won the race. The teardown above already ran with nothing to
 	// shut down, so this engine would otherwise be unreachable and immortal.
 	if (race.disposed) {
-		(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
+		// Token-checked, so a request that arrived after the disposal keeps the
+		// build it installed rather than having it erased by this one.
+		releaseSlot(token);
 		await built.engine.shutdown();
 		// Rejecting rather than returning a live engine over a disposed
 		// runtime's storage: `durableRuntime()`'s catch clears the memo, so
@@ -191,7 +226,12 @@ async function build(): Promise<DurableRuntime> {
 	return built;
 }
 
-/** Forgets the memoised engine without disposing the runtime, for tests. */
+/**
+ * Forgets the memoised engine without disposing the runtime, for tests.
+ *
+ * Unconditional, unlike `releaseSlot`: a test asking to forget whatever is
+ * held means exactly that, and has no token to compare against.
+ */
 export function forgetDurableRuntime(): void {
 	(globalThis as DurableHost)[DURABLE_SLOT] = undefined;
 }

@@ -57,9 +57,24 @@ test('server-renders the conversation list into the navigation response', async 
 	expect(page.status()).toBe(200);
 	const html = await page.text();
 
-	// The row markup AND this conversation's title, in the delivered document.
-	expect(html).toContain('data-testid="server-owned-list"');
-	expect(html).toContain(title);
+	// Scoped to the LIST ELEMENT, not searched across the whole document, and
+	// the difference is the entire value of this test. SvelteKit serializes the
+	// server `load` result into the response for hydration, so `title` appears
+	// in a trailing script regardless of what the `{#each}` rendered —
+	// `expect(html).toContain(title)` would pass against a list that rendered
+	// nothing, which is precisely the regression this is here to catch. An
+	// empty `<ul>` would likewise still supply the list marker.
+	const listStart = html.indexOf('data-testid="server-owned-list"');
+	expect(listStart).toBeGreaterThan(-1);
+	const listEnd = html.indexOf('</ul>', listStart);
+	expect(listEnd).toBeGreaterThan(listStart);
+	const list = html.slice(listStart, listEnd);
+
+	// A row, its title link, and this conversation's title — all inside that
+	// slice, so all of them came from the server's own render.
+	expect(list).toContain('data-testid="server-owned-conversation"');
+	expect(list).toContain('data-testid="server-owned-conversation-title"');
+	expect(list).toContain(title);
 
 	// And the live region the create form announces through is in the document
 	// too, rather than mounted later by the browser — the same "exists before

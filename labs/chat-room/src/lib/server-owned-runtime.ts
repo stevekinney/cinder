@@ -145,6 +145,20 @@ export async function disposeServerOwnedRuntime(): Promise<{ failures: number }>
  * runtime is: Vite re-evaluates server modules on edit, and a module-scoped
  * guard would add another pair of listeners on every reload until Node warns
  * about a leak.
+ *
+ * The signal is RE-RAISED afterwards, and that half is not optional. Adding a
+ * SIGTERM listener REPLACES Node's default behaviour for that signal, which is
+ * to terminate — so a handler that only starts a cleanup and returns leaves
+ * the process running. With an HTTP server still holding the event loop open,
+ * the first version of this made shutdown strictly worse than having no
+ * handler at all: an orchestrator's SIGTERM would be absorbed and the process
+ * would sit until the SIGKILL that follows it.
+ *
+ * Re-raising rather than `process.exit()`: `process.once` has already removed
+ * this listener by the time it runs, so re-delivering the signal finds no
+ * handler and Node terminates with the conventional 128 + signal status. An
+ * explicit exit code would have to invent one, and would skip any other
+ * listener a host had registered.
  */
 const SIGNALS_SLOT = Symbol.for('cinder.chat-room.server-owned.signals');
 
@@ -155,10 +169,17 @@ if (signalHost[SIGNALS_SLOT] !== true && typeof process !== 'undefined') {
 	signalHost[SIGNALS_SLOT] = true;
 	for (const signal of ['SIGTERM', 'SIGINT'] as const) {
 		process.once(signal, () => {
-			// Not awaited: a signal handler cannot hold the process open, and the
-			// teardown is best-effort by nature. What it buys is the engine being
-			// asked to stop rather than simply vanishing.
-			void disposeServerOwnedRuntime();
+			// `finally`, so a teardown that REJECTS still terminates. Disposal
+			// already isolates and counts each failing teardown, so a rejection
+			// here would be something outside that loop — and "cleanup failed"
+			// is not a reason to ignore a termination signal.
+			//
+			// Deliberately no watchdog timer. A disposal that never settles
+			// would hang, and the honest fix for that is whatever is hanging,
+			// not a timer that hides it.
+			void disposeServerOwnedRuntime().finally(() => {
+				process.kill(process.pid, signal);
+			});
 		});
 	}
 }

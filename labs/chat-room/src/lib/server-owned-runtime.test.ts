@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { join } from 'node:path';
 
 import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
 
@@ -120,5 +121,52 @@ describe('server-owned runtime', () => {
 	it('is safe to dispose when nothing was ever created', async () => {
 		await disposeServerOwnedRuntime();
 		await expect(disposeServerOwnedRuntime()).resolves.toEqual({ failures: 0 });
+	});
+});
+
+/**
+ * SIGTERM still terminates the process.
+ *
+ * Registering a listener for a signal REPLACES Node's default behaviour for
+ * it, which is to terminate. A handler that starts a cleanup and returns
+ * therefore absorbs the signal: with anything holding the event loop open —
+ * an HTTP server in a deployment, the interval in the fixture — the process
+ * keeps running until whatever sent SIGTERM gives up and sends SIGKILL. That
+ * is strictly worse than having registered no handler at all, and it is what
+ * the first version of these handlers did.
+ *
+ * Driven in a CHILD process for the obvious reason: the property under test
+ * is that a process dies, and this one has assertions left to run. No explicit
+ * timeout — a child that never exits fails on the runner's own default, which
+ * is the correct report rather than a number invented here.
+ */
+describe('process signals', () => {
+	it('disposes and then lets the signal terminate the process', async () => {
+		const child = Bun.spawn(['bun', join(import.meta.dir, 'server-owned-signal-fixture.ts')], {
+			stdout: 'pipe',
+			stderr: 'pipe'
+		});
+
+		// Signalled only once the fixture says its handlers are registered, so
+		// this cannot race module evaluation.
+		const reader = child.stdout.getReader();
+		let announced = '';
+		while (!announced.includes('ready')) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			announced += new TextDecoder().decode(value);
+		}
+		expect(announced).toContain('ready');
+
+		child.kill('SIGTERM');
+		await child.exited;
+
+		// Terminated by the signal, one way or the other: either the runtime
+		// reports the signal directly, or it surfaces as the conventional
+		// 128 + 15 status. What matters is that it is NOT still running, and not
+		// a clean 0 that would mean something called `process.exit` and invented
+		// a success it had no basis for.
+		const terminated = child.signalCode === 'SIGTERM' || child.exitCode === 143;
+		expect(terminated).toBe(true);
 	});
 });

@@ -92,4 +92,33 @@ describe('server-owned durable runtime', () => {
 		// running keeps the `bun test` process alive, so a regression here
 		// shows up as a run that never exits.
 	});
+
+	it('does not let a disposed build erase the one that replaced it', async () => {
+		// The follow-on defect, and the reason every clear in that module is
+		// token-checked rather than unconditional. Three requests:
+		const first = durableRuntime();
+		await disposeServerOwnedRuntime();
+
+		// ...a second one arrives after the disposal and installs its own build
+		// against the replacement runtime...
+		const second = durableRuntime();
+
+		// ...and only then does the first build's construction finish and
+		// discover it was disposed. An unconditional `slot = undefined` there
+		// erases the second build's promise, and the third request below finds
+		// an empty slot and constructs ANOTHER engine over the same storage —
+		// two live engines, which is exactly what memoising was for.
+		await first.catch(() => undefined);
+
+		const third = await durableRuntime();
+		expect(third).toBe(await second);
+
+		// The ordering this depends on — the first build still pending when the
+		// second is installed — is environmental rather than structural:
+		// `createRunEngine` does real I/O while disposal is a few microtasks.
+		// Confirmed by running this against the unconditional-clear version,
+		// where it fails. If that ordering ever inverted, this would go quiet
+		// rather than flaky: it cannot produce a false failure, only stop
+		// exercising the path.
+	});
 });
