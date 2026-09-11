@@ -254,13 +254,20 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 		const rateLimited = scenario === 'ratelimited';
 		res.writeHead(rateLimited ? 429 : 401, {
 			'Content-Type': 'application/json',
-			// `@anthropic-ai/sdk` retries a 429 on its own with exponential
-			// backoff, which took one turn to roughly 25 seconds of wall clock.
-			// `retry-after: 0` keeps the SDK's retry POLICY exactly as it is —
-			// same three attempts, same code path — while telling it there is
-			// nothing to wait for, so the scenario costs milliseconds. The
-			// alternative was a longer deadline on the assertion, which would
-			// have hidden the cost rather than removed it.
+			// The provider transport underneath Operative retries a 429 on its
+			// own with exponential backoff, which took one turn to roughly 25
+			// seconds of wall clock. `retry-after: 0` keeps that retry POLICY
+			// exactly as it is — same three attempts, same code path — while
+			// telling it there is nothing to wait for, so the scenario costs
+			// milliseconds. The alternative was a longer deadline on the
+			// assertion, which would have hidden the cost rather than removed
+			// it.
+			//
+			// Described by ROLE rather than by package name deliberately: the
+			// lab talks to Operative, which chooses the provider client. Naming
+			// the package here would make this comment wrong the day Operative
+			// is pointed at a different one, and the behaviour being worked
+			// around is the transport's, not that specific library's.
 			...(rateLimited ? { 'retry-after': '0' } : {})
 		});
 		res.end(

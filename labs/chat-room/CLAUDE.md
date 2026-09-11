@@ -24,8 +24,8 @@
 ## Purpose
 
 This project exists to kick the tires on the `Chat` component from `@lostgradient/chat`
-(consumed from the monorepo workspace) and drive it with the Anthropic SDK, working toward a best-in-class chat
-experience. It is a testbed, not a product — expect the demo route and conversation wiring to
+(consumed from the monorepo workspace) and drive it with `@lostgradient/operative`, working
+toward a best-in-class chat experience. It is a testbed, not a product — expect the demo route and conversation wiring to
 change often as we try things against the real component.
 
 `ReviewEditor` from `@lostgradient/editor` gets the same treatment, under the `review-*`
@@ -89,8 +89,8 @@ Conversation data flows through **`conversationalist`**, which chat now owns as 
 dependency and re-exports (types, builders, and helpers like `isJSONValue`) — client code
 should import those through `@lostgradient/chat`, not conversationalist directly. chatroom
 ALSO declares `conversationalist` as its own dependency (re-added 2026-08 after the cinder#753
-cleanup removed it): the API route imports `conversationalist/adapters/anthropic` and
-`conversationalist/schemas`, which chat does not re-export, and per chat's own guidance an app
+cleanup removed it): the API route imports `conversationalist/schemas`, which chat does not
+re-export, and per chat's own guidance an app
 using conversationalist beyond the re-export surface keeps its own dependency rather than
 leaning on hoisting. Its range must stay **identical** to the range chat declares, so both resolve
 the same instance — `bun run check:peers` enforces that, and the sync runs it, so a release that
@@ -113,15 +113,41 @@ real-time push, tool-call approval — wire a `ChatAdapter`
 (`@lostgradient/chat` → `chat-adapter.ts`). It's an optional event/transport seam around
 the same `conversation` prop, not a second conversation model; only `sendMessage` is required.
 
-## Driving Chat with the Anthropic SDK
+## Driving Chat with Operative
 
-`ANTHROPIC_API_KEY` lives in `.env` and **must stay server-side**. The Anthropic SDK belongs in
+`ANTHROPIC_API_KEY` lives in `.env` and **must stay server-side**. The provider client belongs in
 a SvelteKit `+server.ts` route (or a `ChatAdapter`'s `sendMessage`/`subscribe` calling out to
-one) that streams tokens back to the client — never import `@anthropic-ai/sdk` from a
+one) that streams tokens back to the client — never import it from a
 `.svelte` file or anything that ships to the browser. Route the response through Chat's
 streaming API (`beginStreaming`/`pushToken`/`endStreaming`, or the adapter's
 `onStreamBegin`/`onTokenPush`/`onStreamEnd` push handlers) rather than waiting for the full
 completion before rendering.
+
+**`@lostgradient/operative` is the only engine.** Application code talks to Operative, never to
+a provider SDK directly — `createAnthropicProviderStream` from `@lostgradient/operative/anthropic`
+is how the API route reaches Anthropic. If Operative cannot yet do something you need, extend
+Operative upstream in the `AB` team rather than reaching past it; reintroducing a direct provider
+SDK as a workaround is specifically ruled out.
+
+`src/lib/operative-is-the-only-engine.test.ts` enforces this, so it is a failing test rather than
+a convention.
+
+### Why `@anthropic-ai/sdk` is in `package.json` anyway
+
+It is **Operative's optional peer dependency**, which this lab provisions — not a second engine,
+and not dead weight to be deleted.
+
+Operative supports several providers and declares each provider SDK as an _optional peer_, leaving
+the consumer to install whichever it uses. Operative then loads it through a dynamic, memoised
+`import()` that fires on the first provider call. Remove the manifest entry and the app breaks at
+runtime with `Cannot find package '@anthropic-ai/sdk'` — which `bun why`, `grep`, `check:upstream`,
+`lint`, `check`, and `build` all fail to catch, because the import is dynamic and lives inside a
+published dependency. Only the Playwright suite catches it.
+
+Two traps worth knowing if you ever test this: `bun install` does not prune a removed package from
+`node_modules`, so removal looks safe locally while failing on a clean CI checkout; and a
+transitive-versus-direct check is the wrong question here, since an optional peer nothing provides
+is simply not installed at all.
 
 ## Using the ReviewEditor component
 
