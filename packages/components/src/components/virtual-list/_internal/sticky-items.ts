@@ -70,27 +70,6 @@ function findGreatestIndexAtOrBefore(sortedValues: readonly number[], target: nu
   }
   return result;
 }
-
-/**
- * Binary search for the leftmost position in `sortedValues` whose value is
- * `>= target`. Returns `sortedValues.length` when every value is below
- * `target`, matching `Array#slice`'s exclusive-end convention so callers can
- * feed the result straight into `slice`.
- */
-function findFirstIndexAtOrAfter(sortedValues: readonly number[], target: number): number {
-  let low = 0;
-  let high = sortedValues.length;
-  while (low < high) {
-    const middle = (low + high) >>> 1;
-    if (sortedValues[middle]! < target) {
-      low = middle + 1;
-    } else {
-      high = middle;
-    }
-  }
-  return low;
-}
-
 /**
  * The sticky index currently pinned to the leading edge: the greatest entry
  * in `stickyIndexes` that is at or before `firstVisibleIndex`. `null` when
@@ -107,46 +86,4 @@ export function resolveActiveStickyIndex(
 ): number | null {
   const position = findGreatestIndexAtOrBefore(stickyIndexes, firstVisibleIndex);
   return position === -1 ? null : stickyIndexes[position]!;
-}
-
-/**
- * Which sticky indexes must be mounted in the DOM: every sticky index
- * already inside the rendered window `[windowStartIndex, windowEndIndex)`,
- * plus the currently active one (see `resolveActiveStickyIndex`) even when
- * it has scrolled outside that window. Sorted ascending, no duplicates.
- *
- * `windowEndIndex` is EXCLUSIVE, matching the sibling window-computation
- * modules' convention (e.g. `getDynamicVirtualWindow` in
- * `measurement-window.ts`) — an index counts as "in the window" only while
- * `windowStartIndex <= index < windowEndIndex`.
- *
- * The active-index addition is the entire reason this function exists over
- * just filtering `stickyIndexes` to the window: a sticky header's own row
- * scrolls upward and out of the virtual window exactly when the header is
- * meant to stay pinned to the top. Without it, the window computation would
- * unmount that row like any other offscreen one, and the sticky heading
- * would vanish at the moment the reader is relying on it most.
- */
-export function resolveStickyRenderSet(options: {
-  stickyIndexes: readonly number[];
-  windowStartIndex: number;
-  windowEndIndex: number;
-  firstVisibleIndex: number;
-}): readonly number[] {
-  const { stickyIndexes, windowStartIndex, windowEndIndex, firstVisibleIndex } = options;
-
-  const withinWindowStart = findFirstIndexAtOrAfter(stickyIndexes, windowStartIndex);
-  const withinWindowEnd = findFirstIndexAtOrAfter(stickyIndexes, windowEndIndex);
-  const withinWindow = stickyIndexes.slice(withinWindowStart, withinWindowEnd);
-
-  const activeStickyIndex = resolveActiveStickyIndex(stickyIndexes, firstVisibleIndex);
-  if (activeStickyIndex === null) return withinWindow;
-
-  const activeIsAlreadyInWindow =
-    activeStickyIndex >= windowStartIndex && activeStickyIndex < windowEndIndex;
-  if (activeIsAlreadyInWindow) return withinWindow;
-
-  return [activeStickyIndex, ...withinWindow].sort(
-    (leftIndex, rightIndex) => leftIndex - rightIndex,
-  );
 }

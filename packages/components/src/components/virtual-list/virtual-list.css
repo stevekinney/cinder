@@ -107,6 +107,25 @@
   }
 
   /*
+   * The pinned copy of a sticky row whose own index has scrolled out of the window.
+   * Out of flow, so it cannot displace the rows the window is laying out, and its
+   * offset is written inline to track the viewport's leading edge.
+   *
+   * `aria-hidden` in the markup: the row it duplicates is still counted in the list's
+   * semantics, and announcing both would double it.
+   */
+  .cinder-virtual-list__pinned {
+    position: absolute;
+    inset-inline: 0;
+    z-index: 1;
+  }
+
+  .cinder-virtual-list[data-cinder-orientation='horizontal'] .cinder-virtual-list__pinned {
+    inset-inline: auto;
+    inset-block: 0;
+  }
+
+  /*
    * Sticky rows are positioned relative to the scroll container, which is the
    * element that scrolls — so the offset is 0 on the axis being scrolled.
    * `z-index` keeps a pinned header above the rows sliding under it; without it

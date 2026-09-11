@@ -2704,3 +2704,111 @@ describe('VirtualList — adaptiveOverscan', () => {
     expect(renderedRows(adaptive.container).length).toBeGreaterThanOrEqual(baselineCount);
   });
 });
+
+describe('VirtualList — sticky and keyboard corrections', () => {
+  test('pins an out-of-window sticky row without displacing the window', async () => {
+    // Folded into the window, a non-contiguous row lays out in flow ahead of the
+    // rows around the reader and pushes every one of them down by its own height.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('.cinder-virtual-list__pinned')).not.toBeNull(),
+    );
+
+    // The pinned copy lives outside the window entirely.
+    const windowElement = container.querySelector('.cinder-virtual-list__window') as HTMLElement;
+    expect(windowElement.querySelector('.cinder-virtual-list__pinned')).toBeNull();
+
+    // And the window still starts where its own leading offset says it does.
+    const indexes = Array.from(windowElement.querySelectorAll('[data-cinder-virtual-index]')).map(
+      (node) => Number((node as HTMLElement).dataset['cinderVirtualIndex']),
+    );
+    expect(indexes[0]).toBe(200);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+  });
+
+  test('activates the sticky row for the VISIBLE row, not the overscanned edge', async () => {
+    // With overscan the rendered edge sits several rows above the viewport, so using
+    // it activated the next section's header early.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 5,
+      stickyItems: [0, 100],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    // Row 98 is at the top; the rendered edge is 93. Section 100 has NOT been reached.
+    list.scrollTop = 1_960;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const pinned = container.querySelector<HTMLElement>('.cinder-virtual-list__pinned');
+    expect(pinned?.dataset['cinderVirtualIndex']).toBe('0');
+  });
+
+  test('leaves arrow keys to a control inside a row', async () => {
+    // A row with a text input or slider uses these keys itself.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const rowElement = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+
+    const bubbled = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    rowElement.dispatchEvent(bubbled);
+    expect(bubbled.defaultPrevented).toBe(false);
+
+    // Aimed at the container itself, it is claimed.
+    const direct = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    list.dispatchEvent(direct);
+    expect(direct.defaultPrevented).toBe(true);
+  });
+
+  test('omits set-position semantics when the consumer owns the role', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      role: 'presentation',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+    expect(firstRow.hasAttribute('aria-posinset')).toBe(false);
+    expect(firstRow.hasAttribute('aria-setsize')).toBe(false);
+  });
+});

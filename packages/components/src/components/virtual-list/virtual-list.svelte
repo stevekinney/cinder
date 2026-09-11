@@ -63,11 +63,7 @@
     type VirtualItemLocator,
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
-  import {
-    normalizeStickyIndexes,
-    resolveActiveStickyIndex,
-    resolveStickyRenderSet,
-  } from './_internal/sticky-items.ts';
+  import { normalizeStickyIndexes, resolveActiveStickyIndex } from './_internal/sticky-items.ts';
   import { resolveKeyboardTargetIndex, resolveRowSemantics } from './_internal/list-semantics.ts';
   import {
     createVelocityTracker,
@@ -149,6 +145,11 @@
   ]);
   /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
   const SCROLL_SETTLE_MAX_FRAMES = 30;
+  /**
+   * How long after the last scroll event adaptive overscan returns to its floor.
+   * Comfortably past a fling's own event cadence, so it never fires mid-gesture.
+   */
+  const VELOCITY_IDLE_RESET_MILLISECONDS = 200;
 
   let scrollElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
@@ -191,13 +192,13 @@
    */
   let restoredId: string | undefined;
   /**
-   * Velocity is tracked in a plain binding, not `$state`. It updates on every
-   * scroll event, and making it reactive would re-run the window derivation twice
-   * per event — once for the offset and again for the velocity — for a value the
-   * derivation only reads through `effectiveOverscan`.
+   * The tracker itself is a plain binding — nothing derives from it directly. The
+   * velocity it produces IS `$state`, because `effectiveOverscan` reads it.
    */
   let velocityTracker: VelocityTracker = createVelocityTracker();
   let scrollVelocity = $state(0);
+  /** Timer that returns overscan to its floor once scrolling stops. */
+  let velocityIdleTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -275,46 +276,54 @@
   );
   const stickyIndexes = $derived(normalizeStickyIndexes(stickyItems, items.length));
   /** The sticky row currently pinned to the leading edge, if any. */
-  const activeStickyIndex = $derived(
-    resolveActiveStickyIndex(stickyIndexes, virtualWindow.startIndex),
-  );
   /**
-   * Sticky indexes that must be in the DOM. This is a superset of the window: the
-   * pinned row has usually scrolled out of it, and unmounting it would make the
-   * heading disappear exactly when it is meant to be visible.
+   * The first row the reader can actually SEE.
+   *
+   * `virtualWindow.startIndex` is the rendered edge, which carries overscan — using
+   * it here activated a sticky header several rows early and moved keyboard
+   * navigation relative to a row nobody is looking at.
    */
-  const stickyRenderSet = $derived(
-    resolveStickyRenderSet({
-      stickyIndexes,
-      windowStartIndex: virtualWindow.startIndex,
-      windowEndIndex: virtualWindow.endIndex,
-      firstVisibleIndex: virtualWindow.startIndex,
+  const firstVisibleIndex = $derived(resolveAnchorIndexAtOffset(scrollOffset));
+  const activeStickyIndex = $derived(resolveActiveStickyIndex(stickyIndexes, firstVisibleIndex));
+  const renderedItems = $derived(
+    virtualWindow.items.flatMap((virtualItem) => {
+      const item = items[virtualItem.index];
+      return item === undefined ? [] : [{ ...virtualItem, item }];
     }),
   );
 
-  const renderedItems = $derived.by(() => {
-    const windowed = virtualWindow.items.flatMap((virtualItem) => {
-      const item = items[virtualItem.index];
-      return item === undefined ? [] : [{ ...virtualItem, item }];
-    });
-    if (stickyRenderSet.length === 0) return windowed;
-
-    // Anything sticky that the window did not already cover is added back, then the
-    // whole set is re-sorted: a pinned row that scrolled above the window would
-    // otherwise render after the rows that follow it, and a keyed each block would
-    // reorder the DOM accordingly.
-    const present = new Set(windowed.map((entry) => entry.index));
-    const reattached = stickyRenderSet
-      .filter((index) => !present.has(index))
-      .flatMap((index) => {
-        const item = items[index];
-        if (item === undefined) return [];
-        const start = locateRowStart(index);
-        return [{ index, key: keyAt(index), start, size: locateRowSize(index), item }];
-      });
-    if (reattached.length === 0) return windowed;
-    return [...windowed, ...reattached].sort((left, right) => left.index - right.index);
+  /**
+   * The sticky row to pin when it has scrolled out of the rendered window.
+   *
+   * Rendered as its own element rather than folded back into the window. The window
+   * lays its rows out in flow from a single offset, so inserting a non-contiguous
+   * row there displaced every row after it by that row's height — the headings
+   * stayed visible and everything else was wrong by one row.
+   *
+   * A sticky row still INSIDE the window needs none of this: it is contiguous, and
+   * `position: sticky` holds it without leaving its flow box.
+   */
+  const pinnedStickyItem = $derived.by(() => {
+    if (activeStickyIndex === null) return undefined;
+    if (activeStickyIndex >= virtualWindow.startIndex && activeStickyIndex < virtualWindow.endIndex)
+      return undefined;
+    const item = items[activeStickyIndex];
+    if (item === undefined) return undefined;
+    return { index: activeStickyIndex, key: keyAt(activeStickyIndex), item };
   });
+
+  /** Membership as a Set: a grouped list can have as many sticky rows as sections. */
+  const stickyIndexSet = $derived(new Set(stickyIndexes));
+
+  /**
+   * Whether the rows carry set-position semantics at all.
+   *
+   * Only when the component gives them `listitem`. A consumer overriding `role` takes
+   * ownership of the semantics, and `aria-posinset` on a row with no set-bearing role
+   * is meaningless at best — assistive technology may ignore it, or may announce a
+   * position within a set that does not exist.
+   */
+  const rowSemanticsApply = $derived(role === 'list');
 
   /** Pixel offset of a row that the current window does not include. */
   function locateRowStart(index: number): number {
@@ -1027,6 +1036,7 @@
    */
   $effect(() => () => {
     isDestroyed = true;
+    if (velocityIdleTimer !== undefined) clearTimeout(velocityIdleTimer);
     rowResizeObserver?.disconnect();
     rowResizeObserver = undefined;
     measurementStore.reset();
@@ -1223,6 +1233,16 @@
         timestamp: event.timeStamp,
       });
       scrollVelocity = velocityTracker.velocityInPixelsPerMillisecond;
+      // Velocity only updates when ANOTHER scroll event arrives, so a reader who
+      // stops mid-fling would otherwise hold the enlarged overscan indefinitely —
+      // exactly the oversized DOM this feature exists to avoid. The last event is
+      // the one that has to schedule the decay.
+      if (velocityIdleTimer !== undefined) clearTimeout(velocityIdleTimer);
+      velocityIdleTimer = setTimeout(() => {
+        if (isDestroyed) return;
+        velocityTracker = createVelocityTracker();
+        scrollVelocity = 0;
+      }, VELOCITY_IDLE_RESET_MILLISECONDS);
     }
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom || reverse) {
@@ -1277,9 +1297,18 @@
     // intercepting them would replace smooth native scrolling with a jump.
     if (!stickyIndexes.length) return;
 
+    // Not when the key came from something inside a row. A text input, a slider, a
+    // select — every one of these uses the arrow keys itself, and stealing them here
+    // would break the control while the reader is trying to use it. The list only
+    // claims keys aimed at its own scroll container.
+    if (event.target !== event.currentTarget) return;
+
     const target = resolveKeyboardTargetIndex({
       key: event.key,
-      currentIndex: virtualWindow.startIndex,
+      // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
+      // carries overscan, so the first arrow press jumped relative to a row several
+      // above the viewport.
+      currentIndex: firstVisibleIndex,
       itemCount: items.length,
       visibleCount: Math.max(1, Math.floor(viewportHeight / Math.max(1, resolvedItemHeight))),
       orientation: horizontal ? 'horizontal' : 'vertical',
@@ -1288,6 +1317,24 @@
     if (target === null) return;
     event.preventDefault();
     scrollToIndex(target, { align: 'start' });
+  }
+
+  /**
+   * Whether the reader has asked for reduced motion.
+   *
+   * Queried at the call site rather than cached: the preference can change while the
+   * page is open, and a scroll is infrequent enough that the media query costs
+   * nothing. Absent `matchMedia` — a server render, an old engine — the answer is no,
+   * which leaves the configured behaviour intact.
+   */
+  function prefersReducedMotion(): boolean {
+    const view = scrollElement?.ownerDocument.defaultView;
+    if (!view || typeof view.matchMedia !== 'function') return false;
+    try {
+      return view.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    } catch {
+      return false;
+    }
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -1432,8 +1479,9 @@
     if (isDestroyed || items.length === 0) return;
     const align = options?.align ?? 'auto';
     // An explicit behavior in the call always wins; `smoothScroll` only supplies
-    // the default.
-    const behavior = options?.behavior ?? (smoothScroll ? 'smooth' : 'auto');
+    // the default — and only for readers who have not asked for less motion.
+    const behavior =
+      options?.behavior ?? (smoothScroll && !prefersReducedMotion() ? 'smooth' : 'auto');
     // Each call supersedes any settle loop still running. Without this, two
     // overlapping loops write competing targets and the older one can land last,
     // finishing rapid navigation on the wrong item.
@@ -1516,6 +1564,30 @@
     style={`${rowLayout.sizeProperty}:${virtualWindow.totalSize}px;`}
     aria-hidden={items.length === 0 ? 'true' : undefined}
   >
+    {#if pinnedStickyItem}
+      <!--
+        Positioned at the current scroll offset rather than left to `position: sticky`.
+        The row is outside the rendered window, so it has no flow box near the
+        viewport to stick from — and putting one there would displace every row after
+        it. Absolute keeps it out of flow entirely; the offset is what makes it track
+        the viewport's leading edge.
+      -->
+      <div
+        class="cinder-virtual-list__pinned"
+        style={`${rowLayout.offsetProperty}:${scrollOffset}px;`}
+        data-cinder-virtual-index={pinnedStickyItem.index}
+        data-cinder-sticky="true"
+        data-cinder-sticky-active="true"
+        aria-hidden="true"
+      >
+        {@render row(pinnedStickyItem.item, {
+          index: pinnedStickyItem.index,
+          key: pinnedStickyItem.key,
+          start: locateRowStart(pinnedStickyItem.index),
+          size: locateRowSize(pinnedStickyItem.index),
+        })}
+      </div>
+    {/if}
     <div
       class="cinder-virtual-list__window"
       style={`${rowLayout.offsetProperty}:${virtualWindow.leadingSize}px;`}
@@ -1525,10 +1597,14 @@
           class="cinder-virtual-list__row"
           role={role === 'list' ? 'listitem' : undefined}
           data-cinder-virtual-index={virtualItem.index}
-          data-cinder-sticky={stickyIndexes.includes(virtualItem.index) ? 'true' : undefined}
+          data-cinder-sticky={stickyIndexSet.has(virtualItem.index) ? 'true' : undefined}
           data-cinder-sticky-active={virtualItem.index === activeStickyIndex ? 'true' : undefined}
-          aria-posinset={resolveRowSemantics(virtualItem.index, items.length).ariaPosInSet}
-          aria-setsize={resolveRowSemantics(virtualItem.index, items.length).ariaSetSize}
+          aria-posinset={rowSemanticsApply
+            ? resolveRowSemantics(virtualItem.index, items.length).ariaPosInSet
+            : undefined}
+          aria-setsize={rowSemanticsApply
+            ? resolveRowSemantics(virtualItem.index, items.length).ariaSetSize
+            : undefined}
           style={dynamicSize ? undefined : `${rowLayout.sizeProperty}:${virtualItem.size}px;`}
           {@attach observeRow}
         >
