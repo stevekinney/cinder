@@ -62,7 +62,6 @@
 	): Promise<Delegation> {
 		let childGenerateCalls = 0;
 		let parentGenerateCalls = 0;
-		let toolExecutions = 0;
 
 		const child = createAgent({
 			name: 'researcher',
@@ -89,7 +88,6 @@
 			generate: async () => {
 				parentGenerateCalls += 1;
 				if (parentGenerateCalls === 1) {
-					toolExecutions += 1;
 					return {
 						content: '',
 						toolCalls: [
@@ -114,10 +112,22 @@
 		const result = await parent.run({ conversation }).result();
 
 		const messages = result.conversation.getMessages();
-		const resultMessage = messages.find((message) => message.role === 'tool-result') as
-			| { toolResult?: { content?: unknown } }
-			| undefined;
-		const returned = String(resultMessage?.toolResult?.content ?? '');
+
+		// Counted from what the loop EXECUTED, not from what the parent asked
+		// for. Incrementing beside the tool call in `generate` counts emissions,
+		// and an emission is not an execution — a call the toolbox rejects, one
+		// filtered before execution, or one that produces more than a single
+		// result would all make a field labelled "tool executions" lie. The run
+		// already reports the truth per step.
+		const executions = result.steps.flatMap((step) => step.results);
+		const toolExecutions = executions.length;
+
+		// Selected by call id rather than taken as "the first tool result".
+		// There is one tool here today, so the two agree — and the moment a
+		// second is added the length comparisons below would silently start
+		// measuring an unrelated result.
+		const execution = executions.find((entry) => entry.toolCallId === `${id}-call`);
+		const returned = String(execution?.result ?? '');
 
 		return {
 			parentGenerateCalls,
