@@ -672,14 +672,20 @@ function splitScopeOutsideContext(selector: string): ScopeOutsideContext | null 
   const lastCharacter = trimmedEnd.at(-1);
   if (lastCharacter === '>' || lastCharacter === '+' || lastCharacter === '~') {
     const before = trimmedEnd.slice(0, -1).trim();
-    // `before` cannot be empty here in practice: normalizeScopeRelativeSelector
-    // (matchesScopedSelector's mandatory preprocessing step whenever any
-    // scope is active — the only condition under which this function ever
-    // runs at all) already rewrites a selector-list item that leads with a
-    // bare combinator into an explicit `:scope` alternative before this
-    // function ever sees it. Kept as a guard against a future caller that
-    // reaches this function without that preprocessing.
-    if (!before) return null;
+    if (!before) {
+      // `before` cannot be empty here in practice: normalizeScopeRelativeSelector
+      // (matchesScopedSelector's mandatory preprocessing step whenever any
+      // scope is active — the only condition under which this function ever
+      // runs at all) already rewrites a selector-list item that leads with a
+      // bare combinator into an explicit `:scope` alternative before this
+      // function ever sees it — the rewrite always prepends `:scope ` at the
+      // very front of the item, so `findScopePseudoClassIndex` above finds
+      // that `:scope` first and `beforeRaw` comes back empty, returning null
+      // several lines above this one before `before` is ever computed. Kept
+      // as a guard against a future caller that reaches this function
+      // without that preprocessing.
+      return null; // cinder-coverage-unreachable:
+    }
     return { before, combinator: lastCharacter, remainder: selector.slice(scopeIndex) };
   }
   if (!/\s$/.test(beforeRaw)) return null;
