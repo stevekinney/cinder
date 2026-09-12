@@ -34,6 +34,7 @@
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import valueParser from 'postcss-value-parser';
 import { format } from 'prettier';
 import babelPlugin from 'prettier/plugins/babel';
 import estreePlugin from 'prettier/plugins/estree';
@@ -669,22 +670,86 @@ function isWholeTokenAlias(reference: string, baseIndex: Map<string, CorpusEntry
   return baseIndex.get(wholeTokenIndexPath(reference))?.cssProperty !== undefined;
 }
 
+/** A node from a parsed CSS value -- see `postcss-value-parser`'s `ParsedValue.nodes`. */
+type ColorValueNode = ReturnType<typeof valueParser>['nodes'][number];
+
+/**
+ * CSS color functions that are a COMPLETE color on their own, so their body is
+ * never re-examined -- `oklch()`, `rgb()`, and the rest all take numbers (and,
+ * for `oklch(from … l c h)`, a nested relative-color source) as their own
+ * arguments, so descending into one would flag the bare component list it is
+ * SUPPOSED to contain.
+ *
+ * This is a CLOSED allowlist, drawn from the CSS Color Module functions plus
+ * every function the real corpus recipes a color with (verified by
+ * `generate.test.ts`'s "every color declaration the corpus emits" case, which
+ * runs {@link findBareColorComponents} over the committed `tokens-base.css`
+ * and fails if a real function name is missing here). CSS adds new color
+ * functions rarely and deliberately, so growing this set is a deliberate,
+ * reviewable edit -- unlike the open set this replaces, which treated ANY
+ * unrecognised function as a complete color and so silently accepted whatever
+ * CSS (or a typo) introduced next. Anything not in this set, and not one of
+ * the two functions below, is presumed NOT a complete color: fail closed.
+ */
+const COLOR_FUNCTIONS = new Set([
+  'rgb',
+  'rgba',
+  'hsl',
+  'hsla',
+  'hwb',
+  'lab',
+  'lch',
+  'oklab',
+  'oklch',
+  'color',
+]);
+
 /**
  * The two color functions whose ARGUMENTS are themselves `<color>` values, and
  * so have to be checked recursively by {@link findBareColorComponents}.
- *
- * Every other color function -- `oklch()`, `rgb()`, `color()`, and the
- * relative-color `oklch(from … l c h)` form -- takes numbers, so descending
- * into one would flag the bare component list it is SUPPOSED to contain.
  */
 const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
 
 /**
- * CSS math functions, which can stand in for the `<percentage>` mix weight in a
- * `color-mix()` argument. `color-mix()` accepts a general `<percentage>`, not
- * only a literal, and the weight may sit on either side of the color, so the
- * weight has to be recognised in computed form too -- otherwise a recipe the
- * browser accepts reads as a bare component list and fails generation.
+ * CSS math functions CAPABLE of standing in for the `<percentage>` mix weight
+ * in a `color-mix()` argument. `color-mix()` accepts a general `<percentage>`,
+ * not only a literal, and the weight may sit on either side of the color, so
+ * the weight has to be recognised in computed form too -- otherwise a recipe
+ * the browser accepts reads as a bare component list and fails generation.
+ *
+ * This set is deliberately narrower than "every CSS Values L4 math function":
+ * only the functions the spec defines as TYPE-PRESERVING (a `<percentage>`
+ * argument yields a `<percentage>` result, the same way a `<length>` argument
+ * yields a `<length>` result) belong here. `calc()`, `min()`, `max()`,
+ * `clamp()`, `round()`, `mod()`, `rem()`, and `abs()` are all type-preserving
+ * per the spec's calculation-type rules. `hypot()` is too -- its arguments
+ * "must be the same type... either <number>, <percentage>, or <dimension>"
+ * and the result matches that type, so `hypot(1%, 2%)` is itself a
+ * `<percentage>`, exactly like a `color-mix()` weight the browser accepts.
+ *
+ * Membership here says only that a CALL to the function is CAPABLE of
+ * producing a percentage -- it says nothing about any particular call, since
+ * every one of these functions produces whatever type its arguments do:
+ * `hypot(1px, 2px)` is a `<length>`, not a `<percentage>`, every bit as much
+ * as `hypot(1%, 2%)` is a percentage. Whether a given call actually resolves
+ * to a percentage is decided per-call by
+ * {@link mathFunctionType}, which is why this set alone is
+ * never enough to accept a node -- see {@link isUnambiguousPercentageNode}.
+ *
+ * `sign()` is deliberately EXCLUDED even though it takes the same argument
+ * types as `abs()`: unlike `abs()`, the spec defines `sign()`'s result as
+ * ALWAYS a plain `<number>` (1, -1, 0, or NaN), regardless of its argument's
+ * type -- `sign(-10%)` is `-1`, a number, never a percentage. Including it
+ * would make every call, not just a mistyped one, fail open.
+ *
+ * The exponential and trigonometric functions `pow()`, `sqrt()`, `log()`, and
+ * `exp()` are NOT included either: the spec requires their arguments (and
+ * result) to be a plain `<number>`, never a `<percentage>`, so they can never
+ * legitimately stand in for a mix weight. The trigonometric functions
+ * `sin()`, `cos()`, and `tan()` always return a `<number>`, and `asin()`,
+ * `acos()`, `atan()`, and `atan2()` always return an `<angle>` -- none of the
+ * seven ever produce a `<percentage>` either, so they are excluded for the
+ * same reason `sign()` is.
  *
  * `var()` is deliberately absent. A bare `var()` is ambiguous between the color
  * and the weight, and reading it as the color is the safe direction: treating
@@ -700,39 +765,178 @@ const PERCENTAGE_FUNCTIONS = new Set([
   'mod',
   'rem',
   'abs',
-  'sign',
+  'hypot',
 ]);
 
-/** `value` split on top-level whitespace, so `light-dark(a, b) 40%` is two tokens. */
-function splitTopLevelTokens(value: string): string[] {
-  const tokens: string[] = [];
-  let depth = 0;
-  let current = '';
-  for (const character of value) {
-    if (character === '(') depth += 1;
-    else if (character === ')') depth -= 1;
-    if (depth === 0 && /\s/.test(character)) {
-      if (current !== '') tokens.push(current);
-      current = '';
-      continue;
-    }
-    current += character;
-  }
-  if (current !== '') tokens.push(current);
-  return tokens;
+/** `nodes` with every whitespace divider removed, so only meaningful tokens remain. */
+function stripSpaces(nodes: ColorValueNode[]): ColorValueNode[] {
+  return nodes.filter((node) => node.type !== 'space');
 }
 
 /**
- * A CSS `<percentage-token>`: a `<number-token>` followed by `%`. The number may
- * be signed and may carry an exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are
- * all valid weights. A digits-and-dots pattern misses three of those four and
- * rejects a recipe the browser accepts.
+ * `nodes` split into top-level comma-separated argument groups. Nested
+ * function arguments stay whole automatically, because `postcss-value-parser`
+ * already parsed them into their own `FunctionNode.nodes` -- a comma inside
+ * `color-mix(...)` never appears in the outer array this walks.
  */
-const PERCENTAGE_LITERAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%$/;
+function splitArguments(nodes: ColorValueNode[]): ColorValueNode[][] {
+  const groups: ColorValueNode[][] = [[]];
+  for (const node of nodes) {
+    if (node.type === 'div' && node.value === ',') {
+      groups.push([]);
+      continue;
+    }
+    groups[groups.length - 1]!.push(node);
+  }
+  return groups;
+}
 
 /**
- * A `var()` whose FALLBACK is a percentage, so the reference resolves to one
- * either way: `var(--weight, 40%)`.
+ * Everything in a `var()` call's nodes after its first top-level comma -- the
+ * fallback, verbatim, including any further commas it may itself contain
+ * (`var()`'s fallback is not re-parsed by CSS, so neither is it here). `undefined`
+ * when there is no fallback at all.
+ */
+function fallbackNodes(callNodes: ColorValueNode[]): ColorValueNode[] | undefined {
+  const index = callNodes.findIndex((node) => node.type === 'div' && node.value === ',');
+  return index === -1 ? undefined : callNodes.slice(index + 1);
+}
+
+/** Unitless CSS calculation constants, such as the scalar in `calc(1% * pi)`. */
+const CALC_NUMBER_KEYWORDS = new Set(['pi', 'e', 'infinity', '-infinity', 'nan']);
+
+// Track the percentage exponent: a number is 0, a percentage is 1. Intermediate
+// products can have other exponents; division can cancel them again. Unsupported
+// dimensions and malformed expressions are null, distinct from a bare variable.
+type MathValueType = number | 'variable' | null;
+
+function mathValueType(nodes: ColorValueNode[]): MathValueType {
+  const items = nodes.filter((node) => node.type !== 'space' && node.type !== 'comment');
+  let position = 0;
+  function primary(): MathValueType {
+    const node = items[position++];
+    if (!node) return null;
+    if (node.type === 'word') {
+      const unit = valueParser.unit(node.value);
+      if (unit !== false) return unit.unit === '%' ? 1 : unit.unit === '' ? 0 : null;
+      return CALC_NUMBER_KEYWORDS.has(node.value.toLowerCase()) ? 0 : null;
+    }
+    if (node.type !== 'function' || node.unclosed) return null;
+    const name = node.value.toLowerCase();
+    if (name === '') return mathValueType(node.nodes);
+    if (name === 'var') {
+      const arguments_ = splitArguments(node.nodes);
+      const reference = stripSpaces(arguments_[0]!);
+      if (
+        reference.length !== 1 ||
+        reference[0]?.type !== 'word' ||
+        !/^--[^\s,()]+$/.test(reference[0].value)
+      )
+        return null;
+      const fallback = fallbackNodes(node.nodes);
+      return fallback === undefined ? 'variable' : mathValueType(fallback);
+    }
+    return mathFunctionType(node);
+  }
+  function product(): MathValueType {
+    let left = primary();
+    while (items[position]?.value === '*' || items[position]?.value === '/') {
+      const operator = items[position++]!.value;
+      const right = primary();
+      if (left === null || right === null) return null;
+      // Preserve the established custom-property scalar pattern only when a
+      // bare variable is multiplied directly by a percentage-typed expression.
+      if (
+        operator === '*' &&
+        ((left === 'variable' && right === 1) || (right === 'variable' && left === 1))
+      )
+        left = 1;
+      else if (typeof left === 'number' && typeof right === 'number')
+        left = operator === '*' ? left + right : left - right;
+      else return null;
+    }
+    return left;
+  }
+  let result = product();
+  while (items[position]?.value === '+' || items[position]?.value === '-') {
+    const operator = items[position++]!;
+    const originalIndex = nodes.indexOf(operator);
+    if (nodes[originalIndex - 1]?.type !== 'space' || nodes[originalIndex + 1]?.type !== 'space')
+      return null;
+    const right = product();
+    if (typeof result !== 'number' || result !== right) return null;
+  }
+  return position === items.length ? result : null;
+}
+
+function mathFunctionType(node: Extract<ColorValueNode, { type: 'function' }>): MathValueType {
+  const name = node.value.toLowerCase();
+  if (node.unclosed || !PERCENTAGE_FUNCTIONS.has(name)) return null;
+  const arguments_ = splitArguments(node.nodes);
+  if (name === 'round') {
+    const strategy = stripSpaces(arguments_[0]!);
+    if (
+      strategy.length === 1 &&
+      strategy[0]?.type === 'word' &&
+      ['nearest', 'up', 'down', 'to-zero'].includes(strategy[0].value.toLowerCase())
+    )
+      arguments_.shift();
+  }
+  const arity =
+    name === 'calc' || name === 'abs'
+      ? 1
+      : name === 'clamp'
+        ? 3
+        : ['round', 'mod', 'rem'].includes(name)
+          ? 2
+          : undefined;
+  if (name === 'round' && arguments_.length === 1)
+    return mathValueType(arguments_[0]!) === 0 ? 0 : null;
+  if (arity !== undefined && arguments_.length !== arity) return null;
+  if (name === 'clamp') {
+    const middle = mathValueType(arguments_[1]!);
+    const validBound = (nodes: ColorValueNode[]): boolean => {
+      const items = stripSpaces(nodes);
+      return (
+        (items.length === 1 &&
+          items[0]?.type === 'word' &&
+          items[0].value.toLowerCase() === 'none') ||
+        mathValueType(nodes) === middle
+      );
+    };
+    return typeof middle === 'number' && validBound(arguments_[0]!) && validBound(arguments_[2]!)
+      ? middle
+      : null;
+  }
+  const types = arguments_.map(mathValueType);
+  const first = types[0];
+  return typeof first === 'number' && types.every((type) => type === first) ? first : null;
+}
+
+/**
+ * A CSS `<percentage-token>`: a `<number-token>` followed by `%`, or a call to
+ * a {@link PERCENTAGE_FUNCTIONS} member whose arguments DEMONSTRABLY resolve
+ * to a percentage, including its operator types and argument count.
+ * `postcss-value-parser`'s `unit` helper implements the actual
+ * `<number-token>` grammar -- a number may be signed and may carry an
+ * exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are all valid weights, and a
+ * hand-rolled digits-and-dots pattern misses three of those four.
+ */
+function isUnambiguousPercentageNode(node: ColorValueNode): boolean {
+  if (node.type === 'function') {
+    if (node.unclosed) return false;
+    return mathFunctionType(node) === 1;
+  }
+  if (node.type === 'word') {
+    const unit = valueParser.unit(node.value);
+    return unit !== false && unit.unit === '%';
+  }
+  return false;
+}
+
+/**
+ * A `var()` node whose FALLBACK is a percentage, so the reference resolves to
+ * one either way: `var(--weight, 40%)`.
  *
  * In a `color-mix()` argument a bare `var()` is ambiguous between the color and
  * the weight, and this is the case where it stops being ambiguous. Without it,
@@ -740,23 +944,17 @@ const PERCENTAGE_LITERAL = /^[+-]?(?:\d+(?:\.\d+)?|\.\d+)(?:[eE][+-]?\d+)?%$/;
  * reports `40%` as a bare component list -- rejecting a recipe the browser
  * accepts.
  */
-function isPercentageValuedVar(token: string): boolean {
-  const call = /^var\(([\s\S]*)\)$/.exec(token);
-  if (call === null) return false;
-  const [, ...fallback] = splitTopLevelArguments(call[1] ?? '');
-  if (fallback.length === 0) return false;
-  return isUnambiguousPercentage(fallback.join(',').trim());
-}
-
-/** A token that can only be a `<percentage>`: a literal, or a math function. */
-function isUnambiguousPercentage(token: string): boolean {
-  if (PERCENTAGE_LITERAL.test(token)) return true;
-  const call = /^([a-zA-Z-]+)\(/.exec(token);
-  return call !== null && PERCENTAGE_FUNCTIONS.has((call[1] ?? '').toLowerCase());
+function isPercentageValuedVarNode(node: ColorValueNode): boolean {
+  if (node.type !== 'function' || node.value.toLowerCase() !== 'var') return false;
+  const fallback = fallbackNodes(node.nodes);
+  if (fallback === undefined) return false;
+  const items = stripSpaces(fallback);
+  return items.length === 1 && isUnambiguousPercentageNode(items[0]!);
 }
 
 /**
- * The tokens of a `color-mix()` argument that might be its `<color>`.
+ * The node groups of a `color-mix()` argument that might be its `<color>`,
+ * each wrapped as its own single-node candidate.
  *
  * The argument is `<color> && <percentage>?` in either order, so the weight has
  * to be set aside before the color can be checked. The safe way to do that is
@@ -764,43 +962,102 @@ function isUnambiguousPercentage(token: string): boolean {
  * function -- and check everything else.
  *
  * Guessing which token is the weight is what went wrong before. An earlier
- * version picked "whichever token is not a complete color", but
- * {@link findBareColorComponents} returns `undefined` for any function it does
- * not recognise, `calc()` included, so a computed weight read as a complete
- * color and the REAL color was discarded as the weight. That let the exact
- * value CIN-242 exists to reject --
+ * version picked "whichever token is not a complete color", but the checker
+ * returned `undefined` (complete) for any function it did not recognise,
+ * `calc()` included, so a computed weight read as a complete color and the
+ * REAL color was discarded as the weight. That let the exact value CIN-242
+ * exists to reject --
  * `color-mix(in oklch, calc(var(--w) * 1%) light-dark(100% 0 0, 0% 0 0), transparent)`
  * -- through the gate untouched.
  *
  * Returning every candidate costs nothing: a `var()` passes the check anyway,
  * so including an ambiguous one is free, while every genuine color is checked.
  */
-function mixColorCandidates(argument: string): string[] {
-  const tokens = splitTopLevelTokens(argument);
-  if (tokens.length < 2) return [argument.trim()];
-  const candidates = tokens.filter(
-    (token) => !isUnambiguousPercentage(token) && !isPercentageValuedVar(token),
+function mixColorCandidates(argumentNodes: ColorValueNode[]): ColorValueNode[][] {
+  const items = stripSpaces(argumentNodes);
+  if (items.length < 2) return [argumentNodes];
+  const candidates = items.filter(
+    (item) => !isUnambiguousPercentageNode(item) && !isPercentageValuedVarNode(item),
   );
-  return candidates.length === 0 ? [argument.trim()] : candidates;
+  return candidates.length === 0 ? [argumentNodes] : candidates.map((item) => [item]);
 }
 
-/** Split on commas at paren depth zero, so nested function arguments stay whole. */
-function splitTopLevelArguments(value: string): string[] {
-  const parts: string[] = [];
-  let depth = 0;
-  let current = '';
-  for (const character of value) {
-    if (character === '(') depth += 1;
-    else if (character === ')') depth -= 1;
-    if (character === ',' && depth === 0) {
-      parts.push(current);
-      current = '';
-      continue;
-    }
-    current += character;
+/**
+ * The first color position within `nodes` that is not a complete CSS color, as
+ * the node group to report -- or `undefined` when every position is complete.
+ *
+ * A color position is complete when it is a single hex literal or bare keyword
+ * (`transparent`, `currentColor`), a single call to one of
+ * {@link COLOR_FUNCTIONS}, a `var()` whose fallback (if any) is itself
+ * complete, or a `light-dark()`/`color-mix()` whose own color arguments are
+ * all complete. A component list is more than one top-level token -- `0 0 0`
+ * is three -- or a call to any OTHER function, which this walker has never
+ * seen before and so cannot assume is a color: FAIL CLOSED. That is the one
+ * behavior change from the string-matching version this replaces, which
+ * treated an unrecognised function as automatically complete.
+ */
+function findBareInNodes(nodes: ColorValueNode[]): ColorValueNode[] | undefined {
+  const items = stripSpaces(nodes);
+  if (items.length === 0) return undefined;
+  if (items.length > 1) return nodes;
+  const node = items[0]!;
+  if (node.type === 'function') return findBareInFunction(node);
+  if (node.type === 'word') {
+    if (/^#[0-9a-fA-F]{3,8}$/.test(node.value)) return undefined;
+    if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(node.value)) return undefined;
+    return [node];
   }
-  parts.push(current);
-  return parts.map((part) => part.trim());
+  // A quoted string, a comment, a unicode-range, or a stray comma: never a
+  // valid color position.
+  return [node];
+}
+
+/** {@link findBareInNodes} for a single function-call node. */
+function findBareInFunction(
+  node: Extract<ColorValueNode, { type: 'function' }>,
+): ColorValueNode[] | undefined {
+  const name = node.value.toLowerCase();
+  // `postcss-value-parser` still produces a function node for a call missing
+  // its closing `)`, marked `unclosed`, with everything up to the end of the
+  // declaration swept in as its arguments. The browser discards a declaration
+  // containing such a value as invalid CSS -- silently, the exact failure
+  // mode this gate exists to catch -- so an unclosed call is NEVER a complete
+  // color, regardless of which function it names or how deep it sits (a
+  // `var()` reference, an allowlisted color function, or one nested inside
+  // `light-dark()`/`color-mix()` all reach this same check). Checking this
+  // before every acceptance path below, rather than only the allowlist one,
+  // is what keeps `oklch(50% 0.1 30` from passing the way the old
+  // whole-string regex correctly rejected it.
+  if (node.unclosed) return [node];
+  // `var()`'s FALLBACK sits in the same color position as the reference
+  // itself, so a bare list there is the same defect one level down:
+  // `var(--x, 0% 0 0)` is a silently dropped declaration whenever `--x` is
+  // unset. The custom-property name is not a color and is skipped. No
+  // fallback at all is a bare reference, which is ambiguous and accepted --
+  // see {@link mixColorCandidates}'s doc comment on the safe direction.
+  if (name === 'var') {
+    const fallback = fallbackNodes(node.nodes);
+    return fallback === undefined ? undefined : findBareInNodes(fallback);
+  }
+  if (COLOR_FUNCTIONS.has(name)) return undefined;
+  if (!COLOR_ARGUMENT_FUNCTIONS.has(name)) return [node];
+  const args = splitArguments(node.nodes);
+  // `color-mix()`'s first argument is its interpolation method (`in oklch`),
+  // not a color; `light-dark()`'s arguments are all colors.
+  const isMix = name === 'color-mix';
+  const colorArguments = isMix ? args.slice(1) : args;
+  for (const argument of colorArguments) {
+    // Only `color-mix()` arguments carry a weight -- `light-dark()` takes two
+    // colors and nothing else, so its arguments are checked whole. Splitting
+    // them would report the wrong fragment: a bare `100% 0 0` would be
+    // dissected into `0` rather than named as the component list it is.
+    const candidates = isMix ? mixColorCandidates(argument) : [argument];
+    for (const candidate of candidates) {
+      const bare = findBareInNodes(candidate);
+      if (bare !== undefined) return bare;
+    }
+  }
+  return undefined;
 }
 
 /**
@@ -816,52 +1073,16 @@ function splitTopLevelArguments(value: string): string[] {
  * reports a problem. A complete value that is mis-referenced instead paints a
  * visibly wrong color, which is catchable. Hence: complete values only.
  *
- * A color position is complete when it starts a function (`oklch(`, `var(`,
- * `color-mix(`, …), a hex literal, or a bare keyword (`transparent`,
- * `currentColor`). A component list starts with a number, so it is exactly
- * what falls through.
+ * Completeness is decided from a PARSED value tree (`postcss-value-parser`),
+ * not a function-name allowlist matched against text -- see
+ * {@link findBareInNodes} for the actual rule. A component list starts with a
+ * number, so it is exactly what falls through.
  */
 export function findBareColorComponents(value: string): string | undefined {
   const trimmed = value.trim();
   if (trimmed === '') return undefined;
-
-  const functionCall = /^([a-zA-Z-]+)\(([\s\S]*)\)$/.exec(trimmed);
-  if (functionCall) {
-    const [, name = '', body = ''] = functionCall;
-    // `var()`'s FALLBACK sits in the same color position as the reference
-    // itself, so a bare list there is the same defect one level down:
-    // `var(--x, 0% 0 0)` is a silently dropped declaration whenever `--x` is
-    // unset. The custom-property name is not a color and is skipped.
-    if (name.toLowerCase() === 'var') {
-      const [, ...fallback] = splitTopLevelArguments(body);
-      if (fallback.length === 0) return undefined;
-      return findBareColorComponents(fallback.join(','));
-    }
-    if (!COLOR_ARGUMENT_FUNCTIONS.has(name.toLowerCase())) return undefined;
-    const args = splitTopLevelArguments(body);
-    // `color-mix()`'s first argument is its interpolation method (`in oklch`),
-    // not a color; `light-dark()`'s arguments are all colors.
-    const isMix = name.toLowerCase() === 'color-mix';
-    const colorArguments = isMix ? args.slice(1) : args;
-    for (const argument of colorArguments) {
-      // Only `color-mix()` arguments carry a weight -- `light-dark()` takes two
-      // colors and nothing else, so its arguments are checked whole. Splitting
-      // them would report the wrong fragment: a bare `100% 0 0` would be
-      // dissected into `0` rather than named as the component list it is.
-      const candidates = isMix ? mixColorCandidates(argument) : [argument.trim()];
-      for (const candidate of candidates) {
-        const bare = findBareColorComponents(candidate);
-        if (bare !== undefined) return bare;
-      }
-    }
-    return undefined;
-  }
-
-  // A hex literal, or a bare keyword such as `transparent` / `currentColor`.
-  if (/^#[0-9a-fA-F]{3,8}$/.test(trimmed)) return undefined;
-  if (/^[a-zA-Z][a-zA-Z0-9-]*$/.test(trimmed)) return undefined;
-
-  return trimmed;
+  const bare = findBareInNodes(valueParser(trimmed).nodes);
+  return bare === undefined ? undefined : valueParser.stringify(bare).trim();
 }
 
 /** cssRecipe (verbatim) > alias reference (`var(--referenced-property)`) > typed `$value` serialization. Applies identically to base `:root` tokens and theme/motion override tokens. */
