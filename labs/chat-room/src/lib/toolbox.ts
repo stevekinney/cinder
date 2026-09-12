@@ -52,7 +52,7 @@ export const requestContext: ToolRequestContext = {
 };
 
 /**
- * A toolbox with nothing in it, for the server-owned variant.
+ * A toolbox with nothing in it.
  *
  * Constructed HERE rather than at the route, because the ownership guard is
  * right to insist on that: a route that builds its own toolbox is a route
@@ -60,8 +60,53 @@ export const requestContext: ToolRequestContext = {
  * Keeping even the empty one in this module means the guard stays a simple,
  * total rule rather than one with an exception that has to be maintained.
  *
- * The server-owned route family runs with this because it has no approval UI
- * — see that route's stream endpoint for why that is a scope boundary
- * (CIN-445) rather than an omission.
+ * Still used by the recovery endpoint, which must supply `runOptions` to ask a
+ * read-only question and has no business carrying tools (AB-424).
  */
 export const emptyToolbox = createToolbox([]);
+
+/**
+ * The same note tool with NO approval policy on it.
+ *
+ * The gated `rememberNote` above parks: `beforeExecute` answers
+ * `needs_approval`, armorer mints a signed token describing the call, the run
+ * stops, and the next HTTP request carries the token back to
+ * `toolbox.resumeApproval()`. That is the canonical stateless flow CIN-437
+ * built, and it is right for the browser-owned route, where the conversation
+ * lives in the tab and the server remembers nothing between turns.
+ *
+ * The server-owned family gates the same tool a different way: a
+ * `beforeToolExecution` hook calls Operative's `ctx.elicit(...)`, and the
+ * answer comes from a person through `/api/server-owned/conversations/[id]/
+ * elicitation`. Leaving the armorer policy in place as well would gate it
+ * TWICE — the hook would ask, and the approved call would then park anyway
+ * with a token no one in this family knows how to resume.
+ *
+ * So this is not a laxer copy of the tool. The approval moved from the
+ * toolbox to the loop, which is the comparison CIN-445 asked for; see
+ * `docs/reference-architecture.md` § Toolbox and approval ownership.
+ */
+const rememberNoteAwaitingElicitation = createTool({
+	name: 'remember_note',
+	version: '1.0.0',
+	description: 'Save a short note for later reference.',
+	input: z.object({ text: z.string() }),
+	async execute({ text }) {
+		return { saved: true, text };
+	}
+});
+
+/**
+ * The server-owned family's toolbox.
+ *
+ * No `approvalSecret`, and that absence is the point rather than an
+ * oversight: nothing in this family mints or verifies an approval token, so a
+ * secret would be dead configuration implying a flow that is not here.
+ */
+export const serverOwnedToolbox = createToolbox([rollDice, rememberNoteAwaitingElicitation]);
+
+/** The one tool in the server-owned family that a person has to approve. */
+export const ELICITED_TOOL_NAME = 'remember_note';
+
+/** The question a person is asked before that tool runs. */
+export const ELICITATION_MESSAGE = 'Save this note?';

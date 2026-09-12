@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { createSessionHandle } from '@lostgradient/operative';
 import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic';
+import type { StepContext, ToolCall, ToolExecutionHookContext } from '@lostgradient/operative';
 import { z } from 'zod';
 
 import { chatRunResponse } from '$lib/chat-run-response';
@@ -9,7 +10,13 @@ import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable'
 import { AGENT_NAME, loadConversation } from '$lib/server-owned-conversations';
 import { durableRuntime } from '$lib/server-owned-durable';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
-import { emptyToolbox, requestContext } from '$lib/toolbox';
+import {
+	ELICITATION_MESSAGE,
+	ELICITED_TOOL_NAME,
+	requestContext,
+	serverOwnedToolbox
+} from '$lib/toolbox';
+import { requestApproval } from '$lib/server-owned-elicitation';
 import { createChatRunOptions } from '$lib/chat-agent';
 
 import type { RequestHandler } from './$types';
@@ -120,35 +127,126 @@ export const POST: RequestHandler = async ({ params, request }) => {
 						// send every Playwright spec at the real, billed API.
 						baseURL: env.ANTHROPIC_BASE_URL
 					}),
-					// EMPTY, deliberately, and this is a scope boundary rather
-					// than an omission.
+					// The family's OWN toolbox, whose `remember_note` carries no
+					// armorer approval policy — the approval moved from the
+					// toolbox to the loop.
 					//
-					// `$lib/toolbox` contains `remember_note`, which is
-					// approval-gated: a run that selects it parks with an
-					// `action_required` result, and the session controller then
-					// calls the transport again to continue. This route family
-					// has no approval UI, so such a run would park with no way
-					// to resolve it.
+					// Why it had to move. The gated tool parks: `beforeExecute`
+					// answers `needs_approval`, armorer mints a signed token,
+					// the run stops, and the client is expected to call the
+					// transport again carrying that token. That works for the
+					// browser-owned route, where the conversation lives in the
+					// tab. Here it cannot: the transport rejects a
+					// continuation before it reaches `fetch`, because the last
+					// message on a continuation is a tool result rather than
+					// the string-valued user message it checks for (see
+					// `conversation-surface.svelte`). So the park had no way to
+					// be resolved in this family at all, which is why the
+					// toolbox used to be empty here.
 					//
-					// What that continuation actually hits is a THROWN error,
-					// not a duplicated turn. The transport checks that the last
-					// message is a string-valued user message and rejects before
-					// it reaches `fetch` (see `conversation-surface.svelte`),
-					// because on a continuation the last message is a tool
-					// result. So enabling a toolbox here without the approval
-					// wiring fails loudly at the boundary rather than quietly
-					// re-sending the previous turn — which is the behaviour
-					// CIN-445 has to design around.
-					//
-					// Operative-native approval is CIN-445's subject. Wiring
-					// half of it here would ship a reachable dead end; wiring
-					// none of it keeps the variant honest about what it
-					// currently demonstrates, which is server-owned
-					// persistence and streaming.
-					toolbox: emptyToolbox,
+					// `ctx.elicit(...)` in a `beforeToolExecution` hook asks
+					// the question instead, and the run WAITS inside the step
+					// rather than stopping. The answer arrives on a separate
+					// request to `…/elicitation` and resolves the promise this
+					// process is holding. A denial filters the call out of the
+					// array the hook returns, and Operative seals it with an
+					// error result — so the model is told the tool did not run
+					// rather than the run failing.
+					toolbox: serverOwnedToolbox,
+					// `elicitation`, not `request` — the route's own `request` is
+					// the HTTP one, and its `signal` is what this callback needs.
+					onElicitation: async (elicitation) => {
+						const { message, context, schema } = elicitation;
+						// The call being asked about. `context` carries the
+						// conversation and step, not the tool call, so the
+						// pending calls are read off the conversation — the
+						// gated one is the only one the hook elicits for.
+						const call = pendingElicitedCall(context.conversation);
+						const approved = await requestApproval(
+							params.id,
+							{
+								toolName: call?.name ?? ELICITED_TOOL_NAME,
+								callId: call?.id ?? 'unknown',
+								message,
+								arguments: toProposedArguments(call?.arguments)
+							},
+							request.signal
+						);
+						// `null` IS the denial in Operative's contract, and
+						// `{ data }` the acceptance. `ctx.elicit` maps them to
+						// `null` / the value and never throws, so the hook
+						// below decides what a denial means.
+						//
+						// PARSED through the caller's own `schema`, not cast past
+						// it. `OnElicitation` is generic in the answer's type and
+						// the request carries the schema that defines it, so a
+						// literal would only type-check behind an assertion — and
+						// the assertion is exactly the thing that would go stale
+						// if the hook below ever asks a different question.
+						return approved ? { data: schema.parse({ approved: true }) } : null;
+					},
+					beforeToolExecution: [gateElicitedTool],
 					requestContext,
 					writer
 				})
 			}).run(parsed.data.text)
 	});
 };
+
+/**
+ * The pending tool call the hook is eliciting about.
+ *
+ * Read off the conversation rather than threaded through, because Operative's
+ * `ElicitationRequest.context` is a `StepContext` — conversation, step, and
+ * signal — with no tool call on it. The gated tool is the only one the hook
+ * elicits for, so the pending call carrying that name is the subject.
+ *
+ * `undefined` is tolerated rather than thrown on: the question still has a
+ * message, and refusing to ask it because the call could not be identified
+ * would turn a cosmetic gap in the prompt into a failed run.
+ */
+function pendingElicitedCall(conversation: StepContext['conversation']): ToolCall | undefined {
+	const pending = conversation.getPendingToolCalls();
+	return pending.find((call) => call.name === ELICITED_TOOL_NAME) ?? pending[0];
+}
+
+/**
+ * The model's proposed arguments, as something JSON-safe to show a person.
+ *
+ * An OBJECT or nothing. A person is being asked to approve a specific note, so
+ * a non-object argument list is reported as an empty one rather than coerced
+ * into a shape the client would render as `[object Object]`.
+ */
+function toProposedArguments(proposed: unknown): Record<string, unknown> {
+	if (typeof proposed !== 'object' || proposed === null || Array.isArray(proposed)) return {};
+	return { ...(proposed as Record<string, unknown>) };
+}
+
+/**
+ * Asks before the gated tool runs, and drops it when the answer is no.
+ *
+ * `elicit` is ABSENT unless `onElicitation` was supplied — Operative builds
+ * `ctx.elicit` from it — so a caller that wires the hook without the callback
+ * gets no question. Treated as a denial rather than an approval: a gate that
+ * fails open is not a gate.
+ *
+ * Returns the calls to execute. A dropped call is not an error the run has to
+ * survive: Operative seals a filtered call with an error result so nothing is
+ * left dangling for a later replay to trip over.
+ */
+async function gateElicitedTool(context: ToolExecutionHookContext): Promise<ToolCall[]> {
+	const gated = context.toolCalls.filter((call) => call.name === ELICITED_TOOL_NAME);
+	if (gated.length === 0) return context.toolCalls;
+
+	const elicit = context.elicit;
+	if (elicit === undefined) {
+		return context.toolCalls.filter((call) => call.name !== ELICITED_TOOL_NAME);
+	}
+
+	// The SCHEMA is what Operative validates the answer against, and it is the
+	// host's own shape rather than the tool's input: the person is answering
+	// "may this run", not re-authoring the note.
+	const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }));
+	if (answer !== null) return context.toolCalls;
+	return context.toolCalls.filter((call) => call.name !== ELICITED_TOOL_NAME);
+}

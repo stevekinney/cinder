@@ -33,6 +33,8 @@ import {
 	type OperativeExecuteOptions,
 	type StandaloneAgent,
 	type StepResult,
+	type BeforeToolExecutionHook,
+	type OnElicitation,
 	type StopCondition,
 	type StreamEvent,
 	type StreamingGenerateFunction
@@ -263,11 +265,33 @@ export function createChatRunOptions(options: {
 	toolbox: AnyToolbox;
 	requestContext: OperativeExecuteOptions['requestContext'];
 	writer: ChatStreamWriter;
+	/**
+	 * Operative's elicitation callback, for a caller whose approval decision
+	 * comes from a person rather than from a signed token on the next request.
+	 *
+	 * OPTIONAL, and the loop reads its presence rather than its value:
+	 * `run-step.ts` builds `ctx.elicit` only when `onElicitation` is supplied,
+	 * so passing `undefined` is not the same as passing a callback that denies
+	 * — it means the hooks never get an `elicit` at all. The browser-owned
+	 * route omits it on purpose; its approvals park through the toolbox.
+	 */
+	onElicitation?: OnElicitation;
+	/**
+	 * Hooks the caller wants to run before tools execute, appended after none
+	 * of this module's own — it registers none.
+	 *
+	 * A hook here can filter calls out of the array it returns, which Operative
+	 * supports explicitly: it seals a filtered call with an error result so no
+	 * dangling tool call is left to break a later replay.
+	 */
+	beforeToolExecution?: BeforeToolExecutionHook[];
 }): {
 	generate: ReturnType<typeof withEnhancedStreaming>;
 	toolbox: AnyToolbox;
 	executeOptions: { requestContext: OperativeExecuteOptions['requestContext'] };
 	stopWhen: StopCondition[];
+	onElicitation?: OnElicitation;
+	beforeToolExecution?: BeforeToolExecutionHook[];
 } {
 	// Operative's `TypedEventTarget` class is not a public export, only its
 	// type (through `EnhancedStreamingOptions`); the wrapper dispatches via
@@ -291,7 +315,16 @@ export function createChatRunOptions(options: {
 		generate: withEnhancedStreaming(options.generate, { eventTarget, liveToolCalls: true }),
 		toolbox: options.toolbox,
 		executeOptions: { requestContext: options.requestContext },
-		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall]
+		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall],
+		// SPREAD rather than assigned, because `exactOptionalPropertyTypes` makes
+		// `onElicitation: undefined` a different thing from an absent key — and
+		// the loop distinguishes them: an absent `onElicitation` means the hook
+		// contexts carry no `elicit` at all, while a present-but-undefined one
+		// would not type-check against `RunOptions`.
+		...(options.onElicitation === undefined ? {} : { onElicitation: options.onElicitation }),
+		...(options.beforeToolExecution === undefined
+			? {}
+			: { beforeToolExecution: options.beforeToolExecution })
 	};
 }
 

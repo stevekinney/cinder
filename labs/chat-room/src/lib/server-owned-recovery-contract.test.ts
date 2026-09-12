@@ -39,9 +39,25 @@ import type { AgentRun, DiagnosticAgentRun, SessionHandle } from '@lostgradient/
  * check` fail.
  */
 
-declare const handle: SessionHandle;
-declare const diagnostic: DiagnosticAgentRun;
-declare const live: AgentRun;
+/**
+ * Stand-ins with a runtime existence, not `declare const`.
+ *
+ * The first version of this file declared them, which compiles but leaves no
+ * binding — so every `expect` below threw `ReferenceError` the moment the file
+ * ran under `bun test`, and the suite went red the first time it was run
+ * together with the others rather than alone.
+ *
+ * An empty object is the right stand-in precisely BECAUSE it has none of these
+ * members: each assertion reads `undefined` at runtime, and the compile-time
+ * claim is carried by the `@ts-expect-error` comments, which the cast does not
+ * weaken. `bun test` strips types, so the type half of this file is enforced
+ * only by `bun run check` — which is where it was proved, by inverting each
+ * pin and watching `tsc` fail.
+ */
+const empty = {} as unknown;
+const handle = empty as SessionHandle;
+const diagnostic = empty as DiagnosticAgentRun;
+const live = empty as AgentRun;
 
 describe('the published shape of a recovered run', () => {
 	test('recover() hands back a handle that still has unwrap(), so it is not a DiagnosticAgentRun', async () => {
@@ -58,7 +74,9 @@ describe('the published shape of a recovered run', () => {
 		type Unwrapped = ReturnType<Recovered['unwrap']>;
 		const unwrapReturnsText: Unwrapped extends Promise<string> ? true : false = true;
 		expect(unwrapReturnsText).toBe(true);
-		expect(typeof handle).toBe('undefined');
+		// The stand-in carries no members, which is the whole reason it is safe
+		// to read off: the claim lives in the types above, not in this object.
+		expect(handle.recover).toBeUndefined();
 	});
 
 	test('a DiagnosticAgentRun offers no unwrap()', () => {
