@@ -73,6 +73,20 @@ bun run --filter=@lostgradient/cinder test
 bun run --filter=@lostgradient/cinder test:coverage
 ```
 
+`test:coverage`'s Svelte floor (`coverage-ratchet.json`'s `svelte` block, checked by
+`packages/components/scripts/check-coverage-ratchet.ts`) is platform-dependent: Bun measures
+`.svelte`/`.svelte.ts` coverage differently on macOS than on the `ubuntu-latest` (linux x64) runner
+CI uses, and CI's number is the authoritative one—the JSON's `svelteMeasuredOn` block records
+which platform/architecture, commit, and CI run the current floor was measured on, and why. A local
+run on a different platform still enforces the floor (it is not skipped), but prints a non-fatal
+notice when its platform doesn't match the recorded one, so a local Svelte pass or fail is never
+mistaken for CI's result.
+
+Bun has no corepack equivalent, so nothing besides CI's `setup-bun` steps and
+`pinned-bun-version.test.ts` enforces that a contributor's local Bun matches the workspace's pinned
+`packageManager` version. `check-coverage-ratchet.ts` also warns (without failing) when the running
+Bun differs from that pin, via `packages/testing/scripts/local-bun-version-guard.ts`.
+
 ### Validation ownership
 
 The `pre-commit` hook checks lockfile staging and runs staged formatters and

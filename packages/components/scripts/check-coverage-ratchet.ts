@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { localBunVersionNotice } from '@cinder/testing/scripts/local-bun-version-guard.ts';
+import { readPinnedBunVersion } from '@cinder/testing/scripts/update-snapshots-docker.ts';
+
 export type CoverageThresholds = {
   functions: number;
   lines: number;
@@ -86,6 +89,71 @@ export function parseCoverageThresholds(source: string): CoverageThresholdConfig
 
 function isRatchetThreshold(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 1;
+}
+
+export type SvelteMeasurementPlatform = {
+  platform: string;
+  architecture: string;
+};
+
+/**
+ * The `svelteMeasuredOn` block coverage-ratchet.json records beside its
+ * `svelte` threshold — the platform/architecture CI actually measured that
+ * threshold on. This is read independently of {@link parseCoverageThresholds}
+ * (which validates and returns only the numeric floors) because it is
+ * provenance metadata, not a threshold, and a missing or malformed block is
+ * not a validation error: a package with no `svelte` floor at all has no use
+ * for it, so absence is silently treated as "nothing to compare against"
+ * rather than throwing.
+ */
+export function parseSvelteMeasurementPlatform(
+  source: string,
+): SvelteMeasurementPlatform | undefined {
+  const parsed: unknown = JSON.parse(source);
+  if (typeof parsed !== 'object' || parsed === null || !('svelteMeasuredOn' in parsed)) {
+    return undefined;
+  }
+  const measuredOn = parsed.svelteMeasuredOn;
+  if (
+    typeof measuredOn !== 'object' ||
+    measuredOn === null ||
+    !('platform' in measuredOn) ||
+    !('architecture' in measuredOn)
+  ) {
+    return undefined;
+  }
+  const { platform, architecture } = measuredOn;
+  if (typeof platform !== 'string' || typeof architecture !== 'string') return undefined;
+  return { platform, architecture };
+}
+
+/**
+ * Svelte coverage is platform-dependent (see coverage-ratchet.json's
+ * `svelteMeasuredOn` note for the measured numbers on each side) — a macOS
+ * run can pass a floor CI fails, and there is no way to tell from a bare
+ * percentage alone. Returns a notice to print whenever the running
+ * platform/architecture differs from the one the floor was measured on, so a
+ * local pass (or fail) on this metric is never mistaken for what CI will do.
+ * Returns `undefined` — no notice — both when they match and when no
+ * `svelteMeasuredOn` block was recorded at all.
+ */
+export function svelteCoveragePlatformNotice(
+  recorded: SvelteMeasurementPlatform | undefined,
+  actual: SvelteMeasurementPlatform,
+): string | undefined {
+  if (
+    recorded === undefined ||
+    (recorded.platform === actual.platform && recorded.architecture === actual.architecture)
+  ) {
+    return undefined;
+  }
+  return (
+    `NOTE: the Svelte coverage floor in coverage-ratchet.json was measured on ` +
+    `${recorded.platform}/${recorded.architecture} (see its "svelteMeasuredOn" note). This run is on ` +
+    `${actual.platform}/${actual.architecture} — its Svelte number below is NOT authoritative. CI on ` +
+    `${recorded.platform}/${recorded.architecture} is the gate; do not treat this run's Svelte result, ` +
+    `pass or fail, as the real one.`
+  );
 }
 
 /**
@@ -468,11 +536,27 @@ export async function main(): Promise<void> {
     : defaultPackageRoot;
   const thresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
   const coveragePath = resolve(packageRoot, 'coverage/lcov.info');
-  const thresholds = parseCoverageThresholds(await Bun.file(thresholdsPath).text());
+  const thresholdsSource = await Bun.file(thresholdsPath).text();
+  const thresholds = parseCoverageThresholds(thresholdsSource);
   const coverageSource = await Bun.file(coveragePath).text();
   const averages = computeCoverageAverages(parseRuntimeLcovRecords(coverageSource, packageRoot));
   const summaries = [formatCoverageSummary(averages, thresholds)];
   const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
+
+  // Warn-only advisories: neither of these ever turns a passing run into a
+  // failing one, and a failure reading either one must not either — see
+  // localBunVersionNotice's and svelteCoveragePlatformNotice's own docs.
+  const notices: string[] = [];
+  try {
+    const bunNotice = localBunVersionNotice(Bun.version, readPinnedBunVersion());
+    if (bunNotice) notices.push(bunNotice);
+  } catch (error) {
+    notices.push(
+      `NOTE: could not check the local Bun version against the workspace pin: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 
   if (thresholds.svelte) {
     const svelteAverages = computeCoverageAverages(
@@ -484,6 +568,17 @@ export async function main(): Promise<void> {
     failures.push(
       ...coverageFailures(svelteAverages, thresholds.svelte).map((failure) => `svelte ${failure}`),
     );
+
+    const recordedPlatform = parseSvelteMeasurementPlatform(thresholdsSource);
+    const platformNotice = svelteCoveragePlatformNotice(recordedPlatform, {
+      platform: process.platform,
+      architecture: process.arch,
+    });
+    if (platformNotice) notices.push(platformNotice);
+  }
+
+  if (notices.length > 0) {
+    console.warn(notices.join('\n'));
   }
 
   if (failures.length > 0) {

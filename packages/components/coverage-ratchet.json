@@ -2,7 +2,15 @@
   "lines": 1,
   "functions": 1,
   "svelte": {
-    "lines": 0.3221,
-    "functions": 0.8134
+    "lines": 0.2106,
+    "functions": 0.7652
+  },
+  "svelteMeasuredOn": {
+    "platform": "linux",
+    "architecture": "x64",
+    "measuredAtSha": "67603ed8a818e9c4d29b7b818fa46ab62b3688a7",
+    "ciRunId": "34652014190",
+    "ciJobId": "103436381025",
+    "note": "Svelte coverage (functions/lines over .svelte and .svelte.ts modules) is platform-dependent: Bun instruments the compiled output identically in both environments' coordinates, yet at 67603ed8a with the same Bun 1.4.0/1.4.2, the same 12335 passing tests, and the same 291 svelte files, macOS arm64 measured functions 83.22%/lines 38.04% while GitHub Actions' ubuntu-latest (linux x64) measured functions 76.53%/lines 21.07%. That gap was confirmed reproducible, not a fluke: two independent CI unit-tests runs on this branch at two different commits (job 103436381025 at 67603ed8a and job 103349830223 at 37b4b803f, with svelte source unchanged between them) both printed the identical 76.53%/21.07%. Bun version (1.4.0 vs 1.4.2), turbo-cache replay, build state, and NODE_ENV compile mode were each ruled out as the cause. CI is the authoritative measuring environment, so this floor is pinned to what CI measures, not what a contributor's Mac measures: 0.7652/0.2106, one one-hundredth of a percentage point below the printed 76.53%/21.07% to absorb toFixed(2) rounding (a printed 76.53% means the true value could be as low as 76.525%) rather than fail on the low end of that interval. The prior 0.8134/0.3221 floor (introduced in PR #560, identical to Chat's own svelte floor from the same era) was never verified against this package's own CI run—Cinder was not wired into unit-tests.yaml/main-green.yaml's test:coverage filter until this same change (CIN-604/CIN-605)—so it passed locally on macOS without ever being checked against the Linux number that is now known to fail it. `check-coverage-ratchet.ts` detects when a local run's platform/architecture differs from this record and says so in its output; it never fails a local run for that mismatch alone."
   }
 }
