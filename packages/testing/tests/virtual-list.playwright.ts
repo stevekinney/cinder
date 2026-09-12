@@ -251,10 +251,58 @@ test.describe('Sticky headers and keyboard navigation', () => {
   const mountSelector = '#example-mount-sticky-headers';
   const rowHeight = 36;
 
-  async function openStickyExample(page: Page) {
-    const list = page.locator(`${mountSelector} .cinder-virtual-list`);
-    await expect(list).toBeVisible();
-    return list;
+  function listLocator(page: Page) {
+    return page.locator(`${mountSelector} .cinder-virtual-list`);
+  }
+
+  async function offsetWithinList(page: Page, index: number): Promise<number> {
+    const listBox = await listLocator(page).boundingBox();
+    const rowBox = await page
+      .locator(`${mountSelector} [data-cinder-virtual-index="${index}"]`)
+      .boundingBox();
+    if (listBox === null || rowBox === null) return Number.NaN;
+    return Math.round(rowBox.y - listBox.y);
+  }
+
+  /**
+   * Scrolls the list and waits for the COMPONENT to have caught up, not just the
+   * browser.
+   *
+   * Setting `scrollTop` moves the container immediately, but the component learns
+   * about it from a scroll event and re-derives its window a frame later. A key
+   * pressed in between resolves its destination from the previous position — off by
+   * exactly one row, which is a real race rather than a rounding artifact. It passed
+   * on a fast machine and failed on CI, which is the shape of every test that waits
+   * for a value it set itself.
+   *
+   * The probe is a row five below the leading edge: unlike the leading row, which a
+   * sticky header holds at the top either way, its position can only be right once
+   * the window has re-rendered for this offset.
+   */
+  async function scrollListTo(page: Page, offset: number): Promise<void> {
+    const list = listLocator(page);
+    await list.evaluate((element, value) => {
+      element.scrollTop = value;
+    }, offset);
+    await expect
+      .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
+      .toBe(offset);
+
+    const probeIndex = Math.floor(offset / rowHeight) + 5;
+    await expect(
+      page.locator(`${mountSelector} [data-cinder-virtual-index="${probeIndex}"]`),
+    ).toBeVisible();
+    await expect
+      .poll(async () => offsetWithinList(page, probeIndex))
+      .toBe(probeIndex * rowHeight - offset);
+  }
+
+  async function pressAndSettle(page: Page, key: string, expected: number): Promise<void> {
+    await listLocator(page).focus();
+    await page.keyboard.press(key);
+    await expect
+      .poll(async () => listLocator(page).evaluate((element) => Math.round(element.scrollTop)))
+      .toBe(expected);
   }
 
   test('holds a section header at the leading edge with real CSS', async ({ componentPage }) => {
@@ -263,27 +311,18 @@ test.describe('Sticky headers and keyboard navigation', () => {
       theme: lightTheme,
       viewport: desktopViewport,
     });
-    const list = await openStickyExample(page);
+    await expect(listLocator(page)).toBeVisible();
 
     // Well into section 2, so header 50 is held rather than sitting at its own start.
-    await list.evaluate((element, offset) => {
-      element.scrollTop = offset;
-    }, rowHeight * 60);
-    await expect
-      .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
-      .toBe(rowHeight * 60);
+    await scrollListTo(page, rowHeight * 60);
 
     // The header is painted at the container's own top edge, not at its position in
     // the scrolled content — which is what `position: sticky` is supposed to do and
     // what every keyboard offset in this component assumes.
-    const listBox = await list.boundingBox();
     const header = page.locator(`${mountSelector} [data-cinder-virtual-index="50"]`);
     await expect(header).toBeVisible();
-    const headerBox = await header.boundingBox();
-    expect(listBox).not.toBeNull();
-    expect(headerBox).not.toBeNull();
-    expect(Math.abs((headerBox?.y ?? 0) - (listBox?.y ?? 0))).toBeLessThanOrEqual(1);
-    expect(Math.round(headerBox?.height ?? 0)).toBe(rowHeight);
+    await expect.poll(async () => offsetWithinList(page, 50)).toBe(0);
+    expect(Math.round((await header.boundingBox())?.height ?? 0)).toBe(rowHeight);
   });
 
   test('lands an arrow destination below the header rather than under it', async ({
@@ -294,28 +333,18 @@ test.describe('Sticky headers and keyboard navigation', () => {
       theme: lightTheme,
       viewport: desktopViewport,
     });
-    const list = await openStickyExample(page);
+    await expect(listLocator(page)).toBeVisible();
 
     // Parked exactly where section 2 begins — the offset every step onto a section
     // lands on, and where the header is both the first visible row and the thing
     // covering the leading edge.
-    await list.evaluate((element, offset) => {
-      element.scrollTop = offset;
-    }, rowHeight * 50);
-    await list.focus();
-
-    await page.keyboard.press('ArrowDown');
-    await expect
-      .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
-      .toBe(rowHeight * 51);
+    await scrollListTo(page, rowHeight * 50);
+    await pressAndSettle(page, 'ArrowDown', rowHeight * 51);
 
     // Row 52 is the destination — the step passes over header 50 — and it sits
     // immediately below the pinned header rather than beneath it.
-    const listBox = await list.boundingBox();
-    const target = page.locator(`${mountSelector} [data-cinder-virtual-index="52"]`);
-    await expect(target).toBeVisible();
-    const targetBox = await target.boundingBox();
-    expect(Math.round((targetBox?.y ?? 0) - (listBox?.y ?? 0))).toBe(rowHeight);
+    await expect(page.locator(`${mountSelector} [data-cinder-virtual-index="52"]`)).toBeVisible();
+    await expect.poll(async () => offsetWithinList(page, 52)).toBe(rowHeight);
   });
 
   test('moves in both directions from a section boundary', async ({ componentPage }) => {
@@ -324,26 +353,16 @@ test.describe('Sticky headers and keyboard navigation', () => {
       theme: lightTheme,
       viewport: desktopViewport,
     });
-    const list = await openStickyExample(page);
-    await list.focus();
+    await expect(listLocator(page)).toBeVisible();
 
+    // Neither direction may stall: the header is the first visible row AND the
+    // leading-edge occupant, and resolving that wrongly leaves one key dead.
     for (const [key, expected] of [
       ['ArrowDown', rowHeight * 51],
       ['ArrowUp', rowHeight * 48],
     ] as const) {
-      await list.evaluate((element, offset) => {
-        element.scrollTop = offset;
-      }, rowHeight * 50);
-      await expect
-        .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
-        .toBe(rowHeight * 50);
-
-      await page.keyboard.press(key);
-      // Neither direction may stall: the header is the first visible row AND the
-      // leading-edge occupant, and resolving that wrongly leaves one key dead.
-      await expect
-        .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
-        .toBe(expected);
+      await scrollListTo(page, rowHeight * 50);
+      await pressAndSettle(page, key, expected);
     }
   });
 
@@ -353,25 +372,15 @@ test.describe('Sticky headers and keyboard navigation', () => {
       theme: lightTheme,
       viewport: desktopViewport,
     });
-    const list = await openStickyExample(page);
+    await expect(listLocator(page)).toBeVisible();
 
-    await list.evaluate((element, offset) => {
-      element.scrollTop = offset;
-    }, rowHeight * 50);
-    await list.focus();
-
-    await page.keyboard.press('PageDown');
+    await scrollListTo(page, rowHeight * 50);
 
     // A 360px viewport over 36px rows fits ten, but the header covers one, so nine
     // are exposed: from row 51 the page reaches row 60, landing it below the header.
-    await expect
-      .poll(async () => list.evaluate((element) => Math.round(element.scrollTop)))
-      .toBe(rowHeight * 59);
+    await pressAndSettle(page, 'PageDown', rowHeight * 59);
 
-    const listBox = await list.boundingBox();
-    const target = page.locator(`${mountSelector} [data-cinder-virtual-index="60"]`);
-    await expect(target).toBeVisible();
-    const targetBox = await target.boundingBox();
-    expect(Math.round((targetBox?.y ?? 0) - (listBox?.y ?? 0))).toBe(rowHeight);
+    await expect(page.locator(`${mountSelector} [data-cinder-virtual-index="60"]`)).toBeVisible();
+    await expect.poll(async () => offsetWithinList(page, 60)).toBe(rowHeight);
   });
 });
