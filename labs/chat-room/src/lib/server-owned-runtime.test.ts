@@ -103,6 +103,39 @@ describe('server-owned runtime', () => {
 		expect(failures).toBe(1);
 	});
 
+	it('isolates a teardown whose failure will not even describe itself', async () => {
+		// The diagnostic runs INSIDE the catch that provides isolation, so a
+		// rejection whose `toString` throws would escape `runDisposal` and skip
+		// every remaining teardown — one failed teardown turning into a shutdown
+		// that abandons the rest, which is precisely what isolation exists to
+		// prevent. The reporting added to help diagnose failures could otherwise
+		// cause a worse one.
+		await disposeServerOwnedRuntime();
+		const runtime = serverOwnedRuntime();
+
+		const completed: string[] = [];
+		runtime.onDispose(() => {
+			completed.push('registered-first');
+		});
+		runtime.onDispose(() => {
+			throw {
+				toString() {
+					throw new Error('this value refuses to be formatted');
+				}
+			};
+		});
+		runtime.onDispose(() => {
+			completed.push('registered-last');
+		});
+
+		const { failures } = await disposeServerOwnedRuntime();
+
+		// Reverse order, and BOTH survivors ran — the one after the hostile
+		// teardown and the one before it.
+		expect(completed).toEqual(['registered-last', 'registered-first']);
+		expect(failures).toBe(1);
+	});
+
 	it('awaits asynchronous teardowns before returning', async () => {
 		await disposeServerOwnedRuntime();
 		const runtime = serverOwnedRuntime();

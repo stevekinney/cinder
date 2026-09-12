@@ -577,10 +577,27 @@ function reportBeforeExit(message: string): void {
  * accidentally forward a live error object across it.
  */
 function describeCause(cause: unknown): string {
-	if (cause instanceof Error) {
-		return cause.name === 'Error' ? cause.message : `${cause.name}: ${cause.message}`;
+	// NO-THROW, and this is not defensive decoration. It is called from inside
+	// the catch that provides disposal's isolation guarantee, so if formatting
+	// throws it escapes `runDisposal` and skips every REMAINING teardown —
+	// turning one failed teardown into a shutdown that abandons the rest,
+	// which is the exact failure the isolation exists to prevent.
+	//
+	// A value can make it throw without being exotic: `String(cause)` runs a
+	// user `toString`, and a rejection carrying `{ toString() { throw … } }` is
+	// enough. Anything reached here has already failed once; it does not get a
+	// second chance to take the shutdown with it.
+	try {
+		if (cause instanceof Error) {
+			return cause.name === 'Error' ? cause.message : `${cause.name}: ${cause.message}`;
+		}
+		return typeof cause === 'string' ? cause : String(cause);
+	} catch {
+		// The type is still worth reporting even when the value will not
+		// describe itself — it distinguishes "an object that would not
+		// stringify" from "nothing was thrown".
+		return `a ${typeof cause} that could not be described`;
 	}
-	return typeof cause === 'string' ? cause : String(cause);
 }
 
 const signalHost = globalThis as SignalHost;
