@@ -455,6 +455,79 @@ describe('server-owned durable runtime', () => {
 		expect(typeof after.engine.shutdown).toBe('function');
 	});
 
+	it('retries retirement once a transient shutdown failure clears', async () => {
+		// The half the chained-reload tests never reached: they assert the two
+		// initial promises reject and then reset the shutdown method WITHOUT
+		// calling `durableRuntime()` again, so nothing checks that the system can
+		// recover.
+		//
+		// It could not. The restore on a chained failure put back `held`, which by
+		// then was a previous chain whose promise had already rejected — so every
+		// later caller re-awaited that cached rejection and nobody ever called the
+		// original engine's `shutdown()` again. A transient failure wedged the
+		// route family until the process restarted, which is indistinguishable
+		// from a permanent one and much harder to diagnose.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, { module: number } | undefined>;
+		const restamp = (): void => {
+			const slot = host[slotKey];
+			if (slot !== undefined) slot.module = 0;
+		};
+
+		const first = await durableRuntime();
+
+		// Fails while the condition holds, succeeds after it clears.
+		let refusing = true;
+		let shutdowns = 0;
+		const realShutdown = first.engine.shutdown.bind(first.engine);
+		let releaseShutdown: () => void = () => {};
+		const shutdownGate = new Promise<void>((resolve) => {
+			releaseShutdown = resolve;
+		});
+		first.engine.shutdown = async () => {
+			shutdowns += 1;
+			await shutdownGate;
+			if (refusing) throw new Error('transiently unable to stop');
+			return realShutdown();
+		};
+
+		// Two overlapping reloads, so the failure travels through a CHAIN rather
+		// than through the original slot — which is the case that wedged.
+		restamp();
+		const reloadOne = durableRuntime();
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		restamp();
+		const reloadTwo = durableRuntime();
+
+		const settledOne = reloadOne.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+		const settledTwo = reloadTwo.then(
+			() => 'resolved' as const,
+			(cause: unknown) => cause
+		);
+
+		releaseShutdown();
+		expect(await settledOne).toBeInstanceOf(EngineRetirementError);
+		expect(await settledTwo).toBeInstanceOf(EngineRetirementError);
+
+		// The condition clears. A later caller must actually RETRY the shutdown,
+		// not re-await the rejection the chain cached.
+		refusing = false;
+		const before = shutdowns;
+
+		restamp();
+		const recovered = await durableRuntime();
+
+		// `shutdown()` was called again — without the original slot being carried
+		// through the chain, this stays at `before` and the call below rejects
+		// instead of resolving.
+		expect(shutdowns).toBeGreaterThan(before);
+		expect(recovered).not.toBe(first);
+		expect(typeof recovered.engine.shutdown).toBe('function');
+	});
+
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {
 		const before = await durableRuntime();
 

@@ -111,6 +111,19 @@ type DurableSlot = {
 	 * to return the handle alongside the promise. It fills this in instead.
 	 */
 	unregisterTeardown: { current?: () => void };
+
+	/**
+	 * The slot this one is trying to retire, when it is a retirement chain.
+	 *
+	 * Carried so a FAILED retirement can put back the slot holding the live
+	 * engine rather than its own rejected promise. Without it, the restore on a
+	 * chained failure stores a promise that is already rejected: every later
+	 * caller rethrows that cached rejection, nobody ever calls the original
+	 * engine's `shutdown()` again, and the route family stays down even after
+	 * the transient condition clears. Retrying forever is the intent; retrying a
+	 * cached rejection is not a retry at all.
+	 */
+	retiring?: DurableSlot | undefined;
 };
 
 /**
@@ -369,10 +382,24 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 						// would leave the next caller with no `held` value, so it
 						// would take the direct build path and start a second
 						// engine over the same storage beside one that would not
-						// stop — without ever retrying its retirement. Restoring
-						// it means the next call tries to retire again, and keeps
-						// failing visibly until something is done about it.
-						if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = held;
+						// stop — without ever retrying its retirement.
+						//
+						// Put back the slot holding the LIVE ENGINE, which on a
+						// chained failure is not `held` itself: `held` is then a
+						// previous chain whose promise has already rejected, and
+						// restoring that makes every later caller rethrow the
+						// cached rejection without ever calling `shutdown()`
+						// again. The route family would stay down until the
+						// process restarted, even once the transient condition
+						// that caused the first failure had cleared. Following
+						// `retiring` walks back to the slot that actually owns
+						// the engine, so a later caller can genuinely retry.
+						// `retire` only exists when `held` does, so this branch cannot be
+						// reached with an undefined slot — but the compiler cannot
+						// see that, and a non-null assertion would be a worse way
+						// to say it than a fallback that is never taken.
+						const original = held === undefined ? undefined : (held.retiring ?? held);
+						if (host[DURABLE_SLOT]?.token === token) host[DURABLE_SLOT] = original;
 						throw failure;
 					}
 
@@ -401,7 +428,11 @@ export async function durableRuntime(): Promise<DurableRuntime> {
 		runtime,
 		module: MODULE_GENERATION,
 		promise,
-		unregisterTeardown: teardownHandle
+		unregisterTeardown: teardownHandle,
+		// Only a retirement chain has one. Following it on failure is what lets
+		// the original engine's `shutdown()` be retried rather than a rejected
+		// promise being re-awaited forever.
+		...(retire === undefined ? {} : { retiring: held?.retiring ?? held })
 	};
 	return promise;
 }

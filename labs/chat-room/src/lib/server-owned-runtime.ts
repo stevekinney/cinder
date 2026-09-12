@@ -170,9 +170,16 @@ export function serverOwnedRuntime(): ServerOwnedRuntime {
  * Tears the runtime down and forgets it, so the next call to
  * `serverOwnedRuntime()` builds a fresh one.
  *
- * Teardowns run in REVERSE registration order — a durable run registered
- * after the store it writes to must stop before that store is cleared, and
- * reverse order gives that for free without every caller reasoning about it.
+ * Teardowns run in REVERSE registration order, because a teardown registered
+ * later may DEPEND on something registered earlier still being intact: a
+ * durable engine registered after the session store it writes through has to
+ * stop before anything that store depends on is torn down. Reverse order gives
+ * that for free without every caller reasoning about it.
+ *
+ * Not because the store is cleared — it is not. `runDisposal` deliberately
+ * leaves storage alone so a graceful shutdown cannot erase persistent sessions
+ * or checkpoints, and a test pins that. An earlier version of this paragraph
+ * justified the ordering by a deletion that was removed on purpose.
  *
  * Each teardown is awaited and isolated: one that throws is reported and the
  * rest still run, because a half-disposed runtime is the failure this

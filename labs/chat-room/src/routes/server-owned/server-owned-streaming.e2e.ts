@@ -3,23 +3,28 @@
  * cross-engine shards can run these without also tripling the tests that do
  * not touch a browser.
  *
- * SEVEN tests here, each driving a real engine path: the create flow's
- * `fetch` plus reload, incremental rendering of a `ReadableStream` through the
- * page's session controller, transcript-versus-page scroll ownership, the
- * route-reuse reset, long-title overflow, a rejected turn's error envelope,
- * and duplicate-title distinguishability. That is what the cross-engine
- * shards exist for. The `request`-fixture tests stay in `server-owned.e2e.ts`,
- * where the chromium project's root matcher runs them once — that fixture is a
- * Node-side HTTP client, so three engines would execute identical code three
- * times.
+ * Each test here drives a real engine path: the create flow's `fetch` plus
+ * reload, incremental rendering of a `ReadableStream` through the page's
+ * session controller, transcript-versus-page scroll ownership, the route-reuse
+ * reset, long-title overflow, a rejected turn's error envelope,
+ * duplicate-title distinguishability, and a keyboard-focus regression on the
+ * create button. That is what the cross-engine shards exist for. The
+ * `request`-fixture tests stay in `server-owned.e2e.ts`, where the chromium
+ * project's root matcher runs them once — that fixture is a Node-side HTTP
+ * client, so three engines would execute identical code three times.
  *
- * Placed in `webkit-2` by measurement: `--list` per project reads
- * 49/48/62/51/50 without this spec and 49/55/62/51/50 with it, and `webkit-3`
- * is already at the 62 the ceiling note describes.
+ * NO COUNT, here or in `playwright.config.ts`. This docblock used to carry one
+ * and it went stale four times — at three tests, five, seven, and again when a
+ * focus regression moved in. The previous version of this paragraph even
+ * argued the point against itself: "two places carrying the same count is two
+ * places to correct." The answer was to stop carrying it in either.
  *
- * Re-running `--list` and updating BOTH this docblock and
- * `playwright.config.ts` is a step in adding a test here, not a reminder
- * afterwards — two places carrying the same count is two places to correct.
+ * Shard placement is still measured, not guessed. Run
+ * `bunx playwright test --list --project=webkit-N` when this spec gains or
+ * loses a test, and keep the largest shard at or under the ceiling
+ * `playwright.config.ts` documents — that check is a step in adding a test
+ * here, and it is how a shard was found sitting at 66, past the point where a
+ * WebKit worker stops accepting navigation.
  *
  * The count has now been wrong four times on this branch, the last of them by
  * someone adding one test and writing "eight" while listing seven. So: COUNT

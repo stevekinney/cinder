@@ -106,13 +106,37 @@ describe('server-owned runtime', () => {
 	it('awaits asynchronous teardowns before returning', async () => {
 		await disposeServerOwnedRuntime();
 		const runtime = serverOwnedRuntime();
+
+		// An EXTERNALLY held gate, not `await Promise.resolve()`. Awaiting an
+		// already-resolved promise queues the continuation ahead of the caller's
+		// own resumption, so `settled` became true either way — the test passed
+		// against a regression from `await teardown()` to a bare `teardown()`,
+		// which is the entire behaviour its name claims.
+		let release: () => void = () => {};
+		const held = new Promise<void>((resolve) => {
+			release = resolve;
+		});
+
 		let settled = false;
 		runtime.onDispose(async () => {
-			await Promise.resolve();
+			await held;
 			settled = true;
 		});
 
-		await disposeServerOwnedRuntime();
+		const disposal = disposeServerOwnedRuntime();
+
+		let disposed = false;
+		void disposal.then(() => {
+			disposed = true;
+		});
+		// A macrotask, so every microtask has drained. Disposal must still be
+		// PENDING: the teardown it is responsible for has not finished.
+		await new Promise((resolve) => setTimeout(resolve, 0));
+		expect(disposed).toBe(false);
+		expect(settled).toBe(false);
+
+		release();
+		await disposal;
 
 		// Without the await, disposal would resolve while a durable run was
 		// still shutting down — reported clean, actually mid-flight.
