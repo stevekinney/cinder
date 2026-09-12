@@ -5983,7 +5983,8 @@
       ],
       "avoidWhen": [
         {
-          "reason": "Two-dimensional grids — data-grid owns column virtualization and grid semantics."
+          "reason": "Two-dimensional grids, which need column virtualization and grid semantics.",
+          "alternative": "data-grid"
         },
         {
           "reason": "A native table or a hierarchy — data-table and tree window those already."
