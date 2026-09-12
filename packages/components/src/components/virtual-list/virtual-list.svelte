@@ -1070,18 +1070,18 @@
   function resolveRowStyle(index: number, size: number): string | undefined {
     const isPinned = index === pinnedStickyIndex;
     const declarations: string[] = [];
-    if (!dynamicSize) {
-      declarations.push(`${rowLayout.sizeProperty}:${size}px`);
-    } else if (isPinned) {
-      // A MINIMUM, not a definite size. Out of flow the row has no siblings to size
-      // against and would collapse to its content, so it needs a floor — but a definite
-      // size together with the row's own `overflow: hidden` freezes the observed border
-      // box, so `ResizeObserver` can never see the row grow. A header whose content
-      // arrives late while it is pinned would then stay clipped, and the obstruction
-      // every keyboard offset is measured against would stay stale, until it happened
-      // to re-enter the rendered window.
-      declarations.push(`min-${rowLayout.sizeProperty}:${size}px`);
-    }
+    // Under `dynamicSize` the row carries no main-axis size at all, pinned or not.
+    //
+    // A definite size froze the observed border box, so a header growing while pinned
+    // could never be remeasured. A minimum fixed that and froze the opposite direction:
+    // a header that SHRINKS — collapsible content, an async replacement — kept its old
+    // extent, held empty space, and left `stickyObstructionSize` reporting the larger
+    // value to every keyboard and scroll destination.
+    //
+    // Both came from special-casing the pinned row. Every other dynamic row is left
+    // unsized precisely so it can be measured; out of flow this one is sized by its own
+    // content, which is the intrinsic extent the observer is there to read.
+    if (!dynamicSize) declarations.push(`${rowLayout.sizeProperty}:${size}px`);
     if (isPinned) {
       // Relative to the WINDOW, which is itself already translated by its leading
       // size. Writing the raw scroll offset here compounded the two and put the row
@@ -1466,15 +1466,45 @@
       const element = scrollElement;
       if (!element) return;
       event.preventDefault();
-      // The uncovered viewport: what the reader can actually see past the header.
-      const pageDistance = Math.max(1, viewportHeight - stickyObstructionSize);
-      const direction = event.key === 'PageDown' ? 1 : -1;
+      // Explicitly, rather than relying on the key sets above. Those describe which
+      // keys the BROWSER scrolls an element with, and the Page keys are absent from the
+      // inline-axis set because a horizontal container is not what they scroll — but
+      // this branch claims them in either orientation, and a settle loop left running
+      // can write its own destination back afterwards and undo the page.
+      retireSettleLoop();
+
+      const furthest = maxScrollOffset(currentTotalSize(), viewportHeight);
+      const clampToScrollRange = (offset: number): number =>
+        Math.min(Math.max(0, offset), furthest);
+
+      if (event.key === 'PageUp') {
+        // Backwards, the reader's current uncovered top should end up at the new
+        // viewport's bottom edge — so the header in play is the one covering them now.
+        writeScrollOffset(
+          element,
+          clampToScrollRange(scrollOffset + stickyObstructionSize - viewportHeight),
+          smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
+        );
+        scrollOffset = readScrollOffset(element);
+        return;
+      }
+
+      // Forwards, what sat just past the visible bottom should end up just below the
+      // header — which is the header active AT THE DESTINATION, not the one here. They
+      // differ whenever the page crosses into another section, and assuming they match
+      // hides the difference: stepping 180px with a 20px header into a section whose
+      // header is 100px leaves the first 80px covered and never read.
+      //
+      // Resolved by settling once. The destination depends on its own obstruction, so
+      // the first estimate picks the section and the second uses that section's header.
+      // A further pass would only matter if the correction crossed into a THIRD
+      // section, which needs a header taller than the viewport.
+      const visibleBottom = scrollOffset + viewportHeight;
+      const estimated = clampToScrollRange(visibleBottom - stickyObstructionSize);
+      const destinationObstruction = resolveObstructionAtOffset(estimated);
       writeScrollOffset(
         element,
-        Math.min(
-          Math.max(0, scrollOffset + direction * pageDistance),
-          maxScrollOffset(currentTotalSize(), viewportHeight),
-        ),
+        clampToScrollRange(visibleBottom - destinationObstruction),
         smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
       );
       scrollOffset = readScrollOffset(element);
@@ -1645,6 +1675,22 @@
    * oscillates between the header's start and the row's, and the attempt cap decides
    * where the reader ends up.
    */
+  /**
+   * How much of the leading edge a sticky header would cover at `offset`.
+   *
+   * The same question `stickyObstructionSize` answers for the current position, asked
+   * about somewhere the reader is not yet — which is what a page forward needs, since
+   * the header waiting at the destination is what will cover the content it lands on.
+   */
+  function resolveObstructionAtOffset(offset: number): number {
+    if (stickyIndexes.length === 0) return 0;
+    const header = resolveActiveStickyIndex(
+      stickyIndexes,
+      resolveAnchorIndexAtOffset(Math.max(0, offset)),
+    );
+    return header === null ? 0 : locateRowSize(header);
+  }
+
   /** The index `computeScrollToIndexOffset` will actually resolve, clamped the same way. */
   function clampedScrollIndex(index: number): number {
     return Math.max(0, Math.min(items.length - 1, Math.floor(index)));

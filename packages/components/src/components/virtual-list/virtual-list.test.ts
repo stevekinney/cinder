@@ -3025,10 +3025,128 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     );
 
     const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
-    // A floor it cannot collapse below...
-    expect(pinned?.style.minBlockSize).not.toBe('');
-    // ...and no ceiling, so growth reaches the observer.
+    // Neither bound. A definite size froze the observed border box so growth could
+    // never be seen; a minimum froze shrinkage instead, holding empty space and
+    // reporting the larger obstruction to every keyboard destination. Both came from
+    // special-casing this row — every other dynamic row is left unsized so it can be
+    // measured, and out of flow this one is sized by its own content, which is the
+    // intrinsic extent the observer exists to read.
     expect(pinned?.style.blockSize).toBe('');
+    expect(pinned?.style.minBlockSize).toBe('');
+    expect(pinned?.style.maxBlockSize).toBe('');
+    // But it is still positioned, which is the part that keeps it out of flow.
+    expect(pinned?.style.insetBlockStart).not.toBe('');
+
+    restoreResizeObserver();
+  });
+
+  test('a horizontal page key retires the settle loop it interrupts', async () => {
+    // Only horizontal reaches this. The Page keys are in the block-axis scroll set, so
+    // a vertical list retires the loop on the way in; the inline set leaves them out,
+    // because a horizontal container is not what the browser pages with — but this
+    // component claims them in either orientation. A loop left running writes its own
+    // destination back once measurements settle and undoes the page.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(200),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      horizontal: true,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Columns',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // Somewhere with room to move in either direction.
+    list.scrollLeft = 2_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Home starts a settle pass back toward the start, which writes 0 at once and then
+    // keeps re-deriving that destination as rows are measured.
+    const pressed = fireEvent.keyDown(list, { key: 'Home' });
+    // PageDown lands inside its pending frames and claims the scroll for itself.
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    // A measurement the interrupted loop would have re-targeted against.
+    reportRowSizes(new Map([[150, 120]]));
+    await pressed;
+    await tick();
+
+    // One page on from where Home left the reader — 200px of viewport less the 20px
+    // header — rather than snapped back to 0 by the loop it interrupted.
+    await waitFor(() => expect(Math.round(list.scrollLeft)).toBe(180));
+
+    restoreResizeObserver();
+
+    // And the retire itself, structurally, because the assertion above does not
+    // discriminate: happy-dom's frame scheduling lets the interrupted loop exit before
+    // the page key lands, so it passes with or without the call. Only a real smooth
+    // animation keeps the loop alive long enough to write its destination back. The
+    // mechanism is covered behaviourally elsewhere — see the off-axis arrow test — so
+    // what is worth pinning here is that this branch uses it.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+    const pageBranch = source.slice(
+      source.indexOf("if (event.key === 'PageDown' || event.key === 'PageUp') {"),
+      source.indexOf('const target = resolveKeyboardTargetIndex({'),
+    );
+    expect(pageBranch).toContain('retireSettleLoop();');
+  });
+
+  test('pages against the header waiting at the destination, not the one here', async () => {
+    // Consecutive headers need not be the same size once they are measured. Stepping by
+    // the CURRENT header's uncovered viewport hides the difference: crossing into a
+    // section whose header is taller leaves the band between the two heights covered on
+    // arrival, and it is never read — it was below the fold before the press and behind
+    // the header after it.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0, 20],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // Row 20 has to be MOUNTED before it can be measured — the observer only sees rows
+    // in the window, so reporting a size for one outside it does nothing at all.
+    list.scrollTop = 400;
+    await fireEvent.scroll(list);
+    await tick();
+    // Header 0 is 20px; header 20, the next section's, is 100px.
+    reportRowSizes(new Map([[20, 100]]));
+    await tick();
+
+    const scrollTop = instrumentScrollTop(list);
+
+    // Rows are 20px and row 20 is 100px, so row 20 starts at 400 and the section after
+    // it at 500. Parked at 220 the viewport ends at 420, just inside that section.
+    list.scrollTop = 220;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // The destination's header is the 100px one, so the visible bottom of 420 has to
+    // land 100px below the new top rather than 20px: 420 - 100.
+    await waitFor(() => expect(scrollTop.value()).toBe(320));
+
+    // And nothing was skipped — content at the old visible bottom is now exactly at the
+    // new uncovered top.
+    expect(scrollTop.value() + 100).toBe(420);
 
     restoreResizeObserver();
   });
