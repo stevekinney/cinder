@@ -129,3 +129,86 @@ test('a remote replacement hands focus back when the pending call changes', asyn
 	);
 	await expect(page.locator('[data-testid="approval-question"]')).toBeFocused();
 });
+
+test('stale approval POST outcomes cannot mutate a removed or replaced question', async ({
+	page
+}) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Stale approval outcome');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
+	await page.getByRole('textbox').press('Enter');
+
+	const question = page.locator('[data-testid="approval-question"]');
+	const approve = page.locator('[data-testid="approval-approve"]');
+	const failure = page.locator('[data-testid="server-owned-turn-failure"]');
+	await expect(approve).toBeVisible();
+
+	let remoteState: 'server' | 'removed' | 'replaced' = 'server';
+	let releasePost: (() => void) | undefined;
+	let postOutcome: 'success' | 'conflict' | 'error' | 'network' = 'success';
+	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
+		if (route.request().method() === 'GET') {
+			if (remoteState === 'removed') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: '{"pending":null}'
+				});
+				return;
+			}
+			if (remoteState === 'replaced') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						pending: {
+							toolName: 'remember_note',
+							callId: 'remote-replacement',
+							message: 'Save the replacement note?',
+							arguments: { text: 'replacement' }
+						}
+					})
+				});
+				return;
+			}
+			await route.continue();
+			return;
+		}
+
+		await new Promise<void>((resolve) => {
+			releasePost = resolve;
+		});
+		if (postOutcome === 'network') {
+			await route.abort('failed');
+		} else {
+			await route.fulfill({
+				status: postOutcome === 'conflict' ? 409 : postOutcome === 'error' ? 500 : 200,
+				contentType: 'application/json',
+				body: postOutcome === 'error' ? JSON.stringify({ error: 'stale approval failed' }) : '{}'
+			});
+		}
+	});
+
+	for (const [index, outcome] of ['success', 'conflict', 'error', 'network'].entries()) {
+		postOutcome = outcome as typeof postOutcome;
+		remoteState = index % 2 === 0 ? 'removed' : 'replaced';
+		releasePost = undefined;
+		await approve.focus();
+		await approve.press('Enter');
+		await expect.poll(() => releasePost !== undefined).toBe(true);
+		if (remoteState === 'removed') {
+			await expect(approve).toHaveCount(0);
+		} else {
+			await expect(question).toContainText('replacement note');
+		}
+		releasePost?.();
+		releasePost = undefined;
+		await expect(failure).toBeEmpty();
+		remoteState = 'server';
+		await expect(approve).toBeVisible();
+	}
+});
