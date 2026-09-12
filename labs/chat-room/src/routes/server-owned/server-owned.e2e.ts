@@ -497,8 +497,16 @@ test('a person approves the note in the browser and the turn completes', async (
 
 	await expect(question).toContainText('Save this note?');
 	await expect(question).toContainText('remember_note');
-	// The MODEL'S own argument, so the person approves a specific note.
-	await expect(question).toContainText(APPROVAL_NOTE_TEXT);
+
+	// The MODEL'S own argument, so the person approves a specific note — in its
+	// own disclosure rather than inside the announcement. A note has no length
+	// limit, and rendering it inline took the transcript's space on a short
+	// viewport; `<summary>` also gives the keyboard path for free, which a
+	// bounded scroll box could not without a dead tab stop.
+	const proposed = page.locator('[data-testid="approval-arguments"]');
+	await expect(proposed).toContainText('remember_note');
+	await proposed.getByRole('group').or(proposed.locator('summary')).first().click();
+	await expect(proposed).toContainText(APPROVAL_NOTE_TEXT);
 
 	await page.locator('[data-testid="approval-approve"]').click();
 
@@ -676,16 +684,17 @@ test('a long approval question leaves the transcript its space', async ({ page }
 	const question = page.locator('[data-testid="approval-question"]');
 	await expect(question).toContainText('Save this note?');
 
-	// MEASURED WHILE THE QUESTION IS UP, which is the whole point.
+	// MEASURED WHILE THE QUESTION IS UP, which is the whole point — the idle
+	// measurement in the sibling test cannot see a region that only exists
+	// mid-turn and whose size the model chooses.
 	const metrics = await page.evaluate(() => {
-		const element = document.querySelector('[data-testid="server-owned-chat"]');
-		const asked = document.querySelector('[data-testid="approval-question"]');
+		const chatElement = document.querySelector('[data-testid="server-owned-chat"]');
+		const proposed = document.querySelector('[data-testid="approval-arguments"]');
 		return {
-			chat: element ? Math.round(element.getBoundingClientRect().height) : -1,
-			question: asked ? Math.round(asked.getBoundingClientRect().height) : -1,
-			// The note is longer than the box, so it has its own scroll rather
-			// than pushing the page around.
-			questionScrolls: asked ? asked.scrollHeight > asked.clientHeight + 1 : false
+			chat: chatElement ? Math.round(chatElement.getBoundingClientRect().height) : -1,
+			proposed: proposed ? Math.round(proposed.getBoundingClientRect().height) : -1,
+			// Closed on arrival, which is what keeps it to one line.
+			open: proposed instanceof HTMLDetailsElement ? proposed.open : true
 		};
 	});
 
@@ -693,9 +702,9 @@ test('a long approval question leaves the transcript its space', async ({ page }
 	// claim is that a long note cannot consume the transcript, not that the
 	// layout never changes.
 	expect(metrics.chat).toBeGreaterThan(100);
-	// And the question is bounded rather than as tall as its content.
-	expect(metrics.question).toBeLessThan(idleHeight);
-	expect(metrics.questionScrolls).toBe(true);
+	// And the note costs one line until someone asks for it, however long it is.
+	expect(metrics.open).toBe(false);
+	expect(metrics.proposed).toBeLessThan(idleHeight);
 
 	// Answer it, so the turn does not stay parked for the next test in this file.
 	await page.locator('[data-testid="approval-deny"]').click();

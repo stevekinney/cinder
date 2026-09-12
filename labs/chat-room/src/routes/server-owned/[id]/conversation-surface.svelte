@@ -175,22 +175,67 @@
 	 * The status paragraph, so focus can be moved to it when the controls it
 	 * describes are removed.
 	 *
-	 * `tabindex="-1"` on the element makes it programmatically focusable without
-	 * adding a stop to the tab order — a status region is not something anyone
-	 * should have to tab through on the way to the composer.
+	 * Its `tabindex` is CONDITIONAL, because two earlier fixes collided here.
+	 * Moving focus after a decision needs the element programmatically
+	 * focusable, which `-1` gives; bounding a long note's height made the
+	 * element a SCROLL container, and `-1` keeps a scroll container out of the
+	 * tab order — so a sighted keyboard-only user could reach Approve without
+	 * any way to read the rest of what they were authorizing.
+	 *
+	 * `0` while a question is pending puts it in the tab order, before the
+	 * buttons, so the note can be read and scrolled. `-1` once it is empty
+	 * keeps the post-decision focus move working without leaving a tab stop on
+	 * a region with nothing in it.
 	 */
 	let approvalQuestion = $state<HTMLElement | null>(null);
 
-	async function readPendingApproval(): Promise<void> {
+	/**
+	 * Which polling session a response belongs to.
+	 *
+	 * Every tick starts an independent request, so responses can land out of
+	 * order — or after `decide()` has cleared the question, or after the turn
+	 * ended and the effect below cleaned up. An unconditional assignment then
+	 * restores Approve/Deny controls for a question nobody can answer any more,
+	 * permanently, because nothing polls again to correct it.
+	 *
+	 * A monotonic counter is enough: the effect bumps it on entry and on
+	 * teardown, and a response carrying an older value is discarded.
+	 */
+	// NOT `$state`. Nothing renders from this, and making it reactive put the
+	// effect below in an infinite loop — it reads the generation to capture it
+	// and writes it on teardown, so a reactive value made the effect depend on
+	// state it mutates. Svelte reported `effect_update_depth_exceeded` and the
+	// whole page stopped hydrating, which surfaced as every region being empty
+	// rather than as anything pointing at this line.
+	let pollGeneration = 0;
+
+	async function readPendingApproval(generation: number): Promise<void> {
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`);
-			if (!response.ok) return;
+			if (generation !== pollGeneration) return;
+
+			if (!response.ok) {
+				// REPORTED, not swallowed. A run parked on `remember_note` while
+				// this endpoint keeps answering 404, 500, or the shutdown 503 shows
+				// no controls and no explanation — the turn simply appears to hang.
+				// That was the last version of this function: a bare `return` for
+				// every non-2xx, and a silent `catch`.
+				//
+				// Polling CONTINUES after reporting, so a transient failure heals
+				// itself and the banner is replaced by the question when one
+				// arrives.
+				failure = toBannerFailure(new Error(await failureMessage(response)));
+				return;
+			}
+
 			const body = (await response.json()) as { pending: PendingApproval | null };
+			// Checked AGAIN after the body is read, because awaiting it is another
+			// point where the turn can end underneath this response.
+			if (generation !== pollGeneration) return;
 			pending = body.pending;
-		} catch {
-			// A poll that fails changes nothing. The next tick asks again, and a
-			// banner for a failed background request would describe a problem the
-			// user did not cause and cannot act on.
+		} catch (cause) {
+			if (generation !== pollGeneration) return;
+			failure = toBannerFailure(cause);
 		}
 	}
 
@@ -211,7 +256,7 @@
 				// ONLY 409. The question moved on while it was being read — either
 				// the run ended or it advanced to a different call — so the current
 				// question is the actionable thing and re-reading offers it.
-				await readPendingApproval();
+				await readPendingApproval(pollGeneration);
 				return;
 			}
 			if (!response.ok) {
@@ -242,11 +287,18 @@
 	$effect(() => {
 		if (!streaming) {
 			pending = null;
+			// Bumped here too, so a response still in flight from the session that
+			// just ended cannot land and restore its controls.
+			pollGeneration += 1;
 			return;
 		}
-		void readPendingApproval();
-		const interval = setInterval(() => void readPendingApproval(), 250);
-		return () => clearInterval(interval);
+		const generation = pollGeneration;
+		void readPendingApproval(generation);
+		const interval = setInterval(() => void readPendingApproval(generation), 250);
+		return () => {
+			clearInterval(interval);
+			pollGeneration += 1;
+		};
 	});
 
 	// The OTHER error path. `onError` covers failures the controller raises;
@@ -316,6 +368,23 @@
 -->
 <section class="approval" aria-labelledby="approval-heading">
 	<h2 id="approval-heading" class="visually-hidden">Approval</h2>
+	<!--
+		THE ANNOUNCEMENT and THE ARGUMENTS are separate elements, because two
+		earlier fixes collided when they were one.
+
+		Moving focus after a decision needs this element programmatically
+		focusable, which `tabindex="-1"` gives. Bounding a long note's height
+		made the same element a SCROLL container — and `-1` keeps a scroll
+		container out of the tab order, so a sighted keyboard-only user could
+		reach Approve with no way to read the rest of what they were authorizing.
+		Making it `0` instead put a tab stop on a non-interactive element, which
+		Svelte's own a11y rule rejects, correctly.
+
+		So the sentence announces and stays unfocusable-by-tab, and the proposed
+		arguments live in their own `role="region"` with a name and a real tab
+		stop. That is also the better shape on its own terms: one is a sentence,
+		the other is a block someone may have to scroll.
+	-->
 	<p
 		class="approval-question"
 		role="status"
@@ -324,12 +393,30 @@
 		tabindex="-1"
 	>
 		{#if pending}
-			{pending.message} The assistant wants to run {pending.toolName} with {JSON.stringify(
-				pending.arguments
-			)}.
+			{pending.message} The assistant wants to run {pending.toolName}.
 		{/if}
 	</p>
 	{#if pending}
+		<!--
+			A DISCLOSURE, not a scrollable box, and that was the third attempt.
+
+			A bounded `overflow: auto` region needs `tabindex="0"` for its scroll
+			to be reachable without a mouse — which Svelte's
+			`a11y_no_noninteractive_tabindex` rejects for a non-interactive
+			element, correctly: a focusable element that does nothing is a dead
+			tab stop, and `role="region"` does not change that.
+
+			`<summary>` is natively focusable and operable, so the keyboard path
+			comes for free. Closed it costs one line, which is what keeps the
+			transcript's space on a short viewport; open it shows the whole note
+			and the page scrolls, which is already permitted while a question is
+			pending. Nothing is hidden from the person deciding, and nothing is
+			suppressed to make the linter quiet.
+		-->
+		<details class="approval-arguments" data-testid="approval-arguments">
+			<summary>{`Arguments proposed for ${pending.toolName}`}</summary>
+			<pre>{JSON.stringify(pending.arguments, null, 1)}</pre>
+		</details>
 		<div class="approval-actions">
 			<button
 				type="button"
@@ -434,30 +521,35 @@
 		border: 1px solid var(--cinder-status-warning-border, currentColor);
 		border-radius: 0.5rem;
 		background: var(--cinder-status-warning-background, transparent);
-		/*
-			BOUNDED, and it scrolls itself.
+	}
 
-			The question renders the model's proposed arguments, and the tool's
-			schema puts no length limit on the note — so an unbounded prompt grows
-			with whatever the model wrote. This page is a fixed-viewport-height
-			flex column whose only flexible child is the transcript, so on a short
-			viewport a long note takes the transcript's space while the person is
-			still deciding whether to approve it. The recovery panel had the same
-			shape and was solved by collapsing it; this one cannot collapse,
-			because reading it IS the task.
+	/*
+		CLOSED BY DEFAULT, so a note of any length costs one line until someone
+		asks for it.
 
-			`overflow: auto` rather than a clamp, so nothing is hidden from someone
-			deciding: the whole note is reachable, inside its own box.
+		The tool's schema puts no limit on the note, and the page is a
+		fixed-viewport-height flex column whose only flexible child is the
+		transcript — so rendering the whole thing inline took the transcript's
+		space while the person was still deciding. Measured at 844x390: 0px with
+		the arguments inline, and still 8px with them merely capped at 8rem,
+		because a fifth of a 390px viewport is most of what the transcript had.
+	*/
+	.approval-arguments {
+		border: 1px solid var(--cinder-border);
+		border-radius: 0.5rem;
+		padding: 0.5rem 0.75rem;
+		font-size: 0.8125rem;
+	}
 
-			`min(8rem, 20dvh)` rather than a flat `8rem`, because a flat cap is
-			still too much on a short viewport: measured at 844x390 a bounded-but-
-			8rem question left the transcript at 0px, which is the same defect one
-			step smaller. Scaling the cap with the viewport keeps the proportion
-			the point — the question never takes more than a fifth of the height
-			the transcript is sharing with it.
-		*/
-		max-block-size: min(8rem, 20dvh);
-		overflow-y: auto;
+	.approval-arguments summary {
+		cursor: pointer;
+	}
+
+	.approval-arguments pre {
+		margin: 0.5rem 0 0;
+		font-family: var(--cinder-font-mono, monospace);
+		white-space: pre-wrap;
+		overflow-wrap: anywhere;
 	}
 
 	.approval-actions {
