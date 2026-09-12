@@ -180,7 +180,7 @@ describe('tierUses', () => {
     expect(
       tierUses([
         declaration('background', 'var(--track, var(--cinder-border-muted))'),
-        declaration('--track', 'var(--cinder-accent-solid)'),
+        declaration('--track', 'red'),
       ]),
     ).toEqual([]);
   });
@@ -190,19 +190,44 @@ describe('tierUses', () => {
       declaration('background', 'var(--track)', 'own', { specificity: { a: 0, b: 1, c: 0 } }),
       declaration('background', 'var(--accent)', 'own', { specificity: { a: 0, b: 2, c: 0 } }),
       declaration('--track', 'var(--cinder-border-muted)'),
-      declaration('--accent', 'var(--cinder-accent-solid)'),
+      declaration('--accent', 'red'),
     ];
     expect(tierUses(declarations).some((use) => use.property === 'background')).toBe(false);
     expect(
       tierUses([
         declaration('background', 'color-mix(in oklch, var(--accent), var(--cinder-border-muted))'),
-        declaration('--accent', 'var(--cinder-accent-solid)'),
+        declaration('--accent', 'red'),
       ]),
     ).toHaveLength(1);
   });
 
   test('a border use is exempt, even when it is the only declaration', () => {
     expect(tierUses([declaration('border-color', 'var(--cinder-border-muted)')])).toEqual([]);
+  });
+
+  test('a custom-property declaration is not reported as a rendered tier use', () => {
+    expect(
+      tierUses([declaration('--unused', 'var(--missing, var(--cinder-border-muted))')]),
+    ).toEqual([]);
+  });
+
+  test('currentColor substituted through a custom-property alias reports the rendered non-border property', () => {
+    expect(
+      tierUses([
+        declaration('background', 'var(--paint)'),
+        declaration('--paint', 'currentColor'),
+        declaration('color', 'var(--cinder-border-strong)'),
+      ]),
+    ).toEqual([
+      {
+        property: 'background',
+        value: 'var(--paint)',
+        viaAlias: '--paint',
+        resolvedTierReference: 'var(--cinder-border-strong)',
+        isMix: false,
+      },
+      { property: 'color', value: 'var(--cinder-border-strong)', isMix: false },
+    ]);
   });
 
   test('a real --cinder-border-faint use is NOT reported -- it is a distinct, non-tier token', () => {
@@ -233,23 +258,15 @@ describe('tierUses', () => {
         'inherited',
       ),
     ];
-    const uses = tierUses(declarations);
-    expect(uses).toHaveLength(2);
-    expect(uses).toContainEqual({
-      property: 'background',
-      value: 'var(--cinder-toggle-track-off, var(--cinder-toggle-track-off-resting))',
-      viaAlias: '--cinder-toggle-track-off-resting',
-      aliasValue:
-        'var(--buncss-light,var(--cinder-border-muted))var(--buncss-dark,oklch(45% .02 245))',
-      isMix: false,
-    });
-    // The alias's own declaration is reported too -- the corpus-alias case,
-    // independent of whether anything reads it back.
-    expect(uses).toContainEqual({
-      property: '--cinder-toggle-track-off-resting',
-      value: 'var(--buncss-light,var(--cinder-border-muted))var(--buncss-dark,oklch(45% .02 245))',
-      isMix: false,
-    });
+    expect(tierUses(declarations)).toEqual([
+      {
+        property: 'background',
+        value: 'var(--cinder-toggle-track-off, var(--cinder-toggle-track-off-resting))',
+        viaAlias: '--cinder-toggle-track-off-resting',
+        resolvedTierReference: 'var(--cinder-border-muted)',
+        isMix: false,
+      },
+    ]);
   });
 
   test('a var() reference to an alias that does NOT name the tier is not a use', () => {
@@ -274,23 +291,21 @@ describe('tierUses', () => {
       declaration('--cinder-b', 'var(--cinder-border-muted)'),
     ];
     const uses = tierUses(declarations);
-    // `--cinder-b` is reported (its own declaration names the tier), and
-    // `--cinder-a` is NOT (one hop from `--cinder-a` reaches `--cinder-b`,
-    // whose value is `var(--cinder-border-muted)` -- a var() reference, not
-    // the tier's own name, so `referencesBorderTier` is false on it). The
-    // `background` use is not reached at all: it is two hops from the tier.
-    expect(uses.map((use) => use.property)).toEqual(['--cinder-b']);
+    // The `background` use is not reached at all: it is two hops from the tier,
+    // and custom-property declarations are classified by the corpus guard rather
+    // than reported as rendered uses here.
+    expect(uses).toEqual([]);
   });
 
   test('a custom property declared twice is resolved from EVERY candidate, not just the first seen', () => {
-    // Regression: `aliasValues` used to keep only the first-seen value per
-    // custom property name (`!aliasValues.has(...)` guarding the `.set`), so
-    // a later declaration of a repeated custom property was never even a
-    // candidate for {@link resolveCascadeWinner} to consider -- collecting
-    // every declaration (not just the first) is a prerequisite for winner
-    // resolution to work at all, tier-naming or not. Here `--cinder-a` is
-    // declared twice: an unrelated inherited (`:root`-level) color, and the
-    // element's OWN declaration naming the tier. `resolveCascadeWinner`
+    // Regression: the alias index used to keep only the first-seen value per
+    // custom property name, so a later declaration of a repeated custom
+    // property was never even a candidate for {@link resolveCascadeWinner} to
+    // consider -- collecting every declaration (not just the first) is a
+    // prerequisite for winner resolution to work at all, tier-naming or not.
+    // Here `--cinder-a` is declared twice: an unrelated inherited
+    // (`:root`-level) color, and the element's OWN declaration naming the tier.
+    // `resolveCascadeWinner`
     // picks the own declaration on level alone (own always beats inherited,
     // independent of which was seen first), and it happens to be the one
     // naming the tier, so the alias use is reported.
@@ -304,7 +319,7 @@ describe('tierUses', () => {
       property: 'background',
       value: 'var(--cinder-a)',
       viaAlias: '--cinder-a',
-      aliasValue: 'var(--cinder-border-muted)',
+      resolvedTierReference: 'var(--cinder-border-muted)',
       isMix: false,
     });
   });
@@ -315,13 +330,8 @@ describe('tierUses', () => {
     // overriding `--track: var(--cinder-accent-solid)` (own). Own beats
     // inherited unconditionally, regardless of declaration order in the
     // fixture -- the `:root` declaration naming the tier can never
-    // participate in this element's `background: var(--track)`, so no use
-    // through that alias should be reported. (The `:root` declaration is
-    // still reported in its own right under the corpus-alias rule --
-    // authoring a tier reference in a custom property is flagged
-    // independent of whether THIS element's cascade ever reads it back --
-    // so this asserts specifically that `background` is unreachable, not
-    // that `uses` is empty.)
+    // participate in this element's `background: var(--track)`, so no rendered
+    // use through that alias should be reported.
     const declarations: MatchedDeclaration[] = [
       declaration('background', 'var(--track)', 'own'),
       declaration('--track', 'var(--cinder-accent-solid)', 'own'),
@@ -609,7 +619,12 @@ describe('flattenMatchedStyles', () => {
         ],
         0.5,
       ),
-    ).toEqual([declaration('background', 'currentColor')]);
+    ).toEqual([
+      {
+        ...declaration('background', 'currentColor'),
+        resolvedValue: 'var(--cinder-border-strong)',
+      },
+    ]);
   });
 });
 
@@ -621,5 +636,118 @@ describe('effectiveOpacity', () => {
 
   test('an empty list is fully opaque', () => {
     expect(effectiveOpacity([])).toBe(1);
+  });
+});
+
+describe('inherited variable resolution', () => {
+  test('a losing custom declaration cannot report its tier', () => {
+    expect(
+      tierUses([
+        declaration('--track', 'var(--cinder-border-muted)', 'inherited'),
+        declaration('--track', 'red'),
+        declaration('background', 'var(--track)'),
+      ]),
+    ).toEqual([]);
+  });
+
+  test('unset inherits the ancestor value before choosing a fallback', () => {
+    expect(
+      tierUses([
+        declaration('--track', 'unset'),
+        declaration('--track', 'red', 'inherited'),
+        declaration('background', 'var(--track, var(--cinder-border-muted))'),
+      ]),
+    ).toEqual([]);
+  });
+
+  test('an inherited alias is computed before a child custom-property override', () => {
+    const uses = tierUses([
+      declaration('--track', 'var(--tone)', 'inherited'),
+      declaration('--tone', 'red', 'inherited'),
+      declaration('--tone', 'var(--cinder-border-muted)'),
+      declaration('background', 'var(--track)'),
+    ]);
+    expect(uses.some((use) => use.property === 'background')).toBe(false);
+  });
+
+  test("currentColor keeps the inherited color declaration's custom-property context", () => {
+    const findings = opacityCompoundedTierDeclarations(
+      [
+        declaration('background', 'currentColor'),
+        declaration('color', 'var(--tone)', 'inherited'),
+        declaration('--tone', 'var(--cinder-border-strong)', 'inherited'),
+        declaration('--tone', 'red'),
+      ],
+      0.5,
+    );
+    expect(findings[0]?.resolvedValue).toBe('var(--cinder-border-strong)');
+  });
+
+  test('currentColor substituted through a custom-property alias uses the target element color', () => {
+    const findings = opacityCompoundedTierDeclarations(
+      [
+        declaration('background', 'var(--paint)'),
+        declaration('--paint', 'currentColor', 'inherited'),
+        declaration('color', 'red', 'inherited'),
+        declaration('color', 'var(--cinder-border-strong)'),
+      ],
+      0.5,
+    );
+
+    expect(findings).toEqual([
+      {
+        ...declaration('background', 'var(--paint)'),
+        resolvedValue: 'var(--cinder-border-strong)',
+      },
+      declaration('color', 'var(--cinder-border-strong)'),
+    ]);
+  });
+
+  test('normal inline declarations do not outrank important rules', () => {
+    const inline = declaration('background', 'red', 'own', { inline: true });
+    const important = declaration('background', 'var(--cinder-border)', 'own', { important: true });
+    expect(resolveCascadeWinner([important, inline])).toEqual(important);
+  });
+
+  test('explicit false and omitted inline provenance remain a source-order tie', () => {
+    const first = { ...declaration('background', 'red'), inline: false };
+    const last = declaration('background', 'var(--cinder-border)');
+    expect(resolveCascadeWinner([first, last])).toEqual(last);
+  });
+});
+
+describe('opacity paint shorthand precedence', () => {
+  const declaration = (property: string, value: string, important = false): MatchedDeclaration => ({
+    property,
+    value,
+    origin: 'own',
+    level: 0,
+    important,
+  });
+  test('a later color longhand replaces the shorthand currentColor', () => {
+    const declarations = [
+      declaration('border', '1px solid currentColor'),
+      declaration('color', 'var(--cinder-border)'),
+      declaration('border-color', 'var(--cinder-border-muted)'),
+    ];
+    expect(
+      opacityCompoundedTierDeclarations(declarations, 0.6).filter((item) =>
+        isBorderProperty(item.property),
+      ),
+    ).toEqual([declarations[2]!]);
+  });
+  test('a later shorthand replaces the earlier color longhand', () => {
+    const declarations = [
+      declaration('border-color', 'var(--cinder-border-muted)'),
+      declaration('border', '1px solid red'),
+    ];
+    expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([]);
+  });
+  test('an important shorthand beats a later normal color longhand', () => {
+    const declarations = [
+      declaration('outline', '1px solid var(--cinder-border-strong)', true),
+      declaration('outline-color', 'red'),
+    ];
+    expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([declarations[0]!]);
   });
 });

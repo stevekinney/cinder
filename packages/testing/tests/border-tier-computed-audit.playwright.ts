@@ -128,7 +128,8 @@ test.describe('CIN-602/CIN-245: structural border tier uses, from the real casca
     expect(
       compounded.some(
         (declaration) =>
-          isBorderProperty(declaration.property) && referencesBorderTier(declaration.value),
+          isBorderProperty(declaration.property) &&
+          referencesBorderTier(declaration.resolvedValue ?? declaration.value),
       ),
       `expected a border declaration naming a structural tier to compound with opacity ${opacity}; ` +
         `found: ${JSON.stringify(compounded)}`,
@@ -158,7 +159,8 @@ test.describe('CIN-602/CIN-245: structural border tier uses, from the real casca
     expect(
       compounded.some(
         (declaration) =>
-          isBorderProperty(declaration.property) && referencesBorderTier(declaration.value),
+          isBorderProperty(declaration.property) &&
+          referencesBorderTier(declaration.resolvedValue ?? declaration.value),
       ),
       `expected a border declaration naming a structural tier to compound with opacity ${opacity}; ` +
         `found: ${JSON.stringify(compounded)}`,
@@ -308,7 +310,8 @@ async function computeGeneratedRow(page: Page, site: AuditedSite): Promise<Gener
     const opacity = await effectiveOpacityFor(page, site.selector);
     const finding = opacityCompoundedTierDeclarations(declarations!, opacity).find(
       (declaration) =>
-        isBorderProperty(declaration.property) && referencesBorderTier(declaration.value),
+        isBorderProperty(declaration.property) &&
+        referencesBorderTier(declaration.resolvedValue ?? declaration.value),
     );
     expect(
       finding,
@@ -317,15 +320,18 @@ async function computeGeneratedRow(page: Page, site: AuditedSite): Promise<Gener
     return {
       site: site.displayName,
       property: finding!.property,
-      tierReference: `\`${finding!.value}\``,
+      tierReference: `\`${finding!.resolvedValue ?? finding!.value}\``,
       howFound: site.howFound,
     };
   }
 
   const use = tierUses(declarations!).find((candidate) => candidate.viaAlias !== undefined);
   expect(use, `expected a one-hop alias use for ${site.displayName}`).toBeDefined();
-  const tierName = tierNameIn(use!.aliasValue ?? '');
-  expect(tierName, `expected the alias value to name a tier for ${site.displayName}`).toBeDefined();
+  const tierName = tierNameIn(use!.resolvedTierReference ?? '');
+  expect(
+    tierName,
+    `expected the resolved tier reference to name a tier for ${site.displayName}`,
+  ).toBeDefined();
   return {
     site: site.displayName,
     property: use!.property,
