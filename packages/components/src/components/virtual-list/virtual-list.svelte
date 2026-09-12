@@ -1409,6 +1409,13 @@
     if (typeof onKeyDown === 'function') onKeyDown(event);
     if (event.defaultPrevented) return;
 
+    // A modified navigation key is a browser shortcut, not list movement. Alt with the
+    // arrows is back and forward — which a horizontal list would otherwise swallow
+    // whole, moving one row instead of leaving the page — and Ctrl or Meta with Home
+    // and End is the browser's own. Shift is deliberately not here: nothing in this
+    // list claims it, and Shift+Space is an ordinary native scroll.
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+
     // Keys that came from something inside a row belong to that control, not to this
     // list. A text input, slider, or select uses the arrow keys itself, so the event
     // scrolls nothing here — and retiring the settle loop for it silently cancels a

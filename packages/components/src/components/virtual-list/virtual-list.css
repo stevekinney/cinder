@@ -123,10 +123,9 @@
    * to that rule's one settles the cascade on specificity rather than on which is
    * written first, which is how `position: sticky` quietly took this back once.
    *
-   * It stays above the rows sliding under it by the `z-index: 1` the shared sticky
-   * rule supplies, not by DOM order, which is why the element is free to sit in index
-   * order for assistive technology. That combination is what the
-   * primitive-composition record describes.
+   * It stays above the rows sliding under it by the `z-index: 1` the active rule
+   * supplies — a pinned row is always also the active one — rather than by DOM order.
+   * That combination is what the primitive-composition record describes.
    */
   .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
     position: absolute;
@@ -147,17 +146,19 @@
   }
 
   /*
-   * Stacking for every sticky row, pinned or not: without it the later rows in
-   * source order paint over the header they are sliding under. Inert on the rows
-   * that are not positioned, since `z-index` only applies to positioned elements —
-   * which is why it can be stated once here rather than repeated below.
-   */
-  .cinder-virtual-list__row[data-cinder-sticky='true'] {
-    z-index: 1;
-  }
-
-  /*
-   * Only the ACTIVE row is held at the leading edge. Sticking every sticky row in
+   * Only the ACTIVE row is held at the leading edge, and only it is raised.
+   *
+   * `z-index` was on every sticky row, on the reasoning that it is inert unless the
+   * element is positioned. That is true in block layout and false here: under
+   * `horizontal` the window is a flex container, and `z-index` applies to flex items
+   * whether or not they are positioned. An inactive header approaching the edge
+   * therefore entered the same stacking level as the held one and, being later in DOM
+   * order, painted straight over it — before it had become active.
+   *
+   * The pinned row is covered by this rule too, since it is always also the active
+   * one, and it is the `z-index` here that keeps it above the rows sliding under it
+   * rather than DOM order — which is what leaves the element free to sit in index
+   * order for assistive technology. Sticking every sticky row in
    * the window put each header the reader had already passed at the same inset,
    * stacked on top of one another — and a taller earlier header protruded below the
    * current one, with anything focusable inside it still reachable while obscured.
@@ -169,6 +170,7 @@
   .cinder-virtual-list__row[data-cinder-sticky-active='true'] {
     position: sticky;
     inset-block-start: 0;
+    z-index: 1;
   }
 
   .cinder-virtual-list[data-cinder-orientation='horizontal']
