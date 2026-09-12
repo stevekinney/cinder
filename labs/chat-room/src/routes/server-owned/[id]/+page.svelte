@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { resolve } from '$app/paths';
 
+	import RecoveryStatus from '$lib/recovery-status.svelte';
 	import ConversationSurface from './conversation-surface.svelte';
 	import type { PageData } from './$types';
 
@@ -43,6 +44,15 @@
 	{#key data.id}
 		<ConversationSurface id={data.id} conversation={data.conversation} />
 	{/key}
+
+	<!--
+		OUTSIDE the `{#key}`, deliberately. The surface is remounted when the
+		route parameter changes so its one-time transcript seed reruns; this
+		panel holds no per-conversation state worth discarding, and remounting it
+		would clear a result the reader just asked for the moment anything else
+		about the route changed.
+	-->
+	<RecoveryStatus id={data.id} />
 </main>
 
 <style>

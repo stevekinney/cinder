@@ -2,10 +2,12 @@ import { writeSync } from 'node:fs';
 
 import { createSessionStore } from '@lostgradient/operative';
 import type { SessionStore } from '@lostgradient/operative';
-import { MemoryStorage } from '@lostgradient/weft/storage/memory';
 import type { Storage } from '@lostgradient/weft/storage/interface';
 import { textValueStore } from '@lostgradient/weft/storage/text-value-store';
 import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-value-store';
+
+import { serverOwnedStorage } from '$lib/server-owned-storage';
+import type { Durability } from '$lib/server-owned-storage';
 
 /**
  * The server-owned variant's process-wide runtime: one storage, one
@@ -16,10 +18,16 @@ import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-
  * → `textValueStore` → `createSessionStore` is the shortest path from Weft's
  * storage primitives to Operative's session surface.
  *
- * In-memory on purpose: this is a lab demonstrating the server-owned shape,
- * not a deployment. Swapping `MemoryStorage` for any other Weft `Storage` is
- * the only change a durable backing store would need, which is itself part of
- * what the variant is meant to show.
+ * In-memory BY DEFAULT: this is a lab demonstrating the server-owned shape,
+ * not a deployment. `serverOwnedStorage()` swaps in SQLite on disk when
+ * `CHAT_ROOM_SERVER_OWNED_DATABASE` names a file, which is what makes the
+ * recovery question answerable across a restart — with nothing surviving the
+ * process there is no run to re-attach to and no stranded run to report.
+ *
+ * The swap really was one line, which is what the earlier version of this
+ * paragraph promised and CIN-445 collected on. It is a line in ONE file
+ * because this field is typed `Storage` rather than `MemoryStorage`; see the
+ * note on it below.
  */
 export type ServerOwnedRuntime = {
 	/**
@@ -35,6 +43,15 @@ export type ServerOwnedRuntime = {
 	readonly storage: Storage;
 	readonly store: ConditionalTextValueStore;
 	readonly sessions: SessionStore;
+	/**
+	 * Whether this runtime's storage survives the process.
+	 *
+	 * Carried on the runtime rather than re-read from the environment wherever
+	 * it is needed: the runtime is built once and memoised on `globalThis`, so
+	 * a later read of a changed variable would describe a storage this process
+	 * is not using.
+	 */
+	readonly durability: Durability;
 	/**
 	 * Registers a teardown to run when the runtime is disposed. Anything that
 	 * outlives a single request — a subscription, a durable run, a provider
@@ -132,7 +149,7 @@ function createRuntime(): {
 	runtime: ServerOwnedRuntime;
 	teardowns: Array<() => void | Promise<void>>;
 } {
-	const storage = new MemoryStorage();
+	const { storage, durability } = serverOwnedStorage();
 	const store = textValueStore(storage);
 	const sessions = createSessionStore(store);
 	const teardowns: Array<() => void | Promise<void>> = [];
@@ -142,6 +159,7 @@ function createRuntime(): {
 			storage,
 			store,
 			sessions,
+			durability,
 			onDispose: (teardown) => {
 				teardowns.push(teardown);
 				return () => {

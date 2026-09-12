@@ -27,6 +27,13 @@ import type { RequestHandler } from './$types';
  * when the process died is terminally orphaned, and this endpoint says so
  * rather than reporting the benign "nothing to resume" that a bare `null` from
  * `recover()` would suggest.
+ *
+ * ORPHANED IS REPORTED ONCE, which is Operative's behaviour and not this
+ * endpoint's. `recover()` reconciles a stranded `running` ref as it reports the
+ * rejection (AB-28), so the second call finds nothing still marked running and
+ * answers `nothing-to-resume`. Measured, not assumed — see the transcript in
+ * `docs/durability-exercise.md`. The response says so in `note` so a reader
+ * who asks twice sees the reason rather than a classification that evaporated.
  */
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -41,7 +48,7 @@ async function respond(id: string): Promise<Response> {
 		return json({ error: 'No such conversation.' }, { status: 404 });
 	}
 
-	const { sessions } = serverOwnedRuntime();
+	const { sessions, durability } = serverOwnedRuntime();
 	const durable = await durableRuntime();
 
 	const handle = createSessionHandle(id, {
@@ -77,25 +84,39 @@ async function respond(id: string): Promise<Response> {
 	const outcome = await classifyRecovery(handle);
 
 	if (outcome.kind === 'recovered') {
-		// A recovered run is a DIAGNOSTIC one — Operative documents it as
-		// "useful for inspection and cancellation only", and the type omits
-		// `output()` and `unwrap()` because the originating schema may no longer
-		// be available to validate against.
+		// STEP-LEVEL, and the reason is where the run's events come from rather
+		// than a property of the handle's type.
 		//
-		// Reported rather than smoothed over. A surface that presented this as
-		// equivalent to a live run would be claiming a guarantee the package
-		// deliberately withholds, and the first person to call for its output
-		// would find out the hard way.
+		// A live turn streams because THIS process is holding the provider
+		// connection and re-encoding its deltas. A recovered run is one the
+		// engine resumed from a checkpoint: its progress is whatever the
+		// workflow has written since, which advances a step at a time. No
+		// reassembly of the tokens that were in flight when the last process
+		// died is possible, because nothing persisted them.
+		//
+		// NOT a `DiagnosticAgentRun`, which is what CIN-445 expected and what an
+		// earlier version of this comment repeated. `SessionHandle.recover()` is
+		// declared `Promise<AgentRun | null>` and wraps the recovered handle with
+		// `createAgentRun`, deliberately — upstream's own comment says "wrap it
+		// as an `AgentRun` so the caller can observe the resumed run normally".
+		// `server-owned-recovery-contract.test.ts` pins both halves so this
+		// cannot drift back into a comfortable paraphrase.
 		return json({
 			kind: 'recovered',
 			progress: 'step-level',
-			note: 'A recovered run supports inspection and cancellation. It cannot produce validated output, because the schema it was started with may be gone.'
+			durability,
+			note: 'Progress advances a step at a time. The tokens that were in flight when the previous process died were never persisted, so there is nothing to replay.'
 		});
 	}
 
 	if (outcome.kind === 'nothing-to-resume') {
-		return json({ kind: 'nothing-to-resume' });
+		return json({ kind: 'nothing-to-resume', durability });
 	}
 
-	return json({ kind: 'orphaned', failures: outcome.failures });
+	return json({
+		kind: 'orphaned',
+		durability,
+		failures: outcome.failures,
+		note: 'Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers "nothing to resume".'
+	});
 }

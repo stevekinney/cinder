@@ -1,0 +1,64 @@
+import { MemoryStorage } from '@lostgradient/weft/storage/memory';
+import { SQLiteStorage } from '@lostgradient/weft/storage/sqlite';
+import type { Storage } from '@lostgradient/weft/storage/interface';
+
+/**
+ * Names the file the server-owned family keeps its sessions and checkpoints in.
+ *
+ * Unset — the ordinary case, and every existing command in this lab — gives
+ * `MemoryStorage`, which is what the variant has always used. Set to a path,
+ * the same composition runs over SQLite on disk, and a run that was in flight
+ * when the process died is still there when the next process starts.
+ *
+ * An OPT-IN rather than a new default, because the two are observably
+ * different rather than one being strictly better. In-memory storage makes
+ * every run start from nothing, which is the right behaviour for a test suite
+ * and for someone reading the route family for the first time. On-disk storage
+ * is what makes the recovery question answerable at all, and it also means one
+ * afternoon's experiments are still in the database next week.
+ */
+export const DATABASE_VARIABLE = 'CHAT_ROOM_SERVER_OWNED_DATABASE';
+
+/**
+ * Which of the two the process is running, for anything that reports it.
+ *
+ * Named in the interface rather than inferred by the reader. "Nothing to
+ * resume" after a restart is the TRUTH under in-memory storage and a
+ * BUG-shaped surprise under on-disk storage, and a recovery panel that
+ * reported the outcome without the backing store would leave someone unable
+ * to tell which they were looking at.
+ */
+export type Durability = 'in-memory' | 'on-disk';
+
+/**
+ * The backing store for the server-owned family, and which kind it is.
+ *
+ * `SQLiteStorage` rather than `BunSQLiteStorage`: the runtime-neutral entry
+ * point resolves to Bun's `bun:sqlite` adapter under Bun and to `node:sqlite`
+ * elsewhere, so this file does not decide which runtime the lab runs under.
+ * Both implement the same Weft `Storage` interface, which is the only thing
+ * `createRunEngine` and `textValueStore` ever ask for.
+ */
+export function serverOwnedStorage(): {
+	readonly storage: Storage;
+	readonly durability: Durability;
+} {
+	const path = process.env[DATABASE_VARIABLE];
+
+	// An empty string is treated as unset. A shell that exports the variable
+	// from an unset variable of its own (`export X="$Y"`) produces one, and
+	// opening a database at the path `''` fails in a way that has nothing to do
+	// with what the operator was trying to say.
+	if (path === undefined || path === '') {
+		return { storage: new MemoryStorage(), durability: 'in-memory' };
+	}
+
+	// `':memory:'` is SQLite's own spelling for an ephemeral database, and the
+	// adapter accepts it. Reported as `in-memory`, because it is: nothing
+	// survives the process, and calling it `on-disk` would make the recovery
+	// panel claim durability this database does not have.
+	return {
+		storage: new SQLiteStorage(path),
+		durability: path === ':memory:' ? 'in-memory' : 'on-disk'
+	};
+}
