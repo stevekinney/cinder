@@ -80,6 +80,40 @@
 		gap: 1rem;
 	}
 
+	/*
+		WHILE AN APPROVAL IS UP, the column may grow and the page may scroll.
+
+		Measured at 844x390 this page is exactly full when idle — banner 68,
+		heading 35, transcript 129, recovery summary 47, plus gaps and padding,
+		is 391 of 390 available pixels. So an approval prompt appearing mid-turn
+		has nowhere to come from but the transcript, and capping the prompt only
+		made the collapse smaller (0px, then 8px) rather than fixing it.
+
+		The trade is resolved by WHEN rather than by how much. With no question
+		pending the fixed height stands, which is what keeps the transcript
+		owning its own scroll — the property `server-owned-streaming.e2e.ts`
+		pins, and the one an earlier unconditional `min-block-size` broke on all
+		three engines. While a question IS pending the task is the decision, and
+		a page that scrolls is better than a transcript that is gone.
+
+		`:has()` rather than a state flag threaded up from the surface: the
+		condition is exactly "this subtree contains a non-empty question", which
+		is what the selector says.
+
+		`:global()` inside it because the question belongs to the child
+		component. Without it Svelte scopes the class to THIS component, matches
+		nothing, drops the rule, and reports it as an unused selector — which is
+		how the first version of this silently did nothing at all.
+	*/
+	main:has(:global(.approval-question:not(:empty))) {
+		block-size: auto;
+		min-block-size: 100dvh;
+	}
+
+	main:has(:global(.approval-question:not(:empty))) :global(.chat) {
+		min-block-size: 8rem;
+	}
+
 	.variant-banner {
 		border: 1px solid var(--cinder-status-warning-border, currentColor);
 		border-radius: 0.5rem;

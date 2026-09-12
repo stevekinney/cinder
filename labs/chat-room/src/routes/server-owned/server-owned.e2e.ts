@@ -644,3 +644,60 @@ test('a denied note leaves no tool row pending in the browser', async ({ page })
 	// The turn itself did not fail — a denial is a decision, not an error.
 	await expect(page.locator('[data-testid="server-owned-turn-failure"]')).toBeEmpty();
 });
+
+test('a long approval question leaves the transcript its space', async ({ page }) => {
+	// The gap the idle viewport test leaves: it measures before anything is
+	// pending, and the approval question is the one region that appears MID-TURN
+	// and renders content whose length the model chooses. The tool's schema puts
+	// no limit on `text`, so an unbounded prompt grows with whatever was written
+	// — inside a fixed-viewport-height column whose only flexible child is the
+	// transcript.
+	//
+	// The `approval-long` fixture scenario proposes a note long enough to show
+	// it. A short note could not: the defect is proportional to the argument.
+	await page.setViewportSize({ width: 844, height: 390 });
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Long approval');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const chat = page.locator('[data-testid="server-owned-chat"]');
+	const idleHeight = await chat.evaluate((element) =>
+		Math.round(element.getBoundingClientRect().height)
+	);
+
+	const marker = newFixtureMarker();
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval-long', marker));
+	await composer.press('Enter');
+
+	const question = page.locator('[data-testid="approval-question"]');
+	await expect(question).toContainText('Save this note?');
+
+	// MEASURED WHILE THE QUESTION IS UP, which is the whole point.
+	const metrics = await page.evaluate(() => {
+		const element = document.querySelector('[data-testid="server-owned-chat"]');
+		const asked = document.querySelector('[data-testid="approval-question"]');
+		return {
+			chat: element ? Math.round(element.getBoundingClientRect().height) : -1,
+			question: asked ? Math.round(asked.getBoundingClientRect().height) : -1,
+			// The note is longer than the box, so it has its own scroll rather
+			// than pushing the page around.
+			questionScrolls: asked ? asked.scrollHeight > asked.clientHeight + 1 : false
+		};
+	});
+
+	// The transcript is still usable. A floor rather than an exact number: the
+	// claim is that a long note cannot consume the transcript, not that the
+	// layout never changes.
+	expect(metrics.chat).toBeGreaterThan(100);
+	// And the question is bounded rather than as tall as its content.
+	expect(metrics.question).toBeLessThan(idleHeight);
+	expect(metrics.questionScrolls).toBe(true);
+
+	// Answer it, so the turn does not stay parked for the next test in this file.
+	await page.locator('[data-testid="approval-deny"]').click();
+	await expect(chat).toHaveAttribute('data-streaming', 'false');
+});

@@ -207,8 +207,10 @@ Deliberately not "no run was in flight". One was, and its work was lost — sayi
 
 `/server-owned/<id>` carries a **Durable recovery** panel. It names the backing store, so the benign answer is not mistaken for a lost run, and it renders the three outcomes distinctly:
 
-- **nothing to resume** — "No run was in flight — this session is idle, not lost."
+- **nothing currently resumable** — and which of two things that means. Before any run: "No run is in flight for this session." After an orphan has been reported and reconciled: "The orphaned run reported earlier is already reconciled." The wording deliberately avoids "no run was in flight", which would be a false historical claim in exactly the two-check sequence above.
 - **recovered** — the step-level caveat, with the reason: nothing persisted the tokens that were in flight.
-- **orphaned** — the classification, the rejected run ids with their reasons, and the note that the answer is reported once.
+- **orphaned** — the classification, the rejected run ids with a client-safe reason, and the note that the answer is reported once.
+
+Each of the three carries the backing store in the same sentence, so the outcome is never announced without the qualifier that gives it meaning.
 
 The status region is mounted empty before any check runs and carries `role="status"`; the failure region beside it carries `role="alert"` and is registered in `error-live-regions.e2e.ts`, which enforces that rule for every error region in this lab.

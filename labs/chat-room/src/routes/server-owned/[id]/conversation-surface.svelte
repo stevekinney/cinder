@@ -434,6 +434,30 @@
 		border: 1px solid var(--cinder-status-warning-border, currentColor);
 		border-radius: 0.5rem;
 		background: var(--cinder-status-warning-background, transparent);
+		/*
+			BOUNDED, and it scrolls itself.
+
+			The question renders the model's proposed arguments, and the tool's
+			schema puts no length limit on the note — so an unbounded prompt grows
+			with whatever the model wrote. This page is a fixed-viewport-height
+			flex column whose only flexible child is the transcript, so on a short
+			viewport a long note takes the transcript's space while the person is
+			still deciding whether to approve it. The recovery panel had the same
+			shape and was solved by collapsing it; this one cannot collapse,
+			because reading it IS the task.
+
+			`overflow: auto` rather than a clamp, so nothing is hidden from someone
+			deciding: the whole note is reachable, inside its own box.
+
+			`min(8rem, 20dvh)` rather than a flat `8rem`, because a flat cap is
+			still too much on a short viewport: measured at 844x390 a bounded-but-
+			8rem question left the transcript at 0px, which is the same defect one
+			step smaller. Scaling the cap with the viewport keeps the proportion
+			the point — the question never takes more than a fifth of the height
+			the transcript is sharing with it.
+		*/
+		max-block-size: min(8rem, 20dvh);
+		overflow-y: auto;
 	}
 
 	.approval-actions {
