@@ -9,7 +9,7 @@ import {
 } from '$lib/server-owned-conversations';
 import { emptyToolbox } from '$lib/toolbox';
 import { durableRuntime } from '$lib/server-owned-durable';
-import { classifyRecovery, withRecoveryLock } from '$lib/server-owned-recovery';
+import { classifyRecovery, recoveryFailureLog, withRecoveryLock } from '$lib/server-owned-recovery';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
 import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 
@@ -178,9 +178,7 @@ async function respond(id: string): Promise<Response> {
 	// makes two orphaned runs distinguishable in the interface. The reason does
 	// not.
 	for (const failure of outcome.failures) {
-		console.error(
-			`[server-owned] recovery rejected for run ${failure.runId} in conversation ${id}; details withheld`
-		);
+		console.error(recoveryFailureLog(id, failure.runId));
 	}
 
 	return json({

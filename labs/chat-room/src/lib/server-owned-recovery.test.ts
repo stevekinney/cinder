@@ -5,6 +5,7 @@ import type { AgentRun, SessionHandle } from '@lostgradient/operative';
 import {
 	classifyRecovery,
 	describeRecoveryError,
+	recoveryFailureLog,
 	withRecoveryLock
 } from './server-owned-recovery.ts';
 
@@ -198,5 +199,36 @@ describe('withRecoveryLock', () => {
 		expect(await second).toBe('b');
 		releaseFirst();
 		expect(await first).toBe('a');
+	});
+
+	it('makes the loser observe the winner history after classification', async () => {
+		let releaseWinner!: () => void;
+		const winnerReady = new Promise<void>((resolve) => {
+			releaseWinner = resolve;
+		});
+		const history: string[] = [];
+
+		const winner = withRecoveryLock('conversation-race', async () => {
+			await winnerReady;
+			history.push('orphaned:run-winner');
+			return 'orphaned';
+		});
+		const loser = withRecoveryLock('conversation-race', async () =>
+			history.length > 0 ? 'nothing-to-resume' : 'orphaned'
+		);
+
+		releaseWinner();
+		expect(await winner).toBe('orphaned');
+		expect(await loser).toBe('nothing-to-resume');
+		expect(history).toEqual(['orphaned:run-winner']);
+	});
+});
+
+describe('recoveryFailureLog', () => {
+	it('omits credential-bearing provider details from the execution log', () => {
+		const log = recoveryFailureLog('conversation-1', 'run-1');
+		expect(log).toContain('run-1');
+		expect(log).toContain('details withheld');
+		expect(log).not.toContain('postgres://user:hunter2@host/db');
 	});
 });

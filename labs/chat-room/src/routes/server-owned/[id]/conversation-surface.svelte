@@ -10,6 +10,7 @@
 	import { onDestroy, untrack } from 'svelte';
 
 	import { toBannerFailure, type BannerFailure } from '$lib/chat-failure';
+	import { isFreshApprovalDecision } from '$lib/approval-decision';
 
 	/**
 	 * The sentence a failed request meant to say, not the envelope it arrived
@@ -380,9 +381,14 @@
 			// response only answers the server; it does not authorize changing this
 			// tab's controls for a different question.
 			if (
-				pending?.callId !== question.callId ||
-				generation !== pollGeneration ||
-				epoch !== answerEpoch
+				!isFreshApprovalDecision({
+					displayedCallId: pending?.callId,
+					decidedCallId: question.callId,
+					displayedGeneration: generation,
+					currentGeneration: pollGeneration,
+					displayedEpoch: epoch,
+					currentEpoch: answerEpoch
+				})
 			) {
 				return;
 			}
@@ -413,9 +419,14 @@
 				// finish inside it. An obsolete continuation would otherwise install
 				// an error for a decision nobody is waiting on.
 				if (
-					pending?.callId !== question.callId ||
-					generation !== pollGeneration ||
-					epoch !== answerEpoch
+					!isFreshApprovalDecision({
+						displayedCallId: pending?.callId,
+						decidedCallId: question.callId,
+						displayedGeneration: generation,
+						currentGeneration: pollGeneration,
+						displayedEpoch: epoch,
+						currentEpoch: answerEpoch
+					})
 				)
 					return;
 				const reported = toBannerFailure(new Error(message));
@@ -451,9 +462,14 @@
 			decideFailure = null;
 		} catch (cause) {
 			if (
-				pending?.callId !== question.callId ||
-				generation !== pollGeneration ||
-				epoch !== answerEpoch
+				!isFreshApprovalDecision({
+					displayedCallId: pending?.callId,
+					decidedCallId: question.callId,
+					displayedGeneration: generation,
+					currentGeneration: pollGeneration,
+					displayedEpoch: epoch,
+					currentEpoch: answerEpoch
+				})
 			)
 				return;
 			const reported = toBannerFailure(cause);

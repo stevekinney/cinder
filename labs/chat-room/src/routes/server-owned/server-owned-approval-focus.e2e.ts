@@ -94,3 +94,38 @@ test('a remote answer hands focus back when polling removes the controls', async
 	await expect(approve).toHaveCount(0);
 	await expect(page.locator('[data-testid="approval-question"]')).toBeFocused();
 });
+
+test('a remote replacement hands focus back when the pending call changes', async ({ page }) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Replacement approval focus');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
+	await page.getByRole('textbox').press('Enter');
+
+	const approve = page.locator('[data-testid="approval-approve"]');
+	await expect(approve).toBeVisible();
+	await approve.focus();
+	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
+		if (route.request().method() !== 'GET') return route.continue();
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/json',
+			body: JSON.stringify({
+				pending: {
+					toolName: 'remember_note',
+					callId: 'remote-call-b',
+					message: 'Save the replacement note?',
+					arguments: { text: 'replacement' }
+				}
+			})
+		});
+	});
+
+	await expect(page.locator('[data-testid="approval-question"]')).toContainText(
+		'Save the replacement note?'
+	);
+	await expect(page.locator('[data-testid="approval-question"]')).toBeFocused();
+});

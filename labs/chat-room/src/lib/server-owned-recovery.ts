@@ -73,6 +73,11 @@ export async function withRecoveryLock<T>(id: string, operation: () => Promise<T
 	}
 }
 
+/** Formats a recovery diagnostic without copying provider error text to logs. */
+export function recoveryFailureLog(conversationId: string, runId: string): string {
+	return `[server-owned] recovery rejected for run ${runId} in conversation ${conversationId}; details withheld`;
+}
+
 /**
  * Renders a rejected re-attach as a SERVER-SIDE DIAGNOSTIC.
  *

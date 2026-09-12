@@ -97,11 +97,11 @@ describe('recovery endpoint serializes classification and history reconciliation
 			resolve(applicationRoot, 'routes/api/server-owned/conversations/[id]/recovery/+server.ts'),
 			'utf8'
 		);
-		expect(source).toContain('import { classifyRecovery, withRecoveryLock }');
+		expect(source).toContain('withRecoveryLock');
 		expect(source).toMatch(
 			/return\s+await\s+withRecoveryLock\(params\.id,\s*\(\)\s*=>\s*respond\(params\.id\)\)/
 		);
 		expect(source).not.toContain('failure.reason}`');
-		expect(source).toContain('details withheld');
+		expect(source).toContain('recoveryFailureLog');
 	});
 });
