@@ -3083,6 +3083,60 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
       );
     });
 
+    test('percentage arithmetic respects dimensional types, grouping, and left associativity', () => {
+      for (const weight of [
+        'calc(1% + 2% * 3)',
+        'calc((1% + 2%) * 2)',
+        'calc(10% / 2 * 3)',
+        'calc(1% * 2% / 3%)',
+        'calc(1% / 2% * 3%)',
+        'calc(var(--weight, 2) * 1%)',
+        'calc(2 * var(--weight, 1%))',
+        'round(up, 11%, 5%)',
+        'min(1% + 2%, 4%)',
+        'clamp(none, 50%, 100%)',
+        'clamp(0%, 50%, none)',
+        'clamp(none, 50%, none)',
+        'calc(round(2.5) * 1%)',
+      ]) {
+        const recipe = `color-mix(in oklch, ${weight} ${color}, transparent)`;
+        expect(serializeEntryValue(recipeEntry(recipe), new Map()), weight).toBe(recipe);
+      }
+    });
+
+    test('invalid expressions cannot borrow a percentage type from another operand', () => {
+      for (const weight of [
+        'calc(1 + 2%)',
+        'calc(1% / 2%)',
+        'calc(1px + 2%)',
+        'calc(1% * 2%)',
+        'calc(1% * (1 + 2%))',
+        'calc(bogus * 1%)',
+        'calc(1% * bogus())',
+        'calc(1% * )',
+        'calc(* 1%)',
+        'calc(1% + 2% 3%)',
+        'calc(1%, 2%)',
+        'clamp(1%, 2%)',
+        'clamp(none, 50%, 2px)',
+        'clamp(none, none, 100%)',
+        'round(11%)',
+        'abs(1%, 2%)',
+        'mod(1%)',
+        'round(sideways, 1%, 2%)',
+        'min(1%, 2)',
+        'calc(var(--weight) + 1%)',
+        'calc(var(--weight, nope) * 1%)',
+        'calc(var(not-a-custom-property) * 1%)',
+        'calc(1% +/**/2%)',
+      ]) {
+        const recipe = `color-mix(in oklch, ${weight} ${color}, transparent)`;
+        expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), weight).toThrow(
+          /bare component list/,
+        );
+      }
+    });
+
     test('sign() is rejected outright, even with a percentage argument -- unlike abs(), the spec types its result as always a plain <number>', () => {
       const recipe = `color-mix(in oklch, sign(-10%) ${color}, transparent)`;
       expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
