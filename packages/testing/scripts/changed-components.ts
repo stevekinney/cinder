@@ -127,7 +127,7 @@ export function planForChanges(changedFiles: readonly string[], decision: Decisi
     components: decision.components,
     cinderComponents,
     unitLanes: staticOnly
-      ? ['static']
+      ? ['static', 'package']
       : ['static', 'package', 'playground', ...(cinderComponents.length > 0 ? ['components'] : [])],
     browserRelevant,
     reason: null,
