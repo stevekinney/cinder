@@ -10,8 +10,8 @@ That a run interrupted by a process death is classified rather than forgotten. T
 
 The variant's storage is `MemoryStorage` unless told otherwise. With it, a restart loses the conversation as well as the run, so there is nothing to ask about — the detail route 404s and the exercise has no subject. Set `CHAT_ROOM_SERVER_OWNED_DATABASE` to a file path and the same composition runs over SQLite on disk.
 
-> [!NOTE] The database is not gitignored by accident
-> Put it somewhere outside the checkout, as below. It is a scratch artifact of one experiment, not project state.
+> [!NOTE] Put it in `/tmp`, even though the checkout ignores it
+> `*.sqlite` and its WAL siblings are gitignored, so a database left inside the checkout will not be committed by accident. Keep it outside anyway: it is one experiment's scratch state, and a stale one sitting in the lab will quietly answer the next experiment's questions.
 
 ## The procedure
 
