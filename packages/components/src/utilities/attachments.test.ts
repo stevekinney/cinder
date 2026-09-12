@@ -436,6 +436,28 @@ describe('overflowShadow', () => {
     expect(FakeResizeObserver.instances[0]?.disconnected).toBe(true);
     expect(FakeMutationObserver.instances[0]?.disconnected).toBe(true);
   });
+
+  test('falls back to timeout scheduling when animation frames are unavailable', async () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    globalThis.requestAnimationFrame = undefined as unknown as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = undefined as unknown as typeof cancelAnimationFrame;
+
+    const cleanup = overflowShadow('block')(node);
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 160 });
+    FakeResizeObserver.instances[0]?.trigger();
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(node.hasAttribute('data-cinder-overflows-block')).toBe(true);
+
+    // Schedule another pending fallback timer, then tear down WHILE it is
+    // still pending — this is what exercises the fallback's own
+    // `cancelAnimationFrame` substitute (`window.clearTimeout`), which the
+    // await above already let run to completion once.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    FakeResizeObserver.instances[0]?.trigger();
+    cleanup?.();
+  });
 });
 
 describe('overflowFadeEdges', () => {
@@ -535,6 +557,28 @@ describe('overflowFadeEdges', () => {
 
     node.dispatchEvent(new Event('scroll'));
     expect(animationFrameCallbacks.size).toBe(0);
+  });
+
+  test('falls back to timeout scheduling when animation frames are unavailable', async () => {
+    const node = document.createElement('div');
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100 });
+    globalThis.requestAnimationFrame = undefined as unknown as typeof requestAnimationFrame;
+    globalThis.cancelAnimationFrame = undefined as unknown as typeof cancelAnimationFrame;
+
+    const cleanup = overflowFadeEdges('block')(node);
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 160, scrollTop: 0 });
+    node.dispatchEvent(new Event('scroll'));
+
+    await new Promise((resolve) => setTimeout(resolve, 0));
+    expect(node.hasAttribute('data-cinder-overflows')).toBe(true);
+
+    // Schedule another pending fallback timer, then tear down WHILE it is
+    // still pending — this is what exercises the fallback's own
+    // `cancelAnimationFrame` substitute (`window.clearTimeout`), which the
+    // await above already let run to completion once.
+    setScrollMeasurements(node, { clientHeight: 100, scrollHeight: 100, scrollTop: 0 });
+    node.dispatchEvent(new Event('scroll'));
+    cleanup?.();
   });
 });
 

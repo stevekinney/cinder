@@ -120,6 +120,15 @@ describe('SpeedDial', () => {
     expect(currentRestoreFocus).toHaveBeenCalledTimes(1);
   });
 
+  test('exit helper completes immediately for an empty element list', () => {
+    const complete = mock(() => {});
+
+    const cancel = waitForSpeedDialExit([], false, complete);
+
+    expect(complete).toHaveBeenCalledTimes(1);
+    expect(() => cancel()).not.toThrow();
+  });
+
   test('exit helper waits for every transitioned property before completing', async () => {
     const action = document.createElement('button');
     document.body.append(action);
@@ -1563,5 +1572,19 @@ describe('getFocusTargetBeforeSpeedDial', () => {
     });
 
     expect(result).toBe(precedingButton);
+  });
+
+  test('returns null when nothing focusable precedes the SpeedDial anywhere in the composed tree', () => {
+    const wrapper = document.createElement('div');
+    const rootElement = document.createElement('div');
+    wrapper.append(rootElement);
+    document.body.append(wrapper);
+
+    const result = getFocusTargetBeforeSpeedDial({
+      rootElement: rootElement as unknown as HTMLDivElement,
+      actionsElement: null,
+    });
+
+    expect(result).toBeNull();
   });
 });

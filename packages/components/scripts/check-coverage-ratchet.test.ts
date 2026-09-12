@@ -1,4 +1,6 @@
 import { describe, expect, test } from 'bun:test';
+import { mkdirSync, mkdtempSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import {
@@ -9,7 +11,10 @@ import {
   parseCoverageThresholds,
   parseLcovRecords,
   parseSvelteLcovRecords,
+  parseSvelteMeasurementPlatform,
+  svelteCoveragePlatformNotice,
   uncoveredLineReport,
+  UNREACHABLE_LINE_MARKER,
 } from './check-coverage-ratchet.ts';
 
 const packageRoot = join(import.meta.dir, '..');
@@ -387,6 +392,13 @@ LF:10
 LH:0
 end_of_record
 TN:
+SF:fixtures/typescript-consumer/generate-readme-usage-examples.mjs
+FNF:10
+FNH:0
+LF:10
+LH:0
+end_of_record
+TN:
 SF:src/cli/output.ts
 FNF:4
 FNH:4
@@ -409,6 +421,80 @@ end_of_record
       'src/cli/output.ts',
       'src/components/button/button.ts',
     ]);
+  });
+
+  test('excludes a line marked provably unreachable from both the ratchet denominator and the diagnostic report', () => {
+    const scratchDirectory = mkdtempSync(join(tmpdir(), 'coverage-ratchet-unreachable-'));
+    const markedFilePath = join(scratchDirectory, 'marked.ts');
+    writeFileSync(
+      markedFilePath,
+      [
+        'export function example(): number {',
+        '  if (Math.random() > 2) {', // line 2 — genuinely unreachable, structurally
+        `    return 1; // ${UNREACHABLE_LINE_MARKER} exercised in this test only`,
+        '  }',
+        '  return 0;',
+        '}',
+      ].join('\n'),
+    );
+    const fixture = `TN:
+SF:${markedFilePath}
+FNF:1
+FNH:1
+DA:1,5
+DA:2,5
+DA:3,0
+DA:4,5
+DA:5,5
+LF:5
+LH:4
+end_of_record
+`;
+
+    const [record] = parseLcovRecords(fixture, 'runtime', scratchDirectory);
+    expect(record).toMatchObject({ linesFound: 4, linesHit: 4 });
+
+    const gaps = uncoveredLineReport(fixture, 'runtime', scratchDirectory);
+    expect(gaps).toEqual([]);
+  });
+
+  test('removing the unreachable-line marker from the source restores the line as a real gap', () => {
+    // Proves the exemption is keyed on the marker actually being present in
+    // the file, not merely on some other property of the line — deleting
+    // the marker (as if someone quietly widened what "unreachable" covers)
+    // must make the ratchet see the gap again.
+    const scratchDirectory = mkdtempSync(join(tmpdir(), 'coverage-ratchet-unreachable-removed-'));
+    const unmarkedFilePath = join(scratchDirectory, 'unmarked.ts');
+    writeFileSync(
+      unmarkedFilePath,
+      [
+        'export function example(): number {',
+        '  if (Math.random() > 2) {',
+        '    return 1; // no marker here',
+        '  }',
+        '  return 0;',
+        '}',
+      ].join('\n'),
+    );
+    const fixture = `TN:
+SF:${unmarkedFilePath}
+FNF:1
+FNH:1
+DA:1,5
+DA:2,5
+DA:3,0
+DA:4,5
+DA:5,5
+LF:5
+LH:4
+end_of_record
+`;
+
+    const [record] = parseLcovRecords(fixture, 'runtime', scratchDirectory);
+    expect(record).toMatchObject({ linesFound: 5, linesHit: 4 });
+
+    const gaps = uncoveredLineReport(fixture, 'runtime', scratchDirectory);
+    expect(gaps).toEqual([{ file: 'unmarked.ts', unhitLines: [3] }]);
   });
 
   test('applies runtime scope exclusions to absolute package-local LCOV paths', () => {
@@ -728,6 +814,111 @@ end_of_record
 
     test('returns an empty string for no lines', () => {
       expect(formatLineRanges([])).toBe('');
+    });
+  });
+
+  describe('parseSvelteMeasurementPlatform', () => {
+    test('reads the recorded platform and architecture', () => {
+      expect(
+        parseSvelteMeasurementPlatform(
+          JSON.stringify({
+            lines: 1,
+            functions: 1,
+            svelte: { lines: 0.2106, functions: 0.7652 },
+            svelteMeasuredOn: { platform: 'linux', architecture: 'x64' },
+          }),
+        ),
+      ).toEqual({ platform: 'linux', architecture: 'x64' });
+    });
+
+    test('returns undefined when no svelteMeasuredOn block is present', () => {
+      expect(
+        parseSvelteMeasurementPlatform(JSON.stringify({ lines: 1, functions: 1 })),
+      ).toBeUndefined();
+    });
+
+    test('returns undefined when the block is malformed rather than throwing', () => {
+      // Provenance metadata, not a threshold: a bad block must not break the
+      // gate itself, only lose the platform notice.
+      expect(
+        parseSvelteMeasurementPlatform(
+          JSON.stringify({ lines: 1, functions: 1, svelteMeasuredOn: { platform: 'linux' } }),
+        ),
+      ).toBeUndefined();
+    });
+  });
+
+  describe('svelteCoveragePlatformNotice', () => {
+    const linuxX64 = { platform: 'linux', architecture: 'x64' };
+
+    test('is silent when nothing was recorded', () => {
+      expect(svelteCoveragePlatformNotice(undefined, linuxX64)).toBeUndefined();
+    });
+
+    test('is silent when the running platform matches the recorded one', () => {
+      expect(svelteCoveragePlatformNotice(linuxX64, { ...linuxX64 })).toBeUndefined();
+    });
+
+    test('warns, without failing, when the running platform differs', () => {
+      const notice = svelteCoveragePlatformNotice(linuxX64, {
+        platform: 'darwin',
+        architecture: 'arm64',
+      });
+      expect(notice).toContain('linux/x64');
+      expect(notice).toContain('darwin/arm64');
+      expect(notice).toContain('NOT authoritative');
+    });
+  });
+
+  describe('main() end to end', () => {
+    test('prints the platform notice on a passing run, without failing it, when the local platform differs from the recorded one', () => {
+      const scratchDirectory = mkdtempSync(join(tmpdir(), 'coverage-ratchet-platform-notice-'));
+      writeFileSync(
+        join(scratchDirectory, 'coverage-ratchet.json'),
+        JSON.stringify({
+          lines: 1,
+          functions: 1,
+          svelte: { lines: 0.5, functions: 0.5 },
+          // Deliberately not a real platform/architecture pair, so the
+          // notice fires regardless of whatever machine runs this test.
+          svelteMeasuredOn: { platform: 'not-a-real-platform', architecture: 'not-a-real-arch' },
+        }),
+      );
+      mkdirSync(join(scratchDirectory, 'coverage'), { recursive: true });
+      writeFileSync(
+        join(scratchDirectory, 'coverage', 'lcov.info'),
+        [
+          'TN:',
+          'SF:src/index.ts',
+          'FNF:1',
+          'FNH:1',
+          'DA:1,1',
+          'LF:1',
+          'LH:1',
+          'end_of_record',
+          'TN:',
+          'SF:src/components/thing/thing.svelte',
+          'FNF:2',
+          'FNH:1',
+          'DA:1,1',
+          'DA:2,0',
+          'LF:2',
+          'LH:1',
+          'end_of_record',
+          '',
+        ].join('\n'),
+      );
+
+      const result = Bun.spawnSync(
+        ['bun', 'check-coverage-ratchet.ts', '--package-root', scratchDirectory],
+        { cwd: import.meta.dir },
+      );
+
+      expect(result.exitCode).toBe(0);
+      const stderr = result.stderr.toString();
+      expect(stderr).toContain('NOTE: the Svelte coverage floor');
+      expect(stderr).toContain('not-a-real-platform/not-a-real-arch');
+      expect(result.stdout.toString()).toContain('Svelte coverage ratchet');
     });
   });
 });

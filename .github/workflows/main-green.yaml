@@ -149,8 +149,8 @@ jobs:
           --filter=@cinder/playground
           --filter=@cinder/testing
 
-      - name: Test Chat package with coverage
-        run: bunx turbo run test:coverage --filter=@lostgradient/chat
+      - name: Test Chat and Cinder packages with coverage
+        run: bunx turbo run test:coverage --filter=@lostgradient/chat --filter=@lostgradient/cinder
 
       # Non-blocking trend signal, not a gate: always exits 0 for the RSS
       # number itself (only a genuine test failure inside the canary's own
