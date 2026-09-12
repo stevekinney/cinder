@@ -33,6 +33,7 @@ import {
 	type OperativeExecuteOptions,
 	type StandaloneAgent,
 	type StepResult,
+	type StopCondition,
 	type StreamEvent,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
@@ -231,8 +232,15 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
 }
 
 /**
- * Builds the module-scoped-toolbox, request-local-writer agent for one
- * `/api/chat` request.
+ * The run options a chat turn needs, without the conversation.
+ *
+ * Split out of `createChatAgent` because `createSessionHandle` takes exactly
+ * this shape (`SessionRunOptions = Omit<RunOptions, 'conversation'>`) and
+ * supplies the conversation itself from the session store. Both callers get
+ * the same wire plumbing, the same stop conditions, and the same request
+ * context from one definition — the alternative was a second copy of the
+ * `withEnhancedStreaming` wiring, which is where the two vocabularies would
+ * start to diverge.
  *
  * The `TypedEventTarget` is created here rather than accepted, so the route
  * cannot accidentally share one across requests: every `stream:*` event the
@@ -250,12 +258,17 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
  * that stops on ordinary text, a plain reply would otherwise run to
  * `maximumSteps` — see the declarations' own example for the same pairing.
  */
-export function createChatAgent(options: {
+export function createChatRunOptions(options: {
 	generate: StreamingGenerateFunction;
 	toolbox: AnyToolbox;
 	requestContext: OperativeExecuteOptions['requestContext'];
 	writer: ChatStreamWriter;
-}): StandaloneAgent {
+}): {
+	generate: ReturnType<typeof withEnhancedStreaming>;
+	toolbox: AnyToolbox;
+	executeOptions: { requestContext: OperativeExecuteOptions['requestContext'] };
+	stopWhen: StopCondition[];
+} {
 	// Operative's `TypedEventTarget` class is not a public export, only its
 	// type (through `EnhancedStreamingOptions`); the wrapper dispatches via
 	// plain `dispatchEvent`, so a bare `EventTarget` is the same object at
@@ -274,12 +287,22 @@ export function createChatAgent(options: {
 		});
 	}
 
-	return createAgent({
+	return {
 		generate: withEnhancedStreaming(options.generate, { eventTarget, liveToolCalls: true }),
 		toolbox: options.toolbox,
 		executeOptions: { requestContext: options.requestContext },
 		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall]
-	});
+	};
+}
+
+/** The same options, as a standalone agent, for the browser-owned route. */
+export function createChatAgent(options: {
+	generate: StreamingGenerateFunction;
+	toolbox: AnyToolbox;
+	requestContext: OperativeExecuteOptions['requestContext'];
+	writer: ChatStreamWriter;
+}): StandaloneAgent {
+	return createAgent(createChatRunOptions(options));
 }
 
 export function startChatRun(agent: StandaloneAgent, conversation: ConversationHistory): AgentRun {

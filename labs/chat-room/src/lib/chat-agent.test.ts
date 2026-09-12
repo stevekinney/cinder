@@ -20,7 +20,7 @@ import {
 	createChatStreamWriter,
 	pumpChatRun,
 	startChatRun
-} from './chat-agent';
+} from './chat-agent.ts';
 
 import type { ChatStreamEvent } from '@lostgradient/chat';
 
