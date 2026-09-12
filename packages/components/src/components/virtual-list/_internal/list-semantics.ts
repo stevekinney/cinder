@@ -62,12 +62,15 @@ export type VirtualListOrientation = 'vertical' | 'horizontal';
  * the page via the browser's own default handling, for instance) even when
  * the reader is already at the boundary they pressed toward.
  *
- * `Home` resolves to 0 and `End` to `itemCount - 1`. `PageDown`/`PageUp`
- * move by `visibleCount`, guarded to a step of at least 1 — a
- * `visibleCount` of 0 or less would otherwise move by nothing, and the key
- * would do nothing forever. Every result is clamped to `[0, itemCount - 1]`;
- * `itemCount <= 0` has no valid index to move to at all, so every key
- * resolves to `null` in that case, including `Home` and `End`.
+ * `Home` resolves to 0 and `End` to `itemCount - 1`. Every result is clamped
+ * to `[0, itemCount - 1]`; `itemCount <= 0` has no valid index to move to at
+ * all, so every key resolves to `null` in that case, including `Home` and
+ * `End`.
+ *
+ * `PageUp`/`PageDown` resolve to `null` here, deliberately. Paging is a PIXEL
+ * move of one uncovered viewport, which an index cannot express once rows vary
+ * in height — any row count this returned would be wrong at some boundary, in
+ * one direction or the other. The component scrolls for those keys directly.
  *
  * The horizontal arrow mapping DOES branch on writing direction, and has to.
  * `KeyboardEvent.key` is derived from the physical key and the keyboard layout;
@@ -86,7 +89,6 @@ export function resolveKeyboardTargetIndex(options: {
   key: string;
   currentIndex: number;
   itemCount: number;
-  visibleCount: number;
   orientation: VirtualListOrientation;
   writingDirection?: 'ltr' | 'rtl';
   /**
@@ -125,13 +127,6 @@ export function resolveKeyboardTargetIndex(options: {
   // Home and End are absolute: they mean the ends of the list, sticky or not.
   if (options.key === 'Home') return 0;
   if (options.key === 'End') return lastIndex;
-
-  if (options.key === 'PageDown' || options.key === 'PageUp') {
-    const pageStep = Math.max(1, Math.floor(options.visibleCount));
-    const signedStep = options.key === 'PageDown' ? pageStep : -pageStep;
-    const direction = options.key === 'PageDown' ? 1 : -1;
-    return skipStickyRows(clampToListRange(options.currentIndex + signedStep), direction);
-  }
 
   if (options.orientation === 'vertical') {
     if (options.key === 'ArrowDown')

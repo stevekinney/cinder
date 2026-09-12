@@ -343,20 +343,6 @@
     activeStickyIndex === null ? 0 : locateRowSize(activeStickyIndex),
   );
 
-  /**
-   * The last row that fits ENTIRELY within the viewport.
-   *
-   * The row holding the final visible pixel is usually only partly shown, since the
-   * scroll offset is rarely row-aligned. Page steps count completed rows, so that
-   * sliver belongs to the next page rather than this one.
-   */
-  const lastCompletelyVisibleIndex = $derived.by(() => {
-    const viewportEnd = scrollOffset + viewportHeight;
-    const lastTouchedIndex = resolveAnchorIndexAtOffset(Math.max(0, viewportEnd - 1));
-    const fits = locateRowStart(lastTouchedIndex) + locateRowSize(lastTouchedIndex) <= viewportEnd;
-    return fits ? lastTouchedIndex : Math.max(0, lastTouchedIndex - 1);
-  });
-
   /** The first row the sticky header is not covering. */
   const firstUncoveredIndex = $derived(
     stickyObstructionSize > 0
@@ -1084,7 +1070,18 @@
   function resolveRowStyle(index: number, size: number): string | undefined {
     const isPinned = index === pinnedStickyIndex;
     const declarations: string[] = [];
-    if (!dynamicSize || isPinned) declarations.push(`${rowLayout.sizeProperty}:${size}px`);
+    if (!dynamicSize) {
+      declarations.push(`${rowLayout.sizeProperty}:${size}px`);
+    } else if (isPinned) {
+      // A MINIMUM, not a definite size. Out of flow the row has no siblings to size
+      // against and would collapse to its content, so it needs a floor — but a definite
+      // size together with the row's own `overflow: hidden` freezes the observed border
+      // box, so `ResizeObserver` can never see the row grow. A header whose content
+      // arrives late while it is pinned would then stay clipped, and the obstruction
+      // every keyboard offset is measured against would stay stale, until it happened
+      // to re-enter the rendered window.
+      declarations.push(`min-${rowLayout.sizeProperty}:${size}px`);
+    }
     if (isPinned) {
       // Relative to the WINDOW, which is itself already translated by its leading
       // size. Writing the raw scroll offset here compounded the two and put the row
@@ -1450,6 +1447,40 @@
     // intercepting them would replace smooth native scrolling with a jump.
     if (!stickyIndexes.length) return;
 
+    // Page keys move by PIXELS, not by a row count, and do not go through
+    // `scrollToIndex` at all.
+    //
+    // Three rounds of review found three defects in the index-based version, each one
+    // the next approximation of the same thing: dividing the whole viewport rather than
+    // the uncovered part, dividing by the estimate rather than measured geometry, and
+    // counting a partly-visible row as a whole one. The last of those has a mirror
+    // image going backwards — a partly COVERED leading row — and fixing that in index
+    // space would have been the fourth approximation.
+    //
+    // They share a cause. An index-based step cannot express "one page of pixels" when
+    // rows vary in height: it has to guess a row count, and every guess is wrong at
+    // some boundary. Moving the scroll by the uncovered viewport height instead is
+    // exact, symmetric between the two directions by construction, and skips nothing:
+    // whatever sat just past the visible bottom sits just below the header afterwards.
+    if (event.key === 'PageDown' || event.key === 'PageUp') {
+      const element = scrollElement;
+      if (!element) return;
+      event.preventDefault();
+      // The uncovered viewport: what the reader can actually see past the header.
+      const pageDistance = Math.max(1, viewportHeight - stickyObstructionSize);
+      const direction = event.key === 'PageDown' ? 1 : -1;
+      writeScrollOffset(
+        element,
+        Math.min(
+          Math.max(0, scrollOffset + direction * pageDistance),
+          maxScrollOffset(currentTotalSize(), viewportHeight),
+        ),
+        smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
+      );
+      scrollOffset = readScrollOffset(element);
+      return;
+    }
+
     const target = resolveKeyboardTargetIndex({
       key: event.key,
       // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
@@ -1460,26 +1491,6 @@
       // advancing from it moves to the row underneath it rather than past it.
       currentIndex: firstUncoveredIndex,
       itemCount: items.length,
-      // Counted off the rows themselves rather than computed from a row height.
-      //
-      // Two things went wrong with the arithmetic version. Dividing the WHOLE viewport
-      // stepped over the row sitting under the header — covered before the press and
-      // covered after it, so never exposed between one page and the next. And dividing
-      // by `resolvedItemHeight` is only right in fixed mode: under `dynamicSize` that
-      // is the initial estimate, so 100px rows against a 20px estimate paged nine
-      // indexes where one was due, skipping every row in between. The settle loop
-      // cannot recover those — it corrects the destination's pixels, not which row was
-      // asked for.
-      //
-      // Both disappear by counting rows off the viewport instead. The header's own
-      // band falls out of the subtraction for free, since `firstUncoveredIndex`
-      // already starts below it.
-      //
-      // Only rows that FIT count. The row holding the last visible pixel is usually a
-      // sliver — the scroll offset is rarely row-aligned — and treating it as a full
-      // page row pages one row too far, taking the sliver's remainder underneath the
-      // header without ever showing it.
-      visibleCount: Math.max(1, lastCompletelyVisibleIndex - firstUncoveredIndex + 1),
       orientation: horizontal ? 'horizontal' : 'vertical',
       writingDirection,
       stickyIndexes: stickyIndexSet,

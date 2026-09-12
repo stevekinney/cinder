@@ -2997,6 +2997,87 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     document.body.replaceChildren();
   });
 
+  test('keeps a dynamic pinned row measurable rather than freezing its size', async () => {
+    // Out of flow the row has no siblings to size against and would collapse to its
+    // content, so it needs a floor. A DEFINITE size is the wrong floor: together with
+    // the row's own `overflow: hidden` it freezes the observed border box, so a header
+    // whose content arrives while it is pinned can never be remeasured — it stays
+    // clipped, and the obstruction every keyboard offset is measured against stays
+    // stale, until the row happens to re-enter the rendered window.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
+    );
+
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
+    // A floor it cannot collapse below...
+    expect(pinned?.style.minBlockSize).not.toBe('');
+    // ...and no ceiling, so growth reaches the observer.
+    expect(pinned?.style.blockSize).toBe('');
+
+    restoreResizeObserver();
+  });
+
+  test('returns to where it started when a page down is paged back up', async () => {
+    // The property both asymmetry reports were really asking for, and the reason paging
+    // moved to pixels: an index-based step has to guess a row count, and the guess that
+    // is right going forward is wrong coming back. A pixel move of the uncovered
+    // viewport is reversible by construction.
+    //
+    // Deliberately started off a row boundary, which is where every index-based version
+    // of this went wrong — the partly visible trailing row going down, and the partly
+    // covered leading row coming back up.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 36,
+      height: '360px',
+      overscan: 0,
+      stickyItems: [0, 25, 50, 75],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    for (const start of [1_810, 1_800, 907, 36]) {
+      list.scrollTop = start;
+      await fireEvent.scroll(list);
+      await tick();
+
+      await fireEvent.keyDown(list, { key: 'PageDown' });
+      await tick();
+
+      // The distance itself, not only that it came back. A round trip alone would pass
+      // for any symmetric-but-wrong step — the viewport including the header, say — so
+      // both halves are pinned: 360px of viewport less the 36px header is 324.
+      expect(scrollTop.value()).toBe(start + 324);
+
+      await fireEvent.scroll(list);
+      await tick();
+      await fireEvent.keyDown(list, { key: 'PageUp' });
+      await tick();
+
+      expect(scrollTop.value()).toBe(start);
+    }
+  });
+
   test('pages by measured rows, not by the itemHeight estimate', async () => {
     // Under dynamicSize `itemHeight` is only the initial guess. Converting the viewport
     // into rows with it paged nine indexes where one was due — 100px rows against a
