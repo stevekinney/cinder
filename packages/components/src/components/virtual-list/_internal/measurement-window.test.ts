@@ -790,3 +790,90 @@ describe('computeScrollToIndexOffset — leadingInset', () => {
     expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: 200 })).toBe(20);
   });
 });
+
+describe('computeScrollToIndexOffset — currentLeadingInset', () => {
+  const insetLocator: VirtualItemLocator = {
+    getStart: (index) => index * 20,
+    getSize: () => 20,
+  };
+
+  function offsetFor(options: {
+    index: number;
+    currentScrollOffset: number;
+    leadingInset: number;
+    currentLeadingInset?: number;
+  }): number {
+    return computeScrollToIndexOffset({
+      index: options.index,
+      itemCount: 100,
+      locator: insetLocator,
+      totalSize: 2_000,
+      viewportSize: 200,
+      currentScrollOffset: options.currentScrollOffset,
+      align: 'auto',
+      leadingInset: options.leadingInset,
+      ...(options.currentLeadingInset === undefined
+        ? {}
+        : { currentLeadingInset: options.currentLeadingInset }),
+    });
+  }
+
+  test('judges visibility by the header covering the reader, not the destination one', () => {
+    // A 100px header is active; the target row sits at 1040, forty pixels into the
+    // band it covers. Its own section's header is only 20px, so judging by that says
+    // the row is comfortably in view and the scroll stays put — with the row still
+    // behind the tall header the reader is actually looking at.
+    const target = 52;
+    const scrolled = 1_000;
+
+    expect(offsetFor({ index: target, currentScrollOffset: scrolled, leadingInset: 20 })).toBe(
+      scrolled,
+    );
+
+    expect(
+      offsetFor({
+        index: target,
+        currentScrollOffset: scrolled,
+        leadingInset: 20,
+        currentLeadingInset: 100,
+      }),
+    ).toBe(1_020);
+  });
+
+  test('places the row with the DESTINATION header once it decides to move', () => {
+    // The two insets do different jobs: the current one decides whether to move at
+    // all, the destination one decides where to. Row 52 starts at 1040 and clears its
+    // own 20px header at 1020, not at 940 as the 100px one would imply.
+    expect(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 100,
+      }),
+    ).toBe(1_020);
+  });
+
+  test('falls back to the destination inset when no current one is given', () => {
+    expect(offsetFor({ index: 52, currentScrollOffset: 1_000, leadingInset: 20 })).toBe(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 20,
+      }),
+    );
+  });
+
+  test('clamps a current inset taller than the viewport', () => {
+    // Nothing visible at all, rather than a negative band that inverts the comparison.
+    expect(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 900,
+      }),
+    ).toBe(1_020);
+  });
+});

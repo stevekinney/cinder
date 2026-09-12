@@ -185,8 +185,21 @@ export function computeScrollToIndexOffset(options: {
   /**
    * Pixels of the leading edge covered by a sticky header. The reader's usable
    * viewport starts below it, so a row aligned to the raw edge lands underneath it.
+   *
+   * This is the DESTINATION's header — the one that will cover the target row once it
+   * arrives — and it decides where the target goes.
    */
   leadingInset?: number;
+  /**
+   * Pixels covered at the leading edge RIGHT NOW, which is a different header whenever
+   * the target sits in another section. Only `align: 'auto'` uses it, to decide
+   * whether the row is already visible: a 20px header at the destination says nothing
+   * about the 100px one currently covering the row, and judging by the destination's
+   * made `scrollToIndex` conclude a hidden row was in view and do nothing at all.
+   *
+   * Defaults to `leadingInset`, which is right whenever both are the same header.
+   */
+  currentLeadingInset?: number;
 }): number {
   // An empty list has no index to resolve, and clamping would hand the locator -1
   // rounded up to 0 — making this helper depend on every caller's locator tolerating
@@ -200,6 +213,10 @@ export function computeScrollToIndexOffset(options: {
   // give a negative usable size and invert every comparison below.
   const leadingInset = Math.min(Math.max(0, options.leadingInset ?? 0), options.viewportSize);
   const usableViewportSize = options.viewportSize - leadingInset;
+  const currentLeadingInset = Math.min(
+    Math.max(0, options.currentLeadingInset ?? leadingInset),
+    options.viewportSize,
+  );
 
   let target: number;
   switch (options.align) {
@@ -216,9 +233,11 @@ export function computeScrollToIndexOffset(options: {
       break;
     case 'auto':
     default: {
-      // The top of what the reader can see, not the top of the scroll container:
-      // a row behind the sticky header is as good as offscreen.
-      const viewportStart = options.currentScrollOffset + leadingInset;
+      // The top of what the reader can see, not the top of the scroll container: a row
+      // behind the sticky header is as good as offscreen. Measured with the header
+      // covering the edge NOW, since that is what decides whether the row is visible;
+      // where it then goes is still the destination header's business.
+      const viewportStart = options.currentScrollOffset + currentLeadingInset;
       const viewportEnd = options.currentScrollOffset + options.viewportSize;
       const overflowsAbove = start < viewportStart;
       const overflowsBelow = start + size > viewportEnd;

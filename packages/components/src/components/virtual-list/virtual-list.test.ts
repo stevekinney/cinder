@@ -3187,3 +3187,50 @@ describe('VirtualList — edge callbacks under adaptive overscan', () => {
     await waitFor(() => expect(endReached).toBe(1));
   });
 });
+
+describe('VirtualList — only the active sticky row is held at the edge', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('marks exactly one sticky row active however many are in the window', async () => {
+    // The attribute the stylesheet keys on. An overscanned window can hold several
+    // headers at once, and sticking all of them put every header the reader had passed
+    // at the same inset, stacked on one another.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 30,
+      stickyItems: [0, 5, 10, 15, 20, 25, 30, 35, 40],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 600;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Several sticky rows are mounted together...
+    const sticky = container.querySelectorAll('[data-cinder-sticky="true"]');
+    expect(sticky.length).toBeGreaterThan(1);
+
+    // ...and exactly one of them is the one being held.
+    const active = container.querySelectorAll('[data-cinder-sticky-active="true"]');
+    expect(active.length).toBe(1);
+    expect((active[0] as HTMLElement).dataset['cinderVirtualIndex']).toBe('30');
+  });
+
+  test('scopes sticky positioning to the active row', async () => {
+    // A cascade outcome, which happy-dom does not compute — the rule's shape is the
+    // only thing assertable here. Paired with the test above, which pins that exactly
+    // one row carries the attribute this selector matches.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    expect(source).toContain("[data-cinder-sticky-active='true'] {\n    position: sticky;");
+    // And not on the bare sticky attribute, which every mounted header carries.
+    expect(source).not.toContain("[data-cinder-sticky='true'] {\n    position: sticky;");
+  });
+});

@@ -1642,6 +1642,10 @@
         // Re-read each pass: the header's identity is fixed by the destination, but
         // under `dynamicSize` its SIZE changes as it mounts and is measured.
         leadingInset: resolveLeadingInset(index),
+        // What is covering the reader right now, which `align: 'auto'` needs to judge
+        // whether the target is already in view. A different header from the one above
+        // whenever the target is in another section.
+        currentLeadingInset: stickyObstructionSize,
       });
 
       writeScrollOffset(element, target, behavior);
@@ -1671,6 +1675,10 @@
         // Re-read each pass: the header's identity is fixed by the destination, but
         // under `dynamicSize` its SIZE changes as it mounts and is measured.
         leadingInset: resolveLeadingInset(index),
+        // What is covering the reader right now, which `align: 'auto'` needs to judge
+        // whether the target is already in view. A different header from the one above
+        // whenever the target is in another section.
+        currentLeadingInset: stickyObstructionSize,
       });
       // Compared against the element, not the state, for the same reason the target
       // is computed from it: the state lags a smooth or externally-driven scroll,

@@ -118,14 +118,15 @@
    * Svelte cannot carry identity across that boundary, so a row with local state or
    * a focused control would be destroyed and rebuilt every time it crossed.
    *
-   * Both attributes are in the selector on purpose. A pinned row is always also a
-   * sticky row, so the rule below matches it too — at equal specificity, where source
-   * order alone decided the winner and `position: sticky` quietly took it back.
+   * Both attributes are in the selector on purpose. A pinned row is always also the
+   * active one, so the sticky rule below matches it too — and carrying two attributes
+   * to that rule's one settles the cascade on specificity rather than on which is
+   * written first, which is how `position: sticky` quietly took this back once.
    *
-   * It stays above the rows sliding under it by the `z-index: 1` that rule supplies,
-   * not by DOM order, which is why the element is free to sit in index order for
-   * assistive technology. That combination is what the primitive-composition record
-   * describes.
+   * It stays above the rows sliding under it by the `z-index: 1` the shared sticky
+   * rule supplies, not by DOM order, which is why the element is free to sit in index
+   * order for assistive technology. That combination is what the
+   * primitive-composition record describes.
    */
   .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
     position: absolute;
@@ -139,19 +140,32 @@
   }
 
   /*
-   * Sticky rows are positioned relative to the scroll container, which is the
-   * element that scrolls — so the offset is 0 on the axis being scrolled.
-   * `z-index` keeps a pinned header above the rows sliding under it; without it
-   * the later rows in source order paint on top.
+   * Stacking for every sticky row, pinned or not: without it the later rows in
+   * source order paint over the header they are sliding under. Inert on the rows
+   * that are not positioned, since `z-index` only applies to positioned elements —
+   * which is why it can be stated once here rather than repeated below.
    */
   .cinder-virtual-list__row[data-cinder-sticky='true'] {
-    position: sticky;
-    inset-block-start: 0;
     z-index: 1;
   }
 
+  /*
+   * Only the ACTIVE row is held at the leading edge. Sticking every sticky row in
+   * the window put each header the reader had already passed at the same inset,
+   * stacked on top of one another — and a taller earlier header protruded below the
+   * current one, with anything focusable inside it still reachable while obscured.
+   * The overscanned window can hold several headers at once, so this is not rare.
+   *
+   * Offsets are relative to the scroll container, which is the element that scrolls,
+   * so the inset is 0 on the axis being scrolled.
+   */
+  .cinder-virtual-list__row[data-cinder-sticky-active='true'] {
+    position: sticky;
+    inset-block-start: 0;
+  }
+
   .cinder-virtual-list[data-cinder-orientation='horizontal']
-    .cinder-virtual-list__row[data-cinder-sticky='true'] {
+    .cinder-virtual-list__row[data-cinder-sticky-active='true'] {
     inset-block-start: auto;
     inset-inline-start: 0;
   }
