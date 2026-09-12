@@ -34,10 +34,35 @@ const STREAMING_ENDPOINTS = [
 	'routes/api/server-owned/conversations/[id]/stream/+server.ts'
 ] as const;
 
+/**
+ * Comments removed before matching. See the note at the read below for why this
+ * file strips while the engine guard does not — the two assert opposite things,
+ * so they err in opposite directions.
+ */
+const COMMENTS = /\/\*[\s\S]*?\*\/|(^|[^:])\/\/[^\n]*/g;
+
+const withoutComments = (source: string): string =>
+	source.replace(COMMENTS, (match, prefix: string | undefined) => prefix ?? '');
+
 describe('streaming endpoints share one stream lifecycle', () => {
 	for (const endpoint of STREAMING_ENDPOINTS) {
 		it(`${endpoint} responds through chatRunResponse`, () => {
-			const source = readFileSync(resolve(applicationRoot, endpoint), 'utf8');
+			// COMMENTS STRIPPED, and the direction matters — this is the mirror
+			// of `operative-is-the-only-engine.test.ts`, which deliberately
+			// scans raw source.
+			//
+			// That guard asserts something is ABSENT, so a comment hiding a real
+			// import would be a false negative: silent, and the failure it
+			// exists to catch. This one asserts something is PRESENT, so a
+			// commented-out `return chatRunResponse(…)` is a false POSITIVE — the
+			// route could return `Response.error()` instead while every
+			// assertion below still passed, and the billed endpoint would have
+			// bypassed the shared cancellation and disposal lifecycle this test
+			// claims to pin.
+			//
+			// Over-stripping is safe here for the same reason: removing too much
+			// makes an assertion fail loudly rather than pass quietly.
+			const source = withoutComments(readFileSync(resolve(applicationRoot, endpoint), 'utf8'));
 
 			// Imported from the shared module, not redefined locally under the
 			// same name.

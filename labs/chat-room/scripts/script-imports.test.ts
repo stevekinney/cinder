@@ -49,7 +49,26 @@ const CANDIDATE_SUFFIXES = ['', '.ts', '.js', '/index.ts', '/index.js'];
 async function scriptFiles(): Promise<string[]> {
 	const entries = await readdir(SCRIPTS_DIRECTORY, { withFileTypes: true });
 	return entries
-		.filter((entry) => entry.isFile() && entry.name.endsWith('.ts'))
+		.filter(
+			(entry) =>
+				entry.isFile() &&
+				entry.name.endsWith('.ts') &&
+				// TEST FILES EXCLUDED, so the non-vacuity check below means what
+				// it says. Counting them made it self-satisfying: if every
+				// production script were moved or deleted, this file and its
+				// siblings would still be here, the "has scripts to check"
+				// assertion would still pass, and the guard would report healthy
+				// over an empty inventory — the exact vacuity it was added to
+				// detect.
+				//
+				// Losing import-resolution coverage of the test files themselves
+				// costs nothing: they run under `test:unit`, so a broken import
+				// in one fails loudly on every pull request. The production
+				// scripts are the ones that need a STATIC check, because they
+				// are invoked by hand and a bad specifier would sit unnoticed
+				// until someone ran one.
+				!entry.name.endsWith('.test.ts')
+		)
 		.map((entry) => entry.name)
 		.sort();
 }
