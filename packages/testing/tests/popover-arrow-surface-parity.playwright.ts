@@ -59,20 +59,34 @@ async function openPage(browser: Browser, slug: string, theme: Theme): Promise<P
     deviceScaleFactor: DEVICE_SCALE_FACTOR,
     baseURL: PLAYGROUND_URL,
   });
-  await context.addInitScript(
-    ([key, value]) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [THEME_STORAGE_KEY, theme] as const,
-  );
-  const page = await context.newPage();
-  await page.goto(`${manifestRoute(slug)}?snapshot=1`, { waitUntil: 'load' });
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
-  return page;
+  // If anything below throws -- a bad manifest route, a load regression, the
+  // `#app > *` selector never appearing -- this context would otherwise leak:
+  // nothing else in the file closes a context that never made it into a
+  // test's own `try`/`finally`. That leaked context (and its page, tab, and
+  // renderer process) outlives the failed test, so a run with several
+  // navigation failures accumulates open contexts across retries, making
+  // unrelated Playwright specs slower and flakier for resource contention.
+  // Close it on any failure here and rethrow so the caller still sees the
+  // original error.
+  try {
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, theme] as const,
+    );
+    const page = await context.newPage();
+    await page.goto(`${manifestRoute(slug)}?snapshot=1`, { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    return page;
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 /**
@@ -143,12 +157,22 @@ async function readOnePixel(page: Page, point: { x: number; y: number }): Promis
   );
 }
 
-/** Screenshots a page-coordinate box (with padding) and returns every pixel in it. */
+/** A sampled pixel plus its page-CSS-pixel coordinates, for geometric filtering. */
+type PositionedRgb = Rgb & { x: number; y: number };
+
+/**
+ * Screenshots a page-coordinate box (with padding) and returns every pixel in
+ * it, tagged with its page (CSS-pixel) coordinates -- callers that need to
+ * exclude pixels outside a specific sub-shape (e.g. a diagonal triangle edge)
+ * can't do that from color alone, since an occluding opaque fill can paint a
+ * color close enough to the target to pass a closest-match check by
+ * coincidence (see the `arrowScanBox*` callers below).
+ */
 async function readPixelRegion(
   page: Page,
   box: { x: number; y: number; width: number; height: number },
   padding = 2,
-): Promise<Rgb[]> {
+): Promise<PositionedRgb[]> {
   const clip = {
     x: Math.floor(box.x) - padding,
     y: Math.floor(box.y) - padding,
@@ -157,10 +181,17 @@ async function readPixelRegion(
   };
   const buffer = await page.screenshot({ clip });
   const png = PNG.sync.read(buffer);
-  const pixels: Rgb[] = [];
+  const pixels: PositionedRgb[] = [];
   for (let y = 0; y < png.height; y += 1) {
     for (let x = 0; x < png.width; x += 1) {
-      pixels.push(pixelAt(png, x, y));
+      const { r, g, b } = pixelAt(png, x, y);
+      pixels.push({
+        r,
+        g,
+        b,
+        x: clip.x + x / DEVICE_SCALE_FACTOR,
+        y: clip.y + y / DEVICE_SCALE_FACTOR,
+      });
     }
   }
   return pixels;
@@ -238,10 +269,41 @@ test.describe('CIN-606: Popover arrow rim composites over the same surface as th
         // panel's *top* edge for this placement), and a straight edge reads
         // cleanly regardless of sub-pixel layout the way the arrow's
         // diagonal rim below does not.
-        const panelSample = {
-          x: Math.round(panelBox.x + panelBox.width) - 1,
-          y: Math.round(panelBox.y + panelBox.height / 2),
+        //
+        // This does NOT read one precomputed coordinate (`Math.round(right)
+        // - 1`, the previous version, or a naive `right - 0.5` "border
+        // center"). Chromium snaps thin (1px) borders to the device pixel
+        // grid for crisp rendering, and that snap can shift the VISUAL edge
+        // by up to ~1 CSS px from where `panelBox`'s sub-pixel LAYOUT
+        // geometry says it should be -- confirmed empirically here: for one
+        // captured panel whose fractional `right` was `x.328`, the actual
+        // rendered border ink sat at roughly `[x - 1.6, x - 0.6]`, not the
+        // `[x - 1, x]` the box model predicts, so no formula computed from
+        // `panelBox` alone reliably lands inside a 1px border.
+        //
+        // Instead, scan a small window around the expected edge and pick
+        // the pixel that differs most from the panel's own INTERIOR fill,
+        // which -- unlike the border -- IS reliably locatable: the panel
+        // always paints its own fixed, opaque `surface-raised` background
+        // under its border, regardless of what the page composites behind
+        // it. The border ink is a high-alpha, low-lightness-shift color
+        // against that fill in this design system; the box-shadow/backdrop
+        // gradient just outside the border is comparatively subtle. "Most
+        // different from the interior" reliably lands on the border ink
+        // rather than the fill or the exterior -- checked below against
+        // `MIN_BORDER_VS_INTERIOR_DIFF` so a future retune that shrinks
+        // that contrast fails loudly instead of silently sampling the wrong
+        // pixel.
+        const panelMidY = Math.round(panelBox.y + panelBox.height / 2);
+        const panelInteriorSample = { x: panelBox.x + panelBox.width - 8, y: panelMidY };
+        const panelBorderScanBox = {
+          x: panelBox.x + panelBox.width - 3,
+          y: panelMidY - 3,
+          width: 6,
+          height: 6,
         };
+        const panelInteriorRgb = await readOnePixel(page, panelInteriorSample);
+        const MIN_BORDER_VS_INTERIOR_DIFF = 15;
 
         // Scan strictly INSIDE the triangle, not a padded box around it: the
         // arrow's base touches the panel's own top border exactly (this is
@@ -250,33 +312,46 @@ test.describe('CIN-606: Popover arrow rim composites over the same surface as th
         // without the fix — and the assertion below would pass either way.
         // Trimming the bottom two rows keeps every scanned pixel inside the
         // arrow's own paint.
-        //
-        // Split into LEFT and RIGHT halves and require the rim color in
-        // BOTH independently, rather than scanning the whole triangle as
-        // one region. A single region that spans the full width is exactly
-        // as wide as the outer triangle, but the repeated `::before`
-        // triangle that paints the rim is also that same width — an 8px
-        // horizontal misplacement of `::before` (e.g. `left: 0` instead of
-        // `-8px`, forgetting the padding-edge inset a zero-size parent's
-        // border puts between its own border-box and its pseudo-elements'
-        // containing block) still leaves HALF of it inside a whole-triangle
-        // scan, so a "closest pixel anywhere in the region" check passes
-        // regardless. Two half-width regions each isolate one slanted edge:
-        // that same 8px shift empties one half of the rim color entirely
-        // (proven by reverting to `left: 0`/`top: 0` and re-running this
-        // spec, which the previous whole-region version did not catch).
-        const arrowScanBoxLeft = {
+        const arrowScanBox = {
           x: arrowBox.x,
           y: arrowBox.y,
-          width: arrowBox.width / 2,
+          width: arrowBox.width,
           height: arrowBox.height - 2,
         };
-        const arrowScanBoxRight = {
-          x: arrowBox.x + arrowBox.width / 2,
-          y: arrowBox.y,
-          width: arrowBox.width / 2,
-          height: arrowBox.height - 2,
-        };
+
+        // The scan above still isn't enough on its own: the OPAQUE inner
+        // triangle (`::after` in popover.css — 1px smaller on every side
+        // than the outer triangle this element's own border draws, offset
+        // by `left: -7px`/`top: 1px` instead of the outer triangle's
+        // `left: -8px`/`top: 0`) sits inside that same box, and its
+        // `surface-raised` fill can read close enough to `panelRgb` to pass
+        // a "closest pixel anywhere in the box" check whether or not the
+        // RIM itself (the translucent `::before` layer) composites
+        // correctly — reverting the CIN-606 CSS fix and re-running this
+        // spec against an unfiltered scan confirmed exactly that false
+        // pass. The rim is always exactly the outermost 1 CSS px of the
+        // outer triangle's diagonal edge (outer half-width == inner
+        // half-width + 1 at every row below the inner triangle's `top: 1px`
+        // start), so classify every sampled pixel by that geometry and keep
+        // only the ones on the rim, split by which slanted edge they're on
+        // — the same left/right independence the previous half-box split
+        // was for (an 8px horizontal `::before` misplacement empties one
+        // side's rim only; scanning both edges independently still catches
+        // that).
+        const INNER_TOP = 1; // matches `::after`'s `top: 1px` in popover.css
+        function arrowRimSide(localX: number, localY: number): 'left' | 'right' | null {
+          const apex = arrowBox.width / 2;
+          const outerLeftEdge = apex - localY;
+          const outerRightEdge = apex + localY;
+          if (localX < outerLeftEdge || localX > outerRightEdge) return null; // outside the outer triangle
+          if (localY < INNER_TOP) return localX < apex ? 'left' : 'right'; // above the inner triangle's own top: all rim
+          const innerY = localY - INNER_TOP;
+          const innerLeftEdge = apex - innerY;
+          const innerRightEdge = apex + innerY;
+          if (localX < innerLeftEdge) return 'left';
+          if (localX > innerRightEdge) return 'right';
+          return null; // inside the opaque inner triangle
+        }
 
         // A point clearly outside the panel, on the page's own backdrop --
         // proves `setBackdropSurface` actually reached the paint layer the
@@ -286,7 +361,7 @@ test.describe('CIN-606: Popover arrow rim composites over the same surface as th
         // silently test the same one backdrop three times and still pass.
         const backdropSample = {
           x: Math.round(panelBox.x + panelBox.width) + 20,
-          y: panelSample.y,
+          y: panelMidY,
         };
         const backdropReadings: Rgb[] = [];
         const panelRgbs: Record<string, Rgb> = {};
@@ -295,13 +370,41 @@ test.describe('CIN-606: Popover arrow rim composites over the same surface as th
 
         for (const [surfaceName, cssVariable] of Object.entries(SURFACES)) {
           await setBackdropSurface(page, cssVariable);
-          const panelRgb = await readOnePixel(page, panelSample);
+          const borderRegion = await readPixelRegion(page, panelBorderScanBox, 0);
+          let panelRgb = borderRegion[0]!;
+          let borderVsInteriorDiff = -1;
+          for (const pixel of borderRegion) {
+            const diff = channelMaxDiff(pixel, panelInteriorRgb);
+            if (diff > borderVsInteriorDiff) {
+              borderVsInteriorDiff = diff;
+              panelRgb = pixel;
+            }
+          }
+          expect(
+            borderVsInteriorDiff,
+            `${theme}/${surfaceName}: no pixel near the panel's right edge differs from its own ` +
+              `interior fill (rgb(${panelInteriorRgb.r},${panelInteriorRgb.g},${panelInteriorRgb.b})) ` +
+              `by more than ${MIN_BORDER_VS_INTERIOR_DIFF} -- the border-locating scan didn't find ` +
+              `real border ink, so \`panelRgb\` below can't be trusted.`,
+          ).toBeGreaterThan(MIN_BORDER_VS_INTERIOR_DIFF);
           panelRgbs[surfaceName] = panelRgb;
           backdropReadings.push(await readOnePixel(page, backdropSample));
-          const leftRegion = await readPixelRegion(page, arrowScanBoxLeft, 0);
-          const rightRegion = await readPixelRegion(page, arrowScanBoxRight, 0);
-          leftGaps[surfaceName] = closestChannelDiff(leftRegion, panelRgb);
-          rightGaps[surfaceName] = closestChannelDiff(rightRegion, panelRgb);
+          const region = await readPixelRegion(page, arrowScanBox, 0);
+          const leftRim = region.filter(
+            (pixel) => arrowRimSide(pixel.x - arrowBox.x, pixel.y - arrowBox.y) === 'left',
+          );
+          const rightRim = region.filter(
+            (pixel) => arrowRimSide(pixel.x - arrowBox.x, pixel.y - arrowBox.y) === 'right',
+          );
+          if (leftRim.length === 0 || rightRim.length === 0) {
+            throw new Error(
+              `${theme}/${surfaceName}: rim geometry filter matched no pixels ` +
+                `(left=${leftRim.length}, right=${rightRim.length}) -- arrow geometry ` +
+                `assumptions in this test may be stale relative to popover.css.`,
+            );
+          }
+          leftGaps[surfaceName] = closestChannelDiff(leftRim, panelRgb);
+          rightGaps[surfaceName] = closestChannelDiff(rightRim, panelRgb);
         }
 
         // Two checks per half, not one: an absolute ceiling AND

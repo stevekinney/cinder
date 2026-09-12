@@ -55,15 +55,24 @@ async function openHarness(
     reducedMotion: 'reduce',
     viewport: { width: 1280, height: 900 },
   });
-  const page = await context.newPage();
-  await page.goto(
-    `/page/chat?snapshot=1&fixture=private-lightbox-nested-overlay&fixtureContentHash=${FIXTURE_HASH}`,
-    { waitUntil: 'load' },
-  );
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
-  const harness = page.locator(HARNESS);
-  await harness.waitFor({ state: 'visible', timeout: 20_000 });
-  return { page, harness, dispose: () => context.close() };
+  // A failure below (bad route, load regression, the harness never becoming
+  // visible) would otherwise leak this context: nothing else here closes a
+  // context whose owning `openHarness` call never returned. Close it on any
+  // failure and rethrow.
+  try {
+    const page = await context.newPage();
+    await page.goto(
+      `/page/chat?snapshot=1&fixture=private-lightbox-nested-overlay&fixtureContentHash=${FIXTURE_HASH}`,
+      { waitUntil: 'load' },
+    );
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    const harness = page.locator(HARNESS);
+    await harness.waitFor({ state: 'visible', timeout: 20_000 });
+    return { page, harness, dispose: () => context.close() };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 /** Opens the drawer, then the lightbox on top of it. Returns their locators. */
