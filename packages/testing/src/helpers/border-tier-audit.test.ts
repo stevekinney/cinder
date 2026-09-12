@@ -11,16 +11,37 @@ import {
   type MatchedStylesResult,
   opacityCompoundedTierDeclarations,
   referencesBorderTier,
+  resolveCascadeWinner,
+  type Specificity,
   tierNameIn,
   tierUses,
 } from './border-tier-audit.ts';
 
+/**
+ * Builds a {@link MatchedDeclaration} fixture. `level` defaults from
+ * `origin` (`0` for `'own'`, `1` for `'inherited'`) so every pre-existing
+ * call site -- which only ever varied `origin` -- keeps meaning exactly what
+ * it did before {@link resolveCascadeWinner} needed `level`/`important`/
+ * `specificity` to pick a cascade winner. Pass `options` to exercise same-
+ * level tie-breaking (a second inherited ancestor, `!important`, or an
+ * explicit specificity) explicitly.
+ */
 function declaration(
   property: string,
   value: string,
   origin: MatchedDeclaration['origin'] = 'own',
+  options: { level?: number; important?: boolean; specificity?: Specificity } = {},
 ): MatchedDeclaration {
-  return { property, value, origin };
+  const level = options.level ?? (origin === 'own' ? 0 : 1);
+  const important = options.important ?? false;
+  return {
+    property,
+    value,
+    origin,
+    level,
+    important,
+    ...(options.specificity !== undefined ? { specificity: options.specificity } : {}),
+  };
 }
 
 describe('referencesBorderTier', () => {
@@ -240,6 +261,96 @@ describe('tierUses', () => {
       isMix: false,
     });
   });
+
+  test('CIN-602 round 4: an OWN declaration shadows an inherited alias -- the alias use is not reported', () => {
+    // The exact shape from the review thread: `:root { --track:
+    // var(--cinder-border-muted) }` (inherited) and the element itself
+    // overriding `--track: var(--cinder-accent-solid)` (own). Own beats
+    // inherited unconditionally, regardless of declaration order in the
+    // fixture -- the `:root` declaration naming the tier can never
+    // participate in this element's `background: var(--track)`, so no use
+    // through that alias should be reported. (The `:root` declaration is
+    // still reported in its own right under the corpus-alias rule --
+    // authoring a tier reference in a custom property is flagged
+    // independent of whether THIS element's cascade ever reads it back --
+    // so this asserts specifically that `background` is unreachable, not
+    // that `uses` is empty.)
+    const declarations: MatchedDeclaration[] = [
+      declaration('background', 'var(--track)', 'own'),
+      declaration('--track', 'var(--cinder-accent-solid)', 'own'),
+      declaration('--track', 'var(--cinder-border-muted)', 'inherited'),
+    ];
+    const uses = tierUses(declarations);
+    expect(uses.some((use) => use.property === 'background')).toBe(false);
+  });
+
+  test('CIN-602 round 4: declaration order does not matter -- own still shadows inherited when the inherited entry comes first', () => {
+    const declarations: MatchedDeclaration[] = [
+      declaration('--track', 'var(--cinder-border-muted)', 'inherited'),
+      declaration('background', 'var(--track)', 'own'),
+      declaration('--track', 'var(--cinder-accent-solid)', 'own'),
+    ];
+    const uses = tierUses(declarations);
+    expect(uses.some((use) => use.property === 'background')).toBe(false);
+  });
+});
+
+describe('resolveCascadeWinner', () => {
+  test('an empty candidate list has no winner', () => {
+    expect(resolveCascadeWinner([])).toBeUndefined();
+  });
+
+  test('a lower level always wins, regardless of specificity or importance', () => {
+    const own = declaration('border-color', 'var(--cinder-accent-solid)', 'own');
+    const inherited = declaration('border-color', 'var(--cinder-border-muted)', 'inherited', {
+      important: true,
+      specificity: { a: 1, b: 0, c: 0 },
+    });
+    expect(resolveCascadeWinner([inherited, own])).toEqual(own);
+    expect(resolveCascadeWinner([own, inherited])).toEqual(own);
+  });
+
+  test('within the same level, `!important` outranks a normal declaration', () => {
+    const normal = declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+      specificity: { a: 1, b: 0, c: 0 },
+    });
+    const important = declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+      important: true,
+      specificity: { a: 0, b: 0, c: 0 },
+    });
+    expect(resolveCascadeWinner([normal, important])).toEqual(important);
+  });
+
+  test('within the same level and importance, the higher specificity wins', () => {
+    const lessSpecific = declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+      specificity: { a: 0, b: 1, c: 0 },
+    });
+    const moreSpecific = declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+      specificity: { a: 0, b: 2, c: 0 },
+    });
+    expect(resolveCascadeWinner([lessSpecific, moreSpecific])).toEqual(moreSpecific);
+    expect(resolveCascadeWinner([moreSpecific, lessSpecific])).toEqual(moreSpecific);
+  });
+
+  test('a genuine tie (equal level, importance, and specificity) resolves to the later candidate', () => {
+    const first = declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+      specificity: { a: 0, b: 1, c: 0 },
+    });
+    const second = declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+      specificity: { a: 0, b: 1, c: 0 },
+    });
+    expect(resolveCascadeWinner([first, second])).toEqual(second);
+  });
+
+  test('missing specificity on either side is treated as a tie, not as losing', () => {
+    const withSpecificity = declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+      specificity: { a: 0, b: 1, c: 0 },
+    });
+    const withoutSpecificity = declaration('border-color', 'var(--cinder-accent-solid)', 'own');
+    // Order decides when specificity cannot: whichever comes later wins.
+    expect(resolveCascadeWinner([withSpecificity, withoutSpecificity])).toEqual(withoutSpecificity);
+    expect(resolveCascadeWinner([withoutSpecificity, withSpecificity])).toEqual(withSpecificity);
+  });
 });
 
 describe('opacityCompoundedTierDeclarations', () => {
@@ -249,9 +360,7 @@ describe('opacityCompoundedTierDeclarations', () => {
       declaration('opacity', '.6', 'own'), // foundation.css -- not itself a tier reference
     ];
     const compounded = opacityCompoundedTierDeclarations(declarations, 0.6);
-    expect(compounded).toEqual([
-      { property: 'border-color', value: 'var(--cinder-border-muted)', origin: 'own' },
-    ]);
+    expect(compounded).toEqual([declaration('border-color', 'var(--cinder-border-muted)', 'own')]);
   });
 
   test('opacity 1 (or greater) compounds nothing', () => {
@@ -266,6 +375,56 @@ describe('opacityCompoundedTierDeclarations', () => {
       declaration('border-color', 'var(--cinder-border-muted)', 'inherited'),
     ];
     expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([]);
+  });
+
+  test('CIN-602 round 4: a higher-priority own declaration overrides a base tier declaration for the same property -- the losing one is not reported', () => {
+    // The exact shape from the review thread: a base rule sets
+    // `border-color: var(--cinder-border-muted)`, and a LATER, more specific
+    // rule overrides it with `border-color: var(--cinder-accent-solid)`.
+    // The base declaration never paints, so it must not be reported as
+    // opacity-compounded even though it references a tier and matched the
+    // element's own rules.
+    const declarations: MatchedDeclaration[] = [
+      declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+        specificity: { a: 0, b: 1, c: 0 }, // .cinder-button:disabled
+      }),
+      declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+        specificity: { a: 0, b: 2, c: 0 }, // a more specific variant rule
+      }),
+      declaration('opacity', '.6', 'own'),
+    ];
+    expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([]);
+  });
+
+  test('CIN-602 round 4: order does not matter -- the higher-specificity override still wins when it is matched FIRST', () => {
+    const declarations: MatchedDeclaration[] = [
+      declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+        specificity: { a: 0, b: 2, c: 0 },
+      }),
+      declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+        specificity: { a: 0, b: 1, c: 0 },
+      }),
+    ];
+    expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([]);
+  });
+
+  test('CIN-602 round 4: the winning declaration IS reported when it is the one that names the tier', () => {
+    // The mirror image of the two tests above: proves the fix did not
+    // simply stop reporting same-property conflicts altogether -- when the
+    // WINNING declaration is the tier reference, it is still found.
+    const declarations: MatchedDeclaration[] = [
+      declaration('border-color', 'var(--cinder-accent-solid)', 'own', {
+        specificity: { a: 0, b: 1, c: 0 },
+      }),
+      declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+        specificity: { a: 0, b: 2, c: 0 },
+      }),
+    ];
+    expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([
+      declaration('border-color', 'var(--cinder-border-muted)', 'own', {
+        specificity: { a: 0, b: 2, c: 0 },
+      }),
+    ]);
   });
 });
 
@@ -318,12 +477,16 @@ describe('flattenMatchedStyles', () => {
         property: 'background',
         value: 'var(--cinder-toggle-track-off, var(--cinder-toggle-track-off-resting))',
         origin: 'own',
+        level: 0,
+        important: false,
       },
       {
         property: '--cinder-toggle-track-off-resting',
         value:
           'var(--buncss-light,var(--cinder-border-muted))var(--buncss-dark,oklch(45% .02 245))',
         origin: 'inherited',
+        level: 1,
+        important: false,
       },
     ]);
   });
