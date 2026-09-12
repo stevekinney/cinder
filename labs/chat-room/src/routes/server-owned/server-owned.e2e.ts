@@ -189,3 +189,38 @@ test('centres its capped column instead of pinning it to the left edge', async (
 	const right = viewport.width - (box.x + box.width);
 	expect(Math.abs(left - right)).toBeLessThanOrEqual(2);
 });
+
+test('reports a conversation with no in-flight run as nothing to resume', async ({ request }) => {
+	// The benign branch, and the one that must NOT be confused with an orphan.
+	// A fresh conversation has never had a run, so `recover()` answers `null`
+	// with an empty `failures` array — which is a healthy idle session, not a
+	// lost one.
+	//
+	// Worth pinning precisely because both branches return `null` from
+	// `recover()`: if the endpoint ever stops reading the emitter, THIS test
+	// keeps passing while the orphan case silently reports benign. So it is the
+	// weaker half of the pair and is named as such.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Recovery') }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const recovery = await request.get(`/api/server-owned/conversations/${conversation.id}/recovery`);
+	expect(recovery.status()).toBe(200);
+	expect(await recovery.json()).toEqual({ kind: 'nothing-to-resume' });
+});
+
+test('distinguishes a missing conversation from one with nothing to resume', async ({
+	request
+}) => {
+	// A 404 rather than a cheerful `nothing-to-resume`, which is the same
+	// distinction the conversation endpoint makes: "this does not exist" and
+	// "this exists and is idle" are different answers, and collapsing them
+	// would let a typo in an id read as a healthy session.
+	const missing = await request.get(
+		'/api/server-owned/conversations/does-not-exist-at-all/recovery'
+	);
+	expect(missing.status()).toBe(404);
+	expect(await missing.json()).toEqual({ error: 'No such conversation.' });
+});
