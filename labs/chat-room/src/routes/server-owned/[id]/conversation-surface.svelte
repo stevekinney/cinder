@@ -175,17 +175,17 @@
 	 * The status paragraph, so focus can be moved to it when the controls it
 	 * describes are removed.
 	 *
-	 * Its `tabindex` is CONDITIONAL, because two earlier fixes collided here.
-	 * Moving focus after a decision needs the element programmatically
-	 * focusable, which `-1` gives; bounding a long note's height made the
-	 * element a SCROLL container, and `-1` keeps a scroll container out of the
-	 * tab order — so a sighted keyboard-only user could reach Approve without
-	 * any way to read the rest of what they were authorizing.
+	 * `tabindex="-1"` ALWAYS: programmatically focusable, never a tab stop. A
+	 * status region is not something anyone should have to tab through on the
+	 * way to the composer.
 	 *
-	 * `0` while a question is pending puts it in the tab order, before the
-	 * buttons, so the note can be read and scrolled. `-1` once it is empty
-	 * keeps the post-decision focus move working without leaving a tab stop on
-	 * a region with nothing in it.
+	 * It briefly carried a conditional `0`, when this paragraph also rendered
+	 * the proposed arguments and a height bound had made it a scroll container —
+	 * which `-1` keeps out of the tab order. That was the wrong fix twice over:
+	 * `0` puts a tab stop on a non-interactive element, which Svelte's own a11y
+	 * rule rejects. The arguments moved to their own `<details>`, whose
+	 * `<summary>` is natively focusable and now owns the keyboard path to them,
+	 * so this element went back to being only a sentence.
 	 */
 	let approvalQuestion = $state<HTMLElement | null>(null);
 
@@ -213,6 +213,24 @@
 	let pollGeneration = 0;
 
 	/**
+	 * Bumped when an answer settles a question, to discard a response already in
+	 * flight for it — WITHOUT stopping the loop.
+	 *
+	 * Separate from `pollGeneration` because the two mean different things, and
+	 * conflating them broke polling outright: `decide()` incremented the
+	 * generation to invalidate a stale GET, the loop read that as "my session
+	 * ended" and returned, and because the generation is deliberately
+	 * non-reactive nothing reran the effect. Answering one approval stopped
+	 * polling for the rest of the turn — so a step carrying two gated calls, which
+	 * the server hook explicitly elicits for one at a time, never showed the
+	 * second question.
+	 *
+	 * The session's liveness belongs to the effect (`stopped` and the abort
+	 * signal). Staleness of one answer belongs here.
+	 */
+	let answerEpoch = 0;
+
+	/**
 	 * The exact banner value a poll installed, so a poll can clear only that.
 	 *
 	 * A BOOLEAN was not enough, which review caught: with a flag, a poll
@@ -236,11 +254,13 @@
 	let decideFailure: BannerFailure | null = null;
 
 	async function readPendingApproval(generation: number, signal?: AbortSignal): Promise<void> {
+		const epoch = answerEpoch;
+		const stale = (): boolean => generation !== pollGeneration || epoch !== answerEpoch;
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
 				...(signal === undefined ? {} : { signal })
 			});
-			if (generation !== pollGeneration) return;
+			if (stale()) return;
 
 			if (!response.ok) {
 				// REPORTED, not swallowed. A run parked on `remember_note` while
@@ -255,7 +275,7 @@
 				// other: the turn can end while this one is still pulling text.
 				// Installing an error then leaves a stale alert with nothing left
 				// polling to replace it.
-				if (generation !== pollGeneration) return;
+				if (stale()) return;
 				const reported = toBannerFailure(new Error(message));
 				pollFailure = reported;
 				failure = reported;
@@ -265,7 +285,7 @@
 			const body = (await response.json()) as { pending: PendingApproval | null };
 			// Checked AGAIN after the body is read, because awaiting it is another
 			// point where the turn can end underneath this response.
-			if (generation !== pollGeneration) return;
+			if (stale()) return;
 			// FOCUS IS HANDED OFF before the controls vanish. Another client
 			// answering is a supported outcome of this endpoint, and it removes
 			// the focused subtree just as surely as a local decision does — which
@@ -290,7 +310,7 @@
 		} catch (cause) {
 			// An ABORT is this component's own cleanup, not a failure to report.
 			if (signal?.aborted === true) return;
-			if (generation !== pollGeneration) return;
+			if (stale()) return;
 			const reported = toBannerFailure(cause);
 			pollFailure = reported;
 			failure = reported;
@@ -358,12 +378,13 @@
 			// IN-FLIGHT POLLS ARE INVALIDATED, because answering settles the
 			// question on the server but says nothing to a GET already running.
 			// One that captured this question before the POST landed would
-			// restore its Approve/Deny controls after the server had settled it,
-			// and they could sit there through a slow follow-up generation.
+			// restore its Approve/Deny controls after the server had settled it.
 			//
-			// Bumping the generation is what the loop already checks; it schedules
-			// its next poll under the new value, so polling continues.
-			pollGeneration += 1;
+			// The EPOCH, not the generation. Bumping the generation here made the
+			// loop conclude its session had ended and return for good — and with
+			// a non-reactive generation nothing reran the effect, so answering one
+			// approval stopped polling for the whole turn.
+			answerEpoch += 1;
 
 			// A DECISION'S OWN FAILURE is cleared on its own success. A transient
 			// POST failure leaves the controls up for a retry, and the retry
@@ -412,6 +433,7 @@
 
 		const generation = pollGeneration;
 		const controller = new AbortController();
+		answerEpoch = 0;
 		pollFailure = null;
 		let stopped = false;
 

@@ -140,8 +140,14 @@ curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recover
 Ask a **second** time. **Observed:** the benign answer.
 
 ```json
-{ "kind": "nothing-to-resume", "durability": "on-disk" }
+{
+	"kind": "nothing-to-resume",
+	"durability": "on-disk",
+	"previouslyOrphaned": ["session-1-a72e39af-…:0"]
+}
 ```
+
+`previouslyOrphaned` is the point of asking twice. The classification itself is available once — reconciliation happens as it is reported — so this field is what lets a second ask, a reloaded page, or a client whose first response never arrived still tell "a run was orphaned and you have been told" from "nothing was ever in flight." A conversation that never had a run reports it empty.
 
 > [!WARNING] Asking consumes the answer
 > `POST …/recovery` reconciles the stranded run it reports, so **the first ask is the only one that returns `orphaned`** — and anything that asks counts. While writing this file I lost the classification twice to my own diagnostics: a probe that hit the endpoint before the panel did, and a transcript stitched from two runs because of it. If you are scripting around this, ask once and keep the answer.
