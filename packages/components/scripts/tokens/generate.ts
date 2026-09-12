@@ -711,28 +711,45 @@ const COLOR_FUNCTIONS = new Set([
 const COLOR_ARGUMENT_FUNCTIONS = new Set(['light-dark', 'color-mix']);
 
 /**
- * CSS math functions, which can stand in for the `<percentage>` mix weight in a
- * `color-mix()` argument. `color-mix()` accepts a general `<percentage>`, not
- * only a literal, and the weight may sit on either side of the color, so the
- * weight has to be recognised in computed form too -- otherwise a recipe the
- * browser accepts reads as a bare component list and fails generation.
+ * CSS math functions CAPABLE of standing in for the `<percentage>` mix weight
+ * in a `color-mix()` argument. `color-mix()` accepts a general `<percentage>`,
+ * not only a literal, and the weight may sit on either side of the color, so
+ * the weight has to be recognised in computed form too -- otherwise a recipe
+ * the browser accepts reads as a bare component list and fails generation.
  *
  * This set is deliberately narrower than "every CSS Values L4 math function":
  * only the functions the spec defines as TYPE-PRESERVING (a `<percentage>`
- * argument yields a `<percentage>` result) belong here. `calc()`, `min()`,
- * `max()`, `clamp()`, `round()`, `mod()`, `rem()`, `abs()`, and `sign()` are
- * all type-preserving per the spec's calculation-type rules. `hypot()` is too
- * -- its arguments "must be the same type... either <number>, <percentage>,
- * or <dimension>" and the result matches that type, so `hypot(1%, 2%)` is
- * itself a `<percentage>`, exactly like a `color-mix()` weight the browser
- * accepts. The exponential and trigonometric functions `pow()`, `sqrt()`,
- * `log()`, and `exp()` are NOT included: the spec requires their arguments
- * (and result) to be a plain `<number>`, never a `<percentage>`, so they can
- * never legitimately stand in for a mix weight. The trigonometric functions
+ * argument yields a `<percentage>` result, the same way a `<length>` argument
+ * yields a `<length>` result) belong here. `calc()`, `min()`, `max()`,
+ * `clamp()`, `round()`, `mod()`, `rem()`, and `abs()` are all type-preserving
+ * per the spec's calculation-type rules. `hypot()` is too -- its arguments
+ * "must be the same type... either <number>, <percentage>, or <dimension>"
+ * and the result matches that type, so `hypot(1%, 2%)` is itself a
+ * `<percentage>`, exactly like a `color-mix()` weight the browser accepts.
+ *
+ * Membership here says only that a CALL to the function is CAPABLE of
+ * producing a percentage -- it says nothing about any particular call, since
+ * every one of these functions produces whatever type its arguments do:
+ * `hypot(1px, 2px)` is a `<length>`, not a `<percentage>`, every bit as much
+ * as `hypot(1%, 2%)` is a percentage. Whether a given call actually resolves
+ * to a percentage is decided per-call by
+ * {@link hasDemonstrablePercentageType}, which is why this set alone is
+ * never enough to accept a node -- see {@link isUnambiguousPercentageNode}.
+ *
+ * `sign()` is deliberately EXCLUDED even though it takes the same argument
+ * types as `abs()`: unlike `abs()`, the spec defines `sign()`'s result as
+ * ALWAYS a plain `<number>` (1, -1, 0, or NaN), regardless of its argument's
+ * type -- `sign(-10%)` is `-1`, a number, never a percentage. Including it
+ * would make every call, not just a mistyped one, fail open.
+ *
+ * The exponential and trigonometric functions `pow()`, `sqrt()`, `log()`, and
+ * `exp()` are NOT included either: the spec requires their arguments (and
+ * result) to be a plain `<number>`, never a `<percentage>`, so they can never
+ * legitimately stand in for a mix weight. The trigonometric functions
  * `sin()`, `cos()`, and `tan()` always return a `<number>`, and `asin()`,
  * `acos()`, `atan()`, and `atan2()` always return an `<angle>` -- none of the
  * seven ever produce a `<percentage>` either, so they are excluded for the
- * same reason.
+ * same reason `sign()` is.
  *
  * `var()` is deliberately absent. A bare `var()` is ambiguous between the color
  * and the weight, and reading it as the color is the safe direction: treating
@@ -748,7 +765,6 @@ const PERCENTAGE_FUNCTIONS = new Set([
   'mod',
   'rem',
   'abs',
-  'sign',
   'hypot',
 ]);
 
@@ -787,15 +803,135 @@ function fallbackNodes(callNodes: ColorValueNode[]): ColorValueNode[] | undefine
 }
 
 /**
- * A CSS `<percentage-token>`: a `<number-token>` followed by `%`, or a math
- * function that can stand in for one. `postcss-value-parser`'s `unit` helper
- * implements the actual `<number-token>` grammar -- a number may be signed and
- * may carry an exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are all valid
- * weights, and a hand-rolled digits-and-dots pattern misses three of those
- * four.
+ * The single-character arithmetic operators that can appear between terms
+ * inside a math function's argument list (`calc(1% + var(--w))`). Each parses
+ * as its own `word` node from `postcss-value-parser` and carries no type
+ * information of its own -- it neither proves nor disproves a percentage
+ * result, so {@link hasDemonstrablePercentageType} skips over it.
+ */
+const CALC_OPERATOR_TOKENS = new Set(['+', '-', '*', '/']);
+
+/**
+ * The unitless numeric keywords CSS Values L4 defines for math functions
+ * (`calc(1% * pi)`, `clamp(0%, infinity, 100%)`). Each is a plain `<number>`,
+ * exactly like a bare numeric literal with no unit -- it scales a percentage
+ * without being one itself, so it is skipped the same way.
+ */
+const CALC_NUMBER_KEYWORDS = new Set(['pi', 'e', 'infinity', '-infinity', 'nan']);
+
+/**
+ * Whether `nodes` -- the argument list of a {@link PERCENTAGE_FUNCTIONS} call
+ * -- can be shown, from the parsed tree alone, to evaluate to a
+ * `<percentage>`.
+ *
+ * `PERCENTAGE_FUNCTIONS` holds the math functions the spec defines as
+ * TYPE-PRESERVING: a `<percentage>` argument yields a `<percentage>` result,
+ * exactly like `calc(1% + 2%)`. But type-preserving cuts both ways --
+ * `calc(1px + 2px)` is just as validly a `<length>`, and `hypot(1px, 2px)` a
+ * `<length>` too. A function's MEMBERSHIP in the set says only that it is
+ * capable of producing a percentage; whether a given CALL actually does
+ * depends on its arguments, which is exactly what checking only
+ * `node.value` (the earlier version of this function) never looked at. That
+ * let `hypot(1px, 2px)` -- and, latently, `calc(1px + 2px)`,
+ * `clamp(1px, 2px, 3px)`, `abs(-1px)`, and every other member of the set fed
+ * non-percentage arguments -- pass as a `color-mix()` weight the browser
+ * actually drops the whole declaration for. Fail-open, the exact failure
+ * mode this gate exists to close.
+ *
+ * The walk is deliberately conservative: it looks for at least one leaf that
+ * is UNAMBIGUOUSLY a percentage (a `%` literal, a percentage-valued `var()`
+ * fallback, or a nested percentage-typed call in this same set) and treats
+ * any other leaf -- a non-percentage dimension, an unrecognised nested
+ * function, a string, anything this walker has not been taught -- as proof
+ * the type cannot be determined, and returns `false`. A bare, unitless number
+ * (`calc(1 + 2)`) is skipped rather than treated as proof either way:
+ * `calc()` allows a number to SCALE a percentage (`calc(var(--w) * 2%)`), but
+ * a number alone is a `<number>`, not a `<percentage>`, so an expression
+ * containing only numbers (no `%` leaf anywhere) correctly returns `false`
+ * too. This mirrors {@link findBareInNodes}'s own rule: fail closed whenever
+ * the type cannot be proven, never guess.
+ *
+ * A `var()` with NO fallback is the one deliberate exception to "unresolved
+ * means fail closed", and only in one specific shape: as a MULTIPLICATIVE
+ * factor directly beside a genuine `%` literal (`calc(var(--weight) * 1%)`,
+ * either order) -- the established, already-tested design-token pattern for a
+ * custom-property-driven weight (see the `color-mix()` weight tests above,
+ * and `CIN-242`'s own decision record). A calc-product's type is set by its
+ * one non-`<number>` term, so multiplying by an unresolved `var()` only
+ * type-checks at all when that `var()` resolves to a plain `<number>` -- the
+ * multiplication is only ever valid in the shape this walker recognises.
+ * Everywhere else an unresolved `var()` might appear (summed, subtracted, or
+ * alone) genuinely cannot be typed from the parsed tree, so it still fails
+ * closed there.
+ */
+function hasDemonstrablePercentageType(nodes: ColorValueNode[]): boolean {
+  const items = stripSpaces(nodes);
+  let sawPercentage = false;
+  for (let index = 0; index < items.length; index++) {
+    const node = items[index]!;
+    if (node.type === 'div') continue; // the comma between arguments
+    if (node.type === 'word') {
+      if (CALC_OPERATOR_TOKENS.has(node.value)) continue;
+      const unit = valueParser.unit(node.value);
+      if (unit !== false) {
+        if (unit.unit === '%') {
+          sawPercentage = true;
+          continue;
+        }
+        if (unit.unit === '') continue; // a unitless number: a scalar, not proof either way
+        return false; // a definite non-percentage dimension (px, deg, s, ...): fail closed
+      }
+      if (CALC_NUMBER_KEYWORDS.has(node.value.toLowerCase())) continue;
+      return false; // an unrecognised token: fail closed
+    }
+    if (node.type === 'function') {
+      const name = node.value.toLowerCase();
+      if (node.unclosed) return false; // see the unclosed-function-node regression above
+      if (name === 'var') {
+        const fallback = fallbackNodes(node.nodes);
+        if (fallback !== undefined) {
+          if (!hasDemonstrablePercentageType(fallback)) return false;
+          sawPercentage = true;
+          continue;
+        }
+        // No fallback: see the multiplicative-factor exception above.
+        const previous = items[index - 1];
+        const next = items[index + 1];
+        const isMultiplicativeFactor =
+          (previous?.type === 'word' && previous.value === '*') ||
+          (next?.type === 'word' && next.value === '*');
+        if (!isMultiplicativeFactor) return false; // unresolved and not that one safe shape
+        continue; // treated as an ignorable scalar factor, like a bare number
+      }
+      if (PERCENTAGE_FUNCTIONS.has(name)) {
+        if (!hasDemonstrablePercentageType(node.nodes)) return false;
+        sawPercentage = true;
+        continue;
+      }
+      return false; // an unrecognised nested function: cannot prove a percentage, fail closed
+    }
+    return false; // a string, comment, unicode-range, ...: never proof of a percentage
+  }
+  return sawPercentage;
+}
+
+/**
+ * A CSS `<percentage-token>`: a `<number-token>` followed by `%`, or a call to
+ * a {@link PERCENTAGE_FUNCTIONS} member whose arguments DEMONSTRABLY resolve
+ * to a percentage -- see {@link hasDemonstrablePercentageType}.
+ * `postcss-value-parser`'s `unit` helper implements the actual
+ * `<number-token>` grammar -- a number may be signed and may carry an
+ * exponent, so `+40%`, `-0%`, `.5%`, and `4e1%` are all valid weights, and a
+ * hand-rolled digits-and-dots pattern misses three of those four.
  */
 function isUnambiguousPercentageNode(node: ColorValueNode): boolean {
-  if (node.type === 'function') return PERCENTAGE_FUNCTIONS.has(node.value.toLowerCase());
+  if (node.type === 'function') {
+    if (node.unclosed) return false;
+    return (
+      PERCENTAGE_FUNCTIONS.has(node.value.toLowerCase()) &&
+      hasDemonstrablePercentageType(node.nodes)
+    );
+  }
   if (node.type === 'word') {
     const unit = valueParser.unit(node.value);
     return unit !== false && unit.unit === '%';

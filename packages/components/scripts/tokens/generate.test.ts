@@ -2990,6 +2990,91 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
     }
   });
 
+  describe('CIN-602 round 4: a PERCENTAGE_FUNCTIONS member is only a percentage weight when its OWN arguments are', () => {
+    // `hypot()` was added to PERCENTAGE_FUNCTIONS to accept a browser-valid
+    // percentage-typed weight, but `isUnambiguousPercentageNode` checked only
+    // the function NAME -- so `hypot(1px, 2px)`, which the CSS spec types as
+    // a <length> (hypot()'s arguments must share a type, and the result
+    // matches it), passed the gate as if it were a percentage. The browser
+    // rejects that length-valued weight and drops the whole declaration --
+    // the gate was fail-OPEN for it. The same name-only check applied to
+    // every OTHER member of PERCENTAGE_FUNCTIONS too: `calc(1px + 2px)`,
+    // `clamp(1px, 2px, 3px)`, `min(1px, 2px)`, `max(1px, 2px)`,
+    // `round(1px, 1px)`, `mod(1px, 1px)`, `rem(1px, 1px)`, and `abs(-1px)`
+    // were all equally fail-open before this fix -- this table proves each
+    // one, in both directions, against the SAME oklch color used throughout
+    // this file's color-mix tests.
+    const color = 'oklch(50% 0.1 30)';
+
+    const cases: Array<{ name: string; percentageCall: string; lengthCall: string }> = [
+      { name: 'calc()', percentageCall: 'calc(1% + 2%)', lengthCall: 'calc(1px + 2px)' },
+      {
+        name: 'clamp()',
+        percentageCall: 'clamp(0%, 50%, 100%)',
+        lengthCall: 'clamp(0px, 50px, 100px)',
+      },
+      { name: 'min()', percentageCall: 'min(10%, 20%)', lengthCall: 'min(10px, 20px)' },
+      { name: 'max()', percentageCall: 'max(10%, 20%)', lengthCall: 'max(10px, 20px)' },
+      { name: 'round()', percentageCall: 'round(1.5%, 1%)', lengthCall: 'round(1.5px, 1px)' },
+      { name: 'mod()', percentageCall: 'mod(10%, 3%)', lengthCall: 'mod(10px, 3px)' },
+      { name: 'rem()', percentageCall: 'rem(10%, 3%)', lengthCall: 'rem(10px, 3px)' },
+      { name: 'abs()', percentageCall: 'abs(-10%)', lengthCall: 'abs(-10px)' },
+      { name: 'hypot()', percentageCall: 'hypot(1%, 2%)', lengthCall: 'hypot(1px, 2px)' },
+    ];
+
+    for (const { name, percentageCall, lengthCall } of cases) {
+      test(`${name}: a percentage-typed call IS accepted as the weight`, () => {
+        const recipe = `color-mix(in oklch, ${percentageCall} ${color}, transparent)`;
+        expect(serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toBe(recipe);
+      });
+
+      test(`${name}: a length-typed call is REJECTED, not silently accepted as a weight`, () => {
+        const recipe = `color-mix(in oklch, ${lengthCall} ${color}, transparent)`;
+        expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+          /bare component list/,
+        );
+      });
+    }
+
+    test('a percentage call NESTED inside another percentage function is still recognised (calc(clamp(...)))', () => {
+      const recipe = `color-mix(in oklch, calc(clamp(0%, 50%, 100%) * 2) ${color}, transparent)`;
+      expect(serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toBe(recipe);
+    });
+
+    test('a length call nested inside another percentage function is still rejected (calc(clamp(px...)))', () => {
+      const recipe = `color-mix(in oklch, calc(clamp(0px, 50px, 100px) * 2) ${color}, transparent)`;
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('a var() with a percentage fallback used AS a math-function argument is recognised (calc(var(--w, 1%) + 2%))', () => {
+      const recipe = `color-mix(in oklch, calc(var(--w, 1%) + 2%) ${color}, transparent)`;
+      expect(serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toBe(recipe);
+    });
+
+    test('a var() with NO fallback used as a math-function argument cannot be proven a percentage, so it is rejected (fail closed)', () => {
+      const recipe = `color-mix(in oklch, calc(var(--w) + 2%) ${color}, transparent)`;
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('a bare number with no percentage anywhere in the expression is rejected -- calc(1 + 2) is a <number>, never a <percentage>', () => {
+      const recipe = `color-mix(in oklch, calc(1 + 2) ${color}, transparent)`;
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('sign() is rejected outright, even with a percentage argument -- unlike abs(), the spec types its result as always a plain <number>', () => {
+      const recipe = `color-mix(in oklch, sign(-10%) ${color}, transparent)`;
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+  });
+
   describe('an unclosed function node is never a complete color (fail-open regression)', () => {
     // `postcss-value-parser` still produces a `function` node for a call
     // missing its closing `)`, marked `unclosed: true`, with everything up to
