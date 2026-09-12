@@ -710,3 +710,52 @@ test('a long approval question leaves the transcript its space', async ({ page }
 	await page.locator('[data-testid="approval-deny"]').click();
 	await expect(chat).toHaveAttribute('data-streaming', 'false');
 });
+
+test('a failed recovery check says so in its alert', async ({ page, request }) => {
+	// THE INJECTION HALF. `error-live-regions.e2e.ts` pins that this region is
+	// mounted and empty before anything fails; nothing covered what happens
+	// when something does, so deleting both failure assignments in the panel
+	// left every test green.
+	//
+	// The failure is produced by intercepting the request rather than by
+	// breaking the server, because the panel's contract is about what it does
+	// with a response it cannot use — and a 503 is the shape this route family
+	// actually returns while shutting down.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Recovery failure') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+	await page.getByText('Durable recovery', { exact: true }).click();
+
+	const alert = page.locator('[data-testid="recovery-error"]');
+	await expect(alert).toBeEmpty();
+
+	await page.route(`**/api/server-owned/conversations/${conversation.id}/recovery`, (route) =>
+		route.fulfill({
+			status: 503,
+			contentType: 'application/json',
+			body: JSON.stringify({ error: 'The server is shutting down. Try again in a moment.' })
+		})
+	);
+
+	await page.locator('[data-testid="recovery-check"]').click();
+
+	// THE SERVER'S SENTENCE, not the JSON envelope — the same rule the
+	// streaming surface follows.
+	await expect(alert).toContainText('shutting down');
+	await expect(alert).not.toContainText('{');
+	// And the outcome regions stay empty, because nothing was classified.
+	await expect(page.locator('[data-testid="recovery-status"]')).toBeEmpty();
+
+	// A network failure reaches the same region with its own sentence, which is
+	// the second assignment the old coverage could not see.
+	await page.unroute(`**/api/server-owned/conversations/${conversation.id}/recovery`);
+	await page.route(`**/api/server-owned/conversations/${conversation.id}/recovery`, (route) =>
+		route.abort('failed')
+	);
+
+	await page.locator('[data-testid="recovery-check"]').click();
+	await expect(alert).toContainText('could not reach the server');
+});

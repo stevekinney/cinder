@@ -24,7 +24,15 @@ export type RecoveryOutcome =
 			readonly run: AgentRun;
 	  }
 	| {
-			/** Nothing was in flight. The ordinary, healthy answer. */
+			/**
+			 * NOTHING IS CURRENTLY RESUMABLE — which is not the same as nothing
+			 * having been in flight, and this comment used to say the latter.
+			 *
+			 * A second check after an orphan was reported also lands here,
+			 * because Operative reconciles the stranded run as it reports the
+			 * rejection. A run was in flight then, and its work was lost; only
+			 * the present tense is safe to assert.
+			 */
 			readonly kind: 'nothing-to-resume';
 	  }
 	| {
@@ -47,7 +55,14 @@ export type RecoveryFailure = {
 };
 
 /**
- * Renders a rejected re-attach for a surface a person reads.
+ * Renders a rejected re-attach as a SERVER-SIDE DIAGNOSTIC.
+ *
+ * NOT for a surface a person reads, which is what this said before the
+ * endpoint learned to redact. The string is `Error.message` verbatim, and a
+ * resume rejection can quote a connection string — so returning a string
+ * prevents forwarding a live `Error` object, and nothing more. Whoever sends
+ * this anywhere a client can see is responsible for replacing it; the recovery
+ * endpoint does exactly that and logs this instead.
  *
  * A string by construction, so a caller cannot accidentally forward a live
  * error object across the response boundary — the same reasoning as

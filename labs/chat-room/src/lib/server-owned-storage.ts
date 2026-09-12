@@ -115,9 +115,20 @@ export class DurableStorageUnavailableError extends Error {
 
 	constructor(path: string, cause: unknown) {
 		const reported = cause instanceof Error ? cause.message : String(cause);
+		// The INSTALL HINT is conditional, because not every failure here is a
+		// missing peer. A path into a directory that does not exist, or one the
+		// process cannot write, fails with an I/O error under Bun too — where
+		// nothing needs installing at all — and prescribing an install for that
+		// sends the operator to fix the wrong thing.
+		//
+		// Keyed on the package name appearing in the cause, which is what Weft's
+		// own missing-peer message contains and what an I/O error does not.
+		const missingPeer = reported.includes('better-sqlite3');
 		super(
 			`${DATABASE_VARIABLE} names ${path}, but the durable store could not be opened. ${reported} ` +
-				'That install is listed as a step of the exercise in labs/chat-room/docs/durability-exercise.md. ' +
+				(missingPeer
+					? 'That install is listed as a step of the exercise in labs/chat-room/docs/durability-exercise.md. '
+					: 'Check that the path is inside an existing directory this process can write to. ') +
 				`Unset ${DATABASE_VARIABLE} to run on in-memory storage instead.`,
 			{ cause }
 		);

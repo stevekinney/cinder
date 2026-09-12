@@ -209,7 +209,31 @@
 	// rather than as anything pointing at this line.
 	let pollGeneration = 0;
 
+	/**
+	 * Orders responses WITHIN one polling session.
+	 *
+	 * The generation above changes only when the effect starts or stops, so
+	 * every overlapping 250ms request inside one turn carries the same value —
+	 * and a slow response could still land after a newer one and overwrite the
+	 * current question, or clear it with an older `pending: null`. Review caught
+	 * that the generation alone was not enough.
+	 *
+	 * Each request takes the next ticket; a response holding an older one is
+	 * discarded. Reset with the generation, so a new session starts from zero.
+	 */
+	let pollSequence = 0;
+	let latestSequence = 0;
+
+	/**
+	 * Whether the text in the shared banner came from a poll.
+	 *
+	 * The banner is shared with the controller's own turn failures, and a
+	 * successful poll may only clear what a poll wrote.
+	 */
+	let pollFailed = false;
+
 	async function readPendingApproval(generation: number): Promise<void> {
+		const sequence = ++pollSequence;
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`);
 			if (generation !== pollGeneration) return;
@@ -222,8 +246,8 @@
 				// every non-2xx, and a silent `catch`.
 				//
 				// Polling CONTINUES after reporting, so a transient failure heals
-				// itself and the banner is replaced by the question when one
-				// arrives.
+				// itself and the success path above clears this text.
+				pollFailed = true;
 				failure = toBannerFailure(new Error(await failureMessage(response)));
 				return;
 			}
@@ -232,9 +256,24 @@
 			// Checked AGAIN after the body is read, because awaiting it is another
 			// point where the turn can end underneath this response.
 			if (generation !== pollGeneration) return;
+			if (sequence < latestSequence) return;
+			latestSequence = sequence;
 			pending = body.pending;
+			// A SUCCESS CLEARS THE POLL'S OWN FAILURE. Without this a single
+			// transient error left its `role="alert"` text on screen for the rest
+			// of the turn — including after the controls it supposedly explained
+			// had appeared, and after the turn completed.
+			//
+			// Only the poll's failure, which is why the banner is cleared here
+			// rather than on any success: a turn failure reported by the
+			// controller is not this function's to erase.
+			if (pollFailed) {
+				pollFailed = false;
+				failure = null;
+			}
 		} catch (cause) {
 			if (generation !== pollGeneration) return;
+			pollFailed = true;
 			failure = toBannerFailure(cause);
 		}
 	}
@@ -293,6 +332,8 @@
 			return;
 		}
 		const generation = pollGeneration;
+		pollSequence = 0;
+		latestSequence = 0;
 		void readPendingApproval(generation);
 		const interval = setInterval(() => void readPendingApproval(generation), 250);
 		return () => {

@@ -35,13 +35,17 @@ Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnava
 
 ## The procedure
 
-Start the provider fixture, so a turn can run without a live API key:
+Three of these commands do not return: the fixture, the preview server, and the
+parked streaming request. Give each its own terminal, or background it as shown
+— following the list top to bottom in one shell stops at the first line.
+
+Start the provider fixture, so a turn can run without a live API key. **Terminal 1:**
 
 ```sh
 bun src/routes/streaming-fixture.ts
 ```
 
-Build, then start the preview server against a database file:
+Build, then start the preview server against a database file. **Terminal 2:**
 
 ```sh
 bun run build
@@ -51,7 +55,7 @@ ANTHROPIC_BASE_URL=http://127.0.0.1:4599 \
 bun run preview -- --port 4791 --strictPort
 ```
 
-Create a conversation:
+Create a conversation. **Terminal 3**, where every `curl` below runs:
 
 ```sh
 ID=$(curl -s -X POST http://localhost:4791/api/server-owned/conversations \
@@ -60,14 +64,10 @@ ID=$(curl -s -X POST http://localhost:4791/api/server-owned/conversations \
 echo "$ID"
 ```
 
-```json
-{
-	"conversation": {
-		"id": "session-1-98171819-…",
-		"title": "Durability exercise",
-		"messageCount": 0
-	}
-}
+The only thing this prints is the id — the substitution captures the response and the program projects it down. **Observed:**
+
+```
+session-1-5ea684af-345e-409a-8312-0fc89e89f87b
 ```
 
 Ask about recovery before anything has run. **A POST, not a GET** — asking reconciles a stranded run, so the question is not safely repeatable and the verb has to say so. **Observed:** the benign answer, which is the truth for a session that has never had a run.
@@ -80,7 +80,7 @@ curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recover
 { "kind": "nothing-to-resume", "durability": "on-disk" }
 ```
 
-Start a turn that parks mid-stream. The `gated` fixture scenario delivers one chunk and then holds the response open, which leaves the run `running` in the store:
+Start a turn that parks mid-stream. The `gated` fixture scenario delivers one chunk and then holds the response open, which leaves the run `running` in the store. **Terminal 3**, and this one stays open until the server is killed:
 
 ```sh
 curl -sN -X POST http://localhost:4791/api/server-owned/conversations/$ID/stream \
@@ -193,7 +193,8 @@ The run id crosses to the browser; the engine's own words do not. A resume rejec
 ```
 status:     Nothing is currently resumable. The orphaned run reported earlier is already
             reconciled; this is what a second check answers, not a claim that nothing
-            was lost.
+            was lost. Storage is on disk, so a run left in flight is recorded for the
+            next process.
 failures:   (no list rendered)
 once:       (no note rendered)
 ```

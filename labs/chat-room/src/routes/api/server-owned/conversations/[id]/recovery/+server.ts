@@ -61,10 +61,16 @@ async function respond(id: string): Promise<Response> {
 		engine: durable.engine,
 		checkpointStore: durable.checkpointStore,
 		agentName: AGENT_NAME,
-		// `runOptions` is REQUIRED by `SessionHandleContext`, even to ask a
-		// read-only question about recovery. `recover()` re-attaches to work
-		// already running — it reads `runs.at(-1)`, derives the `runId`, and
-		// calls `engine.resume(runId)` — so it never reaches `generate`.
+		// `runOptions` is REQUIRED by `SessionHandleContext`, even though this
+		// endpoint never generates. `recover()` re-attaches to work already
+		// running — it reads `runs.at(-1)`, derives the `runId`, and calls
+		// `engine.resume(runId)` — so it never reaches `generate`.
+		//
+		// NOT "read-only", which is what this said while the endpoint was a GET.
+		// `recover()` reconciles the stranded run it reports, which is the whole
+		// reason the verb is a POST; calling it read-only here would invite
+		// restoring the caching and retry behaviour that consumes the one-time
+		// orphan diagnosis.
 		//
 		// This one THROWS rather than returning an empty stream, and the
 		// distinction is the whole point. A no-op provider would let a

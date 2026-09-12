@@ -107,8 +107,22 @@ describe('classifyRecovery', () => {
 
 		expect(failed.kind).toBe('orphaned');
 		if (failed.kind !== 'orphaned') return;
-		expect(typeof failed.failures[0]?.reason).toBe('string');
-		expect(JSON.stringify(failed)).not.toContain('stack');
+
+		// ENUMERATED, not serialized. `JSON.stringify(new Error(...))` produces
+		// `{}` — an `Error` has no enumerable own properties — so a classifier
+		// that kept the live error in an extra field would pass a
+		// `not.toContain('stack')` assertion while carrying the whole cause. That
+		// is what the first version of this test did.
+		//
+		// Checking the KEYS is what makes the claim falsifiable: the shape is
+		// exactly the two fields, and anything smuggled alongside them fails
+		// here.
+		const [failure] = failed.failures;
+		expect(Object.keys(failure ?? {}).sort()).toEqual(['reason', 'runId']);
+		for (const value of Object.values(failure ?? {})) {
+			expect(typeof value).toBe('string');
+		}
+		expect(failure?.reason).toContain('unreachable');
 	});
 
 	it('removes its listener even when recover() throws', async () => {

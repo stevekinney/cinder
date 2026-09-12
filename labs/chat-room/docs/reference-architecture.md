@@ -78,7 +78,7 @@ The trade is not about ergonomics. It is:
 | The run, while waiting          | stopped; the client starts the next turn                 | parked mid-step; the client answers out of band                                     |
 | A denial                        | a tool result the model sees; the conversation continues | the hook drops the call, Operative seals it with an error result, the run completes |
 
-So: **a stateless route owning no run state should park and resume. A route that already owns the run server-side, where the client cannot restart a turn, should elicit.** The server-owned variant below is the second case, and it is not a preference — the park is unreachable there. Its transport rejects a continuation before it reaches `fetch`, because on a continuation the last conversation message is a tool result rather than the string-valued user message the transport checks for. The token would be minted and then have nowhere to go.
+So: **a stateless route owning no run state should park and resume. A route that already owns the run server-side, where the client cannot restart a turn, should elicit.** The server-owned variant below is the second case, and it is not a preference — the park is unreachable there. A continuation there carries no user turn to send, because the last conversation message on that call is a tool result — so the token would be minted and then have nowhere to go. (The transport answers such a call with an empty stream rather than rejecting it; see the continuation rule below. It used to throw, which was right while the toolbox was empty and became destructive once a tool could succeed.)
 
 Two properties of the elicitation path are worth stating because they are not obvious from the type signatures:
 
@@ -101,7 +101,7 @@ reload: You … | Assistant Called 1 tool … Succeeded | Assistant "Saved that 
 
 The session controller inserts one assistant placeholder before reading any frames, so when a single response carries two model steps the second step's text is written back into a row that already precedes the tool activity. The follow-up reply therefore appears above the note it is replying about, and disagrees with the server's own history.
 
-Delineating assistant steps belongs to the wire and the controller in `@lostgradient/chat` — CIN-615 carries it with these measurements. What this route keeps true in the meantime is the persisted order, which a reload renders and which a spec pins.
+Delineating assistant steps belongs to the wire and the controller in `@lostgradient/chat`, and is filed there with these measurements. What this route keeps true in the meantime is the persisted order, which a reload renders and which a spec pins.
 
 **Every gated call needs its own decision, and every decision needs to name its call.** A step can carry more than one approval-gated call — the stop condition runs after a step and never constrained that — so the hook elicits per call rather than once. And because `ctx.elicit` carries no call identity, the answer has to: a click that lands after its own run ended would otherwise settle whatever question is pending next. The host's answering endpoint requires the call id it displayed and compares it in the same step that settles.
 
@@ -195,13 +195,13 @@ Durable recovery belongs to the server-owned variant below, which must preserve 
 
 **Why step-level, precisely.** A live turn streams because the process holding the provider connection is re-encoding its deltas. A recovered run is one the engine resumed from a checkpoint: its progress is whatever the workflow writes from there, which advances a step at a time. The tokens that were in flight when the previous process died were never persisted, so there is nothing to replay. That is the reason, and it is about where events come from rather than about the handle's type.
 
-**A recovered run is NOT a `DiagnosticAgentRun`, contrary to what CIN-445 assumed.** Checked against Operative 0.11.0: `SessionHandle.recover()` is declared `Promise<AgentRun | null>` and wraps the recovered handle with `createAgentRun`, deliberately — the comment beside the call reads "wrap it as an `AgentRun` so the caller can observe the resumed run normally." `DiagnosticAgentRun` is what `createDiagnosticAgentRun` produces on the paths that resume a run _without_ a trusted live agent definition; the session path has one, because `SessionHandleContext.runOptions` is required.
+**A recovered run is NOT a `DiagnosticAgentRun`**, contrary to what this section once implied. Checked against the installed declarations: `SessionHandle.recover()` is declared `Promise<AgentRun | null>` and wraps the recovered handle with `createAgentRun`, deliberately — the comment beside the call reads "wrap it as an `AgentRun` so the caller can observe the resumed run normally." `DiagnosticAgentRun` is what `createDiagnosticAgentRun` produces on the paths that resume a run _without_ a trusted live agent definition; the session path has one, because `SessionHandleContext.runOptions` is required.
 
 The difference between the two shapes is smaller than it sounds, and in one place larger:
 
 - `output()` is absent from `AgentRun` at the default `H = false` anyway, so its absence from `DiagnosticAgentRun` is not a distinction a `recover()` caller could ever observe.
 - `unwrap()` is the accessor they genuinely differ on. At `H = false` it resolves to `Promise<string>` — plain text, no schema validation — so its presence on a recovered handle is a mild hazard at most.
-- `closed()` is the difference with teeth. `DiagnosticAgentRun` downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason: 'unknown-effect' }`, because durability is undeterminable from a recovered wrapper. The session path passes that status through unchanged, so a run recovered through `recover()` can report a durable boundary the wrapper cannot vouch for. Filed as AB-425.
+- `closed()` is the difference with teeth. `DiagnosticAgentRun` downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason: 'unknown-effect' }`, because durability is undeterminable from a recovered wrapper. The session path passes that status through unchanged, so a run recovered through `recover()` can report a durable boundary the wrapper cannot vouch for. Filed upstream against the owning package.
 
 `server-owned-recovery-contract.test.ts` pins each of these at the type level, so a future Operative that narrows `recover()` breaks the build rather than this paragraph.
 

@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
+import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -34,6 +35,30 @@ afterEach(() => {
 	}
 });
 
+/**
+ * Runs the storage fixture in a child process.
+ *
+ * `bun` rather than an import, because the point is a boundary: a child gets
+ * its own module graph, its own globals, and its own file handles, so nothing
+ * but the database file can carry a value across.
+ */
+function spawnFixture(
+	args: string[],
+	database: string | undefined
+): { stdout: string; stderr: string } {
+	const environment = { ...process.env };
+	if (database === undefined) delete environment[DATABASE_VARIABLE];
+	else environment[DATABASE_VARIABLE] = database;
+
+	const result = spawnSync('bun', ['src/lib/server-owned-storage-fixture.ts', ...args], {
+		cwd: new URL('../..', import.meta.url).pathname,
+		env: environment,
+		encoding: 'utf8'
+	});
+
+	return { stdout: (result.stdout ?? '').trim(), stderr: (result.stderr ?? '').trim() };
+}
+
 function temporaryDatabasePath(): string {
 	const directory = mkdtempSync(join(tmpdir(), 'chat-room-durability-'));
 	directories.push(directory);
@@ -59,18 +84,36 @@ describe('the durable adapter stays an opt-in', () => {
 		expect(Object.keys(manifest.devDependencies ?? {})).not.toContain('better-sqlite3');
 	});
 
+	test('an I/O failure is not diagnosed as a missing package', () => {
+		// The wrapper used to append the install instruction to every cause. A
+		// path into a directory that does not exist fails for an I/O reason even
+		// under Bun, where nothing needs installing — so that advice sent the
+		// operator to fix the wrong thing.
+		const error = new DurableStorageUnavailableError(
+			'/nope/nowhere/example.sqlite',
+			new Error('unable to open database file')
+		);
+
+		expect(error.message).not.toContain('durability-exercise.md');
+		expect(error.message).toContain('existing directory');
+		expect(error.message).toContain(DATABASE_VARIABLE);
+	});
+
 	test('the durable branch reports what to do when the peer is absent', () => {
 		// Under `bun test` the runtime-neutral entry resolves to `bun:sqlite`, so
 		// construction SUCCEEDS here and the error below cannot be triggered by
 		// unsetting a package. What is pinned instead is that the message names
 		// all three things a reader needs: the variable, the install, and the way
 		// back to a working server.
-		const error = new DurableStorageUnavailableError('/tmp/example.sqlite', new Error('missing'));
+		const error = new DurableStorageUnavailableError(
+			'/tmp/example.sqlite',
+			new Error('NodeSQLiteStorage requires the optional peer dependency "better-sqlite3".')
+		);
 
 		expect(error.message).toContain(DATABASE_VARIABLE);
 		expect(error.message).toContain('durability-exercise.md');
 		expect(error.message).toContain('in-memory storage');
-		expect(error.message).toContain('missing');
+		expect(error.message).toContain('better-sqlite3');
 	});
 });
 
@@ -121,25 +164,33 @@ describe('serverOwnedStorage', () => {
 		expect(await storage.get('run/1')).not.toBeNull();
 	});
 
-	test('a file path survives the storage being reopened', async () => {
+	test('a file path survives an actual process boundary', async () => {
+		// TWO PROCESSES, not two constructions. The first version of this test
+		// built both storages here, which review correctly called hollow: an
+		// implementation backed by a module-level map or a per-path cached
+		// singleton would have passed it — and the different-paths test beside
+		// it — while losing everything on a real restart, which is the only
+		// thing the claim is about.
 		const path = temporaryDatabasePath();
-		process.env[DATABASE_VARIABLE] = path;
 
-		const first = serverOwnedStorage();
-		expect(first.durability).toBe('on-disk');
-		await first.storage.put('run/1', new TextEncoder().encode('still running'));
-		first.storage[Symbol.dispose]?.();
+		const wrote = spawnFixture(['write', 'run/1', 'still running'], path);
+		expect(wrote.stderr).toBe('');
+		expect(wrote.stdout).toBe('written');
 
-		// A SECOND construction over the same path, which is what a restarted
-		// process does. Reading back here is the whole claim: without it the
-		// durability exercise has nothing to recover and the recovery endpoint
-		// can only ever answer "nothing to resume".
-		const second = serverOwnedStorage();
-		const stored = await second.storage.get('run/1');
-		second.storage[Symbol.dispose]?.();
+		const read = spawnFixture(['read', 'run/1'], path);
+		expect(read.stderr).toBe('');
+		expect(read.stdout).toBe('still running');
+	});
 
-		expect(stored).not.toBeNull();
-		expect(new TextDecoder().decode(stored ?? new Uint8Array())).toBe('still running');
+	test('an in-memory store does NOT survive a process boundary', async () => {
+		// The control, and the reason the test above means anything. Without it
+		// a durability assertion could pass against something that always
+		// returns what it was asked for.
+		const wrote = spawnFixture(['write', 'run/1', 'still running'], undefined);
+		expect(wrote.stdout).toBe('written');
+
+		const read = spawnFixture(['read', 'run/1'], undefined);
+		expect(read.stdout).toBe('(absent)');
 	});
 
 	test('two runtimes over different paths do not see each other', async () => {
