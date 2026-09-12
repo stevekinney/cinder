@@ -18,6 +18,8 @@
 import { expect, test } from '@playwright/test';
 
 import { gotoHydrated } from '../exercises/hydration';
+import { newFixtureMarker } from '../fixture-probe';
+import { APPROVAL_NOTE_TEXT, fixtureMarker } from '../streaming-fixture';
 
 /** A title no other test will collide with, in this run or a previous one. */
 const uniqueTitle = (label: string): string =>
@@ -208,7 +210,15 @@ test('reports a conversation with no in-flight run as nothing to resume', async 
 
 	const recovery = await request.get(`/api/server-owned/conversations/${conversation.id}/recovery`);
 	expect(recovery.status()).toBe(200);
-	expect(await recovery.json()).toEqual({ kind: 'nothing-to-resume' });
+	// `durability` rides along on every outcome, because "nothing to resume" is
+	// the TRUTH under in-memory storage and a bug-shaped surprise under on-disk
+	// storage. The suite runs with the variable unset, so `in-memory` is the
+	// expected answer here — and asserting it pins that the suite is exercising
+	// the default rather than inheriting a database from someone's experiment.
+	expect(await recovery.json()).toEqual({
+		kind: 'nothing-to-resume',
+		durability: 'in-memory'
+	});
 });
 
 test('distinguishes a missing conversation from one with nothing to resume', async ({
@@ -223,4 +233,205 @@ test('distinguishes a missing conversation from one with nothing to resume', asy
 	);
 	expect(missing.status()).toBe(404);
 	expect(await missing.json()).toEqual({ error: 'No such conversation.' });
+});
+
+test('the detail route offers the recovery question and names its backing store', async ({
+	page,
+	request
+}) => {
+	// A BROWSER test in this file rather than in `server-owned-streaming.e2e.ts`,
+	// against that file's stated convention, and deliberately: the two WebKit
+	// shards the streaming file sits in are at the 64-context ceiling with no
+	// headroom, and nothing about this panel is engine-divergent — it is a fetch
+	// and three branches of text. The alternative was rebalancing a shard to add
+	// a test that gains nothing from three engines.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Recovery panel') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	const status = page.locator('[data-testid="recovery-status"]');
+	const durability = page.locator('[data-testid="recovery-durability"]');
+
+	// Mounted and EMPTY before the question is asked. Both halves matter for the
+	// same reason the error regions in `error-live-regions.e2e.ts` do: a live
+	// region that appears with text already in it is not reliably announced.
+	await expect(status).toHaveCount(1);
+	await expect(status).toBeEmpty();
+	await expect(status).toHaveAttribute('role', 'status');
+	await expect(durability).toBeEmpty();
+
+	await page.locator('[data-testid="recovery-check"]').click();
+
+	// The benign branch, which is the honest answer under in-memory storage —
+	// and the panel says which storage that is, so the answer is not mistaken
+	// for a failed re-attach.
+	await expect(status).toContainText('Nothing to resume');
+	await expect(status).toContainText('idle, not lost');
+	await expect(durability).toContainText('Storage: in memory');
+	await expect(durability).toContainText('CHAT_ROOM_SERVER_OWNED_DATABASE');
+
+	// The orphan branch's list and its once-only note belong to the orphan
+	// outcome alone. Asserting their ABSENCE here is what keeps the benign
+	// answer from quietly growing a failure list.
+	await expect(page.locator('[data-testid="recovery-failures"]')).toHaveCount(0);
+	await expect(page.locator('[data-testid="recovery-once"]')).toHaveCount(0);
+});
+
+test('answers nothing when no approval is pending, and refuses an answer to a question nobody asked', async ({
+	request
+}) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Elicitation idle') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const idle = await request.get(`/api/server-owned/conversations/${conversation.id}/elicitation`);
+	expect(idle.status()).toBe(200);
+	// 200 with `pending: null`, not a 404: "nothing is being asked" is the
+	// ordinary state, and a client polling during a turn would otherwise have to
+	// treat the routine answer as an error.
+	expect(await idle.json()).toEqual({ pending: null });
+
+	const unsolicited = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`,
+		{ data: { approved: true } }
+	);
+	// 409, not a silent 200. The conversation exists; what is absent is a
+	// question — so this answer arrived after the run ended or after another
+	// client answered first, and a 200 would tell the caller its click landed.
+	expect(unsolicited.status()).toBe(409);
+	expect(await unsolicited.json()).toEqual({
+		error: 'This conversation is not waiting on an approval.'
+	});
+});
+
+test('rejects a malformed approval body at the boundary', async ({ request }) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Elicitation malformed') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	// Validated where the contract is owned, before it can propagate into a
+	// generic downstream failure — the same rule the turn endpoint follows.
+	const wrongType = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`,
+		{ data: { approved: 'yes' } }
+	);
+	expect(wrongType.status()).toBe(400);
+
+	const notJson = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`,
+		{ headers: { 'content-type': 'application/json' }, data: 'not json at all' }
+	);
+	expect(notJson.status()).toBe(400);
+
+	const missing = await request.post('/api/server-owned/conversations/nope/elicitation', {
+		data: { approved: true }
+	});
+	expect(missing.status()).toBe(404);
+});
+
+test('a person approving the note lets the tool run', async ({ request }) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Elicitation approved') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const marker = newFixtureMarker();
+	// NOT awaited yet. The run parks inside its step waiting on the question, so
+	// awaiting the stream here would deadlock against the answer below — which
+	// is the whole difference from the browser-owned route, where the run STOPS
+	// and the client starts a second request.
+	const turn = request.post(`/api/server-owned/conversations/${conversation.id}/stream`, {
+		data: { text: fixtureMarker('approval', marker) },
+		timeout: 30_000
+	});
+
+	const pending = await expect
+		.poll(
+			async () => {
+				const response = await request.get(
+					`/api/server-owned/conversations/${conversation.id}/elicitation`
+				);
+				const body = (await response.json()) as {
+					pending: { toolName: string; message: string; arguments: { text?: string } } | null;
+				};
+				return body.pending;
+			},
+			{ message: 'the run never asked for approval' }
+		)
+		.not.toBeNull();
+	void pending;
+
+	const asked = await request.get(`/api/server-owned/conversations/${conversation.id}/elicitation`);
+	const question = (await asked.json()) as {
+		pending: { toolName: string; message: string; arguments: { text?: string } };
+	};
+	expect(question.pending.toolName).toBe('remember_note');
+	expect(question.pending.message).toBe('Save this note?');
+	// The MODEL'S proposed arguments, so the person is approving a specific note
+	// rather than a category of action.
+	expect(question.pending.arguments.text).toBe(APPROVAL_NOTE_TEXT);
+
+	const answered = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`,
+		{ data: { approved: true } }
+	);
+	expect(answered.status()).toBe(200);
+
+	const body = await (await turn).text();
+	// The tool RAN, which is the claim: an approval that produced no settled
+	// result would mean the hook let the call through and something else dropped
+	// it.
+	expect(body).toContain('"type":"tool.settled"');
+	expect(body).toContain('"outcome":"success"');
+	expect(body).toContain(APPROVAL_NOTE_TEXT);
+	expect(body).toContain('"type":"run.completed"');
+});
+
+test('a person denying the note drops the call without failing the run', async ({ request }) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Elicitation denied') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	const marker = newFixtureMarker();
+	const turn = request.post(`/api/server-owned/conversations/${conversation.id}/stream`, {
+		data: { text: fixtureMarker('approval', marker) },
+		timeout: 30_000
+	});
+
+	await expect
+		.poll(async () => {
+			const response = await request.get(
+				`/api/server-owned/conversations/${conversation.id}/elicitation`
+			);
+			return ((await response.json()) as { pending: unknown }).pending;
+		})
+		.not.toBeNull();
+
+	await request.post(`/api/server-owned/conversations/${conversation.id}/elicitation`, {
+		data: { approved: false }
+	});
+
+	const body = await (await turn).text();
+	// The model still PROPOSED the call, so its frame is on the wire; what is
+	// absent is a settled result, because the hook filtered the call out.
+	expect(body).toContain('"type":"tool_call"');
+	expect(body).not.toContain('"type":"tool.settled"');
+	// And the run COMPLETED. `ctx.elicit` returns `null` rather than throwing, so
+	// a denial is the hook's decision and not a terminal — which is the
+	// difference from `ElicitationDeniedError`, the shape a denial takes when a
+	// tool throws on one.
+	expect(body).toContain('"type":"run.completed"');
+	expect(body).not.toContain('"type":"run.error"');
+
+	// The question is gone either way, so the next turn can ask its own.
+	const afterwards = await request.get(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`
+	);
+	expect(await afterwards.json()).toEqual({ pending: null });
 });

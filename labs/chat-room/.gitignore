@@ -30,3 +30,12 @@ tmp/
 
 # Review board baseline (local, per-checkout)
 .claude/.review-board-state/
+
+# A durability-exercise database, if someone points
+# CHAT_ROOM_SERVER_OWNED_DATABASE inside the checkout rather than at /tmp as
+# docs/durability-exercise.md suggests. It is one experiment's scratch state,
+# never project state — and SQLite's WAL and shared-memory siblings would
+# otherwise arrive as two more untracked files.
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm

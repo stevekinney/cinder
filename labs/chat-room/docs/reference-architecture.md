@@ -59,6 +59,32 @@ The server never trusts a client-edited approval descriptor. The resume route va
 
 Every tool that can cause a non-reversible external effect must use that approval-and-consumption path. A tool may run unapproved only when it is read-only, safely replayable, or protected by a host-owned idempotency key claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient, because a retry may generate a different call for the same action.
 
+### Two approval paths, and which one a consumer should reach for
+
+Operative supports approval in two places, and the choice is decided by who owns the run rather than by taste.
+
+**Park and resume, through the toolbox.** The tool declares `policy.beforeExecute` answering `needs_approval`; armorer mints a signed descriptor of the call; the run STOPS; the client sends the descriptor back on a later request and `toolbox.resumeApproval()` verifies it before the effect. Everything about the pending decision travels in that token, so the server holds nothing between the two requests — which is what makes it survive a restart, a load balancer, and a client that waits an hour before answering. This is the canonical browser-owned path, and it is the one to reach for by default.
+
+**Elicit, through the loop.** A `beforeToolExecution` hook calls `ctx.elicit(message, schema)`; the host's `onElicitation` callback answers; the run WAITS inside the step rather than stopping. The decision never becomes a token, so nothing has to be signed, verified, or ledgered — and nothing survives the process either. A pending question is pinned to the one server holding the promise.
+
+The trade is not about ergonomics. It is:
+
+|                                 | Park and resume                                          | Elicit in the loop                                                                  |
+| ------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Pending state lives             | in a signed token the client holds                       | in the process holding the run                                                      |
+| Survives a restart              | yes                                                      | no — the question dies with the run                                                 |
+| Survives more than one instance | yes, with a shared consumed-capability ledger            | no                                                                                  |
+| Replay protection needed        | yes: signature plus an atomic consumed-capability claim  | no: there is no token to replay                                                     |
+| The run, while waiting          | stopped; the client starts the next turn                 | parked mid-step; the client answers out of band                                     |
+| A denial                        | a tool result the model sees; the conversation continues | the hook drops the call, Operative seals it with an error result, the run completes |
+
+So: **a stateless route owning no run state should park and resume. A route that already owns the run server-side, where the client cannot restart a turn, should elicit.** The server-owned variant below is the second case, and it is not a preference — the park is unreachable there. Its transport rejects a continuation before it reaches `fetch`, because on a continuation the last conversation message is a tool result rather than the string-valued user message the transport checks for. The token would be minted and then have nowhere to go.
+
+Two properties of the elicitation path are worth stating because they are not obvious from the type signatures:
+
+- `ctx.elicit` returns `T | null` and never throws. A denial is `null`, and what it means is the hook's decision. `ElicitationDeniedError` is a different thing — the shape a denial takes when a _tool_ throws on one, reconstructed by the durable run adapter — and it is a run terminal. A hook that filters the call out instead is not.
+- A denied call is **invisible on the wire**. Operative seals the filtered call with an error result in the conversation, so a later replay is not left with a dangling tool call, but that sealing dispatches no tool event: the client sees a `tool_call` frame with no `tool.settled` after it. Measured, not inferred. A client that renders a pending tool row would leave it pending forever, so the surface has to learn a denial some other way — which is CIN-615.
+
 <a id="stream-wire-contract"></a>
 
 ## Stream wire contract
@@ -147,6 +173,22 @@ The canonical path is ephemeral by design: a disconnected or restarted request d
 
 Durable recovery belongs to the server-owned variant below, which must preserve the distinction between live token streaming and recovered execution — the latter may expose only step-level progress. A failed re-attach must be distinguishable in the UI from a benign "nothing to resume".
 
+**Why step-level, precisely.** A live turn streams because the process holding the provider connection is re-encoding its deltas. A recovered run is one the engine resumed from a checkpoint: its progress is whatever the workflow writes from there, which advances a step at a time. The tokens that were in flight when the previous process died were never persisted, so there is nothing to replay. That is the reason, and it is about where events come from rather than about the handle's type.
+
+**A recovered run is NOT a `DiagnosticAgentRun`, contrary to what CIN-445 assumed.** Checked against Operative 0.11.0: `SessionHandle.recover()` is declared `Promise<AgentRun | null>` and wraps the recovered handle with `createAgentRun`, deliberately — the comment beside the call reads "wrap it as an `AgentRun` so the caller can observe the resumed run normally." `DiagnosticAgentRun` is what `createDiagnosticAgentRun` produces on the paths that resume a run _without_ a trusted live agent definition; the session path has one, because `SessionHandleContext.runOptions` is required.
+
+The difference between the two shapes is smaller than it sounds, and in one place larger:
+
+- `output()` is absent from `AgentRun` at the default `H = false` anyway, so its absence from `DiagnosticAgentRun` is not a distinction a `recover()` caller could ever observe.
+- `unwrap()` is the accessor they genuinely differ on. At `H = false` it resolves to `Promise<string>` — plain text, no schema validation — so its presence on a recovered handle is a mild hazard at most.
+- `closed()` is the difference with teeth. `DiagnosticAgentRun` downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason: 'unknown-effect' }`, because durability is undeterminable from a recovered wrapper. The session path passes that status through unchanged, so a run recovered through `recover()` can report a durable boundary the wrapper cannot vouch for. Filed as AB-425.
+
+`server-owned-recovery-contract.test.ts` pins each of these at the type level, so a future Operative that narrows `recover()` breaks the build rather than this paragraph.
+
+**Recovery classification is reported once.** `recover()` reconciles a stranded `running` reference as it reports the rejection, so the first ask after a restart answers `orphaned` with its failures and the second answers `nothing-to-resume`. Both are correct. A surface that showed the classification without saying so would look like it lost the answer, so the panel says it.
+
+The kill/restart procedure, its exact commands, and the observed state at each step are in [durability-exercise.md](./durability-exercise.md).
+
 <a id="server-owned-session-variant"></a>
 
 ## Server-owned session variant
@@ -159,6 +201,10 @@ The session store owns the conversation-list index. `SessionStore.list()` return
 
 Ordering is by `updatedAt`, newest first, and the host states that explicitly rather than inheriting a default. Sessions written inside the same millisecond share a timestamp and fall back to key order, which is deterministic but unrelated to creation order — anything needing creation order carries it rather than inferring it from the list. A caller cannot work around that by supplying its own timestamps: the store owns `updatedAt` and overwrites what it is given.
 
-Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities — and they are **target state, not the shipped behaviour**. The variant supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which is the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. Nothing sweeps orphaned references, and `handle.recover()` is not wired up here. This paragraph states what a host owning durable runs has to do, rather than what ships — the difference is deliberate here, and each target-state claim elsewhere in this document says so at the point it is made rather than relying on a blanket assurance. One such assurance used to live in this sentence and was false: three sections still described terminal frames as unshipped after they had landed.
+Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities. `handle.recover()` **is** wired up now, behind `GET /api/server-owned/conversations/[id]/recovery`, and its three outcomes are rendered distinctly on the detail route. The variant still supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which remains the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. So a run this variant recovers is always terminally orphaned, and the endpoint says so rather than reporting the benign "nothing to resume" a bare `null` would suggest. Nothing sweeps orphaned references on a schedule; Operative's own reconciliation of the ref it just rejected is what clears them, one ask at a time.
+
+The backing store is **in-memory by default and SQLite on disk when `CHAT_ROOM_SERVER_OWNED_DATABASE` names a file**. The default is right for a test suite and for a first read; the on-disk branch is what makes the recovery question answerable at all, because nothing else survives a process. `ServerOwnedRuntime.storage` is typed as Weft's `Storage` interface rather than a concrete adapter precisely so this is one line in one file, and the recovery panel names which of the two it is running over — "nothing to resume" is the truth under one and a surprise under the other.
+
+Each target-state claim elsewhere in this document says so at the point it is made rather than relying on a blanket assurance. One such assurance used to live in this section and was false: three sections still described terminal frames as unshipped after they had landed.
 
 This variant must not import Bureau internals or locally recreate capabilities that belong in a published package.

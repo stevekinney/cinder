@@ -1,6 +1,4 @@
 <script lang="ts">
-	import type { RecoveryOutcome } from '$lib/server-owned-recovery';
-
 	/**
 	 * What a durable re-attach found, rendered so the three outcomes cannot be
 	 * mistaken for each other.
