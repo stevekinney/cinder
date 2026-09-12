@@ -36,7 +36,7 @@ export function readDockerServerArchitecture(): string | undefined {
  * Refuses to even build the Docker image when Docker's server architecture does not
  * match the one every committed baseline was captured on. The base image is
  * multi-arch, so `docker build` without `--platform` on an Apple Silicon (or
- * other arm64) host silently succeeds and produces an image whose rasterizer
+ * other arm64) Docker daemon silently succeeds and produces an image whose rasterizer
  * differs from CI's amd64 one — `docker-authenticity.ts` catches this too,
  * from inside the container, but failing here first skips a wasted image
  * build entirely and guarantees no PNG is ever at risk.

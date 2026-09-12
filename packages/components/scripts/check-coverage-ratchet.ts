@@ -2,9 +2,6 @@ import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { localBunVersionNotice } from '@cinder/testing/scripts/local-bun-version-guard.ts';
-import { readPinnedBunVersion } from '@cinder/testing/scripts/update-snapshots-docker.ts';
-
 export type CoverageThresholds = {
   functions: number;
   lines: number;
@@ -544,19 +541,8 @@ export async function main(): Promise<void> {
   const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
 
   // Warn-only advisories: neither of these ever turns a passing run into a
-  // failing one, and a failure reading either one must not either — see
-  // localBunVersionNotice's and svelteCoveragePlatformNotice's own docs.
+  // failing one, and a failure reading either one must not either.
   const notices: string[] = [];
-  try {
-    const bunNotice = localBunVersionNotice(Bun.version, readPinnedBunVersion());
-    if (bunNotice) notices.push(bunNotice);
-  } catch (error) {
-    notices.push(
-      `NOTE: could not check the local Bun version against the workspace pin: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
-  }
 
   if (thresholds.svelte) {
     const svelteAverages = computeCoverageAverages(

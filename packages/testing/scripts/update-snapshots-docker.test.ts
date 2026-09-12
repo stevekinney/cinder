@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -16,6 +17,7 @@ import {
   hostArchitectureGuardResult,
   hostOwnershipEnvironment,
   ownershipReclaimSuffix,
+  readDockerServerArchitecture,
 } from './update-snapshots-docker.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -60,6 +62,36 @@ describe('update-snapshots-docker helpers', () => {
 });
 
 describe('host architecture guard', () => {
+  it('reads the Docker daemon architecture instead of the Bun client architecture', () => {
+    const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
+    const dockerPath = resolvePath(directory, 'docker');
+    writeFileSync(dockerPath, '#!/bin/sh\nprintf "amd64\\n"\n');
+    chmodSync(dockerPath, 0o755);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${directory}:${previousPath ?? ''}`;
+    try {
+      expect(readDockerServerArchitecture()).toBe('x64');
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+    }
+  });
+
+  it('returns undefined when Docker is unavailable or emits no architecture', () => {
+    const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
+    const dockerPath = resolvePath(directory, 'docker');
+    writeFileSync(dockerPath, '#!/bin/sh\nexit 0\n');
+    chmodSync(dockerPath, 0o755);
+    const previousPath = process.env.PATH;
+    process.env.PATH = `${directory}:${previousPath ?? ''}`;
+    try {
+      expect(readDockerServerArchitecture()).toBeUndefined();
+    } finally {
+      if (previousPath === undefined) delete process.env.PATH;
+      else process.env.PATH = previousPath;
+    }
+  });
+
   it('accepts Docker’s native amd64 spelling for the x64 baseline', () => {
     expect(hostArchitectureGuardResult('amd64', 'x64')).toEqual({ ok: true });
     expect(hostArchitectureGuardResult('x86_64', 'x64')).toEqual({ ok: true });

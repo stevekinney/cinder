@@ -59,8 +59,9 @@ async function readInstalledPlaywrightVersion(): Promise<string | undefined> {
  * without `--platform` on an Apple Silicon Docker host reports the same
  * Ubuntu codename, the same installed Playwright version, and the same baked
  * `CINDER_PLAYWRIGHT_VERSION` as the amd64 image CI uses — yet its rasterizer
- * differs from every committed baseline PNG. Runtime `process.arch` is the
- * only signal that distinguishes them from inside the running container.
+ * differs from every committed baseline PNG. The container's runtime
+ * `process.arch` proves which image architecture was selected; the host-side
+ * wrapper separately checks Docker's daemon architecture before building.
  */
 export function architectureAuthenticityFailure(
   containerArchitecture: string,
@@ -142,7 +143,7 @@ export function formatFailures(failures: AuthenticityFailure[]): string {
     // mismatched-architecture image again — that is not the fix.
     lines.push(
       'This image was built for the wrong architecture (the Docker wrapper does not pin --platform,',
-      'so it silently built for the host CPU instead of the amd64 architecture every committed',
+      'so it silently built for the daemon architecture instead of the amd64 architecture every committed',
       'baseline was captured on). Re-running test:browser:update:docker here reproduces the same',
       'mismatch — use the supported CI route instead:',
       '  gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main',

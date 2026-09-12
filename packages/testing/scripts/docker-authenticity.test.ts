@@ -49,7 +49,7 @@ describe('checkDockerAuthenticity', () => {
     expect(checks).toContain('CINDER_PLAYWRIGHT_VERSION baked at image build');
   });
 
-  it('flags a non-x64 host architecture even when other checks are otherwise satisfied', async () => {
+  it('flags a non-x64 container architecture even when other checks are otherwise satisfied', async () => {
     // The base Playwright image is multi-arch: OS codename, playwright
     // --version, and the baked env var can all still match on an arm64
     // build of the same image. Injecting the architecture directly proves
