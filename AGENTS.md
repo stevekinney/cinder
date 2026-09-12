@@ -108,8 +108,7 @@ unchanged svelte corpus, not just moving it to match the newest single measureme
 
 Bun has no corepack equivalent, so nothing besides CI's `setup-bun` steps and
 `pinned-bun-version.test.ts` enforces that a contributor's local Bun matches the workspace's pinned
-`packageManager` version. `check-coverage-ratchet.ts` also warns (without failing) when the running
-Bun differs from that pin, via `packages/testing/scripts/local-bun-version-guard.ts`.
+`packageManager` version. The `test:coverage` command runs `check:local-bun-version-guard` before coverage instrumentation; this advisory uses `packages/testing/scripts/local-bun-version-guard.ts` to warn without failing when the running Bun differs from that pin.
 
 ### Validation ownership
 
