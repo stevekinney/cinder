@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it } from 'bun:test';
 
 import {
 	EngineRetirementError,
+	UnrecognisedDurableSlotError,
 	RuntimeDisposedDuringBuildError,
 	durableRuntime,
 	forgetDurableRuntime
@@ -526,6 +527,39 @@ describe('server-owned durable runtime', () => {
 		expect(shutdowns).toBeGreaterThan(before);
 		expect(recovered).not.toBe(first);
 		expect(typeof recovered.engine.shutdown).toBe('function');
+	});
+
+	it('refuses a slot left by an incompatible layout rather than building beside it', async () => {
+		// Earlier layouts of this slot stored the promise directly, then
+		// `{ token, promise }` — neither carries `runtime`. Reading `held.runtime`
+		// on one of those yields `undefined`, which compares unequal and silently
+		// SKIPS retirement: the caller builds a second engine over the same storage
+		// while the original keeps running until the process exits.
+		//
+		// There is no safe migration, because the engine inside an unreadable slot
+		// is unreachable — it cannot be shut down. So this refuses, with an
+		// instruction a developer can act on, rather than corrupting quietly.
+		const slotKey = Symbol.for('cinder.chat-room.server-owned.durable');
+		const host = globalThis as Record<symbol, unknown>;
+
+		await durableRuntime();
+
+		for (const legacy of [
+			// `34e7b6f`: the bare promise.
+			Promise.resolve({ engine: {}, checkpointStore: {} }),
+			// `1adcc95`: token and promise, no runtime.
+			{ token: Symbol('legacy'), promise: Promise.resolve({ engine: {} }) }
+		]) {
+			host[slotKey] = legacy;
+			await expect(durableRuntime()).rejects.toBeInstanceOf(UnrecognisedDurableSlotError);
+		}
+
+		// The message has to be actionable — an error nobody can act on is barely
+		// better than the silence it replaced.
+		host[slotKey] = { token: Symbol('legacy'), promise: Promise.resolve({}) };
+		await expect(durableRuntime()).rejects.toThrow(/Restart the dev server/);
+
+		forgetDurableRuntime();
 	});
 
 	it('does not hand out an engine belonging to a runtime being disposed', async () => {

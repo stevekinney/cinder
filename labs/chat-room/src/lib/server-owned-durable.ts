@@ -201,12 +201,72 @@ function generationOf(held: DurableSlot): number {
 	return typeof held.module === 'number' ? held.module : Number.NEGATIVE_INFINITY;
 }
 
+/**
+ * Thrown when `globalThis` holds a durable slot this code cannot interpret.
+ *
+ * Only reachable across a dev-server reload that crosses a slot-layout change.
+ * A slot whose shape is unrecognised cannot be retired — there is no way to
+ * find the engine inside it — and the alternative to failing is silently
+ * building a SECOND engine over the same storage while the first keeps
+ * running, which is the condition this whole module exists to prevent.
+ *
+ * Failing loudly with an instruction beats a corruption nobody sees.
+ */
+export class UnrecognisedDurableSlotError extends Error {
+	readonly [SHUTDOWN_FAILURE] = true;
+
+	override readonly name = 'UnrecognisedDurableSlotError';
+
+	constructor() {
+		super(
+			'A durable runtime slot left by an incompatible version is in memory. Restart the dev server.'
+		);
+	}
+}
+
+/**
+ * True for a slot this code can reason about.
+ *
+ * Checked rather than assumed because the slot lives on `globalThis` and
+ * outlives the module that wrote it — earlier layouts stored the promise
+ * directly, and later `{ token, promise }`, neither of which carries `runtime`.
+ * Reading `held.runtime` on one of those yields `undefined`, which compares
+ * unequal and silently SKIPS retirement, so the caller builds a second engine
+ * beside an original that keeps running until the process exits.
+ *
+ * Narrow on purpose: anything missing a field this module needs is
+ * unrecognised, rather than being guessed at.
+ */
+function isCurrentSlotShape(held: unknown): held is DurableSlot {
+	if (typeof held !== 'object' || held === null) return false;
+	const slot = held as Partial<DurableSlot>;
+	// `module` is deliberately NOT checked. An older stamp type is recognisable
+	// and retirable — `generationOf` normalises it — and requiring a number here
+	// would refuse a slot this code can perfectly well shut down. The line is
+	// "can the engine be reached", not "was it written by this exact version".
+	return (
+		typeof slot.token === 'symbol' && slot.promise instanceof Promise && slot.runtime !== undefined
+	);
+}
+
 export async function durableRuntime(): Promise<DurableRuntime> {
 	const host = globalThis as DurableHost;
 	// Read ONCE, and passed down, so this function and the build it starts
 	// cannot end up describing two different runtimes.
 	const runtime = serverOwnedRuntime();
 	const held = host[DURABLE_SLOT];
+
+	// An unrecognised slot is REFUSED, not ignored. Ignoring it means building a
+	// second engine over the same storage beside one still running; there is no
+	// safe way to retire a slot whose shape this code cannot read, because the
+	// engine inside it is unreachable.
+	//
+	// Only a dev-server reload across a layout change reaches this, and a
+	// restart clears it — which the message says, because an error nobody can
+	// act on is barely better than the silence it replaced.
+	if (held !== undefined && !isCurrentSlotShape(held)) {
+		throw new UnrecognisedDurableSlotError();
+	}
 
 	// Identity, not presence, on BOTH axes.
 	//
