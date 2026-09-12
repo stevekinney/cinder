@@ -29,20 +29,19 @@ import { join } from 'node:path';
  * locally and enforcing nothing.
  */
 
+/** The lab root, which every walk and resolution below is relative to. */
+const LAB_ROOT = join(import.meta.dir, '..', '..');
+
 /** Read from Operative's own manifest, so the list cannot quietly go stale. */
 const operativeManifest = JSON.parse(
 	readFileSync(
-		join(
-			import.meta.dir,
-			'..',
-			'..',
-			'..',
-			'..',
-			'node_modules',
-			'@lostgradient',
-			'operative',
-			'package.json'
-		),
+		// RESOLVED from the lab, not assumed to be hoisted to the repository
+		// root. If another workspace pulls in an incompatible Operative, Bun
+		// nests the lab's copy — application imports would then resolve to the
+		// nested package while this cross-check read a different release, and
+		// stay green after the lab's actual Operative gained a provider. Package
+		// resolution answers the same question the runtime asks.
+		Bun.resolveSync('@lostgradient/operative/package.json', LAB_ROOT),
 		'utf8'
 	)
 ) as { peerDependenciesMeta?: Record<string, { optional?: boolean }> };
@@ -123,11 +122,9 @@ const GAP = String.raw`(?:\s|/\*[\s\S]*?\*/|//[^\n\r\u2028\u2029]*[\n\r\u2028\u2
 function importPattern(packageName: string): RegExp {
 	const escaped = packageName.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 	return new RegExp(
-		String.raw`(?:\bfrom${GAP}|\bimport${GAP}\(${GAP}|\brequire${GAP}\(${GAP}|\bimport${GAP})['"\`]${escaped}(?:/[^'"\`]*)?['"\`]`
+		String.raw`(?:\bfrom${GAP}|\bimport${GAP}(?:\?\.${GAP})?\(${GAP}|\brequire${GAP}(?:\?\.${GAP})?\(${GAP}|\bimport${GAP})['"\`]${escaped}(?:/[^'"\`]*)?['"\`]`
 	);
 }
-
-const LAB_ROOT = join(import.meta.dir, '..', '..');
 
 /** Vendored code and VCS, excluded at any depth. */
 const IGNORED_ANYWHERE = new Set(['node_modules', '.svelte-kit', '.git']);
@@ -147,7 +144,11 @@ function sourceFiles(directory: string): string[] {
 		const path = join(directory, entry);
 		if (statSync(path).isDirectory()) {
 			found.push(...sourceFiles(path));
-		} else if (SOURCE_EXTENSIONS.some((extension) => entry.endsWith(extension))) {
+			// LOWERCASED before comparing. Bun executes `debug-provider.TS`, and
+			// on a case-insensitive filesystem — the default on macOS — a mixed
+			// case extension is not even a deliberate act. A case-sensitive
+			// check skipped the file entirely.
+		} else if (SOURCE_EXTENSIONS.some((extension) => entry.toLowerCase().endsWith(extension))) {
 			found.push(path);
 		}
 	}
@@ -261,6 +262,11 @@ describe('Operative is the only engine', () => {
 		for (const terminator of ['\n', '\r', '\u2028', '\u2029']) {
 			expect(importPattern('openai').test(`await import//c${terminator}('openai')`)).toBe(true);
 		}
+
+		// Optional-call form, which is valid and calls the function when it
+		// exists — `require?.('openai')` is a real import, not a no-op.
+		expect(importPattern('openai').test(`require?.('openai')`)).toBe(true);
+		expect(importPattern('openai').test(`await import?.('openai')`)).toBe(true);
 	});
 
 	it('matches the other providers too, not just Anthropic', () => {

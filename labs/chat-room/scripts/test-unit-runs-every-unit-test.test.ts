@@ -40,6 +40,12 @@ const LAB_ROOT = join(import.meta.dir, '..');
  * `.spec.`, `_test.`, or `_spec.` — all confirmed collected by a bare
  * `bun test`.
  *
+ * CASE-INSENSITIVE, because Bun is: it runs `Component.TEST.ts` and
+ * `example.test.CTS`. On macOS, where the filesystem is case-insensitive by
+ * default, a mixed-case marker is not even a deliberate act — and a
+ * case-sensitive guard would have left such a test able to run locally and
+ * never in CI, which is the whole failure this exists to prevent.
+ *
  * Enumerated rather than written compactly, and that is the point of the second
  * check: `[cm]?[jt]sx?` also generates `.mtsx`, `.ctsx`, `.mjsx`, and `.cjsx`,
  * which Bun does NOT run. A file with one of those names would satisfy both
@@ -64,7 +70,7 @@ const IGNORED_ANYWHERE = new Set(['node_modules', '.svelte-kit', '.git']);
  */
 const IGNORED_AT_ROOT = new Set(['build', 'dist', 'coverage', 'test-results', 'playwright-report']);
 
-const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:jsx?|tsx?|[cm][jt]s)$/;
+const UNIT_TEST_FILENAME = /(?:\.|_)(?:test|spec)\.(?:jsx?|tsx?|[cm][jt]s)$/i;
 
 function unitTestFiles(directory: string): string[] {
 	const found: string[] = [];
@@ -111,6 +117,12 @@ describe('test:unit', () => {
 		// it silently — registered, inert, and invisible.
 		for (const name of ['a.test.mtsx', 'a.test.ctsx', 'a.test.mjsx', 'a.test.cjsx']) {
 			expect(UNIT_TEST_FILENAME.test(name)).toBe(false);
+		}
+
+		// Case-insensitive, matching Bun — and matching a macOS filesystem,
+		// where the distinction may not survive being written down at all.
+		for (const name of ['a.TEST.ts', 'b.Spec.TS', 'c_Test.CTS']) {
+			expect(UNIT_TEST_FILENAME.test(name)).toBe(true);
 		}
 	});
 
