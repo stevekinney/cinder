@@ -532,3 +532,63 @@ test('a failed create leaves focus on the button that failed', async ({ page }) 
 	);
 	expect(focused).toBe('server-owned-create');
 });
+
+test('a reloaded conversation renders its full history from the session store', async ({
+	page,
+	request
+}) => {
+	// THE claim the whole variant exists to make: a reload renders history
+	// because the server has it, not because the browser kept anything. Until
+	// now that claim was made by the route's shape and by prose — the existing
+	// reload spec reloads the LIST, not a conversation.
+	//
+	// Seeded through the API rather than by streaming turns: this is about what
+	// survives a reload, so a deterministic transcript is the point and a real
+	// model turn would only add nondeterminism to the thing under test.
+	const title = uniqueTitle('Reload');
+	const created = await request.post('/api/server-owned/conversations', { data: { title } });
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	// SEVERAL turns, in order. A single turn cannot distinguish "history
+	// survived" from "the last turn survived", and ordering is half of what a
+	// transcript is.
+	const turns = [
+		'First thing the user said',
+		'Second thing the user said',
+		'Third thing the user said'
+	];
+	for (const text of turns) {
+		const appended = await request.post(
+			`/api/server-owned/conversations/${conversation.id}/turns`,
+			{ data: { text } }
+		);
+		expect(appended.status()).toBe(201);
+	}
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+	const log = page.getByRole('log', { name: 'Messages' });
+	for (const text of turns) await expect(log).toContainText(text);
+
+	// The reload. Nothing in the browser carries across it.
+	await page.reload();
+	await expect(page.getByRole('heading', { name: title })).toBeVisible();
+
+	// EVERY turn, and in order. Asserting only that the text is present would
+	// pass on a transcript that came back shuffled, which is a different bug
+	// wearing the same symptom.
+	for (const text of turns) await expect(log).toContainText(text);
+
+	const rendered = await log.innerText();
+	const positions = turns.map((text) => rendered.indexOf(text));
+	expect(positions.every((at) => at >= 0)).toBe(true);
+	expect([...positions].sort((a, b) => a - b)).toEqual(positions);
+
+	// And it came from the SERVER, not from anything the browser replayed —
+	// the navigation response already carries the turns, which is the
+	// distinction from the canonical browser-owned exemplar.
+	const document = await request.get(`/server-owned/${conversation.id}`);
+	expect(document.status()).toBe(200);
+	const html = await document.text();
+	for (const text of turns) expect(html).toContain(text);
+});
