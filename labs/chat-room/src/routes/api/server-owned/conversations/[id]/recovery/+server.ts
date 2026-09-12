@@ -9,7 +9,7 @@ import {
 } from '$lib/server-owned-conversations';
 import { emptyToolbox } from '$lib/toolbox';
 import { durableRuntime } from '$lib/server-owned-durable';
-import { classifyRecovery } from '$lib/server-owned-recovery';
+import { classifyRecovery, withRecoveryLock } from '$lib/server-owned-recovery';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
 import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 
@@ -47,7 +47,7 @@ import type { RequestHandler } from './$types';
  */
 export const POST: RequestHandler = async ({ params }) => {
 	try {
-		return await respond(params.id);
+		return await withRecoveryLock(params.id, () => respond(params.id));
 	} catch (cause) {
 		return unavailableDuringShutdown(cause) ?? raise(cause);
 	}

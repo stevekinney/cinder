@@ -60,3 +60,37 @@ test('answering keeps focus inside the chat', async ({ page }) => {
 	expect(landed.tag).not.toBe('body');
 	expect(landed.testId).toBe('approval-question');
 });
+
+test('a remote answer hands focus back when polling removes the controls', async ({
+	page,
+	request
+}) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Remote approval focus');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval', newFixtureMarker()));
+	await composer.press('Enter');
+	const approve = page.locator('[data-testid="approval-approve"]');
+	await expect(approve).toBeVisible();
+	await approve.focus();
+
+	// The detail page does not expose its id as an attribute; derive it from the
+	// current URL so the second client answers the exact question being polled.
+	const conversationId = new URL(page.url()).pathname.split('/').at(-1);
+	if (conversationId === undefined) throw new Error('conversation id missing from detail URL');
+	const pending = await request.get(
+		`/api/server-owned/conversations/${conversationId}/elicitation`
+	);
+	const body = (await pending.json()) as { pending: { callId: string } };
+	await request.post(`/api/server-owned/conversations/${conversationId}/elicitation`, {
+		data: { approved: false, callId: body.pending.callId }
+	});
+
+	await expect(approve).toHaveCount(0);
+	await expect(page.locator('[data-testid="approval-question"]')).toBeFocused();
+});

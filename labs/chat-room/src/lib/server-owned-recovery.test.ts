@@ -2,7 +2,11 @@ import { describe, expect, it } from 'bun:test';
 import { SessionRecoverEvent } from '@lostgradient/operative';
 import type { AgentRun, SessionHandle } from '@lostgradient/operative';
 
-import { classifyRecovery, describeRecoveryError } from './server-owned-recovery.ts';
+import {
+	classifyRecovery,
+	describeRecoveryError,
+	withRecoveryLock
+} from './server-owned-recovery.ts';
 
 /**
  * A handle that dispatches the real `SessionRecoverEvent` during `recover()`.
@@ -150,5 +154,49 @@ describe('describeRecoveryError', () => {
 		expect(describeRecoveryError(new TypeError('bad'))).toBe('TypeError: bad');
 		expect(describeRecoveryError(new Error('plain'))).toBe('plain');
 		expect(describeRecoveryError('already a string')).toBe('already a string');
+	});
+});
+
+describe('withRecoveryLock', () => {
+	it('waits for the first recovery before starting the second', async () => {
+		let releaseFirst!: () => void;
+		const firstReady = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const events: string[] = [];
+
+		const first = withRecoveryLock('conversation-1', async () => {
+			events.push('first-start');
+			await firstReady;
+			events.push('first-finished');
+			return 'first';
+		});
+		await Promise.resolve();
+		const second = withRecoveryLock('conversation-1', async () => {
+			events.push('second-start');
+			return 'second';
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(['first-start']);
+		releaseFirst();
+		expect(await Promise.all([first, second])).toEqual(['first', 'second']);
+		expect(events).toEqual(['first-start', 'first-finished', 'second-start']);
+	});
+
+	it('does not serialize different conversations', async () => {
+		let releaseFirst!: () => void;
+		const firstReady = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const first = withRecoveryLock('conversation-a', async () => {
+			await firstReady;
+			return 'a';
+		});
+		const second = withRecoveryLock('conversation-b', async () => 'b');
+
+		expect(await second).toBe('b');
+		releaseFirst();
+		expect(await first).toBe('a');
 	});
 });

@@ -376,6 +376,16 @@
 				// pending next — approving a note nobody was shown.
 				body: JSON.stringify({ approved, callId: question.callId })
 			});
+			// The question can change while this POST is in flight. A successful
+			// response only answers the server; it does not authorize changing this
+			// tab's controls for a different question.
+			if (
+				pending?.callId !== question.callId ||
+				generation !== pollGeneration ||
+				epoch !== answerEpoch
+			) {
+				return;
+			}
 			if (response.status === 409) {
 				// ONLY 409. The question moved on while it was being read — either
 				// the run ended or it advanced to a different call — so the current
@@ -402,7 +412,12 @@
 				// reading it is an await, and another tab can answer or the turn can
 				// finish inside it. An obsolete continuation would otherwise install
 				// an error for a decision nobody is waiting on.
-				if (generation !== pollGeneration || epoch !== answerEpoch) return;
+				if (
+					pending?.callId !== question.callId ||
+					generation !== pollGeneration ||
+					epoch !== answerEpoch
+				)
+					return;
 				const reported = toBannerFailure(new Error(message));
 				decideFailure = reported;
 				failure = reported;
@@ -435,6 +450,12 @@
 			}
 			decideFailure = null;
 		} catch (cause) {
+			if (
+				pending?.callId !== question.callId ||
+				generation !== pollGeneration ||
+				epoch !== answerEpoch
+			)
+				return;
 			const reported = toBannerFailure(cause);
 			decideFailure = reported;
 			failure = reported;

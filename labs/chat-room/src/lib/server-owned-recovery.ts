@@ -54,6 +54,25 @@ export type RecoveryFailure = {
 	readonly reason: string;
 };
 
+const recoveryLocks = new Map<string, Promise<void>>();
+
+/** Serializes recovery attempts for one conversation so losers read the winner's record. */
+export async function withRecoveryLock<T>(id: string, operation: () => Promise<T>): Promise<T> {
+	const previous = recoveryLocks.get(id) ?? Promise.resolve();
+	let release!: () => void;
+	const current = new Promise<void>((resolve) => {
+		release = resolve;
+	});
+	recoveryLocks.set(id, current);
+	await previous;
+	try {
+		return await operation();
+	} finally {
+		release();
+		if (recoveryLocks.get(id) === current) recoveryLocks.delete(id);
+	}
+}
+
 /**
  * Renders a rejected re-attach as a SERVER-SIDE DIAGNOSTIC.
  *

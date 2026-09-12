@@ -731,8 +731,9 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 	});
 	const { conversation } = (await created.json()) as { conversation: { id: string } };
 
+	await page.setViewportSize({ width: 844, height: 390 });
 	await gotoHydrated(page, `/server-owned/${conversation.id}`);
-	await page.getByText('Durable recovery', { exact: true }).click();
+	await page.locator('summary', { hasText: 'Durable recovery' }).click({ force: true });
 
 	const alert = page.locator('[data-testid="recovery-error"]');
 	await expect(alert).toBeEmpty();
@@ -753,6 +754,18 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 	await expect(alert).not.toContainText('{');
 	// And the outcome regions stay empty, because nothing was classified.
 	await expect(page.locator('[data-testid="recovery-status"]')).toBeEmpty();
+	// A populated recovery failure is part of the page's exceptional-height
+	// states. The transcript keeps its usable floor and the page owns the extra
+	// height instead of squeezing the chat below it.
+	const failureLayout = await page.evaluate(() => ({
+		chat:
+			document.querySelector('[data-testid="server-owned-chat"]')?.getBoundingClientRect().height ??
+			0,
+		page: document.querySelector('main')?.scrollHeight ?? 0,
+		viewport: window.innerHeight
+	}));
+	expect(failureLayout.chat).toBeGreaterThanOrEqual(128);
+	expect(failureLayout.page).toBeGreaterThan(failureLayout.viewport);
 
 	// A network failure reaches the same region with its own sentence, which is
 	// the second assignment the old coverage could not see.

@@ -53,7 +53,8 @@ const CROSS_ENGINE_SHARDS = [
 		// where a WebKit worker stops accepting navigation. Whoever adds it
 		// moves a spec to `webkit-5` (50) or `webkit-4` (51) rather than
 		// re-measuring afterwards and discovering the shard already broke.
-		'**/approval-flow.e2e.ts'
+		'**/approval-flow.e2e.ts',
+		'**/server-owned-approval-flow.e2e.ts'
 	],
 	[
 		// The server-owned family's browser paths: the create flow's `fetch` plus
