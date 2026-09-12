@@ -1446,14 +1446,26 @@
       // advancing from it moves to the row underneath it rather than past it.
       currentIndex: firstUncoveredIndex,
       itemCount: items.length,
-      // Rows that fit BELOW the header, not in the whole viewport. Paging by the full
-      // count steps over the row sitting under the header: covered before the press
-      // and covered after it, so it is never exposed between one page and the next.
+      // Counted off the rows themselves rather than computed from a row height.
+      //
+      // Two things went wrong with the arithmetic version. Dividing the WHOLE viewport
+      // stepped over the row sitting under the header — covered before the press and
+      // covered after it, so never exposed between one page and the next. And dividing
+      // by `resolvedItemHeight` is only right in fixed mode: under `dynamicSize` that
+      // is the initial estimate, so 100px rows against a 20px estimate paged nine
+      // indexes where one was due, skipping every row in between. The settle loop
+      // cannot recover those — it corrects the destination's pixels, not which row was
+      // asked for.
+      //
+      // Both disappear by asking which row sits at the bottom of the viewport and
+      // counting from the first uncovered one. `scrollOffset + viewportHeight - 1` is
+      // the last pixel the reader can see; the header's own band falls out of the
+      // subtraction, since `firstUncoveredIndex` already starts below it.
       visibleCount: Math.max(
         1,
-        Math.floor(
-          Math.max(0, viewportHeight - stickyObstructionSize) / Math.max(1, resolvedItemHeight),
-        ),
+        resolveAnchorIndexAtOffset(scrollOffset + Math.max(0, viewportHeight - 1)) -
+          firstUncoveredIndex +
+          1,
       ),
       orientation: horizontal ? 'horizontal' : 'vertical',
       writingDirection,

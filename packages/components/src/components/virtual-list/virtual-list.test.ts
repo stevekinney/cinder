@@ -2997,6 +2997,48 @@ describe('VirtualList — paging and key repeat past a sticky header', () => {
     document.body.replaceChildren();
   });
 
+  test('pages by measured rows, not by the itemHeight estimate', async () => {
+    // Under dynamicSize `itemHeight` is only the initial guess. Converting the viewport
+    // into rows with it paged nine indexes where one was due — 100px rows against a
+    // 20px estimate — stepping over every row in between. The settle loop cannot undo
+    // that: it corrects the destination's pixels, not which row was asked for.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    // A 20px header over content rows that really measure 100px.
+    const measured = new Map<number, number>([[0, 20]]);
+    for (let index = 1; index < 500; index += 1) measured.set(index, 100);
+    reportRowSizes(measured);
+    await tick();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    // Row 1 starts at 20 and the header covers through 40, so row 1 is the first
+    // uncovered one and rows 1 and 2 are what the 200px viewport exposes.
+    list.scrollTop = 20;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // Two rows on, not nine: row 3 starts at 220 and clears the header at 200.
+    await waitFor(() => expect(scrollTop.value()).toBe(200));
+
+    restoreResizeObserver();
+  });
+
   test('pages by the rows the header leaves visible, not by the whole viewport', async () => {
     // A 200px viewport over 20px rows fits ten, but a 20px header covers one of them,
     // so only nine are exposed. Paging by ten steps over the row under the header:
