@@ -57,6 +57,26 @@ function queryListbox(): HTMLElement | null {
   return document.body.querySelector('[role="listbox"]');
 }
 
+/**
+ * Waits for the listbox to leave the DOM.
+ *
+ * The assertion is on a BOOLEAN rather than on the element, and that is the whole
+ * point of the helper. `expect(element).toBeNull()` builds its failure message by
+ * serializing the element, and under happy-dom one failed assertion costs roughly
+ * 2.2 seconds — measured, not estimated. Two failed polls put the caret tests within
+ * 136ms of the 5000ms per-test timeout, which failed pull requests that had nothing
+ * to do with Chat, since `packages/chat` shares the `package` job.
+ *
+ * It compounds, too. The formatting is synchronous, so it starves the macrotask the
+ * component's caret sync is queued on — the condition cannot become true until the
+ * formatting finishes, which guarantees the next poll fails and pays again.
+ *
+ * Same claim, same strength: the listbox is gone. Only the failure message is cheap.
+ */
+async function waitForListboxToClose(): Promise<void> {
+  await waitFor(() => expect(queryListbox() === null).toBe(true));
+}
+
 async function typeComposer(value: string): Promise<HTMLTextAreaElement> {
   const composer = getComposer();
   composer.value = value;
@@ -290,7 +310,7 @@ describe('ChatComposerPopover', () => {
     expect(selected[0]?.query).toBe('');
     expect(selected[0]?.trigger).toBe('/');
     expect(selected[0]?.range).toEqual({ start: 0, end: 1 });
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(document.activeElement).toBe(composer);
   });
 
@@ -315,7 +335,7 @@ describe('ChatComposerPopover', () => {
     expect(tabEvent.defaultPrevented).toBe(true);
     expect(selected).toHaveLength(1);
     expect(selected[0]?.item.value).toBe('help');
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(document.activeElement).toBe(composer);
   });
 
@@ -326,7 +346,7 @@ describe('ChatComposerPopover', () => {
     await waitFor(() => expect(queryListbox()).not.toBeNull());
     await fireEvent.keyDown(composer, { key: 'Enter' });
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(composer.value).toBe('/stop');
     expect(composer.getAttribute('aria-expanded')).toBe('false');
   });
@@ -338,7 +358,7 @@ describe('ChatComposerPopover', () => {
     await waitFor(() => expect(queryListbox()).not.toBeNull());
     await fireEvent.keyDown(composer, { key: 'Enter' });
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(composer.value).toBe('/stop');
     expect(composer.getAttribute('aria-expanded')).toBe('false');
   });
@@ -372,7 +392,7 @@ describe('ChatComposerPopover', () => {
     );
     await tick();
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
     expect(composer.getAttribute('aria-activedescendant')).toBeNull();
@@ -389,7 +409,7 @@ describe('ChatComposerPopover', () => {
 
     await typeComposer('hello');
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
@@ -409,7 +429,7 @@ describe('ChatComposerPopover', () => {
 
     await fireEvent.pointerDown(outside);
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
@@ -432,7 +452,7 @@ describe('ChatComposerPopover', () => {
     composer.dispatchEvent(arrowLeft);
     composer.setSelectionRange(2, 2);
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
@@ -474,7 +494,7 @@ describe('ChatComposerPopover', () => {
 
     await waitFor(() => expect(submittedMessages).toHaveLength(1));
     expect(submittedMessages[0]).toMatchObject({ content: '/zzzz' });
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(composer.getAttribute('aria-expanded')).toBe('false');
   });
 
@@ -500,7 +520,7 @@ describe('ChatComposerPopover', () => {
     composer.setSelectionRange(2, 2);
     await fireEvent.pointerUp(composer);
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
     expect(composer.getAttribute('aria-controls')).toBeNull();
@@ -518,7 +538,7 @@ describe('ChatComposerPopover', () => {
     await fireEvent.blur(composer, { relatedTarget: outside });
     outside.focus();
 
-    await waitFor(() => expect(queryListbox()).toBeNull());
+    await waitForListboxToClose();
     expect(onDismissed).toHaveBeenCalledTimes(1);
     expect(document.activeElement).toBe(outside);
     expect(composer.getAttribute('aria-expanded')).toBe('false');
