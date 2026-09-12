@@ -157,9 +157,12 @@ durability: (empty)
 **After Check, before any run has happened**
 
 ```
-status:     Nothing to resume. No run was in flight — this session is idle, not lost.
-durability: Storage: on disk. A run left in flight is still recorded when the next process starts.
+status:     Nothing is currently resumable. No run is in flight for this session.
+            Storage is on disk, so a run left in flight is recorded for the next process.
+durability: Storage: on disk.
 ```
+
+The storage sentence is inside the announcement, not only in the paragraph beside it. A screen reader hearing "nothing is currently resumable" without it would not learn whether this process could have observed a previous run at all.
 
 **After the restart, on load** — empty again, because the panel asks nothing until asked.
 
@@ -167,21 +170,27 @@ durability: Storage: on disk. A run left in flight is still recorded when the ne
 
 ```
 status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
-            run's work is terminally gone.
-durability: Storage: on disk. A run left in flight is still recorded when the next process starts.
-failures:   session-1-cc723e7d-…:0 — Cannot resume workflow "session-1-cc723e7d-…:0":
-            status is "failed", expected "running" or "suspended"
+            run's work is terminally gone. Storage is on disk, so a run left in flight
+            is recorded for the next process.
+failures:   session-1-b5f2f8db-…:0 — The engine refused to resume this run.
+            The details are in the server log.
 once:       Reported once. Operative reconciles a stranded run to terminal as it reports
             the rejection, so asking again answers "nothing to resume".
 ```
 
+The run id crosses to the browser; the engine's own words do not. A resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The full message is in the server log.
+
 **After the restart, second Check**
 
 ```
-status:     Nothing to resume. No run was in flight — this session is idle, not lost.
+status:     Nothing is currently resumable. The orphaned run reported earlier is already
+            reconciled; this is what a second check answers, not a claim that nothing
+            was lost.
 failures:   (no list rendered)
 once:       (no note rendered)
 ```
+
+Deliberately not "no run was in flight". One was, and its work was lost — saying otherwise here would make the panel contradict the step above it.
 
 > [!WARNING] Kill the server, not its wrapper
 > `bun run preview` spawns `vite preview` as a child. Signalling the wrapper leaves the server listening, and what actually happens is the streaming request's client side closing — which aborts the run _cleanly_ and leaves nothing marked running. The exercise then reports "nothing to resume" and looks like the classification failed, when the crash never happened. The first scripted attempt at this made exactly that mistake. Confirm the origin stops answering before treating anything after the kill as evidence.

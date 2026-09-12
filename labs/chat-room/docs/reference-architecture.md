@@ -85,6 +85,13 @@ Two properties of the elicitation path are worth stating because they are not ob
 - `ctx.elicit` returns `T | null` and never throws. A denial is `null`, and what it means is the hook's decision. `ElicitationDeniedError` is a different thing — the shape a denial takes when a _tool_ throws on one, reconstructed by the durable run adapter — and it is a run terminal. A hook that filters the call out instead is not.
 - A denied call is **invisible on the wire**. Operative seals the filtered call with an error result in the conversation, so a later replay is not left with a dangling tool call, but that sealing dispatches no tool event: the client sees a `tool_call` frame with no `tool.settled` after it. Measured, not inferred. A client that renders a pending tool row would leave it pending forever, so the surface has to learn a denial some other way — which is CIN-615.
 
+Two consequences for the run's shape, both of which cost a review round to find:
+
+- **The server-owned family must not stop after a tool call.** `stopAfterAnyToolCall` hands control back to a client that drives the next turn, which is the browser-owned contract. Under elicitation the approval happens mid-step, so stopping there leaves a tool result with no reply after it — and the session controller's continuation attempt then fails the very turn the tool succeeded in. Dropping the condition lets the loop reach a second generate and deliver one complete turn.
+- **A continuation request has nothing to fetch, and must not throw.** The controller re-runs the transport whenever a turn ends with every tool call resolved. In this family the server already sent everything, and there is no user text to send on that call anyway, so the transport answers with an empty stream. Throwing there was right while the toolbox was empty and a continuation could only mean a wiring mistake; it became destructive the moment a tool could succeed.
+
+**Every gated call needs its own decision, and every decision needs to name its call.** A step can carry more than one approval-gated call — the stop condition runs after a step and never constrained that — so the hook elicits per call rather than once. And because `ctx.elicit` carries no call identity, the answer has to: a click that lands after its own run ended would otherwise settle whatever question is pending next. The host's answering endpoint requires the call id it displayed and compares it in the same step that settles.
+
 <a id="stream-wire-contract"></a>
 
 ## Stream wire contract
