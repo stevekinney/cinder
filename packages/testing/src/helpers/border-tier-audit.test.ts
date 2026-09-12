@@ -30,7 +30,12 @@ function declaration(
   property: string,
   value: string,
   origin: MatchedDeclaration['origin'] = 'own',
-  options: { level?: number; important?: boolean; specificity?: Specificity } = {},
+  options: {
+    level?: number;
+    important?: boolean;
+    specificity?: Specificity;
+    inline?: boolean;
+  } = {},
 ): MatchedDeclaration {
   const level = options.level ?? (origin === 'own' ? 0 : 1);
   const important = options.important ?? false;
@@ -40,6 +45,7 @@ function declaration(
     origin,
     level,
     important,
+    ...(options.inline === true ? { inline: true } : {}),
     ...(options.specificity !== undefined ? { specificity: options.specificity } : {}),
   };
 }
@@ -155,6 +161,44 @@ describe('tierUses', () => {
   test('a direct non-border use is reported', () => {
     const uses = tierUses([declaration('background', 'var(--cinder-border)')]);
     expect(uses).toEqual([{ property: 'background', value: 'var(--cinder-border)', isMix: false }]);
+  });
+
+  test('only the winning direct declaration is reported', () => {
+    expect(
+      tierUses([
+        declaration('background', 'var(--cinder-border-muted)', 'own', {
+          specificity: { a: 0, b: 1, c: 0 },
+        }),
+        declaration('background', 'var(--cinder-accent-solid)', 'own', {
+          specificity: { a: 0, b: 2, c: 0 },
+        }),
+      ]),
+    ).toEqual([]);
+  });
+
+  test('does not inspect an unreachable var() fallback', () => {
+    expect(
+      tierUses([
+        declaration('background', 'var(--track, var(--cinder-border-muted))'),
+        declaration('--track', 'var(--cinder-accent-solid)'),
+      ]),
+    ).toEqual([]);
+  });
+
+  test('resolves alias uses only from the winning direct property and preserves sibling vars', () => {
+    const declarations = [
+      declaration('background', 'var(--track)', 'own', { specificity: { a: 0, b: 1, c: 0 } }),
+      declaration('background', 'var(--accent)', 'own', { specificity: { a: 0, b: 2, c: 0 } }),
+      declaration('--track', 'var(--cinder-border-muted)'),
+      declaration('--accent', 'var(--cinder-accent-solid)'),
+    ];
+    expect(tierUses(declarations).some((use) => use.property === 'background')).toBe(false);
+    expect(
+      tierUses([
+        declaration('background', 'color-mix(in oklch, var(--accent), var(--cinder-border-muted))'),
+        declaration('--accent', 'var(--cinder-accent-solid)'),
+      ]),
+    ).toHaveLength(1);
   });
 
   test('a border use is exempt, even when it is the only declaration', () => {
@@ -354,6 +398,14 @@ describe('resolveCascadeWinner', () => {
     expect(resolveCascadeWinner([withSpecificity, withoutSpecificity])).toEqual(withoutSpecificity);
     expect(resolveCascadeWinner([withoutSpecificity, withSpecificity])).toEqual(withSpecificity);
   });
+
+  test('inline declarations outrank same-level author rules', () => {
+    const inline = declaration('background', 'var(--cinder-border-muted)', 'own', { inline: true });
+    const rule = declaration('background', 'var(--cinder-accent-solid)', 'own', {
+      specificity: { a: 0, b: 1, c: 0 },
+    });
+    expect(resolveCascadeWinner([inline, rule])).toEqual(inline);
+  });
 });
 
 describe('opacityCompoundedTierDeclarations', () => {
@@ -526,6 +578,38 @@ describe('flattenMatchedStyles', () => {
     expect(uses.some((use) => use.property === 'background' && use.viaAlias !== undefined)).toBe(
       false,
     );
+  });
+
+  test('preserves inline provenance for cascade resolution', () => {
+    const declarations = flattenMatchedStyles({
+      inlineStyle: {
+        cssProperties: [{ name: 'background', value: 'var(--cinder-border-muted)' }],
+      },
+      matchedCSSRules: [
+        {
+          rule: {
+            style: {
+              cssProperties: [{ name: 'background', value: 'var(--cinder-accent-solid)' }],
+            },
+            selectorList: { selectors: [{ specificity: { a: 0, b: 1, c: 0 } }] },
+          },
+          matchingSelectors: [0],
+        },
+      ],
+    });
+    expect(resolveCascadeWinner(declarations)).toEqual(declarations[0]);
+  });
+
+  test('reports a currentColor paint fed by an inherited tier color', () => {
+    expect(
+      opacityCompoundedTierDeclarations(
+        [
+          declaration('background', 'currentColor'),
+          declaration('color', 'var(--cinder-border-strong)', 'inherited'),
+        ],
+        0.5,
+      ),
+    ).toEqual([declaration('background', 'currentColor')]);
   });
 });
 

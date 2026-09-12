@@ -2712,6 +2712,11 @@ describe('CIN-242: complete color values only', () => {
       'color-mix(in oklch, var(--weight, 40%) var(--cinder-border-ink), transparent)',
       'color-mix(in oklch, var(--cinder-border-ink) var(--weight, 40%), transparent)',
       'color-mix(in oklch, var(--w, calc(1% * 2)) var(--cinder-border-ink), transparent)',
+      // A unitless numeric fallback is a valid scalar in a calc product.
+      'color-mix(in oklch, var(--cinder-border-ink) calc(var(--weight, 2) * 1%), transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) calc(var(--weight, 40%) * 2), transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) calc(2 * var(--weight, 40%)), transparent)',
+      'color-mix(in oklch, var(--cinder-border-ink) calc(2 * var(--weight, 2) * 1%), transparent)',
     ];
     for (const recipe of accepted) {
       expect(serializeEntryValue(recipeEntry(recipe), new Map())).toBe(recipe);
@@ -2733,6 +2738,17 @@ describe('CIN-242: complete color values only', () => {
         /bare component list/,
       );
     }
+  });
+
+  test('rejects a dimension-valued var() fallback used as a percentage scalar', () => {
+    expect(() =>
+      serializeEntryValue(
+        recipeEntry(
+          'color-mix(in oklch, var(--cinder-border-ink) calc(var(--weight, 2px) * 1%), transparent)',
+        ),
+        new Map(),
+      ),
+    ).toThrow();
   });
 
   test('a percentage-valued var() weight does not shield a bare color', () => {

@@ -890,6 +890,22 @@ function hasDemonstrablePercentageType(nodes: ColorValueNode[]): boolean {
       if (name === 'var') {
         const fallback = fallbackNodes(node.nodes);
         if (fallback !== undefined) {
+          const fallbackItems = stripSpaces(fallback);
+          const fallbackUnit =
+            fallbackItems.length === 1 && fallbackItems[0]?.type === 'word'
+              ? valueParser.unit(fallbackItems[0].value)
+              : false;
+          const isScalarFallback =
+            fallbackItems.length === 1 &&
+            fallbackItems[0]?.type === 'word' &&
+            fallbackUnit !== false &&
+            fallbackUnit.unit === '';
+          const previous = items[index - 1];
+          const next = items[index + 1];
+          const isMultiplicativeFactor =
+            (previous?.type === 'word' && previous.value === '*') ||
+            (next?.type === 'word' && next.value === '*');
+          if (isScalarFallback && isMultiplicativeFactor) continue;
           if (!hasDemonstrablePercentageType(fallback)) return false;
           sawPercentage = true;
           continue;

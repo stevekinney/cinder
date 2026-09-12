@@ -32,6 +32,14 @@
  * cannot reconstruct.
  */
 
+import valueParser from 'postcss-value-parser';
+
+type ParsedValueNode = {
+  readonly type: string;
+  readonly value?: string;
+  readonly nodes?: readonly ParsedValueNode[];
+};
+
 /** A selector's specificity as CDP reports it -- see `CSS.Specificity` in the protocol (`a` = ID selectors, `b` = classes/attributes/pseudo-classes, `c` = type selectors/pseudo-elements). */
 export type Specificity = { readonly a: number; readonly b: number; readonly c: number };
 
@@ -64,6 +72,8 @@ export type MatchedDeclaration = {
    * selector at all) or when CDP did not report it.
    */
   readonly specificity?: Specificity;
+  /** Whether this declaration came from the element's inline style. Inline author declarations outrank selector rules. */
+  readonly inline?: boolean;
 };
 
 /** A minimal structural shape for one `CSSStyle` from `CSS.getMatchedStylesForNode` -- only the fields {@link flattenMatchedStyles} reads. The real CDP protocol type is a superset and is structurally assignable here without importing it. */
@@ -132,6 +142,7 @@ export function flattenMatchedStyles(matched: MatchedStylesResult): MatchedDecla
         origin,
         level,
         important: property.important ?? false,
+        inline: true,
       });
     }
   };
@@ -241,6 +252,7 @@ function outranksCurrentWinner(
 ): boolean {
   if (candidate.level !== current.level) return candidate.level < current.level;
   if (candidate.important !== current.important) return candidate.important;
+  if (candidate.inline !== current.inline) return candidate.inline === true;
   if (candidate.specificity !== undefined && current.specificity !== undefined) {
     const bySpecificity = compareSpecificity(candidate.specificity, current.specificity);
     if (bySpecificity !== 0) return bySpecificity > 0;
@@ -352,7 +364,31 @@ export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[]
   }
 
   const uses: TierUse[] = [];
-  for (const { property, value } of declarations) {
+  const customWinners = new Map<string, MatchedDeclaration | undefined>();
+  for (const [property, candidates] of aliasDeclarations) {
+    customWinners.set(property, resolveCascadeWinner(candidates));
+  }
+  const directCandidates = new Map<string, MatchedDeclaration[]>();
+  for (const declaration of declarations) {
+    if (isCustomProperty(declaration.property) || declaration.origin !== 'own') continue;
+    const existing = directCandidates.get(declaration.property);
+    if (existing === undefined) directCandidates.set(declaration.property, [declaration]);
+    else existing.push(declaration);
+  }
+
+  for (const [property, candidates] of directCandidates) {
+    const winner = resolveCascadeWinner(candidates);
+    if (
+      winner !== undefined &&
+      !isBorderProperty(property) &&
+      reachableDirectTier(winner.value, aliasDeclarations)
+    ) {
+      uses.push({ property, value: winner.value, isMix: isMixValue(winner.value) });
+    }
+  }
+
+  for (const declaration of declarations) {
+    const { property, value } = declaration;
     if (isBorderProperty(property)) continue;
 
     if (isCustomProperty(property)) {
@@ -365,34 +401,91 @@ export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[]
       // corpus AUTHORED a tier reference in a custom property's value at
       // all, since the same declaration can win on a different element where
       // no override shadows it.
-      if (referencesBorderTier(value)) {
+      if (
+        customWinners.get(property) === declaration &&
+        reachableDirectTier(value, aliasDeclarations)
+      ) {
         uses.push({ property, value, isMix: isMixValue(value) });
       }
       continue;
     }
 
-    if (referencesBorderTier(value)) {
-      uses.push({ property, value, isMix: isMixValue(value) });
-      continue;
-    }
-
-    for (const reference of customPropertyReferences(value)) {
-      const candidates = aliasDeclarations.get(reference);
-      if (candidates === undefined) continue;
-      const winner = resolveCascadeWinner(candidates);
-      if (winner !== undefined && referencesBorderTier(winner.value)) {
-        uses.push({
-          property,
-          value,
-          viaAlias: reference,
-          aliasValue: winner.value,
-          isMix: isMixValue(winner.value),
-        });
-        break;
-      }
-    }
+    const winner = resolveCascadeWinner(directCandidates.get(property) ?? []);
+    if (winner !== declaration) continue;
+    const aliasUse = reachableAlias(value, aliasDeclarations);
+    if (aliasUse !== undefined)
+      uses.push({
+        property,
+        value,
+        viaAlias: aliasUse.reference,
+        aliasValue: aliasUse.value,
+        isMix: isMixValue(aliasUse.value),
+      });
   }
   return uses;
+}
+
+/** Whether a tier reference in a winning value can actually be reached after var() fallback selection. */
+function reachableDirectTier(
+  value: string,
+  aliases: ReadonlyMap<string, readonly MatchedDeclaration[]>,
+): boolean {
+  const visit = (items: readonly ParsedValueNode[]): boolean => {
+    for (const node of items) {
+      if (node.type !== 'function') continue;
+      if (node.value?.toLowerCase() === 'var') {
+        const reference = node.nodes?.find((candidate) => candidate.type === 'word')?.value;
+        if (reference === undefined) continue;
+        if (referencesBorderTier(reference)) return true;
+        if (resolveCascadeWinner(aliases.get(reference) ?? []) !== undefined) continue;
+        const fallback = fallbackNodes(node.nodes ?? []);
+        if (fallback !== undefined && visit(fallback)) return true;
+        continue;
+      }
+      if (visit(node.nodes ?? [])) return true;
+    }
+    return false;
+  };
+  return visit(valueParser(value).nodes as ParsedValueNode[]);
+}
+
+function fallbackNodes(nodes: readonly ParsedValueNode[]): ParsedValueNode[] | undefined {
+  const comma = nodes.findIndex((node) => node.type === 'div' && node.value === ',');
+  return comma === -1 ? undefined : nodes.slice(comma + 1);
+}
+
+function reachableAlias(
+  value: string,
+  aliases: ReadonlyMap<string, readonly MatchedDeclaration[]>,
+): { reference: string; value: string } | undefined {
+  const nodes = valueParser(value).nodes as ParsedValueNode[];
+  const visit = (
+    items: readonly ParsedValueNode[],
+  ): { reference: string; value: string } | undefined => {
+    for (const node of items) {
+      if (node.type !== 'function') continue;
+      if (node.value?.toLowerCase() === 'var') {
+        const reference = node.nodes?.find((candidate) => candidate.type === 'word')?.value;
+        if (reference === undefined) continue;
+        if (referencesBorderTier(reference)) return undefined;
+        const winner = resolveCascadeWinner(aliases.get(reference) ?? []);
+        if (winner !== undefined) {
+          if (referencesBorderTier(winner.value)) return { reference, value: winner.value };
+          continue;
+        }
+        const fallback = fallbackNodes(node.nodes ?? []);
+        if (fallback !== undefined) {
+          const found = visit(fallback);
+          if (found !== undefined) return found;
+        }
+        continue;
+      }
+      const found = visit(node.nodes ?? []);
+      if (found !== undefined) return found;
+    }
+    return undefined;
+  };
+  return visit(nodes);
 }
 
 /**
@@ -429,9 +522,17 @@ export function opacityCompoundedTierDeclarations(
   }
 
   const winners: MatchedDeclaration[] = [];
+  const colorWinner = resolveCascadeWinner(byProperty.get('color') ?? []);
   for (const candidates of byProperty.values()) {
     const winner = resolveCascadeWinner(candidates);
-    if (winner !== undefined && winner.level === 0 && referencesBorderTier(winner.value)) {
+    if (
+      winner !== undefined &&
+      winner.level === 0 &&
+      (referencesBorderTier(winner.value) ||
+        (winner.value.includes('currentColor') &&
+          colorWinner !== undefined &&
+          referencesBorderTier(colorWinner.value)))
+    ) {
       winners.push(winner);
     }
   }
