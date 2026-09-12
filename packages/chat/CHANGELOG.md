@@ -1,5 +1,39 @@
 # @lostgradient/chat
 
+## 0.14.0
+
+### Minor Changes
+
+- [#1489](https://github.com/stevekinney/cinder/pull/1489) [`398237e`](https://github.com/stevekinney/cinder/commit/398237ed3f3067f4ee2fd0e5123889b28281b2ce) Thanks [@stevekinney](https://github.com/stevekinney)! - Extend `ChatStreamEvent` additively to carry Operative's full stream and run event vocabulary (`stream:*`, `tool.*`, `run.*`) plus a `wireVersion` / `sequence` wire envelope. The three original members (`text`, `tool_call`, `tool_result`) keep their exact current shapes and decode unchanged, with or without the new envelope fields.
+
+- [#1524](https://github.com/stevekinney/cinder/pull/1524) [`86ecf00`](https://github.com/stevekinney/cinder/commit/86ecf0050d9f07bf2873b7e453d072b88334b474) Thanks [@stevekinney](https://github.com/stevekinney)! - Terminal run frames now reach the host, and carry the failure's retryability.
+
+  `createChatSessionController` handled exactly `text`, `tool_call`, and `tool_result`. A `run.error` or `run.tripwire` frame was decoded and then silently dropped, so a provider failure mid-turn left a dangling streaming placeholder in the transcript and never reached `onError` at all — a host learned about failures only when its own transport threw.
+
+  Both frames now raise the new exported `ChatRunFailureError`, which takes the same path every other failure already takes: the streaming placeholder is cancelled, the user's message is marked failed so the existing retry affordance appears, and the error is reported through `onError`. `run.aborted` deliberately does not — an abort is a user decision, carries no error, and a banner on every Stop press would be wrong.
+
+  **This changes observable behavior for any host already emitting those frames.** `onError` will now fire where it previously stayed silent, and `sendMessage` rejects rather than resolving quietly. That is the point — the alternative was a failure the user could not see — but it is worth knowing before upgrading.
+
+  `ChatRunFailureError` carries the frame's own `{ name, message, kind, code, retryable? }` rather than flattening it to a string, and `ChatSerializedRunError` is now exported so a host can narrow it.
+
+  The wire gains an optional `retryable?: boolean` on that shape. `kind` cannot answer the question a retry affordance depends on: a rate-limited provider and a rejected API key are both `kind: 'generate'`, and only one is worth trying again. The field is optional because a host that does not classify its failures should not be forced to guess — absent means "not stated" and must not be read as either answer, so every producer written before this field keeps working unchanged. A present-but-non-boolean value is rejected at both the encoder and the decoder rather than coerced.
+
+### Patch Changes
+
+- [#1538](https://github.com/stevekinney/cinder/pull/1538) [`4ae5ce8`](https://github.com/stevekinney/cinder/commit/4ae5ce8151509d93bc3ad2f0cc58ea1ff6e542e6) Thanks [@stevekinney](https://github.com/stevekinney)! - Agree five counted strings with their count, so a count of one no longer reads as a plural. The tool-call group's heading now says `Called 1 tool` rather than `Called 1 tools`, its list is named `1 consecutive tool call`, the status region a live region reads says `1 message in conversation`, and the reasoning estimate says `(1 token)`. Three of the five are screen-reader surfaces, and a single tool call is the ordinary case for a subagent delegation rather than an edge case.
+
+- [#1488](https://github.com/stevekinney/cinder/pull/1488) [`9343fcd`](https://github.com/stevekinney/cinder/commit/9343fcd794cc649122e29d1f72e6562279d85905) Thanks [@stevekinney](https://github.com/stevekinney)! - Raise the `conversationalist` dependency floor to `^1.1.0`, matching what `@lostgradient/operative` requires, so a host running Chat alongside Operative resolves a single `ConversationHistory` implementation instead of two divergent nested copies.
+
+- [#1493](https://github.com/stevekinney/cinder/pull/1493) [`dae3c6e`](https://github.com/stevekinney/cinder/commit/dae3c6e7b095e81e9e9a5f94f7147aabfcfc4109) Thanks [@stevekinney](https://github.com/stevekinney)! - Cap the grouped tool-call transcript row (`ToolCallTimeline`'s `.chat-tool-call-timeline`) to the same shared readability max-width every other row respects, via the new `--cinder-chat-message-max-width` token. Previously this row — the one carrying the widest content in the transcript, serialized JSON arguments and results — had no inline-size constraint of its own and stretched to the full timeline width on wide viewports. Also fix a grid track sizing issue that let an expanded tool-call group's long, unbroken payload blow out past that cap instead of scrolling within its own code block.
+
+- [#1507](https://github.com/stevekinney/cinder/pull/1507) [`8fee818`](https://github.com/stevekinney/cinder/commit/8fee81816b35ce98887b11d93c28bbeccbc1f4ee) Thanks [@stevekinney](https://github.com/stevekinney)! - Keep each component's stylesheet in a consumer's client bundle. The package listed only `**/*.css` under `sideEffects`, so a Rolldown-based bundler (Vite 8) treated the component barrels that import those stylesheets as side-effect-free re-export modules and skipped them entirely, dropping the `chat.css` sidecar from production client output while the Vite dev server still served it. The barrels (`src/lib/components/*/index.ts` and `dist/components/*/index.js`) are now declared side-effectful too, using the same bare relative form as the sibling packages so every bundler matches them.
+
+- [#1492](https://github.com/stevekinney/cinder/pull/1492) [`78195ad`](https://github.com/stevekinney/cinder/commit/78195add17276e5c6041f7cb30e255bbe1195069) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix visually-hidden status announcers rendering as ordinary visible text. Chat marked screen-reader-only content with the bare `sr-only` class, which had no CSS rule reaching most of the elements that used it — most visibly, a stray unstyled "Action required" line stacking above the intended tool-status chip. Every visually-hidden element now uses `cinder-sr-only`, the design system's utility (already required via `@lostgradient/cinder/styles`), and a guard script fails the build if a bare `sr-only` class reappears.
+
+- Updated dependencies [[`ed0dae6`](https://github.com/stevekinney/cinder/commit/ed0dae663219ee7e19bce957a6609c05ac55103d), [`96166b5`](https://github.com/stevekinney/cinder/commit/96166b57671722bce2ccc4b0aac738e2077fb1db), [`a9f69c8`](https://github.com/stevekinney/cinder/commit/a9f69c87cadca79fcd2d5febbd29a53456256802), [`2bfdd13`](https://github.com/stevekinney/cinder/commit/2bfdd13893dbddeb62cc9f0e044363c338e75a70), [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`be234cb`](https://github.com/stevekinney/cinder/commit/be234cb68d0ee16dd67f0774f4aec9a608ecc594), [`2a67495`](https://github.com/stevekinney/cinder/commit/2a674952360a5d1d2b71cce83566e39dc5003289), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec), [`80221ef`](https://github.com/stevekinney/cinder/commit/80221ef0088dbcdb82d58b5d04c7afd92c2b3032), [`93c7d03`](https://github.com/stevekinney/cinder/commit/93c7d0382b6325128e4970886a33abbb5ef7fd20), [`36ce7f4`](https://github.com/stevekinney/cinder/commit/36ce7f4368a498789e3402bc89a5596e7e33e82a)]:
+  - @lostgradient/markdown@0.5.0
+  - @lostgradient/cinder@0.26.0
+
 ## 0.13.1
 
 ### Patch Changes

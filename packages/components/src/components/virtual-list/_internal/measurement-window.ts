@@ -182,6 +182,33 @@ export function computeScrollToIndexOffset(options: {
   viewportSize: number;
   currentScrollOffset: number;
   align: VirtualListScrollAlign;
+  /**
+   * Pixels of the leading edge covered by a sticky header. The reader's usable
+   * viewport starts below it, so a row aligned to the raw edge lands underneath it.
+   *
+   * This is the DESTINATION's header — the one that will cover the target row once it
+   * arrives — and it decides where the target goes.
+   */
+  leadingInset?: number;
+  /**
+   * Pixels covered at the leading edge RIGHT NOW, which is a different header whenever
+   * the target sits in another section. Only `align: 'auto'` uses it, to decide
+   * whether the row is already visible: a 20px header at the destination says nothing
+   * about the 100px one currently covering the row, and judging by the destination's
+   * made `scrollToIndex` conclude a hidden row was in view and do nothing at all.
+   *
+   * Defaults to `leadingInset`, which is right whenever both are the same header.
+   */
+  currentLeadingInset?: number;
+  /**
+   * Whether the target row is the sticky header currently held at the leading edge.
+   *
+   * It is fully visible there, but its logical `start` is somewhere above the scroll
+   * offset — that is what being stuck means — so the ordinary comparison reads it as
+   * overflowing above and `align: 'auto'` scrolls all the way back to its section, on
+   * a row the reader is already looking at.
+   */
+  targetIsStuckAtLeadingEdge?: boolean;
 }): number {
   // An empty list has no index to resolve, and clamping would hand the locator -1
   // rounded up to 0 — making this helper depend on every caller's locator tolerating
@@ -191,25 +218,44 @@ export function computeScrollToIndexOffset(options: {
   const start = options.locator.getStart(clampedIndex);
   const size = options.locator.getSize(clampedIndex);
   const maxScrollOffset = Math.max(0, options.totalSize - options.viewportSize);
+  // Clamped to the viewport. A header taller than the viewport would otherwise
+  // give a negative usable size and invert every comparison below.
+  const leadingInset = Math.min(Math.max(0, options.leadingInset ?? 0), options.viewportSize);
+  const usableViewportSize = options.viewportSize - leadingInset;
+  const currentLeadingInset = Math.min(
+    Math.max(0, options.currentLeadingInset ?? leadingInset),
+    options.viewportSize,
+  );
 
   let target: number;
   switch (options.align) {
     case 'start':
-      target = start;
+      target = start - leadingInset;
       break;
     case 'end':
+      // No inset: the trailing edge is the one nothing is covering.
       target = start + size - options.viewportSize;
       break;
     case 'center':
-      target = start - (options.viewportSize - size) / 2;
+      // Centered in what the reader can see, which begins below the header.
+      target = start - leadingInset - (usableViewportSize - size) / 2;
       break;
     case 'auto':
     default: {
-      const viewportStart = options.currentScrollOffset;
-      const viewportEnd = viewportStart + options.viewportSize;
+      // Stuck at the edge is as visible as a row gets, whatever its offset says.
+      if (options.targetIsStuckAtLeadingEdge) {
+        target = options.currentScrollOffset;
+        break;
+      }
+      // The top of what the reader can see, not the top of the scroll container: a row
+      // behind the sticky header is as good as offscreen. Measured with the header
+      // covering the edge NOW, since that is what decides whether the row is visible;
+      // where it then goes is still the destination header's business.
+      const viewportStart = options.currentScrollOffset + currentLeadingInset;
+      const viewportEnd = options.currentScrollOffset + options.viewportSize;
       const overflowsAbove = start < viewportStart;
       const overflowsBelow = start + size > viewportEnd;
-      if (size > options.viewportSize) {
+      if (size > usableViewportSize) {
         // A row STRICTLY taller than the viewport can never satisfy both edge checks,
         // so edge-preference alternates forever: align its start and the end now
         // overflows, align its end and the start does. The loop would oscillate and
@@ -223,8 +269,8 @@ export function computeScrollToIndexOffset(options: {
         // Strictly taller, not >=: a row exactly the viewport's height CAN be fully
         // revealed, so holding it half-visible would break auto's own contract.
         const overlapsViewport = start < viewportEnd && start + size > viewportStart;
-        target = overlapsViewport ? options.currentScrollOffset : start;
-      } else if (overflowsAbove) target = start;
+        target = overlapsViewport ? options.currentScrollOffset : start - leadingInset;
+      } else if (overflowsAbove) target = start - leadingInset;
       else if (overflowsBelow) target = start + size - options.viewportSize;
       else target = options.currentScrollOffset;
       break;

@@ -1,5 +1,232 @@
 # @lostgradient/cinder
 
+## 0.26.0
+
+### Minor Changes
+
+- [#1532](https://github.com/stevekinney/cinder/pull/1532) [`a9f69c8`](https://github.com/stevekinney/cinder/commit/a9f69c87cadca79fcd2d5febbd29a53456256802) Thanks [@stevekinney](https://github.com/stevekinney)! - Input inside a `FormField` keeps its native element when `label`, `description`, or `error` appears or disappears — the common case is validation setting `error` while the user is still in the field. A context-wrapped Input now always renders its own nested `FormFieldFrame`, with `label`/`description`/`error` simply absent when unset, instead of switching between that frame and a bare control render as those props become truthy. One stable code path means the `<input>` never moves between template arms, so focus, the selection range, and IME composition survive the toggle.
+
+  DOM contract change for consumers styling or querying the native control from inside a `FormField`-wrapped Input with no `label`, `description`, or `error` of its own: the control is now always inside a nested `.cinder-form-field` frame, where it previously rendered bare. Descendant selectors still match; a direct-child selector onto the bare control needs the frame's control wrapper inserted. `TimeField`'s own control-row sizing was the one in-repo case and is updated.
+
+- [#1502](https://github.com/stevekinney/cinder/pull/1502) [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9) Thanks [@stevekinney](https://github.com/stevekinney)! - Input keeps its native element when a `leading` or `trailing` addon appears or disappears. The control wrapper is now always rendered — `.cinder-input-group` with addons, a boxless `.cinder-input-host` (`display: contents`) without — so the `<input>` has one stable position in the tree instead of moving between template arms, and focus, the selection range, and IME composition survive the toggle. Unadorned inputs lay out exactly as before, and the host carries `data-cinder-full-width` so ancestors that detect a full-width control by direct child keep matching.
+
+  DOM contract change for consumers styling the native control: an unadorned `.cinder-input` is no longer a direct child of its frame or of the element that composes it. Descendant selectors (`.your-row .cinder-input`) still match; a direct-child selector (`.your-row > .cinder-input`) must become `.your-row > .cinder-input-host > .cinder-input`. TimeField's own control-row sizing was the one in-repo case and is updated.
+
+- [#1526](https://github.com/stevekinney/cinder/pull/1526) [`2a67495`](https://github.com/stevekinney/cinder/commit/2a674952360a5d1d2b71cce83566e39dc5003289) Thanks [@stevekinney](https://github.com/stevekinney)! - feat(tokens): one polarity ink, and neutral border tiers composed from it
+
+  Two related token changes.
+
+  **`--cinder-polarity-ink`** is new: the neutral ink that contrasts with whatever
+  the current theme paints underneath it — black in light mode, white in dark. The
+  three scrollbar washes are now `color-mix()` values over it rather than
+  open-coded `light-dark()` pairs, so they re-polarize together when it is
+  overridden at `:root` or in a `[data-theme]` block. A subtree override does not
+  reach them — the washes are declared at `:root`, so descendants inherit the
+  already-resolved values; retinting one region means redeclaring the washes
+  alongside the ink. Rendering is unchanged: `color-mix(in oklch, C, transparent 96%)`
+  computes byte-for-byte to `oklch(C / 0.04)`.
+
+  It is deliberately a complete color value rather than a bare `0% 0 0` component
+  triplet. A triplet assigned to a color property is an invalid declaration, and
+  CSS drops invalid declarations silently — the mistake renders as "nothing
+  changed" rather than as something you can see. Two new gates hold that line: the
+  generator rejects a bare component list in any color position, and a browser test
+  hands every public color token to the real CSS parser and asserts the declaration
+  sticks.
+
+  **`--cinder-border-ink`** is new, and `--cinder-border-muted`, `--cinder-border`,
+  and `--cinder-border-strong` are now alpha steps over it (19%, 48%, 58%) instead
+  of opaque per-arm colors. This is a **visual change**: an alpha border tracks the
+  surface underneath it, so each tier now reads at the same weight everywhere it is
+  used. The dark surface ramp spans L 0.11–0.28, and a single opaque border used to
+  measure 4.80:1 on `surface-inset` against 3.42:1 on `surface-raised` — a 29%
+  spread. Every tier now holds under 15% in both arms, gated in
+  `check-token-contrast.test.ts` alongside the existing per-surface floors.
+
+  Retinting all three tiers is now one override:
+
+  ```css
+  :root {
+    --cinder-border-ink: light-dark(oklch(20% 0.03 280), oklch(86% 0.06 280));
+  }
+  ```
+
+  Two things to know if you consume these directly. A structural border mixed into
+  another color inherits its transparency, so `color-mix(in oklch, var(--cinder-surface),
+var(--cinder-border-muted) 10%)` now yields a slightly translucent result. And two
+  of these borders on the same pixel stack their alpha — draw interior dividers as a
+  single edge on one of the two adjacent elements, which the `interior-border-weight`
+  stylelint rule already requires.
+
+  `--cinder-border-faint` and the four hued status borders (`info`, `success`,
+  `warning`, `danger`) stay opaque. Two neutral borders that wear another name do
+  become translucent, because they alias a tier: `--cinder-status-neutral-border`
+  is `--cinder-border`, and `--cinder-border-inverse`'s dark arm is
+  `--cinder-border-strong`. That is the intent — both are neutral structure, not a
+  hue that needs protecting.
+
+  Also fixes a pre-existing defect in the contrast gate itself: it composited
+  translucent colors in linear-light sRGB, but browsers composite on
+  gamma-encoded channels. Measured against Chromium, the old model reported roughly
+  1.5× more contrast than ships for a light ink over a dark surface — exactly the
+  dark-arm case these border tiers now use.
+
+- [#1501](https://github.com/stevekinney/cinder/pull/1501) [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b) Thanks [@stevekinney](https://github.com/stevekinney)! - Fix StatisticGroup's column collapse and row-end dividers. The group's `@container` rules queried the element that declared the container, so a standalone group never collapsed at the documented 30rem and 18rem thresholds. The public root (`.cinder-statistic-group`, which receives `class`, `style`, and every other prop) is now the query container, and the cells live in an inner `.cinder-statistic-group__grid`; a consumer that constrains the group's inline size constrains exactly what collapses, and a nested group queries its own width. The default variant's row-end divider suppression was also inert — the generic enabler out-ranked every `nth-child` suppressor by specificity — so every group that wrapped to a second row drew a divider at the end of each row. Divider rules are now enumerated per column count at uniform specificity and follow the collapse thresholds, so they describe the grid that actually renders. Note that the query measures the root's content box, so for the padded default variant the thresholds apply to the width the cells share.
+
+  DOM contract change for consumers styling the group: the grid moved from `.cinder-statistic-group` to an inner `.cinder-statistic-group__grid`, which is now the documented layout hook. Consumer `class` and `style` still land on `.cinder-statistic-group`, but a `grid-template-columns` or `gap` override written against the root no longer reaches the cells; target `.cinder-statistic-group__grid` instead, or keep using `--cinder-statistic-group-gap` on the root, which the grid still reads. `.cinder-statistic` cells are no longer direct children of `.cinder-statistic-group`: descendant selectors still match; a direct-child selector (`.cinder-statistic-group > .cinder-statistic`) must become `.cinder-statistic-group > .cinder-statistic-group__grid > .cinder-statistic`.
+
+- [#1496](https://github.com/stevekinney/cinder/pull/1496) [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `dynamicSize` for measured, variable-height rows, and a typed `ref` handle.
+
+  `dynamicSize` opts a list into measuring each rendered row with `ResizeObserver` and caching the
+  result, using `itemHeight` as the initial estimate for rows that have not been measured yet. When a
+  measurement differs from the estimate, the scroll offset is corrected before paint so the viewport
+  does not visibly jump. The fixed-height path remains the default and is untouched: with `dynamicSize`
+  off, no row is measured, no size is cached, and no scroll correction runs. (The component observes
+  its own scroll container to track viewport size in both modes, as it always has.)
+
+  `bind:ref` now exposes a typed `VirtualListRef` with `scrollToIndex(index, options)`, which accounts
+  for the measured sizes of every row before the target and accepts `align` and `behavior` options.
+
+- [#1511](https://github.com/stevekinney/cinder/pull/1511) [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `horizontal` for inline-axis virtualization, with right-to-left support.
+
+  `horizontal` scrolls and lays rows out along the inline axis. `itemHeight` and `height` are
+  reinterpreted rather than renamed — `itemHeight` becomes each item's width, `height` becomes the
+  container's inline-size — and `--cinder-virtual-list-height` keeps its name while switching to drive
+  `inline-size`, so an existing theme override survives turning the prop on.
+
+  Right-to-left is handled rather than assumed. The writing direction is resolved from the container's
+  computed style, and the RTL `scrollLeft` convention is feature-detected once per document: browsers
+  disagree on both the sign and the origin of `scrollLeft` in a right-to-left container, and current
+  browsers use the negative convention that older ones did not.
+
+- [#1512](https://github.com/stevekinney/cinder/pull/1512) [`80221ef`](https://github.com/stevekinney/cinder/commit/80221ef0088dbcdb82d58b5d04c7afd92c2b3032) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `reverse` for chat transcripts, and `onEndReached`/`onStartReached`
+  for bi-directional infinite scroll.
+
+  `reverse` opens the list at its newest item and returns there on every append,
+  regardless of where the reader has scrolled — distinct from `stickToBottom`, which
+  pins only when the reader is already at the bottom. Items keep their natural order;
+  `reverse` names the anchoring, not the ordering. Prepending older history anchors to
+  the row the reader was on instead of moving them.
+
+  `onEndReached` and `onStartReached` fire as the reader comes within `overscan` items
+  of either edge. Each fires once per approach and re-arms when the item count changes,
+  so appending in response allows the next page while a source that returns nothing
+  does not spin.
+
+  Also repairs two scroll reads left on the block axis by the `horizontal` work: the
+  dynamic re-pin comparison, and the settle loop in `scrollToIndex`, which saw no
+  movement on a horizontal list and so skipped its settle pass entirely.
+
+- [#1516](https://github.com/stevekinney/cinder/pull/1516) [`93c7d03`](https://github.com/stevekinney/cinder/commit/93c7d0382b6325128e4970886a33abbb5ef7fd20) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `scrollRestoration`, which remembers the reader's position across
+  navigation.
+
+  The position is persisted to `sessionStorage` under a required `scrollRestorationId`.
+  There is deliberately no implicit key: one derived from position or mount order would
+  hand a remembered offset to the wrong list after an unrelated refactor, and two lists
+  on a page would overwrite each other.
+
+  The anchor is remembered by row KEY as well as index, because an index stops
+  describing the same row the moment the collection changes while the list is
+  unmounted — which is exactly what a feed does by growing at the front. It also carries
+  how far INTO that row the reader was, so a long transcript reopens mid-paragraph
+  rather than at the top of it.
+
+  Restoration waits for the row to exist rather than assuming it is gone: a list that
+  fetches its own data renders empty first, and one that pages incrementally may need
+  several pages before the saved row arrives. It keeps trying while the collection
+  grows, and yields to nothing — a pending restore outranks `reverse`'s opening pin, and
+  holds the infinite-scroll callbacks so they do not fetch a page merely because the
+  list rendered at offset zero for one frame. It does not hold them once it is itself
+  waiting for pagination to deliver the anchor.
+
+  Every storage access is guarded, reads included: some browsers throw on merely
+  touching `sessionStorage` in private mode, not only on writing.
+
+- [#1518](https://github.com/stevekinney/cinder/pull/1518) [`36ce7f4`](https://github.com/stevekinney/cinder/commit/36ce7f4368a498789e3402bc89a5596e7e33e82a) Thanks [@stevekinney](https://github.com/stevekinney)! - VirtualList: add `stickyItems`, `smoothScroll`, and `adaptiveOverscan`, and give every
+  row `aria-posinset` and `aria-setsize`.
+
+  `stickyItems` pins the named indexes to the leading edge. The part virtualization
+  would otherwise break is keeping them mounted: a row whose index leaves the rendered
+  window is normally unmounted, so the heading would disappear exactly when it is meant
+  to be pinned. The active sticky row is kept in the DOM past its window, and the
+  rendered set is re-sorted by index so a keyed each block does not move it behind the
+  rows that follow it.
+
+  Rows now announce their position in the FULL collection rather than the rendered
+  window, which is what assistive technology needs on a virtualized list — otherwise a
+  10,000-row list reads as "3 of 12". `aria-posinset` is 1-based per the specification;
+  `context.index` stays 0-based.
+
+  Setting `stickyItems` also makes the list claim the Arrow, Page, Home, and End keys,
+  which it otherwise leaves to the browser. A pinned header covers the leading edge, so
+  a destination aligned flush to it lands underneath — in a list where the header and
+  its rows share a height, completely underneath. Destinations now clear the header, and
+  that applies to `scrollToIndex` calls of your own as well as to the keys: with
+  `stickyItems` set, `scrollToIndex(n, { align: 'start' })` stops at the header's height
+  above row `n` rather than at row `n` exactly. Page keys step by the rows the header
+  leaves visible rather than by the whole viewport, and Arrow and Page keys pass over
+  sticky rows themselves, which are on screen already for as long as their section is.
+  Home and End still go to the collection's true ends.
+
+  `smoothScroll` makes `scrollToIndex` animate by default, with an explicit `behavior`
+  in the call still winning. `adaptiveOverscan` grows `overscan` with scroll velocity
+  and shrinks it back when the reader slows, treating the configured value as a floor
+  and clamping the growth so a fling cannot mount thousands of rows. Under `dynamicSize`
+  it converts that velocity using the rows' measured average rather than the `itemHeight`
+  estimate, which otherwise widens the window by a fraction of what the reader is
+  actually outrunning.
+
+### Patch Changes
+
+- [#1531](https://github.com/stevekinney/cinder/pull/1531) [`96166b5`](https://github.com/stevekinney/cinder/commit/96166b57671722bce2ccc4b0aac738e2077fb1db) Thanks [@stevekinney](https://github.com/stevekinney)! - Command Menu, Selection Popover, DropdownMenu (and its Context Menu, Menu Bar, and
+  modern Dropdown consumers), Speed Dial, the NavigationBar mobile panel, and
+  MultiSelect now register on the shared escape stack (`pushEscapeHandler` in
+  `src/_internal/overlay.ts`) instead of handling Escape only from their own
+  element-scoped `onkeydown` listener.
+
+  The shared LIFO stack now correctly arbitrates Escape between these overlays and
+  any other stacked overlay (Modal, Drawer, Popover, Combobox, and so on): the
+  top-most open overlay consumes the key and swallows it with `preventDefault()` +
+  `stopPropagation()`; a lower overlay never reacts to the same keystroke. Each of
+  these components also now dismisses on Escape with focus anywhere on the page, not
+  just while focus sits inside its own DOM tree — the previous anchor/target-scoped
+  listeners missed that case.
+
+  Command Menu's ghost-text-first two-stage Escape semantics are unchanged, now
+  routed through a single shared internal function called by both the anchor
+  listener and the stack registration. Dropdown's legacy `usesLegacySnippetApi`
+  branch splits by sub-branch: the non-popover fallback registers directly and
+  dismisses, while the native `supportsPopover` branch registers without calling
+  `preventDefault()` so the browser's own `popover="auto"` light-dismiss keeps
+  working — it only occupies the stack slot so a lower overlay doesn't react first.
+  DropdownMenu's registration is keyed per open instance, so Menu Bar's staged
+  submenu-then-menubar close falls out of LIFO ordering with no target-scoping
+  needed; Menu Bar's own Escape branch gained a `defaultPrevented` guard as
+  defense-in-depth. MultiSelect already registered via
+  `commandList.bindDismissal`; its stack handler now also calls
+  `stopPropagation()`, and its bubbling `onEscape` fallback gained the same
+  `defaultPrevented` guard used elsewhere.
+
+- [#1513](https://github.com/stevekinney/cinder/pull/1513) [`2bfdd13`](https://github.com/stevekinney/cinder/commit/2bfdd13893dbddeb62cc9f0e044363c338e75a70) Thanks [@stevekinney](https://github.com/stevekinney)! - Share one declaration of the Input's invalid-hover border between the input, its host wrapper, and the group. The three surfaces that can paint that edge each derived it separately, so they could drift apart, and the duplication pushed the file past its raw-color allowance.
+
+- [#1528](https://github.com/stevekinney/cinder/pull/1528) [`be234cb`](https://github.com/stevekinney/cinder/commit/be234cb68d0ee16dd67f0774f4aec9a608ecc594) Thanks [@stevekinney](https://github.com/stevekinney)! - Toast: `.cinder-toast-shell` now renders the canonical `data-cinder-closing` attribute (additive,
+  alongside the existing `data-cinder-presence`) for the full duration of a dismissed toast's exit
+  transition, per OVERLAY-POLICY.md's transition-lifecycle contract.
+
+  CommandPalette: adopts `SlidingDialogState` (the same exit-lifecycle mechanism Modal and Drawer use)
+  instead of closing instantly. Closing now renders `data-cinder-closing` on the panel and plays a real
+  `opacity`/`translate` exit transition, awaiting completion before the native dialog closes; the panel
+  enter/exit CSS moved from `animation`/`@keyframes` to `transition`-driven styles so the shared
+  `waitForTransitionCompletion` helper can detect it. The palette also now acquires the counted
+  `lockBodyScroll()` on open and releases it on close (a modal-class overlay guarantee it previously
+  lacked), and its SSR output is empty regardless of the initial `open` value (previously `open={true}`
+  emitted the dialog markup during SSR).
+
+- [#1506](https://github.com/stevekinney/cinder/pull/1506) [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890) Thanks [@stevekinney](https://github.com/stevekinney)! - ShareCard renders its value field from a single `Input` call site. Previously the icon-only and `labelSnippet` layouts were two separate `Input` instances, so a parent that reactively changed `actions` across that boundary tore the field down and dropped the user's focus and selection. Now the actions move between the trailing addon and the sibling row as a prop update on the same element, and focus and the selection range survive.
+
+- Updated dependencies [[`ed0dae6`](https://github.com/stevekinney/cinder/commit/ed0dae663219ee7e19bce957a6609c05ac55103d)]:
+  - @lostgradient/markdown@0.5.0
+
 ## 0.25.1
 
 ### Patch Changes

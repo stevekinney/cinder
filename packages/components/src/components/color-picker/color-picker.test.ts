@@ -907,7 +907,7 @@ describe('ColorPicker alpha mode toggle', () => {
     });
 
     // Drag the alpha slider to make the value interactively translucent.
-    const alphaSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Alpha"]');
+    const alphaSlider = q(container, '[role="slider"][aria-label="Alpha"]');
     await fireEvent.keyDown(alphaSlider, { key: 'ArrowLeft', shiftKey: true }); // -0.1
     expect(committed).toMatch(/^#ff0000[0-9a-f]{2}$/);
     const hidden = q<HTMLInputElement>(container, 'input');
@@ -926,7 +926,7 @@ describe('ColorPicker alpha mode toggle', () => {
     // nudge) re-gates the stale interactive alpha back to fully opaque —
     // the emitted hex drops the alpha byte, regardless of the small hue
     // shift the nudge itself introduces.
-    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    const hueSlider = q(container, '[role="slider"][aria-label="Hue"]');
     await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
     expect(hidden.value).toMatch(/^#[0-9a-f]{6}$/);
     expect(committed).toMatch(/^#[0-9a-f]{6}$/);
@@ -1204,7 +1204,7 @@ describe('ColorPicker format (output)', () => {
         committed = color;
       },
     });
-    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    const hueSlider = q(container, '[role="slider"][aria-label="Hue"]');
     await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
     expect(committed).toMatch(/^hsl\(/);
   });
@@ -1287,7 +1287,7 @@ describe('ColorPicker swatch plumbing stays hex regardless of `format` (P1 regre
       format: 'oklch',
       swatches: ['#000000', '#ffffff'],
     });
-    const selectedOption = q<HTMLElement>(container, '[role="option"][aria-selected="true"]');
+    const selectedOption = q(container, '[role="option"][aria-selected="true"]');
     const indicator = selectedOption.querySelector<HTMLElement>(
       '.cinder-color-swatch-picker__indicator',
     );
@@ -1320,7 +1320,7 @@ describe('ColorPicker retained translucent value renders/copies consistently (P1
   test('alpha=false with a programmatically-retained translucent value: preview and RGB/HSL copy show alpha', () => {
     const { container } = render(ColorPicker, { value: '#ff000080', alpha: false });
 
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.getAttribute('style')).toContain('hsla(');
 
     const rgbButton = q<HTMLButtonElement>(container, '[aria-label="Copy RGB format"]');
@@ -1332,7 +1332,7 @@ describe('ColorPicker retained translucent value renders/copies consistently (P1
   test('alpha=false with a genuinely opaque value: preview and RGB/HSL copy stay opaque', () => {
     const { container } = render(ColorPicker, { value: '#ff0000', alpha: false });
 
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.getAttribute('style')).toContain('hsl(');
     expect(preview.getAttribute('style')).not.toContain('hsla(');
 
@@ -1351,19 +1351,19 @@ describe('ColorPicker retained translucent value renders/copies consistently (P1
   // correctly reported alpha. The checkerboard is now gated on alphaValue < 1.
   test('alpha=false with a retained translucent value: the preview shows the alpha checkerboard backdrop', () => {
     const { container } = render(ColorPicker, { value: '#ff000080', alpha: false });
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
   });
 
   test('alpha=false with a genuinely opaque value: no checkerboard backdrop', () => {
     const { container } = render(ColorPicker, { value: '#ff0000', alpha: false });
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
   });
 
   test('alpha=true with an opaque value: no checkerboard backdrop (the affordance alone does not force it)', () => {
     const { container } = render(ColorPicker, { value: '#ff0000', alpha: true });
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
   });
 });
@@ -1396,7 +1396,7 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
     expect(hslButton.textContent).toBe('HSL hsla(0, 100%, 50%, 0.9996)');
 
     // Checkerboard and preview must also agree it's translucent.
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
     expect(preview.getAttribute('style')).toContain('hsla(');
   });
@@ -1416,7 +1416,7 @@ describe('ColorPicker fractional alpha in the 0.9995–1 band (P1 regression)', 
     expect(rgbButton.textContent).toBe('RGB rgb(255, 0, 0)');
     expect(hslButton.textContent).toBe('HSL hsl(0, 100%, 50%)');
 
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
     expect(preview.getAttribute('style')).toContain('hsl(');
     expect(preview.getAttribute('style')).not.toContain('hsla(');
@@ -1436,7 +1436,7 @@ describe('ColorPicker clamps out-of-range alpha to valid slider bounds (review t
       format: 'rgb',
       name: 'p',
     });
-    const alphaSlider = q<HTMLElement>(container, '[aria-label="Alpha"]');
+    const alphaSlider = q(container, '[aria-label="Alpha"]');
     expect(alphaSlider.getAttribute('aria-valuenow')).toBe('100');
 
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
@@ -1451,7 +1451,7 @@ describe('ColorPicker clamps out-of-range alpha to valid slider bounds (review t
       format: 'rgb',
       name: 'p',
     });
-    const alphaSlider = q<HTMLElement>(container, '[aria-label="Alpha"]');
+    const alphaSlider = q(container, '[aria-label="Alpha"]');
     expect(alphaSlider.getAttribute('aria-valuenow')).toBe('0');
 
     const hidden = q<HTMLInputElement>(container, 'input[name="p"]');
@@ -1483,7 +1483,7 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
     expect(hidden.value).toBe('#ff0000');
 
     // Every other surface must agree it's opaque too.
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(false);
     expect(preview.getAttribute('style')).toContain('hsl(');
     expect(preview.getAttribute('style')).not.toContain('hsla(');
@@ -1504,7 +1504,7 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
     const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
     expect(hidden.value).toBe('rgb(255 0 0 / 0.9996)');
 
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
     expect(preview.getAttribute('style')).toContain('hsla(');
   });
@@ -1519,7 +1519,7 @@ describe('ColorPicker format="hex" alpha quantization agrees everywhere (P1 regr
     const hidden = container.querySelector('input[type="hidden"]') as HTMLInputElement;
     expect(hidden.value).toMatch(/^#ff0000[0-9a-f]{2}$/);
 
-    const preview = q<HTMLElement>(container, '.cinder-color-picker__preview');
+    const preview = q(container, '.cinder-color-picker__preview');
     expect(preview.hasAttribute('data-cinder-alpha')).toBe(true);
     expect(preview.getAttribute('style')).toContain('hsla(');
   });
@@ -1641,7 +1641,7 @@ describe('ColorPicker bound-value mount normalization (P1 regression)', () => {
     expect(hidden.value).toBe('rgb(255 0 0)');
 
     // The first user-driven commit normalizes going forward.
-    const hueSlider = q<HTMLElement>(container, '[role="slider"][aria-label="Hue"]');
+    const hueSlider = q(container, '[role="slider"][aria-label="Hue"]');
     await fireEvent.keyDown(hueSlider, { key: 'ArrowRight' });
     expect(hidden.value).toMatch(/^rgb\(/);
   });

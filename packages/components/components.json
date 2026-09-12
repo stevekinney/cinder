@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "package": {
     "name": "@lostgradient/cinder",
-    "version": "0.25.1",
+    "version": "0.26.0",
     "framework": "svelte",
     "frameworkVersionRange": ">=5.56.0 <6",
     "classPrefix": "cinder-",
@@ -5973,16 +5973,24 @@
       "exportName": "VirtualList",
       "category": "data-display",
       "status": "beta",
-      "purpose": "Windowing primitive for long vertical lists that renders only the visible rows plus overscan in a native scroll container, with fixed-height rows by default and opt-in measured rows.",
+      "purpose": "Windowing primitive for long lists along either axis, rendering only the visible rows plus overscan, with fixed-height rows by default and opt-in measured rows.",
       "tags": ["list", "virtualization", "performance"],
       "useWhen": [
-        "Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.",
-        "Rows vary in height because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.",
-        "You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet."
+        "Rendering thousands of rows: logs, event streams, activity feeds.",
+        "Rows vary in size because they wrap or embed media — dynamicSize measures each.",
+        "Windowing the inline axis — horizontal, which also resolves right-to-left.",
+        "A transcript anchored to its newest message, or paging in at either edge."
       ],
       "avoidWhen": [
         {
-          "reason": "Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization."
+          "reason": "Two-dimensional grids, which need column virtualization and grid semantics.",
+          "alternative": "data-grid"
+        },
+        {
+          "reason": "A native table or a hierarchy — data-table and tree window those already."
+        },
+        {
+          "reason": "The collection is small enough to render in full."
         }
       ],
       "related": ["data-list", "data-table", "data-grid", "load-more"],

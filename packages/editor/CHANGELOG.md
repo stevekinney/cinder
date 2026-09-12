@@ -1,5 +1,19 @@
 # @lostgradient/editor
 
+## 0.14.0
+
+### Minor Changes
+
+- [#1330](https://github.com/stevekinney/cinder/pull/1330) [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314) Thanks [@stevekinney](https://github.com/stevekinney)! - Widen internal peer ranges to follow the coordinated release.
+
+### Patch Changes
+
+- [#1508](https://github.com/stevekinney/cinder/pull/1508) [`67fd167`](https://github.com/stevekinney/cinder/commit/67fd167fac69e6b1fdd3fa0a118c1b00189b301a) Thanks [@stevekinney](https://github.com/stevekinney)! - Stop the review editor's selection popover from re-opening over text whose comment was just submitted. Submitting hands focus back to the editor, ProseMirror re-writes its stored, still non-collapsed selection into the DOM, and that `selectionchange` used to re-open the popover. The editor now holds the submitted range until a pointer or key inside it starts a new selection.
+
+- Updated dependencies [[`ed0dae6`](https://github.com/stevekinney/cinder/commit/ed0dae663219ee7e19bce957a6609c05ac55103d), [`96166b5`](https://github.com/stevekinney/cinder/commit/96166b57671722bce2ccc4b0aac738e2077fb1db), [`a9f69c8`](https://github.com/stevekinney/cinder/commit/a9f69c87cadca79fcd2d5febbd29a53456256802), [`2bfdd13`](https://github.com/stevekinney/cinder/commit/2bfdd13893dbddeb62cc9f0e044363c338e75a70), [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`be234cb`](https://github.com/stevekinney/cinder/commit/be234cb68d0ee16dd67f0774f4aec9a608ecc594), [`2a67495`](https://github.com/stevekinney/cinder/commit/2a674952360a5d1d2b71cce83566e39dc5003289), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec), [`80221ef`](https://github.com/stevekinney/cinder/commit/80221ef0088dbcdb82d58b5d04c7afd92c2b3032), [`93c7d03`](https://github.com/stevekinney/cinder/commit/93c7d0382b6325128e4970886a33abbb5ef7fd20), [`36ce7f4`](https://github.com/stevekinney/cinder/commit/36ce7f4368a498789e3402bc89a5596e7e33e82a)]:
+  - @lostgradient/markdown@0.5.0
+  - @lostgradient/cinder@0.26.0
+
 ## 0.13.0
 
 ### Minor Changes
