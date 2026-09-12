@@ -759,3 +759,45 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 	await page.locator('[data-testid="recovery-check"]').click();
 	await expect(alert).toContainText('could not reach the server');
 });
+
+test('answering keeps focus inside the chat', async ({ page }) => {
+	// Every path that clears the question removes the focused subtree, and a
+	// browser then drops focus to `<body>` — outside the chat's tab context, at
+	// the moment the turn resumes. Asserted on the RESULT rather than on the
+	// handler, because three separate paths clear `pending` and only one of
+	// them used to hand focus off.
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Approval focus');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const marker = newFixtureMarker();
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval', marker));
+	await composer.press('Enter');
+
+	const approve = page.locator('[data-testid="approval-approve"]');
+	await expect(approve).toBeVisible();
+
+	// FOCUSED BY KEYBOARD, not clicked — a click leaves focus wherever the
+	// browser decides, which would let this pass without the handoff.
+	await approve.focus();
+	await expect(approve).toBeFocused();
+	await approve.press('Enter');
+
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
+
+	// NOT `<body>`. The status region is where the consequence of the decision
+	// is announced, so it is where focus belongs.
+	const landed = await page.evaluate(() => ({
+		tag: document.activeElement?.tagName.toLowerCase() ?? '(none)',
+		testId: document.activeElement?.getAttribute('data-testid') ?? '(none)'
+	}));
+	expect(landed.tag).not.toBe('body');
+	expect(landed.testId).toBe('approval-question');
+});

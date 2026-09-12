@@ -189,6 +189,9 @@
 	 */
 	let approvalQuestion = $state<HTMLElement | null>(null);
 
+	/** The approval region, so focus handoff can ask whether focus is inside it. */
+	let approvalSection = $state<HTMLElement | null>(null);
+
 	/**
 	 * Which polling session a response belongs to.
 	 *
@@ -210,21 +213,6 @@
 	let pollGeneration = 0;
 
 	/**
-	 * Orders responses WITHIN one polling session.
-	 *
-	 * The generation above changes only when the effect starts or stops, so
-	 * every overlapping 250ms request inside one turn carries the same value —
-	 * and a slow response could still land after a newer one and overwrite the
-	 * current question, or clear it with an older `pending: null`. Review caught
-	 * that the generation alone was not enough.
-	 *
-	 * Each request takes the next ticket; a response holding an older one is
-	 * discarded. Reset with the generation, so a new session starts from zero.
-	 */
-	let pollSequence = 0;
-	let latestSequence = 0;
-
-	/**
 	 * The exact banner value a poll installed, so a poll can clear only that.
 	 *
 	 * A BOOLEAN was not enough, which review caught: with a flag, a poll
@@ -239,10 +227,11 @@
 	 */
 	let pollFailure: BannerFailure | null = null;
 
-	async function readPendingApproval(generation: number): Promise<void> {
-		const sequence = ++pollSequence;
+	async function readPendingApproval(generation: number, signal?: AbortSignal): Promise<void> {
 		try {
-			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`);
+			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
+				...(signal === undefined ? {} : { signal })
+			});
 			if (generation !== pollGeneration) return;
 
 			if (!response.ok) {
@@ -255,11 +244,10 @@
 				// itself and the success path below clears this text.
 				const message = await failureMessage(response);
 				// RECHECKED AFTER THE BODY, because reading it is an await like any
-				// other: the turn can end or a newer poll can succeed while this one
-				// is still pulling text. Installing an error then leaves a stale
-				// alert with nothing left polling to replace it.
-				if (generation !== pollGeneration || sequence < latestSequence) return;
-				latestSequence = sequence;
+				// other: the turn can end while this one is still pulling text.
+				// Installing an error then leaves a stale alert with nothing left
+				// polling to replace it.
+				if (generation !== pollGeneration) return;
 				const reported = toBannerFailure(new Error(message));
 				pollFailure = reported;
 				failure = reported;
@@ -270,8 +258,11 @@
 			// Checked AGAIN after the body is read, because awaiting it is another
 			// point where the turn can end underneath this response.
 			if (generation !== pollGeneration) return;
-			if (sequence < latestSequence) return;
-			latestSequence = sequence;
+			// FOCUS IS HANDED OFF before the controls vanish. Another client
+			// answering is a supported outcome of this endpoint, and it removes
+			// the focused subtree just as surely as a local decision does — which
+			// dropped a keyboard user onto `<body>`, outside the chat.
+			if (body.pending === null) handOffFocusFromApproval();
 			pending = body.pending;
 			// A SUCCESS CLEARS THE POLL'S OWN FAILURE. Without this a single
 			// transient error left its `role="alert"` text on screen for the rest
@@ -289,12 +280,33 @@
 			}
 			pollFailure = null;
 		} catch (cause) {
-			if (generation !== pollGeneration || sequence < latestSequence) return;
-			latestSequence = sequence;
+			// An ABORT is this component's own cleanup, not a failure to report.
+			if (signal?.aborted === true) return;
+			if (generation !== pollGeneration) return;
 			const reported = toBannerFailure(cause);
 			pollFailure = reported;
 			failure = reported;
 		}
+	}
+
+	/**
+	 * Moves focus out of the approval controls, but only if it is in them.
+	 *
+	 * Every path that clears `pending` removes the focused subtree, and a
+	 * browser then drops focus to `<body>` — outside the chat's tab context, at
+	 * the moment the turn resumes. `decide()` handled its own case; the poll
+	 * discovering that another client answered, and the cleanup that runs when
+	 * the turn ends, did not.
+	 *
+	 * GUARDED on containment, because stealing focus from someone typing in the
+	 * composer would be its own defect.
+	 */
+	function handOffFocusFromApproval(): void {
+		if (pending === null) return;
+		const active = document.activeElement;
+		if (active === null || approvalSection === null) return;
+		if (!approvalSection.contains(active)) return;
+		approvalQuestion?.focus();
 	}
 
 	async function decide(approved: boolean): Promise<void> {
@@ -325,13 +337,10 @@
 				failure = toBannerFailure(new Error(await failureMessage(response)));
 				return;
 			}
+			// FOCUS FIRST, then clear — the same handoff the poll and the cleanup
+			// use, so all three paths agree rather than one of them remembering.
+			handOffFocusFromApproval();
 			pending = null;
-			// FOCUS IS MOVED before the controls disappear. Answering removes the
-			// button the keyboard user is standing on, and a browser then drops
-			// focus to `<body>` — outside the chat entirely, at the moment the turn
-			// resumes. The status region is where the consequence of the click is
-			// about to be announced, so it is where focus belongs.
-			approvalQuestion?.focus();
 		} catch (cause) {
 			failure = toBannerFailure(cause);
 		} finally {
@@ -339,25 +348,49 @@
 		}
 	}
 
-	// Polls while a turn is in flight and stops the moment it is not, clearing
-	// any question the run ended without answering — a stale Approve button is
-	// a control that cannot work.
+	/**
+	 * Polls while a turn is in flight and stops the moment it is not.
+	 *
+	 * SERIALIZED, not an interval. A `setInterval` started an independent fetch
+	 * every 250ms whether or not the previous had settled, so a stall — a slow
+	 * proxy, an unresponsive server — accumulated one request per tick for its
+	 * whole duration, and cleanup only cleared the timer: the requests stayed
+	 * alive past navigation until the network gave up on them. Review caught
+	 * that, and it is a connection leak rather than a cosmetic one.
+	 *
+	 * Waiting for each poll to settle before scheduling the next also makes
+	 * out-of-order responses impossible WITHIN a session, which is why the
+	 * sequence tickets this used to carry are gone. One generation token still
+	 * separates sessions, and the abort signal drops whatever is in flight when
+	 * the turn ends.
+	 */
 	$effect(() => {
 		if (!streaming) {
+			handOffFocusFromApproval();
 			pending = null;
 			// Bumped here too, so a response still in flight from the session that
 			// just ended cannot land and restore its controls.
 			pollGeneration += 1;
 			return;
 		}
+
 		const generation = pollGeneration;
-		pollSequence = 0;
-		latestSequence = 0;
+		const controller = new AbortController();
 		pollFailure = null;
-		void readPendingApproval(generation);
-		const interval = setInterval(() => void readPendingApproval(generation), 250);
+		let stopped = false;
+
+		const loop = async (): Promise<void> => {
+			while (!stopped && generation === pollGeneration) {
+				await readPendingApproval(generation, controller.signal);
+				if (stopped || generation !== pollGeneration) return;
+				await new Promise((resolve) => setTimeout(resolve, 250));
+			}
+		};
+		void loop();
+
 		return () => {
-			clearInterval(interval);
+			stopped = true;
+			controller.abort();
 			pollGeneration += 1;
 		};
 	});
@@ -427,7 +460,7 @@
 	interrupts whatever the screen reader was saying about the reply now
 	streaming.
 -->
-<section class="approval" aria-labelledby="approval-heading">
+<section class="approval" aria-labelledby="approval-heading" bind:this={approvalSection}>
 	<h2 id="approval-heading" class="visually-hidden">Approval</h2>
 	<!--
 		THE ANNOUNCEMENT and THE ARGUMENTS are separate elements, because two
