@@ -70,13 +70,13 @@ describe('host architecture guard', () => {
       '#!/bin/sh\n[ \"$1\" = info ] && [ \"$2\" = --format ] && [ \"$3\" = \"{{.Architecture}}\" ] || exit 2\nprintf \"amd64\\n\"\n',
     );
     chmodSync(dockerPath, 0o755);
-    const previousPath = process.env.PATH;
-    process.env.PATH = `${directory}:${previousPath ?? ''}`;
+    const previousPath = process.env['PATH'];
+    process.env['PATH'] = `${directory}:${previousPath ?? ''}`;
     try {
       expect(readDockerServerArchitecture()).toBe('x64');
     } finally {
-      if (previousPath === undefined) delete process.env.PATH;
-      else process.env.PATH = previousPath;
+      if (previousPath === undefined) delete process.env['PATH'];
+      else process.env['PATH'] = previousPath;
       rmSync(directory, { recursive: true, force: true });
     }
   });
@@ -88,13 +88,13 @@ describe('host architecture guard', () => {
       const dockerPath = resolvePath(directory, 'docker');
       writeFileSync(dockerPath, `#!/bin/sh\n${command}\n`);
       chmodSync(dockerPath, 0o755);
-      const previousPath = process.env.PATH;
-      process.env.PATH = `${directory}:${previousPath ?? ''}`;
+      const previousPath = process.env['PATH'];
+      process.env['PATH'] = `${directory}:${previousPath ?? ''}`;
       try {
         expect(readDockerServerArchitecture()).toBeUndefined();
       } finally {
-        if (previousPath === undefined) delete process.env.PATH;
-        else process.env.PATH = previousPath;
+        if (previousPath === undefined) delete process.env['PATH'];
+        else process.env['PATH'] = previousPath;
         rmSync(directory, { recursive: true, force: true });
       }
     },
