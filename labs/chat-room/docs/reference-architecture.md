@@ -204,7 +204,7 @@ The difference between the two shapes is smaller than it sounds, and in one plac
 - `unwrap()` is the accessor they genuinely differ on. At `H = false` it resolves to `Promise<string>` — plain text, no schema validation — so its presence on a recovered handle is a mild hazard at most.
 - `closed()` is the difference with teeth. `DiagnosticAgentRun` downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason: 'unknown-effect' }`, because durability is undeterminable from a recovered wrapper. The session path passes that status through unchanged, so a run recovered through `recover()` can report a durable boundary the wrapper cannot vouch for. Filed upstream against the owning package.
 
-`server-owned-recovery-contract.test.ts` pins each of these at the type level, so a future Operative that narrows `recover()` breaks the build rather than this paragraph.
+`server-owned-recovery-contract.test.ts` pins the declared `recover()`, `unwrap()`, `output()`, and `result()` members at the type level, so changes to those declarations break the build. The `closed()` distinction above describes runtime behavior; this type test does not enforce it.
 
 **Recovery classification is reported once.** `recover()` reconciles a stranded `running` reference as it reports the rejection, so the first ask after a restart answers `orphaned` with its failures and the second answers `nothing-to-resume`. Both are correct. A surface that showed the classification without saying so would look like it lost the answer, so the panel says it.
 
