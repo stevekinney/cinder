@@ -127,7 +127,50 @@ Operative reconciles the stranded `running` reference as part of reporting the r
 
 Anyone following this procedure twice would otherwise file that as a defect, so it is in the endpoint's `note` field and in the panel's copy rather than only here.
 
-## In the interface
+## In the interface, observed
+
+The same procedure with a browser watching `/server-owned/<id>`, recording the panel's own text at each step.
+
+**On load, before any check** — both regions present and empty. That is the rule `error-live-regions.e2e.ts` enforces: a live region that appears with text already in it is not reliably announced.
+
+```
+status:     (empty)
+durability: (empty)
+```
+
+**After Check, before any run has happened**
+
+```
+status:     Nothing to resume. No run was in flight — this session is idle, not lost.
+durability: Storage: on disk. A run left in flight is still recorded when the next process starts.
+```
+
+**After the restart, on load** — empty again, because the panel asks nothing until asked.
+
+**After the restart, first Check**
+
+```
+status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
+            run's work is terminally gone.
+durability: Storage: on disk. A run left in flight is still recorded when the next process starts.
+failures:   session-1-cc723e7d-…:0 — Cannot resume workflow "session-1-cc723e7d-…:0":
+            status is "failed", expected "running" or "suspended"
+once:       Reported once. Operative reconciles a stranded run to terminal as it reports
+            the rejection, so asking again answers "nothing to resume".
+```
+
+**After the restart, second Check**
+
+```
+status:     Nothing to resume. No run was in flight — this session is idle, not lost.
+failures:   (no list rendered)
+once:       (no note rendered)
+```
+
+> [!WARNING] Kill the server, not its wrapper
+> `bun run preview` spawns `vite preview` as a child. Signalling the wrapper leaves the server listening, and what actually happens is the streaming request's client side closing — which aborts the run _cleanly_ and leaves nothing marked running. The exercise then reports "nothing to resume" and looks like the classification failed, when the crash never happened. The first scripted attempt at this made exactly that mistake. Confirm the origin stops answering before treating anything after the kill as evidence.
+
+## What the panel renders
 
 `/server-owned/<id>` carries a **Durable recovery** panel. It names the backing store, so the benign answer is not mistaken for a lost run, and it renders the three outcomes distinctly:
 
