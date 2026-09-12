@@ -539,7 +539,9 @@ function isParentNode(node: Node): node is Node & ParentNode {
  * boundary further out, pairing the enclosing shadow host as the new
  * anchor, until a plain Document is reached.
  */
-export type ComposedFocusScope = { root: Document | ShadowRoot; anchor: Element };
+type SearchableRoot = Document | DocumentFragment | Element;
+
+export type ComposedFocusScope = { root: SearchableRoot; anchor: Element };
 
 // Duck-type on `querySelectorAll` rather than `instanceof Document`: a root
 // node can come from a different realm (another window/iframe, or a host
@@ -547,8 +549,8 @@ export type ComposedFocusScope = { root: Document | ShadowRoot; anchor: Element 
 // constructor at all — happy-dom's test Document does exactly this), where
 // the constructor identity check fails even though the node is a genuine
 // searchable document-like root.
-function isSearchableRoot(node: Node): node is Document | ShadowRoot {
-  return 'querySelectorAll' in node;
+function isSearchableRoot(node: Node): node is SearchableRoot {
+  return typeof Reflect.get(node, 'querySelectorAll') === 'function';
 }
 
 /**

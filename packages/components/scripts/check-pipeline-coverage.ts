@@ -435,6 +435,12 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       "Turbo's ordinary input-hash cache still gives an unrelated change a fast replay instead of a " +
       'full run.',
   },
+  'check:local-bun-version-guard': {
+    layers: ['unit-tests', 'main-green'],
+    reason:
+      'The coverage ratchet invokes the local Bun version advisory as an explicit named command, ' +
+      'so pipeline coverage keeps the advisory attached to both authoritative source gates.',
+  },
   [`${chatPackageName}#lint`]: {
     layers: ['unit-tests', 'main-green'],
     reason:

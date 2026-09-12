@@ -60,6 +60,10 @@ describe('update-snapshots-docker helpers', () => {
 });
 
 describe('host architecture guard', () => {
+  it('accepts Docker’s native amd64 spelling for the x64 baseline', () => {
+    expect(hostArchitectureGuardResult('amd64', 'x64')).toEqual({ ok: true });
+    expect(hostArchitectureGuardResult('x86_64', 'x64')).toEqual({ ok: true });
+  });
   it('passes when the host matches the required baseline architecture', () => {
     expect(hostArchitectureGuardResult('x64', 'x64')).toEqual({ ok: true });
   });

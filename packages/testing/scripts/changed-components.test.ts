@@ -25,6 +25,18 @@ describe('shared workflow scope plan', () => {
     expect(plan).toMatchObject({ unitLanes: ['static'], browserRelevant: false });
   });
 
+  it('routes coverage and pipeline guard changes through the package lane', () => {
+    expect(
+      planForChanges(['packages/components/scripts/check-coverage-ratchet.ts'], {
+        mode: 'filtered',
+        components: [],
+      }),
+    ).toMatchObject({
+      unitLanes: ['static', 'package', 'playground'],
+      browserRelevant: false,
+    });
+  });
+
   it('fails safe to every lane when the classifier reports full scope', () => {
     const plan = planForChanges(['bun.lock'], { mode: 'full', reason: 'lockfile changed' });
     expect(plan.unitLanes).toEqual(['static', 'package', 'playground', 'components']);

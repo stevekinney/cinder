@@ -11,8 +11,29 @@ export const BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND =
 
 export type HostArchitectureGuardResult = { ok: true } | { ok: false; message: string };
 
+function normalizeDockerArchitecture(architecture: string): string {
+  const normalized = architecture.trim().toLowerCase();
+  if (normalized === 'amd64' || normalized === 'x86_64') return 'x64';
+  if (normalized === 'arm64' || normalized === 'aarch64') return 'arm64';
+  return normalized;
+}
+
+export function readDockerServerArchitecture(): string | undefined {
+  try {
+    const result = spawnSync('docker', ['info', '--format', '{{.Architecture}}'], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    if (result.status !== 0) return undefined;
+    const architecture = normalizeDockerArchitecture(result.stdout);
+    return architecture.length > 0 ? architecture : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /**
- * Refuses to even build the Docker image when the host architecture does not
+ * Refuses to even build the Docker image when Docker's server architecture does not
  * match the one every committed baseline was captured on. The base image is
  * multi-arch, so `docker build` without `--platform` on an Apple Silicon (or
  * other arm64) host silently succeeds and produces an image whose rasterizer
@@ -21,14 +42,14 @@ export type HostArchitectureGuardResult = { ok: true } | { ok: false; message: s
  * build entirely and guarantees no PNG is ever at risk.
  */
 export function hostArchitectureGuardResult(
-  hostArchitecture: string,
+  dockerArchitecture: string,
   requiredArchitecture: string = REQUIRED_BASELINE_ARCHITECTURE,
 ): HostArchitectureGuardResult {
-  if (hostArchitecture === requiredArchitecture) return { ok: true };
+  if (normalizeDockerArchitecture(dockerArchitecture) === requiredArchitecture) return { ok: true };
   return {
     ok: false,
     message: [
-      `Refusing to update visual baselines: host architecture "${hostArchitecture}" does not match`,
+      `Refusing to update visual baselines: Docker server architecture "${dockerArchitecture}" does not match`,
       `the required "${requiredArchitecture}" (packages/testing/snapshots/provenance.json records every`,
       "committed baseline as x64, and CI's canonical cinder-playwright image is amd64). This wrapper",
       'does not pin --platform, so building here would silently produce a mismatched image and rewrite',
@@ -327,7 +348,8 @@ export async function buildPlaywrightDockerImage(
  * forbidden by the plan.
  */
 async function main(): Promise<void> {
-  const architectureGuard = hostArchitectureGuardResult(process.arch);
+  const dockerArchitecture = readDockerServerArchitecture();
+  const architectureGuard = hostArchitectureGuardResult(dockerArchitecture ?? '<unavailable>');
   if (!architectureGuard.ok) {
     console.error(architectureGuard.message);
     process.exit(1);

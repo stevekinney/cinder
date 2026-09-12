@@ -63,19 +63,19 @@ async function readInstalledPlaywrightVersion(): Promise<string | undefined> {
  * only signal that distinguishes them from inside the running container.
  */
 export function architectureAuthenticityFailure(
-  hostArchitecture: string,
+  containerArchitecture: string,
 ): AuthenticityFailure | undefined {
-  if (hostArchitecture === REQUIRED_BASELINE_ARCHITECTURE) return undefined;
+  if (containerArchitecture === REQUIRED_BASELINE_ARCHITECTURE) return undefined;
   return {
     check: 'container architecture',
     expected: REQUIRED_BASELINE_ARCHITECTURE,
-    actual: hostArchitecture,
+    actual: containerArchitecture,
   };
 }
 
 export async function checkDockerAuthenticity(
   packageJsonPath: string,
-  hostArchitecture: string = process.arch,
+  containerArchitecture: string = process.arch,
 ): Promise<AuthenticityResult> {
   const failures: AuthenticityFailure[] = [];
   const pinned = readPinnedPlaywrightVersion(packageJsonPath);
@@ -116,7 +116,7 @@ export async function checkDockerAuthenticity(
   // Check 4: the container's own architecture matches every committed
   // baseline. See architectureAuthenticityFailure's doc comment for why this
   // cannot be inferred from checks 1-3.
-  const architectureFailure = architectureAuthenticityFailure(hostArchitecture);
+  const architectureFailure = architectureAuthenticityFailure(containerArchitecture);
   if (architectureFailure) failures.push(architectureFailure);
 
   if (failures.length > 0) return { ok: false, failures };

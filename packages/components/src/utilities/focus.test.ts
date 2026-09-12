@@ -814,4 +814,12 @@ describe('composedFocusScopes', () => {
 
     outerHost.remove();
   });
+
+  test('accepts a detached element as its own searchable focus scope', () => {
+    const anchor = document.createElement('div');
+    const scope = [...composedFocusScopes(anchor)];
+    expect(scope).toHaveLength(1);
+    expect(scope[0]?.root).toBe(anchor);
+    expect(scope[0]?.anchor).toBe(anchor);
+  });
 });

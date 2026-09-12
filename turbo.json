@@ -106,7 +106,9 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/.github/workflows/**",
         "$TURBO_ROOT$/docs/**",
-        "$TURBO_ROOT$/packages/*/package.json"
+        "$TURBO_ROOT$/packages/*/package.json",
+        "$TURBO_ROOT$/packages/testing/scripts/local-bun-version-guard.ts",
+        "$TURBO_ROOT$/packages/testing/scripts/update-snapshots-docker.ts"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },

@@ -32,3 +32,8 @@ export function localBunVersionNotice(
     "Treat this run's numbers as informational only; CI on the pinned Bun version is authoritative.",
   ].join(' ');
 }
+
+if (import.meta.main) {
+  const notice = localBunVersionNotice(Bun.version);
+  if (notice !== undefined) console.warn(notice);
+}
