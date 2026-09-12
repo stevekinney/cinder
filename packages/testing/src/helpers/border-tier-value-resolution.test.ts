@@ -109,4 +109,21 @@ describe('parsed border tier reachability', () => {
     expect(resolve('var(--cinder-border-muted')).toEqual([]);
     expect(resolve('var(--primary extra, var(--cinder-border))')).toEqual([]);
   });
+  test('invalid variable names cannot activate either a primary or a fallback', () => {
+    for (const name of ['foo', '--', '--bad!', '--two words']) {
+      expect(
+        resolve(`var(${name}, var(--cinder-border))`, {
+          [name]: 'var(--cinder-border-muted)',
+        }),
+      ).toEqual([]);
+    }
+    expect(resolve('var(--missing, var(--cinder-border))')).toEqual([
+      { tier: '--cinder-border', depth: 0, isMix: false },
+    ]);
+    expect(
+      resolve('var(--paint, var(--cinder-border-strong))', {
+        '--paint': 'var(foo, var(--cinder-border))',
+      }),
+    ).toEqual([{ tier: '--cinder-border-strong', depth: 0, isMix: false }]);
+  });
 });

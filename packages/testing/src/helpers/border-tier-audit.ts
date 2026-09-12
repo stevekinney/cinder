@@ -134,6 +134,7 @@ export function flattenMatchedStyles(matched: MatchedStylesResult): MatchedDecla
     level: number,
   ) => {
     for (const property of style?.cssProperties ?? []) {
+      if (property.value.trim() === '' && !property.name.startsWith('--')) continue;
       declarations.push({
         property: property.name,
         value: property.value,
@@ -153,6 +154,9 @@ export function flattenMatchedStyles(matched: MatchedStylesResult): MatchedDecla
     for (const match of matches ?? []) {
       const specificity = ruleSpecificity(match);
       for (const property of match.rule.style?.cssProperties ?? []) {
+        // CDP expands a var()-valued shorthand into empty synthetic longhands.
+        // They have no authored value and must not override the shorthand.
+        if (property.value.trim() === '' && !property.name.startsWith('--')) continue;
         declarations.push({
           property: property.name,
           value: property.value,
@@ -333,6 +337,22 @@ function declarationIndex(declarations: readonly MatchedDeclaration[]) {
   return index;
 }
 
+/** Resolve shorthand/color-longhand pairs in one paint slot, preserving extraction order. */
+function paintWinner(
+  property: string,
+  candidates: readonly MatchedDeclaration[],
+  declarations: readonly MatchedDeclaration[],
+): MatchedDeclaration | undefined {
+  const shorthand = property.replace(/-color$/, '');
+  if (!/^(?:border(?:-(?:top|right|bottom|left))?|outline|background)$/.test(shorthand))
+    return resolveCascadeWinner(candidates);
+  return resolveCascadeWinner(
+    declarations.filter(
+      (item) => item.property === shorthand || item.property === `${shorthand}-color`,
+    ),
+  );
+}
+
 /** Custom properties inherit computed values, so ancestor aliases cannot see child overrides. */
 function variableLookup(index: ReadonlyMap<string, readonly MatchedDeclaration[]>) {
   return function lookup(name: string, minimumLevel: number): VariableValue | undefined {
@@ -365,8 +385,8 @@ export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[]
   const uses: TierUse[] = [];
   for (const [property, candidates] of index) {
     if (isBorderProperty(property) || isCustomProperty(property)) continue;
-    const winner = resolveCascadeWinner(candidates);
-    if (!winner || winner.level !== 0) continue;
+    const winner = paintWinner(property, candidates, declarations);
+    if (!winner || winner.level !== 0 || winner.property !== property) continue;
     const colorMinimumLevel = property === 'color' ? winner.level + 1 : winner.level;
     const reference = resolveTierReferences(winner.value, lookup, winner.level, {
       currentColor: () => colorTierReferenceAt(index, lookup, colorMinimumLevel),
@@ -423,17 +443,8 @@ export function opacityCompoundedTierDeclarations(
   const winners: OpacityTierDeclaration[] = [];
   for (const [property, candidates] of index) {
     if (isCustomProperty(property)) continue;
-    const winner = resolveCascadeWinner(candidates);
-    if (!winner || winner.level !== 0) continue;
-    // A shorthand and its color longhand compete for the same paint. Keep
-    // their original extraction order when specificity and importance tie.
-    const shorthand = property.replace(/-color$/, '');
-    if (/^(?:border(?:-(?:top|right|bottom|left))?|outline|background)$/.test(shorthand)) {
-      const colorCandidates = declarations.filter(
-        (item) => item.property === shorthand || item.property === `${shorthand}-color`,
-      );
-      if (resolveCascadeWinner(colorCandidates) !== winner) continue;
-    }
+    const winner = paintWinner(property, candidates, declarations);
+    if (!winner || winner.level !== 0 || winner.property !== property) continue;
     const colorMinimumLevel = property === 'color' ? winner.level + 1 : winner.level;
     const reference = resolveTierReferences(winner.value, lookup, winner.level, {
       currentColor: () => colorTierReferenceAt(index, lookup, colorMinimumLevel),

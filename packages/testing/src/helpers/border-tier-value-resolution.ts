@@ -15,6 +15,22 @@ type ResolutionOptions = {
 };
 const tierName = /^--cinder-border(?:-muted|-strong)?$/;
 
+/** The audit follows unescaped custom-property names; unsupported syntax fails closed. */
+function variableReference(
+  node: Extract<valueParser.Node, { type: 'function' }>,
+): string | undefined {
+  if (node.unclosed) return undefined;
+  const comma = node.nodes.findIndex((item) => item.type === 'div' && item.value === ',');
+  const primary = (comma < 0 ? node.nodes : node.nodes.slice(0, comma)).filter(
+    (item) => item.type !== 'space' && item.type !== 'comment',
+  );
+  const reference =
+    primary.length === 1 && primary[0]?.type === 'word' ? primary[0].value : undefined;
+  return reference !== undefined && /^--[-_a-zA-Z0-9\u0080-\uFFFF]+$/.test(reference)
+    ? reference
+    : undefined;
+}
+
 /** Resolve var() reachability without flattening unused fallbacks into sibling references. */
 export function resolveTierReferences(
   value: string,
@@ -37,11 +53,11 @@ export function resolveTierReferences(
       let found = false;
       valueParser(current.value).walk((node) => {
         if (node.type !== 'function' || node.value.toLowerCase() !== 'var') return;
-        const reference = node.nodes.find((item) => item.type === 'word');
-        if (!reference || tierName.test(reference.value)) return;
-        const dependency = lookup(reference.value, current.level);
+        const reference = variableReference(node);
+        if (!reference || tierName.test(reference)) return;
+        const dependency = lookup(reference, current.level);
         if (!dependency) return;
-        const key = `${dependency.level}:${reference.value}`;
+        const key = `${dependency.level}:${reference}`;
         if (key === target) found = true;
         else if (!visited.has(key)) {
           visited.add(key);
@@ -89,11 +105,8 @@ export function resolveTierReferences(
         continue;
       }
       const comma = node.nodes.findIndex((item) => item.type === 'div' && item.value === ',');
-      const primary = (comma < 0 ? node.nodes : node.nodes.slice(0, comma)).filter(
-        (item) => item.type !== 'space' && item.type !== 'comment',
-      );
-      if (primary.length !== 1 || primary[0]?.type !== 'word') return undefined;
-      const reference = primary[0].value;
+      const reference = variableReference(node);
+      if (reference === undefined) return undefined;
       const variable = lookup(reference, level);
       const invalid = variable?.value.trim().toLowerCase() === 'initial';
       let resolved: TierReference[] | undefined;

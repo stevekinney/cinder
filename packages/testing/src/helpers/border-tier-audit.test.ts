@@ -750,4 +750,55 @@ describe('opacity paint shorthand precedence', () => {
     ];
     expect(opacityCompoundedTierDeclarations(declarations, 0.6)).toEqual([declarations[0]!]);
   });
+  test('non-border uses share the winning background paint slot in either order', () => {
+    expect(
+      tierUses([
+        declaration('background', 'var(--cinder-border-muted)'),
+        declaration('background-color', 'red'),
+      ]),
+    ).toEqual([]);
+    expect(
+      tierUses([
+        declaration('background-color', 'var(--cinder-border-muted)'),
+        declaration('background', 'red'),
+      ]),
+    ).toEqual([]);
+    const winning = declaration('background', 'var(--paint)', true);
+    expect(
+      tierUses([
+        declaration('--paint', 'var(--cinder-border-strong)'),
+        winning,
+        declaration('background-color', 'red'),
+      ]),
+    ).toEqual([
+      {
+        property: 'background',
+        value: winning.value,
+        isMix: false,
+        viaAlias: '--paint',
+        resolvedTierReference: 'var(--cinder-border-strong)',
+      },
+    ]);
+  });
+  test('empty CDP-expanded longhands do not override an authored shorthand', () => {
+    const declarations = flattenMatchedStyles({
+      matchedCSSRules: [
+        {
+          rule: {
+            style: {
+              cssProperties: [
+                { name: 'background', value: 'var(--cinder-border-muted)' },
+                { name: 'background-color', value: '' },
+                { name: '--empty', value: '' },
+              ],
+            },
+          },
+        },
+      ],
+    });
+    expect(declarations.map(({ property }) => property)).toEqual(['background', '--empty']);
+    expect(tierUses(declarations)).toEqual([
+      { property: 'background', value: 'var(--cinder-border-muted)', isMix: false },
+    ]);
+  });
 });
