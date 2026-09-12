@@ -610,8 +610,39 @@ export async function pumpChatRun(
 
 				for (const toolCall of event.toolCalls) {
 					const result = resultsByCallId.get(toolCall.id);
-					if (!result) continue;
-					writer.write({ type: 'tool_result', ...toChatToolResult(result) });
+					if (result) {
+						writer.write({ type: 'tool_result', ...toChatToolResult(result) });
+						continue;
+					}
+
+					// A CALL WITH NO RESULT STILL GETS ONE, and this used to be a
+					// bare `continue`.
+					//
+					// The client renders a pending tool row from the `tool_call`
+					// frame above and settles it on a result, and the session
+					// controller treats a call without one as unresolved — so
+					// skipping here left that row pending until another turn or a
+					// reload cleared it. There was no frame saying what happened,
+					// because from the wire's point of view nothing had.
+					//
+					// A step reaches this state whenever a `beforeToolExecution`
+					// hook filters a call out: Operative seals it in the
+					// CONVERSATION, so a later replay is intact, but dispatches no
+					// event. The server-owned family's approval gate is the first
+					// caller here to do that deliberately, and a gate whose "no" is
+					// invisible is worse than no gate.
+					//
+					// Reported as an ERROR outcome rather than a success carrying a
+					// refusal, because the tool did not run. The wording stays
+					// generic on purpose: this is the pump, which knows a result is
+					// missing but not why, and a message naming approval would be
+					// wrong for every other cause.
+					writer.write({
+						type: 'tool_result',
+						callId: toolCall.id,
+						outcome: 'error',
+						content: 'This call did not run, and reported no result.'
+					});
 				}
 			}
 		}

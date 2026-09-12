@@ -70,10 +70,10 @@ echo "$ID"
 }
 ```
 
-Ask about recovery before anything has run. **Observed:** the benign answer, which is the truth for a session that has never had a run.
+Ask about recovery before anything has run. **A POST, not a GET** — asking reconciles a stranded run, so the question is not safely repeatable and the verb has to say so. **Observed:** the benign answer, which is the truth for a session that has never had a run.
 
 ```sh
-curl -s http://localhost:4791/api/server-owned/conversations/$ID/recovery
+curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recovery
 ```
 
 ```json
@@ -120,7 +120,7 @@ curl -s http://localhost:4791/api/server-owned/conversations/$ID
 Ask about recovery. **Observed:** the orphan classification, with a client-safe reason. The engine's own words go to the server log rather than to the browser — a resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The `runId` crosses, because it is this lab's own identifier and it is what makes two orphaned runs distinguishable.
 
 ```sh
-curl -s http://localhost:4791/api/server-owned/conversations/$ID/recovery
+curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recovery
 ```
 
 ```json

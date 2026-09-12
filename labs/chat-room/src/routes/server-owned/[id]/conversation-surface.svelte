@@ -404,8 +404,28 @@
 		gap: 0.5rem;
 	}
 
+	/*
+		COLLAPSED, NOT HIDDEN, while there is no question.
+
+		`display: none` was the first version of this and it defeats the entire
+		point of mounting the region early: a hidden node is absent from the
+		accessibility tree, so the browser has not registered the live region it
+		is about to inject text into — which is the same failure
+		`error-live-regions.e2e.ts` exists to prevent, reintroduced by a
+		stylesheet rather than by an `{#if}`.
+
+		Clipping keeps it in the tree at zero visual cost. The border and padding
+		go with it, so an empty region leaves no box behind.
+	*/
 	.approval-question:empty {
-		display: none;
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
 	}
 
 	.approval-question {

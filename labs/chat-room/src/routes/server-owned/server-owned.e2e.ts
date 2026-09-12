@@ -441,10 +441,16 @@ test('a person denying the note drops the call without failing the run', async (
 	});
 
 	const body = await (await turn).text();
-	// The model still PROPOSED the call, so its frame is on the wire; what is
-	// absent is a settled result, because the hook filtered the call out.
+	// The model PROPOSED the call, and the denial is REPORTED rather than left
+	// as an absence. This assertion used to pin `not.toContain('tool.settled')`,
+	// which described the defect instead of the contract: Operative seals a
+	// filtered call in the conversation but dispatches no event, so the client's
+	// pending tool row stayed pending until another turn or a reload cleared it.
 	expect(body).toContain('"type":"tool_call"');
-	expect(body).not.toContain('"type":"tool.settled"');
+	expect(body).toContain('"type":"tool_result"');
+	expect(body).toContain('"outcome":"error"');
+	expect(body).toContain('did not run');
+
 	// And the run COMPLETED. `ctx.elicit` returns `null` rather than throwing, so
 	// a denial is the hook's decision and not a terminal — which is the
 	// difference from `ElicitationDeniedError`, the shape a denial takes when a
@@ -595,4 +601,46 @@ test('the transcript survives a short viewport instead of collapsing to nothing'
 	// transcript with a floor still fails the user if the page cannot scroll to
 	// what sits below it.
 	await expect(page.getByRole('textbox')).toBeVisible();
+});
+
+test('a denied note leaves no tool row pending in the browser', async ({ page }) => {
+	// The BROWSER half of the denial. The endpoint spec above reads the wire;
+	// this reads what a person is left looking at, which is where the defect
+	// actually showed: the client renders a pending row from `tool_call` and
+	// settles it on a result, so a denial that produced no result left that row
+	// pending until another turn or a reload cleared it.
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Browser denial');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const marker = newFixtureMarker();
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval', marker));
+	await composer.press('Enter');
+
+	await expect(page.locator('[data-testid="approval-question"]')).toContainText('Save this note?');
+	await page.locator('[data-testid="approval-deny"]').click();
+
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
+
+	// SETTLED, and settled as a refusal. The row reads `remember_note Failed`
+	// rather than staying pending — which is the whole finding: the client
+	// renders a pending row from the `tool_call` frame and resolves it on a
+	// result, and a denial used to produce no result at all.
+	//
+	// `Failed` is the rendered state; the message itself sits inside the row's
+	// Result disclosure, so asserting the status is asserting what a reader
+	// actually sees without opening anything.
+	const chat = page.locator('[data-testid="server-owned-chat"]');
+	await expect(chat).toContainText('remember_note');
+	await expect(chat).toContainText('Failed');
+
+	// The turn itself did not fail — a denial is a decision, not an error.
+	await expect(page.locator('[data-testid="server-owned-turn-failure"]')).toBeEmpty();
 });

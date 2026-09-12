@@ -261,6 +261,12 @@ function createElicitationGate(
 			}
 		}
 
+		// The DENIAL's own frame is not written here, and an earlier attempt to
+		// write it here is why: a hook runs before the step's `tool_call` frames
+		// reach the wire, so the result arrived describing a call the client had
+		// not seen yet and was dropped. `pumpChatRun` settles any call a step
+		// leaves without a result, in the same loop that writes the calls — the
+		// one place where the ordering is right by construction.
 		return context.toolCalls.filter((call) => !denied.has(call.id));
 	};
 
