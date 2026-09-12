@@ -170,31 +170,6 @@ nothing leaves the count unchanged and the callback latched, so it does not spin
 Both callbacks are also evaluated when the item count changes, not only on scroll —
 an append can bring the end into range without the reader moving at all.
 
-## Scrolling the page instead of a box
-
-By default the list owns a scroll container. Set `windowScroll` when the list _is_
-the page — a feed, a search-results view — and it becomes a plain block instead: the
-document does the scrolling, `height` is ignored, and the viewport is measured from
-the window.
-
-What the component tracks changes with it. Rather than reading an offset off an
-element it no longer owns, it derives how far the reader has travelled from where
-the list's box currently sits relative to the viewport, and windows against the
-_overlap_ between that box and the viewport rather than the whole viewport — a list
-beginning halfway down the page occupies only half of it, and windowing against the
-full height would mount rows nowhere near visible.
-
-`stickToBottom` and `reverse` are ignored in this mode. Both pin a scroll position,
-and the component no longer owns one.
-
-```svelte
-<VirtualList items={entries} itemHeight={40} windowScroll aria-label="Feed">
-  {#snippet row(entry)}
-    <div>{entry.label}</div>
-  {/snippet}
-</VirtualList>
-```
-
 ## Remembering the scroll position
 
 `scrollRestoration` writes the reader's position to `sessionStorage` and restores it

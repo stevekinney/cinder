@@ -877,3 +877,43 @@ describe('computeScrollToIndexOffset — currentLeadingInset', () => {
     ).toBe(1_020);
   });
 });
+
+describe('computeScrollToIndexOffset — targetIsStuckAtLeadingEdge', () => {
+  const locator: VirtualItemLocator = { getStart: (index) => index * 20, getSize: () => 20 };
+
+  function offsetFor(stuck: boolean): number {
+    return computeScrollToIndexOffset({
+      index: 10,
+      itemCount: 100,
+      locator,
+      totalSize: 2_000,
+      viewportSize: 200,
+      // Well past row 10's own start of 200: it is held at the edge, not in place.
+      currentScrollOffset: 1_000,
+      align: 'auto',
+      targetIsStuckAtLeadingEdge: stuck,
+    });
+  }
+
+  test('holds still for the header the reader is already looking at', () => {
+    // Stuck at the edge is as visible as a row gets. Its logical start is above the
+    // scroll offset — that is what being stuck means — so the ordinary comparison
+    // reads it as offscreen and scrolls all the way back to its section.
+    expect(offsetFor(true)).toBe(1_000);
+    expect(offsetFor(false)).toBe(200);
+  });
+
+  test('is off by default, so an ordinary row is unaffected', () => {
+    expect(
+      computeScrollToIndexOffset({
+        index: 10,
+        itemCount: 100,
+        locator,
+        totalSize: 2_000,
+        viewportSize: 200,
+        currentScrollOffset: 1_000,
+        align: 'auto',
+      }),
+    ).toBe(200);
+  });
+});

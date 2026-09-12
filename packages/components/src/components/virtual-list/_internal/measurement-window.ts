@@ -200,6 +200,15 @@ export function computeScrollToIndexOffset(options: {
    * Defaults to `leadingInset`, which is right whenever both are the same header.
    */
   currentLeadingInset?: number;
+  /**
+   * Whether the target row is the sticky header currently held at the leading edge.
+   *
+   * It is fully visible there, but its logical `start` is somewhere above the scroll
+   * offset — that is what being stuck means — so the ordinary comparison reads it as
+   * overflowing above and `align: 'auto'` scrolls all the way back to its section, on
+   * a row the reader is already looking at.
+   */
+  targetIsStuckAtLeadingEdge?: boolean;
 }): number {
   // An empty list has no index to resolve, and clamping would hand the locator -1
   // rounded up to 0 — making this helper depend on every caller's locator tolerating
@@ -233,6 +242,11 @@ export function computeScrollToIndexOffset(options: {
       break;
     case 'auto':
     default: {
+      // Stuck at the edge is as visible as a row gets, whatever its offset says.
+      if (options.targetIsStuckAtLeadingEdge) {
+        target = options.currentScrollOffset;
+        break;
+      }
       // The top of what the reader can see, not the top of the scroll container: a row
       // behind the sticky header is as good as offscreen. Measured with the header
       // covering the edge NOW, since that is what decides whether the row is visible;

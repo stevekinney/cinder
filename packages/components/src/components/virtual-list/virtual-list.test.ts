@@ -3085,7 +3085,7 @@ describe('VirtualList — adaptive overscan and settling under row controls', ()
     expect(source).toContain('resolveAdaptiveItemSize({');
     // Measured rows only — the offsets total would let the untouched estimates
     // dominate, which in a long list is the estimate again in all but name.
-    expect(source).toContain('measuredTotalSize: measuredRowTotals.total');
+    expect(source).toContain('measuredTotalSize: measurementStore.measuredTotalSize');
   });
 
   test('leaves a settle pass running when a key comes from a control inside a row', async () => {

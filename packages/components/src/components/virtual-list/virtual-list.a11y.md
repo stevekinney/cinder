@@ -45,6 +45,20 @@ It also keeps its place in index order among the rendered rows, because reading 
 
 `scrollRestoration` moves the scroll position on mount. It does not move focus, so a keyboard user's focus point is unaffected by a restore.
 
+## Review outcome
+
+Reviewed against Chromium on 2026-09-12, for the sticky keyboard model this component introduces. What was checked and what it showed:
+
+- **The model itself holds in real CSS.** `position: sticky` does hold the section header at the container's leading edge, at its own height, which is the assumption every keyboard offset here is built on. This is not checkable in the unit suite — happy-dom computes no layout and no cascade, so the header never actually pins there and every arrow offset would have been a header's height out with the whole suite green.
+- **Destinations clear the header.** Arrow and Page destinations land immediately below the pinned header rather than underneath it, verified by measuring the target row's position against the container rather than by trusting the scroll offset.
+- **Both directions move at a section boundary.** The offset a step onto a section lands on is where the header is at once the first visible row and the leading-edge occupant; neither ArrowDown nor ArrowUp stalls there.
+- **Paging exposes every row.** PageDown advances by the rows the header leaves visible, so the row beneath the header is not skipped between one page and the next.
+- **No axe violations** across the sweep covering this component.
+
+These are enforced as browser tests in `packages/testing/tests/virtual-list.playwright.ts`, so the outcome is re-checked on every change rather than recorded once.
+
+Two limits of this review, stated rather than implied. It covers focus management and the keyboard matrix; it does **not** include a screen-reader pass, so how the pinned header is announced as it crosses the window boundary is reasoned from the DOM (one instance, not `aria-hidden`, in index order) rather than observed. And `horizontal` combined with `stickyItems` has no example to render, so the keyboard model is verified on the block axis only.
+
 ## Verification
 
 - Render the grouped `sticky-headers` example and navigate with Arrow, Page, Home, and End. Confirm the pinned heading tracks the section and that focus stays on the container.

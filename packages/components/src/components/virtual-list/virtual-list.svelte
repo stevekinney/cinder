@@ -259,31 +259,23 @@
   );
 
   /**
-   * The measured rows' own total and count, which is what the adaptive ruler averages.
+   * See `resolveAdaptiveItemSize`: the estimate is the wrong ruler once rows are
+   * measured.
    *
-   * Recomputed only when a measurement actually changes, since `.sizes` touches the
-   * store's version counter and nothing else here reads it.
+   * Keyed on the store's `version` and reading its running totals, rather than summing
+   * the cache here. The cache keeps every row the reader has visited, so re-summing it
+   * on each measurement would make scrolling a long list cost O(n²) overall — on the
+   * fast-scroll path this feature exists to protect.
    */
-  const measuredRowTotals = $derived.by(() => {
-    if (!dynamicSize) return { total: 0, count: 0 };
-    let total = 0;
-    let count = 0;
-    for (const size of measurementStore.sizes.values()) {
-      total += size;
-      count += 1;
-    }
-    return { total, count };
-  });
-
-  /** See `resolveAdaptiveItemSize`: the estimate is the wrong ruler once rows are measured. */
-  const averageRowSize = $derived(
-    resolveAdaptiveItemSize({
+  const averageRowSize = $derived.by(() => {
+    void measurementStore.version;
+    return resolveAdaptiveItemSize({
       dynamicSize,
-      measuredTotalSize: measuredRowTotals.total,
-      measuredCount: measuredRowTotals.count,
+      measuredTotalSize: measurementStore.measuredTotalSize,
+      measuredCount: measurementStore.measuredCount,
       estimateSize: resolvedItemHeight,
-    }),
-  );
+    });
+  });
 
   /**
    * The overscan actually applied. `resolvedOverscan` is the floor: adaptation only
@@ -1610,6 +1602,11 @@
    * oscillates between the header's start and the row's, and the attempt cap decides
    * where the reader ends up.
    */
+  /** The index `computeScrollToIndexOffset` will actually resolve, clamped the same way. */
+  function clampedScrollIndex(index: number): number {
+    return Math.max(0, Math.min(items.length - 1, Math.floor(index)));
+  }
+
   function resolveLeadingInset(index: number): number {
     if (stickyIndexes.length === 0 || items.length === 0) return 0;
     const clampedIndex = Math.max(0, Math.min(items.length - 1, Math.floor(index)));
@@ -1663,6 +1660,10 @@
         // whether the target is already in view. A different header from the one above
         // whenever the target is in another section.
         currentLeadingInset: stickyObstructionSize,
+        // Asking for the header the reader is already looking at. Its logical start is
+        // above the scroll offset, so without this `align: 'auto'` reads it as
+        // offscreen and jumps back to the top of its section.
+        targetIsStuckAtLeadingEdge: clampedScrollIndex(index) === activeStickyIndex,
       });
 
       writeScrollOffset(element, target, behavior);
@@ -1696,6 +1697,10 @@
         // whether the target is already in view. A different header from the one above
         // whenever the target is in another section.
         currentLeadingInset: stickyObstructionSize,
+        // Asking for the header the reader is already looking at. Its logical start is
+        // above the scroll offset, so without this `align: 'auto'` reads it as
+        // offscreen and jumps back to the top of its section.
+        targetIsStuckAtLeadingEdge: clampedScrollIndex(index) === activeStickyIndex,
       });
       // Compared against the element, not the state, for the same reason the target
       // is computed from it: the state lags a smooth or externally-driven scroll,
