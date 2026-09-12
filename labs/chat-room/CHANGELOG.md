@@ -1,5 +1,15 @@
 # @cinder/chat-room-lab
 
+## 0.0.5
+
+### Patch Changes
+
+- Updated dependencies [[`4ae5ce8`](https://github.com/stevekinney/cinder/commit/4ae5ce8151509d93bc3ad2f0cc58ea1ff6e542e6), [`9343fcd`](https://github.com/stevekinney/cinder/commit/9343fcd794cc649122e29d1f72e6562279d85905), [`dae3c6e`](https://github.com/stevekinney/cinder/commit/dae3c6e7b095e81e9e9a5f94f7147aabfcfc4109), [`8fee818`](https://github.com/stevekinney/cinder/commit/8fee81816b35ce98887b11d93c28bbeccbc1f4ee), [`398237e`](https://github.com/stevekinney/cinder/commit/398237ed3f3067f4ee2fd0e5123889b28281b2ce), [`ed0dae6`](https://github.com/stevekinney/cinder/commit/ed0dae663219ee7e19bce957a6609c05ac55103d), [`96166b5`](https://github.com/stevekinney/cinder/commit/96166b57671722bce2ccc4b0aac738e2077fb1db), [`78195ad`](https://github.com/stevekinney/cinder/commit/78195add17276e5c6041f7cb30e255bbe1195069), [`a9f69c8`](https://github.com/stevekinney/cinder/commit/a9f69c87cadca79fcd2d5febbd29a53456256802), [`2bfdd13`](https://github.com/stevekinney/cinder/commit/2bfdd13893dbddeb62cc9f0e044363c338e75a70), [`90b421f`](https://github.com/stevekinney/cinder/commit/90b421f4fecbf824cd972fdb23aef125ce887ba9), [`be234cb`](https://github.com/stevekinney/cinder/commit/be234cb68d0ee16dd67f0774f4aec9a608ecc594), [`2a67495`](https://github.com/stevekinney/cinder/commit/2a674952360a5d1d2b71cce83566e39dc5003289), [`b86a1c9`](https://github.com/stevekinney/cinder/commit/b86a1c97d384b4657aefb85705038696bd3ee314), [`0b7c0f2`](https://github.com/stevekinney/cinder/commit/0b7c0f22252c2d317aa248621cddff782573d890), [`2a5991f`](https://github.com/stevekinney/cinder/commit/2a5991fded8c9730b6533bb0c1b87bfc1807b77b), [`67fd167`](https://github.com/stevekinney/cinder/commit/67fd167fac69e6b1fdd3fa0a118c1b00189b301a), [`86ecf00`](https://github.com/stevekinney/cinder/commit/86ecf0050d9f07bf2873b7e453d072b88334b474), [`c7e34f0`](https://github.com/stevekinney/cinder/commit/c7e34f0c398e5cd6483fa803c61124740886f0a3), [`ff39cb2`](https://github.com/stevekinney/cinder/commit/ff39cb22181c19714703169af7870df68c3ebdec), [`80221ef`](https://github.com/stevekinney/cinder/commit/80221ef0088dbcdb82d58b5d04c7afd92c2b3032), [`93c7d03`](https://github.com/stevekinney/cinder/commit/93c7d0382b6325128e4970886a33abbb5ef7fd20), [`36ce7f4`](https://github.com/stevekinney/cinder/commit/36ce7f4368a498789e3402bc89a5596e7e33e82a)]:
+  - @lostgradient/chat@0.14.0
+  - @lostgradient/markdown@0.5.0
+  - @lostgradient/cinder@0.26.0
+  - @lostgradient/editor@0.14.0
+
 ## 0.0.4
 
 ### Patch Changes
