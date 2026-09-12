@@ -56,20 +56,28 @@ async function openTouchPage(
     isMobile: true,
     viewport,
   });
-  await context.addInitScript(
-    ([key, value]) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [THEME_STORAGE_KEY, theme] as const,
-  );
-  const page = await context.newPage();
-  await page.goto(route, { waitUntil: 'load' });
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
-  return { page, dispose: () => context.close() };
+  // A failure below (bad route, load regression) would otherwise leak this
+  // context: nothing else here closes a context whose owning `openTouchPage`
+  // call never returned. Close it on any failure and rethrow.
+  try {
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, theme] as const,
+    );
+    const page = await context.newPage();
+    await page.goto(route, { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    return { page, dispose: () => context.close() };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 test.describe('chat action buttons', () => {

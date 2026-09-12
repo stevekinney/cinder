@@ -52,11 +52,20 @@
     touch-action: none;
   }
 
+  /*
+   * CIN-603: this line is the handle's only visible affordance, so it needs
+   * to clear the 3:1 functional floor on its own. It used to sit at
+   * `border.strong` (58% alpha) diluted further by `opacity: 0.5` on this
+   * rule — a resting effective alpha of ~29%, easy to miss because the tier
+   * lives on the PARENT (`.handle`'s `color`) and the opacity on this CHILD.
+   * Dropping the opacity leaves the line at `border.strong`'s full,
+   * undiluted alpha, which the seam audit's per-tier contrast table already
+   * shows clears 3:1 in both arms.
+   */
   .cinder-resizable-panels__handle-line {
     display: block;
     border-radius: var(--cinder-radius-full);
     background: currentColor;
-    opacity: 0.5;
   }
 
   .cinder-resizable-panels__handle[data-cinder-orientation='horizontal']
@@ -78,12 +87,6 @@
     inline-size: 44px;
     block-size: 44px;
     transform: translate(-50%, -50%);
-  }
-
-  @media (hover: hover) {
-    .cinder-resizable-panels__handle:hover .cinder-resizable-panels__handle-line {
-      opacity: 0.9;
-    }
   }
 
   .cinder-resizable-panels__handle:focus-visible {
