@@ -274,8 +274,8 @@ test('a forged approvalToken is rejected by the real resume route', async ({ pag
 // ROADMAP HS-1 and the second half of HS-2, against `streaming-fixture.ts`.
 //
 // Nothing below mocks the network. The app talks to the real `/api/chat`, which
-// talks to the real Anthropic SDK, which talks to the fixture because the
-// preview server's `ANTHROPIC_BASE_URL` points there. That is the whole reason
+// drives a real Operative run, whose Anthropic provider talks to the fixture
+// because the preview server's `ANTHROPIC_BASE_URL` points there. That is the whole reason
 // this block exists: every other test on this page replaces the server, so none
 // of them can observe a body arriving in pieces, and none of them can obtain an
 // `approvalToken` the running server would actually accept (the signing secret
@@ -394,7 +394,7 @@ test.describe('production streaming path', () => {
 		// Verification alone would leave the transcript pending: the tool has to
 		// have actually run on resume, the client has to have swapped the result
 		// in, and the follow-up turn has to have fired.
-		await expect(chat.getByRole('region', { name: 'Called 1 tools, 1 complete' })).toBeVisible();
+		await expect(chat.getByRole('region', { name: 'Called 1 tool, 1 complete' })).toBeVisible();
 		await expect(page.getByRole('log', { name: 'Messages' })).toContainText(
 			APPROVAL_FOLLOW_UP_TEXT
 		);

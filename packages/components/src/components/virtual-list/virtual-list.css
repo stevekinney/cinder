@@ -105,4 +105,77 @@
   .cinder-virtual-list__row {
     overflow: hidden;
   }
+
+  /*
+   * The active sticky row once its own index has left the window.
+   *
+   * Absolute, so it does not displace the rows the window is laying out in flow —
+   * that displacement is why it cannot simply stay in place — and offset inline to
+   * track the viewport's leading edge, which is what `position: sticky` would have
+   * done for it had it still had a flow box nearby.
+   *
+   * It stays in the keyed `{#each}` rather than moving to an element of its own:
+   * Svelte cannot carry identity across that boundary, so a row with local state or
+   * a focused control would be destroyed and rebuilt every time it crossed.
+   *
+   * Both attributes are in the selector on purpose. A pinned row is always also the
+   * active one, so the sticky rule below matches it too — and carrying two attributes
+   * to that rule's one settles the cascade on specificity rather than on which is
+   * written first, which is how `position: sticky` quietly took this back once.
+   *
+   * It stays above the rows sliding under it by the `z-index: 1` the active rule
+   * supplies — a pinned row is always also the active one — rather than by DOM order.
+   * That combination is what the primitive-composition record describes.
+   */
+  .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
+    position: absolute;
+    inset-inline: 0;
+  }
+
+  /*
+   * Only the start edge, deliberately not `inset-block: 0`. Pinning both edges sizes
+   * the row to the window's block-size — which, now that the row is out of flow, is
+   * computed from the OTHER rows. A sticky row taller than its neighbours was squashed
+   * to their height and its content clipped, at the moment it crossed the window
+   * boundary and became pinned. Anchoring one edge leaves its own height alone.
+   */
+  .cinder-virtual-list[data-cinder-orientation='horizontal']
+    .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
+    inset-inline: auto;
+    inset-block-start: 0;
+  }
+
+  /*
+   * Only the ACTIVE row is held at the leading edge, and only it is raised.
+   *
+   * `z-index` was on every sticky row, on the reasoning that it is inert unless the
+   * element is positioned. That is true in block layout and false here: under
+   * `horizontal` the window is a flex container, and `z-index` applies to flex items
+   * whether or not they are positioned. An inactive header approaching the edge
+   * therefore entered the same stacking level as the held one and, being later in DOM
+   * order, painted straight over it — before it had become active.
+   *
+   * The pinned row is covered by this rule too, since it is always also the active
+   * one, and it is the `z-index` here that keeps it above the rows sliding under it
+   * rather than DOM order — which is what leaves the element free to sit in index
+   * order for assistive technology. Sticking every sticky row in
+   * the window put each header the reader had already passed at the same inset,
+   * stacked on top of one another — and a taller earlier header protruded below the
+   * current one, with anything focusable inside it still reachable while obscured.
+   * The overscanned window can hold several headers at once, so this is not rare.
+   *
+   * Offsets are relative to the scroll container, which is the element that scrolls,
+   * so the inset is 0 on the axis being scrolled.
+   */
+  .cinder-virtual-list__row[data-cinder-sticky-active='true'] {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+  }
+
+  .cinder-virtual-list[data-cinder-orientation='horizontal']
+    .cinder-virtual-list__row[data-cinder-sticky-active='true'] {
+    inset-block-start: auto;
+    inset-inline-start: 0;
+  }
 }

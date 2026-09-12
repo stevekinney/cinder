@@ -32,6 +32,17 @@ describe('ChatStatusAnnouncer', () => {
     expect(status?.textContent).toContain('5 messages in conversation');
   });
 
+  test('the status region says "1 message" for a single message', () => {
+    // A live-region sibling reads this out, so "1 messages in conversation"
+    // was audible rather than merely untidy.
+    const { container } = render(ChatStatusAnnouncer, {
+      props: { statusId: 'chat-status', messageCount: 1, announcerMessage: '' },
+    });
+    const status = container.querySelector('#chat-status');
+    expect(status?.textContent).toContain('1 message in conversation');
+    expect(status?.textContent).not.toContain('1 messages');
+  });
+
   test('the polite region carries the announcer message', () => {
     const { container } = render(ChatStatusAnnouncer, {
       props: {

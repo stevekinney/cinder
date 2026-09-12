@@ -22,7 +22,7 @@
     },
     "labs/chat-room": {
       "name": "@cinder/chat-room-lab",
-      "version": "0.0.4",
+      "version": "0.0.5",
       "dependencies": {
         "@anthropic-ai/sdk": "^0.116.0",
         "@lasercat/homogenaize": "^1.2.41",
@@ -30,7 +30,8 @@
         "@lostgradient/cinder": "workspace:*",
         "@lostgradient/editor": "workspace:*",
         "@lostgradient/markdown": "workspace:*",
-        "@lostgradient/operative": "0.10.0",
+        "@lostgradient/operative": "0.11.0",
+        "@lostgradient/weft": "^0.23.1",
         "@milkdown/ctx": "^7.17.3",
         "@milkdown/kit": "^7.17.3",
         "@milkdown/prose": "^7.17.3",
@@ -66,7 +67,7 @@
     },
     "packages/chat": {
       "name": "@lostgradient/chat",
-      "version": "0.13.1",
+      "version": "0.14.0",
       "dependencies": {
         "conversationalist": "^1.1.0",
         "decode-named-character-reference": "^1.3.0",
@@ -90,13 +91,13 @@
       },
       "peerDependencies": {
         "@lostgradient/cinder": "^0.26.0",
-        "@lostgradient/markdown": "^0.4.0",
+        "@lostgradient/markdown": "^0.5.0",
         "svelte": ">=5.56.0 <6",
       },
     },
     "packages/components": {
       "name": "@lostgradient/cinder",
-      "version": "0.25.1",
+      "version": "0.26.0",
       "bin": {
         "cinder": "./dist/cli/index.js",
       },
@@ -155,7 +156,7 @@
     },
     "packages/editor": {
       "name": "@lostgradient/editor",
-      "version": "0.13.0",
+      "version": "0.14.0",
       "dependencies": {
         "@floating-ui/dom": "1.7.6",
         "esm-env": "^1.2.0",
@@ -179,7 +180,7 @@
       },
       "peerDependencies": {
         "@lostgradient/cinder": "^0.26.0",
-        "@lostgradient/markdown": "^0.4.0",
+        "@lostgradient/markdown": "^0.5.0",
         "@milkdown/ctx": "^7.17.3",
         "@milkdown/kit": "^7.17.3",
         "@milkdown/prose": "^7.17.3",
@@ -192,7 +193,7 @@
     },
     "packages/markdown": {
       "name": "@lostgradient/markdown",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "dependencies": {
         "@shikijs/engine-oniguruma": "^3.21.0",
         "@shikijs/langs": "^3.21.0",
@@ -227,7 +228,7 @@
     },
     "packages/mcp": {
       "name": "@lostgradient/cinder-mcp",
-      "version": "0.1.15",
+      "version": "0.1.16",
       "bin": {
         "cinder-mcp": "./dist/bin.js",
       },
@@ -495,7 +496,7 @@
 
     "@lostgradient/markdown": ["@lostgradient/markdown@workspace:packages/markdown"],
 
-    "@lostgradient/operative": ["@lostgradient/operative@0.10.0", "", { "dependencies": { "@lostgradient/weft": "^0.23.1", "armorer": "^2.3.0", "conversationalist": "^1.1.0" }, "peerDependencies": { "@anthropic-ai/sdk": ">=0.50.0", "@google/genai": ">=2.19.0", "@opentelemetry/api": "^1.9.1", "openai": ">=4.0.0", "zod": "^4.4.3" }, "optionalPeers": ["@anthropic-ai/sdk", "@google/genai", "@opentelemetry/api", "openai"] }, "sha512-67guQvIT3TWMFvir4XonM05zGEV2DI2k7j7eTDBZVOfakf+MuPRAhsylZxZOIsCkxrFQ3YID136T/CpghoM7qw=="],
+    "@lostgradient/operative": ["@lostgradient/operative@0.11.0", "", { "dependencies": { "@lostgradient/weft": "^0.23.1", "armorer": "^2.4.0", "conversationalist": "^1.2.0" }, "peerDependencies": { "@anthropic-ai/sdk": ">=0.50.0", "@google/genai": ">=2.19.0", "@opentelemetry/api": "^1.9.1", "openai": ">=4.0.0", "zod": "^4.4.3" }, "optionalPeers": ["@anthropic-ai/sdk", "@google/genai", "@opentelemetry/api", "openai"] }, "sha512-5qk0byrjrnKXeXgNsdTCQVrhCsJJYtflKZJDHvqto2waX7wozrKKflcbxKyVoP8Jp0xBna02eBHYZIDO3hykdw=="],
 
     "@lostgradient/weft": ["@lostgradient/weft@0.23.1", "", { "dependencies": { "@msgpack/msgpack": "^3.1.3", "zod": "^4.3.6" }, "optionalDependencies": { "@valibot/to-json-schema": "^1.7.0" }, "peerDependencies": { "@libsql/client": "^0.17.2", "@lostgradient/weft-ui": "^0.1.0", "@neondatabase/serverless": "^1.1.0", "@opentelemetry/api": "^1.0.0", "better-sqlite3": "^12.8.0", "lmdb": "^3.5.2", "pg": "^8.11.0" }, "optionalPeers": ["@libsql/client", "@lostgradient/weft-ui", "@neondatabase/serverless", "@opentelemetry/api", "better-sqlite3", "lmdb", "pg"], "bin": { "weft": "dist/cli-main.js", "weft-mcp": "dist/mcp/cli.js" } }, "sha512-DDdAc30CEzk+RzFw79n5olewnvO62oQDKVxUk9qzhkDiCM1V+sa/ieaknLIiDMAusyB5Xe2zLYt/dzrlKd+6uQ=="],
 
