@@ -2989,4 +2989,58 @@ describe('CIN-602: a parsed value tree, not a function-name allowlist', () => {
       );
     }
   });
+
+  describe('an unclosed function node is never a complete color (fail-open regression)', () => {
+    // `postcss-value-parser` still produces a `function` node for a call
+    // missing its closing `)`, marked `unclosed: true`, with everything up to
+    // the end of the declaration swept in as that node's own arguments. A
+    // whole-string regex rejects a missing `)` outright; the parsed-tree
+    // walk has no equivalent unless it checks the flag explicitly at every
+    // acceptance path (the allowlist return, the `var()` return, and before
+    // recursing into a `light-dark()`/`color-mix()` argument) -- otherwise
+    // `oklch(50% 0.1 30` (or a `var()`/`color-mix()` with the same defect)
+    // reads as a syntactically fine function call and PASSES, even though the
+    // browser drops the declaration as invalid. This is a fail-open
+    // regression from the string-matching version this file replaces.
+
+    test('an unclosed color function is rejected, not accepted as a complete color', () => {
+      const recipe = 'oklch(50% 0.1 30';
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('an unclosed var() is rejected, not accepted as a bare (ambiguous) reference', () => {
+      const recipe = 'var(--cinder-polarity-ink';
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('an unclosed color-mix() is rejected even though its color argument is a complete, properly-closed function', () => {
+      // color-mix's own `)` is missing, but `oklch(50% 0.1 30)` inside it is
+      // syntactically whole -- the defect is only visible on the wrapping
+      // node, which is exactly what a name-and-argument-shape check (rather
+      // than an `unclosed` check) would miss.
+      const recipe = 'color-mix(in oklch, oklch(50% 0.1 30), transparent';
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+
+    test('a nested case: color-mix() is unclosed while wrapping a light-dark() of two complete colors, both of which close fine', () => {
+      // Confirmed via the parser directly: only the outer `color-mix()` node
+      // comes back `unclosed: true` here -- `light-dark()` and both `oklch()`
+      // calls it contains are each properly closed. Reaching this failure
+      // means the fix's guard fires on the outer node BEFORE
+      // `findBareInFunction` ever descends into checking the nested
+      // `light-dark()`/`oklch()` structure, rather than recursing in,
+      // finding two complete colors, and reporting the whole value as fine.
+      const recipe =
+        'color-mix(in oklch, light-dark(oklch(50% 0.1 30), oklch(0% 0 0)), transparent';
+      expect(() => serializeEntryValue(recipeEntry(recipe), new Map()), recipe).toThrow(
+        /bare component list/,
+      );
+    });
+  });
 });

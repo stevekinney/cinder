@@ -886,6 +886,18 @@ function findBareInFunction(
   node: Extract<ColorValueNode, { type: 'function' }>,
 ): ColorValueNode[] | undefined {
   const name = node.value.toLowerCase();
+  // `postcss-value-parser` still produces a function node for a call missing
+  // its closing `)`, marked `unclosed`, with everything up to the end of the
+  // declaration swept in as its arguments. The browser discards a declaration
+  // containing such a value as invalid CSS -- silently, the exact failure
+  // mode this gate exists to catch -- so an unclosed call is NEVER a complete
+  // color, regardless of which function it names or how deep it sits (a
+  // `var()` reference, an allowlisted color function, or one nested inside
+  // `light-dark()`/`color-mix()` all reach this same check). Checking this
+  // before every acceptance path below, rather than only the allowlist one,
+  // is what keeps `oklch(50% 0.1 30` from passing the way the old
+  // whole-string regex correctly rejected it.
+  if (node.unclosed) return [node];
   // `var()`'s FALLBACK sits in the same color position as the reference
   // itself, so a bare list there is the same defect one level down:
   // `var(--x, 0% 0 0)` is a silently dropped declaration whenever `--x` is
