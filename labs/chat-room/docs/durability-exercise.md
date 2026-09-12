@@ -13,7 +13,7 @@ The variant's storage is `MemoryStorage` unless told otherwise. With it, a resta
 > [!NOTE] Put it in `/tmp`, even though the checkout ignores it
 > `*.sqlite` and its WAL siblings are gitignored, so a database left inside the checkout will not be committed by accident. Keep it outside anyway: it is one experiment's scratch state, and a stale one sitting in the lab will quietly answer the next experiment's questions.
 
-## The one dependency this needs, and why it is not installed
+## The SQLite peer dependency, and why it is not installed
 
 `vite preview` and `vite dev` run under **Node, not Bun** — `bun run preview` resolves `vite` through a `#!/usr/bin/env node` shebang — so Weft's runtime-neutral SQLite entry point reaches its Node adapter, which needs the `better-sqlite3` peer.
 
@@ -34,6 +34,12 @@ The version is pinned because Weft `0.23.1` declares the peer as `better-sqlite3
 Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which includes the missing-peer error and points to this file for the install step. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
 
 ## The procedure
+
+The server-kill command uses `lsof` to identify the listening preview process. `lsof` is a host tool rather than a lab dependency, so verify it is installed before starting the procedure:
+
+```sh
+command -v lsof >/dev/null || { echo 'Install lsof before running this exercise.' >&2; exit 1; }
+```
 
 Three of these commands do not return: the fixture, the preview server, and the
 parked streaming request. Give each its own terminal, or background it as shown
@@ -176,23 +182,24 @@ durability: (empty)
 **After Check, before any run has happened**
 
 ```
-status:     Nothing is currently resumable. No run is in flight for this session.
-            Storage is on disk, so a run left in flight is recorded for the next process.
+status:     The last successful recovery check found nothing resumable. No run was in flight for
+            this session when that check ran. Storage is on disk, so a run left in
+            flight is recorded for the next process.
 durability: Storage: on disk.
 ```
 
-The storage sentence is inside the announcement, not only in the paragraph beside it. A screen reader hearing "nothing is currently resumable" without it would not learn whether this process could have observed a previous run at all.
+The storage sentence is inside the announcement, not only in the paragraph beside it. A screen reader hearing "nothing resumable" without it would not learn whether this process could have observed a previous run at all. The status text is point-in-time because the panel keeps the last successful recovery result on screen after the conversation changes.
 
 **After the restart, on load** — empty again, because the panel asks nothing until asked.
 
 **After the restart, first Check** — the disclosure has to be opened first; a reload closes it.
 
 ```
-status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
-            run's work is terminally gone. Storage is on disk, so a run left in flight
-            is recorded for the next process. Reported once. Operative reconciles a
-            stranded run to terminal as it reports the rejection, so asking again
-            answers "nothing to resume".
+status:     The last successful recovery check found an orphaned run. A re-attach was attempted
+            and every candidate rejected, so this run's work is terminally gone.
+            Storage is on disk, so a run left in flight is recorded for the next
+            process. Reported once. Operative reconciles a stranded run to terminal
+            as it reports the rejection, so asking again answers "nothing to resume".
 failures:   session-1-a72e39af-…:0 — Provider details are withheld.
 ```
 
@@ -201,10 +208,10 @@ The run identifier remains available in the browser and server log. Provider det
 **After the restart, second Check**
 
 ```
-status:     Nothing is currently resumable. The orphaned run reported earlier is already
-            reconciled; this is what a second check answers, not a claim that nothing
-            was lost. Storage is on disk, so a run left in flight is recorded for the
-            next process.
+status:     The last successful recovery check found nothing resumable. The orphaned run reported
+            earlier had already been reconciled when that check ran; this is not a
+            claim that nothing was lost. Storage is on disk, so a run left in flight is
+            recorded for the next process.
 failures:   (no list rendered)
 ```
 
@@ -217,9 +224,9 @@ Deliberately not "no run was in flight". One was, and its work was lost — sayi
 
 `/server-owned/<id>` carries a **Durable recovery** panel. It names the backing store, so the benign answer is not mistaken for a lost run, and it renders the three outcomes distinctly:
 
-- **nothing currently resumable** — and which of two things that means. Before any run: "No run is in flight for this session." After an orphan has been reported and reconciled: "The orphaned run reported earlier is already reconciled." The wording deliberately avoids "no run was in flight", which would be a false historical claim in exactly the two-check sequence above.
-- **recovered** — the step-level caveat, with the reason: nothing persisted the tokens that were in flight.
-- **orphaned** — the classification, the rejected run ids with a client-safe reason, and the note that the answer is reported once.
+- **nothing resumable at the last successful check** — and which of two things that means. Before any run: "No run was in flight for this session when that check ran." After an orphan has been reported and reconciled: "The orphaned run reported earlier had already been reconciled when that check ran." The wording deliberately avoids a live claim about the current turn and avoids "no run was in flight" as a false historical claim in exactly the two-check sequence above.
+- **recovered at the last successful check** — the step-level caveat, with the reason: nothing persisted the tokens that were in flight.
+- **orphaned at the last successful check** — the classification, the rejected run ids with a client-safe reason, and the note that the answer is reported once.
 
 Each of the three carries the backing store in the same sentence, so the outcome is never announced without the qualifier that gives it meaning.
 

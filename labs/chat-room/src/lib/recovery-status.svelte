@@ -154,38 +154,44 @@
 	A region that announces has to stay in the tree regardless of what the
 	reader has collapsed. The explanation and the control can hide; the answer
 	cannot.
-	-->
+-->
 <!--
-		THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
-		beside it. Review caught the split: the ordinary paragraph changed
-		silently while this region announced the reassuring half, so a screen
-		reader heard "idle, not lost" without learning that in-memory storage
-		could not have observed a previous process at all. The qualifier is what
-		makes the outcome mean anything.
+	THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
+	beside it. Review caught the split: the ordinary paragraph changed
+	silently while this region announced the reassuring half, so a screen
+	reader heard "idle, not lost" without learning that in-memory storage
+	could not have observed a previous process at all. The qualifier is what
+	makes the outcome mean anything.
 
-		The benign reading is deliberately NOT "no run was in flight". After an
-		orphan has been reported and reconciled, a run WAS in flight and its work
-		was lost — so that wording would make a false historical claim in exactly
-		the two-click scenario the exercise documents. "Nothing is currently
-		resumable" is true either way.
+	The benign reading is deliberately a SNAPSHOT. After this check renders, the
+	person can start a new turn while the panel keeps the old result on screen.
+	That retained text must describe when the check ran, not claim what is
+	running now.
 
-		The orphan note is here too, not in a separate conditional paragraph. The
-		note is the only place a persistence failure is surfaced, and a paragraph
-		that appears outside the live region is just text on the page — not a
-		reliable announcement.
-	-->
+	The orphan-history branch is likewise not "no run was in flight". One was,
+	and its work was lost — so that wording would make a false historical claim
+	in exactly the two-click scenario the exercise documents.
+
+	The orphan note is here too, not in a separate conditional paragraph. The
+	note is the only place a persistence failure is surfaced, and a paragraph
+	that appears outside the live region is just text on the page — not a
+	reliable announcement.
+-->
 <p class="status" role="status" data-testid="recovery-status">
 	{#if outcome?.kind === 'nothing-to-resume'}
-		Nothing is currently resumable. {seenOrphan
-			? 'The orphaned run reported earlier is already reconciled; this is what a second check answers, not a claim that nothing was lost.'
-			: 'No run is in flight for this session.'}
+		The last successful recovery check found nothing resumable. {seenOrphan
+			? 'The orphaned run reported earlier had already been reconciled when that check ran; this is not a claim that nothing was lost.'
+			: 'No run was in flight for this session when that check ran.'}
 		{durabilitySentence(outcome.durability)}
 	{:else if outcome?.kind === 'recovered'}
-		Re-attached to a run in flight. Progress is {outcome.progress}: {outcome.note}
+		The last successful recovery check re-attached to a run in flight. Progress was {outcome.progress}:
+		{outcome.note}
 		{durabilitySentence(outcome.durability)}
 	{:else if outcome?.kind === 'orphaned'}
-		Orphaned. A re-attach was attempted and every candidate rejected, so this run's work is
-		terminally gone. {durabilitySentence(outcome.durability)}
+		The last successful recovery check found an orphaned run. A re-attach was attempted and every
+		candidate rejected, so this run's work is terminally gone. {durabilitySentence(
+			outcome.durability
+		)}
 		<span data-testid="recovery-once">{outcome.note}</span>
 	{/if}
 </p>

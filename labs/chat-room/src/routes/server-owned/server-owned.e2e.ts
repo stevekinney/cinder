@@ -284,13 +284,31 @@ test('the detail route offers the recovery question and names its backing store'
 
 	// The benign branch, which is the honest answer under in-memory storage —
 	// and the ANNOUNCEMENT carries the storage, not just the paragraph beside
-	// it. A screen reader hearing only "nothing is currently resumable" would
-	// not learn that in-memory storage could not have observed a previous run
-	// even if one had existed.
-	await expect(status).toContainText('Nothing is currently resumable');
-	await expect(status).toContainText('No run is in flight');
+	// it. A screen reader hearing only "nothing resumable" would not learn that
+	// in-memory storage could not have observed a previous run even if one had
+	// existed.
+	await expect(status).toContainText('The last successful recovery check found nothing resumable');
+	await expect(status).toContainText('No run was in flight for this session when that check ran');
 	await expect(status).toContainText('Storage is in memory');
+	await expect(status).not.toContainText('No run is in flight');
 	await expect(durability).toContainText('CHAT_ROOM_SERVER_OWNED_DATABASE');
+
+	// RETAINED SNAPSHOT, not live turn state. Starting a turn parks the run on
+	// approval, but the recovery panel is still reporting the earlier check. The
+	// sentence must therefore stay point-in-time rather than visibly claiming no
+	// run is in flight right now.
+	const marker = newFixtureMarker();
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval', marker));
+	await composer.press('Enter');
+	await expect(page.locator('[data-testid="approval-question"]')).toContainText('Save this note?');
+	await expect(status).toContainText('The last successful recovery check found nothing resumable');
+	await expect(status).not.toContainText('No run is in flight');
+	await page.locator('[data-testid="approval-deny"]').click();
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
 
 	// The orphan branch's list and its once-only note belong to the orphan
 	// outcome alone. Asserting their ABSENCE here is what keeps the benign
@@ -783,6 +801,62 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 	await expect(alert).toContainText('could not reach the server');
 });
 
+test('keeps a recovered report as a point-in-time result while a later recovery check fails', async ({
+	page,
+	request
+}) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Recovery recovered snapshot') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+	await page.locator('summary', { hasText: 'Durable recovery' }).click({ force: true });
+
+	const status = page.locator('[data-testid="recovery-status"]');
+	const alert = page.locator('[data-testid="recovery-error"]');
+	await expect(status).toHaveAttribute('role', 'status');
+	await expect(status).toBeEmpty();
+	await expect(alert).toBeEmpty();
+
+	let requests = 0;
+	await page.route(`**/api/server-owned/conversations/${conversation.id}/recovery`, (route) => {
+		requests += 1;
+		if (requests === 1) {
+			return route.fulfill({
+				status: 200,
+				contentType: 'application/json',
+				body: JSON.stringify({
+					kind: 'recovered',
+					durability: 'on-disk',
+					progress: 'step-level',
+					note: 'Progress advances a step at a time.'
+				})
+			});
+		}
+		return route.fulfill({
+			status: 503,
+			contentType: 'application/json',
+			body: JSON.stringify({ error: 'The server is shutting down. Try again in a moment.' })
+		});
+	});
+
+	const check = page.locator('[data-testid="recovery-check"]');
+	await check.click();
+	await expect(status).toContainText(
+		'The last successful recovery check re-attached to a run in flight'
+	);
+	await expect(status).toContainText('Progress was step-level');
+	await expect(status).not.toContainText('Progress is');
+
+	await check.click();
+	await expect(alert).toContainText('shutting down');
+	await expect(status).toContainText(
+		'The last successful recovery check re-attached to a run in flight'
+	);
+	await expect(status).not.toContainText('Progress is');
+});
+
 test('keeps an orphan report while a later recovery check fails', async ({ page, request }) => {
 	const created = await request.post('/api/server-owned/conversations', {
 		data: { title: uniqueTitle('Recovery recheck') }
@@ -838,18 +912,20 @@ test('keeps an orphan report while a later recovery check fails', async ({ page,
 
 	const check = page.locator('[data-testid="recovery-check"]');
 	await check.click();
-	await expect(status).toContainText('Orphaned');
+	await expect(status).toContainText('The last successful recovery check found an orphaned run');
 	await expect(status).toContainText('The orphan diagnosis could not be saved for later checks.');
 	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
 
 	await check.click();
 	await secondRequest;
-	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(page.locator('[data-testid="recovery-status"]')).toContainText(
+		'The last successful recovery check found an orphaned run'
+	);
 	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
 
 	releaseSecond();
 	await expect(page.locator('[data-testid="recovery-error"]')).toContainText('shutting down');
-	await expect(status).toContainText('Orphaned');
+	await expect(status).toContainText('The last successful recovery check found an orphaned run');
 	await expect(status).toContainText('The orphan diagnosis could not be saved for later checks.');
 	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
 });

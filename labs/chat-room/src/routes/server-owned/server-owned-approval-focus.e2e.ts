@@ -19,7 +19,13 @@ import { fixtureMarker } from '../streaming-fixture';
 const uniqueTitle = (label: string): string =>
 	`${label} ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
-type PostOutcome = 'success' | 'conflict' | 'error' | 'network';
+type PostOutcome =
+	| 'success'
+	| 'conflict'
+	| 'error'
+	| 'network'
+	| 'completed-success'
+	| 'completed-error';
 
 function assertApprovedPost(route: Route, expectedCallId?: string): void {
 	const payload = route.request().postDataJSON() as {
@@ -67,7 +73,7 @@ test('answering keeps focus inside the chat', async ({ page }) => {
 		'false'
 	);
 
-	// NOT `<body>`. The named status target is where the consequence of the
+	// NOT `<body>`. The visible transcript is where the consequence of the
 	// decision is announced, so it is where focus belongs. It must remain a
 	// real, visible focus target after the approval subtree is removed.
 	const landed = page.getByRole('log', { name: 'Messages' });
@@ -195,6 +201,54 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 	let releasePost!: () => void;
 	let postReady = false;
 	let postOutcome: PostOutcome = 'success';
+	await page.evaluate(() => {
+		const nativeFetch = window.fetch.bind(window);
+		type PostGate = { mode: 'fetch' | 'body' | null; ready: boolean; release?: () => void };
+		const gate: PostGate = { mode: null, ready: false };
+		Object.assign(window, { __approvalPostGate: gate });
+		const hold = async (): Promise<void> => {
+			gate.ready = true;
+			await new Promise<void>((resolve) => {
+				gate.release = resolve;
+			});
+		};
+		Object.defineProperty(window, 'fetch', {
+			configurable: true,
+			writable: true,
+			value: async (input: RequestInfo | URL, init?: RequestInit) => {
+				const response = await nativeFetch(input, init);
+				const url = input instanceof Request ? input.url : String(input);
+				const method = init?.method ?? (input instanceof Request ? input.method : 'GET');
+				if (
+					gate.mode === null ||
+					method !== 'POST' ||
+					!url.includes('/api/server-owned/conversations/') ||
+					!url.endsWith('/elicitation')
+				)
+					return response;
+				// Consume the network body before the question changes: aborting the
+				// request can no longer cancel this already-completed response.
+				const body = await response.text();
+				const completed = new Response(body, {
+					status: response.status,
+					headers: response.headers
+				});
+				if (gate.mode === 'body') {
+					// Return headers now, so decide passes its first freshness check.
+					// Pause the body only when failureMessage actually reads it.
+					Object.defineProperty(completed, 'text', {
+						value: async () => {
+							await hold();
+							return body;
+						}
+					});
+				} else {
+					await hold();
+				}
+				return completed;
+			}
+		});
+	});
 	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
 		if (route.request().method() === 'GET') {
 			if (remoteState === 'removed') {
@@ -225,6 +279,18 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		}
 
 		assertApprovedPost(route);
+		if (postOutcome.startsWith('completed-')) {
+			await route.fulfill({
+				status: postOutcome === 'completed-error' ? 500 : 200,
+				contentType: 'application/json',
+				body:
+					postOutcome === 'completed-error'
+						? JSON.stringify({ error: 'stale approval failed' })
+						: '{}'
+			});
+			postReady = true;
+			return;
+		}
 		await new Promise<void>((resolve) => {
 			releasePost = resolve;
 			postReady = true;
@@ -240,10 +306,34 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		}
 	});
 
-	for (const [index, outcome] of ['success', 'conflict', 'error', 'network'].entries()) {
+	for (const [index, outcome] of [
+		'success',
+		'conflict',
+		'error',
+		'network',
+		'completed-success',
+		'completed-error'
+	].entries()) {
 		const currentOutcome = outcome as PostOutcome;
 		postOutcome = currentOutcome;
 		postReady = false;
+		await page.evaluate(
+			(mode) => {
+				const gate = (
+					window as typeof window & {
+						__approvalPostGate: { mode: string | null; ready: boolean; release?: () => void };
+					}
+				).__approvalPostGate;
+				gate.mode = mode;
+				gate.ready = false;
+				gate.release = undefined;
+			},
+			currentOutcome === 'completed-error'
+				? 'body'
+				: currentOutcome === 'completed-success'
+					? 'fetch'
+					: null
+		);
 		const postSettled = new Promise<'finished' | 'failed'>((resolve) => {
 			const finish = (kind: 'finished' | 'failed') => {
 				const matches = (request: { method(): string; url(): string }): boolean =>
@@ -262,17 +352,53 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		});
 		await approve.focus();
 		await approve.press('Enter');
-		await expect.poll(() => postReady).toBe(true);
-		remoteState = index % 2 === 0 ? 'removed' : 'replaced';
+		if (currentOutcome.startsWith('completed-')) {
+			await expect
+				.poll(() =>
+					page.evaluate(
+						() =>
+							(window as typeof window & { __approvalPostGate: { ready: boolean } })
+								.__approvalPostGate.ready
+					)
+				)
+				.toBe(true);
+		} else {
+			await expect.poll(() => postReady).toBe(true);
+		}
+		remoteState =
+			currentOutcome.startsWith('completed-') || index % 2 !== 0 ? 'replaced' : 'removed';
 		if (remoteState === 'removed') {
 			await expect(approve).toHaveCount(0);
 		} else {
 			await expect(question).toContainText('replacement note');
 		}
-		releasePost();
 		postReady = false;
-		// The obsolete fetch is now actively aborted when the poll changes the question.
-		expect(await postSettled).toBe('failed');
+		// Abort cases and completed continuations exercise different boundaries.
+		if (currentOutcome.startsWith('completed-')) {
+			const afterContinuation = await page.evaluate(async () => {
+				(
+					window as typeof window & { __approvalPostGate: { release: () => void } }
+				).__approvalPostGate.release();
+				// Let the released promise, decide continuation, and Svelte update
+				// drain before asserting the absence of a stale mutation.
+				await new Promise<void>((resolve) => setTimeout(resolve, 0));
+				return {
+					question: document.querySelector('[data-testid="approval-question"]')?.textContent,
+					failure: document
+						.querySelector('[data-testid="server-owned-turn-failure"]')
+						?.textContent?.trim(),
+					approveCount: document.querySelectorAll('[data-testid="approval-approve"]').length
+				};
+			});
+			expect(afterContinuation.question).toContain('replacement note');
+			expect(afterContinuation.failure).toBe('');
+			expect(afterContinuation.approveCount).toBe(1);
+
+			expect(await postSettled).toBe('finished');
+		} else {
+			releasePost();
+			expect(await postSettled).toBe('failed');
+		}
 		await expect(failure).toBeEmpty();
 		if (remoteState === 'removed') {
 			await expect(approve).toHaveCount(0);
@@ -282,6 +408,7 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 			await expect(approve).toBeEnabled();
 		}
 		remoteState = 'server';
+		await expect(question).toContainText('Save this note?');
 		await expect(approve).toBeVisible();
 	}
 });

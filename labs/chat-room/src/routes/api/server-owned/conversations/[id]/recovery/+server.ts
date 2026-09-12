@@ -9,7 +9,12 @@ import {
 } from '$lib/server-owned-conversations';
 import { emptyToolbox } from '$lib/toolbox';
 import { durableRuntime } from '$lib/server-owned-durable';
-import { classifyRecovery, recoveryFailureLog, withRecoveryLock } from '$lib/server-owned-recovery';
+import {
+	classifyRecovery,
+	disposeRecoveredRunWhenSettled,
+	recoveryFailureLog,
+	withRecoveryLock
+} from '$lib/server-owned-recovery';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
 import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
 
@@ -127,6 +132,7 @@ async function respond(id: string): Promise<Response> {
 	}
 
 	if (outcome.kind === 'recovered') {
+		disposeRecoveredRunWhenSettled(outcome.run);
 		// STEP-LEVEL, and the reason is where the run's events come from rather
 		// than a property of the handle's type.
 		//

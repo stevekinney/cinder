@@ -18,22 +18,25 @@ import type { AgentRun, DiagnosticAgentRun, SessionHandle } from '@lostgradient/
  *   2. `output()` is absent from `AgentRun` at the default `H = false` anyway
  *      (`OutputMethod<O, H>` resolves to `Record<never, never>`), so half the
  *      premise describes a distinction that does not exist here.
- *   3. `DiagnosticAgentRun` does omit both accessors, and carries a third
- *      difference the criterion does not mention and which has teeth: its
- *      `closed()` downgrades a wrapped `'completed'` to `{ status:
- *      'unresolved', reason: 'unknown-effect' }`, because durability is
- *      undeterminable from a recovered wrapper. The session path passes that
- *      status through unchanged.
+ *   3. `DiagnosticAgentRun` does omit both accessors. Its `closed()` also
+ *      downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason:
+ *      'unknown-effect' }`, because durability is undeterminable from a
+ *      recovered wrapper. That documented distinction is intentionally
+ *      described here but is not claimed as a contract pinned by this file;
+ *      the tests below pin only the members they read.
  *
  * TYPE-LEVEL, in a file `bun run check` compiles, because the sentence these
- * replace was wrong for two minor versions before anyone checked it.
+ * replace was wrong for two minor versions before anyone checked it. The
+ * assertions below specifically pin `recover()`'s `unwrap()` return type,
+ * `DiagnosticAgentRun`'s missing `unwrap()` and `output()`, and both shapes'
+ * `result()` member.
  *
  * DIRECTIONAL, and that is the second attempt. The first wrote a mutual
  * `Exact<Left, Right>` assignability helper, which passed with the claim
  * deliberately inverted: `AgentRun<never, false>` and `DiagnosticAgentRun` are
  * mutually assignable as far as TypeScript is concerned, so an equality helper
  * over them reports `true` either way and pins nothing. Each test below either
- * reads a member that only one of the two shapes has, or carries a
+ * reads one of those members or carries a
  * `@ts-expect-error` that fails the build the moment the error it expects stops
  * happening. Both forms were proved by inverting them and watching `bun run
  * check` fail.

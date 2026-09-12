@@ -54,6 +54,22 @@ export type RecoveryFailure = {
 	readonly reason: string;
 };
 
+/**
+ * Releases a recovered wrapper only after its durable run settles.
+ *
+ * `AgentRun[Symbol.dispose]()` aborts an in-flight run, so disposing the
+ * wrapper as soon as `recover()` returns would cancel the execution this
+ * endpoint just re-attached to. Waiting on the cached result keeps the
+ * durable work alive and still releases the wrapper's listeners on either
+ * terminal path.
+ */
+export function disposeRecoveredRunWhenSettled(run: AgentRun): void {
+	void run.result().then(
+		() => run[Symbol.dispose](),
+		() => run[Symbol.dispose]()
+	);
+}
+
 const RECOVERY_LOCKS = Symbol.for('cinder.chat-room.server-owned.recovery-locks');
 
 type RecoveryLockHost = typeof globalThis & {

@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'bun:test';
-import { SessionRecoverEvent } from '@lostgradient/operative';
+import { createAgent, SessionRecoverEvent } from '@lostgradient/operative';
 import type { AgentRun, SessionHandle } from '@lostgradient/operative';
 
 import {
 	classifyRecovery,
+	disposeRecoveredRunWhenSettled,
 	describeRecoveryError,
 	recoveryFailureLog,
 	withRecoveryLock
@@ -138,6 +139,90 @@ describe('classifyRecovery', () => {
 
 		await expect(classifyRecovery(handle)).rejects.toThrow('engine exploded');
 		expect(handle.listenerCount()).toBe(0);
+	});
+});
+
+describe('disposeRecoveredRunWhenSettled', () => {
+	it('disposes an actual settled AgentRun without changing its terminal result', async () => {
+		let releaseGeneration!: () => void;
+		const generationHeld = new Promise<void>((resolve) => {
+			releaseGeneration = resolve;
+		});
+		const agent = createAgent({
+			generate: async () => {
+				await generationHeld;
+				return { content: 'recovered', toolCalls: [] };
+			},
+			instructions: 'Return the supplied fixture response.'
+		});
+		const run = agent.run('fixture');
+		let disposeCalls = 0;
+		const originalDispose = run[Symbol.dispose].bind(run);
+		Object.defineProperty(run, Symbol.dispose, {
+			value: () => {
+				disposeCalls += 1;
+				originalDispose();
+			}
+		});
+
+		disposeRecoveredRunWhenSettled(run);
+		await Promise.resolve();
+		expect(disposeCalls).toBe(0);
+		releaseGeneration();
+		const result = await run.result();
+		expect(run.snapshot().status).toBe('terminal');
+		expect(await run.result()).toBe(result);
+		expect(result.finishReason).toBe('stop-condition');
+		expect(disposeCalls).toBe(1);
+	});
+
+	it('keeps the recovered execution alive until settlement, then disposes the wrapper', async () => {
+		let resolveResult!: () => void;
+		let disposeCalls = 0;
+		let abortCalls = 0;
+		const result = new Promise<void>((resolve) => {
+			resolveResult = resolve;
+		});
+		const run = {
+			result: () => result,
+			abort: () => {
+				abortCalls += 1;
+			},
+			[Symbol.dispose]: () => {
+				disposeCalls += 1;
+			}
+		} as unknown as AgentRun;
+
+		disposeRecoveredRunWhenSettled(run);
+		await Promise.resolve();
+		expect(disposeCalls).toBe(0);
+		expect(abortCalls).toBe(0);
+
+		resolveResult();
+		await result;
+		await Promise.resolve();
+		expect(disposeCalls).toBe(1);
+		expect(abortCalls).toBe(0);
+	});
+
+	it('also releases the wrapper when the recovered run rejects', async () => {
+		let rejectResult!: (reason: Error) => void;
+		let disposeCalls = 0;
+		const result = new Promise<void>((_, reject) => {
+			rejectResult = reject;
+		});
+		const run = {
+			result: () => result,
+			[Symbol.dispose]: () => {
+				disposeCalls += 1;
+			}
+		} as unknown as AgentRun;
+
+		disposeRecoveredRunWhenSettled(run);
+		rejectResult(new Error('recovered run failed'));
+		await expect(result).rejects.toThrow('recovered run failed');
+		await Promise.resolve();
+		expect(disposeCalls).toBe(1);
 	});
 });
 
