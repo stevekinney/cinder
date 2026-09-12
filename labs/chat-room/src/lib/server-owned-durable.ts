@@ -213,7 +213,15 @@ function generationOf(held: DurableSlot): number {
  * Failing loudly with an instruction beats a corruption nobody sees.
  */
 export class UnrecognisedDurableSlotError extends Error {
-	readonly [SHUTDOWN_FAILURE] = true;
+	// DELIBERATELY NOT tagged `SHUTDOWN_FAILURE`, and the omission is the whole
+	// point of this class. Tagging it made `isShutdown()` accept it, so a route
+	// answered with the generic "the server is shutting down, try again in a
+	// moment" — advice that cannot work, for a state no amount of retrying
+	// clears, while swallowing the one sentence that does help. The loud
+	// failure the previous commit added became a quiet misclassification.
+	//
+	// This is not a shutdown. It is a developer-environment fault with exactly
+	// one remedy, and it has to keep saying so.
 
 	override readonly name = 'UnrecognisedDurableSlotError';
 

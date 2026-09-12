@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
+import { UnrecognisedDurableSlotError } from './server-owned-durable.ts';
 import { RuntimeTerminatingError } from './server-owned-runtime.ts';
 import { unavailableDuringShutdown } from './server-owned-unavailable.ts';
 
@@ -43,6 +44,15 @@ describe('unavailableDuringShutdown', () => {
 		const response = unavailableDuringShutdown(fromAnotherEvaluation);
 		expect(response).toBeDefined();
 		expect(response?.status).toBe(503);
+	});
+
+	it('does NOT classify an incompatible durable slot as a shutdown', () => {
+		// The restart error must stay out of this mapping. Classified as a
+		// shutdown, the route answers "try again in a moment" — advice that
+		// cannot work for a state no retry clears — and swallows the one
+		// sentence that does help. A loud, actionable failure becomes a quiet
+		// misleading one, which is worse than either.
+		expect(unavailableDuringShutdown(new UnrecognisedDurableSlotError())).toBeUndefined();
 	});
 
 	it('does not swallow anything else', () => {
