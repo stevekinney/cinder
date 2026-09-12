@@ -1352,17 +1352,8 @@
     scrollToIndexGeneration += 1;
   }
 
-  /**
-   * The reader has taken the scroll back by wheel, pointer, or touch, so wherever the
-   * keys were heading is no longer where they are.
-   */
-  function abandonKeyboardRun(): void {
-    pendingKeyboardIndex = null;
-  }
-
   function handleWheel(event: WheelEvent & { currentTarget: EventTarget & HTMLDivElement }): void {
     retireSettleLoop();
-    abandonKeyboardRun();
     if (typeof onWheel === 'function') onWheel(event);
   }
 
@@ -1370,7 +1361,6 @@
     event: PointerEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
     retireSettleLoop();
-    abandonKeyboardRun();
     if (typeof onPointerDown === 'function') onPointerDown(event);
   }
 
@@ -1378,7 +1368,6 @@
     event: TouchEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
     retireSettleLoop();
-    abandonKeyboardRun();
     if (typeof onTouchStart === 'function') onTouchStart(event);
   }
 
@@ -1421,15 +1410,6 @@
     // intercepting them would replace smooth native scrolling with a jump.
     if (!stickyIndexes.length) return;
 
-    // Where the keys are, which is where the last one was heading if it has not
-    // arrived yet. Falls back to the live position the moment nothing is in flight.
-    const keyboardOriginIndex =
-      pendingKeyboardIndex !== null &&
-      pendingKeyboardItemCount === items.length &&
-      pendingKeyboardIndex < items.length
-        ? pendingKeyboardIndex
-        : firstUncoveredIndex;
-
     const target = resolveKeyboardTargetIndex({
       key: event.key,
       // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
@@ -1438,7 +1418,7 @@
       // The first row the header is not covering. A sticky header occupies the
       // viewport's leading edge, so `firstVisibleIndex` IS that header — and
       // advancing from it moves to the row underneath it rather than past it.
-      currentIndex: keyboardOriginIndex,
+      currentIndex: firstUncoveredIndex,
       itemCount: items.length,
       // Rows that fit BELOW the header, not in the whole viewport. Paging by the full
       // count steps over the row sitting under the header: covered before the press
@@ -1453,34 +1433,15 @@
       writingDirection,
       stickyIndexes: stickyIndexSet,
     });
-    if (target === null) {
-      // Space and Shift+Space are the only keys that reach here and still scroll: the
-      // browser pages the container with them, somewhere the pending destination knows
-      // nothing about, so the next Arrow or Page press has to start from wherever that
-      // leaves the reader.
-      //
-      // Deliberately not every scrolling key. The off-axis arrows land here
-      // too — Left and Right in a vertical list, Up and Down in a horizontal one — and
-      // they scroll nothing at all, because the cross axis does not overflow. Treating
-      // them as a takeover would drop a navigation still in flight behind them. On-axis
-      // arrows and the Page, Home, and End keys never reach this branch, since they
-      // always resolve to a destination.
-      if (event.key === ' ') abandonKeyboardRun();
-      return;
-    }
+    if (target === null) return;
     event.preventDefault();
 
-    // `runScrollToIndex` rather than the `scrollToIndex` wrapper: the wrapper clears
-    // the pending destination, which is right for a consumer's own navigation and
-    // wrong for the keys, which are the thing setting it.
-    //
-    // Either way it goes through the settle loop. An earlier version wrote the offset
-    // directly here to apply the header inset, and in doing so skipped it — so under
-    // `dynamicSize` an End or Page jump into rows whose estimates changed as they
-    // mounted stopped wherever the first write happened to land.
-    pendingKeyboardIndex = target;
-    pendingKeyboardItemCount = items.length;
-    void runScrollToIndex(target, { align: 'start' });
+    // Through the normal path, which applies the header inset and keeps the settle
+    // loop. An earlier version wrote the offset directly here to apply that inset, and
+    // in doing so skipped the loop — so under `dynamicSize` an End or Page jump into
+    // rows whose estimates changed as they mounted stopped wherever the first write
+    // happened to land.
+    scrollToIndex(target, { align: 'start' });
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -1608,33 +1569,7 @@
     }
   }
 
-  /**
-   * Where the last navigation key was heading, while it is still getting there.
-   *
-   * Keys resolve their next destination from the row at the leading edge, which is
-   * read from the element. Under `smoothScroll` that reading lags the animation, so
-   * a second press arriving before the first has crossed a row boundary resolves the
-   * same destination, supersedes the settle loop already running, and the two
-   * presses advance one row between them. Holding an arrow key does this constantly.
-   *
-   * Cleared the moment the reader takes the scroll back by any other means, so it can
-   * never navigate from a position nobody is at.
-   */
-  let pendingKeyboardIndex = $state<number | null>(null);
-  /**
-   * The item count this destination was resolved against.
-   *
-   * An index only names a row for as long as the collection around it holds still.
-   * Prepending — the documented `onStartReached` flow — shifts every existing row
-   * down, so a destination held across it points somewhere else entirely and the next
-   * key jumps back by the whole prepend. Comparing the count catches that, and an
-   * append too, where it costs only a fall back to the live position.
-   */
-  let pendingKeyboardItemCount = $state(0);
-
   function scrollToIndex(index: number, options?: VirtualListScrollToIndexOptions): void {
-    // A navigation of the consumer's own replaces any keyboard run in flight.
-    pendingKeyboardIndex = null;
     void runScrollToIndex(index, options);
   }
 
