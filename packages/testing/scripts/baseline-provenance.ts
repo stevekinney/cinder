@@ -6,6 +6,20 @@ import { parseComponentScopeValue } from '../src/helpers/component-filter.ts';
 
 export const BASELINE_PROVENANCE_SCHEMA_VERSION = 1;
 
+/**
+ * Every committed baseline under `packages/testing/snapshots/` was captured on
+ * this architecture (see `provenance.json`'s own `architecture` field). CI's
+ * `ubuntu-latest` runner and the canonical `cinder-playwright` Docker image are
+ * both amd64/x64; the image's `mcr.microsoft.com/playwright` base is
+ * multi-arch, so building it without `--platform` on an Apple Silicon (or
+ * other arm64) Docker host silently produces an arm64 image whose rasterizer
+ * differs from every committed PNG. `docker-authenticity.ts` (inside the
+ * container) and `update-snapshots-docker.ts` (on the host, before the image
+ * is even built) both refuse to write baselines when the running
+ * architecture does not match this constant.
+ */
+export const REQUIRED_BASELINE_ARCHITECTURE = 'x64';
+
 export type BaselineComponentScope = 'all' | string[];
 
 export type BaselineProvenance = {

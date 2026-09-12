@@ -75,6 +75,14 @@ export class TerminalOutputParser {
   #pending = '';
   #pendingGrapheme = '';
 
+  // Bun's LCOV coverage counts the constructor JSC synthesizes for a class
+  // with private-field initializers as one of the file's functions, but
+  // never credits it with a hit even though `new TerminalOutputParser()` is
+  // called throughout this file's own tests. An explicit (behavior-identical)
+  // empty constructor gets credited normally.
+  // eslint-disable-next-line no-useless-constructor -- documented coverage-tool workaround above, not a real no-op constructor
+  constructor() {}
+
   reset(): void {
     this.#lines = [[]];
     this.#line = 0;

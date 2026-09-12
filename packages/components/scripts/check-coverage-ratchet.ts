@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -87,6 +88,71 @@ function isRatchetThreshold(value: number): boolean {
   return Number.isFinite(value) && value >= 0 && value <= 1;
 }
 
+export type SvelteMeasurementPlatform = {
+  platform: string;
+  architecture: string;
+};
+
+/**
+ * The `svelteMeasuredOn` block coverage-ratchet.json records beside its
+ * `svelte` threshold — the platform/architecture CI actually measured that
+ * threshold on. This is read independently of {@link parseCoverageThresholds}
+ * (which validates and returns only the numeric floors) because it is
+ * provenance metadata, not a threshold, and a missing or malformed block is
+ * not a validation error: a package with no `svelte` floor at all has no use
+ * for it, so absence is silently treated as "nothing to compare against"
+ * rather than throwing.
+ */
+export function parseSvelteMeasurementPlatform(
+  source: string,
+): SvelteMeasurementPlatform | undefined {
+  const parsed: unknown = JSON.parse(source);
+  if (typeof parsed !== 'object' || parsed === null || !('svelteMeasuredOn' in parsed)) {
+    return undefined;
+  }
+  const measuredOn = parsed.svelteMeasuredOn;
+  if (
+    typeof measuredOn !== 'object' ||
+    measuredOn === null ||
+    !('platform' in measuredOn) ||
+    !('architecture' in measuredOn)
+  ) {
+    return undefined;
+  }
+  const { platform, architecture } = measuredOn;
+  if (typeof platform !== 'string' || typeof architecture !== 'string') return undefined;
+  return { platform, architecture };
+}
+
+/**
+ * Svelte coverage is platform-dependent (see coverage-ratchet.json's
+ * `svelteMeasuredOn` note for the measured numbers on each side) — a macOS
+ * run can pass a floor CI fails, and there is no way to tell from a bare
+ * percentage alone. Returns a notice to print whenever the running
+ * platform/architecture differs from the one the floor was measured on, so a
+ * local pass (or fail) on this metric is never mistaken for what CI will do.
+ * Returns `undefined` — no notice — both when they match and when no
+ * `svelteMeasuredOn` block was recorded at all.
+ */
+export function svelteCoveragePlatformNotice(
+  recorded: SvelteMeasurementPlatform | undefined,
+  actual: SvelteMeasurementPlatform,
+): string | undefined {
+  if (
+    recorded === undefined ||
+    (recorded.platform === actual.platform && recorded.architecture === actual.architecture)
+  ) {
+    return undefined;
+  }
+  return (
+    `NOTE: the Svelte coverage floor in coverage-ratchet.json was measured on ` +
+    `${recorded.platform}/${recorded.architecture} (see its "svelteMeasuredOn" note). This run is on ` +
+    `${actual.platform}/${actual.architecture} — its Svelte number below is NOT authoritative. CI on ` +
+    `${recorded.platform}/${recorded.architecture} is the gate; do not treat this run's Svelte result, ` +
+    `pass or fail, as the real one.`
+  );
+}
+
 /**
  * Transient SSR test modules written by component SSR and hydration helpers.
  * They compile source into temporary `.mjs` files, import the files for one
@@ -160,6 +226,14 @@ function isOutsideCoverageScope(file: string, scope: CoverageScope, packageRoot:
   // published binary. Bun does not merge subprocess LCOV into the parent report,
   // so keep only that entrypoint out of the in-process runtime ratchet.
   if (normalizedFile === 'src/cli/index.ts') return true;
+  // Same shape as the CLI entrypoint above: `main()` is already exported and
+  // directly unit-tested, but the `if (import.meta.main) { ... }` guard
+  // around it only runs when this fixture script is executed directly by
+  // `node` (never when imported), so it carries no in-process coverage
+  // obligation either.
+  if (normalizedFile === 'fixtures/typescript-consumer/generate-readme-usage-examples.mjs') {
+    return true;
+  }
   if (normalizedFile.endsWith('.test.ts') || normalizedFile.endsWith('.spec.ts')) return true;
   if (normalizedFile.startsWith('src/test/') || normalizedFile.startsWith('src/lib/test/')) {
     return true;
@@ -196,7 +270,7 @@ export function parseLcovRecords(
   scope: CoverageScope = 'runtime',
   packageRoot: string = defaultPackageRoot,
 ): CoverageRecord[] {
-  return parseAllLcovRecords(source).filter(
+  return parseAllLcovRecords(source, packageRoot).filter(
     (record) =>
       !isTransientTestArtifact(record.file, packageRoot) &&
       !isOutsidePackageRootSourceMap(record.file, packageRoot) &&
@@ -204,7 +278,79 @@ export function parseLcovRecords(
   );
 }
 
-function parseAllLcovRecords(source: string): CoverageRecord[] {
+/**
+ * A tiny number of individual lines are provably unreachable through every
+ * legitimate call path into their function — proven by tracing the calling
+ * code's own invariants (a shared cache, an upstream balance check), not
+ * merely "hard to hit," which would be a reason to write a better test
+ * instead. Deleting the dead code isn't safe here without changing the
+ * function's behavior in a way nothing asked for, so each such line carries
+ * this exact trailing marker in its OWN source file, right beside the
+ * reasoning — a source-text marker survives the file's line numbers
+ * shifting on a later, unrelated edit, unlike a hardcoded line-number
+ * allowlist would. This is scoped per-line, not per-file: every other line
+ * in a marked file still counts fully toward the ratchet.
+ *
+ * This only adjusts the *line* ratchet (LF/LH). Bun's `--coverage-reporter
+ * lcov` output carries no per-function `FN:`/`FNDA:` records, only a file's
+ * aggregate `FNF`/`FNH` totals, so there is no way to map a marked line back
+ * to "the function it's in" and adjust FNF for it. An exempted block must
+ * therefore contain no nested function or callback of its own — restructure
+ * to a plain loop/statement instead — or it silently drags down the
+ * functions ratchet with no diagnostic naming which function.
+ */
+export const UNREACHABLE_LINE_MARKER = 'cinder-coverage-unreachable:';
+
+const sourceFileLinesCache = new Map<string, string[]>();
+
+function readSourceFileLines(absoluteFilePath: string): string[] {
+  const cached = sourceFileLinesCache.get(absoluteFilePath);
+  if (cached) return cached;
+  let lines: string[];
+  try {
+    lines = readFileSync(absoluteFilePath, 'utf8').split(/\r?\n/);
+  } catch {
+    // A record naming a file that no longer exists on disk (e.g. a
+    // transient path) simply has nothing to check the marker against.
+    lines = [];
+  }
+  sourceFileLinesCache.set(absoluteFilePath, lines);
+  return lines;
+}
+
+/**
+ * How many of `record`'s zero-hit `DA` lines are marked unreachable in the
+ * actual source file on disk. Only `linesFound` (the denominator) needs to
+ * shrink by this count: every line this counts was already a zero-hit `DA`
+ * record by construction (see the `hitCountText !== '0'` guard below), so it
+ * never contributed to `linesHit` in the first place. The marked lines are
+ * removed from the ratchet's denominator entirely, not counted as covered.
+ */
+function countMarkedUnreachableUnhitLines(
+  rawRecordLines: string[],
+  file: string,
+  packageRoot: string,
+): number {
+  const absoluteFilePath = isAbsolute(file) ? file : resolve(packageRoot, file);
+  let sourceLines: string[] | undefined;
+  let count = 0;
+  for (const line of rawRecordLines) {
+    if (!line.startsWith('DA:')) continue;
+    const [lineNumberText, hitCountText] = line.slice('DA:'.length).split(',');
+    if (hitCountText !== '0' || lineNumberText === undefined) continue;
+    const lineNumber = Number(lineNumberText);
+    if (!Number.isInteger(lineNumber) || lineNumber < 1) continue;
+    sourceLines ??= readSourceFileLines(absoluteFilePath);
+    const sourceLine = sourceLines[lineNumber - 1];
+    if (sourceLine?.includes(UNREACHABLE_LINE_MARKER)) count += 1;
+  }
+  return count;
+}
+
+function parseAllLcovRecords(
+  source: string,
+  packageRoot: string = defaultPackageRoot,
+): CoverageRecord[] {
   return source
     .split('end_of_record')
     .map((record) => record.trim())
@@ -212,11 +358,16 @@ function parseAllLcovRecords(source: string): CoverageRecord[] {
     .map((record) => {
       const lines = record.split(/\r?\n/);
       const file = readStringField(lines, 'SF');
+      const linesFound = readNumberField(lines, 'LF');
+      // Every marked line this counts was, by construction, a zero-hit `DA`
+      // record (see countMarkedUnreachableUnhitLines) — it never
+      // contributed to LH, so only the denominator (LF) shrinks.
+      const markedUnreachable = countMarkedUnreachableUnhitLines(lines, file, packageRoot);
       return {
         file,
         functionsFound: readNumberField(lines, 'FNF'),
         functionsHit: readNumberField(lines, 'FNH'),
-        linesFound: readNumberField(lines, 'LF'),
+        linesFound: linesFound - markedUnreachable,
         linesHit: readNumberField(lines, 'LH'),
       };
     });
@@ -328,11 +479,16 @@ export function uncoveredLineReport(
     ) {
       continue;
     }
+    const absoluteFilePath = isAbsolute(sourceFile) ? sourceFile : resolve(packageRoot, sourceFile);
+    const sourceLines = readSourceFileLines(absoluteFilePath);
     const unhitLines: number[] = [];
     for (const line of lines) {
       if (!line.startsWith('DA:')) continue;
       const [lineNumber, hitCount] = line.slice('DA:'.length).split(',');
-      if (hitCount === '0' && lineNumber !== undefined) unhitLines.push(Number(lineNumber));
+      if (hitCount !== '0' || lineNumber === undefined) continue;
+      const lineNumberValue = Number(lineNumber);
+      if (sourceLines[lineNumberValue - 1]?.includes(UNREACHABLE_LINE_MARKER)) continue;
+      unhitLines.push(lineNumberValue);
     }
     if (unhitLines.length > 0) {
       report.push({ file: toPackageRootRelativePath(sourceFile, packageRoot), unhitLines });
@@ -377,11 +533,15 @@ export async function main(): Promise<void> {
     : defaultPackageRoot;
   const thresholdsPath = resolve(packageRoot, 'coverage-ratchet.json');
   const coveragePath = resolve(packageRoot, 'coverage/lcov.info');
-  const thresholds = parseCoverageThresholds(await Bun.file(thresholdsPath).text());
+  const thresholdsSource = await Bun.file(thresholdsPath).text();
+  const thresholds = parseCoverageThresholds(thresholdsSource);
   const coverageSource = await Bun.file(coveragePath).text();
   const averages = computeCoverageAverages(parseRuntimeLcovRecords(coverageSource, packageRoot));
   const summaries = [formatCoverageSummary(averages, thresholds)];
   const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
+
+  // Platform measurement advisories do not change the coverage result.
+  const notices: string[] = [];
 
   if (thresholds.svelte) {
     const svelteAverages = computeCoverageAverages(
@@ -393,6 +553,17 @@ export async function main(): Promise<void> {
     failures.push(
       ...coverageFailures(svelteAverages, thresholds.svelte).map((failure) => `svelte ${failure}`),
     );
+
+    const recordedPlatform = parseSvelteMeasurementPlatform(thresholdsSource);
+    const platformNotice = svelteCoveragePlatformNotice(recordedPlatform, {
+      platform: process.platform,
+      architecture: process.arch,
+    });
+    if (platformNotice) notices.push(platformNotice);
+  }
+
+  if (notices.length > 0) {
+    console.warn(notices.join('\n'));
   }
 
   if (failures.length > 0) {

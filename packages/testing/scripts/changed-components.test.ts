@@ -17,12 +17,47 @@ describe('shared workflow scope plan', () => {
     ).toEqual({ mode: 'filtered', components: [] });
   });
 
-  it('keeps a known static guard change out of package and browser matrices', () => {
+  it('keeps a known static guard change out of the browser matrix', () => {
     const plan = planForChanges(['packages/components/scripts/check-css-duplication.ts'], {
       mode: 'filtered',
       components: [],
     });
-    expect(plan).toMatchObject({ unitLanes: ['static'], browserRelevant: false });
+    expect(plan).toMatchObject({ unitLanes: ['static', 'package'], browserRelevant: false });
+  });
+
+  it('runs the coverage ratchet for styles-only changes', () => {
+    const plan = planForChanges(['packages/components/src/styles/tokens-base.css'], {
+      mode: 'filtered',
+      components: [],
+    });
+    expect(plan.unitLanes).toEqual(['static', 'package']);
+    expect(plan.browserRelevant).toBe(false);
+  });
+
+  it('keeps documentation changes on the complete validation scope', () => {
+    const plan = planForChanges(['docs/README.md'], {
+      mode: 'filtered',
+      components: [],
+    });
+    expect(plan.unitLanes).toEqual(['static', 'package', 'playground']);
+    expect(plan.browserRelevant).toBe(true);
+  });
+
+  it.each([
+    'check-coverage-ratchet.ts',
+    'check-coverage-ratchet.test.ts',
+    'check-pipeline-coverage.ts',
+    'check-pipeline-coverage.test.ts',
+  ])('routes %s through the package lane', (filename) => {
+    expect(
+      planForChanges([`packages/components/scripts/${filename}`], {
+        mode: 'filtered',
+        components: [],
+      }),
+    ).toMatchObject({
+      unitLanes: ['static', 'package', 'playground'],
+      browserRelevant: false,
+    });
   });
 
   it('fails safe to every lane when the classifier reports full scope', () => {

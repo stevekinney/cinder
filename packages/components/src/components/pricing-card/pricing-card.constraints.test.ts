@@ -20,12 +20,28 @@ function describeAttributes(attributes: ComponentAttributes): string {
   );
 }
 
+function onPlanSelectOf(attributes: ComponentAttributes): (() => void) | undefined {
+  const value = attributes['onPlanSelect'];
+  return typeof value === 'function' ? (value as () => void) : undefined;
+}
+
 describe('pricing-card constraints — valid fixtures', () => {
   for (const attributes of valid) {
     it(`produces zero violations for: ${describeAttributes(attributes)}`, () => {
       const violations = evaluateConstraints(pricingCardConstraints, attributes);
       expect(violations).toHaveLength(0);
     });
+
+    // The constraints check only verifies onPlanSelect's *shape*
+    // (`typeof onPlanSelect === 'function'`) — it never calls the fixture's
+    // own placeholder closure. Invoke it directly so these fixtures aren't
+    // just inert shapes wearing a callback-typed property.
+    const onPlanSelect = onPlanSelectOf(attributes);
+    if (onPlanSelect) {
+      it(`invokes the onPlanSelect placeholder for: ${describeAttributes(attributes)}`, () => {
+        expect(() => onPlanSelect()).not.toThrow();
+      });
+    }
   }
 });
 
@@ -36,5 +52,12 @@ describe('pricing-card constraints — invalid fixtures', () => {
       const ruleIds = violations.map((v) => v.rule);
       expect(ruleIds).toContain(violates);
     });
+
+    const onPlanSelect = onPlanSelectOf(attributes);
+    if (onPlanSelect) {
+      it(`invokes the onPlanSelect placeholder for: ${describeAttributes(attributes)}`, () => {
+        expect(() => onPlanSelect()).not.toThrow();
+      });
+    }
   }
 });

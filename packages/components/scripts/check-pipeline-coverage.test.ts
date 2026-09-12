@@ -29,6 +29,19 @@ describe('Turbo input topology', () => {
       'RUNNER_OS',
       'NODE_ENV',
     ]);
+    const componentsPackage = JSON.parse(
+      readFileSync(resolve(import.meta.dir, '../package.json'), 'utf8'),
+    ) as { scripts: Record<string, string> };
+    expect(DECLARATION_TABLE['check:local-bun-version-guard']?.layers).toEqual([
+      'unit-tests',
+      'main-green',
+    ]);
+    expect(componentsPackage.scripts['test:coverage']).toStartWith(
+      'bun run check:local-bun-version-guard &&',
+    );
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test:coverage']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/testing/scripts/**',
+    );
   });
 
   it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {

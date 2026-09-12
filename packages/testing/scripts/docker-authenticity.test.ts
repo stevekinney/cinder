@@ -2,7 +2,11 @@ import { describe, expect, it } from 'bun:test';
 import { mkdtempSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
+import {
+  architectureAuthenticityFailure,
+  checkDockerAuthenticity,
+  formatFailures,
+} from './docker-authenticity.ts';
 
 function writePackageJson(playwrightSpec: string): string {
   const dir = mkdtempSync(join(tmpdir(), 'docker-authenticity-'));
@@ -45,6 +49,43 @@ describe('checkDockerAuthenticity', () => {
     expect(checks).toContain('CINDER_PLAYWRIGHT_VERSION baked at image build');
   });
 
+  it('flags a non-x64 container architecture even when other checks are otherwise satisfied', async () => {
+    // The base Playwright image is multi-arch: OS codename, playwright
+    // --version, and the baked env var can all still match on an arm64
+    // build of the same image. Injecting the architecture directly proves
+    // this check fires independently of the other three, which this test
+    // environment cannot fully control (no real jammy container here).
+    const packageJsonPath = writePackageJson('1.60.0');
+    const result = await checkDockerAuthenticity(packageJsonPath, 'arm64');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected failure result');
+    expect(result.failures.map((failure) => failure.check)).toContain('container architecture');
+  });
+
+  it('never flags architecture when the container reports the required x64', async () => {
+    const packageJsonPath = writePackageJson('1.60.0');
+    const result = await checkDockerAuthenticity(packageJsonPath, 'x64');
+    if (!result.ok) {
+      expect(result.failures.map((failure) => failure.check)).not.toContain(
+        'container architecture',
+      );
+    }
+  });
+
+  it('formatFailures names the CI workflow-dispatch route for an architecture mismatch', () => {
+    const message = formatFailures([
+      { check: 'container architecture', expected: 'x64', actual: 'arm64' },
+    ]);
+    expect(message).toContain(
+      'gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main',
+    );
+    // Re-running the docker wrapper would just reproduce the same mismatch —
+    // the message may explain that, but must not present it as the fix.
+    expect(message).not.toContain(
+      'Run "bun run --filter=@cinder/testing test:browser:update:docker" instead.',
+    );
+  });
+
   it('formatFailures includes every failed check and points to the docker recipe', () => {
     const message = formatFailures([
       { check: 'os-release VERSION_CODENAME', expected: 'jammy', actual: 'sequoia' },
@@ -58,5 +99,19 @@ describe('checkDockerAuthenticity', () => {
     expect(message).toContain('os-release VERSION_CODENAME');
     expect(message).toContain('CINDER_PLAYWRIGHT_VERSION baked at image build');
     expect(message).toContain('test:browser:update:docker');
+  });
+});
+
+describe('architectureAuthenticityFailure', () => {
+  it('passes on the required x64 architecture', () => {
+    expect(architectureAuthenticityFailure('x64')).toBeUndefined();
+  });
+
+  it('flags an arm64 container as a mismatch', () => {
+    expect(architectureAuthenticityFailure('arm64')).toEqual({
+      check: 'container architecture',
+      expected: 'x64',
+      actual: 'arm64',
+    });
   });
 });

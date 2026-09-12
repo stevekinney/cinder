@@ -77,19 +77,47 @@ native amd64 target; `report` and `block` comparisons run inside this image, not
 directly on the runner host.
 
 `scripts/docker-authenticity.ts` enforces this: `test:browser:update` refuses to
-write baselines unless three checks pass — `/etc/os-release` codename is `jammy`,
-the installed Playwright version matches the `package.json` pin, and
-`CINDER_PLAYWRIGHT_VERSION` was baked at image build. Run it on a bare dev host
-and it exits non-zero with instructions to use the Docker path instead. This is
-intentional: it is the guard that keeps flaky, host-authored pixels out of the
-committed set.
+write baselines unless four checks pass — `/etc/os-release` codename is `jammy`,
+the installed Playwright version matches the `package.json` pin,
+`CINDER_PLAYWRIGHT_VERSION` was baked at image build, and the running process
+reports `x64` for `process.arch`. Run it on a bare dev host and it exits
+non-zero with instructions to use the Docker path instead. This is intentional:
+it is the guard that keeps flaky, host-authored pixels out of the committed set.
+
+Every baseline under `packages/testing/snapshots/` was captured on **x64**
+(`REQUIRED_BASELINE_ARCHITECTURE` in `scripts/baseline-provenance.ts`), matching
+CI's `ubuntu-latest` runner and the `cinder-playwright` image's amd64 build. The
+architecture check exists because the first three checks are not enough: the
+`mcr.microsoft.com/playwright` base image is multi-arch, so `docker build`
+without `--platform` on an Apple Silicon (or other arm64) Docker host silently
+produces an arm64 image that still reports the right Ubuntu codename, the right
+Playwright version, and the right baked env var — the divergent rasterizer is
+invisible to all three original checks and was, before this check existed,
+invisible to the tooling entirely. `scripts/update-snapshots-docker.ts` (the host
+wrapper invoked by `test:browser:update:docker`) also checks the host's
+`process.arch` before it builds the image at all, so a mismatched host fails fast
+without spending time on a doomed build, and `docker-authenticity.ts` repeats the
+check inside the container as the authoritative backstop for any route that
+reaches `test:browser:update` directly.
+
+Neither guard attempts to fix a mismatch by pinning `--platform` and forcing
+QEMU/Rosetta emulation of the amd64 image. That was considered and deliberately
+rejected: doing so would require confirming the emulated output is byte-comparable
+to native amd64 CI, and no such verification was performed — running the full
+Playwright suite under emulation and diffing the result against every committed
+baseline was out of scope for this change. Refusing outright is safer than adding
+an unverified pin that could silently produce plausible-looking but diverging
+pixels.
 
 > [!WARNING]
 > Do not run `test:browser:update` directly on macOS, Apple Silicon, or any
 > non-`jammy` host, and do not author baselines under QEMU emulation of the amd64
 > image — emulated pixels diverge from native amd64 CI just as much as a foreign
-> host would. The authenticity gate will stop the direct path; the emulation path
-> is yours to avoid.
+> host would. Both authenticity gates stop the direct and Docker-wrapper paths;
+> nothing in this repository attempts the emulation path, and you should not
+> either. Use the CI dispatch instead:
+> `gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main`
+> (`update-baselines` is a job inside `browser-tests.yaml`, not its own workflow file.)
 
 ## Authoring or updating baselines
 

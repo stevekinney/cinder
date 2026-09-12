@@ -99,4 +99,19 @@ describe('parseTerminalOutput', () => {
       [{ text: 'beforemiddleafter', bold: false }],
     ]);
   });
+
+  test('reset() clears buffered lines, cursor position, and pending SGR style', () => {
+    const parser = new TerminalOutputParser();
+    parser.append('\u001b[1;31mold\nbold-red\n');
+    expect(parser.lines().length).toBe(3);
+
+    parser.reset();
+    parser.append('fresh');
+
+    // A single line containing only the post-reset text, with no leftover
+    // bold/foreground style from before the reset, proves #lines, #line,
+    // #column, #foreground, and #bold were all actually cleared -- not just
+    // that new content happens to get appended somewhere.
+    expect(parser.lines()).toEqual([[{ text: 'fresh', bold: false }]]);
+  });
 });
