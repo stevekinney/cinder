@@ -161,6 +161,8 @@ Locally, `bun run --filter='@cinder/testing' test:browser:update` regenerates ba
 
 The floor is a **ratchet: it only ever moves up.** When you add tests that lift the real numbers, raise `lines` / `functions` in `coverage-ratchet.json` to the new measured floor in the same change. Never lower them to make a red run pass locally — fix the missing coverage instead. To read the current numbers, run `bun run --filter=@lostgradient/cinder test:coverage`; `lines` follows the file-weighted `All files` line coverage, and `functions` follows the LCOV aggregate function coverage.
 
+The `svelte` sub-block is the one exception to "raise it to the exact new measured floor": CI's `.svelte`/`.svelte.ts` measurement is nondeterministic run-to-run on an unchanged corpus (see `coverage-ratchet.json`'s `svelteMeasuredOn` note), so it is pinned with a deliberate margin below several observed CI samples rather than to one run's exact number. Raising it later requires re-measuring variance across several fresh CI runs and re-deriving that margin, not moving it to match the newest single measurement — pinning it tight is what caused CIN-604's CI failure.
+
 ## Main Branch Health
 
 After `.github/workflows/main-green.yaml` lands on `main`, `main-green / workspace-gates` is the central default-branch signal for the same workspace gates developers run locally:

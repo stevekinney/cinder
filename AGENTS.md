@@ -82,6 +82,15 @@ run on a different platform still enforces the floor (it is not skipped), but pr
 notice when its platform doesn't match the recorded one, so a local Svelte pass or fail is never
 mistaken for CI's result.
 
+The Svelte number is also **nondeterministic run-to-run in CI itself**, even against an unchanged
+291-file svelte corpus: three fresh (non-cache-replayed) CI runs measured 76.53/76.53/76.57%
+functions and 21.07/21.07/20.97% lines. Because of that, the Svelte floor is deliberately pinned
+well below the lowest observed sample (see `svelteMeasuredOn.note` for the exact margin math) rather
+than to one run's exact printed number—pinning it tight reproduces the CIN-604 failure this margin
+exists to prevent. Treat the Svelte floor as a catastrophic-regression detector, not a fine-grained
+ratchet: raising it later requires re-measuring variance across several fresh CI runs on an
+unchanged svelte corpus, not just moving it to match the newest single measurement.
+
 Bun has no corepack equivalent, so nothing besides CI's `setup-bun` steps and
 `pinned-bun-version.test.ts` enforces that a contributor's local Bun matches the workspace's pinned
 `packageManager` version. `check-coverage-ratchet.ts` also warns (without failing) when the running
