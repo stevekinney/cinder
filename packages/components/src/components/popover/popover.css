@@ -82,12 +82,55 @@
     height: 0;
   }
 
+  /*
+   * CIN-606: `background-clip` defaults to `border-box`, so the PANEL's own
+   * `background: var(--cinder-surface-raised)` paints under its translucent
+   * `border.control` edge — the panel border always composites over
+   * `surface-raised`. The arrow, being a zero-size border-triangle with no
+   * background of its own, used to paint its outer (`--cinder-border`)
+   * triangle straight onto whatever the popover floats over instead — the
+   * same translucent ink composited over a different backdrop than the
+   * panel edge, which was invisible while both tokens were opaque and is
+   * not now.
+   *
+   * The fix gives the outer triangle a backdrop rather than changing what
+   * the panel does. An element's own background/border always paints
+   * before its own `::before`/`::after`, so the three layers are built in
+   * that fixed order: this rule (the arrow's OWN border) is now the OPAQUE
+   * `surface-raised` backdrop, painted first; `::before` repeats the exact
+   * same triangle in the translucent `--cinder-border` ink, composited over
+   * that backdrop; `::after` is unchanged, the existing opaque 7px triangle
+   * that covers the inner two-thirds and leaves only the outer ~2px rim
+   * showing the (now correctly backed) translucent color. The net result:
+   * the visible rim composites over `surface-raised` in every placement,
+   * matching the panel edge on every backdrop instead of only on
+   * `surface-raised` itself.
+   */
+
   /* Panel is BELOW trigger - arrow tip points UP.
    Floating UI's arrow middleware writes `left` directly to center the
    border-box (offsetWidth=16 because of the 8px L+R borders) on the
    reference. Do not add a negative margin — that would double-shift it. */
   .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow {
     top: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-bottom: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='bottom'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    /* The containing block for an absolutely positioned pseudo-element of a
+     zero-size (width:0/height:0) parent is a POINT at that parent's padding
+     edge, not its border-box origin -- and that point is inset from the
+     parent's own top-left by the parent's own border widths. This parent's
+     border-left is 8px, so `left: 0` here would start 8px right of the
+     outer triangle's actual left edge; -8px cancels that inset back to 0. */
+    left: -8px;
     /* stylelint-disable csstools/use-logical */
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
@@ -111,6 +154,20 @@
    note above re: Floating UI offsetWidth centering. */
   .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow {
     bottom: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-left: 8px solid transparent;
+    border-right: 8px solid transparent;
+    border-top: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='top'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    /* See the bottom-placement `::before` comment above -- the containing
+     block's left inset equals this parent's own border-left (8px). */
+    left: -8px;
     /* stylelint-disable csstools/use-logical */
     border-left: 8px solid transparent;
     border-right: 8px solid transparent;
@@ -138,6 +195,22 @@
     /* stylelint-disable csstools/use-logical */
     border-top: 8px solid transparent;
     border-bottom: 8px solid transparent;
+    border-right: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='right'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    /* Same containing-block inset as the bottom/top `::before` rules above,
+     but on the perpendicular axis: this parent's border-top is 8px, so the
+     padding-edge point sits 8px below its own border-box top. -8px cancels
+     that back to 0. */
+    top: -8px;
+    left: 0;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
     border-right: 8px solid var(--cinder-border);
     /* stylelint-enable csstools/use-logical */
   }
@@ -158,6 +231,19 @@
    right-placement note above re: Floating UI offsetHeight centering. */
   .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow {
     right: -8px;
+    /* stylelint-disable csstools/use-logical */
+    border-top: 8px solid transparent;
+    border-bottom: 8px solid transparent;
+    border-left: 8px solid var(--cinder-surface-raised);
+    /* stylelint-enable csstools/use-logical */
+  }
+
+  .cinder-popover[data-cinder-placement^='left'] .cinder-popover__arrow::before {
+    content: '';
+    position: absolute;
+    /* See the right-placement `::before` comment above. */
+    top: -8px;
+    right: 0;
     /* stylelint-disable csstools/use-logical */
     border-top: 8px solid transparent;
     border-bottom: 8px solid transparent;

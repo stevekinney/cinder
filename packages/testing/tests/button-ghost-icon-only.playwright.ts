@@ -28,20 +28,29 @@ async function openButtonPage(
     viewport: { width: 1280, height: 900 },
     baseURL: PLAYGROUND_URL,
   });
-  await context.addInitScript(
-    ([key, value]) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [THEME_STORAGE_KEY, theme] as const,
-  );
-  const page = await context.newPage();
-  await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
-  return { context, page };
+  // A failure below (bad route, load regression, missing selector) would
+  // otherwise leak this context: the caller's own try/finally only starts
+  // AFTER this function returns, so it can't close a context that never
+  // came back. Close it here on any failure and rethrow.
+  try {
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, theme] as const,
+    );
+    const page = await context.newPage();
+    await page.goto('/page/button?snapshot=1', { waitUntil: 'load' });
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    return { context, page };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 async function readButtonStyles(locator: Locator): Promise<ButtonStyles> {
