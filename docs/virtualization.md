@@ -7,7 +7,7 @@
 Four cinder components window a scrolling collection, and the first question is not how many axes you need — it is what your data already is. Semantics come first, dimensionality second: a component that matches your data brings interaction and accessibility behaviour with it that you would otherwise have to rebuild by hand inside a row snippet.
 
 - **Tabular data in a native table** — [`DataTable`](../packages/components/src/components/data-table/README.md), whose [`virtualized`](../packages/components/src/components/data-table/data-table.types.ts) mode windows fixed-height body rows while keeping real `<table>` semantics.
-- **A hierarchy that expands and collapses** — [`Tree`](../packages/components/src/components/tree/README.md), whose [`virtualized`](../packages/components/src/components/tree/tree.types.ts) mode flattens the visible order and windows that, keeping `treeitem` semantics and expansion state.
+- **A hierarchy that expands and collapses** — [`Tree`](../packages/components/src/components/tree/README.md), whose [`virtualized`](../packages/components/src/components/tree/tree.types.ts) mode flattens the visible order and windows that, keeping `treeitem` semantics and expansion state. Rows are effectively fixed-height there; see the trade-off notes below before planning around a variable-height row.
 - **Grid interaction, or columns that need windowing of their own** — [`DataGrid`](../packages/components/src/components/data-grid/README.md), which windows both axes of one scrolling surface and owns `role="grid"`: row and cell focus, keyboard navigation, range selection, column sizing and pinning.
 - **Anything else that is fundamentally a list** — [`VirtualList`](../packages/components/src/components/virtual-list/README.md), which windows a single axis, vertical by default or inline under [`horizontal`](../packages/components/src/components/virtual-list/virtual-list.types.ts), and hands you the row snippet. You own every pixel inside a row, including as many columns as you like, as long as the whole row mounts and scrolls together as one unit.
 
@@ -52,14 +52,20 @@ Needing a live browser is also new here. `fixed-virtual-window.ts` and `measurem
 
 ## Trade-offs at a glance
 
-| Engine                                                    | Axes windowed                | Runtime dependency       | Row sizing                                      | Callable without a browser                   |
-| --------------------------------------------------------- | ---------------------------- | ------------------------ | ----------------------------------------------- | -------------------------------------------- |
-| `fixed-virtual-window.ts`                                 | one                          | none                     | uniform, assumed                                | yes                                          |
-| `dynamicSize` (measurement-window.ts + measurement store) | one                          | none                     | measured and cached per row                     | the offset math yes, the `ResizeObserver` no |
-| `@tanstack/virtual-core`                                  | two in DataGrid, one in Tree | `@tanstack/virtual-core` | fixed in DataGrid, measured in Tree — see below | depends on the consumer — see below          |
+| Engine                                                    | Axes windowed                | Runtime dependency       | Row sizing                            | Callable without a browser                   |
+| --------------------------------------------------------- | ---------------------------- | ------------------------ | ------------------------------------- | -------------------------------------------- |
+| `fixed-virtual-window.ts`                                 | one                          | none                     | uniform, assumed                      | yes                                          |
+| `dynamicSize` (measurement-window.ts + measurement store) | one                          | none                     | measured and cached per row           | the offset math yes, the `ResizeObserver` no |
+| `@tanstack/virtual-core`                                  | two in DataGrid, one in Tree | `@tanstack/virtual-core` | effectively fixed in both — see below | depends on the consumer — see below          |
 
 The last two cells differ by consumer, and a single answer for either would misdescribe one of them.
 
-**Row sizing.** DataGrid's public contract is fixed-height rows: `rowHeight` defaults to 44 and nothing wires the adapter's `measureElement` into a rendered row, so the vendor's dynamic sizing is left unused. `Tree` does use it — `tree.svelte` attaches `virtualizer.measureElement` to every virtual row and `TreeVirtualizer` measures the resulting bounding-rect height — so the vendor-backed path is not estimate-only, and a variable-height hierarchy is already served.
+**Row sizing.** Neither consumer gives you variable-height rows today, though they arrive there differently.
+
+DataGrid's public contract is fixed-height: `rowHeight` defaults to 44 and nothing wires the adapter's `measureElement` into a rendered row, so the vendor's dynamic sizing is simply left unused.
+
+`Tree` looks like the exception and is not. It does attach `virtualizer.measureElement` to every virtual row, and `TreeVirtualizer` does read a bounding-rect height — but `virtualizedRowStyle` gives that same element a definite `block-size` from the current `virtualItem.size`, and `.cinder-tree-item--virtual` sets `overflow: hidden`. The measurement therefore reports the estimate back to the vendor, which can never learn that a `virtualizedItem` is taller than `virtualizationEstimatedRowHeight`; a taller row is clipped instead. So the attachment is real and the measurement is inert.
+
+Worth knowing because it is a general trap rather than a Tree quirk: a definite size on the observed element, plus clipped overflow, makes a `ResizeObserver` report back whatever was imposed on it. VirtualList's own pinned sticky row had exactly this bug — twice, once frozen against growth and once against shrinkage — before it was left unsized. Tree's case is tracked separately.
 
 **Without a browser.** Neither can run the vendor virtualizer: both guard construction on `typeof window === 'undefined'`. What differs is the fallback. `DataGrid` deliberately returns no virtual rows during SSR. `Tree` falls back to its own bounded arithmetic — `TreeVirtualizer.virtualItems` returns `#fallbackVirtualItems()` whenever the vendor window is unavailable or disagrees with it, and `totalSize` likewise returns an estimate — so a server render still produces a windowed result. The distinction is live DOM observation, which neither has on the server, versus a server-callable fallback, which only `Tree` provides.
