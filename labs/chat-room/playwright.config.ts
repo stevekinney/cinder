@@ -116,7 +116,20 @@ const CROSS_ENGINE_SHARDS = [
 		'**/row-reconciliation.e2e.ts',
 		'**/utilities.e2e.ts',
 		'**/virtualization.e2e.ts',
-		'**/page.svelte.e2e.ts'
+		'**/page.svelte.e2e.ts',
+		// FOCUS, which is the first category this list exists for, and the
+		// reason this spec has its own file: it asserts where focus lands when
+		// the element holding it is removed, and WebKit's focus-on-removal
+		// semantics differ from Chromium's. Left in `server-owned.e2e.ts` it
+		// would have run in Chromium only, and a WebKit regression would have
+		// left CI green.
+		//
+		// Placed here by measurement, not by eye. `--list` per project read
+		// 54/62/62/51/50 before this entry, and `webkit-2`/`webkit-3` are at the
+		// 64-context ceiling with no headroom — so its one test goes to the
+		// smallest shard, taking this one to 51. Re-run `--list` when this gains
+		// a test; that is a step in adding one, not a reminder afterwards.
+		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;
 

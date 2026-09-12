@@ -67,7 +67,7 @@ echo "$ID"
 The only thing this prints is the id — the substitution captures the response and the program projects it down. **Observed:**
 
 ```
-session-1-5ea684af-345e-409a-8312-0fc89e89f87b
+session-1-a72e39af-4bca-4c1c-8423-17a3f12b9ec8
 ```
 
 Ask about recovery before anything has run. **A POST, not a GET** — asking reconciles a stranded run, so the question is not safely repeatable and the verb has to say so. **Observed:** the benign answer, which is the truth for a session that has never had a run.
@@ -114,7 +114,7 @@ curl -s http://localhost:4791/api/server-owned/conversations/$ID
 ```
 
 ```json
-{ "id": "session-1-98171819-…", "title": "Durability exercise", "messageCount": 0, "messages": [] }
+{ "id": "session-1-a72e39af-…", "title": "Durability exercise", "messageCount": 0, "messages": [] }
 ```
 
 Ask about recovery. **Observed:** the orphan classification, with a client-safe reason. The engine's own words go to the server log rather than to the browser — a resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The `runId` crosses, because it is this lab's own identifier and it is what makes two orphaned runs distinguishable.
@@ -129,7 +129,7 @@ curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recover
 	"durability": "on-disk",
 	"failures": [
 		{
-			"runId": "session-1-98171819-…:0",
+			"runId": "session-1-a72e39af-…:0",
 			"reason": "The engine refused to resume this run. The details are in the server log."
 		}
 	],
@@ -142,6 +142,11 @@ Ask a **second** time. **Observed:** the benign answer.
 ```json
 { "kind": "nothing-to-resume", "durability": "on-disk" }
 ```
+
+> [!WARNING] Asking consumes the answer
+> `POST …/recovery` reconciles the stranded run it reports, so **the first ask is the only one that returns `orphaned`** — and anything that asks counts. While writing this file I lost the classification twice to my own diagnostics: a probe that hit the endpoint before the panel did, and a transcript stitched from two runs because of it. If you are scripting around this, ask once and keep the answer.
+>
+> Every id below is from one run, `session-1-a72e39af-4bca-4c1c-8423-17a3f12b9ec8`. A transcript with two ids in it is a transcript of two different runs, whatever it claims.
 
 ## The one-shot classification is correct, not a bug
 
@@ -180,7 +185,7 @@ The storage sentence is inside the announcement, not only in the paragraph besid
 status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
             run's work is terminally gone. Storage is on disk, so a run left in flight
             is recorded for the next process.
-failures:   session-1-5ea684af-…:0 — The engine refused to resume this run.
+failures:   session-1-a72e39af-…:0 — The engine refused to resume this run.
             The details are in the server log.
 once:       Reported once. Operative reconciles a stranded run to terminal as it reports
             the rejection, so asking again answers "nothing to resume".

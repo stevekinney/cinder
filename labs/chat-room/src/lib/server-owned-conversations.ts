@@ -147,6 +147,48 @@ export async function appendUserTurn(id: string, text: string): Promise<AgentSes
 	});
 }
 
+/**
+ * Records that a run was found orphaned, so the evidence outlives the one
+ * response that reported it.
+ *
+ * `recover()` reconciles the stranded run as it reports the rejection, so the
+ * classification is available exactly once. Anything that loses that one
+ * answer — a dropped connection, or simply reloading the page, which discards
+ * the component state that remembered it — used to leave the next check saying
+ * no run is in flight. That is the same false historical claim the panel's
+ * wording was corrected to avoid, arriving by a different route.
+ *
+ * In session METADATA rather than in memory, because the point is to survive
+ * the things that lose it: the response, the page, and the process.
+ *
+ * `refreshActivity: false` — noting a diagnosis is not conversation activity,
+ * and stamping `updatedAt` here would reorder the list for a read.
+ */
+export async function rememberOrphanedRuns(id: string, runIds: readonly string[]): Promise<void> {
+	if (runIds.length === 0) return;
+	const { sessions } = serverOwnedRuntime();
+	await sessions.update(
+		id,
+		(session) => {
+			if (session === undefined) return undefined;
+			const already = orphanedRunsOf(session.metadata);
+			// UNION, and order-stable: a repeated ask must not duplicate an entry,
+			// and the first-reported run stays first.
+			const merged = [...already, ...runIds.filter((runId) => !already.includes(runId))];
+			if (merged.length === already.length) return undefined;
+			return { ...session, metadata: { ...session.metadata, orphanedRuns: merged } };
+		},
+		{ refreshActivity: false }
+	);
+}
+
+/** The runs this conversation has already been told were orphaned. */
+export function orphanedRunsOf(metadata: AgentSession['metadata']): readonly string[] {
+	const recorded = metadata?.orphanedRuns;
+	if (!Array.isArray(recorded)) return [];
+	return recorded.filter((value): value is string => typeof value === 'string');
+}
+
 /** Message count for one conversation, for assertions and the list fallback. */
 export function messageCountOf(session: AgentSession): number {
 	return getMessages(session.conversationHistory).length;

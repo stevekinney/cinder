@@ -222,7 +222,12 @@ test('reports a conversation with no in-flight run as nothing to resume', async 
 	// the default rather than inheriting a database from someone's experiment.
 	expect(await recovery.json()).toEqual({
 		kind: 'nothing-to-resume',
-		durability: 'in-memory'
+		durability: 'in-memory',
+		// EMPTY, and asserted rather than omitted: this is the signal that
+		// distinguishes "no run was ever orphaned" from "one was, and you have
+		// already been told". A conversation that has never had a run must report
+		// the first, and an exact match is what keeps the two apart.
+		previouslyOrphaned: []
 	});
 });
 
@@ -758,46 +763,4 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 
 	await page.locator('[data-testid="recovery-check"]').click();
 	await expect(alert).toContainText('could not reach the server');
-});
-
-test('answering keeps focus inside the chat', async ({ page }) => {
-	// Every path that clears the question removes the focused subtree, and a
-	// browser then drops focus to `<body>` — outside the chat's tab context, at
-	// the moment the turn resumes. Asserted on the RESULT rather than on the
-	// handler, because three separate paths clear `pending` and only one of
-	// them used to hand focus off.
-	await gotoHydrated(page, '/server-owned');
-	const title = uniqueTitle('Approval focus');
-	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
-	await page.locator('[data-testid="server-owned-create"]').click();
-	await page.getByRole('link', { name: new RegExp(title) }).click();
-	await page.waitForSelector('body[data-hydrated="true"]');
-
-	const marker = newFixtureMarker();
-	const composer = page.getByRole('textbox');
-	await composer.fill(fixtureMarker('approval', marker));
-	await composer.press('Enter');
-
-	const approve = page.locator('[data-testid="approval-approve"]');
-	await expect(approve).toBeVisible();
-
-	// FOCUSED BY KEYBOARD, not clicked — a click leaves focus wherever the
-	// browser decides, which would let this pass without the handoff.
-	await approve.focus();
-	await expect(approve).toBeFocused();
-	await approve.press('Enter');
-
-	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
-		'data-streaming',
-		'false'
-	);
-
-	// NOT `<body>`. The status region is where the consequence of the decision
-	// is announced, so it is where focus belongs.
-	const landed = await page.evaluate(() => ({
-		tag: document.activeElement?.tagName.toLowerCase() ?? '(none)',
-		testId: document.activeElement?.getAttribute('data-testid') ?? '(none)'
-	}));
-	expect(landed.tag).not.toBe('body');
-	expect(landed.testId).toBe('approval-question');
 });

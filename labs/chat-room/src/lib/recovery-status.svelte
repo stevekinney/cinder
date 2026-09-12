@@ -20,7 +20,11 @@
 
 	type Reported =
 		| { kind: 'recovered'; progress: string; note: string; durability: Durability }
-		| { kind: 'nothing-to-resume'; durability: Durability }
+		| {
+				kind: 'nothing-to-resume';
+				durability: Durability;
+				previouslyOrphaned?: readonly string[];
+		  }
 		| {
 				kind: 'orphaned';
 				durability: Durability;
@@ -68,6 +72,12 @@
 			}
 			const reported = (await response.json()) as Reported;
 			if (reported.kind === 'orphaned') seenOrphan = true;
+			// The SERVER's memory, not just this page's. A reload discards
+			// `seenOrphan`, and the classification cannot be asked for twice — so
+			// without this a reloaded page claims no run was ever in flight.
+			if (reported.kind === 'nothing-to-resume' && (reported.previouslyOrphaned?.length ?? 0) > 0) {
+				seenOrphan = true;
+			}
 			outcome = reported;
 		} catch {
 			failure = 'The recovery check could not reach the server.';

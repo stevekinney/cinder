@@ -1,7 +1,12 @@
 import { json } from '@sveltejs/kit';
 import { createSessionHandle } from '@lostgradient/operative';
 
-import { AGENT_NAME, loadConversation } from '$lib/server-owned-conversations';
+import {
+	AGENT_NAME,
+	loadConversation,
+	orphanedRunsOf,
+	rememberOrphanedRuns
+} from '$lib/server-owned-conversations';
 import { emptyToolbox } from '$lib/toolbox';
 import { durableRuntime } from '$lib/server-owned-durable';
 import { classifyRecovery } from '$lib/server-owned-recovery';
@@ -49,9 +54,14 @@ export const POST: RequestHandler = async ({ params }) => {
 };
 
 async function respond(id: string): Promise<Response> {
-	if ((await loadConversation(id)) === undefined) {
+	const existing = await loadConversation(id);
+	if (existing === undefined) {
 		return json({ error: 'No such conversation.' }, { status: 404 });
 	}
+
+	// What this conversation has ALREADY been told was orphaned. Read before
+	// classifying, because classifying is what adds to it.
+	const previouslyOrphaned = orphanedRunsOf(existing.metadata);
 
 	const { sessions, durability } = serverOwnedRuntime();
 	const durable = await durableRuntime();
@@ -121,7 +131,13 @@ async function respond(id: string): Promise<Response> {
 	}
 
 	if (outcome.kind === 'nothing-to-resume') {
-		return json({ kind: 'nothing-to-resume', durability });
+		// PREVIOUSLY ORPHANED RUNS CROSS, so a second ask can say which of two
+		// things "nothing currently resumable" means without relying on a page
+		// remembering. The classification is available exactly once — the
+		// reconciliation happens as it is reported — so a dropped response or a
+		// plain reload used to lose the evidence and leave the next answer
+		// claiming no run was ever in flight.
+		return json({ kind: 'nothing-to-resume', durability, previouslyOrphaned });
 	}
 
 	// REDACTED at this boundary, not in the classifier.
@@ -142,6 +158,14 @@ async function respond(id: string): Promise<Response> {
 			`[server-owned] recovery rejected for ${failure.runId} in conversation ${id}: ${failure.reason}`
 		);
 	}
+
+	// RECORDED BEFORE RESPONDING, so the evidence survives a response that never
+	// arrives. Awaited rather than fired and forgotten: a diagnosis this endpoint
+	// reported and failed to persist is one nothing can recover.
+	await rememberOrphanedRuns(
+		id,
+		outcome.failures.map((failure) => failure.runId)
+	);
 
 	return json({
 		kind: 'orphaned',

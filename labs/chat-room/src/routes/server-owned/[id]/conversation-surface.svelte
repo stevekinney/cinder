@@ -227,6 +227,14 @@
 	 */
 	let pollFailure: BannerFailure | null = null;
 
+	/**
+	 * The banner value `decide()` installed, cleared on its own success.
+	 *
+	 * Same reasoning as `pollFailure`, for the other writer: ownership of a
+	 * shared banner is checked by identity, never asserted by a flag.
+	 */
+	let decideFailure: BannerFailure | null = null;
+
 	async function readPendingApproval(generation: number, signal?: AbortSignal): Promise<void> {
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
@@ -334,15 +342,43 @@
 				// branch used to be folded into the 409 above, which meant a 404, a
 				// 500, or the shutdown 503 left the stale controls on screen with no
 				// explanation and the run still unresolved.
-				failure = toBannerFailure(new Error(await failureMessage(response)));
+				//
+				// The controls stay up, so this is retryable — which is why the
+				// value is remembered and cleared by a later success.
+				const reported = toBannerFailure(new Error(await failureMessage(response)));
+				decideFailure = reported;
+				failure = reported;
 				return;
 			}
 			// FOCUS FIRST, then clear — the same handoff the poll and the cleanup
 			// use, so all three paths agree rather than one of them remembering.
 			handOffFocusFromApproval();
 			pending = null;
+
+			// IN-FLIGHT POLLS ARE INVALIDATED, because answering settles the
+			// question on the server but says nothing to a GET already running.
+			// One that captured this question before the POST landed would
+			// restore its Approve/Deny controls after the server had settled it,
+			// and they could sit there through a slow follow-up generation.
+			//
+			// Bumping the generation is what the loop already checks; it schedules
+			// its next poll under the new value, so polling continues.
+			pollGeneration += 1;
+
+			// A DECISION'S OWN FAILURE is cleared on its own success. A transient
+			// POST failure leaves the controls up for a retry, and the retry
+			// succeeding used to leave the alert still claiming the approval
+			// failed — while the approved tool ran and the turn completed. The
+			// poll path deliberately clears only poll-owned errors, so this one
+			// has to clear its own.
+			if (decideFailure !== null && failure === decideFailure) {
+				failure = null;
+			}
+			decideFailure = null;
 		} catch (cause) {
-			failure = toBannerFailure(cause);
+			const reported = toBannerFailure(cause);
+			decideFailure = reported;
+			failure = reported;
 		} finally {
 			deciding = false;
 		}
