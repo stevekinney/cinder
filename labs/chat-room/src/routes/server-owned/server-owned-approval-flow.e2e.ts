@@ -18,7 +18,19 @@ test('approval stream completes in the browser', async ({ page }) => {
 	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
 	await page.getByRole('textbox').press('Enter');
 	await expect(page.locator('[data-testid="approval-approve"]')).toBeVisible();
+	const approvalRequest = page.waitForRequest(
+		(request) =>
+			request.method() === 'POST' &&
+			request.url().includes('/api/server-owned/conversations/') &&
+			request.url().endsWith('/elicitation')
+	);
 	await page.locator('[data-testid="approval-approve"]').click();
+	const approvalPayload = JSON.parse((await approvalRequest).postData() ?? '{}') as {
+		approved?: unknown;
+		callId?: unknown;
+	};
+	expect(approvalPayload.approved).toBe(true);
+	expect(typeof approvalPayload.callId).toBe('string');
 
 	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
 		'data-streaming',

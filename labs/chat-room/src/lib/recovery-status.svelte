@@ -57,7 +57,6 @@
 		if (checking) return;
 		checking = true;
 		failure = '';
-		outcome = undefined;
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/recovery`, {
 				method: 'POST'

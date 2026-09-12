@@ -352,6 +352,7 @@ export function createChatAgent(options: {
 	toolbox: AnyToolbox;
 	requestContext: OperativeExecuteOptions['requestContext'];
 	writer: ChatStreamWriter;
+	beforeToolExecution?: BeforeToolExecutionHook[];
 }): StandaloneAgent {
 	return createAgent(createChatRunOptions(options));
 }
@@ -524,8 +525,8 @@ function toTerminalFailureFrame(
  * regardless.
  *
  * `tool.settled` is sourced from `ToolsExecutedEvent.results` rather than
- * from Operative's `ToolSettledBubbleEvent` for two reasons verified against
- * 0.8.0: the bubble's `result` is the tool's RAW return value, not the
+ * from Operative's `ToolSettledBubbleEvent` for two reasons originally verified against
+ * 0.8.0 and retained by the current installed-package regression suite: the bubble's `result` is the tool's RAW return value, not the
  * `ToolResult` the wire wants, and an approval-paused call never gets a
  * bubble at all — only `tools.executed` carries its `action_required`
  * result with the `pendingApproval` descriptor the client needs.
@@ -637,12 +638,18 @@ export async function pumpChatRun(
 					// generic on purpose: this is the pump, which knows a result is
 					// missing but not why, and a message naming approval would be
 					// wrong for every other cause.
-					writer.write({
-						type: 'tool_result',
+					const syntheticResult: ChatToolResult = {
 						callId: toolCall.id,
 						outcome: 'error',
 						content: 'This call did not run, and reported no result.'
+					};
+					writer.write({
+						type: 'tool.settled',
+						toolCallId: toolCall.id,
+						toolName: toolCall.name,
+						result: syntheticResult
 					});
+					writer.write({ type: 'tool_result', ...syntheticResult });
 				}
 			}
 		}

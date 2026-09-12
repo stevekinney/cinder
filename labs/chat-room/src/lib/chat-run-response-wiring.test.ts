@@ -88,7 +88,9 @@ describe('streaming endpoints share one stream lifecycle', () => {
 			// keeps going and keeps billing. That is the failure these
 			// lifecycle tests exist for, reachable without touching the helper.
 			expect(source).toMatch(/signal:\s*(?:request\.signal|lifecycleSignal)/);
-			if (endpoint.includes('server-owned')) expect(source).toContain('AbortSignal.any');
+			if (endpoint.includes('server-owned')) {
+				expect(source).toMatch(/AbortSignal\.any\(\[request\.signal,\s*shutdownSignal\]\)/);
+			}
 		});
 	}
 });

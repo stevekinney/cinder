@@ -8,8 +8,32 @@ import {
 	disposeServerOwnedRuntime,
 	serverOwnedRuntime
 } from './server-owned-runtime.ts';
+import type { ServerOwnedRuntime } from './server-owned-runtime.ts';
 import { durableRuntime } from './server-owned-durable.ts';
 import { peekApproval, requestApproval } from './server-owned-elicitation.ts';
+
+const runtimeSlot = Symbol.for('cinder.chat-room.server-owned.runtime');
+
+type RuntimeTeardown = () => void | Promise<void>;
+type RuntimeSlotHost = typeof globalThis & Record<symbol, unknown>;
+type RuntimeSlotShape = {
+	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal'>;
+	teardowns: RuntimeTeardown[];
+};
+
+function replaceRuntimeSlotWithPreShutdownSignalShape(runtime: ServerOwnedRuntime) {
+	const host = globalThis as RuntimeSlotHost;
+	const current = host[runtimeSlot] as { teardowns: RuntimeTeardown[] };
+	const legacyRuntime = runtime as Omit<ServerOwnedRuntime, 'shutdownSignal'> & {
+		shutdownSignal?: AbortSignal;
+	};
+	delete legacyRuntime.shutdownSignal;
+
+	host[runtimeSlot] = {
+		runtime: legacyRuntime,
+		teardowns: current.teardowns
+	} satisfies RuntimeSlotShape;
+}
 
 /**
  * The server-owned variant's disposal contract.
@@ -41,6 +65,40 @@ beforeEach(async () => {
 });
 
 describe('server-owned runtime', () => {
+	it('upgrades a pre-shutdown-signal HMR slot before serving a request', async () => {
+		const previous = serverOwnedRuntime();
+		replaceRuntimeSlotWithPreShutdownSignalShape(previous);
+
+		const current = serverOwnedRuntime();
+
+		expect(current).toBe(previous);
+		expect(current.store).toBe(previous.store);
+		expect(current.sessions).toBe(previous.sessions);
+		expect(current.shutdownSignal).toBeInstanceOf(AbortSignal);
+
+		let teardownSawAbort = false;
+		current.onDispose(() => {
+			teardownSawAbort = current.shutdownSignal.aborted;
+		});
+
+		await disposeServerOwnedRuntime();
+
+		expect(teardownSawAbort).toBe(true);
+	});
+
+	it('disposes a pre-shutdown-signal HMR slot without dropping its teardowns', async () => {
+		const runtime = serverOwnedRuntime();
+		let legacyTeardownRan = false;
+		runtime.onDispose(() => {
+			legacyTeardownRan = true;
+		});
+		replaceRuntimeSlotWithPreShutdownSignalShape(runtime);
+
+		await expect(disposeServerOwnedRuntime()).resolves.toEqual({ failures: 0 });
+
+		expect(legacyTeardownRan).toBe(true);
+	});
+
 	it('aborts pending approvals before the real durable engine teardown starts', async () => {
 		const runtime = serverOwnedRuntime();
 		await durableRuntime();

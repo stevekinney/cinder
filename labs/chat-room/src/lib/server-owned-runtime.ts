@@ -88,7 +88,7 @@ const DISPOSAL_SLOT = Symbol.for('cinder.chat-room.server-owned.disposal');
 const TERMINATING_SLOT = Symbol.for('cinder.chat-room.server-owned.terminating');
 
 type RuntimeHost = typeof globalThis & {
-	[RUNTIME_SLOT]?: HeldRuntime;
+	[RUNTIME_SLOT]?: StoredRuntime;
 	/**
 	 * The disposal currently in flight, so overlapping callers await it rather
 	 * than each concluding there is nothing to do.
@@ -117,11 +117,28 @@ type RuntimeHost = typeof globalThis & {
 	[TERMINATING_SLOT]?: true | undefined;
 };
 
+type RuntimeTeardown = () => void | Promise<void>;
+
+type StoredRuntime = {
+	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal'> & {
+		readonly shutdownSignal?: AbortSignal;
+	};
+	shutdownController?: AbortController;
+	teardowns: RuntimeTeardown[];
+};
+
 type HeldRuntime = {
 	runtime: ServerOwnedRuntime;
 	shutdownController: AbortController;
-	teardowns: Array<() => void | Promise<void>>;
+	teardowns: RuntimeTeardown[];
 };
+
+function isCurrentRuntimeSlot(held: StoredRuntime): held is HeldRuntime {
+	return (
+		held.shutdownController !== undefined &&
+		held.runtime.shutdownSignal === held.shutdownController.signal
+	);
+}
 
 /**
  * Process-stable marker for "the runtime is going away".
@@ -197,6 +214,24 @@ function createRuntime(): HeldRuntime {
 	};
 }
 
+function currentRuntimeSlot(held: StoredRuntime): HeldRuntime {
+	if (isCurrentRuntimeSlot(held)) return held;
+
+	const shutdownController = held.shutdownController ?? new AbortController();
+	Object.defineProperty(held.runtime, 'shutdownSignal', {
+		configurable: true,
+		enumerable: true,
+		value: shutdownController.signal,
+		writable: true
+	});
+
+	return {
+		runtime: held.runtime as ServerOwnedRuntime,
+		teardowns: held.teardowns,
+		shutdownController
+	};
+}
+
 /**
  * The process's server-owned runtime, created on first use.
  */
@@ -205,8 +240,16 @@ export function serverOwnedRuntime(): ServerOwnedRuntime {
 	// Refused rather than built. See `TERMINATING_SLOT`: admitting one more
 	// runtime here is what made the drain unable to finish.
 	if (host[TERMINATING_SLOT] === true) throw new RuntimeTerminatingError();
-	host[RUNTIME_SLOT] ??= createRuntime();
-	return host[RUNTIME_SLOT].runtime;
+	const held = host[RUNTIME_SLOT];
+	if (held === undefined) {
+		const created = createRuntime();
+		host[RUNTIME_SLOT] = created;
+		return created.runtime;
+	}
+
+	const current = currentRuntimeSlot(held);
+	host[RUNTIME_SLOT] = current;
+	return current.runtime;
 }
 
 /**
@@ -395,7 +438,10 @@ export async function disposeServerOwnedRuntime(
  * "nothing new appeared" cannot be fixed by giving up after N tries, and the
  * generation it left undisposed was cut off by the exit anyway.
  */
-async function drainDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ failures: number }> {
+async function drainDisposal(
+	host: RuntimeHost,
+	held: StoredRuntime
+): Promise<{ failures: number }> {
 	// The latch is already set by `disposeServerOwnedRuntime`, before any early
 	// return, so that a terminating call which JOINS an in-flight disposal
 	// latches too. Reasserted here rather than assumed, because this function's
@@ -409,7 +455,7 @@ async function drainDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ fa
 	host[TERMINATING_SLOT] = true;
 
 	let failures = 0;
-	let generation: HeldRuntime | undefined = host[RUNTIME_SLOT] ?? held;
+	let generation: StoredRuntime | undefined = host[RUNTIME_SLOT] ?? held;
 
 	while (generation !== undefined) {
 		failures += (await runDisposal(host, generation)).failures;
@@ -421,7 +467,9 @@ async function drainDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ fa
 	return { failures };
 }
 
-async function runDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ failures: number }> {
+async function runDisposal(host: RuntimeHost, held: StoredRuntime): Promise<{ failures: number }> {
+	const current = currentRuntimeSlot(held);
+
 	// Cleared BEFORE the teardowns run, so a teardown cannot reach the
 	// half-disposed runtime it is in the middle of tearing down.
 	//
@@ -434,10 +482,10 @@ async function runDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ fail
 	// Abort request-scoped waits after the slot is closed and before the first
 	// teardown. This also covers replacement generations started by a
 	// terminating caller that joined an ordinary disposal.
-	held.shutdownController.abort();
+	current.shutdownController.abort();
 
 	let failures = 0;
-	for (const teardown of [...held.teardowns].reverse()) {
+	for (const teardown of [...current.teardowns].reverse()) {
 		try {
 			await teardown();
 		} catch (cause) {

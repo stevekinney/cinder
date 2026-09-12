@@ -781,3 +781,64 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 		.evaluate((button) => (button as HTMLButtonElement).click());
 	await expect(alert).toContainText('could not reach the server');
 });
+
+test('keeps an orphan report while a later recovery check fails', async ({ page, request }) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Recovery recheck') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+	await page.locator('summary', { hasText: 'Durable recovery' }).click({ force: true });
+
+	let requests = 0;
+	let secondStarted!: () => void;
+	const secondRequest = new Promise<void>((resolve) => {
+		secondStarted = resolve;
+	});
+	let releaseSecond!: () => void;
+	const secondResponse = new Promise<void>((resolve) => {
+		releaseSecond = resolve;
+	});
+	await page.route(
+		`**/api/server-owned/conversations/${conversation.id}/recovery`,
+		async (route) => {
+			requests += 1;
+			if (requests === 1) {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						kind: 'orphaned',
+						durability: 'on-disk',
+						failures: [{ runId: 'run-orphaned', reason: 'Provider details are withheld.' }],
+						note: 'Reported once.'
+					})
+				});
+				return;
+			}
+			secondStarted();
+			await secondResponse;
+			await route.fulfill({
+				status: 503,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'The server is shutting down. Try again in a moment.' })
+			});
+		}
+	);
+
+	const check = page.locator('[data-testid="recovery-check"]');
+	await check.click();
+	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
+
+	await check.click();
+	await secondRequest;
+	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
+
+	releaseSecond();
+	await expect(page.locator('[data-testid="recovery-error"]')).toContainText('shutting down');
+	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
+});

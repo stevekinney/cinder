@@ -7,6 +7,7 @@ import {
 	stopWhen,
 	type AgentRun,
 	type EnhancedStreamingOptions,
+	type BeforeToolExecutionHook,
 	type StreamingGenerateFunction
 } from '@lostgradient/operative';
 import { withEnhancedStreaming } from '@lostgradient/operative/streaming';
@@ -118,13 +119,14 @@ function disposeRun(run: AgentRun): void {
 async function runAndCollect(
 	generate: StreamingGenerateFunction,
 	toolbox: AnyToolbox = createToolbox([]),
-	lines: string[] = []
+	lines: string[] = [],
+	beforeToolExecution?: BeforeToolExecutionHook[]
 ): Promise<{ frames: ChatStreamEvent[]; envelope: Awaited<ReturnType<typeof pumpChatRun>> }> {
 	// Mirrors the route exactly: one request-local writer feeds both the
 	// `stream:*` forwarding `createChatAgent` installs and the `tool.*`/`run.*`
 	// frames `pumpChatRun` emits, so this collects the same bytes the wire sees.
 	const writer = createChatStreamWriter((line) => lines.push(line));
-	const agent = createChatAgent({ generate, toolbox, requestContext, writer });
+	const agent = createChatAgent({ generate, toolbox, requestContext, writer, beforeToolExecution });
 	const run = startChatRun(agent, conversationWith('hello'));
 	// Disposed like the route disposes it, so a run's listeners cannot outlive
 	// the test that made it and leak into the next one.
@@ -229,7 +231,7 @@ describe('pumpChatRun: provider failure', () => {
 		expect(envelope.error.message).toContain('simulated provider failure');
 
 		// One terminal frame, even though Operative fires `run.error` AND a
-		// `run.completed` (finishReason 'error') for the same failure — verified
+		// `run.completed` (finishReason 'error') for the same failure — originally verified
 		// against 0.8.0 directly. The frame is a serialized run error with no
 		// `cause`: the reference architecture's error contract forbids forwarding
 		// it, since it can carry a credential-bearing provider response.
@@ -467,6 +469,32 @@ describe('pumpChatRun: roll_dice tool path', () => {
 		expect(legacyFrames(frames).at(-1)).toMatchObject({
 			type: 'tool_result',
 			outcome: 'action_required'
+		});
+	});
+
+	test('a filtered denied call settles typed and legacy consumers', async () => {
+		const generate: StreamingGenerateFunction = async () => ({
+			content: '',
+			toolCalls: [{ id: 'call-denied', name: 'roll_dice', arguments: { sides: 6, count: 1 } }]
+		});
+		const deny: BeforeToolExecutionHook = async ({ toolCalls }) =>
+			toolCalls.filter((toolCall) => toolCall.name !== 'roll_dice');
+
+		const { frames } = await runAndCollect(generate, createToolbox([rollDice]), [], [deny]);
+		const [settled] = ofType(frames, 'tool.settled');
+		expect(settled).toMatchObject({
+			toolCallId: 'call-denied',
+			toolName: 'roll_dice',
+			result: {
+				callId: 'call-denied',
+				outcome: 'error',
+				content: 'This call did not run, and reported no result.'
+			}
+		});
+		expect(legacyFrames(frames).at(-1)).toMatchObject({
+			type: 'tool_result',
+			callId: 'call-denied',
+			outcome: 'error'
 		});
 	});
 });
