@@ -13,6 +13,20 @@ The variant's storage is `MemoryStorage` unless told otherwise. With it, a resta
 > [!NOTE] Put it in `/tmp`, even though the checkout ignores it
 > `*.sqlite` and its WAL siblings are gitignored, so a database left inside the checkout will not be committed by accident. Keep it outside anyway: it is one experiment's scratch state, and a stale one sitting in the lab will quietly answer the next experiment's questions.
 
+## The one dependency this needs, and why it is not installed
+
+`vite preview` and `vite dev` run under **Node, not Bun** — `bun run preview` resolves `vite` through a `#!/usr/bin/env node` shebang — so Weft's runtime-neutral SQLite entry point reaches its Node adapter, which needs the `better-sqlite3` peer.
+
+That package is deliberately **not** a dependency of this lab. Its install script exits 127 in the Playwright container CI runs the browser suite in, so declaring it failed every lane for a package no CI command ever constructs. Nothing in this lab imports it at module load either: Weft loads it inside the adapter's constructor, so the code path type-checks and builds without it, and `bun test` reaches the `bun:sqlite` adapter, which needs nothing installed at all.
+
+So the install is a step of this procedure rather than a line in `package.json`:
+
+```sh
+bun add -d better-sqlite3
+```
+
+Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which repeats that command and this file's path. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
+
 ## The procedure
 
 Start the provider fixture, so a turn can run without a live API key:

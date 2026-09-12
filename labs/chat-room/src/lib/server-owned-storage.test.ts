@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
-import { DATABASE_VARIABLE, serverOwnedStorage } from '$lib/server-owned-storage';
+import {
+	DATABASE_VARIABLE,
+	DurableStorageUnavailableError,
+	serverOwnedStorage
+} from '$lib/server-owned-storage';
 
 /**
  * Which backing store the server-owned family gets, and whether it survives
@@ -35,6 +39,40 @@ function temporaryDatabasePath(): string {
 	directories.push(directory);
 	return join(directory, 'server-owned.sqlite');
 }
+
+describe('the durable adapter stays an opt-in', () => {
+	test('better-sqlite3 is not a dependency of this lab', () => {
+		// A GUARD, not a preference. Declaring it failed every `playwright-lane`
+		// on the branch that first added it: its install script exits 127 in the
+		// Playwright container, so `bun install --frozen-lockfile` died before a
+		// single test ran — for a package no CI command ever constructs.
+		//
+		// It stays a step of `docs/durability-exercise.md` instead. Re-adding it
+		// here would break the browser suite again, and the failure arrives as a
+		// dependency-install error sixteen times over rather than as anything
+		// pointing at the cause.
+		const manifest = JSON.parse(
+			readFileSync(new URL('../../package.json', import.meta.url), 'utf8')
+		) as { dependencies?: Record<string, string>; devDependencies?: Record<string, string> };
+
+		expect(Object.keys(manifest.dependencies ?? {})).not.toContain('better-sqlite3');
+		expect(Object.keys(manifest.devDependencies ?? {})).not.toContain('better-sqlite3');
+	});
+
+	test('the durable branch reports what to do when the peer is absent', () => {
+		// Under `bun test` the runtime-neutral entry resolves to `bun:sqlite`, so
+		// construction SUCCEEDS here and the error below cannot be triggered by
+		// unsetting a package. What is pinned instead is that the message names
+		// all three things a reader needs: the variable, the install, and the way
+		// back to a working server.
+		const error = new DurableStorageUnavailableError('/tmp/example.sqlite', new Error('missing'));
+
+		expect(error.message).toContain(DATABASE_VARIABLE);
+		expect(error.message).toContain('durability-exercise.md');
+		expect(error.message).toContain('in-memory storage');
+		expect(error.message).toContain('missing');
+	});
+});
 
 describe('serverOwnedStorage', () => {
 	test('is in-memory when the variable is unset', async () => {

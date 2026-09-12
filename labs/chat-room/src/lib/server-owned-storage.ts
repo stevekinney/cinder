@@ -34,10 +34,22 @@ export type Durability = 'in-memory' | 'on-disk';
  * The backing store for the server-owned family, and which kind it is.
  *
  * `SQLiteStorage` rather than `BunSQLiteStorage`: the runtime-neutral entry
- * point resolves to Bun's `bun:sqlite` adapter under Bun and to `node:sqlite`
- * elsewhere, so this file does not decide which runtime the lab runs under.
- * Both implement the same Weft `Storage` interface, which is the only thing
- * `createRunEngine` and `textValueStore` ever ask for.
+ * point resolves to Bun's `bun:sqlite` adapter under Bun and to Weft's
+ * `better-sqlite3`-backed one elsewhere, so this file does not decide which
+ * runtime the lab runs under. Both implement the same Weft `Storage`
+ * interface, which is the only thing `createRunEngine` and `textValueStore`
+ * ever ask for.
+ *
+ * THE IMPORT IS FREE; only construction can fail. Weft loads `better-sqlite3`
+ * inside the Node adapter's constructor rather than at module load, and its
+ * declarations reference none of that package's types — so this module
+ * imports, type-checks, and builds on a checkout that has never installed it.
+ *
+ * That is what lets the dependency stay uninstalled, which it must: its
+ * install script exits 127 in the Playwright container CI runs the browser
+ * suite in, and declaring it failed every lane for a package no CI command
+ * ever constructs. `bun test` reaches the Bun adapter, which needs nothing
+ * installed, so the durability tests below run either way.
  */
 export function serverOwnedStorage(): {
 	readonly storage: Storage;
@@ -57,8 +69,40 @@ export function serverOwnedStorage(): {
 	// adapter accepts it. Reported as `in-memory`, because it is: nothing
 	// survives the process, and calling it `on-disk` would make the recovery
 	// panel claim durability this database does not have.
-	return {
-		storage: new SQLiteStorage(path),
-		durability: path === ':memory:' ? 'in-memory' : 'on-disk'
-	};
+	const durability: Durability = path === ':memory:' ? 'in-memory' : 'on-disk';
+
+	try {
+		return { storage: new SQLiteStorage(path), durability };
+	} catch (cause) {
+		throw new DurableStorageUnavailableError(path, cause);
+	}
+}
+
+/**
+ * Raised when the variable names a database this runtime cannot open.
+ *
+ * Under Bun it never happens — `bun:sqlite` is built in. Under Node, which is
+ * what `vite preview` and `vite dev` actually run on (`bun run preview`
+ * resolves `vite` through a `#!/usr/bin/env node` shebang), Weft's adapter
+ * needs its `better-sqlite3` peer, and this lab deliberately does not install
+ * it.
+ *
+ * The MESSAGE carries Weft's own sentence, which already names the install
+ * command, plus where the surrounding procedure is written down and how to get
+ * back to a working server without it. The `cause` is attached for a server
+ * log and does not reach a client: this route family's error mapping sends a
+ * sentence rather than a forwarded cause.
+ */
+export class DurableStorageUnavailableError extends Error {
+	override readonly name = 'DurableStorageUnavailableError';
+
+	constructor(path: string, cause: unknown) {
+		const reported = cause instanceof Error ? cause.message : String(cause);
+		super(
+			`${DATABASE_VARIABLE} names ${path}, but the durable store could not be opened. ${reported} ` +
+				'That install is listed as a step of the exercise in labs/chat-room/docs/durability-exercise.md. ' +
+				`Unset ${DATABASE_VARIABLE} to run on in-memory storage instead.`,
+			{ cause }
+		);
+	}
 }
