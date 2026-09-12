@@ -5,7 +5,9 @@ renders only the visible rows plus overscan; you own the row markup through the
 `row` snippet. It scrolls vertically by default and horizontally under
 [`horizontal`](#scrolling-along-the-inline-axis).
 
-Use `VirtualList` to window an already-loaded large collection. Use [`LoadMore`](../load-more/README.md) to fetch another page as the reader reaches the end of a growing result set; the two can be composed when a paginated collection also needs windowed rendering.
+Use `VirtualList` to window an already-loaded large collection. Use [`LoadMore`](../load-more/README.md) to fetch another page as the reader reaches the end of a growing result set; the two can be composed when a paginated collection also needs windowed rendering — or use `onEndReached` below to drive the fetch from scroll position directly.
+
+For two-dimensional data, reach for [`DataGrid`](../data-grid/README.md) rather than composing grids out of this: it owns column virtualization and `role="grid"` semantics. The repository's [virtualization guide](https://github.com/stevekinney/cinder/blob/main/docs/virtualization.md) explains why cinder ships three windowing engines and which one backs each component.
 
 ## Choosing a row-sizing mode
 
@@ -140,13 +142,6 @@ list _above_ the reader, and the component anchors to the row they were on so it
 stays put — it does not pin to the end, and it does not leave them silently looking
 at a different row.
 
-> [!IMPORTANT] Pass `getKey` for any list that can grow at the front
-> Telling a prepend from an append means comparing key sequences. Without `getKey`
-> the keys are array indexes, so prepending two items turns `[0, 1, 2]` into
-> `[0, 1, 2, 3, 4]` — a prefix extension, indistinguishable from an append. Under
-> `reverse` the list then pins to the end rather than holding the reader's place,
-> which is the opposite of what this section promises.
-
 ### Loading more in both directions
 
 `onEndReached` fires when the reader comes within `overscan` items of the end;
@@ -212,14 +207,57 @@ rows above are measured. And a saved position whose row no longer exists is drop
 rather than clamped, because clamping would drop the reader somewhere arbitrary and
 then save _that_ as though it were their place.
 
-The position is written on teardown, not on every scroll — that would be a storage
-write per frame during a fling, and teardown is the last moment the position is
-knowable anyway. The trade-off: a tab lost to a crash rather than a navigation will
-not have saved.
-
 Storage failures are swallowed throughout. A browser in private mode can throw on
 reading `sessionStorage`, not just writing to it, and losing a remembered offset must
 never break the list.
+
+## Sticky rows
+
+`stickyItems` names the indexes that pin to the leading edge while the reader
+scrolls past them — section headers in a grouped list, most often.
+
+The part that virtualization would otherwise break is keeping them mounted. A row
+whose index has left the rendered window is normally unmounted, so the heading would
+disappear at exactly the moment it is meant to be pinned. The component keeps the
+active sticky row in the DOM past its window, and re-sorts the rendered set by index
+so a keyed `{#each}` does not move it behind the rows that follow it.
+
+Setting `stickyItems` also makes `scrollToIndex` header-aware. A pinned header covers
+the leading edge, so a row aligned flush to it lands underneath — in a list where the
+header and its rows share a height, completely underneath. Destinations are offset by
+the header that will cover them, which applies to the component's keyboard navigation
+and to `scrollToIndex` calls of your own.
+
+Invalid entries — duplicates, non-integers, indexes outside the list — are dropped
+rather than throwing. A bad sticky index is a cosmetic problem, not a correctness one.
+
+```svelte
+<VirtualList items={rows} itemHeight={36} height="360px" stickyItems={headerIndexes}>
+  {#snippet row(item)}
+    <div>{item.label}</div>
+  {/snippet}
+</VirtualList>
+```
+
+## Announcing position to assistive technology
+
+Every row carries `aria-posinset` and `aria-setsize`. Both describe the **full**
+collection, not the rendered window — without them a screen reader announces what is
+mounted, so a 10,000-row list reads as "3 of 12". `aria-posinset` is 1-based, as the
+specification requires, while the row's `context.index` stays 0-based.
+
+## Scrolling behaviour
+
+`smoothScroll` makes `scrollToIndex` animate by default. An explicit `behavior` in
+the call still wins, so a single jump-to remains available on a list that otherwise
+animates. Scroll corrections under `dynamicSize` are never animated whatever this is
+set to: a smooth correction would visibly perform the jump it exists to hide.
+
+`adaptiveOverscan` grows `overscan` while the reader is scrolling fast and shrinks it
+back when they slow down. `overscan` becomes a floor rather than a fixed value, so
+turning this on can only ever render more rows than the configured value, never
+fewer. The growth is bounded — an unbounded overscan during a fling would mount
+thousands of rows and defeat virtualizing at all.
 
 ## Props
 
@@ -227,6 +265,7 @@ never break the list.
 
 | Prop                  | Type       | Required | Default | Description                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | --------------------- | ---------- | -------- | ------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `adaptiveOverscan`    | `boolean`  | no       | —       | Grow `overscan` while the reader is scrolling fast, and shrink it back when they slow down. `overscan` becomes a floor rather than a fixed value: a fast fling renders further ahead to cut pop-in, and a stationary list falls back to exactly what was configured so the DOM stays small. The growth is bounded, because an unbounded overscan during a fling would mount thousands of rows and defeat the point of virtualizing at all. Defaults to false.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | `class`               | `string`   | no       | —       | Additional class names merged with `.cinder-virtual-list`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | `dynamicSize`         | `boolean`  | no       | —       | Measure each rendered row with `ResizeObserver` and cache the result, instead of assuming every row is exactly `itemHeight` along the scrolled axis. Use this when rows wrap, contain images, or otherwise vary in size. Composes with `horizontal`, where each row is measured by its width. Defaults to `false`. While false, no row is measured, no size is cached, and no scroll correction runs — the fixed-height path stays the fast path. The component still observes its own scroll container to track viewport size, as it always has; that is independent of this prop.                                                                                                                                                                                                                                                                                                                                                                                                                  |
 | `height`              | `string`   | no       | —       | CSS extent of the native scroll container across the axis it scrolls: its block-size by default, or its inline-size under `horizontal`. Defaults to `"20rem"`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
@@ -236,7 +275,9 @@ never break the list.
 | `reverse`             | `boolean`  | no       | —       | Chat-transcript behaviour: the list starts at its end and returns there on every append. Items stay in their natural order — oldest at index 0, newest last. `reverse` names the anchoring, not the ordering, and the array is never flipped. Deliberately distinct from `stickToBottom`, which pins only when the reader is already at the bottom. `reverse` pins on every append regardless of where the reader is. When both are set, `reverse` wins. Prepending — loading a page of older history — never moves the reader: the row they were looking at stays put while the list grows above it. That last guarantee REQUIRES `getKey`. Telling a prepend from an append means comparing key sequences, and without `getKey` the keys are array indexes: a prepend turns `[0, 1, 2]` into `[0, 1, 2, 3, 4]`, which is indistinguishable from an append and pins the reader to the end instead of holding their place. Pass `getKey` whenever the list can grow at the front. Defaults to false. |
 | `scrollRestoration`   | `boolean`  | no       | —       | Remember the scroll position across navigation, keyed by `scrollRestorationId`. The position is written to `sessionStorage` when the list tears down, and read back when it mounts. Deliberately not on every scroll: that would mean a storage write per frame during a fling, and teardown is the last moment the position is knowable anyway. The consequence is that a tab closed by a crash, rather than by navigating away, will not have saved. Storage failures are swallowed: a browser in private mode or at its quota throws on write — and on read — and losing a remembered offset must not break the list. Has no effect without a `scrollRestorationId` — see that prop for why. Explicitly `\| undefined`, like the other conditionally-supplied props: this package compiles with `exactOptionalPropertyTypes`, under which optional and undefined-valued differ, and `scrollRestoration={enabled ? true : undefined}` would otherwise fail to typecheck. Defaults to false.        |
 | `scrollRestorationId` | `string`   | no       | —       | Stable id under which `scrollRestoration` saves this list's position. Required for restoration to do anything. There is deliberately no default: an implicit key derived from position or order would silently hand one list's remembered offset to a different list after a refactor, and two lists on one page would overwrite each other. Choose something tied to what the list shows, such as a route or collection name.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `smoothScroll`        | `boolean`  | no       | —       | Animate `scrollToIndex` by default instead of jumping. Equivalent to passing `behavior: 'smooth'` on every call; an explicit `behavior` in the call's options still wins. Scroll corrections under `dynamicSize` are never animated whatever this is set to — a smooth correction would visibly perform the jump it exists to hide. Defaults to false.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
 | `stickToBottom`       | `boolean`  | no       | —       | When true, appending items while the viewport is already at the bottom keeps the newest item pinned in view. Appending while scrolled up leaves the scroll position unchanged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| `stickyItems`         | `number`[] | no       | —       | Item indexes that stay visible at the leading edge while the reader scrolls past them — section headers in a grouped list, most often. A sticky row is kept mounted even after its own index leaves the rendered window, which is the part virtualization would otherwise break: unmounting it would make the heading vanish exactly when it is meant to be pinned. Indexes outside the list, duplicates, and non-integers are dropped rather than throwing — a bad sticky index is a cosmetic problem, not a correctness one.                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `tabindex`            | `number`   | no       | —       | Override the default focus behavior. The component sets `tabindex="0"` by default so keyboard users can reach the native scroll container for arrow-key scrolling. Pass `tabindex={-1}` when the viewport should be programmatically focusable without entering the tab order.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
 | `getKey`              | `(opaque)` | no       | —       | Stable key extractor. Omit only when items are append-only and never reordered; the component will fall back to full-array indexes. Required in practice under `dynamicSize`: measured sizes are cached by key, so index-derived keys will mis-attribute cached sizes if items ever reorder. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                              |
 | `items`               | `(opaque)` | yes      | —       | Items in full logical order. Only the visible window is mounted. Not expressible in JSON Schema; see the component types for the signature.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |

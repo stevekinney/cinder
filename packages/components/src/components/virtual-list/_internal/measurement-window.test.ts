@@ -668,3 +668,297 @@ describe('round-eleven engine regressions', () => {
     expect(computeScrollToIndexOffset({ ...shared, currentScrollOffset: first })).toBe(first);
   });
 });
+
+describe('computeScrollToIndexOffset — leadingInset', () => {
+  const insetOffsets = buildVirtualOffsets({
+    itemCount: 5,
+    estimateSize: 20,
+    getKey: keyAt,
+    measuredSizes: new Map([
+      [keyAt(1), 30],
+      [keyAt(3), 10],
+    ]),
+  });
+  // insetOffsets.offsets = [0, 20, 50, 70, 80, 100]; sizes = [20, 30, 20, 10, 20]
+  const insetLocator: VirtualItemLocator = {
+    getStart: (index) => insetOffsets.offsets[index]!,
+    getSize: (index) => insetOffsets.offsets[index + 1]! - insetOffsets.offsets[index]!,
+  };
+
+  function offsetFor(options: {
+    index: number;
+    align: VirtualListScrollAlign;
+    viewportSize: number;
+    currentScrollOffset?: number;
+    leadingInset?: number;
+  }): number {
+    return computeScrollToIndexOffset({
+      index: options.index,
+      itemCount: 5,
+      locator: insetLocator,
+      totalSize: insetOffsets.totalSize,
+      viewportSize: options.viewportSize,
+      currentScrollOffset: options.currentScrollOffset ?? 0,
+      align: options.align,
+      ...(options.leadingInset === undefined ? {} : { leadingInset: options.leadingInset }),
+    });
+  }
+
+  test('align "start" leaves room for the header above the row', () => {
+    // Row 3 starts at 70. Flush to the edge it would sit under a 20px header; the
+    // reader should see it just below one instead.
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: 20 })).toBe(50);
+  });
+
+  test('align "end" ignores the inset, because nothing covers the trailing edge', () => {
+    const withoutHeader = offsetFor({ index: 3, align: 'end', viewportSize: 50 });
+    expect(offsetFor({ index: 3, align: 'end', viewportSize: 50, leadingInset: 20 })).toBe(
+      withoutHeader,
+    );
+  });
+
+  test('align "center" centers within what the header leaves visible', () => {
+    // Row 2 spans [50, 70). The visible band is 30px of the 50px viewport, so a 20px
+    // row centers with 5px above it: target = 50 - 20 - 5.
+    expect(offsetFor({ index: 2, align: 'center', viewportSize: 50, leadingInset: 20 })).toBe(25);
+  });
+
+  test('align "auto" treats a row behind the header as offscreen and pulls it clear', () => {
+    // At offset 45 row 2 ([50, 70)) is inside the raw viewport, so with no inset auto
+    // holds still. A 20px header covers through 65, hiding most of it.
+    expect(offsetFor({ index: 2, align: 'auto', viewportSize: 50, currentScrollOffset: 45 })).toBe(
+      45,
+    );
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 45,
+        leadingInset: 20,
+      }),
+    ).toBe(30);
+  });
+
+  test('align "auto" still aligns the trailing edge for a row below the viewport', () => {
+    // Row 4 spans [80, 100); at offset 0 in a 50px viewport it is past the end, and an
+    // inset does not move a trailing-edge alignment.
+    expect(offsetFor({ index: 4, align: 'auto', viewportSize: 50, leadingInset: 20 })).toBe(50);
+  });
+
+  test('align "auto" holds a row taller than the visible band once the reader is inside it', () => {
+    // Row 2 is 20px and the band below a 35px header is 15px, so it can never fit.
+    // Holding is what stops start and end alignment from alternating forever.
+    //
+    // At offset 20 the band is [55, 70) and the row spans [50, 70), so the reader is
+    // looking at part of it — hold. Aligning instead would move to 15.
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 20,
+        leadingInset: 35,
+      }),
+    ).toBe(20);
+  });
+
+  test('align "auto" brings a too-tall row into view when the reader is not inside it yet', () => {
+    // Same row and header, but at offset 0 the band is [35, 50) and the row starts at
+    // 50 — nothing of it is visible, so bring its start to the top of the band.
+    expect(
+      offsetFor({
+        index: 2,
+        align: 'auto',
+        viewportSize: 50,
+        currentScrollOffset: 0,
+        leadingInset: 35,
+      }),
+    ).toBe(15);
+  });
+
+  test('treats a negative inset as no header at all', () => {
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: -40 })).toBe(
+      offsetFor({ index: 3, align: 'start', viewportSize: 50 }),
+    );
+  });
+
+  test('clamps an inset taller than the viewport, which would otherwise invert the band', () => {
+    // A 200px header in a 50px viewport leaves nothing visible. Clamped to the
+    // viewport the target stays well-defined rather than scrolling backwards past the
+    // row by the overshoot.
+    expect(offsetFor({ index: 3, align: 'start', viewportSize: 50, leadingInset: 200 })).toBe(20);
+  });
+});
+
+describe('computeScrollToIndexOffset — currentLeadingInset', () => {
+  const insetLocator: VirtualItemLocator = {
+    getStart: (index) => index * 20,
+    getSize: () => 20,
+  };
+
+  function offsetFor(options: {
+    index: number;
+    currentScrollOffset: number;
+    leadingInset: number;
+    currentLeadingInset?: number;
+  }): number {
+    return computeScrollToIndexOffset({
+      index: options.index,
+      itemCount: 100,
+      locator: insetLocator,
+      totalSize: 2_000,
+      viewportSize: 200,
+      currentScrollOffset: options.currentScrollOffset,
+      align: 'auto',
+      leadingInset: options.leadingInset,
+      ...(options.currentLeadingInset === undefined
+        ? {}
+        : { currentLeadingInset: options.currentLeadingInset }),
+    });
+  }
+
+  test('judges visibility by the header covering the reader, not the destination one', () => {
+    // A 100px header is active; the target row sits at 1040, forty pixels into the
+    // band it covers. Its own section's header is only 20px, so judging by that says
+    // the row is comfortably in view and the scroll stays put — with the row still
+    // behind the tall header the reader is actually looking at.
+    const target = 52;
+    const scrolled = 1_000;
+
+    expect(offsetFor({ index: target, currentScrollOffset: scrolled, leadingInset: 20 })).toBe(
+      scrolled,
+    );
+
+    expect(
+      offsetFor({
+        index: target,
+        currentScrollOffset: scrolled,
+        leadingInset: 20,
+        currentLeadingInset: 100,
+      }),
+    ).toBe(1_020);
+  });
+
+  test('places the row with the DESTINATION header once it decides to move', () => {
+    // The two insets do different jobs: the current one decides whether to move at
+    // all, the destination one decides where to. Row 52 starts at 1040 and clears its
+    // own 20px header at 1020, not at 940 as the 100px one would imply.
+    expect(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 100,
+      }),
+    ).toBe(1_020);
+  });
+
+  test('falls back to the destination inset when no current one is given', () => {
+    expect(offsetFor({ index: 52, currentScrollOffset: 1_000, leadingInset: 20 })).toBe(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 20,
+      }),
+    );
+  });
+
+  test('clamps a current inset taller than the viewport', () => {
+    // Nothing visible at all, rather than a negative band that inverts the comparison.
+    expect(
+      offsetFor({
+        index: 52,
+        currentScrollOffset: 1_000,
+        leadingInset: 20,
+        currentLeadingInset: 900,
+      }),
+    ).toBe(1_020);
+  });
+});
+
+describe('computeScrollToIndexOffset — targetIsStuckAtLeadingEdge', () => {
+  const locator: VirtualItemLocator = { getStart: (index) => index * 20, getSize: () => 20 };
+
+  function offsetFor(stuck: boolean): number {
+    return computeScrollToIndexOffset({
+      index: 10,
+      itemCount: 100,
+      locator,
+      totalSize: 2_000,
+      viewportSize: 200,
+      // Well past row 10's own start of 200: it is held at the edge, not in place.
+      currentScrollOffset: 1_000,
+      align: 'auto',
+      targetIsStuckAtLeadingEdge: stuck,
+    });
+  }
+
+  test('holds still for the header the reader is already looking at', () => {
+    // Stuck at the edge is as visible as a row gets. Its logical start is above the
+    // scroll offset — that is what being stuck means — so the ordinary comparison
+    // reads it as offscreen and scrolls all the way back to its section.
+    expect(offsetFor(true)).toBe(1_000);
+    expect(offsetFor(false)).toBe(200);
+  });
+
+  test('is off by default, so an ordinary row is unaffected', () => {
+    expect(
+      computeScrollToIndexOffset({
+        index: 10,
+        itemCount: 100,
+        locator,
+        totalSize: 2_000,
+        viewportSize: 200,
+        currentScrollOffset: 1_000,
+        align: 'auto',
+      }),
+    ).toBe(200);
+  });
+});
+
+describe('computeScrollToIndexOffset — a row exactly the viewport height', () => {
+  // The oversized-row branch is keyed on `size > viewportSize`, strictly, because a
+  // row exactly the viewport's height CAN be fully revealed.
+  //
+  // The two branches only disagree when such a row is PARTIALLY visible: the
+  // oversized branch holds the current offset once the row overlaps at all, while
+  // edge alignment brings the overflowing edge into view. A fully-offscreen row and
+  // an already-flush row resolve identically under both, so neither pins the
+  // boundary — an earlier version of this test used exactly those two and passed
+  // against a `>=` regression.
+  const viewportSize = 400;
+  const locator = {
+    getStart: (index: number) => index * viewportSize,
+    getSize: () => viewportSize,
+  };
+
+  test('scrolls a half-visible row fully into view instead of holding', () => {
+    // Row 3 spans [1200, 1600); the viewport is [1000, 1400). The row overlaps, so a
+    // `>=` regression would hold at 1000 and leave it half shown.
+    const offset = computeScrollToIndexOffset({
+      index: 3,
+      itemCount: 10,
+      locator,
+      viewportSize,
+      currentScrollOffset: 1_000,
+      align: 'auto',
+      totalSize: 10 * viewportSize,
+    });
+    expect(offset).toBe(1_200);
+  });
+
+  test('leaves the position alone once it exactly fills the viewport', () => {
+    const offset = computeScrollToIndexOffset({
+      index: 3,
+      itemCount: 10,
+      locator,
+      viewportSize,
+      currentScrollOffset: 3 * viewportSize,
+      align: 'auto',
+      totalSize: 10 * viewportSize,
+    });
+    expect(offset).toBe(3 * viewportSize);
+  });
+});

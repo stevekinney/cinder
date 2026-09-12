@@ -9,7 +9,7 @@
 See [CLAUDE.md](./CLAUDE.md) for project guidance — purpose, how work moves between here and
 `../cinder` (chatroom consumes the _published_ npm packages, deliberately, not a `bun link`), the
 Chat component's style/adapter/conversation-model contracts, the ReviewEditor component's peer set
-and anchor coordinate spaces, the Anthropic SDK server-side seam, known upstream issues (Cinder and
+and anchor coordinate spaces, the Operative server-side seam, known upstream issues (Cinder and
 agent-bureau), and commands. It applies equally regardless of which agent CLI is driving.
 
 The rule most likely to change what you do: **a bug in an upstream package we own is the next

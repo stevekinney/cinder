@@ -3,14 +3,17 @@
    * @cinder
    * @category data-display
    * @status beta
-   * @purpose Windowing primitive for long vertical lists that renders only the visible rows plus overscan in a native scroll container, with fixed-height rows by default and opt-in measured rows.
+   * @purpose Windowing primitive for long lists along either axis, rendering only the visible rows plus overscan, with fixed-height rows by default and opt-in measured rows.
    * @tag list
    * @tag virtualization
    * @tag performance
-   * @useWhen Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.
-   * @useWhen Rows vary in height because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.
-   * @useWhen You need a reusable primitive that owns native vertical scrolling but leaves row markup to a snippet.
-   * @avoidWhen Rendering columns or two-dimensional grids — use data-grid for grid semantics and column virtualization.
+   * @useWhen Rendering thousands of rows: logs, event streams, activity feeds.
+   * @useWhen Rows vary in size because they wrap or embed media — dynamicSize measures each.
+   * @useWhen Windowing the inline axis — horizontal, which also resolves right-to-left.
+   * @useWhen A transcript anchored to its newest message, or paging in at either edge.
+   * @avoidWhen Two-dimensional grids, which need column virtualization and grid semantics. | data-grid
+   * @avoidWhen A native table or a hierarchy — data-table and tree window those already.
+   * @avoidWhen The collection is small enough to render in full.
    * @related data-list, data-table, data-grid, load-more
    */
   export type {
@@ -41,6 +44,7 @@
   import { tick, untrack } from 'svelte';
 
   import { classNames } from '../../utilities/class-names.ts';
+  import { useReducedMotion } from '../../utilities/use-reduced-motion.svelte.ts';
   import { useResizeObserver } from '../../utilities/use-resize-observer.svelte.ts';
   import type {
     VirtualListProps,
@@ -63,6 +67,19 @@
     type VirtualItemLocator,
   } from './_internal/measurement-window.ts';
   import { VirtualListMeasurementStore } from './_internal/virtual-list-measurement-store.svelte.ts';
+  import {
+    normalizeStickyIndexes,
+    resolveActiveStickyIndex,
+    resolveObstructingStickyIndex,
+  } from './_internal/sticky-items.ts';
+  import { resolveKeyboardTargetIndex, resolveRowSemantics } from './_internal/list-semantics.ts';
+  import {
+    createVelocityTracker,
+    resolveAdaptiveItemSize,
+    resolveAdaptiveOverscan,
+    trackScrollVelocity,
+    type VelocityTracker,
+  } from './_internal/adaptive-overscan.ts';
   import {
     loadScrollPosition,
     saveScrollPosition,
@@ -104,6 +121,9 @@
     onStartReached,
     scrollRestoration = false,
     scrollRestorationId,
+    stickyItems,
+    smoothScroll = false,
+    adaptiveOverscan = false,
     tabindex = 0,
     getKey,
     row,
@@ -120,20 +140,28 @@
 
   const SCROLL_TO_INDEX_MAX_ATTEMPTS = 3;
   const SCROLL_TO_INDEX_SETTLED_EPSILON = 1;
-  /** Keys that scroll a native container. A letter keypress is not a viewport takeover. */
-  const SCROLLING_KEYS = new Set([
+  /**
+   * Keys the browser scrolls the BLOCK axis with. A letter keypress is not a viewport
+   * takeover, and neither is an arrow across an axis that does not overflow.
+   */
+  const BLOCK_AXIS_SCROLL_KEYS = new Set([
     'ArrowUp',
     'ArrowDown',
-    'ArrowLeft',
-    'ArrowRight',
     'PageUp',
     'PageDown',
     'Home',
     'End',
     ' ',
   ]);
+  /** The inline-axis equivalent. Space still pages the block axis in either case. */
+  const INLINE_AXIS_SCROLL_KEYS = new Set(['ArrowLeft', 'ArrowRight', ' ']);
   /** ~0.5s at 60fps: long enough for a smooth scroll to land, short enough to never hang. */
   const SCROLL_SETTLE_MAX_FRAMES = 30;
+  /**
+   * How long after the last scroll event adaptive overscan returns to its floor.
+   * Comfortably past a fling's own event cadence, so it never fires mid-gesture.
+   */
+  const VELOCITY_IDLE_RESET_MILLISECONDS = 200;
 
   let scrollElement: HTMLElement | undefined = $state();
   let scrollOffset = $state(0);
@@ -175,6 +203,14 @@
    * position to restore — not the same one already handled.
    */
   let restoredId: string | undefined;
+  /**
+   * The tracker itself is a plain binding — nothing derives from it directly. The
+   * velocity it produces IS `$state`, because `effectiveOverscan` reads it.
+   */
+  let velocityTracker: VelocityTracker = createVelocityTracker();
+  let scrollVelocity = $state(0);
+  /** Timer that returns overscan to its floor once scrolling stops. */
+  let velocityIdleTimer: ReturnType<typeof setTimeout> | undefined;
 
   // Dynamic-size machinery. The store is also reset when `dynamicSize` goes
   // false, so it is not strictly untouched in fixed mode — but nothing in fixed
@@ -192,6 +228,13 @@
    * resolves `inset-inline-start` to the right edge on its own.
    */
   const rowLayout = $derived(resolveRowLayoutDescriptor(horizontal ? 'horizontal' : 'vertical'));
+  /**
+   * The shared hook rather than an inline media query, per OVERLAY-POLICY and the
+   * `check:no-inline-match-media` guard. It is reactive, so a preference changed
+   * mid-session takes effect, and it carries the SSR fallback — both of which an
+   * inline `matchMedia` call gets wrong.
+   */
+  const reducedMotion = useReducedMotion();
   let writingDirection: WritingDirection = $state('ltr');
   let previousEstimate = 0;
   let pendingReanchor: { index: number; offsetWithinRow: number } | null = null;
@@ -218,6 +261,40 @@
       : undefined,
   );
 
+  /**
+   * See `resolveAdaptiveItemSize`: the estimate is the wrong ruler once rows are
+   * measured.
+   *
+   * Keyed on the store's `version` and reading its running totals, rather than summing
+   * the cache here. The cache keeps every row the reader has visited, so re-summing it
+   * on each measurement would make scrolling a long list cost O(n²) overall — on the
+   * fast-scroll path this feature exists to protect.
+   */
+  const averageRowSize = $derived.by(() => {
+    void measurementStore.version;
+    return resolveAdaptiveItemSize({
+      dynamicSize,
+      measuredTotalSize: measurementStore.measuredTotalSize,
+      measuredCount: measurementStore.measuredCount,
+      estimateSize: resolvedItemHeight,
+    });
+  });
+
+  /**
+   * The overscan actually applied. `resolvedOverscan` is the floor: adaptation only
+   * ever renders MORE than the consumer asked for, never less, so turning it on
+   * cannot make pop-in worse than the configured value.
+   */
+  const effectiveOverscan = $derived(
+    adaptiveOverscan
+      ? resolveAdaptiveOverscan({
+          baseOverscan: resolvedOverscan,
+          velocityInPixelsPerMillisecond: scrollVelocity,
+          itemSize: averageRowSize,
+        })
+      : resolvedOverscan,
+  );
+
   const virtualWindow = $derived(
     dynamicSize && offsets !== undefined
       ? getDynamicVirtualWindow({
@@ -225,23 +302,117 @@
           getKey: keyAt,
           scrollOffset,
           viewportSize: viewportHeight,
-          overscan: resolvedOverscan,
+          overscan: effectiveOverscan,
         })
       : getFixedVirtualWindow({
           itemCount: items.length,
           itemHeight: resolvedItemHeight,
           scrollOffset,
           viewportHeight,
-          overscan: resolvedOverscan,
+          overscan: effectiveOverscan,
           getKey: keyAt,
         }),
   );
-  const renderedItems = $derived(
-    virtualWindow.items.flatMap((virtualItem) => {
+  const stickyIndexes = $derived(normalizeStickyIndexes(stickyItems, items.length));
+  /** The sticky row currently pinned to the leading edge, if any. */
+  /**
+   * The first row the reader can actually SEE.
+   *
+   * `virtualWindow.startIndex` is the rendered edge, which carries overscan — using
+   * it here activated a sticky header several rows early and moved keyboard
+   * navigation relative to a row nobody is looking at.
+   */
+  const firstVisibleIndex = $derived(resolveAnchorIndexAtOffset(scrollOffset));
+  const activeStickyIndex = $derived(resolveActiveStickyIndex(stickyIndexes, firstVisibleIndex));
+  const pinnedStickyIndex = $derived.by(() => {
+    if (activeStickyIndex === null) return null;
+    // Inside the window it needs nothing special: it is contiguous, and
+    // `position: sticky` holds it without leaving its flow box.
+    if (activeStickyIndex >= virtualWindow.startIndex && activeStickyIndex < virtualWindow.endIndex)
+      return null;
+    return activeStickyIndex;
+  });
+
+  /**
+   * Main-axis size of the sticky row occupying the viewport's leading edge.
+   *
+   * Keyed on the ACTIVE sticky row rather than the pinned one. `pinnedStickyIndex`
+   * is null while the header is still inside the overscanned window — but CSS has
+   * been holding it over the leading edge that whole time, so measuring the
+   * obstruction as zero there reported a covered row as visible. With a measured
+   * 100px header over 20px rows that is five rows the reader cannot see.
+   */
+  const stickyObstructionSize = $derived(
+    activeStickyIndex === null ? 0 : locateRowSize(activeStickyIndex),
+  );
+
+  /** The first row the sticky header is not covering. */
+  const firstUncoveredIndex = $derived(
+    stickyObstructionSize > 0
+      ? resolveAnchorIndexAtOffset(scrollOffset + stickyObstructionSize)
+      : firstVisibleIndex,
+  );
+
+  const renderedItems = $derived.by(() => {
+    const windowed = virtualWindow.items.flatMap((virtualItem) => {
       const item = items[virtualItem.index];
       return item === undefined ? [] : [{ ...virtualItem, item }];
-    }),
-  );
+    });
+    if (pinnedStickyIndex === null) return windowed;
+    const item = items[pinnedStickyIndex];
+    if (item === undefined) return windowed;
+    // In index order, because this element is exposed to assistive technology and
+    // reading order is its order in the list. Ordering costs nothing visually: the
+    // row is absolutely positioned, so it does not lay out among these siblings, and
+    // it stays above them by the sticky rule's `z-index` rather than by coming last.
+    const pinned = {
+      index: pinnedStickyIndex,
+      key: keyAt(pinnedStickyIndex),
+      start: locateRowStart(pinnedStickyIndex),
+      size: locateRowSize(pinnedStickyIndex),
+      item,
+    };
+    return pinnedStickyIndex < (windowed[0]?.index ?? 0)
+      ? [pinned, ...windowed]
+      : [...windowed, pinned];
+  });
+
+  /**
+   * The sticky row to pin when it has scrolled out of the rendered window.
+   *
+   * Rendered as its own element rather than folded back into the window. The window
+   * lays its rows out in flow from a single offset, so inserting a non-contiguous
+   * row there displaced every row after it by that row's height — the headings
+   * stayed visible and everything else was wrong by one row.
+   *
+   * A sticky row still INSIDE the window needs none of this: it is contiguous, and
+   * `position: sticky` holds it without leaving its flow box.
+   */
+  /** Membership as a Set: a grouped list can have as many sticky rows as sections. */
+  const stickyIndexSet = $derived(new Set(stickyIndexes));
+
+  /**
+   * Whether the rows carry set-position semantics at all.
+   *
+   * Only when the component gives them `listitem`. A consumer overriding `role` takes
+   * ownership of the semantics, and `aria-posinset` on a row with no set-bearing role
+   * is meaningless at best — assistive technology may ignore it, or may announce a
+   * position within a set that does not exist.
+   */
+  const rowSemanticsApply = $derived(role === 'list');
+
+  /** Pixel offset of a row that the current window does not include. */
+  function locateRowStart(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return table[index] ?? 0;
+    return index * resolvedItemHeight;
+  }
+
+  function locateRowSize(index: number): number {
+    const table = offsets?.offsets;
+    if (table) return Math.max(0, (table[index + 1] ?? 0) - (table[index] ?? 0));
+    return resolvedItemHeight;
+  }
 
   $effect(() => {
     const element = scrollElement;
@@ -302,21 +473,26 @@
     // history because the list happens to render at offset 0 for one frame.
     if (willRestoreScrollPosition()) return;
 
-    // `startIndex`/`endIndex` describe the RENDERED range, which already carries
-    // overscan on both sides, and `endIndex` is exclusive. Undo both so the
-    // "within overscan items of the end" test is applied once rather than twice.
-    // `resolvedOverscan`, not the raw prop: the window was built with the clamped,
-    // floored value, so undoing it with a negative, fractional, or non-finite prop
-    // would drift from the real window — or resolve to NaN, which compares false
-    // against everything and silently reports both edges as out of range.
+    // Read from the scroll geometry rather than recovered by undoing the window's
+    // overscan. Both approaches to undoing it are wrong, in opposite directions:
+    // subtracting the configured overscan leaves the adaptive growth in and fires the
+    // callbacks tens of rows early, while subtracting the effective overscan
+    // over-corrects at the list's own edges, where the window is CLAMPED and the
+    // overscan actually realized on that side is smaller than the one asked for. In a
+    // 100-row list `endIndex` is 100 however wide adaptation grew, so subtracting 50
+    // reported row 49 as the last visible one and suppressed `onEndReached` entirely
+    // until the idle timer shrank the window back.
+    //
+    // `resolveAnchorIndexAtOffset` answers the question directly — which row occupies
+    // a given offset — and is already independent of overscan and of edge clamping.
     const lastRenderedIndex = Math.max(0, itemCount - 1);
-    const firstVisibleIndex = Math.min(
-      currentWindow.startIndex + resolvedOverscan,
+    const firstVisibleIndex = Math.min(resolveAnchorIndexAtOffset(scrollOffset), lastRenderedIndex);
+    // The last row the viewport still touches, hence the -1: at a viewport whose
+    // bottom edge falls exactly on a row boundary, the offset itself belongs to the
+    // NEXT row, which is not visible yet.
+    const lastVisibleIndex = Math.min(
+      resolveAnchorIndexAtOffset(scrollOffset + Math.max(0, currentViewportHeight - 1)),
       lastRenderedIndex,
-    );
-    const lastVisibleIndex = Math.max(
-      0,
-      Math.min(currentWindow.endIndex - 1 - resolvedOverscan, lastRenderedIndex),
     );
 
     const proximity = resolveEdgeProximity({
@@ -326,6 +502,11 @@
       firstVisibleIndex,
       lastVisibleIndex,
       itemCount,
+      // The CONFIGURED overscan, deliberately not the effective one used just above.
+      // That one describes how many rows are mounted, which adaptation changes with
+      // scroll velocity; this one is the consumer's "within N items of the end", which
+      // it must not. Otherwise a fast fling would widen the trigger distance along
+      // with the window and fetch pages earlier the faster the reader moves.
       overscan: resolvedOverscan,
     });
     // Masked per edge, not just when BOTH callbacks are gone. An edge without a
@@ -881,6 +1062,40 @@
     return Math.min(Math.max(0, saved.startIndex), lastIndex);
   }
 
+  /**
+   * Inline style for one row: its main-axis size under fixed sizing, plus the offset
+   * that pins it when it is the active sticky row outside the window.
+   *
+   * The pinned row keeps its size even under `dynamicSize`, where rows are normally
+   * left unsized so they can be measured — out of flow it has no siblings to size it
+   * against, so without this it would collapse to its content.
+   */
+  function resolveRowStyle(index: number, size: number): string | undefined {
+    const isPinned = index === pinnedStickyIndex;
+    const declarations: string[] = [];
+    // Under `dynamicSize` the row carries no main-axis size at all, pinned or not.
+    //
+    // A definite size froze the observed border box, so a header growing while pinned
+    // could never be remeasured. A minimum fixed that and froze the opposite direction:
+    // a header that SHRINKS — collapsible content, an async replacement — kept its old
+    // extent, held empty space, and left `stickyObstructionSize` reporting the larger
+    // value to every keyboard and scroll destination.
+    //
+    // Both came from special-casing the pinned row. Every other dynamic row is left
+    // unsized precisely so it can be measured; out of flow this one is sized by its own
+    // content, which is the intrinsic extent the observer is there to read.
+    if (!dynamicSize) declarations.push(`${rowLayout.sizeProperty}:${size}px`);
+    if (isPinned) {
+      // Relative to the WINDOW, which is itself already translated by its leading
+      // size. Writing the raw scroll offset here compounded the two and put the row
+      // at `leadingSize + scrollOffset` — with no overscan and 20px rows at a scroll
+      // of 4000, that is 8000px, nowhere near the viewport.
+      const offsetWithinWindow = Math.max(0, scrollOffset - virtualWindow.leadingSize);
+      declarations.push(`${rowLayout.offsetProperty}:${offsetWithinWindow}px`);
+    }
+    return declarations.length > 0 ? `${declarations.join(';')};` : undefined;
+  }
+
   /** Where a row begins, from the measured table when there is one. */
   function locateRowStartOffset(index: number): number {
     const table = offsets?.offsets;
@@ -941,6 +1156,7 @@
    */
   $effect(() => () => {
     isDestroyed = true;
+    if (velocityIdleTimer !== undefined) clearTimeout(velocityIdleTimer);
     rowResizeObserver?.disconnect();
     rowResizeObserver = undefined;
     measurementStore.reset();
@@ -1128,6 +1344,26 @@
     if (typeof onScroll === 'function') onScroll(event);
     const element = event.currentTarget as HTMLElement;
     scrollOffset = readScrollOffset(element);
+    if (adaptiveOverscan) {
+      // `event.timeStamp` rather than a clock read: it is the time the browser
+      // associated with the scroll itself, so a handler delayed behind a long task
+      // does not report the delay as a slower scroll.
+      velocityTracker = trackScrollVelocity(velocityTracker, {
+        scrollOffset,
+        timestamp: event.timeStamp,
+      });
+      scrollVelocity = velocityTracker.velocityInPixelsPerMillisecond;
+      // Velocity only updates when ANOTHER scroll event arrives, so a reader who
+      // stops mid-fling would otherwise hold the enlarged overscan indefinitely —
+      // exactly the oversized DOM this feature exists to avoid. The last event is
+      // the one that has to schedule the decay.
+      if (velocityIdleTimer !== undefined) clearTimeout(velocityIdleTimer);
+      velocityIdleTimer = setTimeout(() => {
+        if (isDestroyed) return;
+        velocityTracker = createVelocityTracker();
+        scrollVelocity = 0;
+      }, VELOCITY_IDLE_RESET_MILLISECONDS);
+    }
     // Scrolling away from the bottom releases the pin; scrolling back re-arms it.
     if (stickToBottom || reverse) {
       isPinnedToBottom = isAtBottom(element, currentTotalSize(), viewportHeight);
@@ -1168,11 +1404,139 @@
     if (typeof onTouchStart === 'function') onTouchStart(event);
   }
 
+  /**
+   * Whether a key scrolls the axis THIS list scrolls on.
+   *
+   * The cross axis does not overflow, so the arrows across it move nothing here: Left
+   * and Right in a vertical list, Up and Down in a horizontal one. Treating those as a
+   * takeover retires a settle loop that is still correcting a destination, and under
+   * `dynamicSize` the correction those later measurements were going to make never
+   * happens.
+   */
+  function scrollsMainAxis(key: string): boolean {
+    return horizontal ? INLINE_AXIS_SCROLL_KEYS.has(key) : BLOCK_AXIS_SCROLL_KEYS.has(key);
+  }
+
   function handleKeyDown(
     event: KeyboardEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
-    if (SCROLLING_KEYS.has(event.key)) retireSettleLoop();
     if (typeof onKeyDown === 'function') onKeyDown(event);
+    if (event.defaultPrevented) return;
+
+    // A modified navigation key is a browser shortcut, not list movement. Alt with the
+    // arrows is back and forward — which a horizontal list would otherwise swallow
+    // whole, moving one row instead of leaving the page — and Ctrl or Meta with Home
+    // and End is the browser's own. Shift is deliberately not here: nothing in this
+    // list claims it, and Shift+Space is an ordinary native scroll.
+    if (event.altKey || event.ctrlKey || event.metaKey) return;
+
+    // Keys that came from something inside a row belong to that control, not to this
+    // list. A text input, slider, or select uses the arrow keys itself, so the event
+    // scrolls nothing here — and retiring the settle loop for it silently cancels a
+    // correction the destination is still owed, finishing a jump on a stale estimate.
+    //
+    // A row control that does NOT consume the key (a link, a button) does let the
+    // container scroll, and this leaves the loop running through that. Between the
+    // two, keeping a correction that a rare native scroll then overrides is the
+    // smaller error: typing in a row is ordinary, and arrowing on a button mid-jump
+    // is not.
+    if (event.target !== event.currentTarget) return;
+
+    if (scrollsMainAxis(event.key)) retireSettleLoop();
+
+    // Only take over the keys when there is a sticky row to keep in view or the
+    // list is virtualized past what the browser can reach. Otherwise the native
+    // scroll container already handles every one of these correctly, and
+    // intercepting them would replace smooth native scrolling with a jump.
+    if (!stickyIndexes.length) return;
+
+    // Page keys move by PIXELS, not by a row count, and do not go through
+    // `scrollToIndex` at all.
+    //
+    // Three rounds of review found three defects in the index-based version, each one
+    // the next approximation of the same thing: dividing the whole viewport rather than
+    // the uncovered part, dividing by the estimate rather than measured geometry, and
+    // counting a partly-visible row as a whole one. The last of those has a mirror
+    // image going backwards — a partly COVERED leading row — and fixing that in index
+    // space would have been the fourth approximation.
+    //
+    // They share a cause. An index-based step cannot express "one page of pixels" when
+    // rows vary in height: it has to guess a row count, and every guess is wrong at
+    // some boundary. Moving the scroll by the uncovered viewport height instead is
+    // exact, symmetric between the two directions by construction, and skips nothing:
+    // whatever sat just past the visible bottom sits just below the header afterwards.
+    if (event.key === 'PageDown' || event.key === 'PageUp') {
+      const element = scrollElement;
+      if (!element) return;
+      event.preventDefault();
+      // Explicitly, rather than relying on the key sets above. Those describe which
+      // keys the BROWSER scrolls an element with, and the Page keys are absent from the
+      // inline-axis set because a horizontal container is not what they scroll — but
+      // this branch claims them in either orientation, and a settle loop left running
+      // can write its own destination back afterwards and undo the page.
+      retireSettleLoop();
+
+      const furthest = maxScrollOffset(currentTotalSize(), viewportHeight);
+      const clampToScrollRange = (offset: number): number =>
+        Math.min(Math.max(0, offset), furthest);
+
+      if (event.key === 'PageUp') {
+        // Backwards, the reader's current uncovered top should end up at the new
+        // viewport's bottom edge — so the header in play is the one covering them now.
+        writeScrollOffset(
+          element,
+          clampToScrollRange(scrollOffset + stickyObstructionSize - viewportHeight),
+          smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
+        );
+        scrollOffset = readScrollOffset(element);
+        return;
+      }
+
+      // Forwards, what sat just past the visible bottom should end up just below the
+      // header — which is the header active AT THE DESTINATION, not the one here. They
+      // differ whenever the page crosses into another section, and assuming they match
+      // hides the difference: stepping 180px with a 20px header into a section whose
+      // header is 100px leaves the first 80px covered and never read.
+      //
+      // Resolved by settling once. The destination depends on its own obstruction, so
+      // the first estimate picks the section and the second uses that section's header.
+      // A further pass would only matter if the correction crossed into a THIRD
+      // section, which needs a header taller than the viewport.
+      const visibleBottom = scrollOffset + viewportHeight;
+      const estimated = clampToScrollRange(visibleBottom - stickyObstructionSize);
+      const destinationObstruction = resolveObstructionAtOffset(estimated);
+      writeScrollOffset(
+        element,
+        clampToScrollRange(visibleBottom - destinationObstruction),
+        smoothScroll && !reducedMotion.current ? 'smooth' : 'auto',
+      );
+      scrollOffset = readScrollOffset(element);
+      return;
+    }
+
+    const target = resolveKeyboardTargetIndex({
+      key: event.key,
+      // The row the reader can see, not the rendered edge: `virtualWindow.startIndex`
+      // carries overscan, so the first arrow press jumped relative to a row several
+      // above the viewport.
+      // The first row the header is not covering. A sticky header occupies the
+      // viewport's leading edge, so `firstVisibleIndex` IS that header — and
+      // advancing from it moves to the row underneath it rather than past it.
+      currentIndex: firstUncoveredIndex,
+      itemCount: items.length,
+      orientation: horizontal ? 'horizontal' : 'vertical',
+      writingDirection,
+      stickyIndexes: stickyIndexSet,
+    });
+    if (target === null) return;
+    event.preventDefault();
+
+    // Through the normal path, which applies the header inset and keeps the settle
+    // loop. An earlier version wrote the offset directly here to apply that inset, and
+    // in doing so skipped the loop — so under `dynamicSize` an End or Page jump into
+    // rows whose estimates changed as they mounted stopped wherever the first write
+    // happened to land.
+    scrollToIndex(target, { align: 'start' });
   }
 
   function maxScrollOffset(totalSize: number, height: number): number {
@@ -1305,6 +1669,44 @@
   }
 
   /**
+   * Main-axis size of the sticky header that will cover row `index` once it reaches
+   * the leading edge. Without it every destination lands underneath the header.
+   *
+   * Keyed on the DESTINATION rather than on the current scroll position. A
+   * position-keyed inset changes as the scroll moves, so the settle loop below would
+   * compute a different target on each pass; with a header taller than a row it
+   * oscillates between the header's start and the row's, and the attempt cap decides
+   * where the reader ends up.
+   */
+  /**
+   * How much of the leading edge a sticky header would cover at `offset`.
+   *
+   * The same question `stickyObstructionSize` answers for the current position, asked
+   * about somewhere the reader is not yet — which is what a page forward needs, since
+   * the header waiting at the destination is what will cover the content it lands on.
+   */
+  function resolveObstructionAtOffset(offset: number): number {
+    if (stickyIndexes.length === 0) return 0;
+    const header = resolveActiveStickyIndex(
+      stickyIndexes,
+      resolveAnchorIndexAtOffset(Math.max(0, offset)),
+    );
+    return header === null ? 0 : locateRowSize(header);
+  }
+
+  /** The index `computeScrollToIndexOffset` will actually resolve, clamped the same way. */
+  function clampedScrollIndex(index: number): number {
+    return Math.max(0, Math.min(items.length - 1, Math.floor(index)));
+  }
+
+  function resolveLeadingInset(index: number): number {
+    if (stickyIndexes.length === 0 || items.length === 0) return 0;
+    const clampedIndex = Math.max(0, Math.min(items.length - 1, Math.floor(index)));
+    const header = resolveObstructingStickyIndex(stickyIndexes, clampedIndex);
+    return header === null ? 0 : locateRowSize(header);
+  }
+
+  /**
    * Under `dynamicSize` a scroll target can move while the scroll is happening:
    * rows that were only estimated get mounted, measured, and resized, shifting
    * everything after them. Each pass re-derives the target from the freshly
@@ -1316,7 +1718,10 @@
   ): Promise<void> {
     if (isDestroyed || items.length === 0) return;
     const align = options?.align ?? 'auto';
-    const behavior = options?.behavior ?? 'auto';
+    // An explicit behavior in the call always wins; `smoothScroll` only supplies
+    // the default — and only for readers who have not asked for less motion.
+    const behavior =
+      options?.behavior ?? (smoothScroll && !reducedMotion.current ? 'smooth' : 'auto');
     // Each call supersedes any settle loop still running. Without this, two
     // overlapping loops write competing targets and the older one can land last,
     // finishing rapid navigation on the wrong item.
@@ -1340,6 +1745,17 @@
         // all by comparing against it.
         currentScrollOffset: readScrollOffset(element),
         align,
+        // Re-read each pass: the header's identity is fixed by the destination, but
+        // under `dynamicSize` its SIZE changes as it mounts and is measured.
+        leadingInset: resolveLeadingInset(index),
+        // What is covering the reader right now, which `align: 'auto'` needs to judge
+        // whether the target is already in view. A different header from the one above
+        // whenever the target is in another section.
+        currentLeadingInset: stickyObstructionSize,
+        // Asking for the header the reader is already looking at. Its logical start is
+        // above the scroll offset, so without this `align: 'auto'` reads it as
+        // offscreen and jumps back to the top of its section.
+        targetIsStuckAtLeadingEdge: clampedScrollIndex(index) === activeStickyIndex,
       });
 
       writeScrollOffset(element, target, behavior);
@@ -1366,6 +1782,17 @@
         // all by comparing against it.
         currentScrollOffset: readScrollOffset(element),
         align,
+        // Re-read each pass: the header's identity is fixed by the destination, but
+        // under `dynamicSize` its SIZE changes as it mounts and is measured.
+        leadingInset: resolveLeadingInset(index),
+        // What is covering the reader right now, which `align: 'auto'` needs to judge
+        // whether the target is already in view. A different header from the one above
+        // whenever the target is in another section.
+        currentLeadingInset: stickyObstructionSize,
+        // Asking for the header the reader is already looking at. Its logical start is
+        // above the scroll offset, so without this `align: 'auto'` reads it as
+        // offscreen and jumps back to the top of its section.
+        targetIsStuckAtLeadingEdge: clampedScrollIndex(index) === activeStickyIndex,
       });
       // Compared against the element, not the state, for the same reason the target
       // is computed from it: the state lags a smooth or externally-driven scroll,
@@ -1408,7 +1835,16 @@
           class="cinder-virtual-list__row"
           role={role === 'list' ? 'listitem' : undefined}
           data-cinder-virtual-index={virtualItem.index}
-          style={dynamicSize ? undefined : `${rowLayout.sizeProperty}:${virtualItem.size}px;`}
+          data-cinder-sticky={stickyIndexSet.has(virtualItem.index) ? 'true' : undefined}
+          data-cinder-sticky-active={virtualItem.index === activeStickyIndex ? 'true' : undefined}
+          data-cinder-sticky-pinned={virtualItem.index === pinnedStickyIndex ? 'true' : undefined}
+          aria-posinset={rowSemanticsApply
+            ? resolveRowSemantics(virtualItem.index, items.length).ariaPosInSet
+            : undefined}
+          aria-setsize={rowSemanticsApply
+            ? resolveRowSemantics(virtualItem.index, items.length).ariaSetSize
+            : undefined}
+          style={resolveRowStyle(virtualItem.index, virtualItem.size)}
           {@attach observeRow}
         >
           {@render row(virtualItem.item, {

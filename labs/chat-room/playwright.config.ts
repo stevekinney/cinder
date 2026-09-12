@@ -33,21 +33,53 @@ const CROSS_ENGINE_SHARDS = [
 		'**/composer-popover.e2e.ts',
 		'**/conversation-list.e2e.ts',
 		'**/diff-viewer.e2e.ts',
-		'**/interleaving.e2e.ts'
-	],
-	[
-		'**/markdown-editor.e2e.ts',
-		'**/message-lifecycle.e2e.ts',
-		'**/review-comment-creation.e2e.ts',
+		'**/interleaving.e2e.ts',
 		// A real fetch/ReadableStream path, which is precisely what these
 		// cross-engine shards exist for — Chromium-only coverage of it would be
 		// the silent reduction this list is meant to prevent.
 		//
-		// Placed in THIS shard by measurement, not by eye: with the five
-		// approval tests, `--list` per project counts 49/48/62/44/50. The
-		// obvious-looking home next to `review-imperative` was already at the
-		// 62 the ceiling note describes, and would have gone to 67.
-		'**/approval-flow.e2e.ts',
+		// MOVED here from the shard below, which had drifted to 66 — past the
+		// 64-context ceiling, so its WebKit worker would have stopped accepting
+		// navigation partway through. Two things pushed it there and neither
+		// re-measured: `multi-agent` landing on `main`, and a focus regression
+		// added to `server-owned-streaming` in this branch.
+		//
+		// Measured, not estimated: moving these five gives 54/61/62/51/50.
+		//
+		// SINCE UPDATED — `server-owned-streaming` gained the reload-history
+		// spec, putting the counts at 54/62/62/51/50. Two shards now sit exactly
+		// at the ceiling and there is no headroom in either: the next test added
+		// to `webkit-2` or `webkit-3` takes one of them to 63, past the point
+		// where a WebKit worker stops accepting navigation. Whoever adds it
+		// moves a spec to `webkit-5` (50) or `webkit-4` (51) rather than
+		// re-measuring afterwards and discovering the shard already broke.
+		'**/approval-flow.e2e.ts'
+	],
+	[
+		// The server-owned family's browser paths: the create flow's `fetch` plus
+		// reload, a `ReadableStream` streamed through the page's session
+		// controller, transcript-versus-page scroll ownership, the route-reuse
+		// reset, long-title overflow, a rejected turn's error envelope, and
+		// duplicate-title distinguishability, and a keyboard-focus regression on
+		// the list route's create button — which lives in this spec precisely
+		// because focus is the most engine-divergent behaviour in the lab.
+		//
+		// No count is stated here any more. It went stale at three tests, again
+		// at five, and again at seven — three times in one branch — so the
+		// number has come out of the prose and `--list --project=webkit-N` is
+		// the answer. Re-run it when this spec gains or loses a test; that is a
+		// step in adding one, not a reminder.
+		//
+		// Its `request`-fixture siblings stay out; that fixture is a
+		// Node-side HTTP client, so three engines would run identical code
+		// three times.
+		//
+		// Placed here by measurement, not by eye — see the rebalance note beside
+		// `approval-flow` in the first shard for the current counts.
+		'**/server-owned-streaming.e2e.ts',
+		'**/markdown-editor.e2e.ts',
+		'**/message-lifecycle.e2e.ts',
+		'**/review-comment-creation.e2e.ts',
 		// FOCUS coverage, which is the first category this list exists for:
 		// `multi-agent.e2e.ts` walks the tab order to prove the transcript's
 		// disclosures are keyboard-reachable, and tab order plus focus-on-click

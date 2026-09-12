@@ -33,7 +33,8 @@ const DEV_ORIGIN = 'http://localhost:5175';
 // The invariant, so a new exercise gets added as a matter of course rather than
 // by a later sweep: **every directory under `src/routes/exercises/` appears
 // here, plus `/`.** Ordered to match the directory listing so `ls` against this
-// array is a trivial diff.
+// array is a trivial diff. Routes outside `exercises/` that server-render and
+// hydrate belong here too, appended after them.
 //
 // Deliberately NOT globbed at test time: Playwright needs test names at
 // collection time, and an explicit list makes a missing route a reviewable diff
@@ -93,7 +94,12 @@ const HYDRATING_ROUTES = [
 	'/exercises/tool-approval',
 	'/exercises/tripwire',
 	'/exercises/utilities',
-	'/exercises/virtualization'
+	'/exercises/virtualization',
+	// Not an exercise: the server-owned variant's landing page. It renders on
+	// the server and hydrates interactive state (a create form), so a mismatch
+	// there is exactly what this spec exists to catch — the `exercises/`
+	// invariant above is a floor, not a ceiling.
+	'/server-owned'
 ];
 
 /**
@@ -183,3 +189,51 @@ for (const route of HYDRATING_ROUTES) {
 		expect(viaInitScript.length).toBe(viaConsoleEvent.length);
 	});
 }
+
+// `/server-owned/[id]` cannot be a `HYDRATING_ROUTES` entry: it needs a real
+// conversation id, and that list is a static inventory whose value is being
+// diffable against `ls`. A parameterised route in it would either carry a
+// hard-coded id that does not exist or force the list to become code.
+//
+// It is covered here instead, because the reason the list exists applies to it
+// just as much: the detail page server-renders and hydrates interactive state
+// (a Chat mount and a session controller), and that is the shape mismatches
+// come from.
+test('/server-owned/[id] hydrates without a mismatch', async ({ page, request }) => {
+	const created = await request.post(`${DEV_ORIGIN}/api/server-owned/conversations`, {
+		data: { title: `Hydration ${Date.now().toString(36)}` }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	// NONEMPTY, and that is the point of the test rather than a detail. An
+	// empty conversation mounts an empty Chat, so the SSR-to-client
+	// reconciliation of pre-rendered message rows — where a mismatch would
+	// actually come from — is never exercised, and a mismatch conditional on a
+	// populated `ConversationHistory` would pass. The nonempty case elsewhere
+	// runs against the `preview` build, where Svelte strips the warning
+	// entirely, so this dev-server test is the only place it can be seen.
+	//
+	// Appended through `DEV_ORIGIN`, because the two servers hold separate
+	// in-memory stores and a turn written to the preview one would not exist
+	// for the page this test loads.
+	const turn = `Hydration probe ${Date.now().toString(36)}`;
+	const appended = await request.post(
+		`${DEV_ORIGIN}/api/server-owned/conversations/${conversation.id}/turns`,
+		{ data: { text: turn } }
+	);
+	expect(appended.status()).toBe(201);
+
+	const { viaConsoleEvent, viaInitScript } = await collectHydrationMismatches(
+		page,
+		`/server-owned/${conversation.id}`
+	);
+
+	// The row really was server-rendered and survived hydration — otherwise
+	// this would be an empty-Chat test wearing a nonempty fixture.
+	await expect(page.getByRole('log', { name: 'Messages' })).toContainText(turn);
+
+	expect(viaInitScript).toEqual([]);
+	expect(viaConsoleEvent).toEqual([]);
+	expect(viaInitScript.length).toBe(viaConsoleEvent.length);
+});

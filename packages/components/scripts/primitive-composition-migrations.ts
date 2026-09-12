@@ -139,6 +139,14 @@ export const allowedFloatingCounts = new Map<string, number>(
 // CommandPalette is intentionally absent from this floating-surface migration:
 // its panel remains a native modal <dialog>, not a positioned non-modal surface.
 // See docs/decisions/command-palette-native-dialog.md for the bounded exception.
+// virtual-list's pinned sticky row: the active section header once its own index has
+// scrolled out of the rendered window. It is absolutely positioned so it cannot
+// displace the rows the window lays out in flow, and it inherits `z-index: 1` from
+// the sticky-row rule that also matches it — which together read as a floating
+// surface to the detector. It is not one: it has no elevation, no backdrop, and no
+// dismissal; it is a row of the list, pinned. `_floating-surface.css` would give it
+// panel semantics it should not have.
+allowedFloatingCounts.set('virtual-list/virtual-list.css', 1);
 allowedFloatingCounts.set('dropdown/dropdown.css', 6);
 allowedFloatingCounts.set('menu-bar/menu-bar.css', 2);
 allowedFloatingCounts.set('styles/components/experimental/popover.css', 4);

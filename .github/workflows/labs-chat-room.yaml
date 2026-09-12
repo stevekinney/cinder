@@ -183,6 +183,15 @@ jobs:
         run: bun run test:unit
         working-directory: labs/chat-room
 
+      # A SEPARATE step, deliberately. This guard checks that `test:unit` names
+      # every unit test in the lab — so running it only through `test:unit`
+      # would mean deleting its entry from that list also deletes the check
+      # that exists to report the deletion, with CI still green. `validate`
+      # invokes it too, but this workflow does not run `validate`.
+      - name: Unit-test inventory
+        run: bun run test:unit-inventory
+        working-directory: labs/chat-room
+
       - name: Run the Playwright matrix
         run: bunx playwright test
         working-directory: labs/chat-room

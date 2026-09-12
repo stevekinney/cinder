@@ -50,3 +50,18 @@ export const requestContext: ToolRequestContext = {
 	agentId: 'chat-room-assistant',
 	runId: 'chat-room-session'
 };
+
+/**
+ * A toolbox with nothing in it, for the server-owned variant.
+ *
+ * Constructed HERE rather than at the route, because the ownership guard is
+ * right to insist on that: a route that builds its own toolbox is a route
+ * that can quietly acquire an approval-gated tool without the host noticing.
+ * Keeping even the empty one in this module means the guard stays a simple,
+ * total rule rather than one with an exception that has to be maintained.
+ *
+ * The server-owned route family runs with this because it has no approval UI
+ * — see that route's stream endpoint for why that is a scope boundary
+ * (CIN-445) rather than an omission.
+ */
+export const emptyToolbox = createToolbox([]);

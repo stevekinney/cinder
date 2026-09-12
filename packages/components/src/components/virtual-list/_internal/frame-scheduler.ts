@@ -32,9 +32,13 @@ const NO_ANIMATION_FRAME_ID = -1;
  * `request`/`cancel` must not throw merely by being called there either —
  * when `requestAnimationFrame` is absent, `request` reports
  * {@link NO_ANIMATION_FRAME_ID} and never invokes the callback. Nothing on
- * the server needs it to: Svelte does not run `$effect`s during SSR, so the
- * one caller of this scheduler (the `windowScroll` adapter's
- * `FrameBatcher`) never runs there either.
+ * the server needs it to: Svelte does not run `$effect`s during SSR, so a
+ * `FrameBatcher` built on this scheduler never runs there either.
+ *
+ * Nothing in the component calls this today. It was written for the
+ * `windowScroll` adapter, which was split out of this work and is tracked as
+ * CIN-197; it stays here so that work does not start from nothing, but it
+ * describes a caller that does not exist yet rather than one that does.
  *
  * A `FrameBatcher` built on this fallback path stays permanently inert
  * after its first `recordRead` — `request` returning without ever calling
@@ -70,7 +74,8 @@ type PendingRead<T> = {
  * Coalesces N calls to recordRead within one frame into a single onCommit call on the
  * NEXT scheduled frame. This is CIN-202's mechanism for reads that Svelte's own
  * $effect.pre/$effect ordering does NOT already cover — specifically, genuinely
- * layout-forcing reads like getBoundingClientRect (used by the windowScroll adapter).
+ * layout-forcing reads like getBoundingClientRect — which is what the `windowScroll`
+ * adapter will need, and why this exists ahead of it (CIN-197).
  * Plain $state-driven scroll-offset correction uses the $effect.pre/$effect split
  * instead (see "The engine" — CIN-202 interpretation).
  */

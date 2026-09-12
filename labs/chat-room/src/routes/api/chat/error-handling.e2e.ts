@@ -115,12 +115,14 @@ test('does not re-send the turn on its own', async ({ page }) => {
 	expect(await fixtureRequestCount(marker)).toBe(1);
 });
 
-test('the SDK retries a rate limit on its own, which is not the app retrying', async ({ page }) => {
+test('the transport retries a rate limit on its own, which is not the app retrying', async ({
+	page
+}) => {
 	// Recorded rather than asserted around, because it is the reason the two
-	// specs above use a 401. `@anthropic-ai/sdk` retries a 429 at the
-	// transport level with backoff, so ONE turn produces three upstream
-	// requests and takes seconds to fail. That is the SDK's policy, invisible
-	// to the run and to the user, and entirely separate from the application
+	// specs above use a 401. The provider transport underneath Operative
+	// retries a 429 with backoff, so ONE turn produces three upstream requests
+	// and takes seconds to fail. That is the transport's policy, invisible to
+	// the run and to the user, and entirely separate from the application
 	// re-sending a turn — which it still never does.
 	const { marker } = await sendAndFail(page, 'ratelimited');
 	expect(await fixtureRequestCount(marker)).toBeGreaterThan(1);
