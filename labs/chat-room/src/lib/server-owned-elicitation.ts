@@ -154,8 +154,15 @@ export function answerApproval(
 	return 'settled';
 }
 
-/** Forgets every pending question, for tests. */
-export function forgetPendingApprovals(): void {
+/**
+ * Settles every process-owned pending approval as a denial.
+ *
+ * Runtime shutdown owns this cleanup because the registry is held on
+ * `globalThis`, not inside any one request. Older HMR generations can leave
+ * waiting calls that are not subscribed to the current runtime's shutdown
+ * signal, so disposal has to settle the registry directly before teardown.
+ */
+export function settleRuntimeOwnedPendingApprovals(): void {
 	for (const waiting of [...registry().values()]) waiting.settle(false);
 	(globalThis as PendingHost)[PENDING_SLOT] = undefined;
 }

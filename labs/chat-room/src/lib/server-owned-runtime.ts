@@ -6,6 +6,7 @@ import type { Storage } from '@lostgradient/weft/storage/interface';
 import { textValueStore } from '@lostgradient/weft/storage/text-value-store';
 import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-value-store';
 
+import { settleRuntimeOwnedPendingApprovals } from '$lib/server-owned-elicitation';
 import { serverOwnedStorage } from '$lib/server-owned-storage';
 import type { Durability } from '$lib/server-owned-storage';
 
@@ -479,6 +480,8 @@ async function runDisposal(host: RuntimeHost, held: StoredRuntime): Promise<{ fa
 	// finishing; the teardown sees `RuntimeTerminatingError`, which disposal
 	// isolates and counts like any other teardown failure.
 	host[RUNTIME_SLOT] = undefined;
+	// Synchronous, before abort listeners can create a replacement question.
+	settleRuntimeOwnedPendingApprovals();
 	// Abort request-scoped waits after the slot is closed and before the first
 	// teardown. This also covers replacement generations started by a
 	// terminating caller that joined an ordinary disposal.

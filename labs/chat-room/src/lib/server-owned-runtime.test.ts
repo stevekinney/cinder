@@ -99,6 +99,30 @@ describe('server-owned runtime', () => {
 		expect(legacyTeardownRan).toBe(true);
 	});
 
+	it('settles pre-shutdown-signal pending approvals before runtime teardowns', async () => {
+		const runtime = serverOwnedRuntime();
+		replaceRuntimeSlotWithPreShutdownSignalShape(runtime);
+
+		const pending = requestApproval('legacy-hmr-shutdown', {
+			toolName: 'remember_note',
+			callId: 'legacy-call',
+			message: 'Approve the legacy call?',
+			arguments: { text: 'legacy' }
+		});
+		let teardownSawPending = true;
+		runtime.onDispose(() => {
+			teardownSawPending = peekApproval('legacy-hmr-shutdown') !== undefined;
+		});
+
+		expect(peekApproval('legacy-hmr-shutdown')?.callId).toBe('legacy-call');
+		const disposal = disposeServerOwnedRuntime();
+
+		expect(peekApproval('legacy-hmr-shutdown')).toBeUndefined();
+		expect(teardownSawPending).toBe(false);
+		await expect(disposal).resolves.toEqual({ failures: 0 });
+		await expect(pending).resolves.toBe(false);
+	});
+
 	it('aborts pending approvals before the real durable engine teardown starts', async () => {
 		const runtime = serverOwnedRuntime();
 		await durableRuntime();

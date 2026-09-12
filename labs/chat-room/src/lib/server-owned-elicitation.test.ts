@@ -3,9 +3,9 @@ import { afterEach, describe, expect, test } from 'bun:test';
 import {
 	ElicitationAlreadyPendingError,
 	answerApproval,
-	forgetPendingApprovals,
 	peekApproval,
-	requestApproval
+	requestApproval,
+	settleRuntimeOwnedPendingApprovals
 } from '$lib/server-owned-elicitation';
 
 const QUESTION = {
@@ -16,7 +16,7 @@ const QUESTION = {
 };
 
 afterEach(() => {
-	forgetPendingApprovals();
+	settleRuntimeOwnedPendingApprovals();
 });
 
 describe('requestApproval', () => {
