@@ -49,28 +49,37 @@ async function openChatHarness(
     viewport: { width: 1280, height: 900 },
     ...(options.forcedColors !== undefined ? { forcedColors: options.forcedColors } : {}),
   });
-  await context.addInitScript(
-    ([key, value]) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [THEME_STORAGE_KEY, 'dark'] as const,
-  );
+  // A failure below (bad route, load regression, the harness never becoming
+  // visible) would otherwise leak this context: nothing else here closes a
+  // context whose owning `openChatHarness` call never returned. Close it on
+  // any failure and rethrow.
+  try {
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, 'dark'] as const,
+    );
 
-  const page = await context.newPage();
-  await page.goto(
-    `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
-    { waitUntil: 'load' },
-  );
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    const page = await context.newPage();
+    await page.goto(
+      `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
+      { waitUntil: 'load' },
+    );
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
 
-  const harness = page.locator(HARNESS);
-  await harness.waitFor({ state: 'visible', timeout: 20_000 });
+    const harness = page.locator(HARNESS);
+    await harness.waitFor({ state: 'visible', timeout: 20_000 });
 
-  return { page, harness, dispose: () => context.close() };
+    return { page, harness, dispose: () => context.close() };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 async function blurToBody(page: Page): Promise<void> {

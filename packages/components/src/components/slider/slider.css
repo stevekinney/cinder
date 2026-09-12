@@ -76,6 +76,13 @@
     pointer-events: none;
   }
 
+  /*
+   * CIN-603: decorative scale marking, but the `opacity: 0.6` compounding
+   * `border.control`'s own alpha down to ~29% was redundant now that
+   * `border.control` alone clears the tier's own decorative floor — removed
+   * rather than left needlessly fainter for no reason tied to this tick's
+   * (non-functional) role.
+   */
   .cinder-slider__tick {
     position: absolute;
     top: 50%;
@@ -85,7 +92,6 @@
     background: var(--cinder-border, currentColor);
     transform: translate(-50%, -50%);
     border-radius: var(--cinder-radius-full);
-    opacity: 0.6;
   }
 
   .cinder-slider__thumb {

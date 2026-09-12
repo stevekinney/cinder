@@ -93,10 +93,20 @@
     cursor: not-allowed;
   }
 
-  /* Empty guard — visual indicator when no options are available */
+  /*
+   * Empty guard — visual indicator when no options are available. Not
+   * `disabled` (the field's `disabled` binding stays false here), so the
+   * WCAG 1.4.11 3:1 floor still applies: the dashed border is the affordance
+   * that carries the "unavailable" meaning, so it must not be diluted.
+   * CIN-603: this used to be `opacity: 0.5` on the whole control, which
+   * multiplied the base rule's `border.control` boundary down to ~24%
+   * effective alpha along with everything else. Dimming the text color
+   * instead of the element keeps the dashed border at its tier's full,
+   * undiluted alpha.
+   */
   .cinder-select[data-cinder-empty='true'] {
     border-style: dashed;
-    opacity: 0.5;
+    color: var(--cinder-text-muted);
     cursor: not-allowed;
   }
 

@@ -89,19 +89,21 @@ const CORPUS_TIER =
  * Tier borders that sit in a rule which also sets `opacity`, so the element
  * opacity compounds with the tier's own alpha. Each one's effective contrast is
  * recorded in the seam audit.
+ *
+ * CIN-603 removed two former entries here rather than leaving them stale:
+ * SortableList's drag placeholder (`outline: 2px dashed var(--cinder-border-muted)`
+ * under `opacity: 0.4`) and Slider's tick (`background: var(--cinder-border,
+ * currentColor)` under `opacity: 0.6`) both had their same-rule `opacity`
+ * dropped, so neither compounds with a tier anymore -- see the seam audit's
+ * "Tier borders under an element opacity" section for the retuned values.
  */
 const OPACITY_COMPOUNDED: readonly string[] = [
-  // SortableList's drag placeholder: `opacity: 0.4` in the same rule.
-  'packages/components/src/components/sortable-list/sortable-list.css  outline: 2px dashed var(--cinder-border-muted);',
   // A disabled Button. The block scan straddles rules inside `@layer` and finds
   // this one imprecisely, but it belongs here on the merits either way: the
   // border comes from `button.css` and `opacity: 0.6` from `foundation.css`'s
   // shared disabled-visual rule, so it is genuinely compounded -- just not by
   // anything visible in a single rule body.
   'packages/components/src/components/button/button.css  border-color: var(--cinder-border-muted);',
-  // Slider's tick: an AREA fill, not a border, under `opacity: 0.6` in the same
-  // rule. The audit records its compounded contrast rather than the tier's.
-  'packages/components/src/components/slider/slider.css  background: var(--cinder-border, currentColor);',
 ];
 
 type Classification = {
@@ -223,15 +225,17 @@ const CLASSIFIED: Record<string, readonly Classification[]> = {
     },
   ],
   'packages/components/src/components/mega-menu/mega-menu.css': [
+    // CIN-603: moved from `border.muted` to `border.control`.
     {
-      declaration: 'background: var(--cinder-border-muted);',
+      declaration: 'background: var(--cinder-border);',
       category: 'area',
       audit: 'mega-menu',
     },
   ],
   'packages/components/src/components/parameter-field/parameter-field.css': [
+    // CIN-603: moved from `border.muted` to `border.control`.
     {
-      declaration: 'background: var(--cinder-border-muted);',
+      declaration: 'background: var(--cinder-border);',
       category: 'area',
       audit: 'parameter-field',
     },

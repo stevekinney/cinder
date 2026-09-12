@@ -36,7 +36,30 @@
     padding: var(--cinder-space-1) var(--cinder-space-2);
   }
 
+  /*
+   * CIN-603: a toggled-off series is still an ENABLED control (the user
+   * presses it to bring the series back), so its `border.control` boundary
+   * stays subject to WCAG 1.4.11's 3:1 floor. The previous `opacity: 0.55`
+   * lived on the button itself, which multiplied the border's alpha along
+   * with everything else (~26% effective, well under the floor). Scoping the
+   * dimming to the swatch dot instead leaves the border at `border.control`'s
+   * full, undiluted alpha.
+   *
+   * The label's color sources `--_cinder-chart-muted` (the same chart-local
+   * token every other "muted" chart element in this file already uses), not
+   * the global `--cinder-text-muted` token -- a consumer-supplied
+   * `theme.muted` has to keep reaching this label, or it stops matching the
+   * rest of a custom chart theme. Its own default is `currentColor`
+   * (`chart-model-utilities`'s `theme?.muted ?? 'currentColor'`), so with no
+   * consumer theme the label reads at full, undimmed contrast -- the
+   * swatch's own `opacity: 0.55` below is what still marks the series as
+   * toggled off.
+   */
   .cinder-line-chart__legend button[aria-pressed='false'] {
+    color: var(--_cinder-chart-muted, currentColor);
+  }
+
+  .cinder-line-chart__legend button[aria-pressed='false'] span {
     opacity: 0.55;
   }
 
