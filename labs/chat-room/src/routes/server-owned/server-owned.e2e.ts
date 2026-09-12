@@ -269,6 +269,7 @@ test('the detail route offers the recovery question and names its backing store'
 	// same reason the error regions in `error-live-regions.e2e.ts` do: a live
 	// region that appears with text already in it is not reliably announced.
 	await expect(status).toHaveCount(1);
+	await expect(status).toHaveAttribute('role', 'status');
 	await expect(status).toBeEmpty();
 	await expect(status).toHaveAttribute('role', 'status');
 	await expect(durability).toBeEmpty();
@@ -791,6 +792,14 @@ test('keeps an orphan report while a later recovery check fails', async ({ page,
 	await gotoHydrated(page, `/server-owned/${conversation.id}`);
 	await page.locator('summary', { hasText: 'Durable recovery' }).click({ force: true });
 
+	// The announcement target must already be mounted before the response that
+	// supplies an outcome. Otherwise a screen reader can miss the warning when
+	// the panel inserts populated markup after the request completes.
+	const status = page.locator('[data-testid="recovery-status"]');
+	await expect(status).toHaveCount(1);
+	await expect(status).toHaveAttribute('role', 'status');
+	await expect(status).toBeEmpty();
+
 	let requests = 0;
 	let secondStarted!: () => void;
 	const secondRequest = new Promise<void>((resolve) => {
@@ -812,7 +821,7 @@ test('keeps an orphan report while a later recovery check fails', async ({ page,
 						kind: 'orphaned',
 						durability: 'on-disk',
 						failures: [{ runId: 'run-orphaned', reason: 'Provider details are withheld.' }],
-						note: 'Reported once.'
+						note: 'Reported once. The orphan diagnosis could not be saved for later checks.'
 					})
 				});
 				return;
@@ -829,7 +838,8 @@ test('keeps an orphan report while a later recovery check fails', async ({ page,
 
 	const check = page.locator('[data-testid="recovery-check"]');
 	await check.click();
-	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(status).toContainText('Orphaned');
+	await expect(status).toContainText('The orphan diagnosis could not be saved for later checks.');
 	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
 
 	await check.click();
@@ -839,6 +849,7 @@ test('keeps an orphan report while a later recovery check fails', async ({ page,
 
 	releaseSecond();
 	await expect(page.locator('[data-testid="recovery-error"]')).toContainText('shutting down');
-	await expect(page.locator('[data-testid="recovery-status"]')).toContainText('Orphaned');
+	await expect(status).toContainText('Orphaned');
+	await expect(status).toContainText('The orphan diagnosis could not be saved for later checks.');
 	await expect(page.locator('[data-testid="recovery-failures"]')).toContainText('run-orphaned');
 });

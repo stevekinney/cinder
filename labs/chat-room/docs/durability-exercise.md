@@ -77,7 +77,7 @@ curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recover
 ```
 
 ```json
-{ "kind": "nothing-to-resume", "durability": "on-disk" }
+{ "kind": "nothing-to-resume", "durability": "on-disk", "previouslyOrphaned": [] }
 ```
 
 Start a turn that parks mid-stream. The `gated` fixture scenario delivers one chunk and then holds the response open, which leaves the run `running` in the store. **Terminal 3**, and this one stays open until the server is killed:
@@ -190,13 +190,13 @@ The storage sentence is inside the announcement, not only in the paragraph besid
 ```
 status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
             run's work is terminally gone. Storage is on disk, so a run left in flight
-            is recorded for the next process.
+            is recorded for the next process. Reported once. Operative reconciles a
+            stranded run to terminal as it reports the rejection, so asking again
+            answers "nothing to resume".
 failures:   session-1-a72e39af-…:0 — Provider details are withheld.
-once:       Reported once. Operative reconciles a stranded run to terminal as it reports
-            the rejection, so asking again answers "nothing to resume".
 ```
 
-The run identifier remains available in the browser and server log. Provider details are withheld in both places.
+The run identifier remains available in the browser and server log. Provider details are withheld in both places. The one-shot note is part of the live status announcement. If saving the diagnosis fails, that same announcement includes "The orphan diagnosis could not be saved for later checks."
 
 **After the restart, second Check**
 
@@ -206,7 +206,6 @@ status:     Nothing is currently resumable. The orphaned run reported earlier is
             was lost. Storage is on disk, so a run left in flight is recorded for the
             next process.
 failures:   (no list rendered)
-once:       (no note rendered)
 ```
 
 Deliberately not "no run was in flight". One was, and its work was lost — saying otherwise here would make the panel contradict the step above it.

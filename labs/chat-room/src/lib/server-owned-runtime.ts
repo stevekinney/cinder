@@ -121,8 +121,9 @@ type RuntimeHost = typeof globalThis & {
 type RuntimeTeardown = () => void | Promise<void>;
 
 type StoredRuntime = {
-	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal'> & {
+	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal' | 'durability'> & {
 		readonly shutdownSignal?: AbortSignal;
+		readonly durability?: Durability;
 	};
 	shutdownController?: AbortController;
 	teardowns: RuntimeTeardown[];
@@ -137,7 +138,8 @@ type HeldRuntime = {
 function isCurrentRuntimeSlot(held: StoredRuntime): held is HeldRuntime {
 	return (
 		held.shutdownController !== undefined &&
-		held.runtime.shutdownSignal === held.shutdownController.signal
+		held.runtime.shutdownSignal === held.shutdownController.signal &&
+		held.runtime.durability !== undefined
 	);
 }
 
@@ -225,6 +227,14 @@ function currentRuntimeSlot(held: StoredRuntime): HeldRuntime {
 		value: shutdownController.signal,
 		writable: true
 	});
+	if (held.runtime.durability === undefined) {
+		Object.defineProperty(held.runtime, 'durability', {
+			configurable: true,
+			enumerable: true,
+			value: 'in-memory' satisfies Durability,
+			writable: true
+		});
+	}
 
 	return {
 		runtime: held.runtime as ServerOwnedRuntime,

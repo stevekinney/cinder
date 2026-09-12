@@ -154,7 +154,7 @@
 	A region that announces has to stay in the tree regardless of what the
 	reader has collapsed. The explanation and the control can hide; the answer
 	cannot.
--->
+	-->
 <!--
 		THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
 		beside it. Review caught the split: the ordinary paragraph changed
@@ -168,6 +168,11 @@
 		was lost — so that wording would make a false historical claim in exactly
 		the two-click scenario the exercise documents. "Nothing is currently
 		resumable" is true either way.
+
+		The orphan note is here too, not in a separate conditional paragraph. The
+		note is the only place a persistence failure is surfaced, and a paragraph
+		that appears outside the live region is just text on the page — not a
+		reliable announcement.
 	-->
 <p class="status" role="status" data-testid="recovery-status">
 	{#if outcome?.kind === 'nothing-to-resume'}
@@ -181,6 +186,7 @@
 	{:else if outcome?.kind === 'orphaned'}
 		Orphaned. A re-attach was attempted and every candidate rejected, so this run's work is
 		terminally gone. {durabilitySentence(outcome.durability)}
+		<span data-testid="recovery-once">{outcome.note}</span>
 	{/if}
 </p>
 
@@ -190,14 +196,6 @@
 			<li><code>{entry.runId}</code> — {entry.reason}</li>
 		{/each}
 	</ul>
-	<!--
-			Said out loud, because the classification does not survive being asked
-			for twice. Operative reconciles a stranded run to terminal as it reports
-			the rejection, so the next check answers "nothing to resume" — a reader
-			who clicked again and saw the orphan vanish would reasonably read that as
-			a bug in this panel rather than the repair it is.
-		-->
-	<p class="explain" data-testid="recovery-once">{outcome.note}</p>
 {/if}
 
 <p class="failure" role="alert" data-testid="recovery-error">

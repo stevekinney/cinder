@@ -17,22 +17,32 @@ const runtimeSlot = Symbol.for('cinder.chat-room.server-owned.runtime');
 type RuntimeTeardown = () => void | Promise<void>;
 type RuntimeSlotHost = typeof globalThis & Record<symbol, unknown>;
 type RuntimeSlotShape = {
-	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal'>;
+	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal' | 'durability'>;
+	shutdownController?: AbortController;
 	teardowns: RuntimeTeardown[];
 };
 
 function replaceRuntimeSlotWithPreShutdownSignalShape(runtime: ServerOwnedRuntime) {
 	const host = globalThis as RuntimeSlotHost;
 	const current = host[runtimeSlot] as { teardowns: RuntimeTeardown[] };
-	const legacyRuntime = runtime as Omit<ServerOwnedRuntime, 'shutdownSignal'> & {
+	const legacyRuntime = runtime as Omit<ServerOwnedRuntime, 'shutdownSignal' | 'durability'> & {
 		shutdownSignal?: AbortSignal;
+		durability?: ServerOwnedRuntime['durability'];
 	};
 	delete legacyRuntime.shutdownSignal;
+	delete legacyRuntime.durability;
 
 	host[runtimeSlot] = {
 		runtime: legacyRuntime,
 		teardowns: current.teardowns
 	} satisfies RuntimeSlotShape;
+}
+
+function removeDurabilityFromRuntimeSlot(runtime: ServerOwnedRuntime) {
+	const intermediateRuntime = runtime as Omit<ServerOwnedRuntime, 'durability'> & {
+		durability?: ServerOwnedRuntime['durability'];
+	};
+	delete intermediateRuntime.durability;
 }
 
 /**
@@ -75,6 +85,7 @@ describe('server-owned runtime', () => {
 		expect(current.store).toBe(previous.store);
 		expect(current.sessions).toBe(previous.sessions);
 		expect(current.shutdownSignal).toBeInstanceOf(AbortSignal);
+		expect(current.durability).toBe('in-memory');
 
 		let teardownSawAbort = false;
 		current.onDispose(() => {
@@ -84,6 +95,18 @@ describe('server-owned runtime', () => {
 		await disposeServerOwnedRuntime();
 
 		expect(teardownSawAbort).toBe(true);
+	});
+
+	it('upgrades an intermediate HMR slot missing only durability', async () => {
+		const previous = serverOwnedRuntime();
+		const previousSignal = previous.shutdownSignal;
+		removeDurabilityFromRuntimeSlot(previous);
+
+		const current = serverOwnedRuntime();
+
+		expect(current).toBe(previous);
+		expect(current.shutdownSignal).toBe(previousSignal);
+		expect(current.durability).toBe('in-memory');
 	});
 
 	it('disposes a pre-shutdown-signal HMR slot without dropping its teardowns', async () => {
