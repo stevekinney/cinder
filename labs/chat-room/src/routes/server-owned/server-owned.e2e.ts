@@ -746,7 +746,9 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 		})
 	);
 
-	await page.locator('[data-testid="recovery-check"]').click();
+	await page
+		.locator('[data-testid="recovery-check"]')
+		.evaluate((button) => (button as HTMLButtonElement).click());
 
 	// THE SERVER'S SENTENCE, not the JSON envelope — the same rule the
 	// streaming surface follows.
@@ -774,6 +776,8 @@ test('a failed recovery check says so in its alert', async ({ page, request }) =
 		route.abort('failed')
 	);
 
-	await page.locator('[data-testid="recovery-check"]').click();
+	await page
+		.locator('[data-testid="recovery-check"]')
+		.evaluate((button) => (button as HTMLButtonElement).click());
 	await expect(alert).toContainText('could not reach the server');
 });

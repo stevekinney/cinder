@@ -108,10 +108,9 @@ async function respond(id: string): Promise<Response> {
 	// concurrent request can read an empty history and report that nothing was
 	// ever orphaned.
 	//
-	// It does not close the window — two requests racing `recover()` are only
-	// fully ordered by a lock this lab does not have — but it is as early as the
-	// evidence can be made durable, which is the part that matters: the record
-	// outlives the one response that carried the diagnosis.
+	// The route is serialized by `withRecoveryLock`, so a concurrent loser runs
+	// after this write and reads the winner's persisted record below. Recording
+	// immediately keeps the evidence durable before response construction.
 	if (outcome.kind === 'orphaned') {
 		await rememberOrphanedRuns(
 			id,
@@ -180,7 +179,7 @@ async function respond(id: string): Promise<Response> {
 	// not.
 	for (const failure of outcome.failures) {
 		console.error(
-			`[server-owned] recovery rejected for ${failure.runId} in conversation ${id}: ${failure.reason}`
+			`[server-owned] recovery rejected for run ${failure.runId} in conversation ${id}; details withheld`
 		);
 	}
 

@@ -53,8 +53,7 @@ const CROSS_ENGINE_SHARDS = [
 		// where a WebKit worker stops accepting navigation. Whoever adds it
 		// moves a spec to `webkit-5` (50) or `webkit-4` (51) rather than
 		// re-measuring afterwards and discovering the shard already broke.
-		'**/approval-flow.e2e.ts',
-		'**/server-owned-approval-flow.e2e.ts'
+		'**/approval-flow.e2e.ts'
 	],
 	[
 		// The server-owned family's browser paths: the create flow's `fetch` plus
@@ -110,7 +109,10 @@ const CROSS_ENGINE_SHARDS = [
 		// before this entry, so its seven tests go to the smallest shard. My
 		// first attempt put them in the 62 — the one the ceiling note is
 		// about — which is the mistake this comment exists to stop repeating.
-		'**/error-handling.e2e.ts'
+		'**/error-handling.e2e.ts',
+		// Measured on 2026-09-12: this keeps the shard at 53 contexts
+		// (webkit-1 54, webkit-2 62, webkit-3 62, webkit-4 53, webkit-5 52).
+		'**/server-owned-approval-flow.e2e.ts'
 	],
 	[
 		'**/review-views.e2e.ts',
