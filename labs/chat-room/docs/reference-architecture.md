@@ -196,6 +196,8 @@ The difference between the two shapes is smaller than it sounds, and in one plac
 
 The kill/restart procedure, its exact commands, and the observed state at each step are in [durability-exercise.md](./durability-exercise.md).
 
+**A diagnostic panel does not get to take the transcript's space.** The detail route is a fixed-viewport-height flex column whose only flexible child is the chat, so anything permanently expanded beside it comes out of the transcript — measured, the recovery panel took it to 0px at 844x390. The two obvious repairs are both wrong here: a floor on the chat plus a scrollable page hands the scroll to the document, which is the very thing a collapsed viewport produces and which this variant's specs pin against. Collapsing the panel by default is what reconciles them.
+
 <a id="server-owned-session-variant"></a>
 
 ## Server-owned session variant

@@ -263,6 +263,12 @@ test('the detail route offers the recovery question and names its backing store'
 	await expect(status).toHaveAttribute('role', 'status');
 	await expect(durability).toBeEmpty();
 
+	// The panel is a disclosure, CLOSED by default — expanded it took enough of
+	// the fixed-height column to squeeze the transcript to nothing on a short
+	// viewport. Its regions are in the DOM either way, which is what the live
+	// region rule needs; the control has to be revealed.
+	await page.getByText('Durable recovery', { exact: true }).click();
+
 	await page.locator('[data-testid="recovery-check"]').click();
 
 	// The benign branch, which is the honest answer under in-memory storage —
@@ -537,6 +543,10 @@ test('the transcript survives a short viewport instead of collapsing to nothing'
 	// Phone landscape, the shape this was measured collapsing at.
 	await page.setViewportSize({ width: 844, height: 390 });
 	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	// Measured with the recovery panel CLOSED, which is how it loads. That is
+	// the fix: expanded it consumed 200-285px of a fixed-height column whose
+	// only flexible child is the transcript.
 
 	const height = await page
 		.locator('[data-testid="server-owned-chat"]')

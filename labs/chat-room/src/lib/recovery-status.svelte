@@ -75,8 +75,24 @@
 	}
 </script>
 
-<section class="recovery" aria-labelledby="recovery-heading">
-	<h2 id="recovery-heading">Durable recovery</h2>
+<!--
+	COLLAPSED BY DEFAULT, and that is a layout fix rather than a preference.
+
+	The detail route is a fixed-viewport-height flex column whose only flexible
+	child is the chat. Expanded, this panel took 200-285px of it — at a
+	phone-landscape 844x390 the transcript and composer measured exactly 0px.
+	The obvious repairs both fail: a floor on the chat plus a scrollable page
+	hands the scroll to the document, and `server-owned-streaming.e2e.ts` pins
+	the opposite property, because page-scroll is what a collapsed viewport
+	produces in the first place.
+
+	A diagnostic that is closed until asked for takes ~40px instead, which
+	leaves the transcript usable at every viewport without touching how the
+	scroll is owned. `<details>` also gets the disclosure semantics and keyboard
+	behaviour for free.
+-->
+<details class="recovery">
+	<summary>Durable recovery</summary>
 
 	<p class="explain">
 		Asks the server whether a run from a previous process is still re-attachable. After a restart
@@ -167,21 +183,28 @@
 			{failure}
 		{/if}
 	</p>
-</section>
+</details>
 
 <style>
 	.recovery {
 		border: 1px solid var(--cinder-border);
 		border-radius: 0.5rem;
 		padding: 0.75rem 1rem;
+	}
+
+	/*
+		The panel's contents only participate in the flex column once the
+		disclosure is open; closed, `<details>` is just its summary.
+	*/
+	.recovery[open] {
 		display: flex;
 		flex-direction: column;
 		gap: 0.5rem;
 	}
 
-	h2 {
-		font-size: 1rem;
-		margin: 0;
+	summary {
+		font-weight: 600;
+		cursor: pointer;
 	}
 
 	.explain {

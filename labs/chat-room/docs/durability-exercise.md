@@ -147,6 +147,8 @@ Anyone following this procedure twice would otherwise file that as a defect, so 
 
 The same procedure with a browser watching `/server-owned/<id>`, recording the panel's own text at each step.
 
+The panel is a disclosure, **closed on load**. Expanded it takes 200-285px of a fixed-viewport-height column whose only flexible child is the transcript, and at a phone-landscape 844x390 that left the transcript and composer at exactly 0px. Closed it takes about 47px, and the transcript measures 129px at that viewport and 480px at 1280x720 — better than before this panel existed, because the space it used to hold open is now the chat's. Its regions stay in the DOM either way, which is what the live-region rule requires; opening it is what reveals the control.
+
 **On load, before any check** — both regions present and empty. That is the rule `error-live-regions.e2e.ts` enforces: a live region that appears with text already in it is not reliably announced.
 
 ```

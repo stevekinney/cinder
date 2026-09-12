@@ -428,20 +428,21 @@
 	.chat {
 		flex: 1;
 		/*
-			A FLOOR, not zero. `min-block-size: 0` is the usual fix for a flex
-			child that refuses to shrink, and it was right while this column held
-			only a banner, a heading, and the chat. With the approval region and
-			the recovery panel beside it, zero is reachable: measured at a
-			phone-landscape 844x390 the transcript and composer resolved to
-			exactly 0px, leaving a page with no way to read or send anything.
+			ZERO, deliberately, and the fix for the collapse is NOT here.
 
-			`min-block-size` alone is not enough — the column also has to be
-			allowed to grow past the viewport and scroll, which is what the
-			page's `min-block-size: 100dvh` does. Both halves are needed: the
-			floor stops the collapse, and the scroll stops the floor from pushing
-			the composer off-screen.
+			The obvious repair for a transcript squeezed to nothing is a floor on
+			this child plus a scrollable page. Both were tried and both are
+			wrong: a scrollable page hands the scroll to the document, and
+			`server-owned-streaming.e2e.ts` pins the opposite property — the
+			TRANSCRIPT scrolls, the page does not, because page-scroll is exactly
+			what a collapsed viewport produces. That test caught the trade
+			immediately.
+
+			So the space is reclaimed from what was taking it instead: the
+			recovery panel is collapsed by default. This child keeps shrinking
+			freely, which is what lets its internal scroll work at all.
 		*/
-		min-block-size: 16rem;
+		min-block-size: 0;
 	}
 
 	.failure {
