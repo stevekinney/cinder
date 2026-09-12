@@ -22,7 +22,19 @@ import type { RequestHandler } from './$types';
  * So: GET reads the pending question, POST answers it. Both are scoped to one
  * conversation, because that is what the registry keys on.
  */
-const answerSchema = z.object({ approved: z.boolean() });
+const answerSchema = z.object({
+	approved: z.boolean(),
+	/**
+	 * The call this answer is about, as read from `GET`.
+	 *
+	 * REQUIRED, and the fix for a race review found: a click on one question
+	 * that arrives after its run ended and a second question has registered
+	 * would otherwise settle the second. The answer carries no identity of its
+	 * own, so the id the client was shown is the only thing that can tell them
+	 * apart.
+	 */
+	callId: z.string().min(1)
+});
 
 export const GET: RequestHandler = async ({ params }) => {
 	try {
@@ -57,20 +69,35 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 		const parsed = answerSchema.safeParse(body);
 		if (!parsed.success) {
-			return json({ error: 'Body must be { "approved": boolean }.' }, { status: 400 });
+			return json(
+				{ error: 'Body must be { "approved": boolean, "callId": string }.' },
+				{ status: 400 }
+			);
 		}
 
-		const settled = answerApproval(params.id, parsed.data.approved);
+		const outcome = answerApproval(params.id, parsed.data.callId, parsed.data.approved);
 
-		// 409 rather than 404 when nothing was pending, and rather than a silent
-		// 200. The conversation exists; what is absent is a question, which
-		// means this answer arrived after the run ended or after another client
-		// answered first. A 200 would tell the caller its click took effect.
-		if (!settled) {
+		// 409 rather than 404, and rather than a silent 200. The conversation
+		// exists; what is absent is the question being answered — either because
+		// the run ended, or another client answered first, or the run has moved
+		// on to a different call. A 200 would tell the caller its click took
+		// effect.
+		//
+		// The two misses are reported DIFFERENTLY, because they mean different
+		// things to a client: nothing pending means stop asking, while a
+		// mismatch means re-read the current question and offer that one
+		// instead.
+		if (outcome === 'nothing-pending') {
 			return json({ error: 'This conversation is not waiting on an approval.' }, { status: 409 });
 		}
+		if (outcome === 'wrong-call') {
+			return json(
+				{ error: 'That approval is for a call this conversation has moved past.' },
+				{ status: 409 }
+			);
+		}
 
-		return json({ approved: parsed.data.approved });
+		return json({ approved: parsed.data.approved, callId: parsed.data.callId });
 	} catch (cause) {
 		return unavailableDuringShutdown(cause) ?? raise(cause);
 	}

@@ -11,11 +11,21 @@
  * module, and the difference between the two is the substance of the
  * comparison in `docs/reference-architecture.md`.
  *
- * ONE PENDING QUESTION PER CONVERSATION. `stopAfterAnyToolCall` means a step
- * carries at most one approval-gated call, and a second question for the same
- * conversation would mean the first was never answered. Rejected rather than
- * queued: a queue would let a stale question be answered by a click meant for
- * the new one.
+ * ONE PENDING QUESTION AT A TIME, asked SEQUENTIALLY when a step carries more
+ * than one gated call.
+ *
+ * An earlier version of this comment justified the single slot by claiming
+ * `stopAfterAnyToolCall` limited a step to one gated call. That was wrong on
+ * two counts, and review caught it: the stop condition runs AFTER a step and
+ * does not constrain how many calls the provider emits, and this family no
+ * longer uses that condition at all. A step really can carry two
+ * `remember_note` calls.
+ *
+ * So the gate asks about each one in turn, and the slot is what makes that
+ * safe rather than what assumes it away: each question resolves before the
+ * next registers, and every answer names the call it is answering. A second
+ * SIMULTANEOUS question is still refused rather than queued — a queue would
+ * let a click meant for one question settle another.
  *
  * `globalThis`, not a module-level `Map`, for the reason every other slot in
  * this family is there: Vite re-evaluates a server module on edit, and a
@@ -114,18 +124,34 @@ export function peekApproval(conversationId: string): PendingElicitation | undef
 	return { toolName, callId, message, arguments: proposed };
 }
 
+/** Why an answer did not settle a question. */
+export type AnswerOutcome = 'settled' | 'nothing-pending' | 'wrong-call';
+
 /**
- * Answers the pending question. Returns `false` when there was none.
+ * Answers the pending question, but only if it is the one being answered.
  *
- * A BOOLEAN rather than a throw, because "nothing is pending" is an ordinary
- * outcome for a client that answered after the run ended or after another tab
- * answered first — not a server fault.
+ * `callId` IS REQUIRED, and that is the fix for a real race review found: a
+ * click on question A that arrives after A's run ended and B has registered
+ * would otherwise settle B. The answer carries no identity of its own, so the
+ * only thing that can tell the two apart is the call id the client was shown —
+ * and comparing it here, in the same synchronous step that settles, is what
+ * makes the check atomic with respect to the decision.
+ *
+ * An OUTCOME rather than a throw, because neither miss is a server fault:
+ * "nothing is pending" is what a client sees when it answers after the run
+ * ended or after another tab answered first, and "wrong call" is what it sees
+ * when the question moved on while the person was reading it.
  */
-export function answerApproval(conversationId: string, approved: boolean): boolean {
+export function answerApproval(
+	conversationId: string,
+	callId: string,
+	approved: boolean
+): AnswerOutcome {
 	const waiting = registry().get(conversationId);
-	if (waiting === undefined) return false;
+	if (waiting === undefined) return 'nothing-pending';
+	if (waiting.callId !== callId) return 'wrong-call';
 	waiting.settle(approved);
-	return true;
+	return 'settled';
 }
 
 /** Forgets every pending question, for tests. */

@@ -22,10 +22,12 @@ That package is deliberately **not** a dependency of this lab. Its install scrip
 So the install is a step of this procedure rather than a line in `package.json`:
 
 ```sh
-bun add -d better-sqlite3
+bun add -d 'better-sqlite3@^12.8.0'
 ```
 
-Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which repeats that command and this file's path. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
+**Pinned to 12.x on purpose.** Weft `0.23.1` declares the peer as `better-sqlite3: ^12.8.0`, so an unpinned `bun add` installs 13.x and runs the adapter against a major the package does not claim to support. It happens to work; that is luck, not a contract, and review caught the first version of this file recommending it. `12.11.1` is what this procedure was last run against.
+
+Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which repeats the install command and this file's path. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
 
 ## The procedure
 

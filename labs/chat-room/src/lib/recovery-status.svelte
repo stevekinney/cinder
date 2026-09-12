@@ -32,6 +32,23 @@
 	let checking = $state(false);
 	let failure = $state('');
 
+	/**
+	 * Whether an orphan has already been reported on this page.
+	 *
+	 * Kept because the classification is REPORTED ONCE: Operative reconciles a
+	 * stranded run as it reports the rejection, so the next check answers
+	 * benignly. Without this the second reading would erase the first and claim
+	 * nothing was ever in flight.
+	 */
+	let seenOrphan = $state(false);
+
+	/** The backing store, in the sentence that announces the outcome. */
+	function durabilitySentence(durability: Durability): string {
+		return durability === 'on-disk'
+			? 'Storage is on disk, so a run left in flight is recorded for the next process.'
+			: 'Storage is in memory, so nothing survives this process and no previous run could be observed.';
+	}
+
 	async function check(): Promise<void> {
 		if (checking) return;
 		checking = true;
@@ -47,7 +64,9 @@
 				failure = body.error ?? 'The recovery check failed.';
 				return;
 			}
-			outcome = (await response.json()) as Reported;
+			const reported = (await response.json()) as Reported;
+			if (reported.kind === 'orphaned') seenOrphan = true;
+			outcome = reported;
 		} catch {
 			failure = 'The recovery check could not reach the server.';
 		} finally {
@@ -72,13 +91,18 @@
 		saying which it was running over would leave a reader unable to tell the
 		two apart.
 	-->
+	<!--
+		The same fact the announcement carries, with the part a reader can ACT on
+		— the variable to set. Left out of the live region on purpose: an
+		announcement should say what happened, not recite configuration.
+	-->
 	<p class="explain" data-testid="recovery-durability">
 		{#if outcome !== undefined}
 			{#if outcome.durability === 'on-disk'}
-				Storage: on disk. A run left in flight is still recorded when the next process starts.
+				Storage: on disk.
 			{:else}
-				Storage: in memory. Nothing survives this process, so there is never a run to re-attach to —
-				set <code>CHAT_ROOM_SERVER_OWNED_DATABASE</code> to a file path to make the question answerable.
+				Storage: in memory. Set <code>CHAT_ROOM_SERVER_OWNED_DATABASE</code> to a file path to make the
+				question answerable.
 			{/if}
 		{/if}
 	</p>
@@ -93,14 +117,32 @@
 		{checking ? 'Checking…' : 'Check for a recoverable run'}
 	</button>
 
+	<!--
+		THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
+		beside it. Review caught the split: the ordinary paragraph changed
+		silently while this region announced the reassuring half, so a screen
+		reader heard "idle, not lost" without learning that in-memory storage
+		could not have observed a previous process at all. The qualifier is what
+		makes the outcome mean anything.
+
+		The benign reading is deliberately NOT "no run was in flight". After an
+		orphan has been reported and reconciled, a run WAS in flight and its work
+		was lost — so that wording would make a false historical claim in exactly
+		the two-click scenario the exercise documents. "Nothing is currently
+		resumable" is true either way.
+	-->
 	<p class="status" role="status" data-testid="recovery-status">
 		{#if outcome?.kind === 'nothing-to-resume'}
-			Nothing to resume. No run was in flight — this session is idle, not lost.
+			Nothing is currently resumable. {seenOrphan
+				? 'The orphaned run reported earlier is already reconciled; this is what a second check answers, not a claim that nothing was lost.'
+				: 'No run is in flight for this session.'}
+			{durabilitySentence(outcome.durability)}
 		{:else if outcome?.kind === 'recovered'}
 			Re-attached to a run in flight. Progress is {outcome.progress}: {outcome.note}
+			{durabilitySentence(outcome.durability)}
 		{:else if outcome?.kind === 'orphaned'}
 			Orphaned. A re-attach was attempted and every candidate rejected, so this run's work is
-			terminally gone.
+			terminally gone. {durabilitySentence(outcome.durability)}
 		{/if}
 	</p>
 

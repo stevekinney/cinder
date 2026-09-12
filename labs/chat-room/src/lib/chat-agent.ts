@@ -253,12 +253,20 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
  * the option the wrapper installs no `report` and synthesizes both events
  * only after the response resolves.
  *
- * `stopWhen` combines `noToolCalls()` (a plain text reply is done after one
- * step) with `stopAfterAnyToolCall` (any step with tool calls is also done
- * after one step, whether or not those calls need approval) and, for
- * intent-at-a-glance, `pendingApproval()`. Without at least one condition
- * that stops on ordinary text, a plain reply would otherwise run to
- * `maximumSteps` — see the declarations' own example for the same pairing.
+ * `stopWhen` defaults to the BROWSER-OWNED set: `noToolCalls()` (a plain text
+ * reply is done after one step) plus `stopAfterAnyToolCall` (any step with
+ * tool calls is also done after one step, whether or not those calls need
+ * approval) and, for intent-at-a-glance, `pendingApproval()`. Without at
+ * least one condition that stops on ordinary text, a plain reply would
+ * otherwise run to `maximumSteps` — see the declarations' own example for the
+ * same pairing.
+ *
+ * A CALLER CAN REPLACE IT, and the server-owned family has to. Stopping after
+ * a tool call hands control back to the client, which is right when the
+ * client drives the next turn — and wrong when the server owns the run and
+ * the approval happens mid-step. There the loop should carry on to a second
+ * generate and finish with the assistant's reply, so the browser receives one
+ * complete turn instead of a tool result with nothing after it.
  */
 export function createChatRunOptions(options: {
 	generate: StreamingGenerateFunction;
@@ -285,6 +293,12 @@ export function createChatRunOptions(options: {
 	 * dangling tool call is left to break a later replay.
 	 */
 	beforeToolExecution?: BeforeToolExecutionHook[];
+	/**
+	 * Replaces the default stop conditions entirely rather than adding to them,
+	 * because the thing a caller needs to change here is which conditions are
+	 * ABSENT — merging would make `stopAfterAnyToolCall` impossible to remove.
+	 */
+	stopWhen?: StopCondition[];
 }): {
 	generate: ReturnType<typeof withEnhancedStreaming>;
 	toolbox: AnyToolbox;
@@ -315,7 +329,11 @@ export function createChatRunOptions(options: {
 		generate: withEnhancedStreaming(options.generate, { eventTarget, liveToolCalls: true }),
 		toolbox: options.toolbox,
 		executeOptions: { requestContext: options.requestContext },
-		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall],
+		stopWhen: options.stopWhen ?? [
+			stopWhen.noToolCalls(),
+			stopWhen.pendingApproval(),
+			stopAfterAnyToolCall
+		],
 		// SPREAD rather than assigned, because `exactOptionalPropertyTypes` makes
 		// `onElicitation: undefined` a different thing from an absent key — and
 		// the loop distinguishes them: an absent `onElicitation` means the hook

@@ -1,8 +1,8 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import { createSessionHandle } from '@lostgradient/operative';
+import { createSessionHandle, stopWhen } from '@lostgradient/operative';
 import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic';
-import type { StepContext, ToolCall, ToolExecutionHookContext } from '@lostgradient/operative';
+import type { BeforeToolExecutionHook, OnElicitation, ToolCall } from '@lostgradient/operative';
 import { z } from 'zod';
 
 import { chatRunResponse } from '$lib/chat-run-response';
@@ -111,8 +111,9 @@ export const POST: RequestHandler = async ({ params, request }) => {
 
 	return chatRunResponse({
 		signal: request.signal,
-		start: (writer) =>
-			createSessionHandle(params.id, {
+		start: (writer) => {
+			const gate = createElicitationGate(params.id, request.signal);
+			return createSessionHandle(params.id, {
 				store: sessions,
 				engine: durable.engine,
 				checkpointStore: durable.checkpointStore,
@@ -136,78 +137,134 @@ export const POST: RequestHandler = async ({ params, request }) => {
 					// the run stops, and the client is expected to call the
 					// transport again carrying that token. That works for the
 					// browser-owned route, where the conversation lives in the
-					// tab. Here it cannot: the transport rejects a
-					// continuation before it reaches `fetch`, because the last
-					// message on a continuation is a tool result rather than
-					// the string-valued user message it checks for (see
-					// `conversation-surface.svelte`). So the park had no way to
-					// be resolved in this family at all, which is why the
-					// toolbox used to be empty here.
+					// tab. Here it cannot: the transport has no user turn to
+					// send on a continuation, so the park had no way to be
+					// resolved in this family at all — which is why the toolbox
+					// used to be empty here.
 					//
-					// `ctx.elicit(...)` in a `beforeToolExecution` hook asks
-					// the question instead, and the run WAITS inside the step
-					// rather than stopping. The answer arrives on a separate
-					// request to `…/elicitation` and resolves the promise this
-					// process is holding. A denial filters the call out of the
-					// array the hook returns, and Operative seals it with an
-					// error result — so the model is told the tool did not run
-					// rather than the run failing.
+					// `ctx.elicit(...)` in a `beforeToolExecution` hook asks the
+					// question instead, and the run WAITS inside the step rather
+					// than stopping. The answer arrives on a separate request to
+					// `…/elicitation` and resolves the promise this process is
+					// holding. A denial filters the call out of the array the
+					// hook returns, and Operative seals it with an error result
+					// — so the model is told the tool did not run rather than
+					// the run failing.
 					toolbox: serverOwnedToolbox,
-					// `elicitation`, not `request` — the route's own `request` is
-					// the HTTP one, and its `signal` is what this callback needs.
-					onElicitation: async (elicitation) => {
-						const { message, context, schema } = elicitation;
-						// The call being asked about. `context` carries the
-						// conversation and step, not the tool call, so the
-						// pending calls are read off the conversation — the
-						// gated one is the only one the hook elicits for.
-						const call = pendingElicitedCall(context.conversation);
-						const approved = await requestApproval(
-							params.id,
-							{
-								toolName: call?.name ?? ELICITED_TOOL_NAME,
-								callId: call?.id ?? 'unknown',
-								message,
-								arguments: toProposedArguments(call?.arguments)
-							},
-							request.signal
-						);
-						// `null` IS the denial in Operative's contract, and
-						// `{ data }` the acceptance. `ctx.elicit` maps them to
-						// `null` / the value and never throws, so the hook
-						// below decides what a denial means.
-						//
-						// PARSED through the caller's own `schema`, not cast past
-						// it. `OnElicitation` is generic in the answer's type and
-						// the request carries the schema that defines it, so a
-						// literal would only type-check behind an assertion — and
-						// the assertion is exactly the thing that would go stale
-						// if the hook below ever asks a different question.
-						return approved ? { data: schema.parse({ approved: true }) } : null;
-					},
-					beforeToolExecution: [gateElicitedTool],
+					// NO `stopAfterAnyToolCall` here, unlike the browser-owned
+					// route. Stopping after a tool call hands control back to a
+					// client that would have to start the next turn — and this
+					// family's client cannot, because a continuation carries no
+					// user text to send. Left in, an approved note produced a
+					// tool result and nothing after it, and the session
+					// controller's continuation attempt failed the turn the
+					// tool had just succeeded in.
+					//
+					// Without it the loop carries on to a second generate and
+					// finishes with the assistant's reply, so the browser
+					// receives one complete turn.
+					stopWhen: [stopWhen.noToolCalls()],
+					...gate.runOptions,
 					requestContext,
 					writer
 				})
-			}).run(parsed.data.text)
+			}).run(parsed.data.text);
+		}
 	});
 };
 
 /**
- * The pending tool call the hook is eliciting about.
+ * One request's elicitation gate: the hook that asks, and the callback that
+ * waits for an answer.
  *
- * Read off the conversation rather than threaded through, because Operative's
- * `ElicitationRequest.context` is a `StepContext` — conversation, step, and
- * signal — with no tool call on it. The gated tool is the only one the hook
- * elicits for, so the pending call carrying that name is the subject.
+ * BUILT TOGETHER, because Operative's `ctx.elicit(message, schema)` carries no
+ * call identity. The hook knows which call it is asking about; the callback is
+ * what registers the question a person will see. Threading the one to the
+ * other through a shared closure is the only way to put the call's own id and
+ * arguments in front of the person deciding — and without that, review found,
+ * approving one note also ran a second, unseen one.
  *
- * `undefined` is tolerated rather than thrown on: the question still has a
- * message, and refusing to ask it because the call could not be identified
- * would turn a cosmetic gap in the prompt into a failed run.
+ * PER REQUEST, never module-scoped: the closure holds this turn's abort signal
+ * and the call it is currently asking about.
  */
-function pendingElicitedCall(conversation: StepContext['conversation']): ToolCall | undefined {
-	const pending = conversation.getPendingToolCalls();
-	return pending.find((call) => call.name === ELICITED_TOOL_NAME) ?? pending[0];
+function createElicitationGate(
+	conversationId: string,
+	signal: AbortSignal
+): {
+	runOptions: { onElicitation: OnElicitation; beforeToolExecution: BeforeToolExecutionHook[] };
+} {
+	// The call the hook is asking about right now. Set immediately before each
+	// `elicit` and cleared after, so the callback below always describes the
+	// question it is actually registering.
+	let asking: ToolCall | undefined;
+
+	const onElicitation: OnElicitation = async (elicitation) => {
+		const approved = await requestApproval(
+			conversationId,
+			{
+				toolName: asking?.name ?? ELICITED_TOOL_NAME,
+				callId: asking?.id ?? 'unknown',
+				message: elicitation.message,
+				arguments: toProposedArguments(asking?.arguments)
+			},
+			signal
+		);
+
+		// `null` IS the denial in Operative's contract, and `{ data }` the
+		// acceptance. `ctx.elicit` maps them to `null` / the value and never
+		// throws, so the hook below decides what a denial means.
+		//
+		// PARSED through the caller's own `schema`, not cast past it.
+		// `OnElicitation` is generic in the answer's type and the request
+		// carries the schema that defines it, so a literal would only
+		// type-check behind an assertion — and the assertion is exactly what
+		// would go stale if the hook ever asks a different question.
+		return approved ? { data: elicitation.schema.parse({ approved: true }) } : null;
+	};
+
+	/**
+	 * Asks about EACH gated call, and drops the ones answered no.
+	 *
+	 * Sequential rather than concurrent: the registry holds one question per
+	 * conversation, and two questions racing for that slot would make the
+	 * second fail as already-pending. Asking in order also matches what a
+	 * person can actually do, which is answer one at a time.
+	 *
+	 * A dropped call is not an error the run has to survive — Operative seals a
+	 * filtered call with an error result so nothing is left dangling for a
+	 * later replay to trip over.
+	 */
+	const beforeToolExecution: BeforeToolExecutionHook = async (context) => {
+		const gated = context.toolCalls.filter((call) => call.name === ELICITED_TOOL_NAME);
+		if (gated.length === 0) return context.toolCalls;
+
+		const elicit = context.elicit;
+		// `elicit` is ABSENT unless `onElicitation` was supplied — Operative
+		// builds it from that callback — so a hook wired without it gets no
+		// question. Treated as a denial rather than an approval: a gate that
+		// fails open is not a gate.
+		if (elicit === undefined) {
+			return context.toolCalls.filter((call) => call.name !== ELICITED_TOOL_NAME);
+		}
+
+		const denied = new Set<string>();
+		for (const call of gated) {
+			asking = call;
+			try {
+				// The SCHEMA is what Operative validates the answer against, and
+				// it is the host's own shape rather than the tool's input: the
+				// person is answering "may this run", not re-authoring the note.
+				const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }));
+				if (answer === null) denied.add(call.id);
+			} finally {
+				asking = undefined;
+			}
+		}
+
+		return context.toolCalls.filter((call) => !denied.has(call.id));
+	};
+
+	return { runOptions: { onElicitation, beforeToolExecution: [beforeToolExecution] } };
 }
 
 /**
@@ -220,33 +277,4 @@ function pendingElicitedCall(conversation: StepContext['conversation']): ToolCal
 function toProposedArguments(proposed: unknown): Record<string, unknown> {
 	if (typeof proposed !== 'object' || proposed === null || Array.isArray(proposed)) return {};
 	return { ...(proposed as Record<string, unknown>) };
-}
-
-/**
- * Asks before the gated tool runs, and drops it when the answer is no.
- *
- * `elicit` is ABSENT unless `onElicitation` was supplied — Operative builds
- * `ctx.elicit` from it — so a caller that wires the hook without the callback
- * gets no question. Treated as a denial rather than an approval: a gate that
- * fails open is not a gate.
- *
- * Returns the calls to execute. A dropped call is not an error the run has to
- * survive: Operative seals a filtered call with an error result so nothing is
- * left dangling for a later replay to trip over.
- */
-async function gateElicitedTool(context: ToolExecutionHookContext): Promise<ToolCall[]> {
-	const gated = context.toolCalls.filter((call) => call.name === ELICITED_TOOL_NAME);
-	if (gated.length === 0) return context.toolCalls;
-
-	const elicit = context.elicit;
-	if (elicit === undefined) {
-		return context.toolCalls.filter((call) => call.name !== ELICITED_TOOL_NAME);
-	}
-
-	// The SCHEMA is what Operative validates the answer against, and it is the
-	// host's own shape rather than the tool's input: the person is answering
-	// "may this run", not re-authoring the note.
-	const answer = await elicit(ELICITATION_MESSAGE, z.object({ approved: z.literal(true) }));
-	if (answer !== null) return context.toolCalls;
-	return context.toolCalls.filter((call) => call.name !== ELICITED_TOOL_NAME);
 }

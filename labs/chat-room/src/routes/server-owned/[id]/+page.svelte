@@ -65,7 +65,18 @@
 		thing inline; here it belongs in the stylesheet the page already has.
 	*/
 	main {
-		block-size: 100dvh;
+		/*
+			`min-block-size`, not `block-size`. A fixed viewport height with no
+			overflow meant every child had to fit, and once this column grew an
+			approval region and a recovery panel they could consume all of it —
+			measured at 844x390, the chat resolved to 0px. Allowing the column to
+			grow past the viewport lets the page scroll instead of crushing its
+			one flexible child.
+
+			The definite-height reasoning below still holds on an ordinary
+			viewport, where `min-block-size` resolves to exactly the same box.
+		*/
+		min-block-size: 100dvh;
 		padding: 1rem;
 		display: flex;
 		flex-direction: column;

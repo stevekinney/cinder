@@ -149,10 +149,27 @@ function createRuntime(): {
 	runtime: ServerOwnedRuntime;
 	teardowns: Array<() => void | Promise<void>>;
 } {
-	const { storage, durability } = serverOwnedStorage();
+	const { storage, durability, release } = serverOwnedStorage();
 	const store = textValueStore(storage);
 	const sessions = createSessionStore(store);
 	const teardowns: Array<() => void | Promise<void>> = [];
+
+	// Registered FIRST, which — because teardowns run in reverse registration
+	// order — makes it run LAST, after the durable engine that writes through
+	// this storage has shut down. Closing the database out from under a running
+	// engine would be the opposite of a clean disposal.
+	//
+	// `release`, NOT `storage[Symbol.dispose]`. The in-memory adapter's dispose
+	// clears its contents, so calling it here would delete every session and
+	// checkpoint on the way out — the destructive shutdown the test below
+	// pins against, and which a first attempt at this reintroduced.
+	// `serverOwnedStorage` knows which adapter it built and hands back a
+	// release that is a no-op for the one with nothing to release.
+	//
+	// Without it, every dispose-and-recreate cycle — which is what an HMR edit
+	// does — left the previous SQLite connection and its WAL open while opening
+	// another to the same file.
+	teardowns.push(release);
 
 	return {
 		runtime: {

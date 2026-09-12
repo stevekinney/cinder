@@ -96,17 +96,28 @@
 			// not a user turn — sending the previous user text again would
 			// duplicate it as a new turn.
 			//
-			// This route runs with an empty toolbox (see the stream endpoint's
-			// note: approval belongs to CIN-445), so no continuation can occur
-			// today. The guard is here so that stops being true loudly rather
-			// than silently, if a toolbox is ever added without the approval
-			// wiring that has to come with it.
+			// A CONTINUATION HAS NOTHING TO FETCH HERE, and that is a property of
+			// this family rather than a gap in it.
+			//
+			// The session controller calls the transport again whenever a turn
+			// ended with every tool call resolved, because in the browser-owned
+			// route the client drives the next step. Here the server ran the
+			// whole turn: the approved tool settled, the loop issued a second
+			// generate, and the assistant's reply arrived in the SAME response.
+			// There is no next step to ask for — and no user text to send if
+			// there were, since the last message on this call is a tool result.
+			//
+			// An empty stream is the honest answer. It used to throw, which was
+			// right while the toolbox was empty and a continuation could only
+			// mean a wiring mistake; once a real tool could succeed, that same
+			// throw marked the turn FAILED right after its side effect had
+			// succeeded. The run options this family uses drop
+			// `stopAfterAnyToolCall` precisely so the turn is complete by the
+			// time this is reached.
 			const messages = getMessages(history);
 			const last = messages.at(-1);
 			if (last?.role !== 'user' || typeof last.content !== 'string') {
-				throw new Error(
-					'The server-owned transport was called to continue a run. That path needs approval wiring (CIN-445) before a toolbox is enabled here.'
-				);
+				return (async function* () {})();
 			}
 			const text = last.content;
 
@@ -137,6 +148,81 @@
 	});
 
 	const adapter = session.adapter;
+
+	/**
+	 * The approval a server-owned run is waiting on, if any.
+	 *
+	 * POLLED rather than pushed, because the question cannot ride the stream:
+	 * `@lostgradient/chat`'s wire vocabulary is a closed union with no frame
+	 * for "the run is waiting on you", and inventing one would mean changing a
+	 * published package's contract from inside a lab. CIN-615 carries that.
+	 *
+	 * Polling only WHILE STREAMING. Outside a turn there is nothing that could
+	 * be waiting, so a background poll would be a request per interval for an
+	 * answer that cannot change.
+	 */
+	type PendingApproval = {
+		toolName: string;
+		callId: string;
+		message: string;
+		arguments: Record<string, unknown>;
+	};
+
+	let pending = $state<PendingApproval | null>(null);
+	let deciding = $state(false);
+
+	async function readPendingApproval(): Promise<void> {
+		try {
+			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`);
+			if (!response.ok) return;
+			const body = (await response.json()) as { pending: PendingApproval | null };
+			pending = body.pending;
+		} catch {
+			// A poll that fails changes nothing. The next tick asks again, and a
+			// banner for a failed background request would describe a problem the
+			// user did not cause and cannot act on.
+		}
+	}
+
+	async function decide(approved: boolean): Promise<void> {
+		const question = pending;
+		if (question === null || deciding) return;
+		deciding = true;
+		try {
+			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				// The CALL ID travels with the answer. Without it a click that
+				// lands after this question's run ended would settle whatever is
+				// pending next — approving a note nobody was shown.
+				body: JSON.stringify({ approved, callId: question.callId })
+			});
+			if (!response.ok) {
+				// A 409 means the question moved on while it was being read. Re-read
+				// rather than report: the current question is the actionable thing.
+				await readPendingApproval();
+				return;
+			}
+			pending = null;
+		} catch (cause) {
+			failure = toBannerFailure(cause);
+		} finally {
+			deciding = false;
+		}
+	}
+
+	// Polls while a turn is in flight and stops the moment it is not, clearing
+	// any question the run ended without answering — a stale Approve button is
+	// a control that cannot work.
+	$effect(() => {
+		if (!streaming) {
+			pending = null;
+			return;
+		}
+		void readPendingApproval();
+		const interval = setInterval(() => void readPendingApproval(), 250);
+		return () => clearInterval(interval);
+	});
 
 	// The OTHER error path. `onError` covers failures the controller raises;
 	// `onadaptererror` covers a command the adapter itself rejected. They are
@@ -190,6 +276,50 @@
 	{/if}
 </p>
 
+<!--
+	The approval a run is waiting on.
+	
+	A LIVE REGION that is always mounted and empty until there is a question,
+	following the same rule as every other announcing region in this lab: one
+	mounted with its text already in place is not reliably announced. The
+	CONTROLS are conditional — a disabled Approve button for a question nobody
+	asked would be reachable by keyboard and mean nothing.
+
+	`role="status"` rather than `alert`: a question is not an error, and `alert`
+	interrupts whatever the screen reader was saying about the reply now
+	streaming.
+-->
+<section class="approval" aria-labelledby="approval-heading">
+	<h2 id="approval-heading" class="visually-hidden">Approval</h2>
+	<p class="approval-question" role="status" data-testid="approval-question">
+		{#if pending}
+			{pending.message} The assistant wants to run {pending.toolName} with {JSON.stringify(
+				pending.arguments
+			)}.
+		{/if}
+	</p>
+	{#if pending}
+		<div class="approval-actions">
+			<button
+				type="button"
+				data-testid="approval-approve"
+				aria-disabled={deciding}
+				onclick={() => void decide(true)}
+			>
+				Approve
+			</button>
+			<button
+				type="button"
+				data-testid="approval-deny"
+				aria-disabled={deciding}
+				onclick={() => void decide(false)}
+			>
+				Deny
+			</button>
+		</div>
+	{/if}
+</section>
+
 <div class="chat" data-testid="server-owned-chat" data-streaming={streaming}>
 	<!--
 			Capabilities are narrowed to what this variant can actually honour.
@@ -237,6 +367,58 @@
 </div>
 
 <style>
+	.approval {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	.approval-question:empty {
+		display: none;
+	}
+
+	.approval-question {
+		margin: 0;
+		padding: 0.5rem 0.75rem;
+		border: 1px solid var(--cinder-status-warning-border, currentColor);
+		border-radius: 0.5rem;
+		background: var(--cinder-status-warning-background, transparent);
+	}
+
+	.approval-actions {
+		display: flex;
+		gap: 0.5rem;
+	}
+
+	.approval-actions button {
+		padding: 0.35rem 0.75rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--cinder-border);
+		background: var(--cinder-surface);
+		cursor: pointer;
+	}
+
+	.approval-actions button[aria-disabled='true'] {
+		cursor: not-allowed;
+		color: var(--cinder-text-disabled);
+	}
+
+	/*
+		Visually hidden, not `display: none`: the heading names the region for a
+		screen reader moving by landmark, and a hidden element is not in the
+		accessibility tree at all.
+	*/
+	.visually-hidden {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		margin: -1px;
+		padding: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+		white-space: nowrap;
+	}
+
 	/*
 		`min-block-size: 0` alongside `flex: 1`: a flex item's automatic minimum
 		size is its content, so without this the wrapper refuses to shrink below
@@ -245,7 +427,21 @@
 	*/
 	.chat {
 		flex: 1;
-		min-block-size: 0;
+		/*
+			A FLOOR, not zero. `min-block-size: 0` is the usual fix for a flex
+			child that refuses to shrink, and it was right while this column held
+			only a banner, a heading, and the chat. With the approval region and
+			the recovery panel beside it, zero is reachable: measured at a
+			phone-landscape 844x390 the transcript and composer resolved to
+			exactly 0px, leaving a page with no way to read or send anything.
+
+			`min-block-size` alone is not enough — the column also has to be
+			allowed to grow past the viewport and scroll, which is what the
+			page's `min-block-size: 100dvh` does. Both halves are needed: the
+			floor stops the collapse, and the scroll stops the floor from pushing
+			the composer off-screen.
+		*/
+		min-block-size: 16rem;
 	}
 
 	.failure {

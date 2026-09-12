@@ -105,6 +105,22 @@ describe('serverOwnedStorage', () => {
 		expect(serverOwnedStorage().durability).toBe('in-memory');
 	});
 
+	test('releasing the in-memory adapter does NOT throw its contents away', async () => {
+		// The asymmetry that matters. `MemoryStorage[Symbol.dispose]()` clears
+		// its map, so a runtime teardown that called it unconditionally would
+		// delete every session and checkpoint on the way out — which is exactly
+		// what `server-owned-runtime.test.ts` pins against, and exactly what a
+		// first attempt at releasing the SQLite connection reintroduced.
+		delete process.env[DATABASE_VARIABLE];
+
+		const { storage, release } = serverOwnedStorage();
+		await storage.put('run/1', new TextEncoder().encode('still here'));
+
+		release();
+
+		expect(await storage.get('run/1')).not.toBeNull();
+	});
+
 	test('a file path survives the storage being reopened', async () => {
 		const path = temporaryDatabasePath();
 		process.env[DATABASE_VARIABLE] = path;

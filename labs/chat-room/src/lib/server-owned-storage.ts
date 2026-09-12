@@ -54,6 +54,22 @@ export type Durability = 'in-memory' | 'on-disk';
 export function serverOwnedStorage(): {
 	readonly storage: Storage;
 	readonly durability: Durability;
+	/**
+	 * Releases whatever the storage holds outside this process — a SQLite
+	 * connection and its WAL — and NOTHING for the in-memory adapter.
+	 *
+	 * The asymmetry is load-bearing rather than an optimisation.
+	 * `MemoryStorage[Symbol.dispose]()` CLEARS its contents, so calling it on
+	 * every disposal would delete every session and checkpoint on the way out —
+	 * precisely the destructive shutdown `server-owned-runtime.test.ts` exists
+	 * to prevent, and which a first attempt at this reintroduced. That test
+	 * caught it.
+	 *
+	 * The SQLite adapters' `Symbol.dispose` closes a handle; it does not delete
+	 * the database. So releasing is right there and wrong here, and the caller
+	 * cannot be expected to know which one it is holding.
+	 */
+	readonly release: () => void;
 } {
 	const path = process.env[DATABASE_VARIABLE];
 
@@ -62,7 +78,7 @@ export function serverOwnedStorage(): {
 	// opening a database at the path `''` fails in a way that has nothing to do
 	// with what the operator was trying to say.
 	if (path === undefined || path === '') {
-		return { storage: new MemoryStorage(), durability: 'in-memory' };
+		return { storage: new MemoryStorage(), durability: 'in-memory', release: () => {} };
 	}
 
 	// `':memory:'` is SQLite's own spelling for an ephemeral database, and the
@@ -72,7 +88,8 @@ export function serverOwnedStorage(): {
 	const durability: Durability = path === ':memory:' ? 'in-memory' : 'on-disk';
 
 	try {
-		return { storage: new SQLiteStorage(path), durability };
+		const storage = new SQLiteStorage(path);
+		return { storage, durability, release: () => storage[Symbol.dispose]?.() };
 	} catch (cause) {
 		throw new DurableStorageUnavailableError(path, cause);
 	}

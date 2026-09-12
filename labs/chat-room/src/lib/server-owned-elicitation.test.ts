@@ -24,38 +24,53 @@ describe('requestApproval', () => {
 		const waiting = requestApproval('conversation-1', QUESTION);
 
 		expect(peekApproval('conversation-1')).toEqual(QUESTION);
-		expect(answerApproval('conversation-1', true)).toBe(true);
+		expect(answerApproval('conversation-1', QUESTION.callId, true)).toBe('settled');
 		expect(await waiting).toBe(true);
 	});
 
 	test('a person answering no resolves it false', async () => {
 		const waiting = requestApproval('conversation-1', QUESTION);
 
-		answerApproval('conversation-1', false);
+		answerApproval('conversation-1', QUESTION.callId, false);
 
 		expect(await waiting).toBe(false);
 	});
 
 	test('the question is gone once answered', async () => {
 		const waiting = requestApproval('conversation-1', QUESTION);
-		answerApproval('conversation-1', true);
+		answerApproval('conversation-1', QUESTION.callId, true);
 		await waiting;
 
 		expect(peekApproval('conversation-1')).toBeUndefined();
 		// A second answer reports that nothing was pending rather than resolving
 		// a promise nobody is waiting on. Without the delete in `finish`, the
 		// stale entry would still be here and this would read `true`.
-		expect(answerApproval('conversation-1', true)).toBe(false);
+		expect(answerApproval('conversation-1', QUESTION.callId, true)).toBe('nothing-pending');
 	});
 
 	test('two conversations wait independently', async () => {
 		const first = requestApproval('conversation-1', QUESTION);
 		const second = requestApproval('conversation-2', { ...QUESTION, callId: 'toolu_2' });
 
-		answerApproval('conversation-2', true);
-		answerApproval('conversation-1', false);
+		answerApproval('conversation-2', 'toolu_2', true);
+		answerApproval('conversation-1', QUESTION.callId, false);
 
 		expect([await first, await second]).toEqual([false, true]);
+	});
+
+	test('an answer naming a different call does not settle the pending one', async () => {
+		// The race this exists for: question A is displayed, A's run ends, a new
+		// turn registers question B, and the click meant for A finally arrives.
+		// Without the id comparison that click settles B — approving a note
+		// nobody was shown.
+		const waiting = requestApproval('conversation-1', { ...QUESTION, callId: 'toolu_b' });
+
+		expect(answerApproval('conversation-1', 'toolu_a', true)).toBe('wrong-call');
+
+		// Still pending, and still answerable by the right id.
+		expect(peekApproval('conversation-1')?.callId).toBe('toolu_b');
+		expect(answerApproval('conversation-1', 'toolu_b', false)).toBe('settled');
+		expect(await waiting).toBe(false);
 	});
 
 	test('a second question for one conversation is refused, not queued', async () => {
@@ -67,7 +82,7 @@ describe('requestApproval', () => {
 			ElicitationAlreadyPendingError
 		);
 
-		answerApproval('conversation-1', true);
+		answerApproval('conversation-1', QUESTION.callId, true);
 		expect(await waiting).toBe(true);
 	});
 
@@ -105,7 +120,7 @@ describe('requestApproval', () => {
 		controller.abort();
 		await waiting;
 
-		expect(answerApproval('conversation-1', true)).toBe(false);
+		expect(answerApproval('conversation-1', QUESTION.callId, true)).toBe('nothing-pending');
 	});
 
 	test('peeking does not hand out the means to answer', async () => {
@@ -125,13 +140,15 @@ describe('requestApproval', () => {
 		]);
 		expect(Reflect.get(pending ?? {}, 'settle')).toBeUndefined();
 
-		answerApproval('conversation-1', true);
+		answerApproval('conversation-1', QUESTION.callId, true);
 		await waiting;
 	});
 });
 
 describe('answerApproval', () => {
 	test('reports false when nothing is pending', () => {
-		expect(answerApproval('conversation-nobody-asked-about', true)).toBe(false);
+		expect(answerApproval('conversation-nobody-asked-about', 'toolu_1', true)).toBe(
+			'nothing-pending'
+		);
 	});
 });

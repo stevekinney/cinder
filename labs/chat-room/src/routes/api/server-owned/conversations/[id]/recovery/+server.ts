@@ -113,10 +113,32 @@ async function respond(id: string): Promise<Response> {
 		return json({ kind: 'nothing-to-resume', durability });
 	}
 
+	// REDACTED at this boundary, not in the classifier.
+	//
+	// `classifyRecovery` reports the engine's own words, which is right for a
+	// server log and for the unit tests that pin the distinction it draws. What
+	// is wrong is sending those words to a browser: a resume rejection can
+	// quote a connection string, a header, or a database URL with a password in
+	// it, and review demonstrated exactly that with
+	// `postgres://user:hunter2@host/db unreachable`. Asserting the stack is
+	// absent does not make the message safe.
+	//
+	// The run id crosses, because it is this lab's own identifier and it is what
+	// makes two orphaned runs distinguishable in the interface. The reason does
+	// not.
+	for (const failure of outcome.failures) {
+		console.error(
+			`[server-owned] recovery rejected for ${failure.runId} in conversation ${id}: ${failure.reason}`
+		);
+	}
+
 	return json({
 		kind: 'orphaned',
 		durability,
-		failures: outcome.failures,
+		failures: outcome.failures.map((failure) => ({
+			runId: failure.runId,
+			reason: 'The engine refused to resume this run. The details are in the server log.'
+		})),
 		note: 'Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers "nothing to resume".'
 	});
 }

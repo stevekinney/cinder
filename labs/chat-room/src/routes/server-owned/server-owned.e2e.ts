@@ -19,7 +19,7 @@ import { expect, test } from '@playwright/test';
 
 import { gotoHydrated } from '../exercises/hydration';
 import { newFixtureMarker } from '../fixture-probe';
-import { APPROVAL_NOTE_TEXT, fixtureMarker } from '../streaming-fixture';
+import { APPROVAL_FOLLOW_UP_TEXT, APPROVAL_NOTE_TEXT, fixtureMarker } from '../streaming-fixture';
 
 /** A title no other test will collide with, in this run or a previous one. */
 const uniqueTitle = (label: string): string =>
@@ -266,11 +266,13 @@ test('the detail route offers the recovery question and names its backing store'
 	await page.locator('[data-testid="recovery-check"]').click();
 
 	// The benign branch, which is the honest answer under in-memory storage —
-	// and the panel says which storage that is, so the answer is not mistaken
-	// for a failed re-attach.
-	await expect(status).toContainText('Nothing to resume');
-	await expect(status).toContainText('idle, not lost');
-	await expect(durability).toContainText('Storage: in memory');
+	// and the ANNOUNCEMENT carries the storage, not just the paragraph beside
+	// it. A screen reader hearing only "nothing is currently resumable" would
+	// not learn that in-memory storage could not have observed a previous run
+	// even if one had existed.
+	await expect(status).toContainText('Nothing is currently resumable');
+	await expect(status).toContainText('No run is in flight');
+	await expect(status).toContainText('Storage is in memory');
 	await expect(durability).toContainText('CHAT_ROOM_SERVER_OWNED_DATABASE');
 
 	// The orphan branch's list and its once-only note belong to the orphan
@@ -297,7 +299,7 @@ test('answers nothing when no approval is pending, and refuses an answer to a qu
 
 	const unsolicited = await request.post(
 		`/api/server-owned/conversations/${conversation.id}/elicitation`,
-		{ data: { approved: true } }
+		{ data: { approved: true, callId: 'toolu_nothing_pending' } }
 	);
 	// 409, not a silent 200. The conversation exists; what is absent is a
 	// question — so this answer arrived after the run ended or after another
@@ -318,9 +320,18 @@ test('rejects a malformed approval body at the boundary', async ({ request }) =>
 	// generic downstream failure — the same rule the turn endpoint follows.
 	const wrongType = await request.post(
 		`/api/server-owned/conversations/${conversation.id}/elicitation`,
-		{ data: { approved: 'yes' } }
+		{ data: { approved: 'yes', callId: 'toolu_1' } }
 	);
 	expect(wrongType.status()).toBe(400);
+
+	// A missing `callId` is rejected too. It is what binds an answer to the
+	// question it was shown for, so an answer without one could settle whatever
+	// happens to be pending.
+	const noCallId = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/elicitation`,
+		{ data: { approved: true } }
+	);
+	expect(noCallId.status()).toBe(400);
 
 	const notJson = await request.post(
 		`/api/server-owned/conversations/${conversation.id}/elicitation`,
@@ -346,8 +357,7 @@ test('a person approving the note lets the tool run', async ({ request }) => {
 	// is the whole difference from the browser-owned route, where the run STOPS
 	// and the client starts a second request.
 	const turn = request.post(`/api/server-owned/conversations/${conversation.id}/stream`, {
-		data: { text: fixtureMarker('approval', marker) },
-		timeout: 30_000
+		data: { text: fixtureMarker('approval', marker) }
 	});
 
 	const pending = await expect
@@ -368,7 +378,7 @@ test('a person approving the note lets the tool run', async ({ request }) => {
 
 	const asked = await request.get(`/api/server-owned/conversations/${conversation.id}/elicitation`);
 	const question = (await asked.json()) as {
-		pending: { toolName: string; message: string; arguments: { text?: string } };
+		pending: { toolName: string; callId: string; message: string; arguments: { text?: string } };
 	};
 	expect(question.pending.toolName).toBe('remember_note');
 	expect(question.pending.message).toBe('Save this note?');
@@ -378,7 +388,7 @@ test('a person approving the note lets the tool run', async ({ request }) => {
 
 	const answered = await request.post(
 		`/api/server-owned/conversations/${conversation.id}/elicitation`,
-		{ data: { approved: true } }
+		{ data: { approved: true, callId: question.pending.callId } }
 	);
 	expect(answered.status()).toBe(200);
 
@@ -400,8 +410,7 @@ test('a person denying the note drops the call without failing the run', async (
 
 	const marker = newFixtureMarker();
 	const turn = request.post(`/api/server-owned/conversations/${conversation.id}/stream`, {
-		data: { text: fixtureMarker('approval', marker) },
-		timeout: 30_000
+		data: { text: fixtureMarker('approval', marker) }
 	});
 
 	await expect
@@ -413,8 +422,11 @@ test('a person denying the note drops the call without failing the run', async (
 		})
 		.not.toBeNull();
 
+	const asked = await request.get(`/api/server-owned/conversations/${conversation.id}/elicitation`);
+	const { pending } = (await asked.json()) as { pending: { callId: string } };
+
 	await request.post(`/api/server-owned/conversations/${conversation.id}/elicitation`, {
-		data: { approved: false }
+		data: { approved: false, callId: pending.callId }
 	});
 
 	const body = await (await turn).text();
@@ -434,4 +446,109 @@ test('a person denying the note drops the call without failing the run', async (
 		`/api/server-owned/conversations/${conversation.id}/elicitation`
 	);
 	expect(await afterwards.json()).toEqual({ pending: null });
+});
+
+test('a person approves the note in the browser and the turn completes', async ({ page }) => {
+	// The whole point of the elicitation path, driven the way a person drives
+	// it. The request-fixture specs above prove the endpoints; this proves there
+	// is a way to reach them without one — which is what makes the feature
+	// operable rather than merely present.
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Browser approval');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+
+	// Creating ADDS TO THE LIST; it does not navigate. Following the new
+	// conversation's own link is how a person reaches the detail route, and
+	// asserting on that link by title is what keeps this test independent of
+	// every other conversation the suite leaves behind in the shared process.
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const question = page.locator('[data-testid="approval-question"]');
+
+	// Mounted and empty before anything asks — the same live-region rule every
+	// announcing region in this lab follows.
+	await expect(question).toHaveCount(1);
+	await expect(question).toBeEmpty();
+	await expect(page.locator('[data-testid="approval-approve"]')).toHaveCount(0);
+
+	const marker = newFixtureMarker();
+	const composer = page.getByRole('textbox');
+	await composer.fill(fixtureMarker('approval', marker));
+	await composer.press('Enter');
+
+	await expect(question).toContainText('Save this note?');
+	await expect(question).toContainText('remember_note');
+	// The MODEL'S own argument, so the person approves a specific note.
+	await expect(question).toContainText(APPROVAL_NOTE_TEXT);
+
+	await page.locator('[data-testid="approval-approve"]').click();
+
+	// SETTLED FIRST, then judged. The ordering is the whole difference between
+	// this test and the hollow version it replaces: `toBeEmpty()` on the failure
+	// banner passes the instant it is called, so checking it before the turn
+	// finished passed even with the continuation bug deliberately restored.
+	// `data-streaming` only flips false after the controller's continuation loop
+	// has run to its end, which is where that failure lands.
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
+
+	// The assistant's REPLY arrived, which is what "the turn completed" means.
+	// The approved tool alone proves only that the side effect ran; the follow-up
+	// is what the run produced after it, in the same response.
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toContainText(
+		APPROVAL_FOLLOW_UP_TEXT
+	);
+
+	// And no failure. This is the regression that made the browser path
+	// unusable: the tool succeeded server-side, the session controller asked for
+	// a continuation, and the transport threw — marking the turn failed right
+	// after its side effect had landed.
+	await expect(page.locator('[data-testid="server-owned-turn-failure"]')).toBeEmpty();
+
+	// And the controls are gone, because a question that is answered is not a
+	// control anyone should be able to press again.
+	await expect(page.locator('[data-testid="approval-approve"]')).toHaveCount(0);
+	await expect(question).toBeEmpty();
+});
+
+test('the transcript survives a short viewport instead of collapsing to nothing', async ({
+	page,
+	request
+}) => {
+	// A REGRESSION TEST for a measured collapse, not a precaution. The detail
+	// route is a fixed-height flex column, and adding the approval region and
+	// the recovery panel to it gave the non-flexible children more than the
+	// viewport: at 844x390 the transcript and composer resolved to exactly 0px,
+	// leaving a page nobody could read or type into.
+	//
+	// The assertion is on the RENDERED HEIGHT rather than on the CSS, because
+	// the CSS that produced the collapse was individually reasonable — a fixed
+	// `100dvh` column and a `min-block-size: 0` flex child — and only the
+	// combination was wrong. A rule-shaped assertion would have passed.
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: uniqueTitle('Short viewport') }
+	});
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+	// Phone landscape, the shape this was measured collapsing at.
+	await page.setViewportSize({ width: 844, height: 390 });
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+
+	const height = await page
+		.locator('[data-testid="server-owned-chat"]')
+		.evaluate((element) => Math.round(element.getBoundingClientRect().height));
+
+	// A floor, not an exact number: the point is that the transcript is usable,
+	// and pinning the precise height would fail on every future change to the
+	// panel's copy.
+	expect(height).toBeGreaterThan(100);
+
+	// And the composer is reachable, which is the other half of usable — a
+	// transcript with a floor still fails the user if the page cannot scroll to
+	// what sits below it.
+	await expect(page.getByRole('textbox')).toBeVisible();
 });
