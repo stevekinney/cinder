@@ -47,17 +47,19 @@ It also keeps its place in index order among the rendered rows, because reading 
 
 ## Review outcome
 
-Reviewed against Chromium on 2026-09-12, for the sticky keyboard model this component introduces. What was checked and what it showed:
+Reviewed against Chromium on 2026-09-12, covering the sticky keyboard model this component introduces. Every item below is enforced as a browser test in `packages/testing/tests/virtual-list.playwright.ts`, so the outcome is re-checked on every change rather than recorded once.
 
-- **The model itself holds in real CSS.** `position: sticky` does hold the section header at the container's leading edge, at its own height, which is the assumption every keyboard offset here is built on. This is not checkable in the unit suite — happy-dom computes no layout and no cascade, so the header never actually pins there and every arrow offset would have been a header's height out with the whole suite green.
-- **Destinations clear the header.** Arrow and Page destinations land immediately below the pinned header rather than underneath it, verified by measuring the target row's position against the container rather than by trusting the scroll offset.
-- **Both directions move at a section boundary.** The offset a step onto a section lands on is where the header is at once the first visible row and the leading-edge occupant; neither ArrowDown nor ArrowUp stalls there.
-- **Paging exposes every row.** PageDown advances by the rows the header leaves visible, so the row beneath the header is not skipped between one page and the next.
-- **No axe violations** across the sweep covering this component.
+**The model holds in real CSS.** `position: sticky` does hold the section header at the container's leading edge, at its own height, on both axes. This is not checkable in the unit suite — happy-dom computes no layout and no cascade, so the header never pins there and every arrow offset would have been a header's height out with the whole suite green.
 
-These are enforced as browser tests in `packages/testing/tests/virtual-list.playwright.ts`, so the outcome is re-checked on every change rather than recorded once.
+**Keyboard matrix, block axis.** Arrow destinations land immediately below the pinned header rather than beneath it, measured from the target row's position against the container rather than from the scroll offset. Neither direction stalls at a section boundary — the offset a step onto a section lands on, where the header is at once the first visible row and the leading-edge occupant. PageDown advances by the rows the header leaves visible, so the row beneath it is not skipped between pages.
 
-Two limits of this review, stated rather than implied. It covers focus management and the keyboard matrix; it does **not** include a screen-reader pass, so how the pinned header is announced as it crosses the window boundary is reasoned from the DOM (one instance, not `aria-hidden`, in index order) rather than observed. And `horizontal` combined with `stickyItems` has no example to render, so the keyboard model is verified on the block axis only.
+**Keyboard matrix, inline axis.** The same model verified under `horizontal`, against a grouped example whose headers are taller than its ordinary columns. ArrowRight moves one column and clears the pinned header; ArrowDown, which scrolls nothing on that axis, is left to the browser rather than claimed. Alt+ArrowRight is likewise left alone, since it is how a reader navigates history. The left-to-right and right-to-left arrow exchange itself is unit-tested in `_internal/list-semantics.ts`, where it is pure index arithmetic.
+
+**What assistive technology is told.** Read from the accessibility tree rather than reasoned about from the DOM. A pinned header is still in the tree with its text as its accessible name, so a heading does not disappear from it at the moment it is meant to be most present; it carries `role="listitem"` with `aria-posinset` and `aria-setsize` describing the FULL collection; and it is read in index order among the mounted rows rather than appended after them.
+
+**No axe violations** across the sweep covering this component, on either axis.
+
+One limit, stated rather than implied: no screen reader was driven. The accessibility tree is what a screen reader reads, and asserting against it is a stronger check than the DOM reasoning this record previously carried — but it is not the same as hearing VoiceOver or NVDA announce the transition. A human pass with a real screen reader is worth doing before this pattern is copied into other components.
 
 ## Verification
 

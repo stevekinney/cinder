@@ -384,3 +384,139 @@ test.describe('Sticky headers and keyboard navigation', () => {
     await expect.poll(async () => offsetWithinList(page, 60)).toBe(rowHeight);
   });
 });
+
+test.describe('Sticky rows on the inline axis, and what assistive technology is told', () => {
+  // The accessibility review for this component's keyboard model, in the two places the
+  // unit suite cannot reach: the inline axis, and the accessibility tree.
+  //
+  // The example groups 300 columns every ten, and its headers are deliberately TALLER
+  // than the ordinary columns (96px against 64px) — that is the shape in which a pinned
+  // header can be clipped by a window sized without it.
+  const mountSelector = '#example-mount-horizontal-sticky-headers';
+  const columnWidth = 120;
+
+  function listLocator(page: Page) {
+    return page.locator(`${mountSelector} .cinder-virtual-list`);
+  }
+
+  async function scrollListTo(page: Page, offset: number): Promise<void> {
+    const list = listLocator(page);
+    await list.evaluate((element, value) => {
+      element.scrollLeft = value;
+    }, offset);
+    await expect
+      .poll(async () => list.evaluate((element) => Math.round(element.scrollLeft)))
+      .toBe(offset);
+    // Wait for the component to have re-derived its window, not merely for the browser
+    // to have moved: a key pressed in between resolves from the previous position.
+    const probeIndex = Math.floor(offset / columnWidth) + 3;
+    await expect(
+      page.locator(`${mountSelector} [data-cinder-virtual-index="${probeIndex}"]`),
+    ).toBeVisible();
+  }
+
+  test('holds a group header at the inline leading edge', async ({ componentPage }) => {
+    const page = await componentPage.open({
+      entry: getEntry('virtual-list'),
+      theme: lightTheme,
+      viewport: desktopViewport,
+    });
+    await expect(listLocator(page)).toBeVisible();
+
+    // Well into group 5, so header 50 is held rather than sitting at its own start.
+    await scrollListTo(page, columnWidth * 55);
+
+    const listBox = await listLocator(page).boundingBox();
+    const header = page.locator(`${mountSelector} [data-cinder-virtual-index="50"]`);
+    await expect(header).toBeVisible();
+    const headerBox = await header.boundingBox();
+    expect(Math.abs((headerBox?.x ?? 0) - (listBox?.x ?? 0))).toBeLessThanOrEqual(1);
+  });
+
+  test('moves with the arrow keys along the inline axis', async ({ componentPage }) => {
+    // The horizontal half of the keyboard matrix. Left and Right are the axis keys
+    // here; Up and Down scroll nothing, because the cross axis does not overflow.
+    const page = await componentPage.open({
+      entry: getEntry('virtual-list'),
+      theme: lightTheme,
+      viewport: desktopViewport,
+    });
+    await expect(listLocator(page)).toBeVisible();
+
+    await scrollListTo(page, columnWidth * 50);
+    await listLocator(page).focus();
+
+    await page.keyboard.press('ArrowRight');
+    await expect
+      .poll(async () => listLocator(page).evaluate((element) => Math.round(element.scrollLeft)))
+      .toBe(columnWidth * 51);
+
+    // And the off-axis arrow is left to the browser rather than claimed as movement.
+    await page.keyboard.press('ArrowDown');
+    await expect
+      .poll(async () => listLocator(page).evaluate((element) => Math.round(element.scrollLeft)))
+      .toBe(columnWidth * 51);
+  });
+
+  test('leaves Alt+Arrow to the browser, where it is back and forward', async ({
+    componentPage,
+  }) => {
+    const page = await componentPage.open({
+      entry: getEntry('virtual-list'),
+      theme: lightTheme,
+      viewport: desktopViewport,
+    });
+    await expect(listLocator(page)).toBeVisible();
+
+    await scrollListTo(page, columnWidth * 50);
+    await listLocator(page).focus();
+
+    await page.keyboard.press('Alt+ArrowRight');
+    await expect
+      .poll(async () => listLocator(page).evaluate((element) => Math.round(element.scrollLeft)))
+      .toBe(columnWidth * 50);
+  });
+
+  test('exposes the pinned header to assistive technology, in the list and in order', async ({
+    componentPage,
+  }) => {
+    // The announcement half of the review. A screen reader is not scriptable here, but
+    // the accessibility TREE is what one reads — so this asserts what is exposed rather
+    // than reasoning about it from the DOM, which is what the record previously did.
+    const page = await componentPage.open({
+      entry: getEntry('virtual-list'),
+      theme: lightTheme,
+      viewport: desktopViewport,
+    });
+    await expect(listLocator(page)).toBeVisible();
+
+    await scrollListTo(page, columnWidth * 55);
+    const header = page.locator(`${mountSelector} [data-cinder-virtual-index="50"]`);
+    await expect(header).toBeVisible();
+
+    // Still in the tree once it is pinned, with its text as its accessible name. An
+    // `aria-hidden` copy — which an earlier version of this component used — would
+    // remove a visible heading from the tree entirely and leave anything focusable
+    // inside it reachable but unannounced.
+    const snapshot = await header.ariaSnapshot();
+    expect(snapshot).toContain('listitem');
+    expect(snapshot).toContain('Group 5');
+
+    // The whole list is exposed as one, rather than the window looking like the list.
+    expect(await listLocator(page).ariaSnapshot()).toContain('list');
+
+    // Announced by its position in the FULL collection, not in the rendered window.
+    await expect(header).toHaveAttribute('aria-posinset', '51');
+    await expect(header).toHaveAttribute('aria-setsize', '300');
+    await expect(header).toHaveAttribute('role', 'listitem');
+
+    // And read in index order among the mounted rows, pinned or not.
+    const indexes = await page
+      .locator(`${mountSelector} [data-cinder-virtual-index]`)
+      .evaluateAll((nodes) =>
+        nodes.map((node) => Number((node as HTMLElement).dataset['cinderVirtualIndex'])),
+      );
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+    expect(indexes[0]).toBe(50);
+  });
+});

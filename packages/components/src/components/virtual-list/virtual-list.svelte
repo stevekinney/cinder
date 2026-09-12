@@ -343,6 +343,20 @@
     activeStickyIndex === null ? 0 : locateRowSize(activeStickyIndex),
   );
 
+  /**
+   * The last row that fits ENTIRELY within the viewport.
+   *
+   * The row holding the final visible pixel is usually only partly shown, since the
+   * scroll offset is rarely row-aligned. Page steps count completed rows, so that
+   * sliver belongs to the next page rather than this one.
+   */
+  const lastCompletelyVisibleIndex = $derived.by(() => {
+    const viewportEnd = scrollOffset + viewportHeight;
+    const lastTouchedIndex = resolveAnchorIndexAtOffset(Math.max(0, viewportEnd - 1));
+    const fits = locateRowStart(lastTouchedIndex) + locateRowSize(lastTouchedIndex) <= viewportEnd;
+    return fits ? lastTouchedIndex : Math.max(0, lastTouchedIndex - 1);
+  });
+
   /** The first row the sticky header is not covering. */
   const firstUncoveredIndex = $derived(
     stickyObstructionSize > 0
@@ -1457,16 +1471,15 @@
       // cannot recover those — it corrects the destination's pixels, not which row was
       // asked for.
       //
-      // Both disappear by asking which row sits at the bottom of the viewport and
-      // counting from the first uncovered one. `scrollOffset + viewportHeight - 1` is
-      // the last pixel the reader can see; the header's own band falls out of the
-      // subtraction, since `firstUncoveredIndex` already starts below it.
-      visibleCount: Math.max(
-        1,
-        resolveAnchorIndexAtOffset(scrollOffset + Math.max(0, viewportHeight - 1)) -
-          firstUncoveredIndex +
-          1,
-      ),
+      // Both disappear by counting rows off the viewport instead. The header's own
+      // band falls out of the subtraction for free, since `firstUncoveredIndex`
+      // already starts below it.
+      //
+      // Only rows that FIT count. The row holding the last visible pixel is usually a
+      // sliver — the scroll offset is rarely row-aligned — and treating it as a full
+      // page row pages one row too far, taking the sliver's remainder underneath the
+      // header without ever showing it.
+      visibleCount: Math.max(1, lastCompletelyVisibleIndex - firstUncoveredIndex + 1),
       orientation: horizontal ? 'horizontal' : 'vertical',
       writingDirection,
       stickyIndexes: stickyIndexSet,
