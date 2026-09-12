@@ -32,6 +32,8 @@
 	let answerEpoch = 0;
 
 	let pollController: AbortController | null = null;
+	let decisionController: AbortController | null = null;
+	let decisionAttempt = 0;
 
 	function clearPollFailure(): void {
 		if (pollFailure !== null && failure === pollFailure) failure = null;
@@ -41,6 +43,15 @@
 	let pollFailure: BannerFailure | null = null;
 
 	let decideFailure: BannerFailure | null = null;
+
+	function invalidateDecision(): void {
+		decisionAttempt += 1;
+		decisionController?.abort();
+		decisionController = null;
+		deciding = false;
+		if (decideFailure !== null && failure === decideFailure) failure = null;
+		decideFailure = null;
+	}
 
 	async function readPendingApproval(generation: number, signal?: AbortSignal): Promise<void> {
 		const epoch = answerEpoch;
@@ -88,7 +99,10 @@
 			// re-announces it because the region's text is replaced rather than
 			// left in place.
 			const answeredOrChanged = body.pending === null || body.pending.callId !== pending?.callId;
-			if (answeredOrChanged) handOffFocusFromApproval();
+			if (answeredOrChanged) {
+				invalidateDecision();
+				handOffFocusFromApproval();
+			}
 			pending = body.pending;
 			// A SUCCESS CLEARS THE POLL'S OWN FAILURE. Without this a single
 			// transient error left its `role="alert"` text on screen for the rest
@@ -127,6 +141,9 @@
 		// question was answered elsewhere or the turn ended.
 		const generation = pollGeneration;
 		const epoch = answerEpoch;
+		const attempt = ++decisionAttempt;
+		const controller = new AbortController();
+		decisionController = controller;
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
 				method: 'POST',
@@ -134,12 +151,14 @@
 				// The CALL ID travels with the answer. Without it a click that
 				// lands after this question's run ended would settle whatever is
 				// pending next — approving a note nobody was shown.
-				body: JSON.stringify({ approved, callId: question.callId })
+				body: JSON.stringify({ approved, callId: question.callId }),
+				signal: controller.signal
 			});
 			// The question can change while this POST is in flight. A successful
 			// response only answers the server; it does not authorize changing this
 			// tab's controls for a different question.
 			if (
+				attempt !== decisionAttempt ||
 				pending?.callId !== question.callId ||
 				generation !== pollGeneration ||
 				epoch !== answerEpoch
@@ -173,6 +192,7 @@
 				// finish inside it. An obsolete continuation would otherwise install
 				// an error for a decision nobody is waiting on.
 				if (
+					attempt !== decisionAttempt ||
 					pending?.callId !== question.callId ||
 					generation !== pollGeneration ||
 					epoch !== answerEpoch
@@ -203,14 +223,16 @@
 			// POST failure leaves the controls up for a retry, and the retry
 			// succeeding used to leave the alert still claiming the approval
 			// failed — while the approved tool ran and the turn completed. The
-			// poll path deliberately clears only poll-owned errors, so this one
-			// has to clear its own.
+			// The poll path clears only poll-owned errors, while an authoritative
+			// question transition clears this decision's error, so this one also
+			// has to clear its own on success.
 			if (decideFailure !== null && failure === decideFailure) {
 				failure = null;
 			}
 			decideFailure = null;
 		} catch (cause) {
 			if (
+				attempt !== decisionAttempt ||
 				pending?.callId !== question.callId ||
 				generation !== pollGeneration ||
 				epoch !== answerEpoch
@@ -220,12 +242,16 @@
 			decideFailure = reported;
 			failure = reported;
 		} finally {
-			deciding = false;
+			if (attempt === decisionAttempt) {
+				deciding = false;
+				if (decisionController === controller) decisionController = null;
+			}
 		}
 	}
 
 	$effect(() => {
 		if (!streaming) {
+			invalidateDecision();
 			handOffFocusFromApproval();
 			pending = null;
 			// CLEARED, because nothing polls after this to clear it. A poll that

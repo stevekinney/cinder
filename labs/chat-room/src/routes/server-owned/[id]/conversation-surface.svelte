@@ -81,7 +81,9 @@
 	// component rather than a reactive read inside it.
 	let conversation = $state<ConversationHistory>(untrack(() => initialConversation));
 	let streaming = $state(false);
-	let failure = $state<BannerFailure | null>(null);
+	// Failures are replaced as immutable records. Preserve their identity so the
+	// approval child clears only the banner it owns across the binding.
+	let failure = $state.raw<BannerFailure | null>(null);
 
 	const session = createChatSessionController({
 		getConversation: () => $state.snapshot(conversation),

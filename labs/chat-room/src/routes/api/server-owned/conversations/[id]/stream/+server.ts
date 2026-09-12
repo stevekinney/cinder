@@ -102,17 +102,19 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	// the body. Catching here keeps the failure a readable sentence.
 	let sessions;
 	let durable;
+	let shutdownSignal: AbortSignal;
 	try {
-		({ sessions } = serverOwnedRuntime());
+		({ sessions, shutdownSignal } = serverOwnedRuntime());
 		durable = await durableRuntime();
 	} catch (cause) {
 		return unavailableDuringShutdown(cause) ?? raise(cause);
 	}
 
+	const lifecycleSignal = AbortSignal.any([request.signal, shutdownSignal]);
 	return chatRunResponse({
-		signal: request.signal,
+		signal: lifecycleSignal,
 		start: (writer) => {
-			const gate = createElicitationGate(params.id, request.signal);
+			const gate = createElicitationGate(params.id, lifecycleSignal);
 			return createSessionHandle(params.id, {
 				store: sessions,
 				engine: durable.engine,

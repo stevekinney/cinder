@@ -164,7 +164,7 @@ Anyone following this procedure twice would otherwise file that as a defect, so 
 
 The same procedure with a browser watching `/server-owned/<id>`, recording the panel's own text at each step.
 
-The panel is a disclosure, **closed on load**. Expanded it takes 200-285px of a fixed-viewport-height column whose only flexible child is the transcript, and at a phone-landscape 844x390 that left the transcript and composer at exactly 0px. Closed it takes about 47px, and the transcript measures 129px at that viewport and 480px at 1280x720 — better than before this panel existed, because the space it used to hold open is now the chat's. Its regions stay in the DOM either way, which is what the live-region rule requires; opening it is what reveals the control.
+The panel is a disclosure, closed on load. Before the layout fix, expanding it at 844×390 could leave the transcript and composer at 0px. The current layout retains a fixed-height chat while idle, then allows document scrolling and gives the chat an `8rem` minimum block size while an approval question, recovery status, or failure is visible. The short-viewport regression includes a populated recovery failure, so a failed check cannot collapse the transcript. Status and error regions remain mounted whether the disclosure is open or closed; opening it reveals the check control.
 
 **On load, before any check** — both regions present and empty. That is the rule `error-live-regions.e2e.ts` enforces: a live region that appears with text already in it is not reliably announced.
 

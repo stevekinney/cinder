@@ -166,9 +166,8 @@ async function respond(id: string): Promise<Response> {
 
 	// REDACTED at this boundary, not in the classifier.
 	//
-	// `classifyRecovery` reports the engine's own words, which is right for a
-	// server log and for the unit tests that pin the distinction it draws. What
-	// is wrong is sending those words to a browser: a resume rejection can
+	// `classifyRecovery` retains the engine's raw reason for classification
+	// and its unit tests. It must reach neither logs nor the browser: a resume rejection can
 	// quote a connection string, a header, or a database URL with a password in
 	// it, and review demonstrated exactly that with
 	// `postgres://user:hunter2@host/db unreachable`. Asserting the stack is

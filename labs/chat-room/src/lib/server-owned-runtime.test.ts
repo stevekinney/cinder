@@ -8,6 +8,8 @@ import {
 	disposeServerOwnedRuntime,
 	serverOwnedRuntime
 } from './server-owned-runtime.ts';
+import { durableRuntime } from './server-owned-durable.ts';
+import { peekApproval, requestApproval } from './server-owned-elicitation.ts';
 
 /**
  * The server-owned variant's disposal contract.
@@ -39,6 +41,37 @@ beforeEach(async () => {
 });
 
 describe('server-owned runtime', () => {
+	it('aborts pending approvals before the real durable engine teardown starts', async () => {
+		const runtime = serverOwnedRuntime();
+		await durableRuntime();
+		let teardownSawAbort = false;
+		runtime.onDispose(() => {
+			teardownSawAbort = runtime.shutdownSignal.aborted;
+		});
+		const pending = requestApproval(
+			'conversation-shutdown',
+			{
+				toolName: 'remember_note',
+				callId: 'call-shutdown',
+				message: 'May this run?',
+				arguments: { text: 'shutdown' }
+			},
+			runtime.shutdownSignal
+		);
+
+		expect(peekApproval('conversation-shutdown')).toEqual({
+			toolName: 'remember_note',
+			callId: 'call-shutdown',
+			message: 'May this run?',
+			arguments: { text: 'shutdown' }
+		});
+
+		await disposeServerOwnedRuntime({ drain: true });
+		expect(teardownSawAbort).toBe(true);
+		expect(await pending).toBe(false);
+		expect(peekApproval('conversation-shutdown')).toBeUndefined();
+	});
+
 	it('returns one runtime per process rather than one per call', async () => {
 		await disposeServerOwnedRuntime();
 		const first = serverOwnedRuntime();
@@ -324,9 +357,21 @@ it('drains a replacement created while an ordinary disposal was still running', 
 	expect(replacement).not.toBe(first);
 
 	let replacementDisposed = false;
+	let replacementTeardownSawAbort = false;
 	replacement.onDispose(() => {
+		replacementTeardownSawAbort = replacement.shutdownSignal.aborted;
 		replacementDisposed = true;
 	});
+	const replacementPending = requestApproval(
+		'replacement-shutdown',
+		{
+			toolName: 'remember_note',
+			callId: 'replacement-call',
+			message: 'May this run?',
+			arguments: { text: 'replacement' }
+		},
+		replacement.shutdownSignal
+	);
 
 	// The signal lands here. Started, not awaited: it is about to join
 	// `ordinary`, which is parked on the gate this test still holds.
@@ -339,6 +384,8 @@ it('drains a replacement created while an ordinary disposal was still running', 
 	// Without the drain-after-join, this is false: the terminating call
 	// returned `ordinary`'s result and the replacement was never touched.
 	expect(replacementDisposed).toBe(true);
+	expect(replacementTeardownSawAbort).toBe(true);
+	expect(await replacementPending).toBe(false);
 
 	// And the latch still holds afterwards, so nothing refilled the slot on
 	// the way out.

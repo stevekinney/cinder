@@ -200,7 +200,6 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 	for (const [index, outcome] of ['success', 'conflict', 'error', 'network'].entries()) {
 		const currentOutcome = outcome as PostOutcome;
 		postOutcome = currentOutcome;
-		remoteState = index % 2 === 0 ? 'removed' : 'replaced';
 		postReady = false;
 		const postSettled = new Promise<'finished' | 'failed'>((resolve) => {
 			const finish = (kind: 'finished' | 'failed') => {
@@ -221,6 +220,7 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		await approve.focus();
 		await approve.press('Enter');
 		await expect.poll(() => postReady).toBe(true);
+		remoteState = index % 2 === 0 ? 'removed' : 'replaced';
 		if (remoteState === 'removed') {
 			await expect(approve).toHaveCount(0);
 		} else {
@@ -228,7 +228,8 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		}
 		releasePost();
 		postReady = false;
-		expect(await postSettled).toBe(currentOutcome === 'network' ? 'failed' : 'finished');
+		// The obsolete fetch is now actively aborted when the poll changes the question.
+		expect(await postSettled).toBe('failed');
 		await expect(failure).toBeEmpty();
 		if (remoteState === 'removed') {
 			await expect(approve).toHaveCount(0);
@@ -240,4 +241,121 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 		remoteState = 'server';
 		await expect(approve).toBeVisible();
 	}
+});
+
+test('allows the replacement approval to submit while the first POST is stalled', async ({
+	page
+}) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Approval replacement while pending');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
+	await page.getByRole('textbox').press('Enter');
+
+	const question = page.locator('[data-testid="approval-question"]');
+	const approve = page.locator('[data-testid="approval-approve"]');
+	await expect(approve).toBeVisible();
+	let remoteState: 'server' | 'replaced' | 'removed' = 'server';
+	let postNumber = 0;
+	let releaseA!: () => void;
+	let releaseB!: () => void;
+	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
+		if (route.request().method() === 'GET') {
+			if (remoteState === 'removed') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: '{"pending":null}'
+				});
+				return;
+			}
+			if (remoteState === 'replaced') {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: JSON.stringify({
+						pending: {
+							toolName: 'remember_note',
+							callId: 'replacement-call',
+							message: 'Save the replacement note?',
+							arguments: { text: 'replacement' }
+						}
+					})
+				});
+				return;
+			}
+			await route.continue();
+			return;
+		}
+		postNumber += 1;
+		await new Promise<void>((resolve) => {
+			if (postNumber === 1) releaseA = resolve;
+			else releaseB = resolve;
+		});
+		await route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
+	});
+
+	await approve.focus();
+	await approve.press('Enter');
+	await expect.poll(() => postNumber).toBe(1);
+	remoteState = 'replaced';
+	await expect(question).toContainText('replacement note');
+	await expect(approve).toBeEnabled();
+	await approve.press('Enter');
+	await expect.poll(() => postNumber).toBe(2);
+	releaseA();
+	await expect(approve).toHaveAttribute('aria-disabled', 'true');
+	remoteState = 'removed';
+	releaseB();
+	await expect(approve).toHaveCount(0);
+});
+
+test('clears a decision error when a remote answer removes its question', async ({ page }) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Approval remote error cleanup');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
+	await page.getByRole('textbox').press('Enter');
+
+	const approve = page.locator('[data-testid="approval-approve"]');
+	const failure = page.locator('[data-testid="server-owned-turn-failure"]');
+	await expect(approve).toBeVisible();
+	let remoteAnswered = false;
+	let releasePost!: () => void;
+	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
+		if (route.request().method() === 'GET') {
+			if (remoteAnswered) {
+				await route.fulfill({
+					status: 200,
+					contentType: 'application/json',
+					body: '{"pending":null}'
+				});
+				return;
+			}
+			await route.continue();
+			return;
+		}
+		await new Promise<void>((resolve) => {
+			releasePost = resolve;
+		});
+		await route.fulfill({
+			status: 500,
+			contentType: 'application/json',
+			body: JSON.stringify({ error: 'approval service unavailable' })
+		});
+	});
+
+	await approve.click();
+	await expect.poll(() => releasePost !== undefined).toBe(true);
+	releasePost();
+	await expect(failure).toContainText('approval service unavailable');
+	remoteAnswered = true;
+	await expect(approve).toHaveCount(0);
+	await expect(failure).toBeEmpty();
 });

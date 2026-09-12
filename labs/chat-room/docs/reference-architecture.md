@@ -10,32 +10,33 @@ Where a rule names an API, confirm it against the installed declarations before 
 
 ## State model
 
-Two owners, on purpose:
+The two route families have different owners and continuation rules. The stop conditions in each route and its browser transport must agree.
 
-- The browser owns the authoritative `ConversationHistory` value it renders.
-- The server owns an ephemeral `AgentRun` for exactly one HTTP request, plus all authority needed to execute it.
+### Browser-owned route
 
-Operative owns the limits _within_ a run: `createAgent({ maximumSteps, stopWhen, ... })` decides when one `AgentRun` stops. Because the route ends each run after a tool call (see below), that per-run limit resets on every request, so it does not bound the turn. The published chat session controller does: it defaults `maxContinuationTurns` to 5, re-POSTs at most that many times for one user turn, and fails the turn when the limit is reached. Today the browser cap is therefore the effective turn-wide bound, and a host configuring loop limits must set it on the controller rather than on the agent alone. That is a consequence of the current continuation regime, not the target: once Operative drives continuation inside a single request, `maximumSteps` becomes the turn-wide bound and the client cap becomes redundant.
+For `/api/chat`, the browser owns the authoritative `ConversationHistory`. Each request sends that history to a new, ephemeral `AgentRun`, and `stopAfterAnyToolCall` ends the run after the model step and its tool executions. The chat session controller drives subsequent model steps by posting again after a resolved tool result.
 
-Who drives continuation _between_ tool results is a different question, and the honest answer today is the browser. The published chat session controller re-POSTs whenever it observes a resolved, non-approval tool result, so a host that also let Operative continue within the same request would produce two continuations for one tool call. The route therefore stops after any tool call, and the client's existing loop carries the turn forward.
+Operative's `maximumSteps` bounds each individual run, so it resets on each request. The controller's `maxContinuationTurns`, which defaults to 5, bounds the number of follow-up requests for a user turn. Both limits matter, but configuring the agent alone does not bound this browser-driven sequence. The stateless contract in the sections below describes this route family.
 
-So today a request contains **one** model step, plus the tool executions that step triggered. The stateless claim below is about server persistence, not about execution: a new request always starts a new run from the full client-owned history, and the server keeps nothing between them.
+### Server-owned route
 
-Reconciliation of the authoritative post-run history is part of the target state rather than current behaviour. The terminal run frame carrying that history has SHIPPED — `pumpChatRun` emits `run.completed`, `run.error`, `run.tripwire`, or `run.aborted`, and the chat codec decodes them — but nothing consumes the conversation it carries: `run.completed` is handled in `stream-event-codec.ts` and reaches no further. The browser still reconstructs the turn from the text and tool frames it received. The gap is reconciliation, not the frame.
+For `/api/server-owned/conversations/[id]/stream`, the session store owns the authoritative conversation. The browser posts the new user text, and one durable Operative run drives the model and tool steps for that turn. This route uses `stopWhen.noToolCalls()` and deliberately omits `stopAfterAnyToolCall`; `maximumSteps` bounds the multi-step run. Approval pauses execution inside the run through elicitation, then the same run continues after the answer.
 
-That target is Operative owning multi-step continuation inside a single request, with a terminal frame closing it. Reaching it requires the client controller to stop re-POSTing first. Until that lands, a host MUST match whichever side actually drives the loop rather than assuming this document's end state, and the stop condition in the route is the authority on which regime is in force.
+The browser keeps a rendering mirror of the server conversation. Its controller may invoke the transport after a resolved tool result, but a transport call without a new user message returns an empty stream and makes no HTTP request. It must neither repost the previous user text nor start another model run. The browser's continuation cap therefore does not bound this family's server-side model steps.
+
+Both families emit terminal run frames. The client codec decodes them, but the session controller does not reconcile the final conversation carried by those frames; it still builds its rendering history from text and tool frames. In the server-owned family, loading the route again reads the authoritative session-store history. Multi-step execution is implemented there; terminal-history reconciliation remains separate work.
 
 <a id="conversation-ownership"></a>
 
 ## Conversation ownership
 
-The browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to the chat route. The server validates that boundary before passing the value to the run.
+In the browser-owned family, the browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to `/api/chat`. The server validates that boundary before passing the value to the run. In the server-owned family, the session store owns history and the browser posts only the new user text; the loaded and streamed browser history is a rendering mirror.
 
 Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy, and today that is still the whole story — though for a narrower reason than it used to be. The route now emits a terminal frame after the text and tool frames, and the client decodes it; what is missing is that the session controller never reads the conversation it carries. So the browser reconstructs the turn from the streamed frames, and reconciling the serialized final conversation as the authority remains target state.
 
-System instructions belong to the module-scoped agent definition. They are not appended again when resuming from `{ conversation }` — the posted history already carries the accumulated context.
+System instructions belong to the agent definition. The browser-owned route does not append them again when resuming from `{ conversation }`—the posted history already carries the accumulated context. The server-owned route reads its accumulated history through the session handle.
 
-Approval resume changes one **existing** message: the resolved result replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid, because it leaves the provider with two results for one tool call.
+In the browser-owned park-and-resume path, approval resume changes one existing message: the resolved result replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid, because it leaves the provider with two results for one tool call.
 
 <a id="credential-boundary"></a>
 
@@ -53,11 +54,11 @@ The host creates **one module-scoped `Toolbox`** and passes that exact instance 
 
 The secret must stay stable at least as long as an approval descriptor can be resumed, and every server instance that may accept a resume request must use the same secret. A process-random secret is acceptable only as a documented local-development limitation where a restart invalidates pending approvals; it is not the deployable contract.
 
-The agent parks by combining a pending-approval stop condition with a no-tool-calls stop condition. The first stops after an approval-gated result; the second ends an ordinary text response instead of running to `maximumSteps`.
+The browser-owned agent parks by combining a pending-approval stop condition with a no-tool-calls stop condition and `stopAfterAnyToolCall`. The first stops after an approval-gated result; the second ends an ordinary text response instead of running to `maximumSteps`.
 
 The server never trusts a client-edited approval descriptor. The resume route validates its shape and lets the toolbox verify the signature before execution. **Signature validity is necessary but not sufficient**: the host atomically consumes each signed capability before the side effect begins. A second submission returns the already-recorded outcome or a deterministic consumed-capability response — it never calls `resumeApproval()` again. The deployable contract therefore includes a shared consumed-capability ledger keyed by the descriptor's stable identity. A process-local ledger is a local-development limitation and must never be presented as replay protection across restarts or instances. Signature verification comes from the toolbox; the ledger and its idempotency are host responsibilities.
 
-Every tool that can cause a non-reversible external effect must use that approval-and-consumption path. A tool may run unapproved only when it is read-only, safely replayable, or protected by a host-owned idempotency key claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient, because a retry may generate a different call for the same action.
+In the browser-owned family, every tool that can cause a non-reversible external effect must use that approval-and-consumption path. The server-owned family uses the elicitation contract below. A tool may run unapproved only when it is read-only, safely replayable, or protected by a host-owned idempotency key claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient, because a retry may generate a different call for the same action.
 
 ### Two approval paths, and which one a consumer should reach for
 
@@ -209,7 +210,7 @@ The difference between the two shapes is smaller than it sounds, and in one plac
 
 The kill/restart procedure, its exact commands, and the observed state at each step are in [durability-exercise.md](./durability-exercise.md).
 
-**A diagnostic panel does not get to take the transcript's space.** The detail route is a fixed-viewport-height flex column whose only flexible child is the chat, so anything permanently expanded beside it comes out of the transcript — measured, the recovery panel took it to 0px at 844x390. The two obvious repairs are both wrong here: a floor on the chat plus a scrollable page hands the scroll to the document, which is the very thing a collapsed viewport produces and which this variant's specs pin against. Collapsing the panel by default is what reconciles them.
+The recovery panel starts collapsed so idle conversations retain a fixed-height chat with its own transcript scroll. When an approval question, recovery status, or failure message is visible, the page may grow and scroll; the chat keeps an `8rem` minimum block size so expanded content cannot consume the transcript and composer. Both layout selectors include failure messages, which may appear when recovery has no success status to show. The short-viewport, long-approval, and failed-recovery browser tests verify those states.
 
 <a id="server-owned-session-variant"></a>
 

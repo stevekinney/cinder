@@ -52,6 +52,8 @@ export type ServerOwnedRuntime = {
 	 * is not using.
 	 */
 	readonly durability: Durability;
+	/** Aborted before any runtime teardown begins, including durable engine drain. */
+	readonly shutdownSignal: AbortSignal;
 	/**
 	 * Registers a teardown to run when the runtime is disposed. Anything that
 	 * outlives a single request — a subscription, a durable run, a provider
@@ -86,7 +88,7 @@ const DISPOSAL_SLOT = Symbol.for('cinder.chat-room.server-owned.disposal');
 const TERMINATING_SLOT = Symbol.for('cinder.chat-room.server-owned.terminating');
 
 type RuntimeHost = typeof globalThis & {
-	[RUNTIME_SLOT]?: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> };
+	[RUNTIME_SLOT]?: HeldRuntime;
 	/**
 	 * The disposal currently in flight, so overlapping callers await it rather
 	 * than each concluding there is nothing to do.
@@ -113,6 +115,12 @@ type RuntimeHost = typeof globalThis & {
 	 * final generation, nothing can create another.
 	 */
 	[TERMINATING_SLOT]?: true | undefined;
+};
+
+type HeldRuntime = {
+	runtime: ServerOwnedRuntime;
+	shutdownController: AbortController;
+	teardowns: Array<() => void | Promise<void>>;
 };
 
 /**
@@ -145,14 +153,12 @@ export class RuntimeTerminatingError extends Error {
 	}
 }
 
-function createRuntime(): {
-	runtime: ServerOwnedRuntime;
-	teardowns: Array<() => void | Promise<void>>;
-} {
+function createRuntime(): HeldRuntime {
 	const { storage, durability, release } = serverOwnedStorage();
 	const store = textValueStore(storage);
 	const sessions = createSessionStore(store);
 	const teardowns: Array<() => void | Promise<void>> = [];
+	const shutdownController = new AbortController();
 
 	// Registered FIRST, which — because teardowns run in reverse registration
 	// order — makes it run LAST, after the durable engine that writes through
@@ -177,6 +183,7 @@ function createRuntime(): {
 			store,
 			sessions,
 			durability,
+			shutdownSignal: shutdownController.signal,
 			onDispose: (teardown) => {
 				teardowns.push(teardown);
 				return () => {
@@ -185,7 +192,8 @@ function createRuntime(): {
 				};
 			}
 		},
-		teardowns
+		teardowns,
+		shutdownController
 	};
 }
 
@@ -387,10 +395,7 @@ export async function disposeServerOwnedRuntime(
  * "nothing new appeared" cannot be fixed by giving up after N tries, and the
  * generation it left undisposed was cut off by the exit anyway.
  */
-async function drainDisposal(
-	host: RuntimeHost,
-	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
-): Promise<{ failures: number }> {
+async function drainDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ failures: number }> {
 	// The latch is already set by `disposeServerOwnedRuntime`, before any early
 	// return, so that a terminating call which JOINS an in-flight disposal
 	// latches too. Reasserted here rather than assumed, because this function's
@@ -404,9 +409,7 @@ async function drainDisposal(
 	host[TERMINATING_SLOT] = true;
 
 	let failures = 0;
-	let generation:
-		| { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
-		| undefined = host[RUNTIME_SLOT] ?? held;
+	let generation: HeldRuntime | undefined = host[RUNTIME_SLOT] ?? held;
 
 	while (generation !== undefined) {
 		failures += (await runDisposal(host, generation)).failures;
@@ -418,10 +421,7 @@ async function drainDisposal(
 	return { failures };
 }
 
-async function runDisposal(
-	host: RuntimeHost,
-	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
-): Promise<{ failures: number }> {
+async function runDisposal(host: RuntimeHost, held: HeldRuntime): Promise<{ failures: number }> {
 	// Cleared BEFORE the teardowns run, so a teardown cannot reach the
 	// half-disposed runtime it is in the middle of tearing down.
 	//
@@ -431,6 +431,10 @@ async function runDisposal(
 	// finishing; the teardown sees `RuntimeTerminatingError`, which disposal
 	// isolates and counts like any other teardown failure.
 	host[RUNTIME_SLOT] = undefined;
+	// Abort request-scoped waits after the slot is closed and before the first
+	// teardown. This also covers replacement generations started by a
+	// terminating caller that joined an ordinary disposal.
+	held.shutdownController.abort();
 
 	let failures = 0;
 	for (const teardown of [...held.teardowns].reverse()) {

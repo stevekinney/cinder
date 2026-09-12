@@ -85,8 +85,9 @@ export function recoveryFailureLog(conversationId: string, runId: string): strin
  * endpoint learned to redact. The string is `Error.message` verbatim, and a
  * resume rejection can quote a connection string — so returning a string
  * prevents forwarding a live `Error` object, and nothing more. Whoever sends
- * this anywhere a client can see is responsible for replacing it; the recovery
- * endpoint does exactly that and logs this instead.
+ * this across a response or logging boundary is responsible for replacing it.
+ * The recovery endpoint withholds the raw reason in both places and logs only
+ * the run and conversation identifiers through `recoveryFailureLog`.
  *
  * A string by construction, so a caller cannot accidentally forward a live
  * error object across the response boundary — the same reasoning as
