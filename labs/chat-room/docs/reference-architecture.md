@@ -21,7 +21,7 @@ Who drives continuation _between_ tool results is a different question, and the 
 
 So today a request contains **one** model step, plus the tool executions that step triggered. The stateless claim below is about server persistence, not about execution: a new request always starts a new run from the full client-owned history, and the server keeps nothing between them.
 
-Reconciliation of the authoritative post-run history is part of the target state rather than current behaviour. It requires a terminal run frame carrying that history, which the wire vocabulary does not yet include — the browser reconstructs the turn from the frames it receives instead.
+Reconciliation of the authoritative post-run history is part of the target state rather than current behaviour. The terminal run frame carrying that history has SHIPPED — `pumpChatRun` emits `run.completed`, `run.error`, `run.tripwire`, or `run.aborted`, and the chat codec decodes them — but nothing consumes the conversation it carries: `run.completed` is handled in `stream-event-codec.ts` and reaches no further. The browser still reconstructs the turn from the text and tool frames it received. The gap is reconciliation, not the frame.
 
 That target is Operative owning multi-step continuation inside a single request, with a terminal frame closing it. Reaching it requires the client controller to stop re-POSTing first. Until that lands, a host MUST match whichever side actually drives the loop rather than assuming this document's end state, and the stop condition in the route is the authority on which regime is in force.
 
@@ -31,7 +31,7 @@ That target is Operative owning multi-step continuation inside a single request,
 
 The browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to the chat route. The server validates that boundary before passing the value to the run.
 
-Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy, and today that is the whole story: the route emits only text and tool frames followed by EOF, so the browser reconstructs the turn from those frames. Reconciling a serialized final conversation as the authority for the turn is target state only — it needs the terminal run frame described above, which the wire vocabulary does not yet carry.
+Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy, and today that is still the whole story — though for a narrower reason than it used to be. The route now emits a terminal frame after the text and tool frames, and the client decodes it; what is missing is that the session controller never reads the conversation it carries. So the browser reconstructs the turn from the streamed frames, and reconciling the serialized final conversation as the authority remains target state.
 
 System instructions belong to the module-scoped agent definition. They are not appended again when resuming from `{ conversation }` — the posted history already carries the accumulated context.
 
@@ -82,8 +82,8 @@ The enhanced-streaming event target must also be **request-local**. `EventTarget
 
 Exactly one terminal frame is written when the connection remains available, and the server closes the stream immediately after it. EOF without a terminal frame is a truncated response — a transport failure, not success. Client cancellation is the exception, because the client deliberately stopped reading and cannot receive the terminal frame.
 
-> [!NOTE] This vocabulary is wider than the client decoder currently accepts
-> The published chat client decodes a narrower union and throws on anything outside it, so the decoder must be extended before this table can be emitted. The decoder grows to meet this contract rather than this contract narrowing to fit the decoder.
+> [!NOTE] The decoder has caught up with this vocabulary
+> This note previously said the published client decoded a narrower union and had to be extended first. That extension has landed: `stream-event-codec.ts` accepts the terminal frames above, and the route emits them. What has not landed is any consumer — the decoded `run.completed` is not read by the session controller, so the conversation it carries is discarded.
 
 <a id="cancellation-contract"></a>
 
@@ -155,6 +155,10 @@ A labeled, non-canonical route family may own sessions server-side using Operati
 
 Its lifecycle boundary differs from the stateless route's and must be documented and tested on its own terms rather than borrowed by implication, because the host owns a session store, a run engine, checkpoint storage, and workflow-service reconstruction.
 
-Operative does not own the conversation-list index, so the host maintains the mapping from a user-visible conversation to its session, reconstructs workflow services on restart, and sweeps orphaned run references that can no longer be resumed.
+The session store owns the conversation-list index. `SessionStore.list()` returns conversation-shaped summaries — id, agent name, message count, timestamps, and metadata — so the host drives that call rather than maintaining a parallel index, which could only drift from the store it copies. Conversation titles live in session metadata for the same reason: a separate title store would be a second thing to keep in step.
+
+Ordering is by `updatedAt`, newest first, and the host states that explicitly rather than inheriting a default. Sessions written inside the same millisecond share a timestamp and fall back to key order, which is deterministic but unrelated to creation order — anything needing creation order carries it rather than inferring it from the list. A caller cannot work around that by supplying its own timestamps: the store owns `updatedAt` and overwrites what it is given.
+
+Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities — and they are **target state, not the shipped behaviour**. The variant supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which is the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. Nothing sweeps orphaned references, and `handle.recover()` is not wired up here. This paragraph states what a host owning durable runs has to do, rather than what ships — the difference is deliberate here, and each target-state claim elsewhere in this document says so at the point it is made rather than relying on a blanket assurance. One such assurance used to live in this sentence and was false: three sections still described terminal frames as unshipped after they had landed.
 
 This variant must not import Bureau internals or locally recreate capabilities that belong in a published package.

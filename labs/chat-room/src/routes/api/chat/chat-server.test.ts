@@ -4,14 +4,26 @@ import { readFileSync } from 'node:fs';
 import { updatePendingApproval } from '$lib/pending-approval';
 import type { SignedPendingToolApproval } from 'armorer';
 
-const source = readFileSync(new URL('./+server.ts', import.meta.url), 'utf8');
 const resumeSource = readFileSync(new URL('./resume/+server.ts', import.meta.url), 'utf8');
+/**
+ * The stream's lifecycle moved to `$lib/chat-run-response.ts` when the
+ * server-owned route family needed the same handling and copying it was the
+ * alternative. These guards follow the code rather than the file: what they
+ * pin — one-shot abort, close-from-abort-but-not-cancel, the post-listener
+ * re-check, disposal on every terminal path — is the same set of races
+ * wherever it lives, and it is now shared by both route families rather than
+ * duplicated into a second copy that could drift.
+ */
+const streamSource = readFileSync(
+	new URL('../../../lib/chat-run-response.ts', import.meta.url),
+	'utf8'
+);
 
 describe('chat stream cancellation guard', () => {
 	test('registers the request signal on the same one-shot abort path cancel() uses', () => {
-		expect(source).toContain("request.signal.addEventListener('abort', onRequestAbort)");
-		expect(source).toContain("run?.abort('client cancelled')");
-		expect(source).toContain("run?.abort('request aborted')");
+		expect(streamSource).toContain("options.signal.addEventListener('abort', onRequestAbort)");
+		expect(streamSource).toContain("run?.abort('client cancelled')");
+		expect(streamSource).toContain("run?.abort('request aborted')");
 	});
 
 	// A request-signal abort is the one path where nothing else transitions the
@@ -20,10 +32,10 @@ describe('chat stream cancellation guard', () => {
 	// the stream never reaches a terminal state at all. `cancel()` deliberately
 	// does not, because there the consumer has already torn the readable down.
 	test('closes the stream from the request-abort handler but not from cancel()', () => {
-		expect(source).toMatch(
+		expect(streamSource).toMatch(
 			/function onRequestAbort\(\): void \{[\s\S]*?run\?\.abort\('request aborted'\);[\s\S]*?closeStream\?\.\(\);[\s\S]*?\n\t\}/
 		);
-		expect(source).toMatch(
+		expect(streamSource).toMatch(
 			/cancel\(\) \{\s+settled = true;\s+run\?\.abort\('client cancelled'\);\s+\}/
 		);
 	});
@@ -32,33 +44,39 @@ describe('chat stream cancellation guard', () => {
 	// billed provider request — so an abort lost in it costs money as well as
 	// leaving the stream open.
 	test('re-checks the signal after attaching the listener, without returning', () => {
-		expect(source).toMatch(
-			/request\.signal\.addEventListener\('abort', onRequestAbort\);[\s\S]*?if \(request\.signal\.aborted\) onRequestAbort\(\);/
+		expect(streamSource).toMatch(
+			/options\.signal\.addEventListener\('abort', onRequestAbort\);[\s\S]*?if \(options\.signal\.aborted\) onRequestAbort\(\);/
 		);
 		// The absence of a `return` is the load-bearing half. Returning here
 		// would skip the pump, and with it the `finally` that removes the
 		// listener and disposes the run — trading a lost abort for a leaked one.
-		const recheck = source.slice(source.indexOf('if (request.signal.aborted) onRequestAbort();'));
+		const recheck = streamSource.slice(
+			streamSource.indexOf('if (options.signal.aborted) onRequestAbort();')
+		);
 		expect(recheck.slice(0, recheck.indexOf('void (async'))).not.toContain('return;');
 	});
 
 	test('guards the abort handler as a one-shot', () => {
-		expect(source).toMatch(/function onRequestAbort\(\): void \{\s+if \(settled\) return;/);
+		expect(streamSource).toMatch(/function onRequestAbort\(\): void \{\s+if \(settled\) return;/);
 	});
 
 	test('removes the request-signal listener and disposes the run on every terminal path', () => {
-		expect(source).toMatch(/request\.signal\.removeEventListener\('abort', onRequestAbort\);/);
-		expect(source).toMatch(/try \{\s+activeRun\[Symbol\.dispose\]\(\);\s+\} catch \{/);
+		expect(streamSource).toMatch(
+			/options\.signal\.removeEventListener\('abort', onRequestAbort\);/
+		);
+		expect(streamSource).toMatch(/try \{\s+activeRun\[Symbol\.dispose\]\(\);\s+\} catch \{/);
 	});
 
-	// A single generic `expect(source).toContain('if (settled) return;')` would
+	// A single generic `expect(streamSource).toContain('if (settled) return;')` would
 	// still pass with `enqueueFrame`'s guard alone, even if the terminal guard
 	// before `controller.close()` or the catch-path guard before
 	// `controller.error()` were deleted — reintroducing the double-settlement
 	// race these guards exist to prevent. Each transition's own guard is
 	// asserted by name below instead.
 	test('guards the terminal close() transition behind its own settled check', () => {
-		expect(source).toMatch(/if \(settled\) return;\s+settled = true;\s+\/\/ Every settled run/);
+		expect(streamSource).toMatch(
+			/if \(settled\) return;\s+settled = true;\s+\/\/ Every settled run/
+		);
 	});
 
 	test('closes the stream for every settled run, failed ones included', () => {
@@ -66,7 +84,7 @@ describe('chat stream cancellation guard', () => {
 		// connection serving the response body — so the terminal `run.error`
 		// frame went out with it and the browser saw `ERR_EMPTY_RESPONSE`. The
 		// frame IS the outcome; the body is complete once it is written.
-		expect(source).toMatch(
+		expect(streamSource).toMatch(
 			/settled = true;\s+\/\/ Every settled run[\s\S]*?controller\.close\(\);/
 		);
 	});
@@ -77,13 +95,13 @@ describe('chat stream cancellation guard', () => {
 		// Statements only: the comment above that catch path explains why the
 		// old failure branch was removed, and naming it there must not count
 		// as calling it.
-		const errorCalls = source.match(/^\s*controller\.error\(/gm) ?? [];
+		const errorCalls = streamSource.match(/^\s*controller\.error\(/gm) ?? [];
 		expect(errorCalls).toHaveLength(1);
-		expect(source).not.toContain('controller.error(new Error(envelope.error.message));');
+		expect(streamSource).not.toContain('controller.error(new Error(envelope.error.message));');
 	});
 
 	test('guards the catch-path controller.error() behind its own settled check', () => {
-		expect(source).toMatch(
+		expect(streamSource).toMatch(
 			/catch \(cause\) \{\s+if \(!settled\) \{\s+settled = true;\s+controller\.error\(cause\);\s+\}\s+\}/
 		);
 	});
