@@ -214,3 +214,33 @@ export function resolveAdaptiveOverscan(options: {
   // this expression is already an integer, so the result is too.
   return Math.max(baseOverscan, Math.min(overscan, resolvedMaximumOverscan));
 }
+
+/**
+ * The row size adaptive overscan should convert a pixel velocity with.
+ *
+ * `estimateSize` is what the consumer guessed. In fixed mode that IS the row size and
+ * there is nothing to improve on. Under `dynamicSize` it is only a starting point, and
+ * the conversion from "pixels travelled this frame" to "rows to keep mounted" is
+ * exactly where being wrong hurts: with a 100px estimate over rows measuring 10px, a
+ * frame covering 100px reads as one row rather than the ten the viewport really
+ * crossed, so the window widens by a tenth of what the reader is outrunning.
+ *
+ * `totalSize` comes from the offsets table, which already blends measured rows with
+ * estimates for the ones not yet seen — the best answer available at any moment, and
+ * one that improves as more rows are measured.
+ *
+ * Falls back to the estimate whenever the average is not a usable positive number: an
+ * empty list, a table that has not been built, or a collection whose rows have all
+ * measured zero.
+ */
+export function resolveAdaptiveItemSize(options: {
+  dynamicSize: boolean;
+  totalSize: number | undefined;
+  itemCount: number;
+  estimateSize: number;
+}): number {
+  if (!options.dynamicSize) return options.estimateSize;
+  if (options.totalSize === undefined || options.itemCount <= 0) return options.estimateSize;
+  const average = options.totalSize / options.itemCount;
+  return Number.isFinite(average) && average > 0 ? average : options.estimateSize;
+}

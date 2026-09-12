@@ -72,6 +72,7 @@
   import { resolveKeyboardTargetIndex, resolveRowSemantics } from './_internal/list-semantics.ts';
   import {
     createVelocityTracker,
+    resolveAdaptiveItemSize,
     resolveAdaptiveOverscan,
     trackScrollVelocity,
     type VelocityTracker,
@@ -242,20 +243,6 @@
 
   const resolvedItemHeight = $derived(resolveVirtualItemHeight(itemHeight));
   const resolvedOverscan = $derived(resolveVirtualOverscan(overscan));
-  /**
-   * The overscan actually applied. `resolvedOverscan` is the floor: adaptation only
-   * ever renders MORE than the consumer asked for, never less, so turning it on
-   * cannot make pop-in worse than the configured value.
-   */
-  const effectiveOverscan = $derived(
-    adaptiveOverscan
-      ? resolveAdaptiveOverscan({
-          baseOverscan: resolvedOverscan,
-          velocityInPixelsPerMillisecond: scrollVelocity,
-          itemSize: resolvedItemHeight,
-        })
-      : resolvedOverscan,
-  );
   const viewportHeight = $derived(
     measuredViewportHeight || estimateViewportHeight(height, resolvedItemHeight),
   );
@@ -269,6 +256,31 @@
           measuredSizes: measurementStore.sizes,
         })
       : undefined,
+  );
+
+  /** See `resolveAdaptiveItemSize`: the estimate is the wrong ruler once rows are measured. */
+  const averageRowSize = $derived(
+    resolveAdaptiveItemSize({
+      dynamicSize,
+      totalSize: offsets?.totalSize,
+      itemCount: items.length,
+      estimateSize: resolvedItemHeight,
+    }),
+  );
+
+  /**
+   * The overscan actually applied. `resolvedOverscan` is the floor: adaptation only
+   * ever renders MORE than the consumer asked for, never less, so turning it on
+   * cannot make pop-in worse than the configured value.
+   */
+  const effectiveOverscan = $derived(
+    adaptiveOverscan
+      ? resolveAdaptiveOverscan({
+          baseOverscan: resolvedOverscan,
+          velocityInPixelsPerMillisecond: scrollVelocity,
+          itemSize: averageRowSize,
+        })
+      : resolvedOverscan,
   );
 
   const virtualWindow = $derived(
@@ -1386,21 +1398,28 @@
   function handleKeyDown(
     event: KeyboardEvent & { currentTarget: EventTarget & HTMLDivElement },
   ): void {
-    if (scrollsMainAxis(event.key)) retireSettleLoop();
     if (typeof onKeyDown === 'function') onKeyDown(event);
     if (event.defaultPrevented) return;
+
+    // Keys that came from something inside a row belong to that control, not to this
+    // list. A text input, slider, or select uses the arrow keys itself, so the event
+    // scrolls nothing here — and retiring the settle loop for it silently cancels a
+    // correction the destination is still owed, finishing a jump on a stale estimate.
+    //
+    // A row control that does NOT consume the key (a link, a button) does let the
+    // container scroll, and this leaves the loop running through that. Between the
+    // two, keeping a correction that a rare native scroll then overrides is the
+    // smaller error: typing in a row is ordinary, and arrowing on a button mid-jump
+    // is not.
+    if (event.target !== event.currentTarget) return;
+
+    if (scrollsMainAxis(event.key)) retireSettleLoop();
 
     // Only take over the keys when there is a sticky row to keep in view or the
     // list is virtualized past what the browser can reach. Otherwise the native
     // scroll container already handles every one of these correctly, and
     // intercepting them would replace smooth native scrolling with a jump.
     if (!stickyIndexes.length) return;
-
-    // Not when the key came from something inside a row. A text input, a slider, a
-    // select — every one of these uses the arrow keys itself, and stealing them here
-    // would break the control while the reader is trying to use it. The list only
-    // claims keys aimed at its own scroll container.
-    if (event.target !== event.currentTarget) return;
 
     // Where the keys are, which is where the last one was heading if it has not
     // arrived yet. Falls back to the live position the moment nothing is in flight.

@@ -2,6 +2,7 @@ import { describe, expect, test } from 'bun:test';
 
 import {
   createVelocityTracker,
+  resolveAdaptiveItemSize,
   resolveAdaptiveOverscan,
   trackScrollVelocity,
   type VelocityTracker,
@@ -257,5 +258,109 @@ describe('resolveAdaptiveOverscan', () => {
     });
 
     expect(Number.isInteger(overscan)).toBe(true);
+  });
+});
+
+describe('resolveAdaptiveItemSize', () => {
+  test('uses the estimate in fixed mode, where it IS the row size', () => {
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: false,
+        totalSize: 10,
+        itemCount: 100,
+        estimateSize: 40,
+      }),
+    ).toBe(40);
+  });
+
+  test('uses the measured average under dynamicSize', () => {
+    // The reported case: a 100px estimate over rows that really measure 10px. Keeping
+    // the estimate converts a frame covering 100px into one row instead of ten.
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: 1_000,
+        itemCount: 100,
+        estimateSize: 100,
+      }),
+    ).toBe(10);
+  });
+
+  test('reports an average larger than the estimate just as readily', () => {
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: 8_000,
+        itemCount: 100,
+        estimateSize: 20,
+      }),
+    ).toBe(80);
+  });
+
+  test('falls back to the estimate before an offsets table exists', () => {
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: undefined,
+        itemCount: 100,
+        estimateSize: 20,
+      }),
+    ).toBe(20);
+  });
+
+  test('falls back to the estimate on an empty list rather than dividing by zero', () => {
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: 0,
+        itemCount: 0,
+        estimateSize: 20,
+      }),
+    ).toBe(20);
+  });
+
+  test('falls back to the estimate when every row has measured zero', () => {
+    // An average of 0 is not a ruler. `resolveAdaptiveOverscan` would take the floor
+    // and stop adapting entirely, which is worse than converting with a stale guess.
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: 0,
+        itemCount: 100,
+        estimateSize: 20,
+      }),
+    ).toBe(20);
+  });
+
+  test('falls back to the estimate on a non-finite total', () => {
+    expect(
+      resolveAdaptiveItemSize({
+        dynamicSize: true,
+        totalSize: Number.POSITIVE_INFINITY,
+        itemCount: 100,
+        estimateSize: 20,
+      }),
+    ).toBe(20);
+  });
+
+  test('feeds a velocity conversion that the estimate would have understated', () => {
+    // End to end: 100px of travel in a frame over 10px rows is ten rows crossed.
+    const measured = resolveAdaptiveItemSize({
+      dynamicSize: true,
+      totalSize: 1_000,
+      itemCount: 100,
+      estimateSize: 100,
+    });
+    const withMeasured = resolveAdaptiveOverscan({
+      baseOverscan: 0,
+      velocityInPixelsPerMillisecond: 6,
+      itemSize: measured,
+    });
+    const withEstimate = resolveAdaptiveOverscan({
+      baseOverscan: 0,
+      velocityInPixelsPerMillisecond: 6,
+      itemSize: 100,
+    });
+    expect(withMeasured).toBeGreaterThan(withEstimate);
   });
 });
