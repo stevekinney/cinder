@@ -216,6 +216,30 @@ describe('tierUses', () => {
     // `background` use is not reached at all: it is two hops from the tier.
     expect(uses.map((use) => use.property)).toEqual(['--cinder-b']);
   });
+
+  test('a custom property declared twice is resolved from EVERY declaration, not just the first seen', () => {
+    // Regression: `aliasValues` used to keep only the first-seen value per
+    // custom property name (`!aliasValues.has(...)` guarding the `.set`), so
+    // when an earlier declaration of a repeated custom property does not
+    // name the tier but a LATER one does, the alias resolution missed it --
+    // a false negative for the "any declaration is enough" contract this
+    // function's own doc comment describes. Here `--cinder-a` is declared
+    // twice: first to an unrelated color, then (a later, e.g. component-level
+    // or higher-specificity) declaration that names the tier.
+    const declarations: MatchedDeclaration[] = [
+      declaration('--cinder-a', 'var(--cinder-accent-solid)', 'inherited'),
+      declaration('--cinder-a', 'var(--cinder-border-muted)', 'own'),
+      declaration('background', 'var(--cinder-a)'),
+    ];
+    const uses = tierUses(declarations);
+    expect(uses).toContainEqual({
+      property: 'background',
+      value: 'var(--cinder-a)',
+      viaAlias: '--cinder-a',
+      aliasValue: 'var(--cinder-border-muted)',
+      isMix: false,
+    });
+  });
 });
 
 describe('opacityCompoundedTierDeclarations', () => {

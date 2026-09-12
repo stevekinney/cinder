@@ -177,11 +177,20 @@ export function customPropertyReferences(value: string): string[] {
  * always".
  */
 export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[] {
-  const aliasValues = new Map<string, string>();
+  // Every declared value for each repeated custom property, in declaration
+  // order -- not just the first seen. Keeping only the first would miss a
+  // real alias site when an earlier declaration of the same custom property
+  // does not name the tier but a later one does (e.g. a component-level
+  // override that comes after the generated `:root` declaration in
+  // `declarations`), which is a false negative for the exact "any
+  // declaration is enough" question this function answers -- see the doc
+  // comment below.
+  const aliasValues = new Map<string, string[]>();
   for (const declaration of declarations) {
-    if (isCustomProperty(declaration.property) && !aliasValues.has(declaration.property)) {
-      aliasValues.set(declaration.property, declaration.value);
-    }
+    if (!isCustomProperty(declaration.property)) continue;
+    const existing = aliasValues.get(declaration.property);
+    if (existing === undefined) aliasValues.set(declaration.property, [declaration.value]);
+    else existing.push(declaration.value);
   }
 
   const uses: TierUse[] = [];
@@ -204,8 +213,9 @@ export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[]
     }
 
     for (const reference of customPropertyReferences(value)) {
-      const aliasValue = aliasValues.get(reference);
-      if (aliasValue !== undefined && referencesBorderTier(aliasValue)) {
+      const candidates = aliasValues.get(reference);
+      const aliasValue = candidates?.find((candidate) => referencesBorderTier(candidate));
+      if (aliasValue !== undefined) {
         uses.push({
           property,
           value,
@@ -223,15 +233,21 @@ export function tierUses(declarations: readonly MatchedDeclaration[]): TierUse[]
 /**
  * Every declaration among `declarations` that names a structural border tier
  * -- in ANY property, border/outline included -- while `elementOpacity` is
- * fractional.
+ * fractional, restricted to declarations that matched THIS element directly
+ * (`origin: 'own'`).
  *
  * A fractional element `opacity` multiplies every tier reference's own alpha,
  * border declarations included: the ordinary "a tier as a border is exempt"
- * rule does not hold once the element itself is translucent. This does not
- * need to know which of several matched declarations for the same property
- * actually wins the cascade (see {@link tierUses}'s doc comment on the same
- * point) -- any matched declaration naming the tier is a real compounding
- * risk regardless of which one is currently painted.
+ * rule does not hold once the element itself is translucent. The `inherited`
+ * origin is excluded deliberately: that chain holds ancestor rules --
+ * selectors that matched a PARENT element, `:root` included -- and an
+ * ancestor's declared `border`/`outline`/tier-referencing value never paints
+ * THIS element's own border or outline, so it cannot compound with this
+ * element's opacity regardless of what it names. This does not need to know
+ * which of several OWN matched declarations for the same property actually
+ * wins the cascade (see {@link tierUses}'s doc comment on the same point) --
+ * any OWN matched declaration naming the tier is a real compounding risk
+ * regardless of which one is currently painted.
  */
 export function opacityCompoundedTierDeclarations(
   declarations: readonly MatchedDeclaration[],
