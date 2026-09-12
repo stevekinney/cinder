@@ -81,7 +81,7 @@ describe('ColorField — color picker trigger', () => {
   test('keeps the composed picker open during keyboard slider commits', async () => {
     const { container } = render(ColorField, { id: 'color', value: '#ff0000' });
     await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
-    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+    const hue = q(document.body, '[role="slider"][aria-label="Hue"]');
 
     await fireEvent.keyDown(hue, { key: 'ArrowRight' });
     await tick();
@@ -97,7 +97,7 @@ describe('ColorField — color picker trigger', () => {
       onValueChange,
     });
     await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
-    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+    const hue = q(document.body, '[role="slider"][aria-label="Hue"]');
 
     await rerender({
       id: 'color',
@@ -129,7 +129,7 @@ describe('ColorField — color picker trigger', () => {
       onValueChange,
     });
     await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
-    const hue = q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]');
+    const hue = q(document.body, '[role="slider"][aria-label="Hue"]');
 
     // Nudge hue only — alpha should pass through untouched. If the embedded
     // picker were still hex by default, this alone would already corrupt
@@ -437,7 +437,7 @@ describe('ColorField — formats gate', () => {
     });
 
     await fireEvent.click(q<HTMLButtonElement>(container, '.cinder-color-field__swatch-button'));
-    await fireEvent.keyDown(q<HTMLElement>(document.body, '[role="slider"][aria-label="Hue"]'), {
+    await fireEvent.keyDown(q(document.body, '[role="slider"][aria-label="Hue"]'), {
       key: 'ArrowRight',
     });
 

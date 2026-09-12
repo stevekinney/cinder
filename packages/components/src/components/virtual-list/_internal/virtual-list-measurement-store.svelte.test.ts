@@ -257,3 +257,74 @@ describe('VirtualListMeasurementStore', () => {
     expect(store.consumePendingCorrections()).toEqual([{ index: 0, delta: 15 }]);
   });
 });
+
+describe('VirtualListMeasurementStore — measuredTotalSize', () => {
+  test('starts at zero', () => {
+    expect(new VirtualListMeasurementStore().measuredTotalSize).toBe(0);
+  });
+
+  test('sums the sizes recorded', () => {
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    store.record('b', 1, 50, 20);
+
+    expect(store.measuredTotalSize).toBe(80);
+    expect(store.measuredCount).toBe(2);
+  });
+
+  test('replaces rather than adds when a row is measured again', () => {
+    // The whole hazard of keeping a running total: a re-measurement that added its
+    // new size without removing the old one would drift upward forever, and the
+    // adaptive ruler that divides by the count would grow with it.
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    store.record('a', 0, 45, 20);
+
+    expect(store.measuredTotalSize).toBe(45);
+    expect(store.measuredCount).toBe(1);
+  });
+
+  test('leaves the total alone when a report is within the epsilon', () => {
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    const before = store.measuredTotalSize;
+    store.record('a', 0, 30.000_001, 20);
+
+    expect(store.measuredTotalSize).toBe(before);
+  });
+
+  test('subtracts the rows a prune removes', () => {
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    store.record('b', 1, 50, 20);
+    store.prune(new Set(['a']));
+
+    expect(store.measuredTotalSize).toBe(30);
+    expect(store.measuredCount).toBe(1);
+  });
+
+  test('returns to zero on reset', () => {
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    store.reset();
+
+    expect(store.measuredTotalSize).toBe(0);
+    expect(store.measuredCount).toBe(0);
+  });
+
+  test('agrees with summing the cache after a mixed sequence', () => {
+    // The relational check: whatever the running total says, it must equal what
+    // walking the map would have produced. That is the property the incremental
+    // maintenance exists to preserve, and it survives any future mutation path.
+    const store = new VirtualListMeasurementStore();
+    store.record('a', 0, 30, 20);
+    store.record('b', 1, 50, 20);
+    store.record('c', 2, 10, 20);
+    store.record('b', 1, 70, 20);
+    store.prune(new Set(['a', 'b']));
+    store.record('a', 0, 25, 20);
+
+    const summed = [...store.sizes.values()].reduce((total, size) => total + size, 0);
+    expect(store.measuredTotalSize).toBeCloseTo(summed, 10);
+  });
+});

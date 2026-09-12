@@ -31,6 +31,15 @@ const MEASUREMENT_EPSILON = 0.01;
  */
 export class VirtualListMeasurementStore {
   #sizes = new Map<VirtualListKey, number>();
+  /**
+   * Running total of every cached size.
+   *
+   * Maintained here rather than summed on demand. The cache keeps every row the
+   * reader has visited, so re-summing it on each measurement makes scrolling through
+   * a long list cost O(n²) overall — and it is the fast-scroll path that pays, which
+   * is precisely the path adaptive overscan exists to protect.
+   */
+  #measuredTotalSize = 0;
   #pendingCorrections: MeasurementCorrection[] = [];
   #version = $state(0);
   #pendingCorrectionsVersion = $state(0);
@@ -55,6 +64,16 @@ export class VirtualListMeasurementStore {
    */
   get measuredCount(): number {
     return this.#sizes.size;
+  }
+
+  /**
+   * Sum of every cached size, kept in step with the cache rather than recomputed.
+   *
+   * Non-reactive for the same reason as {@link measuredCount}: a caller wanting to
+   * recompute when it changes reads {@link version}.
+   */
+  get measuredTotalSize(): number {
+    return this.#measuredTotalSize;
   }
 
   /** Live, read-only view of the measured-size cache, keyed by row key. */
@@ -86,6 +105,7 @@ export class VirtualListMeasurementStore {
     const delta = size - previousBaseline;
 
     this.#sizes.set(key, size);
+    this.#measuredTotalSize += size - (previousSize ?? 0);
     this.#version += 1;
 
     if (Math.abs(delta) >= MEASUREMENT_EPSILON) {
@@ -117,7 +137,10 @@ export class VirtualListMeasurementStore {
     }
     if (keysToRemove.length === 0) return;
 
-    for (const key of keysToRemove) this.#sizes.delete(key);
+    for (const key of keysToRemove) {
+      this.#measuredTotalSize -= this.#sizes.get(key) ?? 0;
+      this.#sizes.delete(key);
+    }
     this.#version += 1;
   }
 
@@ -128,6 +151,7 @@ export class VirtualListMeasurementStore {
   reset(): void {
     if (this.#sizes.size > 0) {
       this.#sizes.clear();
+      this.#measuredTotalSize = 0;
       this.#version += 1;
     }
     this.#pendingCorrections = [];
