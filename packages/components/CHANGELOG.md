@@ -1,5 +1,15 @@
 # @lostgradient/cinder
 
+## 0.26.1
+
+### Patch Changes
+
+- [#1539](https://github.com/stevekinney/cinder/pull/1539) [`50b2f3b`](https://github.com/stevekinney/cinder/commit/50b2f3baf2675dd813a295ba0bfef7ac156be89a) Thanks [@stevekinney](https://github.com/stevekinney)! - Retune the indicators that read too faint against `border.muted`/element-opacity compounding after CIN-245's translucent border tiers, and fix Popover's arrow rim compositing over the wrong backdrop.
+
+  **CIN-603.** Several persistent or interactive indicators either filled with `border.muted` (a 1.4:1 decorative-hairline tier) or compounded a structural tier with an element or child `opacity`, landing under WCAG 1.4.11's 3:1 floor in the dark arm — none of these were floors CIN-245 broke, all were already below 3:1 beforehand. Retuned: SortableList's drag-placeholder outline and Slider's tick both move to `border.control` with their diluting `opacity` removed (SortableList's box has no other visible content for that opacity to affect); ResizablePanels' handle line drops the child `opacity: 0.5` that diluted its `border.strong` color; AreaChart, BarChart, and LineChart's legend toggle buttons and Select's empty-state border move their dimming off the border itself (onto text color / a child swatch) so the border stays at `border.control`'s full alpha; ParameterField's rail and MegaMenu's indicator track move from `border.muted` to `border.control`. Every retuned site now measures at least 3:1 against all four surface tokens in both theme arms, asserted directly against the shipped component CSS in `check-token-contrast.test.ts`. The remaining `border.muted`/opacity-compounded sites (disabled states, StatusDot's connecting-pulse trough, Chat's rollback preview, RunStepTimeline's rewound marker) are unchanged and recorded as intentional in `docs/css-audit/translucent-border-seams.md` — disabled controls are exempt from the contrast floor outright, and the rest are deliberately faint/transient states rather than persistent affordances.
+
+  **CIN-606.** Popover's arrow rim and panel border used to composite over different surfaces: `background-clip: border-box` (the default) means the panel's own opaque background paints under its translucent border, but the arrow's outer triangle had no background of its own and painted its translucent edge straight onto whatever the popover floated over. Invisible while both tokens were opaque; visible now that `--cinder-border` is 48% alpha. The arrow's own border is now an opaque `surface-raised` backdrop, with a new `::before` repeating the same triangle in the translucent border color on top of it — matching the panel edge on every backdrop instead of only on `surface-raised`. HoverCard's differently-constructed arrow (`background: inherit`, a filled diamond) and Tooltip (no arrow at all) were verified unaffected, both by a Playwright pixel probe against the real rendered pixels rather than by eye.
+
 ## 0.26.0
 
 ### Minor Changes
