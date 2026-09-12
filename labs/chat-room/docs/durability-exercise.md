@@ -31,7 +31,7 @@ Saving is `bun add`'s default, so a plain `-d` writes the package into `devDepen
 
 The version is pinned because Weft `0.23.1` declares the peer as `better-sqlite3: ^12.8.0`, so an unpinned add installs 13.x and runs the adapter against a major the package does not claim to support. That happens to work; it is luck, not a contract. `12.11.1` is what this procedure was last run against.
 
-Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which repeats the install command and this file's path. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
+Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which includes the missing-peer error and points to this file for the install step. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
 
 ## The procedure
 

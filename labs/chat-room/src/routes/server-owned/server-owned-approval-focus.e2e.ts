@@ -9,7 +9,7 @@
  * prevent.
  */
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Route } from '@playwright/test';
 
 import { gotoHydrated } from '../exercises/hydration';
 import { newFixtureMarker } from '../fixture-probe';
@@ -20,6 +20,20 @@ const uniqueTitle = (label: string): string =>
 	`${label} ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
 type PostOutcome = 'success' | 'conflict' | 'error' | 'network';
+
+function assertApprovedPost(route: Route, expectedCallId?: string): void {
+	const payload = route.request().postDataJSON() as {
+		approved?: unknown;
+		callId?: unknown;
+	};
+	expect(payload.approved).toBe(true);
+	if (expectedCallId === undefined) {
+		expect(payload.callId).toEqual(expect.any(String));
+		expect(payload.callId).not.toBe('');
+	} else {
+		expect(payload.callId).toBe(expectedCallId);
+	}
+}
 
 test('answering keeps focus inside the chat', async ({ page }) => {
 	// Every path that clears the question removes the focused subtree, and a
@@ -210,6 +224,7 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 			return;
 		}
 
+		assertApprovedPost(route);
 		await new Promise<void>((resolve) => {
 			releasePost = resolve;
 			postReady = true;
@@ -319,6 +334,7 @@ test('allows the replacement approval to submit while the first POST is stalled'
 			return;
 		}
 		postNumber += 1;
+		assertApprovedPost(route, postNumber === 2 ? 'replacement-call' : undefined);
 		await new Promise<void>((resolve) => {
 			if (postNumber === 1) releaseA = resolve;
 			else releaseB = resolve;
@@ -369,6 +385,7 @@ test('clears a decision error when a remote answer removes its question', async 
 			await route.continue();
 			return;
 		}
+		assertApprovedPost(route);
 		await new Promise<void>((resolve) => {
 			releasePost = resolve;
 		});
@@ -427,6 +444,7 @@ test('poll recovery preserves a decision failure until the answer succeeds', asy
 			return;
 		}
 
+		assertApprovedPost(route);
 		postAttempts += 1;
 		if (postAttempts === 1) {
 			await route.fulfill({

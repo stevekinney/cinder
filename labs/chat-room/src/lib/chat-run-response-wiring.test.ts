@@ -87,8 +87,10 @@ describe('streaming endpoints share one stream lifecycle', () => {
 			// so a client that disconnects cannot stop the run, and the provider
 			// keeps going and keeps billing. That is the failure these
 			// lifecycle tests exist for, reachable without touching the helper.
-			expect(source).toMatch(/signal:\s*(?:request\.signal|lifecycleSignal)/);
-			if (endpoint.includes('server-owned')) {
+			if (endpoint === 'routes/api/chat/+server.ts') {
+				expect(source).toMatch(/signal:\s*request\.signal/);
+			} else {
+				expect(source).toMatch(/signal:\s*lifecycleSignal/);
 				expect(source).toMatch(/AbortSignal\.any\(\[request\.signal,\s*shutdownSignal\]\)/);
 			}
 		});
