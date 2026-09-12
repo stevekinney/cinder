@@ -461,26 +461,26 @@
     // history because the list happens to render at offset 0 for one frame.
     if (willRestoreScrollPosition()) return;
 
-    // `startIndex`/`endIndex` describe the RENDERED range, which already carries
-    // overscan on both sides, and `endIndex` is exclusive. Undo both so the
-    // "within overscan items of the end" test is applied once rather than twice.
+    // Read from the scroll geometry rather than recovered by undoing the window's
+    // overscan. Both approaches to undoing it are wrong, in opposite directions:
+    // subtracting the configured overscan leaves the adaptive growth in and fires the
+    // callbacks tens of rows early, while subtracting the effective overscan
+    // over-corrects at the list's own edges, where the window is CLAMPED and the
+    // overscan actually realized on that side is smaller than the one asked for. In a
+    // 100-row list `endIndex` is 100 however wide adaptation grew, so subtracting 50
+    // reported row 49 as the last visible one and suppressed `onEndReached` entirely
+    // until the idle timer shrank the window back.
     //
-    // `effectiveOverscan`, because that is what the window was actually built with.
-    // Undoing only `resolvedOverscan` leaves the adaptive growth in: at a configured
-    // 5 against an adaptive 50, the last "visible" row is reported 45 ahead of the
-    // real one, and `onEndReached` fires some fifty rows out instead of within the
-    // five the prop documents. It is the clamped, floored value rather than the raw
-    // prop for the same reason it always was — a negative, fractional, or non-finite
-    // prop would drift from the real window, or resolve to NaN, which compares false
-    // against everything and silently reports both edges as out of range.
+    // `resolveAnchorIndexAtOffset` answers the question directly — which row occupies
+    // a given offset — and is already independent of overscan and of edge clamping.
     const lastRenderedIndex = Math.max(0, itemCount - 1);
-    const firstVisibleIndex = Math.min(
-      currentWindow.startIndex + effectiveOverscan,
+    const firstVisibleIndex = Math.min(resolveAnchorIndexAtOffset(scrollOffset), lastRenderedIndex);
+    // The last row the viewport still touches, hence the -1: at a viewport whose
+    // bottom edge falls exactly on a row boundary, the offset itself belongs to the
+    // NEXT row, which is not visible yet.
+    const lastVisibleIndex = Math.min(
+      resolveAnchorIndexAtOffset(scrollOffset + Math.max(0, currentViewportHeight - 1)),
       lastRenderedIndex,
-    );
-    const lastVisibleIndex = Math.max(
-      0,
-      Math.min(currentWindow.endIndex - 1 - effectiveOverscan, lastRenderedIndex),
     );
 
     const proximity = resolveEdgeProximity({
