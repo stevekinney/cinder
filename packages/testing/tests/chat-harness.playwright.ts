@@ -59,25 +59,34 @@ async function openHarness(
     reducedMotion: options?.reducedMotion ?? 'reduce',
     viewport: { width: 1280, height: 900 },
   });
-  await context.addInitScript(
-    ([key, value]) => {
-      try {
-        localStorage.setItem(key, value);
-      } catch {
-        /* ignore */
-      }
-    },
-    [THEME_STORAGE_KEY, 'dark'] as const,
-  );
-  const page = await context.newPage();
-  await page.goto(
-    `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
-    { waitUntil: 'load' },
-  );
-  await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
-  const harness = page.locator(HARNESS);
-  await harness.waitFor({ state: 'visible', timeout: 20_000 });
-  return { page, harness, dispose: () => context.close() };
+  // A failure below (bad route, load regression, the harness never becoming
+  // visible) would otherwise leak this context: nothing else here closes a
+  // context whose owning `openHarness` call never returned. Close it on any
+  // failure and rethrow.
+  try {
+    await context.addInitScript(
+      ([key, value]) => {
+        try {
+          localStorage.setItem(key, value);
+        } catch {
+          /* ignore */
+        }
+      },
+      [THEME_STORAGE_KEY, 'dark'] as const,
+    );
+    const page = await context.newPage();
+    await page.goto(
+      `/page/chat?snapshot=1&fixture=private-harness&fixtureContentHash=${PRIVATE_HARNESS_FIXTURE_HASH}`,
+      { waitUntil: 'load' },
+    );
+    await page.waitForSelector('#app > *', { state: 'visible', timeout: 20_000 });
+    const harness = page.locator(HARNESS);
+    await harness.waitFor({ state: 'visible', timeout: 20_000 });
+    return { page, harness, dispose: () => context.close() };
+  } catch (error) {
+    await context.close();
+    throw error;
+  }
 }
 
 /**
@@ -1157,8 +1166,23 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       reducedMotion: 'no-preference',
       viewport: { width: 1280, height: 900 },
     });
-    const page = await context.newPage();
-    const session = await context.newCDPSession(page);
+    // `newPage`/`newCDPSession` sat outside the try/finally below that closes
+    // `context` -- a failure in either (the CDP session in particular; it's
+    // a separate round-trip that can fail independently of page creation)
+    // leaked the context, since nothing else here would have closed it.
+    // This IIFE keeps that setup inside its own try/catch that closes the
+    // context on failure and rethrows, without disturbing the screencast
+    // try/finally below.
+    const { page, session } = await (async () => {
+      try {
+        const page = await context.newPage();
+        const session = await context.newCDPSession(page);
+        return { page, session };
+      } catch (error) {
+        await context.close();
+        throw error;
+      }
+    })();
     let screencastStarted = false;
     try {
       await page.goto(
@@ -1308,18 +1332,22 @@ test.describe('chat harness — history prepend stress (#1237)', () => {
       reducedMotion: 'no-preference',
       viewport: { width: 1280, height: 900 },
     });
-    await context.addInitScript(
-      ([key, value]) => {
-        try {
-          localStorage.setItem(key, value);
-        } catch {
-          /* ignore */
-        }
-      },
-      [THEME_STORAGE_KEY, 'dark'] as const,
-    );
-    const page = await context.newPage();
+    // `addInitScript`/`newPage` sat outside the try/finally below that
+    // closes `context` -- a failure in either leaked the context, since
+    // nothing else here would have closed it. Both now run inside the same
+    // try that already closes `context` in its `finally`.
     try {
+      await context.addInitScript(
+        ([key, value]) => {
+          try {
+            localStorage.setItem(key, value);
+          } catch {
+            /* ignore */
+          }
+        },
+        [THEME_STORAGE_KEY, 'dark'] as const,
+      );
+      const page = await context.newPage();
       await page.goto(
         `/page/chat?snapshot=1&fixture=private-history-prepend-stress&fixtureContentHash=${PRIVATE_HISTORY_PREPEND_STRESS_FIXTURE_HASH}`,
         { waitUntil: 'load' },

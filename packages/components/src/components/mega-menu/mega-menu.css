@@ -44,10 +44,16 @@
     box-shadow: 0 0 0 var(--cinder-ring-width) var(--cinder-ring-color);
   }
 
+  /*
+   * CIN-603: this track is a persistent state indicator (it shows which item
+   * the active-indicator animation is tracking), so it moved from
+   * `border.muted` (a 1.4:1 decorative-hairline tier) to `border.control`
+   * (the 3:1 functional tier).
+   */
   .cinder-mega-menu__indicator-track {
     position: relative;
     height: 2px;
-    background: var(--cinder-border-muted);
+    background: var(--cinder-border);
     border-radius: var(--cinder-radius-full);
     overflow: hidden;
   }
