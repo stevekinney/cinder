@@ -3083,6 +3083,9 @@ describe('VirtualList — adaptive overscan and settling under row controls', ()
     ).text();
     expect(source).toContain('itemSize: averageRowSize');
     expect(source).toContain('resolveAdaptiveItemSize({');
+    // Measured rows only — the offsets total would let the untouched estimates
+    // dominate, which in a long list is the estimate again in all but name.
+    expect(source).toContain('measuredTotalSize: measuredRowTotals.total');
   });
 
   test('leaves a settle pass running when a key comes from a control inside a row', async () => {
@@ -3222,6 +3225,25 @@ describe('VirtualList — only the active sticky row is held at the edge', () =>
     const active = container.querySelectorAll('[data-cinder-sticky-active="true"]');
     expect(active.length).toBe(1);
     expect((active[0] as HTMLElement).dataset['cinderVirtualIndex']).toBe('30');
+  });
+
+  test('keeps a pinned horizontal row at its own height', async () => {
+    // A cascade and layout outcome, so the rule's shape is what is assertable here.
+    //
+    // Under `horizontal` the root's block-size is auto and the in-flow window takes
+    // its height from the rows. A pinned row is out of flow, so it no longer counts
+    // toward that height — and anchoring BOTH block edges then sizes it to a height
+    // computed without it. A sticky row taller than its neighbours was squashed to
+    // theirs and its content clipped, at the moment it crossed the window boundary.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    const horizontalPinned = source.slice(
+      source.indexOf(
+        "[data-cinder-orientation='horizontal']\n    .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true']",
+      ),
+    );
+    const rule = horizontalPinned.slice(0, horizontalPinned.indexOf('}'));
+    expect(rule).toContain('inset-block-start: 0');
+    expect(rule).not.toContain('inset-block: 0');
   });
 
   test('scopes sticky positioning to the active row', async () => {

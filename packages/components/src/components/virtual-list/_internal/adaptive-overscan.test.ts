@@ -266,67 +266,73 @@ describe('resolveAdaptiveItemSize', () => {
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: false,
-        totalSize: 10,
-        itemCount: 100,
+        measuredTotalSize: 200,
+        measuredCount: 20,
         estimateSize: 40,
       }),
     ).toBe(40);
   });
 
-  test('uses the measured average under dynamicSize', () => {
+  test('averages the rows actually measured', () => {
     // The reported case: a 100px estimate over rows that really measure 10px. Keeping
     // the estimate converts a frame covering 100px into one row instead of ten.
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: true,
-        totalSize: 1_000,
-        itemCount: 100,
+        measuredTotalSize: 200,
+        measuredCount: 20,
         estimateSize: 100,
       }),
     ).toBe(10);
+  });
+
+  test('is not diluted by the rows still carrying an estimate', () => {
+    // The whole reason this takes a measured total rather than the offsets table's.
+    // Twenty measured rows of 10px among ten thousand estimated at 100px average out
+    // to 99.8px across the collection — the estimate again in all but name, and a
+    // ruler as wrong as it started.
+    const measuredOnly = resolveAdaptiveItemSize({
+      dynamicSize: true,
+      measuredTotalSize: 20 * 10,
+      measuredCount: 20,
+      estimateSize: 100,
+    });
+    expect(measuredOnly).toBe(10);
+
+    const blendedTotal = 20 * 10 + 9_980 * 100;
+    expect(blendedTotal / 10_000).toBeGreaterThan(99);
   });
 
   test('reports an average larger than the estimate just as readily', () => {
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: true,
-        totalSize: 8_000,
-        itemCount: 100,
+        measuredTotalSize: 800,
+        measuredCount: 10,
         estimateSize: 20,
       }),
     ).toBe(80);
   });
 
-  test('falls back to the estimate before an offsets table exists', () => {
+  test('falls back to the estimate before anything has been measured', () => {
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: true,
-        totalSize: undefined,
-        itemCount: 100,
+        measuredTotalSize: 0,
+        measuredCount: 0,
         estimateSize: 20,
       }),
     ).toBe(20);
   });
 
-  test('falls back to the estimate on an empty list rather than dividing by zero', () => {
-    expect(
-      resolveAdaptiveItemSize({
-        dynamicSize: true,
-        totalSize: 0,
-        itemCount: 0,
-        estimateSize: 20,
-      }),
-    ).toBe(20);
-  });
-
-  test('falls back to the estimate when every row has measured zero', () => {
+  test('falls back to the estimate when every measured row collapsed to zero', () => {
     // An average of 0 is not a ruler. `resolveAdaptiveOverscan` would take the floor
     // and stop adapting entirely, which is worse than converting with a stale guess.
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: true,
-        totalSize: 0,
-        itemCount: 100,
+        measuredTotalSize: 0,
+        measuredCount: 100,
         estimateSize: 20,
       }),
     ).toBe(20);
@@ -336,8 +342,8 @@ describe('resolveAdaptiveItemSize', () => {
     expect(
       resolveAdaptiveItemSize({
         dynamicSize: true,
-        totalSize: Number.POSITIVE_INFINITY,
-        itemCount: 100,
+        measuredTotalSize: Number.POSITIVE_INFINITY,
+        measuredCount: 100,
         estimateSize: 20,
       }),
     ).toBe(20);
@@ -347,8 +353,8 @@ describe('resolveAdaptiveItemSize', () => {
     // End to end: 100px of travel in a frame over 10px rows is ten rows crossed.
     const measured = resolveAdaptiveItemSize({
       dynamicSize: true,
-      totalSize: 1_000,
-      itemCount: 100,
+      measuredTotalSize: 200,
+      measuredCount: 20,
       estimateSize: 100,
     });
     const withMeasured = resolveAdaptiveOverscan({

@@ -133,10 +133,17 @@
     inset-inline: 0;
   }
 
+  /*
+   * Only the start edge, deliberately not `inset-block: 0`. Pinning both edges sizes
+   * the row to the window's block-size — which, now that the row is out of flow, is
+   * computed from the OTHER rows. A sticky row taller than its neighbours was squashed
+   * to their height and its content clipped, at the moment it crossed the window
+   * boundary and became pinned. Anchoring one edge leaves its own height alone.
+   */
   .cinder-virtual-list[data-cinder-orientation='horizontal']
     .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true'] {
     inset-inline: auto;
-    inset-block: 0;
+    inset-block-start: 0;
   }
 
   /*

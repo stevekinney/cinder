@@ -225,22 +225,24 @@ export function resolveAdaptiveOverscan(options: {
  * frame covering 100px reads as one row rather than the ten the viewport really
  * crossed, so the window widens by a tenth of what the reader is outrunning.
  *
- * `totalSize` comes from the offsets table, which already blends measured rows with
- * estimates for the ones not yet seen — the best answer available at any moment, and
- * one that improves as more rows are measured.
+ * Averaged over the rows actually MEASURED, not over the whole collection. The offsets
+ * table's total blends measurements with estimates for every row not yet seen, and in
+ * a long list those estimates swamp the measurements — twenty measured rows of 10px
+ * among ten thousand estimated at 100px average out to 99.8px, which is the estimate
+ * again in all but name and leaves the ruler as wrong as it started.
  *
- * Falls back to the estimate whenever the average is not a usable positive number: an
- * empty list, a table that has not been built, or a collection whose rows have all
- * measured zero.
+ * Falls back to the estimate until something has been measured, and if the measured
+ * average is not a usable positive number — a collection whose rows have all collapsed
+ * to zero, say.
  */
 export function resolveAdaptiveItemSize(options: {
   dynamicSize: boolean;
-  totalSize: number | undefined;
-  itemCount: number;
+  measuredTotalSize: number;
+  measuredCount: number;
   estimateSize: number;
 }): number {
   if (!options.dynamicSize) return options.estimateSize;
-  if (options.totalSize === undefined || options.itemCount <= 0) return options.estimateSize;
-  const average = options.totalSize / options.itemCount;
+  if (options.measuredCount <= 0) return options.estimateSize;
+  const average = options.measuredTotalSize / options.measuredCount;
   return Number.isFinite(average) && average > 0 ? average : options.estimateSize;
 }

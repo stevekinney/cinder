@@ -258,12 +258,29 @@
       : undefined,
   );
 
+  /**
+   * The measured rows' own total and count, which is what the adaptive ruler averages.
+   *
+   * Recomputed only when a measurement actually changes, since `.sizes` touches the
+   * store's version counter and nothing else here reads it.
+   */
+  const measuredRowTotals = $derived.by(() => {
+    if (!dynamicSize) return { total: 0, count: 0 };
+    let total = 0;
+    let count = 0;
+    for (const size of measurementStore.sizes.values()) {
+      total += size;
+      count += 1;
+    }
+    return { total, count };
+  });
+
   /** See `resolveAdaptiveItemSize`: the estimate is the wrong ruler once rows are measured. */
   const averageRowSize = $derived(
     resolveAdaptiveItemSize({
       dynamicSize,
-      totalSize: offsets?.totalSize,
-      itemCount: items.length,
+      measuredTotalSize: measuredRowTotals.total,
+      measuredCount: measuredRowTotals.count,
       estimateSize: resolvedItemHeight,
     }),
   );
