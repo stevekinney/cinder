@@ -90,6 +90,17 @@ Two consequences for the run's shape, both of which cost a review round to find:
 - **The server-owned family must not stop after a tool call.** `stopAfterAnyToolCall` hands control back to a client that drives the next turn, which is the browser-owned contract. Under elicitation the approval happens mid-step, so stopping there leaves a tool result with no reply after it — and the session controller's continuation attempt then fails the very turn the tool succeeded in. Dropping the condition lets the loop reach a second generate and deliver one complete turn.
 - **A continuation request has nothing to fetch, and must not throw.** The controller re-runs the transport whenever a turn ends with every tool call resolved. In this family the server already sent everything, and there is no user text to send on that call anyway, so the transport answers with an empty stream. Throwing there was right while the toolbox was empty and a continuation could only mean a wiring mistake; it became destructive the moment a tool could succeed.
 
+**A multi-step response renders out of order live, and correctly after a reload.** Measured on the approved-note turn:
+
+```
+live:   You … | Assistant "Saved that note."  Called 1 tool … remember_note Succeeded
+reload: You … | Assistant Called 1 tool … Succeeded | Assistant "Saved that note."
+```
+
+The session controller inserts one assistant placeholder before reading any frames, so when a single response carries two model steps the second step's text is written back into a row that already precedes the tool activity. The follow-up reply therefore appears above the note it is replying about, and disagrees with the server's own history.
+
+Delineating assistant steps belongs to the wire and the controller in `@lostgradient/chat` — CIN-615 carries it with these measurements. What this route keeps true in the meantime is the persisted order, which a reload renders and which a spec pins.
+
 **Every gated call needs its own decision, and every decision needs to name its call.** A step can carry more than one approval-gated call — the stop condition runs after a step and never constrained that — so the hook elicits per call rather than once. And because `ctx.elicit` carries no call identity, the answer has to: a click that lands after its own run ended would otherwise settle whatever question is pending next. The host's answering endpoint requires the call id it displayed and compares it in the same step that settles.
 
 <a id="stream-wire-contract"></a>

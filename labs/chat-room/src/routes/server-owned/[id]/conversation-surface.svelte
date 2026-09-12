@@ -171,6 +171,16 @@
 	let pending = $state<PendingApproval | null>(null);
 	let deciding = $state(false);
 
+	/**
+	 * The status paragraph, so focus can be moved to it when the controls it
+	 * describes are removed.
+	 *
+	 * `tabindex="-1"` on the element makes it programmatically focusable without
+	 * adding a stop to the tab order — a status region is not something anyone
+	 * should have to tab through on the way to the composer.
+	 */
+	let approvalQuestion = $state<HTMLElement | null>(null);
+
 	async function readPendingApproval(): Promise<void> {
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`);
@@ -197,13 +207,28 @@
 				// pending next — approving a note nobody was shown.
 				body: JSON.stringify({ approved, callId: question.callId })
 			});
-			if (!response.ok) {
-				// A 409 means the question moved on while it was being read. Re-read
-				// rather than report: the current question is the actionable thing.
+			if (response.status === 409) {
+				// ONLY 409. The question moved on while it was being read — either
+				// the run ended or it advanced to a different call — so the current
+				// question is the actionable thing and re-reading offers it.
 				await readPendingApproval();
 				return;
 			}
+			if (!response.ok) {
+				// Everything else is a failure a person has to be told about. This
+				// branch used to be folded into the 409 above, which meant a 404, a
+				// 500, or the shutdown 503 left the stale controls on screen with no
+				// explanation and the run still unresolved.
+				failure = toBannerFailure(new Error(await failureMessage(response)));
+				return;
+			}
 			pending = null;
+			// FOCUS IS MOVED before the controls disappear. Answering removes the
+			// button the keyboard user is standing on, and a browser then drops
+			// focus to `<body>` — outside the chat entirely, at the moment the turn
+			// resumes. The status region is where the consequence of the click is
+			// about to be announced, so it is where focus belongs.
+			approvalQuestion?.focus();
 		} catch (cause) {
 			failure = toBannerFailure(cause);
 		} finally {
@@ -291,7 +316,13 @@
 -->
 <section class="approval" aria-labelledby="approval-heading">
 	<h2 id="approval-heading" class="visually-hidden">Approval</h2>
-	<p class="approval-question" role="status" data-testid="approval-question">
+	<p
+		class="approval-question"
+		role="status"
+		data-testid="approval-question"
+		bind:this={approvalQuestion}
+		tabindex="-1"
+	>
 		{#if pending}
 			{pending.message} The assistant wants to run {pending.toolName} with {JSON.stringify(
 				pending.arguments

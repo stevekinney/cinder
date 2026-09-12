@@ -55,7 +55,9 @@
 		failure = '';
 		outcome = undefined;
 		try {
-			const response = await fetch(`/api/server-owned/conversations/${id}/recovery`);
+			const response = await fetch(`/api/server-owned/conversations/${id}/recovery`, {
+				method: 'POST'
+			});
 			if (!response.ok) {
 				const body = (await response.json().catch(() => ({}))) as { error?: string };
 				// The SERVER'S sentence, not the JSON envelope — the same rule the

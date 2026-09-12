@@ -22,10 +22,14 @@ That package is deliberately **not** a dependency of this lab. Its install scrip
 So the install is a step of this procedure rather than a line in `package.json`:
 
 ```sh
-bun add -d 'better-sqlite3@^12.8.0'
+bun add --no-save 'better-sqlite3@^12.8.0'
 ```
 
-**Pinned to 12.x on purpose.** Weft `0.23.1` declares the peer as `better-sqlite3: ^12.8.0`, so an unpinned `bun add` installs 13.x and runs the adapter against a major the package does not claim to support. It happens to work; that is luck, not a contract, and review caught the first version of this file recommending it. `12.11.1` is what this procedure was last run against.
+**`--no-save`, and pinned to 12.x.** Both halves were caught by review, and both matter.
+
+Saving is `bun add`'s default, so a plain `-d` writes the package into `devDependencies` and the workspace lockfile — contradicting the paragraph above, and failing the guard test that keeps it out, until the reader repairs both files by hand. `--no-save` installs into `node_modules` and touches neither. Verified: after running it, `git diff` reports no change to `labs/chat-room/package.json` or `bun.lock`, and the adapter still resolves.
+
+The version is pinned because Weft `0.23.1` declares the peer as `better-sqlite3: ^12.8.0`, so an unpinned add installs 13.x and runs the adapter against a major the package does not claim to support. That happens to work; it is luck, not a contract. `12.11.1` is what this procedure was last run against.
 
 Setting `CHAT_ROOM_SERVER_OWNED_DATABASE` without it raises `DurableStorageUnavailableError`, which repeats the install command and this file's path. Remove it again when you are done — a failing `bun install` in a lane is harder to diagnose than a missing package here.
 
@@ -50,8 +54,10 @@ bun run preview -- --port 4791 --strictPort
 Create a conversation:
 
 ```sh
-curl -s -X POST http://localhost:4791/api/server-owned/conversations \
-  -H 'content-type: application/json' -d '{"title":"Durability exercise"}'
+ID=$(curl -s -X POST http://localhost:4791/api/server-owned/conversations \
+  -H 'content-type: application/json' -d '{"title":"Durability exercise"}' \
+  | python3 -c 'import json,sys; print(json.load(sys.stdin)["conversation"]["id"])')
+echo "$ID"
 ```
 
 ```json
@@ -111,7 +117,7 @@ curl -s http://localhost:4791/api/server-owned/conversations/$ID
 { "id": "session-1-98171819-…", "title": "Durability exercise", "messageCount": 0, "messages": [] }
 ```
 
-Ask about recovery. **Observed:** the orphan classification, with the engine's own reason for refusing the resume.
+Ask about recovery. **Observed:** the orphan classification, with a client-safe reason. The engine's own words go to the server log rather than to the browser — a resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The `runId` crosses, because it is this lab's own identifier and it is what makes two orphaned runs distinguishable.
 
 ```sh
 curl -s http://localhost:4791/api/server-owned/conversations/$ID/recovery
@@ -124,7 +130,7 @@ curl -s http://localhost:4791/api/server-owned/conversations/$ID/recovery
 	"failures": [
 		{
 			"runId": "session-1-98171819-…:0",
-			"reason": "Cannot resume workflow \"session-1-98171819-…:0\": status is \"failed\", expected \"running\" or \"suspended\""
+			"reason": "The engine refused to resume this run. The details are in the server log."
 		}
 	],
 	"note": "Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers \"nothing to resume\"."
@@ -168,13 +174,13 @@ The storage sentence is inside the announcement, not only in the paragraph besid
 
 **After the restart, on load** — empty again, because the panel asks nothing until asked.
 
-**After the restart, first Check**
+**After the restart, first Check** — the disclosure has to be opened first; a reload closes it.
 
 ```
 status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
             run's work is terminally gone. Storage is on disk, so a run left in flight
             is recorded for the next process.
-failures:   session-1-b5f2f8db-…:0 — The engine refused to resume this run.
+failures:   session-1-5ea684af-…:0 — The engine refused to resume this run.
             The details are in the server log.
 once:       Reported once. Operative reconciles a stranded run to terminal as it reports
             the rejection, so asking again answers "nothing to resume".

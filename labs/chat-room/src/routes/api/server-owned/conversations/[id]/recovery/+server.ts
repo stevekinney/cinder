@@ -13,11 +13,16 @@ import type { RequestHandler } from './$types';
 /**
  * What a durable re-attach finds for this conversation, as data.
  *
- * A GET rather than a POST, and that is a deliberate contract rather than a
- * convenience: `recover()` re-attaches to work that is ALREADY running, it does
- * not start anything. "Disconnect is not stop" is Operative's own framing, and
- * a verb that implied mutation here would invite a caller to treat asking about
- * a run as restarting one.
+ * A POST, and the first version of this was a GET on the reasoning that
+ * `recover()` re-attaches to work already running rather than starting
+ * anything. That reasoning was falsified by the paragraph below it: `recover()`
+ * RECONCILES a stranded run as it reports the rejection, so the first call
+ * consumes the only orphan diagnosis there will ever be.
+ *
+ * A one-shot operation behind a safe, cacheable, retry-on-a-whim verb is a
+ * diagnosis waiting to be spent by a link prefetch, an infrastructure retry, or
+ * a monitor — before the person it was for ever opened the panel. The verb has
+ * to say that asking changes something, because asking does.
  *
  * The interesting answer in THIS lab is `orphaned`. The variant supplies
  * `resolveWorkflowServices` returning `unavailable`, because a run's
@@ -35,7 +40,7 @@ import type { RequestHandler } from './$types';
  * `docs/durability-exercise.md`. The response says so in `note` so a reader
  * who asks twice sees the reason rather than a classification that evaporated.
  */
-export const GET: RequestHandler = async ({ params }) => {
+export const POST: RequestHandler = async ({ params }) => {
 	try {
 		return await respond(params.id);
 	} catch (cause) {

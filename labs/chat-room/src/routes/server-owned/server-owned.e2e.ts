@@ -208,7 +208,12 @@ test('reports a conversation with no in-flight run as nothing to resume', async 
 	expect(created.status()).toBe(201);
 	const { conversation } = (await created.json()) as { conversation: { id: string } };
 
-	const recovery = await request.get(`/api/server-owned/conversations/${conversation.id}/recovery`);
+	// POST, not GET. Asking RECONCILES a stranded run, so the question is not
+	// safely repeatable — a prefetch or an infrastructure retry would spend the
+	// only orphan diagnosis before anyone saw it.
+	const recovery = await request.post(
+		`/api/server-owned/conversations/${conversation.id}/recovery`
+	);
 	expect(recovery.status()).toBe(200);
 	// `durability` rides along on every outcome, because "nothing to resume" is
 	// the TRUTH under in-memory storage and a bug-shaped surprise under on-disk
@@ -228,7 +233,7 @@ test('distinguishes a missing conversation from one with nothing to resume', asy
 	// distinction the conversation endpoint makes: "this does not exist" and
 	// "this exists and is idle" are different answers, and collapsing them
 	// would let a typo in an id read as a healthy session.
-	const missing = await request.get(
+	const missing = await request.post(
 		'/api/server-owned/conversations/does-not-exist-at-all/recovery'
 	);
 	expect(missing.status()).toBe(404);
@@ -519,6 +524,35 @@ test('a person approves the note in the browser and the turn completes', async (
 	// control anyone should be able to press again.
 	await expect(page.locator('[data-testid="approval-approve"]')).toHaveCount(0);
 	await expect(question).toBeEmpty();
+
+	// THE PERSISTED ORDER IS THE CORRECT ONE, and it is what this pins.
+	//
+	// Live, the two model steps of one response land in a single assistant row
+	// and the follow-up text renders ABOVE the tool disclosure it is replying
+	// about — the session controller inserts one assistant placeholder before
+	// reading any frames, so the second step's text goes back into a row that
+	// already precedes the tool activity. Measured:
+	//
+	//   live:   You … | Assistant "Saved that note." Called 1 tool … Succeeded
+	//   reload: You … | Assistant Called 1 tool … Succeeded | Assistant "Saved that note."
+	//
+	// Delineating assistant steps belongs to the wire and the controller in
+	// `@lostgradient/chat`, which this issue's delivery boundary excludes —
+	// CIN-615 carries it with these measurements. What is asserted here is the
+	// half that IS this route's to keep true: the server's own history, which a
+	// reload renders, puts the tool before the reply.
+	await page.reload();
+	await page.waitForSelector('body[data-hydrated="true"]');
+
+	const persisted = await page
+		.locator('[data-testid="server-owned-chat"]')
+		.evaluate((root) => (root.textContent ?? '').replace(/\s+/g, ' ').trim());
+
+	const toolAt = persisted.indexOf('remember_note');
+	const replyAt = persisted.indexOf(APPROVAL_FOLLOW_UP_TEXT);
+	expect(toolAt).toBeGreaterThan(-1);
+	expect(replyAt).toBeGreaterThan(-1);
+	expect(toolAt).toBeLessThan(replyAt);
 });
 
 test('the transcript survives a short viewport instead of collapsing to nothing', async ({

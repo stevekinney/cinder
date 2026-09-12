@@ -46,13 +46,21 @@
 	{/key}
 
 	<!--
-		OUTSIDE the `{#key}`, deliberately. The surface is remounted when the
-		route parameter changes so its one-time transcript seed reruns; this
-		panel holds no per-conversation state worth discarding, and remounting it
-		would clear a result the reader just asked for the moment anything else
-		about the route changed.
+		INSIDE the `{#key}`, and the comment that used to sit here said the
+		opposite: that this panel "holds no per-conversation state worth
+		discarding". That was true when it was written and false by the time the
+		panel grew `outcome`, `failure`, and `seenOrphan` — every one of which is
+		about ONE conversation.
+
+		Left outside, a client-side navigation from A to B reuses the component
+		with only `id` changed, so B opens showing A's orphan and its failure
+		list, and a benign check for B claims A's orphan was already reconciled.
+		Remounting discards all of it by construction, which is the same reason
+		the surface above is keyed.
 	-->
-	<RecoveryStatus id={data.id} />
+	{#key data.id}
+		<RecoveryStatus id={data.id} />
+	{/key}
 </main>
 
 <style>
