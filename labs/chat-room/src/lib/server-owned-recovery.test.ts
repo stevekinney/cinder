@@ -225,10 +225,10 @@ describe('withRecoveryLock', () => {
 });
 
 describe('recoveryFailureLog', () => {
-	it('omits credential-bearing provider details from the execution log', () => {
+	it('identifies the rejected run without exposing a provider reason', () => {
 		const log = recoveryFailureLog('conversation-1', 'run-1');
 		expect(log).toContain('run-1');
 		expect(log).toContain('details withheld');
-		expect(log).not.toContain('postgres://user:hunter2@host/db');
+		expect(log).not.toContain('reason');
 	});
 });

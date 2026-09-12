@@ -19,6 +19,8 @@ import { fixtureMarker } from '../streaming-fixture';
 const uniqueTitle = (label: string): string =>
 	`${label} ${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 
+type PostOutcome = 'success' | 'conflict' | 'error' | 'network';
+
 test('answering keeps focus inside the chat', async ({ page }) => {
 	// Every path that clears the question removes the focused subtree, and a
 	// browser then drops focus to `<body>` — outside the chat's tab context, at
@@ -148,8 +150,9 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 	await expect(approve).toBeVisible();
 
 	let remoteState: 'server' | 'removed' | 'replaced' = 'server';
-	let releasePost: (() => void) | undefined;
-	let postOutcome: 'success' | 'conflict' | 'error' | 'network' = 'success';
+	let releasePost!: () => void;
+	let postReady = false;
+	let postOutcome: PostOutcome = 'success';
 	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
 		if (route.request().method() === 'GET') {
 			if (remoteState === 'removed') {
@@ -181,6 +184,7 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 
 		await new Promise<void>((resolve) => {
 			releasePost = resolve;
+			postReady = true;
 		});
 		if (postOutcome === 'network') {
 			await route.abort('failed');
@@ -194,20 +198,45 @@ test('stale approval POST outcomes cannot mutate a removed or replaced question'
 	});
 
 	for (const [index, outcome] of ['success', 'conflict', 'error', 'network'].entries()) {
-		postOutcome = outcome as typeof postOutcome;
+		const currentOutcome = outcome as PostOutcome;
+		postOutcome = currentOutcome;
 		remoteState = index % 2 === 0 ? 'removed' : 'replaced';
-		releasePost = undefined;
+		postReady = false;
+		const postSettled = new Promise<'finished' | 'failed'>((resolve) => {
+			const finish = (kind: 'finished' | 'failed') => {
+				const matches = (request: { method(): string; url(): string }): boolean =>
+					request.method() === 'POST' && request.url().includes('/elicitation');
+				return (request: { method(): string; url(): string }) => {
+					if (!matches(request)) return;
+					page.off('requestfinished', onFinished);
+					page.off('requestfailed', onFailed);
+					resolve(kind);
+				};
+			};
+			const onFinished = finish('finished');
+			const onFailed = finish('failed');
+			page.on('requestfinished', onFinished);
+			page.on('requestfailed', onFailed);
+		});
 		await approve.focus();
 		await approve.press('Enter');
-		await expect.poll(() => releasePost !== undefined).toBe(true);
+		await expect.poll(() => postReady).toBe(true);
 		if (remoteState === 'removed') {
 			await expect(approve).toHaveCount(0);
 		} else {
 			await expect(question).toContainText('replacement note');
 		}
-		releasePost?.();
-		releasePost = undefined;
+		releasePost();
+		postReady = false;
+		expect(await postSettled).toBe(currentOutcome === 'network' ? 'failed' : 'finished');
 		await expect(failure).toBeEmpty();
+		if (remoteState === 'removed') {
+			await expect(approve).toHaveCount(0);
+			await expect(question).toBeEmpty();
+		} else {
+			await expect(question).toContainText('replacement note');
+			await expect(approve).toBeEnabled();
+		}
 		remoteState = 'server';
 		await expect(approve).toBeVisible();
 	}

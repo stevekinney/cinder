@@ -111,7 +111,7 @@ const CROSS_ENGINE_SHARDS = [
 		// about — which is the mistake this comment exists to stop repeating.
 		'**/error-handling.e2e.ts',
 		// Measured on 2026-09-12: this keeps the shard at 53 contexts
-		// (webkit-1 54, webkit-2 62, webkit-3 62, webkit-4 53, webkit-5 52).
+		// (webkit-1 54, webkit-2 62, webkit-3 62, webkit-4 53, webkit-5 54).
 		'**/server-owned-approval-flow.e2e.ts'
 	],
 	[
@@ -127,11 +127,9 @@ const CROSS_ENGINE_SHARDS = [
 		// would have run in Chromium only, and a WebKit regression would have
 		// left CI green.
 		//
-		// Placed here by measurement, not by eye. `--list` per project read
-		// 54/62/62/51/50 before this entry, and `webkit-2`/`webkit-3` are at the
-		// 64-context ceiling with no headroom — so its one test goes to the
-		// smallest shard, taking this one to 51. Re-run `--list` when this gains
-		// a test; that is a step in adding one, not a reminder afterwards.
+		// Measured after the approval regressions: WebKit shards contain
+		// 54/62/62/53/54 tests, all below the 64-context ceiling. Re-run
+		// `--list` when this file gains a test.
 		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;

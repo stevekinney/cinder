@@ -117,7 +117,7 @@ curl -s http://localhost:4791/api/server-owned/conversations/$ID
 { "id": "session-1-a72e39af-…", "title": "Durability exercise", "messageCount": 0, "messages": [] }
 ```
 
-Ask about recovery. **Observed:** the orphan classification, with a client-safe reason. The engine's own words go to the server log rather than to the browser — a resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The `runId` crosses, because it is this lab's own identifier and it is what makes two orphaned runs distinguishable.
+Ask about recovery. The endpoint reports the orphan classification with a client-safe reason. Provider rejection details are withheld from both the response and server logs because they can contain connection strings. The response and log retain the run identifier, which distinguishes the affected runs.
 
 ```sh
 curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recovery
@@ -130,7 +130,7 @@ curl -s -X POST http://localhost:4791/api/server-owned/conversations/$ID/recover
 	"failures": [
 		{
 			"runId": "session-1-a72e39af-…:0",
-			"reason": "The engine refused to resume this run. The details are in the server log."
+			"reason": "Provider details are withheld."
 		}
 	],
 	"note": "Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers \"nothing to resume\"."
@@ -191,13 +191,12 @@ The storage sentence is inside the announcement, not only in the paragraph besid
 status:     Orphaned. A re-attach was attempted and every candidate rejected, so this
             run's work is terminally gone. Storage is on disk, so a run left in flight
             is recorded for the next process.
-failures:   session-1-a72e39af-…:0 — The engine refused to resume this run.
-            The details are in the server log.
+failures:   session-1-a72e39af-…:0 — Provider details are withheld.
 once:       Reported once. Operative reconciles a stranded run to terminal as it reports
             the rejection, so asking again answers "nothing to resume".
 ```
 
-The run id crosses to the browser; the engine's own words do not. A resume rejection can quote a connection string, and a reason rendered into the page is a reason sent to whoever is looking at it. The full message is in the server log.
+The run identifier remains available in the browser and server log. Provider details are withheld in both places.
 
 **After the restart, second Check**
 

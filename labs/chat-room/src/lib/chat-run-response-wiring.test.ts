@@ -1,4 +1,5 @@
-import { describe, expect, it, mock, spyOn } from 'bun:test';
+import { describe, expect, it } from 'bun:test';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -106,123 +107,41 @@ describe('recovery endpoint serializes classification and history reconciliation
 	});
 
 	it('serializes concurrent POST recovery and persists the first orphan diagnosis', async () => {
-		let releaseFirst!: () => void;
-		const firstHeld = new Promise<void>((resolve) => {
-			releaseFirst = resolve;
+		const result = runRecoveryRouteFixture('concurrent');
+		expect(result).toEqual({
+			classifyCallsBeforeRelease: 1,
+			firstKind: 'orphaned',
+			second: { kind: 'nothing-to-resume', durability: 'memory', previouslyOrphaned: ['run-1'] }
 		});
-		let classifyCalls = 0;
-		const metadata: { orphanedRuns?: string[] } = {};
-		const rememberOrphanedRuns = async (_id: string, runIds: readonly string[]) => {
-			metadata.orphanedRuns = [...(metadata.orphanedRuns ?? []), ...runIds];
-		};
-
-		const recovery = await import('./server-owned-recovery.ts');
-		mock.module('$lib/server-owned-conversations', () => ({
-			AGENT_NAME: 'test-agent',
-			loadConversation: async () => ({ metadata }),
-			orphanedRunsOf: (value: typeof metadata) => value.orphanedRuns ?? [],
-			rememberOrphanedRuns
-		}));
-		mock.module('$lib/server-owned-runtime', () => ({
-			serverOwnedRuntime: () => ({ sessions: {}, durability: 'memory' })
-		}));
-		mock.module('$lib/server-owned-durable', () => ({
-			durableRuntime: async () => ({ engine: {}, checkpointStore: {} })
-		}));
-		mock.module('$lib/toolbox', () => ({ emptyToolbox: {} }));
-		mock.module('@lostgradient/operative', () => ({
-			createSessionHandle: () => ({})
-		}));
-		mock.module('$lib/server-owned-unavailable', () => ({
-			raise: (cause: unknown) => {
-				throw cause;
-			},
-			unavailableDuringShutdown: () => undefined
-		}));
-		mock.module('$lib/server-owned-recovery', () => ({
-			...recovery,
-			classifyRecovery: async () => {
-				classifyCalls += 1;
-				if (classifyCalls === 1) {
-					await firstHeld;
-					return { kind: 'orphaned', failures: [{ runId: 'run-1', reason: 'lost' }] };
-				}
-				return { kind: 'nothing-to-resume' };
-			}
-		}));
-
-		try {
-			const { POST } = await import('../routes/api/server-owned/conversations/[id]/recovery/+server.ts');
-			const first = POST({ params: { id: 'conversation-1' } } as never);
-			await Promise.resolve();
-			const second = POST({ params: { id: 'conversation-1' } } as never);
-			await Promise.resolve();
-			expect(classifyCalls).toBe(1);
-
-			releaseFirst();
-			const [firstResponse, secondResponse] = await Promise.all([first, second]);
-			expect((await firstResponse.json()).kind).toBe('orphaned');
-			expect(await secondResponse.json()).toEqual({
-				kind: 'nothing-to-resume',
-				durability: 'memory',
-				previouslyOrphaned: ['run-1']
-			});
-		} finally {
-			mock.restore();
-		}
 	});
 
-	it('redacts provider credentials when POST logs an orphan rejection', async () => {
-		const credential = 'postgres://user:hunter2@host/db';
-		const recovery = await import('./server-owned-recovery.ts');
-		mock.module('$lib/server-owned-conversations', () => ({
-			AGENT_NAME: 'test-agent',
-			loadConversation: async () => ({ metadata: {} }),
-			orphanedRunsOf: () => [],
-			rememberOrphanedRuns: async () => undefined
-		}));
-		mock.module('$lib/server-owned-runtime', () => ({
-			serverOwnedRuntime: () => ({ sessions: {}, durability: 'memory' })
-		}));
-		mock.module('$lib/server-owned-durable', () => ({
-			durableRuntime: async () => ({ engine: {}, checkpointStore: {} })
-		}));
-		mock.module('$lib/toolbox', () => ({ emptyToolbox: {} }));
-		mock.module('@lostgradient/operative', () => ({ createSessionHandle: () => ({}) }));
-		mock.module('$lib/server-owned-unavailable', () => ({
-			raise: (cause: unknown) => {
-				throw cause;
-			},
-			unavailableDuringShutdown: () => undefined
-		}));
-		mock.module('$lib/server-owned-recovery', () => ({
-			...recovery,
-			classifyRecovery: async () => ({
-				kind: 'orphaned',
-				failures: [{ runId: 'run-secret', reason: `${credential} unreachable` }]
-			})
-		}));
-		const error = spyOn(console, 'error').mockImplementation(() => undefined);
-
-		try {
-			const { POST } = await import('../routes/api/server-owned/conversations/[id]/recovery/+server.ts');
-			const response = await POST({ params: { id: 'conversation-secret' } } as never);
-			expect(await response.json()).toEqual({
-				kind: 'orphaned',
-				durability: 'memory',
-				failures: [
-					{
-						runId: 'run-secret',
-						reason: 'The engine refused to resume this run. The details are in the server log.'
-					}
-				],
-				note: expect.any(String)
-			});
-			expect(error).toHaveBeenCalledTimes(1);
-			expect(error.mock.calls[0]?.[0]).not.toContain(credential);
-		} finally {
-			error.mockRestore();
-			mock.restore();
+	it('redacts provider credentials when POST logs an orphan rejection', () => {
+		const result = runRecoveryRouteFixture('redaction');
+		expect(result.response).toEqual({
+			kind: 'orphaned',
+			durability: 'memory',
+			failures: [{ runId: 'run-secret', reason: 'Provider details are withheld.' }],
+			note: expect.any(String)
+		});
+		expect(Array.isArray(result.logged)).toBe(true);
+		if (!Array.isArray(result.logged) || typeof result.logged[0] !== 'string') {
+			throw new Error('The recovery fixture must capture a server log line.');
 		}
+		expect(result.logged).toHaveLength(1);
+		expect(result.logged[0]).toContain('details withheld');
+		expect(result.logged[0]).not.toContain('postgres://user:hunter2@host/db');
 	});
 });
+
+function runRecoveryRouteFixture(mode: 'concurrent' | 'redaction'): Record<string, unknown> {
+	const result = spawnSync(
+		process.execPath,
+		['src/lib/server-owned-recovery-route-fixture.ts', mode],
+		{
+			cwd: resolve(applicationRoot, '..'),
+			encoding: 'utf8'
+		}
+	);
+	expect(result.status).toBe(0);
+	return JSON.parse(result.stdout) as Record<string, unknown>;
+}

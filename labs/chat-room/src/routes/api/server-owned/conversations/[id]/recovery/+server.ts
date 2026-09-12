@@ -186,7 +186,7 @@ async function respond(id: string): Promise<Response> {
 		durability,
 		failures: outcome.failures.map((failure) => ({
 			runId: failure.runId,
-			reason: 'The engine refused to resume this run. The details are in the server log.'
+			reason: 'Provider details are withheld.'
 		})),
 		note: 'Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers "nothing to resume".'
 	});
