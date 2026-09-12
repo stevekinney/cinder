@@ -106,7 +106,8 @@
         "$TURBO_DEFAULT$",
         "$TURBO_ROOT$/.github/workflows/**",
         "$TURBO_ROOT$/docs/**",
-        "$TURBO_ROOT$/packages/*/package.json"
+        "$TURBO_ROOT$/packages/*/package.json",
+        "$TURBO_ROOT$/packages/testing/scripts/**"
       ],
       "env": ["TURBO_PLATFORM", "RUNNER_OS", "NODE_ENV"]
     },

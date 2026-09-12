@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'bun:test';
-import { readFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { dockerBrowserEnvironment } from './run-browser-docker.ts';
 import {
+  BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND,
   CONTAINER_WRITTEN_PATHS,
   dockerBrowserCommand,
   dockerImageTagForVersion,
@@ -12,8 +14,10 @@ import {
   dockerUpdateCommand,
   gitMetadataEnvironment,
   gitMetadataMountPaths,
+  hostArchitectureGuardResult,
   hostOwnershipEnvironment,
   ownershipReclaimSuffix,
+  readDockerServerArchitecture,
 } from './update-snapshots-docker.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -53,6 +57,75 @@ describe('update-snapshots-docker helpers', () => {
     expect(dockerBrowserCommand(['--grep', 'Button > dark desktop'])).toBe(
       "cd /work && git config --global --add safe.directory /work && bun install --frozen-lockfile && bun run test:browser -- '--grep' 'Button > dark desktop'" +
         RECLAIM_TAIL,
+    );
+  });
+});
+
+describe('host architecture guard', () => {
+  it('reads the Docker daemon architecture instead of the Bun client architecture', () => {
+    const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
+    const dockerPath = resolvePath(directory, 'docker');
+    writeFileSync(
+      dockerPath,
+      '#!/bin/sh\n[ \"$1\" = info ] && [ \"$2\" = --format ] && [ \"$3\" = \"{{.Architecture}}\" ] || exit 2\nprintf \"amd64\\n\"\n',
+    );
+    chmodSync(dockerPath, 0o755);
+    const previousPath = process.env['PATH'];
+    process.env['PATH'] = `${directory}:${previousPath ?? ''}`;
+    try {
+      expect(readDockerServerArchitecture()).toBe('x64');
+    } finally {
+      if (previousPath === undefined) delete process.env['PATH'];
+      else process.env['PATH'] = previousPath;
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  it.each(['exit 0', 'exit 1'])(
+    'fails closed when Docker returns no architecture: %s',
+    (command) => {
+      const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
+      const dockerPath = resolvePath(directory, 'docker');
+      writeFileSync(dockerPath, `#!/bin/sh\n${command}\n`);
+      chmodSync(dockerPath, 0o755);
+      const previousPath = process.env['PATH'];
+      process.env['PATH'] = `${directory}:${previousPath ?? ''}`;
+      try {
+        expect(readDockerServerArchitecture()).toBeUndefined();
+      } finally {
+        if (previousPath === undefined) delete process.env['PATH'];
+        else process.env['PATH'] = previousPath;
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
+
+  it('accepts Docker’s native amd64 spelling for the x64 baseline', () => {
+    expect(hostArchitectureGuardResult('amd64', 'x64')).toEqual({ ok: true });
+    expect(hostArchitectureGuardResult('x86_64', 'x64')).toEqual({ ok: true });
+  });
+  it('passes when the host matches the required baseline architecture', () => {
+    expect(hostArchitectureGuardResult('x64', 'x64')).toEqual({ ok: true });
+  });
+
+  it('uses x64 as the default required architecture', () => {
+    // No explicit second argument: exercises the real default, which is
+    // wired to the committed baselines' recorded architecture.
+    expect(hostArchitectureGuardResult('x64')).toEqual({ ok: true });
+  });
+
+  it('refuses on a mismatched host, names both architectures, and points at the CI dispatch route', () => {
+    const result = hostArchitectureGuardResult('arm64', 'x64');
+    expect(result.ok).toBe(false);
+    if (result.ok) throw new Error('expected refusal');
+    expect(result.message).toContain('arm64');
+    expect(result.message).toContain('x64');
+    expect(result.message).toContain(BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND);
+  });
+
+  it('pins the exact supported command string, not a nonexistent standalone workflow', () => {
+    expect(BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND).toBe(
+      'gh workflow run browser-tests.yaml -f update_baselines=true -f source_ref=<branch> -f base_ref=main',
     );
   });
 });

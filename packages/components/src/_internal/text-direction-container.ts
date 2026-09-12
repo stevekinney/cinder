@@ -280,21 +280,31 @@ function evaluateContainerSizeConstraints(
     /\binline-size\b/i.test(conditionText) && !/\bwidth\b/i.test(conditionText)
       ? inlineSize
       : width;
+  // This branch can never actually run: `conditionText` only ever reaches
+  // here already split into a single feature term. The only entry point,
+  // `evaluateLogicalContainerCondition`, gates on `isFullyParsedContainerCondition`
+  // first, and that validator's `parseContainerCondition` recurses through
+  // `splitTopLevel(text, 'and')` — the exact same splitter
+  // `evaluateParsedLogicalContainerCondition` uses to peel off top-level
+  // "and" clauses before ever calling `evaluateContainerSizeConstraints`.
+  // Whatever text passes validation has therefore already been split (and
+  // each split part independently re-validated as a single leaf term) by
+  // the time evaluation reaches this function, so a `conditionText`
+  // containing both `width` and `inline-size` joined by a top-level `and`
+  // can never arrive here. Kept as a defensive fallback rather than
+  // removed, since deleting it would change this function's contract in a
+  // way nothing here asked for.
+  const andSplitPattern = /\s+and\s+/i;
   if (
     /\bwidth\b/i.test(conditionText) &&
     /\binline-size\b/i.test(conditionText) &&
     /\band\b/i.test(conditionText)
-  ) {
-    return conditionText
-      .split(/\s+and\s+/i)
-      .every((clause) =>
-        evaluateContainerSizeConstraints(
-          clause,
-          /\binline-size\b/i.test(clause) ? inlineSize : width,
-          remSize,
-          inlineSize,
-        ),
-      );
+  ) /* cinder-coverage-unreachable: */ {
+    for (const clause of conditionText.split(andSplitPattern)) /* cinder-coverage-unreachable: */ {
+      const clauseSize = /\binline-size\b/i.test(clause) ? inlineSize : width; // cinder-coverage-unreachable:
+      if (!evaluateContainerSizeConstraints(clause, clauseSize, remSize, inlineSize)) return false; // cinder-coverage-unreachable:
+    } // cinder-coverage-unreachable:
+    return true; // cinder-coverage-unreachable:
   }
   const minimum = /min-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);
   const maximum = /max-(?:width|inline-size)\s*:\s*([\d.]+)(px|rem)/i.exec(conditionText);

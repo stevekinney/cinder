@@ -5,7 +5,13 @@ import { setupHappyDom } from '../test/happy-dom.ts';
 
 setupHappyDom();
 
-const { getSequentialFocusTargets, restoreFocusTo } = await import('./focus.ts');
+const {
+  composedContains,
+  composedFocusScopes,
+  getSequentialFocusTargets,
+  getTabIndexValue,
+  restoreFocusTo,
+} = await import('./focus.ts');
 
 afterEach(() => {
   // Blur any lingering focus so each test starts clean.
@@ -214,6 +220,21 @@ describe('getSequentialFocusTargets', () => {
 
     const fallbackButton = shadow.querySelector('#fallback') as HTMLButtonElement;
     expect(getSequentialFocusTargets(shadow)).not.toContain(fallbackButton);
+    host.remove();
+  });
+
+  test('traverses slot fallback content when the host assigns nothing to the slot at all', () => {
+    // The complement of the case above: with no host children at all,
+    // `assignedNodes()` is empty (not merely empty of elements), so native
+    // fallback content renders and the slot's own declared children become
+    // reachable focus targets.
+    const host = document.createElement('div');
+    const shadow = host.attachShadow({ mode: 'open' });
+    shadow.innerHTML = '<slot><button id="fallback"></button></slot>';
+    document.body.append(host);
+
+    const fallbackButton = shadow.querySelector('#fallback') as HTMLButtonElement;
+    expect(getSequentialFocusTargets(shadow)).toContain(fallbackButton);
     host.remove();
   });
 
@@ -734,5 +755,71 @@ describe('getSequentialFocusTargets', () => {
 
     expect(getSequentialFocusTargets(shadow)).toEqual([]);
     host.remove();
+  });
+});
+
+describe('getTabIndexValue', () => {
+  test('treats a tabindex outside the safe 32-bit range as not sequentially focusable', () => {
+    const button = document.createElement('button');
+    button.setAttribute('tabindex', '99999999999999');
+    document.body.append(button);
+
+    expect(getTabIndexValue(button)).toBe(-1);
+
+    button.remove();
+  });
+});
+
+describe('composedContains', () => {
+  test('does not mistake an unslotted light-DOM child for one assigned to its shadow host', () => {
+    // The host's shadow root declares only a NAMED slot, and this child
+    // carries no matching `slot` attribute, so the browser never assigns it
+    // anywhere: `element.assignedSlot` is null and no slot's
+    // `assignedElements()` includes it either. `composedParentElement` must
+    // still fall through to the light-DOM `parentElement` in that case,
+    // rather than getting stuck.
+    const host = document.createElement('div');
+    const shadowRoot = host.attachShadow({ mode: 'open' });
+    const namedSlot = document.createElement('slot');
+    namedSlot.setAttribute('name', 'known');
+    shadowRoot.append(namedSlot);
+    const orphan = document.createElement('button');
+    host.append(orphan);
+    document.body.append(host);
+
+    expect(composedContains(document.body, orphan)).toBe(true);
+
+    host.remove();
+  });
+});
+
+describe('composedFocusScopes', () => {
+  test('walks outward through every level of nested shadow trees to the document', () => {
+    const outerHost = document.createElement('div');
+    const outerShadow = outerHost.attachShadow({ mode: 'open' });
+    const innerHost = document.createElement('div');
+    outerShadow.append(innerHost);
+    const innerShadow = innerHost.attachShadow({ mode: 'open' });
+    const anchor = document.createElement('button');
+    innerShadow.append(anchor);
+    document.body.append(outerHost);
+
+    const scopes = [...composedFocusScopes(anchor)];
+
+    expect(scopes).toEqual([
+      { root: innerShadow, anchor },
+      { root: outerShadow, anchor: innerHost },
+      { root: document, anchor: outerHost },
+    ]);
+
+    outerHost.remove();
+  });
+
+  test('accepts a detached element as its own searchable focus scope', () => {
+    const anchor = document.createElement('div');
+    const scope = [...composedFocusScopes(anchor)];
+    expect(scope).toHaveLength(1);
+    expect(scope[0]?.root).toBe(anchor);
+    expect(scope[0]?.anchor).toBe(anchor);
   });
 });

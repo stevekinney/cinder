@@ -101,14 +101,24 @@ export function resolveTextDirection(
     computedDirection !== rootComputedDirection
   )
     return computedDirection;
+  // `hasDirectionStylingHint` below can never actually return true at this
+  // point: it and the main loop above share `directionStyleRuleCache` and
+  // ask the identical question (inline `style.direction`, or a matching CSS
+  // direction rule) over the identical ancestor chain. The main loop
+  // returns early via getComputedStyle (which always resolves `direction`
+  // to exactly `rtl` or `ltr`, never anything falsy) the moment ANY
+  // ancestor's answer is true — so reaching this line at all already proves
+  // every ancestor's cached answer was false, and hasDirectionStylingHint's
+  // fresh read of that same cache can only repeat it. Kept as a defensive
+  // fallback rather than removed, since deleting it would change this
+  // function's contract in a way nothing here asked for.
   if (
     computedDirection &&
     fallback &&
     computedDirection !== fallback &&
     hasDirectionStylingHint(element, false, directionStyleRuleCache)
-  ) {
-    return computedDirection;
-  }
+  )
+    return computedDirection; // cinder-coverage-unreachable: see above
   if (!fallback && computedDirection === 'rtl') return computedDirection;
 
   if (fallback) return fallback;

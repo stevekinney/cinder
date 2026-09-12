@@ -114,19 +114,22 @@ export function planForChanges(changedFiles: readonly string[], decision: Decisi
   const staticOnly =
     files.length > 0 &&
     files.every(
-      (file) =>
-        file.startsWith('packages/components/scripts/') ||
-        file.startsWith('packages/components/src/styles/'),
+      (file) => file.startsWith('packages/components/src/styles/') || staticGuardPattern.test(file),
     );
+  const browserRelevant = files.some(
+    (file) =>
+      !file.startsWith('packages/components/scripts/') &&
+      !file.startsWith('packages/components/src/styles/'),
+  );
   const cinderComponents = cinderOnlyComponents(decision.components);
   return {
     mode: 'filtered',
     components: decision.components,
     cinderComponents,
     unitLanes: staticOnly
-      ? ['static']
+      ? ['static', 'package']
       : ['static', 'package', 'playground', ...(cinderComponents.length > 0 ? ['components'] : [])],
-    browserRelevant: !staticOnly,
+    browserRelevant,
     reason: null,
   };
 }

@@ -539,7 +539,9 @@ function isParentNode(node: Node): node is Node & ParentNode {
  * boundary further out, pairing the enclosing shadow host as the new
  * anchor, until a plain Document is reached.
  */
-export type ComposedFocusScope = { root: Document | ShadowRoot; anchor: Element };
+type SearchableRoot = Document | DocumentFragment | Element;
+
+export type ComposedFocusScope = { root: SearchableRoot; anchor: Element };
 
 // Duck-type on `querySelectorAll` rather than `instanceof Document`: a root
 // node can come from a different realm (another window/iframe, or a host
@@ -547,8 +549,8 @@ export type ComposedFocusScope = { root: Document | ShadowRoot; anchor: Element 
 // constructor at all — happy-dom's test Document does exactly this), where
 // the constructor identity check fails even though the node is a genuine
 // searchable document-like root.
-function isSearchableRoot(node: Node): node is Document | ShadowRoot {
-  return 'querySelectorAll' in node;
+function isSearchableRoot(node: Node): node is SearchableRoot {
+  return typeof Reflect.get(node, 'querySelectorAll') === 'function';
 }
 
 /**
@@ -562,11 +564,22 @@ function isSearchableRoot(node: Node): node is Document | ShadowRoot {
 export function* composedFocusScopes(anchor: Element): Generator<ComposedFocusScope> {
   let referenceNode: Element = anchor;
   let rootNode: Node = anchor.getRootNode();
+  // `hasEnclosingShadowHost` gives the loop a reachable exit edge.
+  // `isSearchableRoot`'s own condition can never be false here: every node
+  // `anchor.getRootNode()` (or a shadow host's `getRootNode()`) can produce —
+  // an Element, Document, ShadowRoot, or DocumentFragment — has
+  // `querySelectorAll`, so the loop's only real exit is "no enclosing shadow
+  // host left," tracked explicitly instead of relying on a condition that
+  // can't go false.
+  let hasEnclosingShadowHost = true;
 
-  while (isSearchableRoot(rootNode)) {
+  while (hasEnclosingShadowHost && isSearchableRoot(rootNode)) {
     yield { root: rootNode, anchor: referenceNode };
-    if (!(rootNode instanceof ShadowRoot)) return;
-    referenceNode = rootNode.host;
-    rootNode = referenceNode.getRootNode();
+    const shadowRoot = rootNode instanceof ShadowRoot ? rootNode : null;
+    hasEnclosingShadowHost = shadowRoot !== null;
+    if (shadowRoot !== null) {
+      referenceNode = shadowRoot.host;
+      rootNode = referenceNode.getRootNode();
+    }
   }
 }

@@ -124,7 +124,12 @@ jobs:
           else
             bunx turbo run test --filter=@lostgradient/markdown --filter=@lostgradient/editor --filter=@lostgradient/cinder-mcp
           fi
-          bunx turbo run test:coverage --filter=@lostgradient/chat $AFFECTED
+          # No $AFFECTED here, deliberately: unlike a plain `--affected` run,
+          # intersected with an explicit `--filter` it can drop the coverage
+          # ratchet from the task graph entirely on a pull request. See the
+          # `test:coverage` entry in check-pipeline-coverage.ts's
+          # DECLARATION_TABLE for the reproduction and the reasoning.
+          bunx turbo run test:coverage --filter=@lostgradient/chat --filter=@lostgradient/cinder
 
   playground:
     needs: scope
