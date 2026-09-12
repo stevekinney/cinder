@@ -255,22 +255,25 @@
 <style>
 	.chat {
 		flex: 1;
-		/*
-			ZERO, deliberately, and the fix for the collapse is NOT here.
-
-			The obvious repair for a transcript squeezed to nothing is a floor on
-			this child plus a scrollable page. Both were tried and both are
-			wrong: a scrollable page hands the scroll to the document, and
-			`server-owned-streaming.e2e.ts` pins the opposite property — the
-			TRANSCRIPT scrolls, the page does not, because page-scroll is exactly
-			what a collapsed viewport produces. That test caught the trade
-			immediately.
-
-			So the space is reclaimed from what was taking it instead: the
-			recovery panel is collapsed by default. This child keeps shrinking
-			freely, which is what lets its internal scroll work at all.
-		*/
+		/* The idle transcript owns scrolling. The page supplies an 8rem floor
+		   while approval or recovery content is visible. */
 		min-block-size: 0;
+	}
+
+	/* Approval removal hands focus here programmatically. Firefox does not
+	   match :focus-visible for that handoff, so keep the destination visible
+	   whenever focused. An inset ring stays inside the scrolling transcript. */
+	.chat :global([role='log']:focus) {
+		outline: var(--cinder-ring-width) solid transparent;
+		box-shadow: inset 0 0 0 var(--cinder-ring-width)
+			var(--_cinder-chat-timeline-ring, var(--cinder-ring-color));
+	}
+
+	@media (forced-colors: active) {
+		.chat :global([role='log']:focus) {
+			outline: var(--cinder-ring-width) solid ButtonText;
+			outline-offset: calc(var(--cinder-ring-width) * -1);
+		}
 	}
 
 	.failure {

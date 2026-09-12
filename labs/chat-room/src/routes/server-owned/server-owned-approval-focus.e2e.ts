@@ -53,14 +53,26 @@ test('answering keeps focus inside the chat', async ({ page }) => {
 		'false'
 	);
 
-	// NOT `<body>`. The status region is where the consequence of the decision
-	// is announced, so it is where focus belongs.
-	const landed = await page.evaluate(() => ({
-		tag: document.activeElement?.tagName.toLowerCase() ?? '(none)',
-		testId: document.activeElement?.getAttribute('data-testid') ?? '(none)'
-	}));
-	expect(landed.tag).not.toBe('body');
-	expect(landed.testId).toBe('approval-question');
+	// NOT `<body>`. The named status target is where the consequence of the
+	// decision is announced, so it is where focus belongs. It must remain a
+	// real, visible focus target after the approval subtree is removed.
+	const landed = page.getByRole('log', { name: 'Messages' });
+	await expect(landed).toBeFocused();
+	await expect(landed).toBeVisible();
+	const landedGeometry = await landed.evaluate((element) => {
+		const rectangle = element.getBoundingClientRect();
+		const style = getComputedStyle(element);
+		return {
+			width: rectangle.width,
+			height: rectangle.height,
+			focusIndicator:
+				(style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0) ||
+				style.boxShadow !== 'none'
+		};
+	});
+	expect(landedGeometry.width).toBeGreaterThan(1);
+	expect(landedGeometry.height).toBeGreaterThan(1);
+	expect(landedGeometry.focusIndicator).toBe(true);
 });
 
 test('a remote answer hands focus back when polling removes the controls', async ({
@@ -94,7 +106,23 @@ test('a remote answer hands focus back when polling removes the controls', async
 	});
 
 	await expect(approve).toHaveCount(0);
-	await expect(page.locator('[data-testid="approval-question"]')).toBeFocused();
+	const landed = page.getByRole('log', { name: 'Messages' });
+	await expect(landed).toBeFocused();
+	await expect(landed).toBeVisible();
+	const landedGeometry = await landed.evaluate((element) => {
+		const rectangle = element.getBoundingClientRect();
+		const style = getComputedStyle(element);
+		return {
+			width: rectangle.width,
+			height: rectangle.height,
+			focusIndicator:
+				(style.outlineStyle !== 'none' && Number.parseFloat(style.outlineWidth) > 0) ||
+				style.boxShadow !== 'none'
+		};
+	});
+	expect(landedGeometry.width).toBeGreaterThan(1);
+	expect(landedGeometry.height).toBeGreaterThan(1);
+	expect(landedGeometry.focusIndicator).toBe(true);
 });
 
 test('a remote replacement hands focus back when the pending call changes', async ({ page }) => {

@@ -94,8 +94,10 @@
 			// Checked AGAIN after the body is read, because awaiting it is another
 			// point where the turn can end underneath this response.
 			if (stale()) return;
-			// FOCUS IS HANDED OFF when the question GOES AWAY *or CHANGES*, and the
-			// second half is a consent defect rather than an ergonomic one.
+			// FOCUS IS HANDED OFF when the question GOES AWAY *or CHANGES*. A removed
+			// question returns focus to the visible transcript; a replacement moves it
+			// to the new question, and that second half is a consent defect rather
+			// than an ergonomic one.
 			//
 			// Another tab answering A while the same step advances to B leaves
 			// `pending` non-null, so the previous version reused the already
@@ -103,13 +105,14 @@
 			// identical status text, so B is never announced — and pressing Enter
 			// then approves B's arguments on the strength of having read A's.
 			//
-			// Moving focus back to the question forces the new one to be read, and
-			// re-announces it because the region's text is replaced rather than
-			// left in place.
+			// Moving focus to the replacement question forces the new one to be read,
+			// and re-announces it because the region's text is replaced rather than
+			// left in place. Moving focus to the transcript on removal keeps focus
+			// visible and named instead of leaving it on the now-empty status node.
 			const answeredOrChanged = body.pending === null || body.pending.callId !== pending?.callId;
 			if (answeredOrChanged) {
 				invalidateDecision();
-				handOffFocusFromApproval();
+				handOffFocusFromApproval(body.pending);
 			}
 			pending = body.pending;
 			// A SUCCESS CLEARS THE POLL'S OWN FAILURE. Without this a single
@@ -133,10 +136,21 @@
 		}
 	}
 
-	function handOffFocusFromApproval(): void {
+	function focusChatTranscript(): void {
+		const transcript = approvalSection?.parentElement?.querySelector<HTMLElement>(
+			'[data-testid="server-owned-chat"] [role="log"]'
+		);
+		transcript?.focus();
+	}
+
+	function handOffFocusFromApproval(nextPending: PendingApproval | null): void {
 		const active = document.activeElement;
 		if (active === null || approvalSection === null) return;
 		if (!approvalSection.contains(active)) return;
+		if (nextPending === null) {
+			focusChatTranscript();
+			return;
+		}
 		approvalQuestion?.focus();
 	}
 
@@ -212,7 +226,7 @@
 			}
 			// FOCUS FIRST, then clear — the same handoff the poll and the cleanup
 			// use, so all three paths agree rather than one of them remembering.
-			handOffFocusFromApproval();
+			handOffFocusFromApproval(null);
 			pending = null;
 
 			// IN-FLIGHT POLLS ARE INVALIDATED, because answering settles the
@@ -259,7 +273,7 @@
 	$effect(() => {
 		if (!streaming) {
 			invalidateDecision();
-			handOffFocusFromApproval();
+			handOffFocusFromApproval(null);
 			pending = null;
 			// CLEARED, because nothing polls after this to clear it. A poll that
 			// failed just before an otherwise successful turn ended used to leave
@@ -318,7 +332,7 @@
 		THE ANNOUNCEMENT and THE ARGUMENTS are separate elements, because two
 		earlier fixes collided when they were one.
 
-		Moving focus after a decision needs this element programmatically
+		Moving focus to a replacement question needs this element programmatically
 		focusable, which `tabindex="-1"` gives. Bounding a long note's height
 		made the same element a SCROLL container — and `-1` keeps a scroll
 		container out of the tab order, so a sighted keyboard-only user could
