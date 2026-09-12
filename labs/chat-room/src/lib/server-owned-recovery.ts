@@ -64,10 +64,16 @@ export type RecoveryFailure = {
  * terminal path.
  */
 export function disposeRecoveredRunWhenSettled(run: AgentRun): void {
-	void run.result().then(
-		() => run[Symbol.dispose](),
-		() => run[Symbol.dispose]()
-	);
+	const dispose = (): void => {
+		try {
+			run[Symbol.dispose]();
+		} catch {
+			// The response and run are already settled. Report cleanup failure
+			// without leaking provider details or rejecting a detached promise.
+			console.warn('[server-owned] recovered run cleanup failed; details withheld');
+		}
+	};
+	void run.result().then(dispose, dispose);
 }
 
 const RECOVERY_LOCKS = Symbol.for('cinder.chat-room.server-owned.recovery-locks');

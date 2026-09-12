@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'bun:test';
+import { describe, expect, it, spyOn } from 'bun:test';
 import { createAgent, SessionRecoverEvent } from '@lostgradient/operative';
 import type { AgentRun, SessionHandle } from '@lostgradient/operative';
 
@@ -143,6 +143,34 @@ describe('classifyRecovery', () => {
 });
 
 describe('disposeRecoveredRunWhenSettled', () => {
+	it.each(['resolved', 'rejected'] as const)(
+		'contains disposal failures after a %s result',
+		async (outcome) => {
+			const warning = spyOn(console, 'warn').mockImplementation(() => {});
+			let disposeCalls = 0;
+			const result =
+				outcome === 'resolved' ? Promise.resolve() : Promise.reject(new Error('run failed'));
+			const run = {
+				result: () => result,
+				[Symbol.dispose]: () => {
+					disposeCalls += 1;
+					throw new Error('secret disposal details');
+				}
+			} as unknown as AgentRun;
+			try {
+				disposeRecoveredRunWhenSettled(run);
+				await new Promise<void>((resolve) => setTimeout(resolve, 0));
+				expect(disposeCalls).toBe(1);
+				expect(warning).toHaveBeenCalledTimes(1);
+				expect(warning).toHaveBeenCalledWith(
+					'[server-owned] recovered run cleanup failed; details withheld'
+				);
+			} finally {
+				warning.mockRestore();
+			}
+		}
+	);
+
 	it('disposes an actual settled AgentRun without changing its terminal result', async () => {
 		let releaseGeneration!: () => void;
 		const generationHeld = new Promise<void>((resolve) => {
