@@ -7,7 +7,7 @@ renders only the visible rows plus overscan; you own the row markup through the
 
 Use `VirtualList` to window an already-loaded large collection. Use [`LoadMore`](../load-more/README.md) to fetch another page as the reader reaches the end of a growing result set; the two can be composed when a paginated collection also needs windowed rendering — or use `onEndReached` below to drive the fetch from scroll position directly.
 
-For two-dimensional data, reach for [`DataGrid`](../data-grid/README.md) rather than composing grids out of this: it owns column virtualization and `role="grid"` semantics. The repository's [virtualization guide](../../../../../docs/virtualization.md) explains why cinder ships three windowing engines and which one backs each component.
+For two-dimensional data, reach for [`DataGrid`](../data-grid/README.md) rather than composing grids out of this: it owns column virtualization and `role="grid"` semantics. The repository's [virtualization guide](https://github.com/stevekinney/cinder/blob/main/docs/virtualization.md) explains why cinder ships three windowing engines and which one backs each component.
 
 ## Choosing a row-sizing mode
 

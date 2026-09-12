@@ -7,6 +7,7 @@ This directory holds long-form documentation that does not live inside a compone
 - [Packaging contract](./packaging.md): npm tarball contents, conditional exports, and CSS consumption modes.
 - [Design tokens](./tokens.md): public `--cinder-*` tokens and their defaults.
 - [Theming and dark mode](./theming.md): the `color-scheme` / `light-dark()` contract, a Svelte toggle recipe, and Storybook integration.
+- [Virtualization](./virtualization.md): which component to reach for when windowing a collection, the three engines behind them, and why VirtualList stays dependency-free.
 - [Recipes](./recipes/README.md): copy-paste patterns that compose existing primitives.
 
 ## Policies and Audits

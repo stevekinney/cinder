@@ -9,7 +9,7 @@
    * @tag performance
    * @useWhen Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.
    * @useWhen Rows vary in size because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.
-   * @useWhen Windowing along the inline axis, including right-to-left, with horizontal.
+   * @useWhen Windowing along the inline axis — set horizontal, which also resolves right-to-left layout from the container's own writing direction.
    * @useWhen Building a chat transcript that stays anchored to its newest message — reverse pins on every append, unlike stickToBottom.
    * @useWhen Loading more in either direction as the reader nears an edge, via onEndReached and onStartReached.
    * @useWhen You need a reusable primitive that owns the scroll container but leaves row markup to a snippet.
