@@ -279,13 +279,21 @@
 		cursor: pointer;
 	}
 
-	button:hover:not(:disabled) {
+	button:hover:not(:disabled):not([aria-disabled='true']) {
 		background: var(--cinder-accent-solid-hover);
 	}
 
-	/* Disabled while a create is in flight — it has to read as unavailable
-	   rather than merely unchanged, since the label also swaps to "Creating…". */
-	button:disabled {
+	/* Unavailable while a create is in flight — it has to READ as unavailable
+	   rather than merely unchanged, since the label also swaps to "Creating…".
+
+	   Keyed on `aria-disabled`, not `:disabled`. The button deliberately uses
+	   the ARIA state so it stays focusable (see the note at the markup), which
+	   means `:disabled` never matches and a `:not(:disabled)` hover rule keeps
+	   matching. Left alone, a sighted user kept the accent, the hover response,
+	   and the pointer cursor on a control whose activations were being ignored —
+	   the visual affordance and the actual behaviour disagreeing, which is worse
+	   than either state alone. */
+	button[aria-disabled='true'] {
 		background: var(--cinder-surface-inset);
 		color: var(--cinder-text-disabled);
 		cursor: not-allowed;

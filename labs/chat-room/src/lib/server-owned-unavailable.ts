@@ -16,8 +16,21 @@ import { SHUTDOWN_FAILURE } from './server-owned-runtime.ts';
  * someone forgot would be indistinguishable from a real crash. It also keeps
  * the wording in one place, so it is a sentence rather than a stack trace.
  *
- * The error is NOT forwarded. The client gets a fixed sentence; the cause stays
- * server-side, where the signal handler already reports it.
+ * The error is NOT forwarded, and it is not logged either — an omission rather
+ * than an oversight, which is worth stating because the two look identical in a
+ * diff.
+ *
+ * Both errors this maps are constructed HERE, by this module, with fixed
+ * messages and no cause: `RuntimeTerminatingError` means the latch is closed
+ * and `RuntimeDisposedDuringBuildError` means disposal won a race. Neither
+ * carries information a log line could add, and both occur once per request
+ * during a shutdown that is already being reported by the signal handler — so
+ * logging them would produce a burst of identical lines saying what the
+ * shutdown message already said.
+ *
+ * The failures that DO carry a diagnostic — a rejected teardown, a disposal
+ * that threw — are reported by the signal handler at the point they happen,
+ * which is where the storage or engine error actually is.
  */
 export function unavailableDuringShutdown(cause: unknown): Response | undefined {
 	// BOTH shutdown rejections, not just the latch. A request that was already

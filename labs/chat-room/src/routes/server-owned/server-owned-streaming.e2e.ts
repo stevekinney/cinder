@@ -481,3 +481,49 @@ test('two conversations sharing a title are distinguishable to a screen reader',
 	expect(names[0]).not.toBe(names[1]);
 	for (const name of names) expect(name.startsWith(shared)).toBe(true);
 });
+
+test('a failed create leaves focus on the button that failed', async ({ page }) => {
+	// Lives in THIS spec rather than beside the other list-route tests because
+	// only this one is matched by `CROSS_ENGINE`. Focus is the most
+	// engine-divergent behaviour in the whole lab — macOS WebKit ships Full
+	// Keyboard Access off, so what Tab reaches differs by engine — which makes
+	// Chromium-only coverage of a focus regression close to worthless.
+	//
+	// It drives focus programmatically and presses Enter rather than tabbing,
+	// so it asserts the same property on all three engines without depending on
+	// the platform's keyboard-access setting.
+	// A native `disabled` attribute makes an element unfocusable, so activating
+	// this button from the keyboard moved focus to `<body>` — and re-enabling it
+	// on the failure path left focus there. The next Tab would start from the
+	// top of the page rather than at the form whose alert had just announced the
+	// failure, which is the moment a keyboard user least wants to be relocated.
+	//
+	// Asserted through the KEYBOARD, not a click: a click leaves focus wherever
+	// the pointer put it, so a mouse-driven version of this test would pass
+	// against the bug.
+	await page.route('**/api/server-owned/conversations', (route) =>
+		route.request().method() === 'POST'
+			? route.fulfill({
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify({ error: 'Nope.' })
+				})
+			: route.continue()
+	);
+
+	await gotoHydrated(page, '/server-owned');
+
+	await page.getByTestId('server-owned-new-title').fill('Focus check');
+	await page.getByTestId('server-owned-create').focus();
+	await page.keyboard.press('Enter');
+
+	// The failure is announced…
+	await expect(page.getByTestId('server-owned-failure')).not.toBeEmpty();
+
+	// …and focus is still on the control that failed, so the next Tab continues
+	// from the form rather than from the document.
+	const focused = await page.evaluate(
+		() => document.activeElement?.getAttribute('data-testid') ?? ''
+	);
+	expect(focused).toBe('server-owned-create');
+});
