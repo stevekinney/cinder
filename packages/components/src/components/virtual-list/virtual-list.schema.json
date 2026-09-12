@@ -34,6 +34,21 @@
       "type": "boolean",
       "description": "Remember the scroll position across navigation, keyed by\n`scrollRestorationId`.\n\nThe position is written to `sessionStorage` when the list tears down, and read\nback when it mounts. Deliberately not on every scroll: that would mean a\nstorage write per frame during a fling, and teardown is the last moment the\nposition is knowable anyway. The consequence is that a tab closed by a crash,\nrather than by navigating away, will not have saved.\n\nStorage failures are swallowed: a browser in private mode or at its quota throws\non write — and on read — and losing a remembered offset must not break the list.\n\nHas no effect without a `scrollRestorationId` — see that prop for why.\n\nExplicitly `| undefined`, like the other conditionally-supplied props: this\npackage compiles with `exactOptionalPropertyTypes`, under which optional and\nundefined-valued differ, and `scrollRestoration={enabled ? true : undefined}`\nwould otherwise fail to typecheck.\n\nDefaults to false."
     },
+    "stickyItems": {
+      "type": "array",
+      "items": {
+        "type": "number"
+      },
+      "description": "Item indexes that stay visible at the leading edge while the reader scrolls\npast them — section headers in a grouped list, most often.\n\nA sticky row is kept mounted even after its own index leaves the rendered\nwindow, which is the part virtualization would otherwise break: unmounting it\nwould make the heading vanish exactly when it is meant to be pinned.\n\nIndexes outside the list, duplicates, and non-integers are dropped rather than\nthrowing — a bad sticky index is a cosmetic problem, not a correctness one."
+    },
+    "smoothScroll": {
+      "type": "boolean",
+      "description": "Animate `scrollToIndex` by default instead of jumping.\n\nEquivalent to passing `behavior: 'smooth'` on every call; an explicit\n`behavior` in the call's options still wins. Scroll corrections under\n`dynamicSize` are never animated whatever this is set to — a smooth\ncorrection would visibly perform the jump it exists to hide.\n\nDefaults to false."
+    },
+    "adaptiveOverscan": {
+      "type": "boolean",
+      "description": "Grow `overscan` while the reader is scrolling fast, and shrink it back when\nthey slow down.\n\n`overscan` becomes a floor rather than a fixed value: a fast fling renders\nfurther ahead to cut pop-in, and a stationary list falls back to exactly what\nwas configured so the DOM stays small. The growth is bounded, because an\nunbounded overscan during a fling would mount thousands of rows and defeat the\npoint of virtualizing at all.\n\nDefaults to false."
+    },
     "scrollRestorationId": {
       "type": "string",
       "description": "Stable id under which `scrollRestoration` saves this list's position.\n\nRequired for restoration to do anything. There is deliberately no default:\nan implicit key derived from position or order would silently hand one\nlist's remembered offset to a different list after a refactor, and two lists\non one page would overwrite each other. Choose something tied to what the\nlist shows, such as a route or collection name."

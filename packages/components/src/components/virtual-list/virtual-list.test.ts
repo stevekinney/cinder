@@ -1221,8 +1221,10 @@ describe('VirtualList — dynamicSize', () => {
     ]) {
       expect(source).toContain(handler);
     }
-    // A letter keypress is not a viewport takeover; only scrolling keys are.
-    expect(source).toContain('SCROLLING_KEYS.has(event.key)');
+    // A letter keypress is not a viewport takeover, and neither is an arrow across an
+    // axis that does not overflow — it scrolls nothing, so retiring a settle loop for
+    // it abandons a correction still owed to the destination.
+    expect(source).toContain('scrollsMainAxis(event.key)');
   });
 
   test('still forwards consumer wheel, pointer, touch, and key handlers', async () => {
@@ -1254,9 +1256,15 @@ describe('VirtualList — dynamicSize', () => {
   });
 
   test('clamps the re-anchor offset to the rebuilt anchor row', async () => {
-    // A reader deep inside a measured tall row would, across a rebuild that replaces
-    // it with a small estimate, be placed many rows past the anchor — which then
-    // unmounts and can never be remeasured to correct the position.
+    // A reader deep inside a tall row would, across a rebuild that shrinks it, be
+    // carried many rows past the anchor — which then unmounts and can never be
+    // remeasured to correct the position.
+    //
+    // The anchor row is deliberately UNMEASURED here, so its size comes from the
+    // estimate and shrinks with it. An earlier version of this test used a MEASURED
+    // anchor, whose size survives the estimate change; the carried-forward offset
+    // then still fit inside the row and an unclamped implementation produced exactly
+    // the same number, so the assertion passed either way.
     installFakeResizeObserver();
     const base = {
       items: makeItems(200),
@@ -1264,34 +1272,25 @@ describe('VirtualList — dynamicSize', () => {
       dynamicSize: true,
       'aria-label': 'Events',
     };
-    const view = render(VirtualList, { ...base, itemHeight: 20, row: rowSnippet() });
+    const view = render(VirtualList, { ...base, itemHeight: 1_000, row: rowSnippet() });
 
     const list = view.container.querySelector('.cinder-virtual-list') as HTMLElement;
-    list.scrollTop = 200;
+
+    // Sit 900px into row 10, which spans [10000, 11000) at the large estimate.
+    list.scrollTop = 10_900;
     await fireEvent.scroll(list);
     await tick();
 
-    // Row 10 is mounted and measures 400px, far taller than the estimate.
-    reportRowSizes(new Map([[10, 400]]));
-    await tick();
-
-    // Sit deep inside that row: it now spans [200, 600).
-    list.scrollTop = 560;
-    await fireEvent.scroll(list);
-    await tick();
-
-    // An estimate change rebuilds row 10 back down to 40px.
+    // The estimate collapses. Row 10 now spans [400, 440): its whole size is 40px,
+    // far less than the 900px the reader was carrying inside it.
     await view.rerender({ ...base, itemHeight: 40, row: rowSnippet() });
     await tick();
     await tick();
 
-    // Row 10 starts at 400 in the rebuilt table and is 400px tall (its measurement
-    // survives an estimate change), so a 360px intra-row offset still fits. What
-    // matters is that the reader stays within the anchor row rather than being
-    // carried past it.
     const anchorStart = 10 * 40;
+    // Unclamped this lands at 400 + 900 = 1300, inside row 32.
     expect(list.scrollTop).toBeGreaterThanOrEqual(anchorStart);
-    expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 400);
+    expect(list.scrollTop).toBeLessThanOrEqual(anchorStart + 40);
   });
 });
 
@@ -2519,5 +2518,1037 @@ describe('VirtualList — scrollRestoration lifecycle', () => {
       expect(raw).toBeDefined();
       expect(JSON.parse(raw as string).startIndex).toBe(200);
     });
+  });
+});
+
+describe('VirtualList — list semantics', () => {
+  test('announces each row as 1-based within the FULL collection, not the window', async () => {
+    // The whole reason these attributes are needed on a virtualized list: without
+    // them assistive technology announces the rendered window, so a 10,000-row list
+    // reads as "3 of 12".
+    const { container } = render(VirtualList, {
+      items: makeItems(10_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index="0"]') as HTMLElement;
+    expect(firstRow.getAttribute('aria-posinset')).toBe('1');
+    expect(firstRow.getAttribute('aria-setsize')).toBe('10000');
+    expect(renderedRows(container).length).toBeLessThan(100);
+  });
+});
+
+describe('VirtualList — stickyItems', () => {
+  test('keeps a sticky row mounted after the reader scrolls past it', async () => {
+    // A pinned header whose index leaves the window would be unmounted by plain
+    // virtualization, so the heading would vanish exactly when it is meant to show.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+
+    await waitFor(() =>
+      expect(renderedRows(container).some((node) => node.dataset['index'] === '200')).toBe(true),
+    );
+    const sticky = container.querySelector<HTMLElement>('[data-cinder-virtual-index="0"]');
+    expect(sticky).not.toBeNull();
+    expect(sticky?.getAttribute('data-cinder-sticky')).toBe('true');
+    expect(sticky?.getAttribute('data-cinder-sticky-active')).toBe('true');
+  });
+
+  test('renders the pinned row in index order, since it is read by assistive technology', async () => {
+    // Ordering costs nothing visually — the row is absolutely positioned, so it does
+    // not lay out among its siblings, and it stays above them by the sticky rule's
+    // `z-index` rather than by coming last. What ordering buys is reading order: this
+    // element is exposed to assistive technology, so it belongs where the row does.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
+    );
+
+    const indexes = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-cinder-virtual-index]'),
+    ).map((node) => Number(node.dataset['cinderVirtualIndex']));
+    expect(indexes[0]).toBe(0);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+  });
+
+  test('keeps the pinned row absolutely positioned despite the sticky rule matching it too', async () => {
+    // Both rules match a pinned row at equal specificity, so source order alone
+    // decided the winner — and `position: sticky` took it back, putting the row into
+    // flow and displacing every row after it. The selector carries both attributes so
+    // the outcome does not depend on which rule is written first.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    expect(source).toContain("[data-cinder-sticky='true'][data-cinder-sticky-pinned='true']");
+  });
+
+  test('keeps the very same DOM node as a sticky row crosses the window boundary', async () => {
+    // The reason the pinned row stays in the keyed each rather than moving to an
+    // element of its own: Svelte cannot carry identity across that boundary, so a row
+    // holding local state or a focused control would be destroyed and rebuilt every
+    // time it crossed.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      getKey: (_item: unknown, index: number) => `row-${index}`,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const before = container.querySelector('[data-cinder-virtual-index="0"]');
+    expect(before).not.toBeNull();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
+    );
+
+    const after = container.querySelector('[data-cinder-virtual-index="0"]');
+    expect(after).toBe(before);
+  });
+
+  test('leaves the sticky attributes off when no sticky items are configured', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    expect(container.querySelector('[data-cinder-sticky]')).toBeNull();
+  });
+});
+
+describe('VirtualList — smoothScroll', () => {
+  function renderWithRef(extra: Record<string, unknown>) {
+    let listRef: VirtualListRef | undefined;
+    const rendered = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+      ...extra,
+      get ref() {
+        return listRef;
+      },
+      set ref(next: VirtualListRef | undefined) {
+        listRef = next;
+      },
+    });
+    return { ...rendered, getRef: () => listRef };
+  }
+
+  test('animates scrollToIndex by default when smoothScroll is on', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({ smoothScroll: true });
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start' });
+    await tick();
+    expect(behaviors).toContain('smooth');
+  });
+
+  test('an explicit behavior in the call still wins', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({ smoothScroll: true });
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start', behavior: 'auto' });
+    await tick();
+    expect(behaviors).not.toContain('smooth');
+  });
+
+  test('does not animate when smoothScroll is off', async () => {
+    const behaviors: (string | undefined)[] = [];
+    const { container, getRef } = renderWithRef({});
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTo = ((options: ScrollToOptions) => {
+      behaviors.push(options?.behavior);
+    }) as typeof list.scrollTo;
+
+    getRef()?.scrollToIndex(400, { align: 'start' });
+    await tick();
+    expect(behaviors).not.toContain('smooth');
+  });
+});
+
+describe('VirtualList — adaptiveOverscan', () => {
+  test('never renders fewer rows than the configured overscan', async () => {
+    // The floor is the safety property: turning adaptation on must not be able to
+    // make pop-in worse than leaving it off.
+    const baseline = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 6,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+    await waitFor(() => expect(renderedRows(baseline.container).length).toBeGreaterThan(0));
+    const baselineCount = renderedRows(baseline.container).length;
+
+    const adaptive = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 6,
+      adaptiveOverscan: true,
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+    await waitFor(() => expect(renderedRows(adaptive.container).length).toBeGreaterThan(0));
+
+    expect(renderedRows(adaptive.container).length).toBeGreaterThanOrEqual(baselineCount);
+  });
+});
+
+describe('VirtualList — sticky and keyboard corrections', () => {
+  test('pins an out-of-window sticky row without displacing the window', async () => {
+    // Left in flow, a non-contiguous row lays out ahead of the rows around the reader
+    // and pushes every one of them down by its own height.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
+    );
+
+    // The offset is relative to the WINDOW, which already carries its own leading
+    // translation — so it is the difference between them, not the raw scroll offset.
+    // Asserting the literal number I happened to write was how a compounded offset
+    // that put the header 4000px below the viewport passed for two rounds.
+    const windowElement = container.querySelector<HTMLElement>('.cinder-virtual-list__window');
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
+    const leading = Number.parseFloat(windowElement?.style.insetBlockStart ?? '0');
+    const pinnedOffset = Number.parseFloat(pinned?.style.insetBlockStart ?? '');
+    expect(leading + pinnedOffset).toBe(4_000);
+
+    // And those rows still begin where the window's leading offset says. Queried from
+    // the row WRAPPERS: `renderedRows` returns the snippet's own element, which does
+    // not carry the component's data attributes.
+    const flowIndexes = Array.from(
+      container.querySelectorAll<HTMLElement>('[data-cinder-virtual-index]'),
+    )
+      .filter((node) => node.dataset['cinderStickyPinned'] !== 'true')
+      .map((node) => Number(node.dataset['cinderVirtualIndex']));
+    expect(flowIndexes[0]).toBe(200);
+    expect(flowIndexes).toEqual([...flowIndexes].sort((left, right) => left - right));
+  });
+
+  test('activates the sticky row for the VISIBLE row, not the overscanned edge', async () => {
+    // With overscan the rendered edge sits several rows above the viewport, so using
+    // it activated the next section's header early.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 5,
+      stickyItems: [0, 100],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    // Row 98 is at the top; the rendered edge is 93. Section 100 has NOT been reached.
+    list.scrollTop = 1_960;
+    await fireEvent.scroll(list);
+    await tick();
+
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
+    expect(pinned?.dataset['cinderVirtualIndex']).toBe('0');
+  });
+
+  test('leaves arrow keys to a control inside a row', async () => {
+    // A row with a text input or slider uses these keys itself.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const rowElement = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+
+    const bubbled = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    rowElement.dispatchEvent(bubbled);
+    expect(bubbled.defaultPrevented).toBe(false);
+
+    // Aimed at the container itself, it is claimed.
+    const direct = new KeyboardEvent('keydown', {
+      key: 'ArrowDown',
+      bubbles: true,
+      cancelable: true,
+    });
+    list.dispatchEvent(direct);
+    expect(direct.defaultPrevented).toBe(true);
+  });
+
+  test('omits set-position semantics when the consumer owns the role', async () => {
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      role: 'presentation',
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const firstRow = container.querySelector('[data-cinder-virtual-index]') as HTMLElement;
+    expect(firstRow.hasAttribute('aria-posinset')).toBe(false);
+    expect(firstRow.hasAttribute('aria-setsize')).toBe(false);
+  });
+});
+
+describe('VirtualList — keyboard navigation past a sticky header', () => {
+  afterEach(() => {
+    restoreResizeObserver();
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('counts a measured header that is still inside the rendered window', async () => {
+    // The P1 case. `pinnedStickyIndex` is null while the header is still mounted in
+    // the overscanned window, but CSS has been holding it over the leading edge that
+    // whole time. Measuring the obstruction from the pinned row alone reported it as
+    // zero here, so ArrowDown advanced to the row directly beneath a 100px header —
+    // five 20px rows the reader cannot see.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    // Row 0 is really a 100px header. Rows are 20px, so offsets run
+    // [0, 100, 120, 140, 160, 180, ...].
+    reportRowSizes(new Map([[0, 100]]));
+    await tick();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+    list.scrollTop = 50;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+
+    // Partway into the header, the first row it is NOT covering starts at 150, which
+    // is row 3. ArrowDown therefore goes to row 4, at offset 160 — and lands it just
+    // below the header rather than under it: 160 - 100.
+    expect(scrollTop.value()).toBe(60);
+  });
+
+  test('moves in both directions when parked exactly where a header starts', async () => {
+    // Every step onto or off a section lands at precisely start(header), so this is
+    // the offset the list sits at most often. It is also where the two obstruction
+    // rules disagree: the header is simultaneously the first visible row and the
+    // thing covering the leading edge, and whichever way that is resolved, one of
+    // the two directions stops moving unless stepping passes over sticky rows.
+    // A render each, rather than one list rewound between the two presses. Setting
+    // the offset back to where a keypress started is indistinguishable from that
+    // press not having moved yet, which is a state only the test can produce.
+    async function pressFromHeaderStart(key: string): Promise<number> {
+      const { container } = render(VirtualList, {
+        items: makeItems(1_000),
+        itemHeight: 20,
+        height: '200px',
+        overscan: 0,
+        stickyItems: [0, 10],
+        row: rowSnippet(),
+        'aria-label': 'Feed',
+      });
+
+      await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+      const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+      const scrollTop = instrumentScrollTop(list);
+
+      // start(10) === 200, with header 10 held at the leading edge.
+      list.scrollTop = 200;
+      await fireEvent.scroll(list);
+      await tick();
+
+      await fireEvent.keyDown(list, { key });
+      await tick();
+      return scrollTop.value();
+    }
+
+    // Down: row 11 is uncovered, so the step goes to 12 and clears header 10.
+    expect(await pressFromHeaderStart('ArrowDown')).toBe(220);
+
+    // Up: the step from 11 reaches 10, which IS the header — its own inset is zero,
+    // so the target resolves to 200 and the key does nothing. Passing over it reaches
+    // row 9, cleared of header 0.
+    expect(await pressFromHeaderStart('ArrowUp')).toBe(160);
+  });
+
+  test('re-derives a keyboard destination as the rows it jumps into are measured', async () => {
+    // The P2 case. An earlier version wrote the offset directly whenever a header was
+    // pinned, which skipped the settle loop: under dynamicSize an End jump lands on
+    // estimates, and the measurements that arrive afterwards move the target out from
+    // under it.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    reportRowSizes(new Map([[0, 100]]));
+    await tick();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 50;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'End' });
+    await tick();
+
+    // Total is 100 rows: row 0 at 100px and 99 at 20px, so 2080 against a 200px
+    // viewport. End settles at the bottom rather than at a stale estimate's idea of it.
+    await waitFor(() => expect(list.scrollTop).toBe(1_880));
+  });
+});
+
+describe('VirtualList — paging and key repeat past a sticky header', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('keeps a dynamic pinned row measurable rather than freezing its size', async () => {
+    // Out of flow the row has no siblings to size against and would collapse to its
+    // content, so it needs a floor. A DEFINITE size is the wrong floor: together with
+    // the row's own `overflow: hidden` it freezes the observed border box, so a header
+    // whose content arrives while it is pinned can never be remeasured — it stays
+    // clipped, and the obstruction every keyboard offset is measured against stays
+    // stale, until the row happens to re-enter the rendered window.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await waitFor(() =>
+      expect(container.querySelector('[data-cinder-sticky-pinned="true"]')).not.toBeNull(),
+    );
+
+    const pinned = container.querySelector<HTMLElement>('[data-cinder-sticky-pinned="true"]');
+    // Neither bound. A definite size froze the observed border box so growth could
+    // never be seen; a minimum froze shrinkage instead, holding empty space and
+    // reporting the larger obstruction to every keyboard destination. Both came from
+    // special-casing this row — every other dynamic row is left unsized so it can be
+    // measured, and out of flow this one is sized by its own content, which is the
+    // intrinsic extent the observer exists to read.
+    expect(pinned?.style.blockSize).toBe('');
+    expect(pinned?.style.minBlockSize).toBe('');
+    expect(pinned?.style.maxBlockSize).toBe('');
+    // But it is still positioned, which is the part that keeps it out of flow.
+    expect(pinned?.style.insetBlockStart).not.toBe('');
+
+    restoreResizeObserver();
+  });
+
+  test('a horizontal page key retires the settle loop it interrupts', async () => {
+    // Only horizontal reaches this. The Page keys are in the block-axis scroll set, so
+    // a vertical list retires the loop on the way in; the inline set leaves them out,
+    // because a horizontal container is not what the browser pages with — but this
+    // component claims them in either orientation. A loop left running writes its own
+    // destination back once measurements settle and undoes the page.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(200),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      horizontal: true,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Columns',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // Somewhere with room to move in either direction.
+    list.scrollLeft = 2_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Home starts a settle pass back toward the start, which writes 0 at once and then
+    // keeps re-deriving that destination as rows are measured.
+    const pressed = fireEvent.keyDown(list, { key: 'Home' });
+    // PageDown lands inside its pending frames and claims the scroll for itself.
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    // A measurement the interrupted loop would have re-targeted against.
+    reportRowSizes(new Map([[150, 120]]));
+    await pressed;
+    await tick();
+
+    // One page on from where Home left the reader — 200px of viewport less the 20px
+    // header — rather than snapped back to 0 by the loop it interrupted.
+    await waitFor(() => expect(Math.round(list.scrollLeft)).toBe(180));
+
+    restoreResizeObserver();
+
+    // And the retire itself, structurally, because the assertion above does not
+    // discriminate: happy-dom's frame scheduling lets the interrupted loop exit before
+    // the page key lands, so it passes with or without the call. Only a real smooth
+    // animation keeps the loop alive long enough to write its destination back. The
+    // mechanism is covered behaviourally elsewhere — see the off-axis arrow test — so
+    // what is worth pinning here is that this branch uses it.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+    const pageBranch = source.slice(
+      source.indexOf("if (event.key === 'PageDown' || event.key === 'PageUp') {"),
+      source.indexOf('const target = resolveKeyboardTargetIndex({'),
+    );
+    expect(pageBranch).toContain('retireSettleLoop();');
+  });
+
+  test('pages against the header waiting at the destination, not the one here', async () => {
+    // Consecutive headers need not be the same size once they are measured. Stepping by
+    // the CURRENT header's uncovered viewport hides the difference: crossing into a
+    // section whose header is taller leaves the band between the two heights covered on
+    // arrival, and it is never read — it was below the fold before the press and behind
+    // the header after it.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0, 20],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // Row 20 has to be MOUNTED before it can be measured — the observer only sees rows
+    // in the window, so reporting a size for one outside it does nothing at all.
+    list.scrollTop = 400;
+    await fireEvent.scroll(list);
+    await tick();
+    // Header 0 is 20px; header 20, the next section's, is 100px.
+    reportRowSizes(new Map([[20, 100]]));
+    await tick();
+
+    const scrollTop = instrumentScrollTop(list);
+
+    // Rows are 20px and row 20 is 100px, so row 20 starts at 400 and the section after
+    // it at 500. Parked at 220 the viewport ends at 420, just inside that section.
+    list.scrollTop = 220;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // The destination's header is the 100px one, so the visible bottom of 420 has to
+    // land 100px below the new top rather than 20px: 420 - 100.
+    await waitFor(() => expect(scrollTop.value()).toBe(320));
+
+    // And nothing was skipped — content at the old visible bottom is now exactly at the
+    // new uncovered top.
+    expect(scrollTop.value() + 100).toBe(420);
+
+    restoreResizeObserver();
+  });
+
+  test('returns to where it started when a page down is paged back up', async () => {
+    // The property both asymmetry reports were really asking for, and the reason paging
+    // moved to pixels: an index-based step has to guess a row count, and the guess that
+    // is right going forward is wrong coming back. A pixel move of the uncovered
+    // viewport is reversible by construction.
+    //
+    // Deliberately started off a row boundary, which is where every index-based version
+    // of this went wrong — the partly visible trailing row going down, and the partly
+    // covered leading row coming back up.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 36,
+      height: '360px',
+      overscan: 0,
+      stickyItems: [0, 25, 50, 75],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    for (const start of [1_810, 1_800, 907, 36]) {
+      list.scrollTop = start;
+      await fireEvent.scroll(list);
+      await tick();
+
+      await fireEvent.keyDown(list, { key: 'PageDown' });
+      await tick();
+
+      // The distance itself, not only that it came back. A round trip alone would pass
+      // for any symmetric-but-wrong step — the viewport including the header, say — so
+      // both halves are pinned: 360px of viewport less the 36px header is 324.
+      expect(scrollTop.value()).toBe(start + 324);
+
+      await fireEvent.scroll(list);
+      await tick();
+      await fireEvent.keyDown(list, { key: 'PageUp' });
+      await tick();
+
+      expect(scrollTop.value()).toBe(start);
+    }
+  });
+
+  test('pages by measured rows, not by the itemHeight estimate', async () => {
+    // Under dynamicSize `itemHeight` is only the initial guess. Converting the viewport
+    // into rows with it paged nine indexes where one was due — 100px rows against a
+    // 20px estimate — stepping over every row in between. The settle loop cannot undo
+    // that: it corrects the destination's pixels, not which row was asked for.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(500),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    // A 20px header over content rows that really measure 100px.
+    const measured = new Map<number, number>([[0, 20]]);
+    for (let index = 1; index < 500; index += 1) measured.set(index, 100);
+    reportRowSizes(measured);
+    await tick();
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    // Row 1 starts at 20 and the header covers through 40, so row 1 is the first
+    // uncovered one and rows 1 and 2 are what the 200px viewport exposes.
+    list.scrollTop = 20;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // Two rows on, not nine: row 3 starts at 220 and clears the header at 200.
+    await waitFor(() => expect(scrollTop.value()).toBe(200));
+
+    restoreResizeObserver();
+  });
+
+  test('pages by the rows the header leaves visible, not by the whole viewport', async () => {
+    // A 200px viewport over 20px rows fits ten, but a 20px header covers one of them,
+    // so only nine are exposed. Paging by ten steps over the row under the header:
+    // covered before the press and covered after it, so it is never read.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+
+    // start(200) === 4000, with header 0 pinned over the leading edge.
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await fireEvent.keyDown(list, { key: 'PageDown' });
+    await tick();
+
+    // Row 201 is the first uncovered one, so a nine-row page reaches 210 — which is
+    // exactly the row a ten-row page would have jumped over. It lands below the
+    // header: start(210) - 20.
+    expect(scrollTop.value()).toBe(4_180);
+  });
+
+  test('keeps correcting a dynamic destination through an off-axis arrow', async () => {
+    // An off-axis arrow scrolls nothing here, so it must not retire the settle loop.
+    // Under dynamicSize that loop is what re-derives the destination once the rows the
+    // jump landed among are measured; retired early, the scroll stops on the estimate
+    // it first computed and never comes back for the correction.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    // End against all-estimates: 100 rows at 20px is 2000, less a 200px viewport.
+    const pressed = fireEvent.keyDown(list, { key: 'End' });
+    // Lands inside the settle loop's pending frames, which is where retiring it bites.
+    await fireEvent.keyDown(list, { key: 'ArrowRight' });
+    // A row turns out to be 120px rather than 20px, so the end of the list is 100px
+    // further on than the first write assumed.
+    reportRowSizes(new Map([[95, 120]]));
+    await pressed;
+    await tick();
+
+    await waitFor(() => expect(list.scrollTop).toBe(1_900));
+
+    restoreResizeObserver();
+  });
+});
+
+describe('VirtualList — adaptive overscan and settling under row controls', () => {
+  afterEach(() => {
+    restoreResizeObserver();
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('converts scroll velocity with measured rows rather than the estimate', async () => {
+    // Structural, because the behaviour cannot be observed here: driving the velocity
+    // tracker needs two scroll events a controlled interval apart, and events fired
+    // from a test land in the same millisecond, which reads as an effectively infinite
+    // velocity and saturates adaptive overscan at its ceiling whichever row size it
+    // converts with. The arithmetic itself is covered in `adaptive-overscan.test.ts`;
+    // this pins the wiring, which is the half that was wrong.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+    expect(source).toContain('itemSize: averageRowSize');
+    expect(source).toContain('resolveAdaptiveItemSize({');
+    // Measured rows only — the offsets total would let the untouched estimates
+    // dominate, which in a long list is the estimate again in all but name.
+    expect(source).toContain('measuredTotalSize: measurementStore.measuredTotalSize');
+  });
+
+  test('leaves a settle pass running when a key comes from a control inside a row', async () => {
+    // The list does not claim those keys, so the event scrolls nothing here — and
+    // retiring the loop for it cancels a correction the destination is still owed,
+    // finishing the jump on a stale estimate.
+    installFakeResizeObserver();
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      dynamicSize: true,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+
+    const pressed = fireEvent.keyDown(list, { key: 'End' });
+    // An ArrowDown from a control inside a row, mid-settle. Same key the list would
+    // otherwise claim, but not aimed at the container.
+    const rowNode = renderedRows(container)[0] as HTMLElement;
+    await fireEvent.keyDown(rowNode, { key: 'ArrowDown', bubbles: true });
+    reportRowSizes(new Map([[95, 120]]));
+    await pressed;
+    await tick();
+
+    // 100 rows at 20px is 2000, plus the 100px that row 95 turned out to be, less a
+    // 200px viewport.
+    await waitFor(() => expect(list.scrollTop).toBe(1_900));
+  });
+});
+
+describe('VirtualList — edge callbacks under adaptive overscan', () => {
+  test('reads the visible range from scroll geometry, not from the window', async () => {
+    // Structural, for the same reason as the adaptive row-size test above: reproducing
+    // this needs the effective overscan to exceed the configured one, which only
+    // velocity produces — and events fired from a test share a timestamp, so the
+    // velocity tracker reports zero and adaptation never engages. CIN-614 adds the
+    // playground example that makes it reachable in a browser.
+    //
+    // What it pins is the invariant, because BOTH ways of undoing the window's
+    // overscan are wrong and in opposite directions. Subtracting the configured
+    // overscan leaves the adaptive growth in, and the callbacks fire tens of rows
+    // early. Subtracting the effective overscan over-corrects at the list's own edges,
+    // where the window is clamped and the overscan realized on that side is smaller
+    // than the one requested — in a 100-row list `endIndex` is 100 however wide
+    // adaptation grew, so the last visible row reads as 49 and `onEndReached` is
+    // suppressed until the idle timer shrinks the window back.
+    //
+    // The visible range therefore must not be reconstructed from the window at all.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+    const edgeEffect = source.slice(
+      source.indexOf('const lastRenderedIndex = Math.max(0, itemCount - 1);'),
+      source.indexOf('const maskedProximity'),
+    );
+    expect(edgeEffect).toContain('resolveAnchorIndexAtOffset(scrollOffset)');
+    expect(edgeEffect).not.toContain('currentWindow.startIndex');
+    expect(edgeEffect).not.toContain('currentWindow.endIndex');
+
+    // And the trigger distance stays the CONFIGURED overscan. Widening it with the
+    // effective value would fetch pages earlier the faster the reader scrolled, which
+    // is not what the prop promises.
+    expect(edgeEffect).toContain('overscan: resolvedOverscan');
+    expect(edgeEffect).not.toContain('overscan: effectiveOverscan');
+  });
+
+  test('still fires both callbacks with an overscan wider than the list', async () => {
+    // The clamping case, exercised by configuration rather than by velocity: with an
+    // overscan half the collection, the window is pinned to both edges at once, so
+    // every index the window could offer is clamped and only the geometry still
+    // describes what the reader can see.
+    let startReached = 0;
+    let endReached = 0;
+    const { container } = render(VirtualList, {
+      items: makeItems(100),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 50,
+      onStartReached: () => {
+        startReached += 1;
+      },
+      onEndReached: () => {
+        endReached += 1;
+      },
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    await waitFor(() => expect(startReached).toBe(1));
+
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 1_800;
+    await fireEvent.scroll(list);
+    await tick();
+
+    await waitFor(() => expect(endReached).toBe(1));
+  });
+});
+
+describe('VirtualList — only the active sticky row is held at the edge', () => {
+  afterEach(() => {
+    cleanup();
+    document.body.replaceChildren();
+  });
+
+  test('marks exactly one sticky row active however many are in the window', async () => {
+    // The attribute the stylesheet keys on. An overscanned window can hold several
+    // headers at once, and sticking all of them put every header the reader had passed
+    // at the same inset, stacked on one another.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 30,
+      stickyItems: [0, 5, 10, 15, 20, 25, 30, 35, 40],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    list.scrollTop = 600;
+    await fireEvent.scroll(list);
+    await tick();
+
+    // Several sticky rows are mounted together...
+    const sticky = container.querySelectorAll('[data-cinder-sticky="true"]');
+    expect(sticky.length).toBeGreaterThan(1);
+
+    // ...and exactly one of them is the one being held.
+    const active = container.querySelectorAll('[data-cinder-sticky-active="true"]');
+    expect(active.length).toBe(1);
+    expect((active[0] as HTMLElement).dataset['cinderVirtualIndex']).toBe('30');
+  });
+
+  test('leaves a modified navigation key to the browser', async () => {
+    // Alt with the arrows is back and forward, and Ctrl or Meta with Home and End is
+    // the browser's own. Claiming them moved the list one row and swallowed the
+    // shortcut whole — most damagingly in a horizontal list, where Alt+Left and
+    // Alt+Right are the keys a reader navigates history with.
+    const { container } = render(VirtualList, {
+      items: makeItems(1_000),
+      itemHeight: 20,
+      height: '200px',
+      overscan: 0,
+      stickyItems: [0],
+      row: rowSnippet(),
+      'aria-label': 'Feed',
+    });
+
+    await waitFor(() => expect(renderedRows(container).length).toBeGreaterThan(0));
+    const list = container.querySelector('.cinder-virtual-list') as HTMLElement;
+    const scrollTop = instrumentScrollTop(list);
+    list.scrollTop = 4_000;
+    await fireEvent.scroll(list);
+    await tick();
+
+    for (const modifier of ['altKey', 'ctrlKey', 'metaKey'] as const) {
+      for (const key of ['ArrowDown', 'ArrowUp', 'Home', 'End', 'PageDown']) {
+        const event = await fireEvent.keyDown(list, { key, [modifier]: true });
+        // Not consumed, so the browser still performs its own shortcut...
+        expect(event).toBe(true);
+      }
+    }
+    // ...and the list has not moved for any of them.
+    expect(scrollTop.value()).toBe(4_000);
+
+    // The same keys unmodified are still claimed, so the guard is not simply off.
+    await fireEvent.keyDown(list, { key: 'ArrowDown' });
+    await tick();
+    expect(scrollTop.value()).not.toBe(4_000);
+  });
+
+  test('raises only the active sticky row, which flex layout makes load-bearing', async () => {
+    // `z-index` was on every sticky row, on the reasoning that it is inert unless the
+    // element is positioned. True in block layout, false under `horizontal`, where the
+    // window is a flex container and `z-index` applies to flex items regardless — so
+    // an inactive header approaching the edge entered the same stacking level and,
+    // being later in DOM order, painted over the held one.
+    //
+    // A cascade outcome, so the rule's shape is what is assertable here.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    const activeRule = source.slice(
+      source.indexOf(".cinder-virtual-list__row[data-cinder-sticky-active='true'] {"),
+    );
+    expect(activeRule.slice(0, activeRule.indexOf('}'))).toContain('z-index: 1');
+    // And not on the bare sticky attribute, which every mounted header carries.
+    expect(source).not.toContain("[data-cinder-sticky='true'] {\n    z-index: 1;");
+  });
+
+  test('keeps a pinned horizontal row at its own height', async () => {
+    // A cascade and layout outcome, so the rule's shape is what is assertable here.
+    //
+    // Under `horizontal` the root's block-size is auto and the in-flow window takes
+    // its height from the rows. A pinned row is out of flow, so it no longer counts
+    // toward that height — and anchoring BOTH block edges then sizes it to a height
+    // computed without it. A sticky row taller than its neighbours was squashed to
+    // theirs and its content clipped, at the moment it crossed the window boundary.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    const horizontalPinned = source.slice(
+      source.indexOf(
+        "[data-cinder-orientation='horizontal']\n    .cinder-virtual-list__row[data-cinder-sticky='true'][data-cinder-sticky-pinned='true']",
+      ),
+    );
+    const rule = horizontalPinned.slice(0, horizontalPinned.indexOf('}'));
+    expect(rule).toContain('inset-block-start: 0');
+    expect(rule).not.toContain('inset-block: 0');
+  });
+
+  test('scopes sticky positioning to the active row', async () => {
+    // A cascade outcome, which happy-dom does not compute — the rule's shape is the
+    // only thing assertable here. Paired with the test above, which pins that exactly
+    // one row carries the attribute this selector matches.
+    const source = await Bun.file(new URL('./virtual-list.css', import.meta.url).pathname).text();
+    expect(source).toContain("[data-cinder-sticky-active='true'] {\n    position: sticky;");
+    // And not on the bare sticky attribute, which every mounted header carries.
+    expect(source).not.toContain("[data-cinder-sticky='true'] {\n    position: sticky;");
   });
 });
