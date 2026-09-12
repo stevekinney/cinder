@@ -2,10 +2,12 @@ import { writeSync } from 'node:fs';
 
 import { createSessionStore } from '@lostgradient/operative';
 import type { SessionStore } from '@lostgradient/operative';
-import { MemoryStorage } from '@lostgradient/weft/storage/memory';
 import type { Storage } from '@lostgradient/weft/storage/interface';
 import { textValueStore } from '@lostgradient/weft/storage/text-value-store';
 import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-value-store';
+
+import { serverOwnedStorage } from '$lib/server-owned-storage';
+import type { Durability } from '$lib/server-owned-storage';
 
 /**
  * The server-owned variant's process-wide runtime: one storage, one
@@ -16,10 +18,16 @@ import type { ConditionalTextValueStore } from '@lostgradient/weft/storage/text-
  * → `textValueStore` → `createSessionStore` is the shortest path from Weft's
  * storage primitives to Operative's session surface.
  *
- * In-memory on purpose: this is a lab demonstrating the server-owned shape,
- * not a deployment. Swapping `MemoryStorage` for any other Weft `Storage` is
- * the only change a durable backing store would need, which is itself part of
- * what the variant is meant to show.
+ * In-memory BY DEFAULT: this is a lab demonstrating the server-owned shape,
+ * not a deployment. `serverOwnedStorage()` swaps in SQLite on disk when
+ * `CHAT_ROOM_SERVER_OWNED_DATABASE` names a file, which is what makes the
+ * recovery question answerable across a restart — with nothing surviving the
+ * process there is no run to re-attach to and no stranded run to report.
+ *
+ * The swap really was one line, which is what the earlier version of this
+ * paragraph promised and CIN-445 collected on. It is a line in ONE file
+ * because this field is typed `Storage` rather than `MemoryStorage`; see the
+ * note on it below.
  */
 export type ServerOwnedRuntime = {
 	/**
@@ -35,6 +43,17 @@ export type ServerOwnedRuntime = {
 	readonly storage: Storage;
 	readonly store: ConditionalTextValueStore;
 	readonly sessions: SessionStore;
+	/**
+	 * Whether this runtime's storage survives the process.
+	 *
+	 * Carried on the runtime rather than re-read from the environment wherever
+	 * it is needed: the runtime is built once and memoised on `globalThis`, so
+	 * a later read of a changed variable would describe a storage this process
+	 * is not using.
+	 */
+	readonly durability: Durability;
+	/** Aborted before any runtime teardown begins, including durable engine drain. */
+	readonly shutdownSignal: AbortSignal;
 	/**
 	 * Registers a teardown to run when the runtime is disposed. Anything that
 	 * outlives a single request — a subscription, a durable run, a provider
@@ -69,7 +88,7 @@ const DISPOSAL_SLOT = Symbol.for('cinder.chat-room.server-owned.disposal');
 const TERMINATING_SLOT = Symbol.for('cinder.chat-room.server-owned.terminating');
 
 type RuntimeHost = typeof globalThis & {
-	[RUNTIME_SLOT]?: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> };
+	[RUNTIME_SLOT]?: StoredRuntime;
 	/**
 	 * The disposal currently in flight, so overlapping callers await it rather
 	 * than each concluding there is nothing to do.
@@ -97,6 +116,29 @@ type RuntimeHost = typeof globalThis & {
 	 */
 	[TERMINATING_SLOT]?: true | undefined;
 };
+
+type RuntimeTeardown = () => void | Promise<void>;
+
+type StoredRuntime = {
+	runtime: Omit<ServerOwnedRuntime, 'shutdownSignal'> & {
+		readonly shutdownSignal?: AbortSignal;
+	};
+	shutdownController?: AbortController;
+	teardowns: RuntimeTeardown[];
+};
+
+type HeldRuntime = {
+	runtime: ServerOwnedRuntime;
+	shutdownController: AbortController;
+	teardowns: RuntimeTeardown[];
+};
+
+function isCurrentRuntimeSlot(held: StoredRuntime): held is HeldRuntime {
+	return (
+		held.shutdownController !== undefined &&
+		held.runtime.shutdownSignal === held.shutdownController.signal
+	);
+}
 
 /**
  * Process-stable marker for "the runtime is going away".
@@ -128,20 +170,37 @@ export class RuntimeTerminatingError extends Error {
 	}
 }
 
-function createRuntime(): {
-	runtime: ServerOwnedRuntime;
-	teardowns: Array<() => void | Promise<void>>;
-} {
-	const storage = new MemoryStorage();
+function createRuntime(): HeldRuntime {
+	const { storage, durability, release } = serverOwnedStorage();
 	const store = textValueStore(storage);
 	const sessions = createSessionStore(store);
 	const teardowns: Array<() => void | Promise<void>> = [];
+	const shutdownController = new AbortController();
+
+	// Registered FIRST, which — because teardowns run in reverse registration
+	// order — makes it run LAST, after the durable engine that writes through
+	// this storage has shut down. Closing the database out from under a running
+	// engine would be the opposite of a clean disposal.
+	//
+	// `release`, NOT `storage[Symbol.dispose]`. The in-memory adapter's dispose
+	// clears its contents, so calling it here would delete every session and
+	// checkpoint on the way out — the destructive shutdown the test below
+	// pins against, and which a first attempt at this reintroduced.
+	// `serverOwnedStorage` knows which adapter it built and hands back a
+	// release that is a no-op for the one with nothing to release.
+	//
+	// Without it, every dispose-and-recreate cycle — which is what an HMR edit
+	// does — left the previous SQLite connection and its WAL open while opening
+	// another to the same file.
+	teardowns.push(release);
 
 	return {
 		runtime: {
 			storage,
 			store,
 			sessions,
+			durability,
+			shutdownSignal: shutdownController.signal,
 			onDispose: (teardown) => {
 				teardowns.push(teardown);
 				return () => {
@@ -150,7 +209,26 @@ function createRuntime(): {
 				};
 			}
 		},
-		teardowns
+		teardowns,
+		shutdownController
+	};
+}
+
+function currentRuntimeSlot(held: StoredRuntime): HeldRuntime {
+	if (isCurrentRuntimeSlot(held)) return held;
+
+	const shutdownController = held.shutdownController ?? new AbortController();
+	Object.defineProperty(held.runtime, 'shutdownSignal', {
+		configurable: true,
+		enumerable: true,
+		value: shutdownController.signal,
+		writable: true
+	});
+
+	return {
+		runtime: held.runtime as ServerOwnedRuntime,
+		teardowns: held.teardowns,
+		shutdownController
 	};
 }
 
@@ -162,8 +240,16 @@ export function serverOwnedRuntime(): ServerOwnedRuntime {
 	// Refused rather than built. See `TERMINATING_SLOT`: admitting one more
 	// runtime here is what made the drain unable to finish.
 	if (host[TERMINATING_SLOT] === true) throw new RuntimeTerminatingError();
-	host[RUNTIME_SLOT] ??= createRuntime();
-	return host[RUNTIME_SLOT].runtime;
+	const held = host[RUNTIME_SLOT];
+	if (held === undefined) {
+		const created = createRuntime();
+		host[RUNTIME_SLOT] = created;
+		return created.runtime;
+	}
+
+	const current = currentRuntimeSlot(held);
+	host[RUNTIME_SLOT] = current;
+	return current.runtime;
 }
 
 /**
@@ -354,7 +440,7 @@ export async function disposeServerOwnedRuntime(
  */
 async function drainDisposal(
 	host: RuntimeHost,
-	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
+	held: StoredRuntime
 ): Promise<{ failures: number }> {
 	// The latch is already set by `disposeServerOwnedRuntime`, before any early
 	// return, so that a terminating call which JOINS an in-flight disposal
@@ -369,9 +455,7 @@ async function drainDisposal(
 	host[TERMINATING_SLOT] = true;
 
 	let failures = 0;
-	let generation:
-		| { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
-		| undefined = host[RUNTIME_SLOT] ?? held;
+	let generation: StoredRuntime | undefined = host[RUNTIME_SLOT] ?? held;
 
 	while (generation !== undefined) {
 		failures += (await runDisposal(host, generation)).failures;
@@ -383,10 +467,9 @@ async function drainDisposal(
 	return { failures };
 }
 
-async function runDisposal(
-	host: RuntimeHost,
-	held: { runtime: ServerOwnedRuntime; teardowns: Array<() => void | Promise<void>> }
-): Promise<{ failures: number }> {
+async function runDisposal(host: RuntimeHost, held: StoredRuntime): Promise<{ failures: number }> {
+	const current = currentRuntimeSlot(held);
+
 	// Cleared BEFORE the teardowns run, so a teardown cannot reach the
 	// half-disposed runtime it is in the middle of tearing down.
 	//
@@ -396,9 +479,13 @@ async function runDisposal(
 	// finishing; the teardown sees `RuntimeTerminatingError`, which disposal
 	// isolates and counts like any other teardown failure.
 	host[RUNTIME_SLOT] = undefined;
+	// Abort request-scoped waits after the slot is closed and before the first
+	// teardown. This also covers replacement generations started by a
+	// terminating caller that joined an ordinary disposal.
+	current.shutdownController.abort();
 
 	let failures = 0;
-	for (const teardown of [...held.teardowns].reverse()) {
+	for (const teardown of [...current.teardowns].reverse()) {
 		try {
 			await teardown();
 		} catch (cause) {

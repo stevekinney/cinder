@@ -109,14 +109,28 @@ const CROSS_ENGINE_SHARDS = [
 		// before this entry, so its seven tests go to the smallest shard. My
 		// first attempt put them in the 62 — the one the ceiling note is
 		// about — which is the mistake this comment exists to stop repeating.
-		'**/error-handling.e2e.ts'
+		'**/error-handling.e2e.ts',
+		// Measured on 2026-09-12: this keeps the shard at 53 contexts
+		// (webkit-1 54, webkit-2 62, webkit-3 62, webkit-4 53, webkit-5 54).
+		'**/server-owned-approval-flow.e2e.ts'
 	],
 	[
 		'**/review-views.e2e.ts',
 		'**/row-reconciliation.e2e.ts',
 		'**/utilities.e2e.ts',
 		'**/virtualization.e2e.ts',
-		'**/page.svelte.e2e.ts'
+		'**/page.svelte.e2e.ts',
+		// FOCUS, which is the first category this list exists for, and the
+		// reason this spec has its own file: it asserts where focus lands when
+		// the element holding it is removed, and WebKit's focus-on-removal
+		// semantics differ from Chromium's. Left in `server-owned.e2e.ts` it
+		// would have run in Chromium only, and a WebKit regression would have
+		// left CI green.
+		//
+		// Measured after the approval regressions: WebKit shards contain
+		// 54/62/62/53/54 tests, all below the 64-context ceiling. Re-run
+		// `--list` when this file gains a test.
+		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;
 

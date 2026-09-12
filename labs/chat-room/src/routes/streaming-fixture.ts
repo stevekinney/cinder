@@ -82,6 +82,7 @@ export type FixtureScenario =
 	| 'gated'
 	| 'hold'
 	| 'approval'
+	| 'approval-long'
 	| 'stepped'
 	| 'tool'
 	| 'ratelimited'
@@ -95,6 +96,19 @@ export const HOLD_PARTIAL_TEXT = 'Partial answer before the stop.';
 export const MIDSTREAM_PARTIAL_TEXT = 'Here is the first half';
 export const MIDSTREAM_ERROR_MESSAGE = 'The provider gave up mid-stream.';
 export const APPROVAL_NOTE_TEXT = 'Ship the release notes';
+/**
+ * A note long enough to overflow an unbounded approval prompt.
+ *
+ * The tool's schema puts no length limit on `text`, so a model can propose one
+ * of these — and the approval question renders the proposed arguments. Without
+ * a bound on that display it grows without limit inside a fixed-viewport-height
+ * column, which on a short viewport takes the transcript's space while a person
+ * is still deciding. A short fixture note could never show that.
+ */
+export const APPROVAL_LONG_NOTE_TEXT = Array.from(
+	{ length: 40 },
+	(_, index) => `Line ${index + 1} of a note the model decided to write at length.`
+).join(' ');
 export const APPROVAL_FOLLOW_UP_TEXT = 'Saved that note.';
 export const DEFAULT_REPLY_TEXT = 'Fixture default reply.';
 export const STEPPED_CHUNKS = ['Step one.', 'Step two.', 'Step three.'] as const;
@@ -117,7 +131,11 @@ export function fixtureMarker(scenario: FixtureScenario, marker: string): string
 }
 
 const MARKER_PATTERN =
-	/\[fixture (gated|hold|approval|stepped|tool|ratelimited|unauthorized|midstream) ([A-Za-z0-9-]+)\]/;
+	// `approval-long` BEFORE `approval`: alternation is first-match, so the
+	// shorter name would match its prefix, leave `-long` unconsumed, and fail
+	// the whole pattern — which reads as the fixture serving a default reply
+	// rather than as a marker it could not parse.
+	/\[fixture (gated|hold|approval-long|approval|stepped|tool|ratelimited|unauthorized|midstream) ([A-Za-z0-9-]+)\]/;
 
 /** How many `/v1/messages` requests each marker has produced. */
 const requestCounts = new Map<string, number>();
@@ -291,7 +309,7 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 	// approval scenario returns. Discriminating on the presence of a
 	// `tool_result` block would work too, but it would silently loop back into
 	// another approval if conversationalist ever changed how it lowers one.
-	if (scenario === 'approval' && attempt === 1) {
+	if ((scenario === 'approval' || scenario === 'approval-long') && attempt === 1) {
 		sse(res, 'content_block_start', {
 			type: 'content_block_start',
 			index: 0,
@@ -307,7 +325,9 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 			index: 0,
 			delta: {
 				type: 'input_json_delta',
-				partial_json: JSON.stringify({ text: APPROVAL_NOTE_TEXT })
+				partial_json: JSON.stringify({
+					text: scenario === 'approval-long' ? APPROVAL_LONG_NOTE_TEXT : APPROVAL_NOTE_TEXT
+				})
 			}
 		});
 		sse(res, 'content_block_stop', { type: 'content_block_stop', index: 0 });
@@ -434,7 +454,7 @@ async function respondToMessages(res: ServerResponse, body: string): Promise<voi
 	}
 
 	textBlock(res, [
-		scenario === 'approval'
+		scenario === 'approval' || scenario === 'approval-long'
 			? APPROVAL_FOLLOW_UP_TEXT
 			: scenario === 'tool'
 				? TOOL_FOLLOW_UP_TEXT

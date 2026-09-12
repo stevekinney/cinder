@@ -10,6 +10,7 @@
 	import { onDestroy, untrack } from 'svelte';
 
 	import { toBannerFailure, type BannerFailure } from '$lib/chat-failure';
+	import ApprovalSurface from './approval-surface.svelte';
 
 	/**
 	 * The sentence a failed request meant to say, not the envelope it arrived
@@ -80,7 +81,9 @@
 	// component rather than a reactive read inside it.
 	let conversation = $state<ConversationHistory>(untrack(() => initialConversation));
 	let streaming = $state(false);
-	let failure = $state<BannerFailure | null>(null);
+	// Failures are replaced as immutable records. Preserve their identity so the
+	// approval child clears only the banner it owns across the binding.
+	let failure = $state.raw<BannerFailure | null>(null);
 
 	const session = createChatSessionController({
 		getConversation: () => $state.snapshot(conversation),
@@ -96,17 +99,28 @@
 			// not a user turn — sending the previous user text again would
 			// duplicate it as a new turn.
 			//
-			// This route runs with an empty toolbox (see the stream endpoint's
-			// note: approval belongs to CIN-445), so no continuation can occur
-			// today. The guard is here so that stops being true loudly rather
-			// than silently, if a toolbox is ever added without the approval
-			// wiring that has to come with it.
+			// A CONTINUATION HAS NOTHING TO FETCH HERE, and that is a property of
+			// this family rather than a gap in it.
+			//
+			// The session controller calls the transport again whenever a turn
+			// ended with every tool call resolved, because in the browser-owned
+			// route the client drives the next step. Here the server ran the
+			// whole turn: the approved tool settled, the loop issued a second
+			// generate, and the assistant's reply arrived in the SAME response.
+			// There is no next step to ask for — and no user text to send if
+			// there were, since the last message on this call is a tool result.
+			//
+			// An empty stream is the honest answer. It used to throw, which was
+			// right while the toolbox was empty and a continuation could only
+			// mean a wiring mistake; once a real tool could succeed, that same
+			// throw marked the turn FAILED right after its side effect had
+			// succeeded. The run options this family uses drop
+			// `stopAfterAnyToolCall` precisely so the turn is complete by the
+			// time this is reached.
 			const messages = getMessages(history);
 			const last = messages.at(-1);
 			if (last?.role !== 'user' || typeof last.content !== 'string') {
-				throw new Error(
-					'The server-owned transport was called to continue a run. That path needs approval wiring (CIN-445) before a toolbox is enabled here.'
-				);
+				return (async function* () {})();
 			}
 			const text = last.content;
 
@@ -156,6 +170,8 @@
 		session.dispose();
 	});
 </script>
+
+<ApprovalSurface {id} {streaming} bind:failure {failureMessage} />
 
 <!--
 		Mounted ALWAYS, empty until there is something to say. Chat's own
@@ -237,14 +253,23 @@
 </div>
 
 <style>
-	/*
-		`min-block-size: 0` alongside `flex: 1`: a flex item's automatic minimum
-		size is its content, so without this the wrapper refuses to shrink below
-		the transcript's full height and the page scrolls instead of the
-		transcript.
-	*/
 	.chat {
 		flex: 1;
+		/*
+			ZERO, deliberately, and the fix for the collapse is NOT here.
+
+			The obvious repair for a transcript squeezed to nothing is a floor on
+			this child plus a scrollable page. Both were tried and both are
+			wrong: a scrollable page hands the scroll to the document, and
+			`server-owned-streaming.e2e.ts` pins the opposite property — the
+			TRANSCRIPT scrolls, the page does not, because page-scroll is exactly
+			what a collapsed viewport produces. That test caught the trade
+			immediately.
+
+			So the space is reclaimed from what was taking it instead: the
+			recovery panel is collapsed by default. This child keeps shrinking
+			freely, which is what lets its internal scroll work at all.
+		*/
 		min-block-size: 0;
 	}
 

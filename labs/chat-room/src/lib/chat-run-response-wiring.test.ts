@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'bun:test';
+import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -86,7 +87,64 @@ describe('streaming endpoints share one stream lifecycle', () => {
 			// so a client that disconnects cannot stop the run, and the provider
 			// keeps going and keeps billing. That is the failure these
 			// lifecycle tests exist for, reachable without touching the helper.
-			expect(source).toMatch(/signal:\s*request\.signal/);
+			expect(source).toMatch(/signal:\s*(?:request\.signal|lifecycleSignal)/);
+			if (endpoint.includes('server-owned')) {
+				expect(source).toMatch(/AbortSignal\.any\(\[request\.signal,\s*shutdownSignal\]\)/);
+			}
 		});
 	}
 });
+
+describe('recovery endpoint serializes classification and history reconciliation', () => {
+	it('holds the complete response operation behind the conversation lock', () => {
+		const source = readFileSync(
+			resolve(applicationRoot, 'routes/api/server-owned/conversations/[id]/recovery/+server.ts'),
+			'utf8'
+		);
+		expect(source).toContain('withRecoveryLock');
+		expect(source).toMatch(
+			/return\s+await\s+withRecoveryLock\(params\.id,\s*\(\)\s*=>\s*respond\(params\.id\)\)/
+		);
+		expect(source).not.toContain('failure.reason}`');
+		expect(source).toContain('recoveryFailureLog');
+	});
+
+	it('serializes concurrent POST recovery and persists the first orphan diagnosis', async () => {
+		const result = runRecoveryRouteFixture('concurrent');
+		expect(result).toEqual({
+			classifyCallsBeforeRelease: 1,
+			firstKind: 'orphaned',
+			second: { kind: 'nothing-to-resume', durability: 'memory', previouslyOrphaned: ['run-1'] }
+		});
+	});
+
+	it('redacts provider credentials when POST logs an orphan rejection', () => {
+		const result = runRecoveryRouteFixture('redaction');
+		expect(result.response).toEqual({
+			kind: 'orphaned',
+			durability: 'memory',
+			failures: [{ runId: 'run-secret', reason: 'Provider details are withheld.' }],
+			note: expect.any(String)
+		});
+		expect(Array.isArray(result.logged)).toBe(true);
+		if (!Array.isArray(result.logged) || typeof result.logged[0] !== 'string') {
+			throw new Error('The recovery fixture must capture a server log line.');
+		}
+		expect(result.logged).toHaveLength(1);
+		expect(result.logged[0]).toContain('details withheld');
+		expect(result.logged[0]).not.toContain('postgres://user:hunter2@host/db');
+	});
+});
+
+function runRecoveryRouteFixture(mode: 'concurrent' | 'redaction'): Record<string, unknown> {
+	const result = spawnSync(
+		process.execPath,
+		['src/lib/server-owned-recovery-route-fixture.ts', mode],
+		{
+			cwd: resolve(applicationRoot, '..'),
+			encoding: 'utf8'
+		}
+	);
+	expect(result.status).toBe(0);
+	return JSON.parse(result.stdout) as Record<string, unknown>;
+}

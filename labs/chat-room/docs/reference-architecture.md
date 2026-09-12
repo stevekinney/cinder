@@ -10,32 +10,33 @@ Where a rule names an API, confirm it against the installed declarations before 
 
 ## State model
 
-Two owners, on purpose:
+The two route families have different owners and continuation rules. The stop conditions in each route and its browser transport must agree.
 
-- The browser owns the authoritative `ConversationHistory` value it renders.
-- The server owns an ephemeral `AgentRun` for exactly one HTTP request, plus all authority needed to execute it.
+### Browser-owned route
 
-Operative owns the limits _within_ a run: `createAgent({ maximumSteps, stopWhen, ... })` decides when one `AgentRun` stops. Because the route ends each run after a tool call (see below), that per-run limit resets on every request, so it does not bound the turn. The published chat session controller does: it defaults `maxContinuationTurns` to 5, re-POSTs at most that many times for one user turn, and fails the turn when the limit is reached. Today the browser cap is therefore the effective turn-wide bound, and a host configuring loop limits must set it on the controller rather than on the agent alone. That is a consequence of the current continuation regime, not the target: once Operative drives continuation inside a single request, `maximumSteps` becomes the turn-wide bound and the client cap becomes redundant.
+For `/api/chat`, the browser owns the authoritative `ConversationHistory`. Each request sends that history to a new, ephemeral `AgentRun`, and `stopAfterAnyToolCall` ends the run after the model step and its tool executions. The chat session controller drives subsequent model steps by posting again after a resolved tool result.
 
-Who drives continuation _between_ tool results is a different question, and the honest answer today is the browser. The published chat session controller re-POSTs whenever it observes a resolved, non-approval tool result, so a host that also let Operative continue within the same request would produce two continuations for one tool call. The route therefore stops after any tool call, and the client's existing loop carries the turn forward.
+Operative's `maximumSteps` bounds each individual run, so it resets on each request. The controller's `maxContinuationTurns`, which defaults to 5, bounds the number of follow-up requests for a user turn. Both limits matter, but configuring the agent alone does not bound this browser-driven sequence. The stateless contract in the sections below describes this route family.
 
-So today a request contains **one** model step, plus the tool executions that step triggered. The stateless claim below is about server persistence, not about execution: a new request always starts a new run from the full client-owned history, and the server keeps nothing between them.
+### Server-owned route
 
-Reconciliation of the authoritative post-run history is part of the target state rather than current behaviour. The terminal run frame carrying that history has SHIPPED — `pumpChatRun` emits `run.completed`, `run.error`, `run.tripwire`, or `run.aborted`, and the chat codec decodes them — but nothing consumes the conversation it carries: `run.completed` is handled in `stream-event-codec.ts` and reaches no further. The browser still reconstructs the turn from the text and tool frames it received. The gap is reconciliation, not the frame.
+For `/api/server-owned/conversations/[id]/stream`, the session store owns the authoritative conversation. The browser posts the new user text, and one durable Operative run drives the model and tool steps for that turn. This route uses `stopWhen.noToolCalls()` and deliberately omits `stopAfterAnyToolCall`; `maximumSteps` bounds the multi-step run. Approval pauses execution inside the run through elicitation, then the same run continues after the answer.
 
-That target is Operative owning multi-step continuation inside a single request, with a terminal frame closing it. Reaching it requires the client controller to stop re-POSTing first. Until that lands, a host MUST match whichever side actually drives the loop rather than assuming this document's end state, and the stop condition in the route is the authority on which regime is in force.
+The browser keeps a rendering mirror of the server conversation. Its controller may invoke the transport after a resolved tool result, but a transport call without a new user message returns an empty stream and makes no HTTP request. It must neither repost the previous user text nor start another model run. The browser's continuation cap therefore does not bound this family's server-side model steps.
+
+Both families emit terminal run frames. The client codec decodes them, but the session controller does not reconcile the final conversation carried by those frames; it still builds its rendering history from text and tool frames. In the server-owned family, loading the route again reads the authoritative session-store history. Multi-step execution is implemented there; terminal-history reconciliation remains separate work.
 
 <a id="conversation-ownership"></a>
 
 ## Conversation ownership
 
-The browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to the chat route. The server validates that boundary before passing the value to the run.
+In the browser-owned family, the browser creates, renders, and stores `ConversationHistory`, and sends `{ conversation }` to `/api/chat`. The server validates that boundary before passing the value to the run. In the server-owned family, the session store owns history and the browser posts only the new user text; the loaded and streamed browser history is a rendering mirror.
 
 Operative snapshots the input. It must never mutate the object supplied by the request parser, and the browser must never assume its posted object is updated remotely. During a streamed run, wire events extend the browser's copy, and today that is still the whole story — though for a narrower reason than it used to be. The route now emits a terminal frame after the text and tool frames, and the client decodes it; what is missing is that the session controller never reads the conversation it carries. So the browser reconstructs the turn from the streamed frames, and reconciling the serialized final conversation as the authority remains target state.
 
-System instructions belong to the module-scoped agent definition. They are not appended again when resuming from `{ conversation }` — the posted history already carries the accumulated context.
+System instructions belong to the agent definition. The browser-owned route does not append them again when resuming from `{ conversation }`—the posted history already carries the accumulated context. The server-owned route reads its accumulated history through the session handle.
 
-Approval resume changes one **existing** message: the resolved result replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid, because it leaves the provider with two results for one tool call.
+In the browser-owned park-and-resume path, approval resume changes one existing message: the resolved result replaces the earlier `action_required` result by `callId`. Appending a second tool result for the same call is invalid, because it leaves the provider with two results for one tool call.
 
 <a id="credential-boundary"></a>
 
@@ -53,11 +54,57 @@ The host creates **one module-scoped `Toolbox`** and passes that exact instance 
 
 The secret must stay stable at least as long as an approval descriptor can be resumed, and every server instance that may accept a resume request must use the same secret. A process-random secret is acceptable only as a documented local-development limitation where a restart invalidates pending approvals; it is not the deployable contract.
 
-The agent parks by combining a pending-approval stop condition with a no-tool-calls stop condition. The first stops after an approval-gated result; the second ends an ordinary text response instead of running to `maximumSteps`.
+The browser-owned agent parks by combining a pending-approval stop condition with a no-tool-calls stop condition and `stopAfterAnyToolCall`. The first stops after an approval-gated result; the second ends an ordinary text response instead of running to `maximumSteps`.
 
 The server never trusts a client-edited approval descriptor. The resume route validates its shape and lets the toolbox verify the signature before execution. **Signature validity is necessary but not sufficient**: the host atomically consumes each signed capability before the side effect begins. A second submission returns the already-recorded outcome or a deterministic consumed-capability response — it never calls `resumeApproval()` again. The deployable contract therefore includes a shared consumed-capability ledger keyed by the descriptor's stable identity. A process-local ledger is a local-development limitation and must never be presented as replay protection across restarts or instances. Signature verification comes from the toolbox; the ledger and its idempotency are host responsibilities.
 
-Every tool that can cause a non-reversible external effect must use that approval-and-consumption path. A tool may run unapproved only when it is read-only, safely replayable, or protected by a host-owned idempotency key claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient, because a retry may generate a different call for the same action.
+In the browser-owned family, every tool that can cause a non-reversible external effect must use that approval-and-consumption path. The server-owned family uses the elicitation contract below. A tool may run unapproved only when it is read-only, safely replayable, or protected by a host-owned idempotency key claimed atomically before the effect and reused across retries of the same user intent. A fresh model-generated `toolCallId` is not sufficient, because a retry may generate a different call for the same action.
+
+### Two approval paths, and which one a consumer should reach for
+
+Operative supports approval in two places, and the choice is decided by who owns the run rather than by taste.
+
+**Park and resume, through the toolbox.** The tool declares `policy.beforeExecute` answering `needs_approval`; armorer mints a signed descriptor of the call; the run STOPS; the client sends the descriptor back on a later request and `toolbox.resumeApproval()` verifies it before the effect. Everything about the pending decision travels in that token, so the server holds nothing between the two requests — which is what makes it survive a restart, a load balancer, and a client that waits an hour before answering. This is the canonical browser-owned path, and it is the one to reach for by default.
+
+**Elicit, through the loop.** A `beforeToolExecution` hook calls `ctx.elicit(message, schema)`; the host's `onElicitation` callback answers; the run WAITS inside the step rather than stopping. The decision never becomes a token, so nothing has to be signed, verified, or ledgered — and nothing survives the process either. A pending question is pinned to the one server holding the promise.
+
+The trade is not about ergonomics. It is:
+
+|                                 | Park and resume                                          | Elicit in the loop                                                                  |
+| ------------------------------- | -------------------------------------------------------- | ----------------------------------------------------------------------------------- |
+| Pending state lives             | in a signed token the client holds                       | in the process holding the run                                                      |
+| Survives a restart              | yes                                                      | no — the question dies with the run                                                 |
+| Survives more than one instance | yes, with a shared consumed-capability ledger            | no                                                                                  |
+| Replay protection needed        | yes: signature plus an atomic consumed-capability claim  | no: there is no token to replay                                                     |
+| The run, while waiting          | stopped; the client starts the next turn                 | parked mid-step; the client answers out of band                                     |
+| A denial                        | a tool result the model sees; the conversation continues | the hook drops the call, Operative seals it with an error result, the run completes |
+
+So: **a stateless route owning no run state should park and resume. A route that already owns the run server-side, where the client cannot restart a turn, should elicit.** The server-owned variant below is the second case, and it is not a preference — the park is unreachable there. A continuation there carries no user turn to send, because the last conversation message on that call is a tool result — so the token would be minted and then have nowhere to go. (The transport answers such a call with an empty stream rather than rejecting it; see the continuation rule below. It used to throw, which was right while the toolbox was empty and became destructive once a tool could succeed.)
+
+Two properties of the elicitation path are worth stating because they are not obvious from the type signatures:
+
+- `ctx.elicit` returns `T | null` and never throws. A denial is `null`, and what it means is the hook's decision. `ElicitationDeniedError` is a different thing — the shape a denial takes when a _tool_ throws on one, reconstructed by the durable run adapter — and it is a run terminal. A hook that filters the call out instead is not.
+- **A denied call reports no result of its own, so the host supplies one.** Operative seals the filtered call with an error result in the CONVERSATION — enough that a later replay is not left with a dangling tool call — but dispatches no tool event. The client renders a pending tool row from the `tool_call` frame and resolves it on a result, so without one that row stays pending until another turn or a reload clears it. A gate whose "no" is invisible is worse than no gate.
+
+  So the pump settles it: any call a step leaves without a result gets an `outcome: 'error'` `tool_result` frame, written in the same loop that writes the calls. That placement is the whole trick — a first attempt wrote the frame from the `beforeToolExecution` hook, which runs BEFORE the step's `tool_call` frames reach the wire, so the result described a call the client had not seen and was dropped. The message stays generic (`This call did not run, and reported no result.`) because the pump knows a result is missing but not why.
+
+Two consequences for the run's shape, both of which cost a review round to find:
+
+- **The server-owned family must not stop after a tool call.** `stopAfterAnyToolCall` hands control back to a client that drives the next turn, which is the browser-owned contract. Under elicitation the approval happens mid-step, so stopping there leaves a tool result with no reply after it — and the session controller's continuation attempt then fails the very turn the tool succeeded in. Dropping the condition lets the loop reach a second generate and deliver one complete turn.
+- **A continuation request has nothing to fetch, and must not throw.** The controller re-runs the transport whenever a turn ends with every tool call resolved. In this family the server already sent everything, and there is no user text to send on that call anyway, so the transport answers with an empty stream. Throwing there was right while the toolbox was empty and a continuation could only mean a wiring mistake; it became destructive the moment a tool could succeed.
+
+**A multi-step response renders out of order live, and correctly after a reload.** Measured on the approved-note turn:
+
+```
+live:   You … | Assistant "Saved that note."  Called 1 tool … remember_note Succeeded
+reload: You … | Assistant Called 1 tool … Succeeded | Assistant "Saved that note."
+```
+
+The session controller inserts one assistant placeholder before reading any frames, so when a single response carries two model steps the second step's text is written back into a row that already precedes the tool activity. The follow-up reply therefore appears above the note it is replying about, and disagrees with the server's own history.
+
+Delineating assistant steps belongs to the wire and the controller in `@lostgradient/chat`, and is filed there with these measurements. What this route keeps true in the meantime is the persisted order, which a reload renders and which a spec pins.
+
+**Every gated call needs its own decision, and every decision needs to name its call.** A step can carry more than one approval-gated call — the stop condition runs after a step and never constrained that — so the hook elicits per call rather than once. And because `ctx.elicit` carries no call identity, the answer has to: a click that lands after its own run ended would otherwise settle whatever question is pending next. The host's answering endpoint requires the call id it displayed and compares it in the same step that settles.
 
 <a id="stream-wire-contract"></a>
 
@@ -147,6 +194,24 @@ The canonical path is ephemeral by design: a disconnected or restarted request d
 
 Durable recovery belongs to the server-owned variant below, which must preserve the distinction between live token streaming and recovered execution — the latter may expose only step-level progress. A failed re-attach must be distinguishable in the UI from a benign "nothing to resume".
 
+**Why step-level, precisely.** A live turn streams because the process holding the provider connection is re-encoding its deltas. A recovered run is one the engine resumed from a checkpoint: its progress is whatever the workflow writes from there, which advances a step at a time. The tokens that were in flight when the previous process died were never persisted, so there is nothing to replay. That is the reason, and it is about where events come from rather than about the handle's type.
+
+**A recovered run is NOT a `DiagnosticAgentRun`**, contrary to what this section once implied. Checked against the installed declarations: `SessionHandle.recover()` is declared `Promise<AgentRun | null>` and wraps the recovered handle with `createAgentRun`, deliberately — the comment beside the call reads "wrap it as an `AgentRun` so the caller can observe the resumed run normally." `DiagnosticAgentRun` is what `createDiagnosticAgentRun` produces on the paths that resume a run _without_ a trusted live agent definition; the session path has one, because `SessionHandleContext.runOptions` is required.
+
+The difference between the two shapes is smaller than it sounds, and in one place larger:
+
+- `output()` is absent from `AgentRun` at the default `H = false` anyway, so its absence from `DiagnosticAgentRun` is not a distinction a `recover()` caller could ever observe.
+- `unwrap()` is the accessor they genuinely differ on. At `H = false` it resolves to `Promise<string>` — plain text, no schema validation — so its presence on a recovered handle is a mild hazard at most.
+- `closed()` is the difference with teeth. `DiagnosticAgentRun` downgrades a wrapped `'completed'` to `{ status: 'unresolved', reason: 'unknown-effect' }`, because durability is undeterminable from a recovered wrapper. The session path passes that status through unchanged, so a run recovered through `recover()` can report a durable boundary the wrapper cannot vouch for. Filed upstream against the owning package.
+
+`server-owned-recovery-contract.test.ts` pins each of these at the type level, so a future Operative that narrows `recover()` breaks the build rather than this paragraph.
+
+**Recovery classification is reported once.** `recover()` reconciles a stranded `running` reference as it reports the rejection, so the first ask after a restart answers `orphaned` with its failures and the second answers `nothing-to-resume`. Both are correct. A surface that showed the classification without saying so would look like it lost the answer, so the panel says it.
+
+The kill/restart procedure, its exact commands, and the observed state at each step are in [durability-exercise.md](./durability-exercise.md).
+
+The recovery panel starts collapsed so idle conversations retain a fixed-height chat with its own transcript scroll. When an approval question, recovery status, or failure message is visible, the page may grow and scroll; the chat keeps an `8rem` minimum block size so expanded content cannot consume the transcript and composer. Both layout selectors include failure messages, which may appear when recovery has no success status to show. The short-viewport, long-approval, and failed-recovery browser tests verify those states.
+
 <a id="server-owned-session-variant"></a>
 
 ## Server-owned session variant
@@ -159,6 +224,10 @@ The session store owns the conversation-list index. `SessionStore.list()` return
 
 Ordering is by `updatedAt`, newest first, and the host states that explicitly rather than inheriting a default. Sessions written inside the same millisecond share a timestamp and fall back to key order, which is deterministic but unrelated to creation order — anything needing creation order carries it rather than inferring it from the list. A caller cannot work around that by supplying its own timestamps: the store owns `updatedAt` and overwrites what it is given.
 
-Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities — and they are **target state, not the shipped behaviour**. The variant supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which is the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. Nothing sweeps orphaned references, and `handle.recover()` is not wired up here. This paragraph states what a host owning durable runs has to do, rather than what ships — the difference is deliberate here, and each target-state claim elsewhere in this document says so at the point it is made rather than relying on a blanket assurance. One such assurance used to live in this sentence and was false: three sections still described terminal frames as unshipped after they had landed.
+Reconstructing workflow services on restart, and sweeping orphaned run references that can no longer be resumed, are the host's responsibilities. `handle.recover()` **is** wired up now, behind `POST /api/server-owned/conversations/[id]/recovery` — a POST because asking RECONCILES the stranded run it reports, so the question is one-shot rather than safely repeatable, and its three outcomes are rendered distinctly on the detail route. The variant still supplies a `resolveWorkflowServices` resolver that always answers `status: 'unavailable'`, which remains the honest answer while a run's dependencies are a provider bound to a request-scoped key and a writer bound to one HTTP response: there is nothing to rebuild once that response is gone. So a run this variant recovers is always terminally orphaned, and the endpoint says so rather than reporting the benign "nothing to resume" a bare `null` would suggest. Nothing sweeps orphaned references on a schedule; Operative's own reconciliation of the ref it just rejected is what clears them, one ask at a time.
+
+The backing store is **in-memory by default and SQLite on disk when `CHAT_ROOM_SERVER_OWNED_DATABASE` names a file**. The default is right for a test suite and for a first read; the on-disk branch is what makes the recovery question answerable at all, because nothing else survives a process. `ServerOwnedRuntime.storage` is typed as Weft's `Storage` interface rather than a concrete adapter precisely so this is one line in one file, and the recovery panel names which of the two it is running over — "nothing to resume" is the truth under one and a surprise under the other.
+
+Each target-state claim elsewhere in this document says so at the point it is made rather than relying on a blanket assurance. One such assurance used to live in this section and was false: three sections still described terminal frames as unshipped after they had landed.
 
 This variant must not import Bureau internals or locally recreate capabilities that belong in a published package.

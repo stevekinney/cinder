@@ -667,10 +667,17 @@ async function build(
 			// fails just that recovered run; claiming `'available'` with empty
 			// services would resume it into a run that writes nowhere.
 			//
-			// Moot today — the storage is in-memory, so nothing survives a
-			// process to be recovered — and it stops being moot the moment the
-			// storage is swapped, which is the substitution this lab exists to
-			// make easy. Recovering usefully is CIN-445's subject.
+			// NO LONGER MOOT, and this comment used to say it was: while the
+			// storage was in-memory nothing survived a process to be recovered,
+			// so the resolver never ran. `serverOwnedStorage()` makes the store
+			// durable when `CHAT_ROOM_SERVER_OWNED_DATABASE` names a file, and
+			// the resolver then runs on every boot with a stranded run in the
+			// store — which is what makes a restart report `orphaned` rather
+			// than losing the conversation entirely.
+			//
+			// So this is the reason recovery in this variant always classifies as
+			// terminal rather than recovering, and `docs/durability-exercise.md`
+			// is the performed procedure.
 			resolveWorkflowServices: () => ({
 				status: 'unavailable',
 				reason: 'The chat-room lab binds each run to one HTTP response, which cannot be rebuilt.'
