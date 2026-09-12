@@ -231,6 +231,23 @@
 	let answerEpoch = 0;
 
 	/**
+	 * The active polling session's controller, so anything that fetches on its
+	 * behalf is cancelled with it.
+	 *
+	 * The 409 refresh in `decide()` had no signal while the loop did, so a
+	 * stalled refresh left `decide()` suspended with `deciding = true` — and a
+	 * newer question the loop then discovered could not be answered, because
+	 * every handler returns early while that flag is set.
+	 */
+	let pollController: AbortController | null = null;
+
+	/** Drops a poll-owned alert; nothing polls afterwards to replace it. */
+	function clearPollFailure(): void {
+		if (pollFailure !== null && failure === pollFailure) failure = null;
+		pollFailure = null;
+	}
+
+	/**
 	 * The exact banner value a poll installed, so a poll can clear only that.
 	 *
 	 * A BOOLEAN was not enough, which review caught: with a flag, a poll
@@ -303,10 +320,7 @@
 			// Cleared only when the banner still holds the value THIS poll path
 			// installed. Anything else on screen belongs to `decide()` or to the
 			// controller, and is the more actionable of the two.
-			if (pollFailure !== null && failure === pollFailure) {
-				failure = null;
-			}
-			pollFailure = null;
+			clearPollFailure();
 		} catch (cause) {
 			// An ABORT is this component's own cleanup, not a failure to report.
 			if (signal?.aborted === true) return;
@@ -354,7 +368,7 @@
 				// ONLY 409. The question moved on while it was being read — either
 				// the run ended or it advanced to a different call — so the current
 				// question is the actionable thing and re-reading offers it.
-				await readPendingApproval(pollGeneration);
+				await readPendingApproval(pollGeneration, pollController?.signal);
 				return;
 			}
 			if (!response.ok) {
@@ -425,6 +439,12 @@
 		if (!streaming) {
 			handOffFocusFromApproval();
 			pending = null;
+			// CLEARED, because nothing polls after this to clear it. A poll that
+			// failed just before an otherwise successful turn ended used to leave
+			// its `role="alert"` text on screen indefinitely, describing a
+			// background request rather than the turn the reader just watched
+			// finish.
+			clearPollFailure();
 			// Bumped here too, so a response still in flight from the session that
 			// just ended cannot land and restore its controls.
 			pollGeneration += 1;
@@ -433,6 +453,7 @@
 
 		const generation = pollGeneration;
 		const controller = new AbortController();
+		pollController = controller;
 		answerEpoch = 0;
 		pollFailure = null;
 		let stopped = false;
@@ -449,6 +470,8 @@
 		return () => {
 			stopped = true;
 			controller.abort();
+			if (pollController === controller) pollController = null;
+			clearPollFailure();
 			pollGeneration += 1;
 		};
 	});

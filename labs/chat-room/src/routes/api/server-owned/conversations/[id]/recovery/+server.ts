@@ -59,9 +59,7 @@ async function respond(id: string): Promise<Response> {
 		return json({ error: 'No such conversation.' }, { status: 404 });
 	}
 
-	// What this conversation has ALREADY been told was orphaned. Read before
-	// classifying, because classifying is what adds to it.
-	const previouslyOrphaned = orphanedRunsOf(existing.metadata);
+	void existing;
 
 	const { sessions, durability } = serverOwnedRuntime();
 	const durable = await durableRuntime();
@@ -131,6 +129,16 @@ async function respond(id: string): Promise<Response> {
 	}
 
 	if (outcome.kind === 'nothing-to-resume') {
+		// READ AFTER CLASSIFYING, not before. A snapshot taken before `recover()`
+		// is stale the moment two POSTs overlap: both would see an empty history,
+		// one would consume and record the orphan, and the other would answer
+		// `nothing-to-resume` while reporting that nothing had ever been orphaned
+		// — losing the very evidence this field exists to preserve.
+		//
+		// Re-loaded rather than cached, because the write that matters may have
+		// been another request's.
+		const recorded = await loadConversation(id);
+		const previouslyOrphaned = recorded === undefined ? [] : orphanedRunsOf(recorded.metadata);
 		// PREVIOUSLY ORPHANED RUNS CROSS, so a second ask can say which of two
 		// things "nothing currently resumable" means without relying on a page
 		// remembering. The classification is available exactly once — the
