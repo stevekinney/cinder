@@ -134,9 +134,21 @@ describe('recovery endpoint serializes classification and history reconciliation
 		expect(result.logged[0]).toContain('details withheld');
 		expect(result.logged[0]).not.toContain('postgres://user:hunter2@host/db');
 	});
+
+	it('keeps the orphan diagnosis when recording its history fails', () => {
+		const result = runRecoveryRouteFixture('persistence-failure');
+		expect(result.response).toMatchObject({
+			kind: 'orphaned',
+			failures: [{ runId: 'run-orphaned', reason: 'Provider details are withheld.' }],
+			note: expect.stringContaining('The orphan diagnosis could not be saved for later checks.')
+		});
+		expect(JSON.stringify(result)).not.toContain('sqlite password leaked');
+	});
 });
 
-function runRecoveryRouteFixture(mode: 'concurrent' | 'redaction'): Record<string, unknown> {
+function runRecoveryRouteFixture(
+	mode: 'concurrent' | 'redaction' | 'persistence-failure'
+): Record<string, unknown> {
 	const result = spawnSync(
 		process.execPath,
 		['src/lib/server-owned-recovery-route-fixture.ts', mode],

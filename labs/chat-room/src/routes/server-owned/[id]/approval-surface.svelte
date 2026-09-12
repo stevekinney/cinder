@@ -44,6 +44,15 @@
 
 	let decideFailure: BannerFailure | null = null;
 
+	function installPollFailure(reported: BannerFailure): void {
+		// A poll failure is secondary context. Preserve a decision or controller
+		// failure while polling recovers, and let clearPollFailure remove only a
+		// banner this poll path actually owns.
+		if (failure !== null && failure !== pollFailure) return;
+		pollFailure = reported;
+		failure = reported;
+	}
+
 	function invalidateDecision(): void {
 		decisionAttempt += 1;
 		decisionController?.abort();
@@ -77,8 +86,7 @@
 				// polling to replace it.
 				if (stale()) return;
 				const reported = toBannerFailure(new Error(message));
-				pollFailure = reported;
-				failure = reported;
+				installPollFailure(reported);
 				return;
 			}
 
@@ -121,8 +129,7 @@
 			if (signal?.aborted === true) return;
 			if (stale()) return;
 			const reported = toBannerFailure(cause);
-			pollFailure = reported;
-			failure = reported;
+			installPollFailure(reported);
 		}
 	}
 

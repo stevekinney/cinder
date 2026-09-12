@@ -54,22 +54,32 @@ export type RecoveryFailure = {
 	readonly reason: string;
 };
 
-const recoveryLocks = new Map<string, Promise<void>>();
+const RECOVERY_LOCKS = Symbol.for('cinder.chat-room.server-owned.recovery-locks');
+
+type RecoveryLockHost = typeof globalThis & {
+	[RECOVERY_LOCKS]?: Map<string, Promise<void>>;
+};
+
+function recoveryLocks(): Map<string, Promise<void>> {
+	const host = globalThis as RecoveryLockHost;
+	return (host[RECOVERY_LOCKS] ??= new Map());
+}
 
 /** Serializes recovery attempts for one conversation so losers read the winner's record. */
 export async function withRecoveryLock<T>(id: string, operation: () => Promise<T>): Promise<T> {
-	const previous = recoveryLocks.get(id) ?? Promise.resolve();
+	const locks = recoveryLocks();
+	const previous = locks.get(id) ?? Promise.resolve();
 	let release!: () => void;
 	const current = new Promise<void>((resolve) => {
 		release = resolve;
 	});
-	recoveryLocks.set(id, current);
+	locks.set(id, current);
 	await previous;
 	try {
 		return await operation();
 	} finally {
 		release();
-		if (recoveryLocks.get(id) === current) recoveryLocks.delete(id);
+		if (locks.get(id) === current) locks.delete(id);
 	}
 }
 

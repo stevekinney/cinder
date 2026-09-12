@@ -222,6 +222,42 @@ describe('withRecoveryLock', () => {
 		expect(await loser).toBe('nothing-to-resume');
 		expect(history).toEqual(['orphaned:run-winner']);
 	});
+
+	it('serializes the same conversation across module evaluations and cleans up the lock', async () => {
+		const reloaded = await import(`./server-owned-recovery.ts?reload=${crypto.randomUUID()}`);
+		expect(reloaded.withRecoveryLock).not.toBe(withRecoveryLock);
+		let releaseWinner!: () => void;
+		const winnerReady = new Promise<void>((resolve) => {
+			releaseWinner = resolve;
+		});
+		const events: string[] = [];
+
+		const winner = withRecoveryLock('conversation-hmr', async () => {
+			events.push('winner-start');
+			await winnerReady;
+			events.push('winner-finished');
+			return 'winner';
+		});
+		await Promise.resolve();
+		const loser = reloaded.withRecoveryLock('conversation-hmr', async () => {
+			events.push('loser-start');
+			return 'loser';
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(['winner-start']);
+		releaseWinner();
+		expect(await Promise.all([winner, loser])).toEqual(['winner', 'loser']);
+		expect(events).toEqual(['winner-start', 'winner-finished', 'loser-start']);
+		const locks = (globalThis as Record<symbol, unknown>)[
+			Symbol.for('cinder.chat-room.server-owned.recovery-locks')
+		] as Map<string, Promise<void>>;
+		expect(locks.has('conversation-hmr')).toBe(false);
+
+		// A completed chain removes its key rather than retaining a promise for
+		// every conversation forever. The next request can acquire it immediately.
+		await reloaded.withRecoveryLock('conversation-hmr', async () => 'fresh');
+	});
 });
 
 describe('recoveryFailureLog', () => {

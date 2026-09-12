@@ -359,3 +359,72 @@ test('clears a decision error when a remote answer removes its question', async 
 	await expect(approve).toHaveCount(0);
 	await expect(failure).toBeEmpty();
 });
+
+test('poll recovery preserves a decision failure until the answer succeeds', async ({ page }) => {
+	await gotoHydrated(page, '/server-owned');
+	const title = uniqueTitle('Approval poll error ownership');
+	await page.locator('[data-testid="server-owned-new-title"]').fill(title);
+	await page.locator('[data-testid="server-owned-create"]').click();
+	await page.getByRole('link', { name: new RegExp(title) }).click();
+	await page.waitForSelector('body[data-hydrated="true"]');
+	await page.getByRole('textbox').fill(fixtureMarker('approval', newFixtureMarker()));
+	await page.getByRole('textbox').press('Enter');
+
+	const approve = page.locator('[data-testid="approval-approve"]');
+	const failure = page.locator('[data-testid="server-owned-turn-failure"]');
+	await expect(approve).toBeVisible();
+
+	let postAttempts = 0;
+	let pollFailures = 0;
+	let pollSuccesses = 0;
+	let exercisePollFailure = false;
+	await page.route('**/api/server-owned/conversations/*/elicitation', async (route) => {
+		if (route.request().method() === 'GET') {
+			if (!exercisePollFailure) {
+				await route.continue();
+				return;
+			}
+			if (pollFailures === 0) {
+				await route.fulfill({
+					status: 500,
+					contentType: 'application/json',
+					body: JSON.stringify({ error: 'poll service unavailable' })
+				});
+				pollFailures += 1;
+				return;
+			}
+			const response = await route.fetch();
+			await route.fulfill({ response });
+			pollSuccesses += 1;
+			return;
+		}
+
+		postAttempts += 1;
+		if (postAttempts === 1) {
+			await route.fulfill({
+				status: 500,
+				contentType: 'application/json',
+				body: JSON.stringify({ error: 'approval service unavailable' })
+			});
+			return;
+		}
+		await route.continue();
+	});
+
+	await approve.click();
+	await expect(failure).toContainText('approval service unavailable');
+	// A failed poll must not replace the actionable POST failure, and the
+	// subsequent successful poll must not clear it by accident.
+	exercisePollFailure = true;
+	await expect.poll(() => pollFailures).toBe(1);
+	await expect.poll(() => pollSuccesses).toBeGreaterThanOrEqual(1);
+	await expect(failure).toContainText('approval service unavailable');
+	await expect(approve).toBeVisible();
+
+	await approve.click();
+	await expect(page.locator('[data-testid="server-owned-chat"]')).toHaveAttribute(
+		'data-streaming',
+		'false'
+	);
+	await expect(failure).toBeEmpty();
+});

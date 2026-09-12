@@ -20,6 +20,7 @@ mock.module('$lib/server-owned-conversations', () => ({
 	loadConversation: async () => ({ metadata }),
 	orphanedRunsOf: (value: typeof metadata) => value.orphanedRuns ?? [],
 	rememberOrphanedRuns: async (_id: string, runIds: readonly string[]) => {
+		if (mode === 'persistence-failure') throw new Error('sqlite password leaked');
 		metadata.orphanedRuns = [...(metadata.orphanedRuns ?? []), ...runIds];
 	}
 }));
@@ -46,10 +47,15 @@ mock.module('$lib/server-owned-recovery', () => ({
 			await firstHeld;
 			return { kind: 'orphaned', failures: [{ runId: 'run-1', reason: 'lost' }] };
 		}
-		if (mode === 'redaction') {
+		if (mode === 'redaction' || mode === 'persistence-failure') {
 			return {
 				kind: 'orphaned',
-				failures: [{ runId: 'run-secret', reason: `${credential} unreachable` }]
+				failures: [
+					{
+						runId: mode === 'redaction' ? 'run-secret' : 'run-orphaned',
+						reason: `${credential} unreachable`
+					}
+				]
 			};
 		}
 		return { kind: 'nothing-to-resume' };
@@ -76,7 +82,7 @@ if (mode === 'concurrent') {
 			second: await secondResponse.json()
 		})
 	);
-} else if (mode === 'redaction') {
+} else if (mode === 'redaction' || mode === 'persistence-failure') {
 	const response = await POST({ params: { id: 'conversation-secret' } } as never);
 	process.stdout.write(JSON.stringify({ response: await response.json(), logged }));
 } else {

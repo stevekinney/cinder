@@ -92,14 +92,13 @@
 	The detail route is a fixed-viewport-height flex column whose only flexible
 	child is the chat. Expanded, this panel took 200-285px of it — at a
 	phone-landscape 844x390 the transcript and composer measured exactly 0px.
-	The obvious repairs both fail: a floor on the chat plus a scrollable page
-	hands the scroll to the document, and `server-owned-streaming.e2e.ts` pins
-	the opposite property, because page-scroll is what a collapsed viewport
-	produces in the first place.
+	The current layout keeps the idle transcript in its own scroll region.
+	When recovery status or a failure is visible, it gives the chat an 8rem
+	floor and permits document scrolling so the diagnostic cannot collapse it.
+	The short-viewport tests pin both states.
 
 	A diagnostic that is closed until asked for takes ~40px instead, which
-	leaves the transcript usable at every viewport without touching how the
-	scroll is owned. `<details>` also gets the disclosure semantics and keyboard
+	leaves more space for the idle transcript. `<details>` also gets the disclosure semantics and keyboard
 	behaviour for free.
 -->
 <details class="recovery">

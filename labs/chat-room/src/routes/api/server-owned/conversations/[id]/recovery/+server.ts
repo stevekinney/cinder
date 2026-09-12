@@ -111,11 +111,19 @@ async function respond(id: string): Promise<Response> {
 	// The route is serialized by `withRecoveryLock`, so a concurrent loser runs
 	// after this write and reads the winner's persisted record below. Recording
 	// immediately keeps the evidence durable before response construction.
+	let persistenceWarning: string | undefined;
 	if (outcome.kind === 'orphaned') {
-		await rememberOrphanedRuns(
-			id,
-			outcome.failures.map((failure) => failure.runId)
-		);
+		try {
+			await rememberOrphanedRuns(
+				id,
+				outcome.failures.map((failure) => failure.runId)
+			);
+		} catch {
+			// Classification is already consumed. A metadata failure must not turn
+			// the one truthful diagnosis into a generic 500, and the raw cause may
+			// contain storage credentials.
+			persistenceWarning = 'The orphan diagnosis could not be saved for later checks.';
+		}
 	}
 
 	if (outcome.kind === 'recovered') {
@@ -187,6 +195,9 @@ async function respond(id: string): Promise<Response> {
 			runId: failure.runId,
 			reason: 'Provider details are withheld.'
 		})),
-		note: 'Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers "nothing to resume".'
+		note: [
+			'Reported once. Operative reconciles a stranded run to terminal as it reports the rejection, so asking again answers "nothing to resume".',
+			...(persistenceWarning ? [persistenceWarning] : [])
+		].join(' ')
 	});
 }
