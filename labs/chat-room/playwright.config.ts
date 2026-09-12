@@ -45,6 +45,14 @@ const CROSS_ENGINE_SHARDS = [
 		// added to `server-owned-streaming` in this branch.
 		//
 		// Measured, not estimated: moving these five gives 54/61/62/51/50.
+		//
+		// SINCE UPDATED — `server-owned-streaming` gained the reload-history
+		// spec, putting the counts at 54/62/62/51/50. Two shards now sit exactly
+		// at the ceiling and there is no headroom in either: the next test added
+		// to `webkit-2` or `webkit-3` takes one of them to 63, past the point
+		// where a WebKit worker stops accepting navigation. Whoever adds it
+		// moves a spec to `webkit-5` (50) or `webkit-4` (51) rather than
+		// re-measuring afterwards and discovering the shard already broke.
 		'**/approval-flow.e2e.ts'
 	],
 	[
