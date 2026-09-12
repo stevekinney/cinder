@@ -540,8 +540,7 @@ export async function main(): Promise<void> {
   const summaries = [formatCoverageSummary(averages, thresholds)];
   const failures = coverageFailures(averages, thresholds).map((failure) => `runtime ${failure}`);
 
-  // Warn-only advisories: neither of these ever turns a passing run into a
-  // failing one, and a failure reading either one must not either.
+  // Platform measurement advisories do not change the coverage result.
   const notices: string[] = [];
 
   if (thresholds.svelte) {

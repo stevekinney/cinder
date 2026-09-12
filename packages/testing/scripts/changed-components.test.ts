@@ -25,9 +25,14 @@ describe('shared workflow scope plan', () => {
     expect(plan).toMatchObject({ unitLanes: ['static'], browserRelevant: false });
   });
 
-  it('routes coverage and pipeline guard changes through the package lane', () => {
+  it.each([
+    'check-coverage-ratchet.ts',
+    'check-coverage-ratchet.test.ts',
+    'check-pipeline-coverage.ts',
+    'check-pipeline-coverage.test.ts',
+  ])('routes %s through the package lane', (filename) => {
     expect(
-      planForChanges(['packages/components/scripts/check-coverage-ratchet.ts'], {
+      planForChanges([`packages/components/scripts/${filename}`], {
         mode: 'filtered',
         components: [],
       }),

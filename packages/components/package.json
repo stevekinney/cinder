@@ -6542,7 +6542,7 @@
     "styles:source-css:check": "bun run scripts/prepend-source-index-css-import.ts --check",
     "test": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1",
     "test:changed": "bun run scripts/test-changed.ts",
-    "test:coverage": "TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage --coverage-reporter=lcov && bun run scripts/check-coverage-ratchet.ts && bun run check:local-bun-version-guard",
+    "test:coverage": "bun run check:local-bun-version-guard && TZ=UTC LANG=en_US.UTF-8 bun test --conditions browser --conditions svelte --parallel=1 --coverage --coverage-reporter=lcov && bun run scripts/check-coverage-ratchet.ts",
     "test:memory-canary": "bun run scripts/memory-canary.ts",
     "tokens:audit": "bun run scripts/check-component-css-token-usage.ts",
     "tokens:check": "bun run tokens:validate && bun run tokens:generate -- --check",

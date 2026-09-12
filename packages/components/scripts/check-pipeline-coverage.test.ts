@@ -36,7 +36,12 @@ describe('Turbo input topology', () => {
       'unit-tests',
       'main-green',
     ]);
-    expect(componentsPackage.scripts['test:coverage']).toContain('check:local-bun-version-guard');
+    expect(componentsPackage.scripts['test:coverage']).toStartWith(
+      'bun run check:local-bun-version-guard &&',
+    );
+    expect(turboConfiguration.tasks['@lostgradient/cinder#test:coverage']?.inputs).toContain(
+      '$TURBO_ROOT$/packages/testing/scripts/**',
+    );
   });
 
   it('pins fail-closed PR aggregators and forced audit policy in workflow source', () => {

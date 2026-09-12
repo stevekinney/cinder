@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'bun:test';
-import { chmodSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,7 +65,10 @@ describe('host architecture guard', () => {
   it('reads the Docker daemon architecture instead of the Bun client architecture', () => {
     const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
     const dockerPath = resolvePath(directory, 'docker');
-    writeFileSync(dockerPath, '#!/bin/sh\nprintf "amd64\\n"\n');
+    writeFileSync(
+      dockerPath,
+      '#!/bin/sh\n[ \"$1\" = info ] && [ \"$2\" = --format ] && [ \"$3\" = \"{{.Architecture}}\" ] || exit 2\nprintf \"amd64\\n\"\n',
+    );
     chmodSync(dockerPath, 0o755);
     const previousPath = process.env.PATH;
     process.env.PATH = `${directory}:${previousPath ?? ''}`;
@@ -74,23 +77,28 @@ describe('host architecture guard', () => {
     } finally {
       if (previousPath === undefined) delete process.env.PATH;
       else process.env.PATH = previousPath;
+      rmSync(directory, { recursive: true, force: true });
     }
   });
 
-  it('returns undefined when Docker is unavailable or emits no architecture', () => {
-    const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
-    const dockerPath = resolvePath(directory, 'docker');
-    writeFileSync(dockerPath, '#!/bin/sh\nexit 0\n');
-    chmodSync(dockerPath, 0o755);
-    const previousPath = process.env.PATH;
-    process.env.PATH = `${directory}:${previousPath ?? ''}`;
-    try {
-      expect(readDockerServerArchitecture()).toBeUndefined();
-    } finally {
-      if (previousPath === undefined) delete process.env.PATH;
-      else process.env.PATH = previousPath;
-    }
-  });
+  it.each(['exit 0', 'exit 1'])(
+    'fails closed when Docker returns no architecture: %s',
+    (command) => {
+      const directory = mkdtempSync(resolvePath(tmpdir(), 'docker-cli-'));
+      const dockerPath = resolvePath(directory, 'docker');
+      writeFileSync(dockerPath, `#!/bin/sh\n${command}\n`);
+      chmodSync(dockerPath, 0o755);
+      const previousPath = process.env.PATH;
+      process.env.PATH = `${directory}:${previousPath ?? ''}`;
+      try {
+        expect(readDockerServerArchitecture()).toBeUndefined();
+      } finally {
+        if (previousPath === undefined) delete process.env.PATH;
+        else process.env.PATH = previousPath;
+        rmSync(directory, { recursive: true, force: true });
+      }
+    },
+  );
 
   it('accepts Docker’s native amd64 spelling for the x64 baseline', () => {
     expect(hostArchitectureGuardResult('amd64', 'x64')).toEqual({ ok: true });
