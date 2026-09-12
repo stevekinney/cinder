@@ -464,18 +464,23 @@
     // `startIndex`/`endIndex` describe the RENDERED range, which already carries
     // overscan on both sides, and `endIndex` is exclusive. Undo both so the
     // "within overscan items of the end" test is applied once rather than twice.
-    // `resolvedOverscan`, not the raw prop: the window was built with the clamped,
-    // floored value, so undoing it with a negative, fractional, or non-finite prop
-    // would drift from the real window — or resolve to NaN, which compares false
+    //
+    // `effectiveOverscan`, because that is what the window was actually built with.
+    // Undoing only `resolvedOverscan` leaves the adaptive growth in: at a configured
+    // 5 against an adaptive 50, the last "visible" row is reported 45 ahead of the
+    // real one, and `onEndReached` fires some fifty rows out instead of within the
+    // five the prop documents. It is the clamped, floored value rather than the raw
+    // prop for the same reason it always was — a negative, fractional, or non-finite
+    // prop would drift from the real window, or resolve to NaN, which compares false
     // against everything and silently reports both edges as out of range.
     const lastRenderedIndex = Math.max(0, itemCount - 1);
     const firstVisibleIndex = Math.min(
-      currentWindow.startIndex + resolvedOverscan,
+      currentWindow.startIndex + effectiveOverscan,
       lastRenderedIndex,
     );
     const lastVisibleIndex = Math.max(
       0,
-      Math.min(currentWindow.endIndex - 1 - resolvedOverscan, lastRenderedIndex),
+      Math.min(currentWindow.endIndex - 1 - effectiveOverscan, lastRenderedIndex),
     );
 
     const proximity = resolveEdgeProximity({
@@ -485,6 +490,11 @@
       firstVisibleIndex,
       lastVisibleIndex,
       itemCount,
+      // The CONFIGURED overscan, deliberately not the effective one used just above.
+      // That one describes how many rows are mounted, which adaptation changes with
+      // scroll velocity; this one is the consumer's "within N items of the end", which
+      // it must not. Otherwise a fast fling would widen the trigger distance along
+      // with the window and fetch pages earlier the faster the reader moves.
       overscan: resolvedOverscan,
     });
     // Masked per edge, not just when BOTH callbacks are gone. An edge without a

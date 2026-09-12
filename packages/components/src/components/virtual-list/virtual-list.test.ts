@@ -3117,3 +3117,32 @@ describe('VirtualList — adaptive overscan and settling under row controls', ()
     await waitFor(() => expect(list.scrollTop).toBe(1_900));
   });
 });
+
+describe('VirtualList — edge callbacks under adaptive overscan', () => {
+  test('recovers the visible range with the overscan the window was built with', async () => {
+    // Structural, for the same reason as the adaptive row-size test above: raising the
+    // adaptive overscan needs two scroll events a measurable interval apart, and events
+    // fired from a test share a timestamp, so the velocity tracker reports zero and
+    // adaptation never engages. A behavioural test here passes against the defect.
+    //
+    // What it pins: the window is built with `effectiveOverscan`, so undoing it with
+    // `resolvedOverscan` leaves the adaptive growth in — at a configured 5 against an
+    // adaptive 50, the last "visible" row is reported 45 ahead of the real one and
+    // `onEndReached` fires some fifty rows early. The two must match.
+    const source = await Bun.file(
+      new URL('./virtual-list.svelte', import.meta.url).pathname,
+    ).text();
+    expect(source).toContain('currentWindow.startIndex + effectiveOverscan');
+    expect(source).toContain('currentWindow.endIndex - 1 - effectiveOverscan');
+
+    // And the trigger distance stays the CONFIGURED overscan. Widening it with the
+    // effective value would fetch pages earlier the faster the reader scrolled, which
+    // is not what the prop promises.
+    const proximityCall = source.slice(
+      source.indexOf('const proximity = resolveEdgeProximity({'),
+      source.indexOf('const maskedProximity'),
+    );
+    expect(proximityCall).toContain('overscan: resolvedOverscan');
+    expect(proximityCall).not.toContain('overscan: effectiveOverscan');
+  });
+});
