@@ -303,11 +303,20 @@
 			// Checked AGAIN after the body is read, because awaiting it is another
 			// point where the turn can end underneath this response.
 			if (stale()) return;
-			// FOCUS IS HANDED OFF before the controls vanish. Another client
-			// answering is a supported outcome of this endpoint, and it removes
-			// the focused subtree just as surely as a local decision does — which
-			// dropped a keyboard user onto `<body>`, outside the chat.
-			if (body.pending === null) handOffFocusFromApproval();
+			// FOCUS IS HANDED OFF when the question GOES AWAY *or CHANGES*, and the
+			// second half is a consent defect rather than an ergonomic one.
+			//
+			// Another tab answering A while the same step advances to B leaves
+			// `pending` non-null, so the previous version reused the already
+			// focused Approve button. Sequential `remember_note` calls produce
+			// identical status text, so B is never announced — and pressing Enter
+			// then approves B's arguments on the strength of having read A's.
+			//
+			// Moving focus back to the question forces the new one to be read, and
+			// re-announces it because the region's text is replaced rather than
+			// left in place.
+			const answeredOrChanged = body.pending === null || body.pending.callId !== pending?.callId;
+			if (answeredOrChanged) handOffFocusFromApproval();
 			pending = body.pending;
 			// A SUCCESS CLEARS THE POLL'S OWN FAILURE. Without this a single
 			// transient error left its `role="alert"` text on screen for the rest
@@ -344,7 +353,6 @@
 	 * composer would be its own defect.
 	 */
 	function handOffFocusFromApproval(): void {
-		if (pending === null) return;
 		const active = document.activeElement;
 		if (active === null || approvalSection === null) return;
 		if (!approvalSection.contains(active)) return;
@@ -355,6 +363,10 @@
 		const question = pending;
 		if (question === null || deciding) return;
 		deciding = true;
+		// Captured so a slow failure body cannot install its banner after the
+		// question was answered elsewhere or the turn ended.
+		const generation = pollGeneration;
+		const epoch = answerEpoch;
 		try {
 			const response = await fetch(`/api/server-owned/conversations/${id}/elicitation`, {
 				method: 'POST',
@@ -368,6 +380,12 @@
 				// ONLY 409. The question moved on while it was being read — either
 				// the run ended or it advanced to a different call — so the current
 				// question is the actionable thing and re-reading offers it.
+				//
+				// The EPOCH IS BUMPED FIRST, so a regular poll already in flight
+				// with the superseded question cannot install it after this refresh
+				// installs the current one. Without that, two reads race and the
+				// slower one wins.
+				answerEpoch += 1;
 				await readPendingApproval(pollGeneration, pollController?.signal);
 				return;
 			}
@@ -379,7 +397,13 @@
 				//
 				// The controls stay up, so this is retryable — which is why the
 				// value is remembered and cleared by a later success.
-				const reported = toBannerFailure(new Error(await failureMessage(response)));
+				const message = await failureMessage(response);
+				// RECHECKED AFTER THE BODY, for the same reason the poll rechecks:
+				// reading it is an await, and another tab can answer or the turn can
+				// finish inside it. An obsolete continuation would otherwise install
+				// an error for a decision nobody is waiting on.
+				if (generation !== pollGeneration || epoch !== answerEpoch) return;
+				const reported = toBannerFailure(new Error(message));
 				decideFailure = reported;
 				failure = reported;
 				return;

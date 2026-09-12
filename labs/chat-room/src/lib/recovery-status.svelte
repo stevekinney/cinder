@@ -144,8 +144,20 @@
 	>
 		{checking ? 'Checking…' : 'Check for a recoverable run'}
 	</button>
+</details>
 
-	<!--
+<!--
+	OUTSIDE THE DISCLOSURE, deliberately. These were inside it, which meant
+	closing the panel while a check was in flight inserted the outcome into a
+	hidden subtree — absent from the accessibility tree, so nothing was
+	announced, and reopening later merely exposed text that was already there
+	rather than triggering a live-region update.
+
+	A region that announces has to stay in the tree regardless of what the
+	reader has collapsed. The explanation and the control can hide; the answer
+	cannot.
+-->
+<!--
 		THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
 		beside it. Review caught the split: the ordinary paragraph changed
 		silently while this region announced the reassuring half, so a screen
@@ -159,43 +171,42 @@
 		the two-click scenario the exercise documents. "Nothing is currently
 		resumable" is true either way.
 	-->
-	<p class="status" role="status" data-testid="recovery-status">
-		{#if outcome?.kind === 'nothing-to-resume'}
-			Nothing is currently resumable. {seenOrphan
-				? 'The orphaned run reported earlier is already reconciled; this is what a second check answers, not a claim that nothing was lost.'
-				: 'No run is in flight for this session.'}
-			{durabilitySentence(outcome.durability)}
-		{:else if outcome?.kind === 'recovered'}
-			Re-attached to a run in flight. Progress is {outcome.progress}: {outcome.note}
-			{durabilitySentence(outcome.durability)}
-		{:else if outcome?.kind === 'orphaned'}
-			Orphaned. A re-attach was attempted and every candidate rejected, so this run's work is
-			terminally gone. {durabilitySentence(outcome.durability)}
-		{/if}
-	</p>
+<p class="status" role="status" data-testid="recovery-status">
+	{#if outcome?.kind === 'nothing-to-resume'}
+		Nothing is currently resumable. {seenOrphan
+			? 'The orphaned run reported earlier is already reconciled; this is what a second check answers, not a claim that nothing was lost.'
+			: 'No run is in flight for this session.'}
+		{durabilitySentence(outcome.durability)}
+	{:else if outcome?.kind === 'recovered'}
+		Re-attached to a run in flight. Progress is {outcome.progress}: {outcome.note}
+		{durabilitySentence(outcome.durability)}
+	{:else if outcome?.kind === 'orphaned'}
+		Orphaned. A re-attach was attempted and every candidate rejected, so this run's work is
+		terminally gone. {durabilitySentence(outcome.durability)}
+	{/if}
+</p>
 
-	{#if outcome?.kind === 'orphaned'}
-		<ul data-testid="recovery-failures">
-			{#each outcome.failures as entry (entry.runId)}
-				<li><code>{entry.runId}</code> — {entry.reason}</li>
-			{/each}
-		</ul>
-		<!--
+{#if outcome?.kind === 'orphaned'}
+	<ul data-testid="recovery-failures">
+		{#each outcome.failures as entry (entry.runId)}
+			<li><code>{entry.runId}</code> — {entry.reason}</li>
+		{/each}
+	</ul>
+	<!--
 			Said out loud, because the classification does not survive being asked
 			for twice. Operative reconciles a stranded run to terminal as it reports
 			the rejection, so the next check answers "nothing to resume" — a reader
 			who clicked again and saw the orphan vanish would reasonably read that as
 			a bug in this panel rather than the repair it is.
 		-->
-		<p class="explain" data-testid="recovery-once">{outcome.note}</p>
-	{/if}
+	<p class="explain" data-testid="recovery-once">{outcome.note}</p>
+{/if}
 
-	<p class="failure" role="alert" data-testid="recovery-error">
-		{#if failure !== ''}
-			{failure}
-		{/if}
-	</p>
-</details>
+<p class="failure" role="alert" data-testid="recovery-error">
+	{#if failure !== ''}
+		{failure}
+	{/if}
+</p>
 
 <style>
 	.recovery {
@@ -228,7 +239,33 @@
 	.status,
 	.failure {
 		margin: 0;
-		min-block-size: 1.25rem;
+	}
+
+	/*
+		IN THE TREE, TAKING NO SPACE, while there is nothing to announce.
+
+		These regions live outside the disclosure so a collapsed panel cannot
+		hide an announcement — but that puts them in a fixed-viewport-height
+		column whose only flexible child is the transcript, and reserving height
+		for them cost it 72px: measured 57px at 844x390, below the floor its own
+		regression test asserts. `display: none` is not the alternative, since
+		that is what removes a region from the accessibility tree in the first
+		place.
+
+		Clipping keeps them registered and free until they have text. Once they
+		do, the page may scroll — see the detail route's `:has()` rule, the same
+		accommodation the approval question gets.
+	*/
+	.status:empty,
+	.failure:empty {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
 	}
 
 	.failure {

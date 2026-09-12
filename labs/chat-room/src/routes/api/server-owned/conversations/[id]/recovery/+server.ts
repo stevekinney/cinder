@@ -102,6 +102,23 @@ async function respond(id: string): Promise<Response> {
 
 	const outcome = await classifyRecovery(handle);
 
+	// RECORDED IMMEDIATELY, before the response is built and before anything
+	// else awaits. The classification is consumed by the call that produced it,
+	// so every instruction between here and the write is a window in which a
+	// concurrent request can read an empty history and report that nothing was
+	// ever orphaned.
+	//
+	// It does not close the window — two requests racing `recover()` are only
+	// fully ordered by a lock this lab does not have — but it is as early as the
+	// evidence can be made durable, which is the part that matters: the record
+	// outlives the one response that carried the diagnosis.
+	if (outcome.kind === 'orphaned') {
+		await rememberOrphanedRuns(
+			id,
+			outcome.failures.map((failure) => failure.runId)
+		);
+	}
+
 	if (outcome.kind === 'recovered') {
 		// STEP-LEVEL, and the reason is where the run's events come from rather
 		// than a property of the handle's type.
@@ -166,14 +183,6 @@ async function respond(id: string): Promise<Response> {
 			`[server-owned] recovery rejected for ${failure.runId} in conversation ${id}: ${failure.reason}`
 		);
 	}
-
-	// RECORDED BEFORE RESPONDING, so the evidence survives a response that never
-	// arrives. Awaited rather than fired and forgotten: a diagnosis this endpoint
-	// reported and failed to persist is one nothing can recover.
-	await rememberOrphanedRuns(
-		id,
-		outcome.failures.map((failure) => failure.runId)
-	);
 
 	return json({
 		kind: 'orphaned',

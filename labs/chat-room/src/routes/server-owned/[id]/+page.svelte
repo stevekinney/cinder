@@ -105,12 +105,14 @@
 		nothing, drops the rule, and reports it as an unused selector — which is
 		how the first version of this silently did nothing at all.
 	*/
-	main:has(:global(.approval-question:not(:empty))) {
+	main:has(:global(.approval-question:not(:empty))),
+	main:has(:global(.status:not(:empty))) {
 		block-size: auto;
 		min-block-size: 100dvh;
 	}
 
-	main:has(:global(.approval-question:not(:empty))) :global(.chat) {
+	main:has(:global(.approval-question:not(:empty))) :global(.chat),
+	main:has(:global(.status:not(:empty))) :global(.chat) {
 		min-block-size: 8rem;
 	}
 

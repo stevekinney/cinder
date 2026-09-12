@@ -98,17 +98,22 @@ export function serverOwnedStorage(): {
 /**
  * Raised when the variable names a database this runtime cannot open.
  *
- * Under Bun it never happens — `bun:sqlite` is built in. Under Node, which is
- * what `vite preview` and `vite dev` actually run on (`bun run preview`
- * resolves `vite` through a `#!/usr/bin/env node` shebang), Weft's adapter
- * needs its `better-sqlite3` peer, and this lab deliberately does not install
- * it.
+ * TWO CAUSES, and an earlier version of this named only one. A missing peer is
+ * the Node-specific one: `vite preview` and `vite dev` run on Node (`bun run
+ * preview` resolves `vite` through a `#!/usr/bin/env node` shebang), Weft's
+ * adapter there needs `better-sqlite3`, and this lab deliberately does not
+ * install it. But SQLite also fails to OPEN for ordinary I/O reasons — a path
+ * inside a directory that does not exist, or one this process cannot write —
+ * and that happens under Bun too, where nothing needs installing. So "under
+ * Bun it never happens" was wrong, as was the claim that every cause names an
+ * install.
  *
- * The MESSAGE carries Weft's own sentence, which already names the install
- * command, plus where the surrounding procedure is written down and how to get
- * back to a working server without it. The `cause` is attached for a server
- * log and does not reach a client: this route family's error mapping sends a
- * sentence rather than a forwarded cause.
+ * The MESSAGE is therefore conditional, keyed on the package name appearing in
+ * the cause: Weft's missing-peer sentence contains it and an I/O error does
+ * not. Prescribing an install for a bad path sends the operator to fix the
+ * wrong thing. The `cause` is attached for a server log and does not reach a
+ * client: this route family's error mapping sends a sentence rather than a
+ * forwarded cause.
  */
 export class DurableStorageUnavailableError extends Error {
 	override readonly name = 'DurableStorageUnavailableError';

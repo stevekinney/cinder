@@ -60,8 +60,14 @@ export const requestContext: ToolRequestContext = {
  * Keeping even the empty one in this module means the guard stays a simple,
  * total rule rather than one with an exception that has to be maintained.
  *
- * Still used by the recovery endpoint, which must supply `runOptions` to ask a
- * read-only question and has no business carrying tools (AB-424).
+ * Still used by the recovery endpoint, which must supply `runOptions` even
+ * though it never generates, and has no business carrying tools (AB-424).
+ *
+ * NOT "a read-only question", which this said while that endpoint was a GET.
+ * `recover()` reconciles the stranded run it reports and consumes the
+ * classification, which is why the verb is a POST — and why calling it
+ * read-only anywhere invites restoring caching or retries that spend the one
+ * diagnosis there will ever be.
  */
 export const emptyToolbox = createToolbox([]);
 
