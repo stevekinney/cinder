@@ -225,12 +225,19 @@
 	let latestSequence = 0;
 
 	/**
-	 * Whether the text in the shared banner came from a poll.
+	 * The exact banner value a poll installed, so a poll can clear only that.
 	 *
-	 * The banner is shared with the controller's own turn failures, and a
-	 * successful poll may only clear what a poll wrote.
+	 * A BOOLEAN was not enough, which review caught: with a flag, a poll
+	 * failure followed by a different failure — the approval POST rejecting
+	 * while the run is still streaming — left the flag set, and the next
+	 * successful poll cleared the newer, actionable error instead of its own
+	 * stale one.
+	 *
+	 * Identity settles it. The banner is shared with the controller's turn
+	 * failures and with `decide()`, so ownership has to be checked by value
+	 * rather than asserted by a flag.
 	 */
-	let pollFailed = false;
+	let pollFailure: BannerFailure | null = null;
 
 	async function readPendingApproval(generation: number): Promise<void> {
 		const sequence = ++pollSequence;
@@ -242,13 +249,20 @@
 				// REPORTED, not swallowed. A run parked on `remember_note` while
 				// this endpoint keeps answering 404, 500, or the shutdown 503 shows
 				// no controls and no explanation — the turn simply appears to hang.
-				// That was the last version of this function: a bare `return` for
-				// every non-2xx, and a silent `catch`.
+				// An earlier version returned bare for every non-2xx.
 				//
 				// Polling CONTINUES after reporting, so a transient failure heals
-				// itself and the success path above clears this text.
-				pollFailed = true;
-				failure = toBannerFailure(new Error(await failureMessage(response)));
+				// itself and the success path below clears this text.
+				const message = await failureMessage(response);
+				// RECHECKED AFTER THE BODY, because reading it is an await like any
+				// other: the turn can end or a newer poll can succeed while this one
+				// is still pulling text. Installing an error then leaves a stale
+				// alert with nothing left polling to replace it.
+				if (generation !== pollGeneration || sequence < latestSequence) return;
+				latestSequence = sequence;
+				const reported = toBannerFailure(new Error(message));
+				pollFailure = reported;
+				failure = reported;
 				return;
 			}
 
@@ -267,14 +281,19 @@
 			// Only the poll's failure, which is why the banner is cleared here
 			// rather than on any success: a turn failure reported by the
 			// controller is not this function's to erase.
-			if (pollFailed) {
-				pollFailed = false;
+			// Cleared only when the banner still holds the value THIS poll path
+			// installed. Anything else on screen belongs to `decide()` or to the
+			// controller, and is the more actionable of the two.
+			if (pollFailure !== null && failure === pollFailure) {
 				failure = null;
 			}
+			pollFailure = null;
 		} catch (cause) {
-			if (generation !== pollGeneration) return;
-			pollFailed = true;
-			failure = toBannerFailure(cause);
+			if (generation !== pollGeneration || sequence < latestSequence) return;
+			latestSequence = sequence;
+			const reported = toBannerFailure(cause);
+			pollFailure = reported;
+			failure = reported;
 		}
 	}
 
@@ -334,6 +353,7 @@
 		const generation = pollGeneration;
 		pollSequence = 0;
 		latestSequence = 0;
+		pollFailure = null;
 		void readPendingApproval(generation);
 		const interval = setInterval(() => void readPendingApproval(generation), 250);
 		return () => {
