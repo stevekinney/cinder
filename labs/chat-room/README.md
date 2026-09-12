@@ -5,10 +5,10 @@
 
 A testbed for two components from the [`stevekinney/cinder`](https://github.com/stevekinney/cinder) workspace, driven against real data rather than fixtures:
 
-- `Chat` from [`@lostgradient/chat`](https://www.npmjs.com/package/@lostgradient/chat), wired to the Anthropic SDK through a server-side streaming route.
+- `Chat` from [`@lostgradient/chat`](https://www.npmjs.com/package/@lostgradient/chat), driven by [`@lostgradient/operative`](https://www.npmjs.com/package/@lostgradient/operative) through a server-side streaming route, with Anthropic as Operative's provider.
 - `ReviewEditor` from [`@lostgradient/editor`](https://www.npmjs.com/package/@lostgradient/editor), a Markdown editor with anchored review threads, a diff view, and a summary view, exercised by the `review-*` routes under `/exercises`.
 
-It's not a product. The demo route and conversation wiring change often as we try things against the real components, and the point of the `/exercises` routes is to smoke out upstream defects. See [CLAUDE.md](./CLAUDE.md) for the full picture: how work moves between here and `../cinder`, the components' style/adapter/conversation-model contracts, the ReviewEditor anchor coordinate spaces, the Anthropic SDK streaming seam, and the upstream-issue-filing convention.
+It's not a product. The demo route and conversation wiring change often as we try things against the real components, and the point of the `/exercises` routes is to smoke out upstream defects. See [CLAUDE.md](./CLAUDE.md) for the full picture: how work moves between here and `../cinder`, the components' style/adapter/conversation-model contracts, the ReviewEditor anchor coordinate spaces, the Operative streaming seam, and the upstream-issue-filing convention.
 
 ## Getting started
 
