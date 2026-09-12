@@ -5973,22 +5973,23 @@
       "exportName": "VirtualList",
       "category": "data-display",
       "status": "beta",
-      "purpose": "Windowing primitive for long lists that renders only the visible rows plus overscan, along either axis, with fixed-height rows by default and opt-in measured rows.",
+      "purpose": "Windowing primitive for long lists along either axis, rendering only the visible rows plus overscan, with fixed-height rows by default and opt-in measured rows.",
       "tags": ["list", "virtualization", "performance"],
       "useWhen": [
-        "Rendering thousands of same-height append-only rows such as logs, event streams, or activity feeds.",
-        "Rows vary in size because they wrap, embed media, or hold user content — enable dynamicSize to measure and cache each row.",
-        "Windowing along the inline axis — set horizontal, which also resolves right-to-left layout from the container's own writing direction.",
-        "Building a chat transcript that stays anchored to its newest message — reverse pins on every append, unlike stickToBottom.",
-        "Loading more in either direction as the reader nears an edge, via onEndReached and onStartReached.",
-        "You need a reusable primitive that owns the scroll container but leaves row markup to a snippet."
+        "Rendering thousands of rows: logs, event streams, activity feeds.",
+        "Rows vary in size because they wrap or embed media — dynamicSize measures each.",
+        "Windowing the inline axis — horizontal, which also resolves right-to-left.",
+        "A transcript anchored to its newest message, or paging in at either edge."
       ],
       "avoidWhen": [
         {
-          "reason": "Rendering two-dimensional grids — use data-grid, whose column virtualization and grid semantics this deliberately does not duplicate."
+          "reason": "Two-dimensional grids — data-grid owns column virtualization and grid semantics."
         },
         {
-          "reason": "The collection is small enough to render in full — windowing costs a scroll listener and an offsets table that buy nothing."
+          "reason": "A native table or a hierarchy — data-table and tree window those already."
+        },
+        {
+          "reason": "The collection is small enough to render in full."
         }
       ],
       "related": ["data-list", "data-table", "data-grid", "load-more"],
