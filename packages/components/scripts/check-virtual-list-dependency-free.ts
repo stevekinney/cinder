@@ -554,7 +554,15 @@ export async function collectScanTargets(): Promise<string[]> {
  * unscanned rather than fed to a TypeScript parser that was never going to
  * understand it.
  */
-const SCANNABLE_SOURCE_EXTENSIONS = ['.ts', '.svelte'] as const;
+/**
+ * Extensions a relative import can resolve to, and that this guard can read.
+ *
+ * The JavaScript ones matter as much as the TypeScript: Bun bundles a relative `.js`,
+ * `.mjs`, or `.cjs` helper exactly like a `.ts` one, so accepting those as resolved and
+ * then declining to scan them left a hole the size of the whole guard — the helper could
+ * import `@tanstack/virtual-core` or an undeclared package and nothing would report it.
+ */
+const SCANNABLE_SOURCE_EXTENSIONS = ['.ts', '.tsx', '.svelte', '.js', '.mjs', '.cjs'] as const;
 
 function isScannableSourceFile(filePath: string): boolean {
   return SCANNABLE_SOURCE_EXTENSIONS.some((extension) => filePath.endsWith(extension));
@@ -585,7 +593,15 @@ export function resolveRelativeSpecifier(
     ...SCANNABLE_SOURCE_EXTENSIONS.map((extension) => join(candidateBase, `index${extension}`)),
   ];
   for (const candidatePath of candidatePaths) {
-    if (existsSync(candidatePath) && statSync(candidatePath).isFile()) return candidatePath;
+    // `statSync` can throw even when `existsSync` just said yes — a permission error, or
+    // the path disappearing between the two calls. A guard that crashes reports nothing
+    // at all, which is strictly worse than reporting the import as unresolved, so a
+    // candidate that cannot be inspected is simply not a match.
+    try {
+      if (existsSync(candidatePath) && statSync(candidatePath).isFile()) return candidatePath;
+    } catch {
+      continue;
+    }
   }
   return undefined;
 }
@@ -649,8 +665,12 @@ export async function walkDependencyGraph(
     seedFilePaths: readonly string[],
     treatAsTestFile: boolean,
   ): Promise<void> {
+    // Walked with a moving index rather than `shift()`, which reindexes the whole array
+    // on every step and makes the traversal quadratic as the graph grows. Paths pushed
+    // while walking are picked up by the same loop, so the order is unchanged.
     const queue = [...seedFilePaths];
-    for (let filePath = queue.shift(); filePath !== undefined; filePath = queue.shift()) {
+    for (let queueIndex = 0; queueIndex < queue.length; queueIndex += 1) {
+      const filePath = queue[queueIndex]!;
       if (visited.has(filePath)) continue;
       visited.add(filePath);
       if (!isScannableSourceFile(filePath)) continue;

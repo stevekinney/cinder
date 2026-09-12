@@ -339,3 +339,73 @@ describe('walkDependencyGraph — real virtual-list tree (CIN-522)', () => {
     );
   });
 });
+
+describe('the guard follows JavaScript helpers, not only TypeScript ones', () => {
+  test('reports a forbidden import reached through a relative .js helper', async () => {
+    // The hole this closes. Bun bundles a relative `.js` helper exactly like a `.ts`
+    // one, so accepting it as resolved and then declining to scan it meant the helper
+    // could import anything at all and the guard would still report a clean tree.
+    await withTemporaryFileTree(
+      {
+        'engine.ts': "import './helper.js';\n",
+        'helper.js': "import '@tanstack/virtual-core';\n",
+      },
+      async (root) => {
+        const result = await walkDependencyGraph([join(root, 'engine.ts')], new Set());
+        expect(result.violations.map((violation) => violation.specifier)).toContain(
+          '@tanstack/virtual-core',
+        );
+        // Named against the file that actually holds it, not the entry point.
+        expect(
+          result.violations.some((violation) => violation.filePath.endsWith('helper.js')),
+        ).toBe(true);
+      },
+    );
+  });
+
+  test('follows .mjs and .cjs helpers too', async () => {
+    for (const extension of ['mjs', 'cjs']) {
+      await withTemporaryFileTree(
+        {
+          'engine.ts': `import './helper.${extension}';\n`,
+          [`helper.${extension}`]: "import 'undeclared-package';\n",
+        },
+        async (root) => {
+          const result = await walkDependencyGraph([join(root, 'engine.ts')], new Set());
+          expect(result.violations.map((violation) => violation.specifier)).toContain(
+            'undeclared-package',
+          );
+        },
+      );
+    }
+  });
+
+  test('scans a JavaScript helper rather than merely resolving it', async () => {
+    // The distinction that mattered: resolution already worked, so a test asserting
+    // only that the import resolved would have passed against the hole.
+    await withTemporaryFileTree(
+      {
+        'engine.ts': "import './helper.js';\n",
+        'helper.js': '',
+      },
+      async (root) => {
+        const result = await walkDependencyGraph([join(root, 'engine.ts')], new Set());
+        expect(result.scannedFilePaths.some((path) => path.endsWith('helper.js'))).toBe(true);
+      },
+    );
+  });
+});
+
+describe('resolveRelativeSpecifier — unreadable candidates', () => {
+  test('reports an unresolved import rather than crashing the guard', async () => {
+    // `statSync` can throw even when `existsSync` has just said yes — a permission
+    // error, or the path disappearing between the two calls. A guard that crashes
+    // reports nothing at all, which is worse than reporting the import as unresolved.
+    await withTemporaryFileTree({ 'entry.ts': '' }, async (root) => {
+      expect(() =>
+        resolveRelativeSpecifier('./nothing-here', join(root, 'entry.ts')),
+      ).not.toThrow();
+      expect(resolveRelativeSpecifier('./nothing-here', join(root, 'entry.ts'))).toBeUndefined();
+    });
+  });
+});
