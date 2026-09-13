@@ -33,6 +33,8 @@ import {
 	type OperativeExecuteOptions,
 	type StandaloneAgent,
 	type StepResult,
+	type BeforeToolExecutionHook,
+	type OnElicitation,
 	type StopCondition,
 	type StreamEvent,
 	type StreamingGenerateFunction
@@ -251,23 +253,59 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
  * the option the wrapper installs no `report` and synthesizes both events
  * only after the response resolves.
  *
- * `stopWhen` combines `noToolCalls()` (a plain text reply is done after one
- * step) with `stopAfterAnyToolCall` (any step with tool calls is also done
- * after one step, whether or not those calls need approval) and, for
- * intent-at-a-glance, `pendingApproval()`. Without at least one condition
- * that stops on ordinary text, a plain reply would otherwise run to
- * `maximumSteps` — see the declarations' own example for the same pairing.
+ * `stopWhen` defaults to the BROWSER-OWNED set: `noToolCalls()` (a plain text
+ * reply is done after one step) plus `stopAfterAnyToolCall` (any step with
+ * tool calls is also done after one step, whether or not those calls need
+ * approval) and, for intent-at-a-glance, `pendingApproval()`. Without at
+ * least one condition that stops on ordinary text, a plain reply would
+ * otherwise run to `maximumSteps` — see the declarations' own example for the
+ * same pairing.
+ *
+ * A CALLER CAN REPLACE IT, and the server-owned family has to. Stopping after
+ * a tool call hands control back to the client, which is right when the
+ * client drives the next turn — and wrong when the server owns the run and
+ * the approval happens mid-step. There the loop should carry on to a second
+ * generate and finish with the assistant's reply, so the browser receives one
+ * complete turn instead of a tool result with nothing after it.
  */
 export function createChatRunOptions(options: {
 	generate: StreamingGenerateFunction;
 	toolbox: AnyToolbox;
 	requestContext: OperativeExecuteOptions['requestContext'];
 	writer: ChatStreamWriter;
+	/**
+	 * Operative's elicitation callback, for a caller whose approval decision
+	 * comes from a person rather than from a signed token on the next request.
+	 *
+	 * OPTIONAL, and the loop reads its presence rather than its value:
+	 * `run-step.ts` builds `ctx.elicit` only when `onElicitation` is supplied,
+	 * so passing `undefined` is not the same as passing a callback that denies
+	 * — it means the hooks never get an `elicit` at all. The browser-owned
+	 * route omits it on purpose; its approvals park through the toolbox.
+	 */
+	onElicitation?: OnElicitation;
+	/**
+	 * Hooks the caller wants to run before tools execute, appended after none
+	 * of this module's own — it registers none.
+	 *
+	 * A hook here can filter calls out of the array it returns, which Operative
+	 * supports explicitly: it seals a filtered call with an error result so no
+	 * dangling tool call is left to break a later replay.
+	 */
+	beforeToolExecution?: BeforeToolExecutionHook[];
+	/**
+	 * Replaces the default stop conditions entirely rather than adding to them,
+	 * because the thing a caller needs to change here is which conditions are
+	 * ABSENT — merging would make `stopAfterAnyToolCall` impossible to remove.
+	 */
+	stopWhen?: StopCondition[];
 }): {
 	generate: ReturnType<typeof withEnhancedStreaming>;
 	toolbox: AnyToolbox;
 	executeOptions: { requestContext: OperativeExecuteOptions['requestContext'] };
 	stopWhen: StopCondition[];
+	onElicitation?: OnElicitation;
+	beforeToolExecution?: BeforeToolExecutionHook[];
 } {
 	// Operative's `TypedEventTarget` class is not a public export, only its
 	// type (through `EnhancedStreamingOptions`); the wrapper dispatches via
@@ -291,7 +329,20 @@ export function createChatRunOptions(options: {
 		generate: withEnhancedStreaming(options.generate, { eventTarget, liveToolCalls: true }),
 		toolbox: options.toolbox,
 		executeOptions: { requestContext: options.requestContext },
-		stopWhen: [stopWhen.noToolCalls(), stopWhen.pendingApproval(), stopAfterAnyToolCall]
+		stopWhen: options.stopWhen ?? [
+			stopWhen.noToolCalls(),
+			stopWhen.pendingApproval(),
+			stopAfterAnyToolCall
+		],
+		// SPREAD rather than assigned, because `exactOptionalPropertyTypes` makes
+		// `onElicitation: undefined` a different thing from an absent key — and
+		// the loop distinguishes them: an absent `onElicitation` means the hook
+		// contexts carry no `elicit` at all, while a present-but-undefined one
+		// would not type-check against `RunOptions`.
+		...(options.onElicitation === undefined ? {} : { onElicitation: options.onElicitation }),
+		...(options.beforeToolExecution === undefined
+			? {}
+			: { beforeToolExecution: options.beforeToolExecution })
 	};
 }
 
@@ -301,6 +352,7 @@ export function createChatAgent(options: {
 	toolbox: AnyToolbox;
 	requestContext: OperativeExecuteOptions['requestContext'];
 	writer: ChatStreamWriter;
+	beforeToolExecution?: BeforeToolExecutionHook[];
 }): StandaloneAgent {
 	return createAgent(createChatRunOptions(options));
 }
@@ -473,8 +525,8 @@ function toTerminalFailureFrame(
  * regardless.
  *
  * `tool.settled` is sourced from `ToolsExecutedEvent.results` rather than
- * from Operative's `ToolSettledBubbleEvent` for two reasons verified against
- * 0.8.0: the bubble's `result` is the tool's RAW return value, not the
+ * from Operative's `ToolSettledBubbleEvent` for two reasons originally verified against
+ * 0.8.0 and retained by the current installed-package regression suite: the bubble's `result` is the tool's RAW return value, not the
  * `ToolResult` the wire wants, and an approval-paused call never gets a
  * bubble at all — only `tools.executed` carries its `action_required`
  * result with the `pendingApproval` descriptor the client needs.
@@ -559,8 +611,45 @@ export async function pumpChatRun(
 
 				for (const toolCall of event.toolCalls) {
 					const result = resultsByCallId.get(toolCall.id);
-					if (!result) continue;
-					writer.write({ type: 'tool_result', ...toChatToolResult(result) });
+					if (result) {
+						writer.write({ type: 'tool_result', ...toChatToolResult(result) });
+						continue;
+					}
+
+					// A CALL WITH NO RESULT STILL GETS ONE, and this used to be a
+					// bare `continue`.
+					//
+					// The client renders a pending tool row from the `tool_call`
+					// frame above and settles it on a result, and the session
+					// controller treats a call without one as unresolved — so
+					// skipping here left that row pending until another turn or a
+					// reload cleared it. There was no frame saying what happened,
+					// because from the wire's point of view nothing had.
+					//
+					// A step reaches this state whenever a `beforeToolExecution`
+					// hook filters a call out: Operative seals it in the
+					// CONVERSATION, so a later replay is intact, but dispatches no
+					// event. The server-owned family's approval gate is the first
+					// caller here to do that deliberately, and a gate whose "no" is
+					// invisible is worse than no gate.
+					//
+					// Reported as an ERROR outcome rather than a success carrying a
+					// refusal, because the tool did not run. The wording stays
+					// generic on purpose: this is the pump, which knows a result is
+					// missing but not why, and a message naming approval would be
+					// wrong for every other cause.
+					const syntheticResult: ChatToolResult = {
+						callId: toolCall.id,
+						outcome: 'error',
+						content: 'This call did not run, and reported no result.'
+					};
+					writer.write({
+						type: 'tool.settled',
+						toolCallId: toolCall.id,
+						toolName: toolCall.name,
+						result: syntheticResult
+					});
+					writer.write({ type: 'tool_result', ...syntheticResult });
 				}
 			}
 		}

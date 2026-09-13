@@ -1,0 +1,297 @@
+<script lang="ts">
+	/**
+	 * What a durable re-attach found, rendered so the three outcomes cannot be
+	 * mistaken for each other.
+	 *
+	 * The distinction this exists for: `recover()` returns `null` both when
+	 * nothing was in flight and when a re-attach was attempted and every
+	 * candidate rejected. One is a healthy idle session; the other is a run
+	 * whose work is gone. Rendering them identically would be the interface
+	 * telling a comfortable lie about the second.
+	 *
+	 * MOUNTED ALWAYS, empty until asked, rather than gated behind `{#if}`. The
+	 * lab's `error-live-regions.e2e.ts` enforces that rule for every status
+	 * region here, because a region that appears with text already in it is not
+	 * reliably announced.
+	 */
+	let { id }: { id: string } = $props();
+
+	type Durability = 'in-memory' | 'on-disk';
+
+	type Reported =
+		| { kind: 'recovered'; progress: string; note: string; durability: Durability }
+		| {
+				kind: 'nothing-to-resume';
+				durability: Durability;
+				previouslyOrphaned?: readonly string[];
+		  }
+		| {
+				kind: 'orphaned';
+				durability: Durability;
+				note: string;
+				failures: readonly { runId: string; reason: string }[];
+		  };
+
+	let outcome = $state<Reported | undefined>(undefined);
+	let checking = $state(false);
+	let failure = $state('');
+
+	/**
+	 * Whether an orphan has already been reported on this page.
+	 *
+	 * Kept because the classification is REPORTED ONCE: Operative reconciles a
+	 * stranded run as it reports the rejection, so the next check answers
+	 * benignly. Without this the second reading would erase the first and claim
+	 * nothing was ever in flight.
+	 */
+	let seenOrphan = $state(false);
+
+	/** The backing store, in the sentence that announces the outcome. */
+	function durabilitySentence(durability: Durability): string {
+		return durability === 'on-disk'
+			? 'Storage is on disk, so a run left in flight is recorded for the next process.'
+			: 'Storage is in memory, so nothing survives this process and no previous run could be observed.';
+	}
+
+	async function check(): Promise<void> {
+		if (checking) return;
+		checking = true;
+		failure = '';
+		try {
+			const response = await fetch(`/api/server-owned/conversations/${id}/recovery`, {
+				method: 'POST'
+			});
+			if (!response.ok) {
+				const body = (await response.json().catch(() => ({}))) as { error?: string };
+				// The SERVER'S sentence, not the JSON envelope — the same rule the
+				// streaming surface follows, and for the same reason: a reader
+				// should get a sentence rather than `{"error":"…"}`.
+				failure = body.error ?? 'The recovery check failed.';
+				return;
+			}
+			const reported = (await response.json()) as Reported;
+			if (reported.kind === 'orphaned') seenOrphan = true;
+			// The SERVER's memory, not just this page's. A reload discards
+			// `seenOrphan`, and the classification cannot be asked for twice — so
+			// without this a reloaded page claims no run was ever in flight.
+			if (reported.kind === 'nothing-to-resume' && (reported.previouslyOrphaned?.length ?? 0) > 0) {
+				seenOrphan = true;
+			}
+			outcome = reported;
+		} catch {
+			failure = 'The recovery check could not reach the server.';
+		} finally {
+			checking = false;
+		}
+	}
+</script>
+
+<!--
+	COLLAPSED BY DEFAULT, and that is a layout fix rather than a preference.
+
+	The detail route is a fixed-viewport-height flex column whose only flexible
+	child is the chat. Expanded, this panel took 200-285px of it — at a
+	phone-landscape 844x390 the transcript and composer measured exactly 0px.
+	The current layout keeps the idle transcript in its own scroll region.
+	When recovery status or a failure is visible, it gives the chat an 8rem
+	floor and permits document scrolling so the diagnostic cannot collapse it.
+	The short-viewport tests pin both states.
+
+	A diagnostic that is closed until asked for takes ~40px instead, which
+	leaves more space for the idle transcript. `<details>` also gets the disclosure semantics and keyboard
+	behaviour for free.
+-->
+<details class="recovery">
+	<summary>Durable recovery</summary>
+
+	<p class="explain">
+		Asks the server whether a run from a previous process is still re-attachable. After a restart
+		this variant reports <em>orphaned</em> rather than recovering: a run's provider is bound to a request-scoped
+		key and its writer to one HTTP response, so there is nothing to resume into.
+	</p>
+
+	<!--
+		The backing store, named rather than left to be inferred. "Nothing to
+		resume" is the TRUTH under in-memory storage and a bug-shaped surprise
+		under on-disk storage, and a panel that reported the outcome without
+		saying which it was running over would leave a reader unable to tell the
+		two apart.
+	-->
+	<!--
+		The same fact the announcement carries, with the part a reader can ACT on
+		— the variable to set. Left out of the live region on purpose: an
+		announcement should say what happened, not recite configuration.
+	-->
+	<p class="explain" data-testid="recovery-durability">
+		{#if outcome !== undefined}
+			{#if outcome.durability === 'on-disk'}
+				Storage: on disk.
+			{:else}
+				Storage: in memory. Set <code>CHAT_ROOM_SERVER_OWNED_DATABASE</code> to a file path to make the
+				question answerable.
+			{/if}
+		{/if}
+	</p>
+
+	<button
+		type="button"
+		data-testid="recovery-check"
+		aria-busy={checking}
+		aria-disabled={checking}
+		onclick={check}
+	>
+		{checking ? 'Checking…' : 'Check for a recoverable run'}
+	</button>
+</details>
+
+<!--
+	OUTSIDE THE DISCLOSURE, deliberately. These were inside it, which meant
+	closing the panel while a check was in flight inserted the outcome into a
+	hidden subtree — absent from the accessibility tree, so nothing was
+	announced, and reopening later merely exposed text that was already there
+	rather than triggering a live-region update.
+
+	A region that announces has to stay in the tree regardless of what the
+	reader has collapsed. The explanation and the control can hide; the answer
+	cannot.
+-->
+<!--
+	THE DURABILITY SENTENCE IS IN THE ANNOUNCEMENT, not only in the paragraph
+	beside it. Review caught the split: the ordinary paragraph changed
+	silently while this region announced the reassuring half, so a screen
+	reader heard "idle, not lost" without learning that in-memory storage
+	could not have observed a previous process at all. The qualifier is what
+	makes the outcome mean anything.
+
+	The benign reading is deliberately a SNAPSHOT. After this check renders, the
+	person can start a new turn while the panel keeps the old result on screen.
+	That retained text must describe when the check ran, not claim what is
+	running now.
+
+	The orphan-history branch is likewise not "no run was in flight". One was,
+	and its work was lost — so that wording would make a false historical claim
+	in exactly the two-click scenario the exercise documents.
+
+	The orphan note is here too, not in a separate conditional paragraph. The
+	note is the only place a persistence failure is surfaced, and a paragraph
+	that appears outside the live region is just text on the page — not a
+	reliable announcement.
+-->
+<p class="status" role="status" data-testid="recovery-status">
+	{#if outcome?.kind === 'nothing-to-resume'}
+		The last successful recovery check found nothing resumable. {seenOrphan
+			? 'The orphaned run reported earlier had already been reconciled when that check ran; this is not a claim that nothing was lost.'
+			: 'No run was in flight for this session when that check ran.'}
+		{durabilitySentence(outcome.durability)}
+	{:else if outcome?.kind === 'recovered'}
+		The last successful recovery check re-attached to a run in flight. Progress was {outcome.progress}:
+		{outcome.note}
+		{durabilitySentence(outcome.durability)}
+	{:else if outcome?.kind === 'orphaned'}
+		The last successful recovery check found an orphaned run. A re-attach was attempted and every
+		candidate rejected, so this run's work is terminally gone. {durabilitySentence(
+			outcome.durability
+		)}
+		<span data-testid="recovery-once">{outcome.note}</span>
+	{/if}
+</p>
+
+{#if outcome?.kind === 'orphaned'}
+	<ul data-testid="recovery-failures">
+		{#each outcome.failures as entry (entry.runId)}
+			<li><code>{entry.runId}</code> — {entry.reason}</li>
+		{/each}
+	</ul>
+{/if}
+
+<p class="failure" role="alert" data-testid="recovery-error">
+	{#if failure !== ''}
+		{failure}
+	{/if}
+</p>
+
+<style>
+	.recovery {
+		border: 1px solid var(--cinder-border);
+		border-radius: 0.5rem;
+		padding: 0.75rem 1rem;
+	}
+
+	/*
+		The panel's contents only participate in the flex column once the
+		disclosure is open; closed, `<details>` is just its summary.
+	*/
+	.recovery[open] {
+		display: flex;
+		flex-direction: column;
+		gap: 0.5rem;
+	}
+
+	summary {
+		font-weight: 600;
+		cursor: pointer;
+	}
+
+	.explain {
+		margin: 0;
+		color: var(--cinder-text-secondary);
+		font-size: 0.875rem;
+	}
+
+	.status,
+	.failure {
+		margin: 0;
+	}
+
+	/*
+		IN THE TREE, TAKING NO SPACE, while there is nothing to announce.
+
+		These regions live outside the disclosure so a collapsed panel cannot
+		hide an announcement — but that puts them in a fixed-viewport-height
+		column whose only flexible child is the transcript, and reserving height
+		for them cost it 72px: measured 57px at 844x390, below the floor its own
+		regression test asserts. `display: none` is not the alternative, since
+		that is what removes a region from the accessibility tree in the first
+		place.
+
+		Clipping keeps them registered and free until they have text. Once they
+		do, the page may scroll — see the detail route's `:has()` rule, the same
+		accommodation the approval question gets.
+	*/
+	.status:empty,
+	.failure:empty {
+		position: absolute;
+		inline-size: 1px;
+		block-size: 1px;
+		margin: -1px;
+		padding: 0;
+		border: 0;
+		overflow: hidden;
+		clip-path: inset(50%);
+	}
+
+	.failure {
+		color: var(--cinder-status-danger-text);
+	}
+
+	ul {
+		margin: 0;
+		padding-inline-start: 1.25rem;
+		font-size: 0.875rem;
+	}
+
+	button {
+		align-self: start;
+		padding: 0.35rem 0.75rem;
+		border-radius: 0.375rem;
+		border: 1px solid var(--cinder-border);
+		background: var(--cinder-surface);
+		cursor: pointer;
+	}
+
+	button[aria-disabled='true'] {
+		background: var(--cinder-surface-inset);
+		color: var(--cinder-text-disabled);
+		cursor: not-allowed;
+	}
+</style>

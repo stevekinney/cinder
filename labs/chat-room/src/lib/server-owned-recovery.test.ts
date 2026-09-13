@@ -1,0 +1,383 @@
+import { describe, expect, it, spyOn } from 'bun:test';
+import { createAgent, SessionRecoverEvent } from '@lostgradient/operative';
+import type { AgentRun, SessionHandle } from '@lostgradient/operative';
+
+import {
+	classifyRecovery,
+	disposeRecoveredRunWhenSettled,
+	describeRecoveryError,
+	recoveryFailureLog,
+	withRecoveryLock
+} from './server-owned-recovery.ts';
+
+/**
+ * A handle that dispatches the real `SessionRecoverEvent` during `recover()`.
+ *
+ * Operative's own event class, not a hand-rolled stand-in: the whole point of
+ * this module is reading a field off that event, so a fake event with the same
+ * field name would test the fake rather than the contract. Constructing the
+ * published class means a rename upstream fails this suite instead of passing
+ * against a shape that no longer exists.
+ *
+ * It also caught the constructor being POSITIONAL rather than an options bag,
+ * which a hand-rolled event would have hidden completely.
+ */
+function handleThatRecovers(options: {
+	returns: AgentRun | null;
+	failures?: readonly { runId: string; error: unknown }[];
+	throws?: unknown;
+}): SessionHandle & { listenerCount: () => number } {
+	const emitter = new EventTarget();
+	let listeners = 0;
+	const add = emitter.addEventListener.bind(emitter);
+	const remove = emitter.removeEventListener.bind(emitter);
+
+	const handle = {
+		id: 'session-under-test',
+		emitter: Object.assign(emitter, {
+			addEventListener: (...args: Parameters<typeof add>) => {
+				listeners += 1;
+				add(...args);
+			},
+			removeEventListener: (...args: Parameters<typeof remove>) => {
+				listeners -= 1;
+				remove(...args);
+			}
+		}),
+		recover: async () => {
+			// Dispatched DURING the call, which is what makes listener ordering
+			// load-bearing rather than incidental.
+			// POSITIONAL — `(sessionId, runId, failures)`, not an options bag.
+			// Passing an object puts it in `sessionId` and leaves `failures` at
+			// its `[]` default, so the classifier reports every orphan as
+			// "nothing to resume": the benign answer, silently. This test caught
+			// exactly that, and only because it asserts the FAILURE branch — a
+			// suite that checked the happy path would have shipped it.
+			emitter.dispatchEvent(
+				new SessionRecoverEvent(
+					'session-under-test',
+					'session-under-test:1',
+					options.failures ?? []
+				)
+			);
+			if (options.throws !== undefined) throw options.throws;
+			return options.returns;
+		},
+		listenerCount: () => listeners
+	};
+
+	return handle as unknown as SessionHandle & { listenerCount: () => number };
+}
+
+describe('classifyRecovery', () => {
+	it('reports a live re-attach as recovered', async () => {
+		const run = { id: 'run-1' } as unknown as AgentRun;
+		const outcome = await classifyRecovery(handleThatRecovers({ returns: run }));
+
+		expect(outcome.kind).toBe('recovered');
+		if (outcome.kind !== 'recovered') return;
+		expect(outcome.run).toBe(run);
+	});
+
+	it('distinguishes "nothing to resume" from "attempted and failed"', async () => {
+		// Both return `null` from `recover()`. The ONLY thing separating a healthy
+		// idle session from a run whose work is gone is the emitter's `failures`
+		// array — which is the entire reason this module exists rather than
+		// callers reading the return value.
+		const benign = await classifyRecovery(handleThatRecovers({ returns: null }));
+		expect(benign.kind).toBe('nothing-to-resume');
+
+		const failed = await classifyRecovery(
+			handleThatRecovers({
+				returns: null,
+				failures: [{ runId: 'session:3', error: new Error('no workflow services available') }]
+			})
+		);
+		expect(failed.kind).toBe('orphaned');
+		if (failed.kind !== 'orphaned') return;
+		expect(failed.failures).toEqual([
+			{ runId: 'session:3', reason: 'no workflow services available' }
+		]);
+	});
+
+	it('carries no live error object into the outcome', async () => {
+		// The credential boundary again: whatever the engine threw stays
+		// server-side, and the outcome carries a sentence. A string by
+		// construction means a route cannot forward the cause by accident.
+		const failed = await classifyRecovery(
+			handleThatRecovers({
+				returns: null,
+				failures: [{ runId: 'r', error: new Error('postgres://user:hunter2@host/db unreachable') }]
+			})
+		);
+
+		expect(failed.kind).toBe('orphaned');
+		if (failed.kind !== 'orphaned') return;
+
+		// ENUMERATED, not serialized. `JSON.stringify(new Error(...))` produces
+		// `{}` — an `Error` has no enumerable own properties — so a classifier
+		// that kept the live error in an extra field would pass a
+		// `not.toContain('stack')` assertion while carrying the whole cause. That
+		// is what the first version of this test did.
+		//
+		// Checking the KEYS is what makes the claim falsifiable: the shape is
+		// exactly the two fields, and anything smuggled alongside them fails
+		// here.
+		const [failure] = failed.failures;
+		expect(Object.keys(failure ?? {}).sort()).toEqual(['reason', 'runId']);
+		for (const value of Object.values(failure ?? {})) {
+			expect(typeof value).toBe('string');
+		}
+		expect(failure?.reason).toContain('unreachable');
+	});
+
+	it('removes its listener even when recover() throws', async () => {
+		// The handle outlives this call. A listener left attached to a
+		// long-lived emitter accumulates one per attempt, and each one closes
+		// over a dead classification.
+		const handle = handleThatRecovers({ returns: null, throws: new Error('engine exploded') });
+
+		await expect(classifyRecovery(handle)).rejects.toThrow('engine exploded');
+		expect(handle.listenerCount()).toBe(0);
+	});
+});
+
+describe('disposeRecoveredRunWhenSettled', () => {
+	it.each(['resolved', 'rejected'] as const)(
+		'contains disposal failures after a %s result',
+		async (outcome) => {
+			const warning = spyOn(console, 'warn').mockImplementation(() => {});
+			let disposeCalls = 0;
+			const result =
+				outcome === 'resolved' ? Promise.resolve() : Promise.reject(new Error('run failed'));
+			const run = {
+				result: () => result,
+				[Symbol.dispose]: () => {
+					disposeCalls += 1;
+					throw new Error('secret disposal details');
+				}
+			} as unknown as AgentRun;
+			try {
+				disposeRecoveredRunWhenSettled(run);
+				await new Promise<void>((resolve) => setTimeout(resolve, 0));
+				expect(disposeCalls).toBe(1);
+				expect(warning).toHaveBeenCalledTimes(1);
+				expect(warning).toHaveBeenCalledWith(
+					'[server-owned] recovered run cleanup failed; details withheld'
+				);
+			} finally {
+				warning.mockRestore();
+			}
+		}
+	);
+
+	it('disposes an actual settled AgentRun without changing its terminal result', async () => {
+		let releaseGeneration!: () => void;
+		const generationHeld = new Promise<void>((resolve) => {
+			releaseGeneration = resolve;
+		});
+		const agent = createAgent({
+			generate: async () => {
+				await generationHeld;
+				return { content: 'recovered', toolCalls: [] };
+			},
+			instructions: 'Return the supplied fixture response.'
+		});
+		const run = agent.run('fixture');
+		let disposeCalls = 0;
+		const originalDispose = run[Symbol.dispose].bind(run);
+		Object.defineProperty(run, Symbol.dispose, {
+			value: () => {
+				disposeCalls += 1;
+				originalDispose();
+			}
+		});
+
+		disposeRecoveredRunWhenSettled(run);
+		await Promise.resolve();
+		expect(disposeCalls).toBe(0);
+		releaseGeneration();
+		const result = await run.result();
+		expect(run.snapshot().status).toBe('terminal');
+		expect(await run.result()).toBe(result);
+		expect(result.finishReason).toBe('stop-condition');
+		expect(disposeCalls).toBe(1);
+	});
+
+	it('keeps the recovered execution alive until settlement, then disposes the wrapper', async () => {
+		let resolveResult!: () => void;
+		let disposeCalls = 0;
+		let abortCalls = 0;
+		const result = new Promise<void>((resolve) => {
+			resolveResult = resolve;
+		});
+		const run = {
+			result: () => result,
+			abort: () => {
+				abortCalls += 1;
+			},
+			[Symbol.dispose]: () => {
+				disposeCalls += 1;
+			}
+		} as unknown as AgentRun;
+
+		disposeRecoveredRunWhenSettled(run);
+		await Promise.resolve();
+		expect(disposeCalls).toBe(0);
+		expect(abortCalls).toBe(0);
+
+		resolveResult();
+		await result;
+		await Promise.resolve();
+		expect(disposeCalls).toBe(1);
+		expect(abortCalls).toBe(0);
+	});
+
+	it('also releases the wrapper when the recovered run rejects', async () => {
+		let rejectResult!: (reason: Error) => void;
+		let disposeCalls = 0;
+		const result = new Promise<void>((_, reject) => {
+			rejectResult = reject;
+		});
+		const run = {
+			result: () => result,
+			[Symbol.dispose]: () => {
+				disposeCalls += 1;
+			}
+		} as unknown as AgentRun;
+
+		disposeRecoveredRunWhenSettled(run);
+		rejectResult(new Error('recovered run failed'));
+		await expect(result).rejects.toThrow('recovered run failed');
+		await Promise.resolve();
+		expect(disposeCalls).toBe(1);
+	});
+});
+
+describe('describeRecoveryError', () => {
+	it('renders a value that refuses to describe itself', () => {
+		// Runs while classifying a failure, so it must not turn one failure into
+		// two — the same hazard `describeCause` has in the runtime module.
+		const hostile = {
+			toString() {
+				throw new Error('nope');
+			}
+		};
+
+		expect(describeRecoveryError(hostile)).toBe('a object that could not be described');
+		expect(describeRecoveryError(new TypeError('bad'))).toBe('TypeError: bad');
+		expect(describeRecoveryError(new Error('plain'))).toBe('plain');
+		expect(describeRecoveryError('already a string')).toBe('already a string');
+	});
+});
+
+describe('withRecoveryLock', () => {
+	it('waits for the first recovery before starting the second', async () => {
+		let releaseFirst!: () => void;
+		const firstReady = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const events: string[] = [];
+
+		const first = withRecoveryLock('conversation-1', async () => {
+			events.push('first-start');
+			await firstReady;
+			events.push('first-finished');
+			return 'first';
+		});
+		await Promise.resolve();
+		const second = withRecoveryLock('conversation-1', async () => {
+			events.push('second-start');
+			return 'second';
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(['first-start']);
+		releaseFirst();
+		expect(await Promise.all([first, second])).toEqual(['first', 'second']);
+		expect(events).toEqual(['first-start', 'first-finished', 'second-start']);
+	});
+
+	it('does not serialize different conversations', async () => {
+		let releaseFirst!: () => void;
+		const firstReady = new Promise<void>((resolve) => {
+			releaseFirst = resolve;
+		});
+		const first = withRecoveryLock('conversation-a', async () => {
+			await firstReady;
+			return 'a';
+		});
+		const second = withRecoveryLock('conversation-b', async () => 'b');
+
+		expect(await second).toBe('b');
+		releaseFirst();
+		expect(await first).toBe('a');
+	});
+
+	it('makes the loser observe the winner history after classification', async () => {
+		let releaseWinner!: () => void;
+		const winnerReady = new Promise<void>((resolve) => {
+			releaseWinner = resolve;
+		});
+		const history: string[] = [];
+
+		const winner = withRecoveryLock('conversation-race', async () => {
+			await winnerReady;
+			history.push('orphaned:run-winner');
+			return 'orphaned';
+		});
+		const loser = withRecoveryLock('conversation-race', async () =>
+			history.length > 0 ? 'nothing-to-resume' : 'orphaned'
+		);
+
+		releaseWinner();
+		expect(await winner).toBe('orphaned');
+		expect(await loser).toBe('nothing-to-resume');
+		expect(history).toEqual(['orphaned:run-winner']);
+	});
+
+	it('serializes the same conversation across module evaluations and cleans up the lock', async () => {
+		const reloaded = await import(`./server-owned-recovery.ts?reload=${crypto.randomUUID()}`);
+		expect(reloaded.withRecoveryLock).not.toBe(withRecoveryLock);
+		let releaseWinner!: () => void;
+		const winnerReady = new Promise<void>((resolve) => {
+			releaseWinner = resolve;
+		});
+		const events: string[] = [];
+
+		const winner = withRecoveryLock('conversation-hmr', async () => {
+			events.push('winner-start');
+			await winnerReady;
+			events.push('winner-finished');
+			return 'winner';
+		});
+		await Promise.resolve();
+		const loser = reloaded.withRecoveryLock('conversation-hmr', async () => {
+			events.push('loser-start');
+			return 'loser';
+		});
+
+		await Promise.resolve();
+		expect(events).toEqual(['winner-start']);
+		releaseWinner();
+		expect(await Promise.all([winner, loser])).toEqual(['winner', 'loser']);
+		expect(events).toEqual(['winner-start', 'winner-finished', 'loser-start']);
+		const locks = (globalThis as Record<symbol, unknown>)[
+			Symbol.for('cinder.chat-room.server-owned.recovery-locks')
+		] as Map<string, Promise<void>>;
+		expect(locks.has('conversation-hmr')).toBe(false);
+
+		// A completed chain removes its key rather than retaining a promise for
+		// every conversation forever. The next request can acquire it immediately.
+		await reloaded.withRecoveryLock('conversation-hmr', async () => 'fresh');
+	});
+});
+
+describe('recoveryFailureLog', () => {
+	it('identifies the rejected run without exposing a provider reason', () => {
+		const log = recoveryFailureLog('conversation-1', 'run-1');
+		expect(log).toContain('run-1');
+		expect(log).toContain('details withheld');
+		expect(log).not.toContain('reason');
+	});
+});

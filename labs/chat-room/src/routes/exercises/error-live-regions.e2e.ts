@@ -39,6 +39,18 @@ const ERROR_REGIONS = [
 	{ route: '/server-owned', testId: 'server-owned-failure' }
 ];
 
+/**
+ * The same invariant on a route that needs a conversation to exist first.
+ *
+ * Kept OUT of the table above rather than teaching it to resolve a route: every
+ * entry there is a constant string, and the one thing this file is good at is
+ * being obvious. A second loop is cheaper to read than a table whose route
+ * column is sometimes a function.
+ */
+const DYNAMIC_ERROR_REGIONS = [
+	{ path: (id: string) => `/server-owned/${id}`, testId: 'recovery-error' }
+];
+
 for (const { route, testId } of ERROR_REGIONS) {
 	test(`${route} mounts ${testId} before anything can fail`, async ({ page }) => {
 		await gotoHydrated(page, route);
@@ -71,3 +83,23 @@ test('the hazard fixture announces through one region, not two', async ({ page }
 	await expect(visible).not.toHaveAttribute('role', 'alert');
 	await expect(page.getByTestId('hazard-fixture-announcement')).not.toBeEmpty();
 });
+
+for (const { path, testId } of DYNAMIC_ERROR_REGIONS) {
+	test(`a server-owned conversation mounts ${testId} before anything can fail`, async ({
+		page,
+		request
+	}) => {
+		const created = await request.post('/api/server-owned/conversations', {
+			data: { title: `Live region ${Date.now().toString(36)}` }
+		});
+		const { conversation } = (await created.json()) as { conversation: { id: string } };
+
+		await gotoHydrated(page, path(conversation.id));
+
+		const region = page.getByTestId(testId);
+
+		await expect(region).toHaveCount(1);
+		await expect(region).toBeEmpty();
+		await expect(region).toHaveAttribute('role', 'alert');
+	});
+}
