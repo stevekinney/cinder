@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { load as loadYaml } from 'js-yaml';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { basename, join, resolve } from 'node:path';
@@ -234,7 +235,7 @@ describe('workflow-level env block scanning', () => {
 });
 
 describe('Playwright dependency setup', () => {
-  test.each(['main-green.yaml', 'release.yaml', 'release-manual.yaml'])(
+  test.each(['unit-tests.yaml', 'main-green.yaml', 'release.yaml', 'release-manual.yaml'])(
     '%s normalizes the hosted-runner Ubuntu mirror before installing Playwright dependencies',
     (workflowName) => {
       const workspaceRoot = resolve(import.meta.dirname, '../../..');
@@ -269,6 +270,61 @@ describe('Playwright dependency setup', () => {
       expect(playwrightInstallIndex).toBeGreaterThan(canonicalMirrorIndex);
     },
   );
+
+  test('requires PR hydration smoke to block the static lane and required unit-tests gate', () => {
+    const workspaceRoot = resolve(import.meta.dirname, '../../..');
+    const workflowSource = readFileSync(
+      join(workspaceRoot, '.github', 'workflows', 'unit-tests.yaml'),
+      'utf8',
+    );
+    const workflow = loadYaml(workflowSource) as {
+      jobs: Record<
+        string,
+        { if?: string; needs?: string | string[]; steps?: Array<Record<string, unknown>> }
+      >;
+    };
+    const staticLane = workflow.jobs['static-artifact'];
+    const unitGate = workflow.jobs['unit-tests'];
+    const hydrationStep = staticLane?.steps?.find(
+      (step) => step['name'] === 'Consumer hydration smoke (cinder)',
+    );
+
+    expect(workflowSource).toContain('  pull_request: {}');
+    expect(staticLane?.needs).toBe('scope');
+    expect(hydrationStep?.['run']).toBe(
+      'bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke',
+    );
+    expect(hydrationStep?.['if']).toBeUndefined();
+    expect(hydrationStep?.['continue-on-error']).toBeUndefined();
+    expect(staticLane?.steps?.some((step) => step['name'] === 'Validate workflow contracts')).toBe(
+      true,
+    );
+
+    const stepNames = staticLane?.steps?.map((step) => step['name']) ?? [];
+    const mirrorIndex = stepNames.indexOf('Normalize Ubuntu mirror for Playwright dependencies');
+    const chromiumIndex = stepNames.indexOf('Install Chromium for hydration smoke');
+    const hydrationIndex = stepNames.indexOf('Consumer hydration smoke (cinder)');
+    expect(mirrorIndex).toBeGreaterThanOrEqual(0);
+    expect(chromiumIndex).toBeGreaterThanOrEqual(0);
+    expect(hydrationIndex).toBeGreaterThanOrEqual(0);
+    expect(mirrorIndex).toBeLessThan(chromiumIndex);
+    expect(chromiumIndex).toBeLessThan(hydrationIndex);
+
+    expect(unitGate?.needs).toEqual([
+      'scope',
+      'static-artifact',
+      'package',
+      'playground',
+      'component',
+    ]);
+    const aggregatorStep = unitGate?.steps?.find(
+      (step) => step['name'] === 'Require every selected lane to succeed',
+    );
+    expect(aggregatorStep?.['env']).toMatchObject({
+      STATIC: '${{ needs.static-artifact.result }}',
+    });
+    expect(aggregatorStep?.['run']).toContain('*,static,*) [ "$STATIC" = success ] || exit 1');
+  });
 });
 
 describe('validate-release-workflow changeset guards', () => {
