@@ -26,7 +26,7 @@ export type SchemaFormStateOptions = {
    * in flight, but a synthetic event dispatched before the DOM catches up
    * can still reach these handlers — `getSubmitting()` is this class's own
    * belt-and-suspenders guard against that race (see
-   * schema-form-async.fixture.ts's "freezes edits until it resolves").
+   * schema-form-async.test.ts's "freezes edits until it resolves").
    */
   getSubmitting: () => boolean;
   onDraftChange?: SchemaFormDraftChangeHandler;
