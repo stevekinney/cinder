@@ -12,16 +12,6 @@ const { cleanup, fireEvent, render, screen } = await import('@testing-library/sv
 const { default: SchemaForm } = await import('./schema-form.svelte');
 const { validateSchemaValue } = await import('./schema-form-validation.ts');
 
-function deferred<T>() {
-  let resolve!: (value: T) => void;
-  let reject!: (reason?: unknown) => void;
-  const promise = new Promise<T>((promiseResolve, promiseReject) => {
-    resolve = promiseResolve;
-    reject = promiseReject;
-  });
-  return { promise, resolve, reject };
-}
-
 async function flush(): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, 0));
 }
@@ -37,8 +27,8 @@ describe('SchemaForm async JSON Schema validation', () => {
   afterEach(() => cleanup());
 
   test('awaits async submit validation and freezes edits until it resolves', async () => {
-    const pendingValidation = deferred<unknown>();
-    const validationStarted = deferred<void>();
+    const pendingValidation = Promise.withResolvers<unknown>();
+    const validationStarted = Promise.withResolvers<void>();
     const schema = {
       $id: 'schema-form-async-submit-validation',
       $async: true,
