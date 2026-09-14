@@ -75,21 +75,18 @@ export function writePersistedTheme(value: ThemeChoice): void {
 /**
  * Apply the playground's theme to a document's root element.
  *
- * - With an explicit `override` (light/dark), pin both `color-scheme` and
- *   `data-cinder-theme` to that value so the choice wins over the OS setting.
- * - With no override (`null`), clear the inline `color-scheme` so the base CSS
- *   declaration (`color-scheme: light dark`) and the OS `prefers-color-scheme`
- *   drive the rendering. `data-cinder-theme` is set to `resolved` — the live
- *   browser preference — so the authoritative CSS signal still reflects the
- *   theme actually in effect rather than being left stale.
+ * - With an explicit `override` (light/dark), set Cinder's scoped `data-theme`
+ *   attribute so the choice wins over the OS setting.
+ * - With no override (`null`), remove both explicit signals so the base CSS and
+ *   the OS `prefers-color-scheme` drive the rendering.
  */
-export function applyThemeToDocument(
-  doc: Document,
-  override: ThemeChoice | null,
-  resolved: ThemeChoice,
-): void {
-  doc.documentElement.style.colorScheme = override ?? '';
-  doc.documentElement.dataset['cinderTheme'] = override ?? resolved;
+export function applyThemeToDocument(doc: Document, override: ThemeChoice | null): void {
+  doc.documentElement.style.colorScheme = '';
+  if (override === null) {
+    doc.documentElement.removeAttribute('data-theme');
+    return;
+  }
+  doc.documentElement.dataset['theme'] = override;
 }
 
 export class PreviewStore {

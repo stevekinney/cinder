@@ -228,15 +228,15 @@ describe('component-page single-scroll layout', () => {
     }
   });
 
-  test('renders the hero, spec card, and section anchors from a fixture', async () => {
+  test('renders the hero, import control, and section anchors from a fixture', async () => {
     const { unmount } = render(ComponentPage);
 
     expect(await screen.findByRole('heading', { level: 1, name: 'Button' })).toBeTruthy();
     expect(screen.getByText('Fixture purpose for a documentation page.')).toBeTruthy();
     // Import line built from exportName + importSpecifier.
     expect(screen.getByText("import { Button } from '@lostgradient/cinder/button';")).toBeTruthy();
-    // Spec card version row.
-    expect(screen.getByText('v0.2.0')).toBeTruthy();
+    expect(document.querySelector('[aria-label="Component facts"]')).toBeNull();
+    expect(screen.getByText('Actions')).toBeTruthy();
 
     // Section anchors resolve.
     for (const id of ['overview', 'guidance', 'props', 'related']) {
@@ -260,37 +260,6 @@ describe('component-page single-scroll layout', () => {
     // ("Segmented Control"); the href keeps the kebab id.
     const altLink = screen.getByRole('link', { name: /Segmented Control/ });
     expect(altLink.getAttribute('href')).toBe('/page/segmented-control');
-
-    unmount();
-    await tick();
-  });
-
-  test('maps a non-stable status to a non-success badge variant', async () => {
-    const beta = baseFixture();
-    beta.component.status = 'beta';
-    installDocumentationDataIsland(beta);
-
-    const { unmount } = render(ComponentPage);
-    const statusBadge = await screen.findByText('beta');
-    expect(statusBadge.getAttribute('data-variant')).toBe('info');
-
-    unmount();
-    await tick();
-  });
-
-  test('renders the status dot as decorative so it does not re-announce the badge text', async () => {
-    // Regression for #388/#372: the spec-row StatusDot sits next to a Badge that
-    // already names the status visibly. The dot must be decorative
-    // (`aria-hidden`) — if it carried `aria-label={status}` it would speak the
-    // same word the Badge already announces (the audible duplication).
-    const { unmount } = render(ComponentPage);
-    await screen.findByRole('heading', { level: 1, name: 'Button' });
-
-    const dot = document.querySelector('.dx-spec__val [role="img"]');
-    expect(dot).not.toBeNull();
-    expect(dot?.getAttribute('aria-hidden')).toBe('true');
-    // The decorative dot carries no accessible name of its own.
-    expect(dot?.getAttribute('aria-label')).toBeNull();
 
     unmount();
     await tick();

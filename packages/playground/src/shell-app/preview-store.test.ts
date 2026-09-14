@@ -6,9 +6,8 @@
  *   returns the stored override (`light`/`dark`) or `null` when there is none —
  *   `null` is the signal to follow the browser's `prefers-color-scheme`. The
  *   tests stub `localStorage` at the global level for the duration of each case.
- * - `applyThemeToDocument` pins or clears `color-scheme` on a document's
- *   `documentElement.style` depending on whether an override is set. We use a
- *   minimal fake document.
+ * - `applyThemeToDocument` writes Cinder's authoritative `data-theme` scope
+ *   for explicit choices and removes both explicit signals in system mode.
  */
 
 import { afterEach, describe, expect, it } from 'bun:test';
@@ -20,7 +19,6 @@ import {
   readPersistedTheme,
   THEME_STORAGE_KEY,
   writePersistedTheme,
-  type ThemeChoice,
 } from './preview-store.svelte.ts';
 
 type LocalStorageStub = {
@@ -254,50 +252,33 @@ function makeFakeDocument(): Document {
     },
   };
   return {
-    documentElement: { style, dataset: {} as Record<string, string> },
+    documentElement: {
+      style,
+      dataset: {} as Record<string, string>,
+      removeAttribute(name: string) {
+        if (name === 'data-theme') delete this.dataset['theme'];
+      },
+    },
   } as unknown as Document;
 }
 
 describe('applyThemeToDocument', () => {
-  // An explicit override pins colorScheme to that value; no override (null)
-  // clears the inline value so the OS preference and base CSS drive rendering.
-  const cases: Array<[ThemeChoice | null, string]> = [
-    ['light', 'light'],
-    ['dark', 'dark'],
-    [null, ''], // empty string clears the inline override
-  ];
-
-  for (const [override, expected] of cases) {
-    it(`sets colorScheme to "${expected}" for override ${String(override)}`, () => {
-      const doc = makeFakeDocument();
-      // `resolved` only matters when there is no override; pass 'light' as the
-      // resolved browser preference for these colorScheme assertions.
-      applyThemeToDocument(doc, override, 'light');
-      expect(doc.documentElement.style.colorScheme).toBe(expected);
-    });
-  }
-
-  it('clears a previously-set inline override when there is no override', () => {
-    const doc = makeFakeDocument();
-    doc.documentElement.style.colorScheme = 'dark';
-    applyThemeToDocument(doc, null, 'light');
-    expect(doc.documentElement.style.colorScheme).toBe('');
-  });
-
-  it('writes data-cinder-theme to the override when one is set', () => {
+  it('sets data-theme for an explicit override and does not use inline color-scheme', () => {
     for (const override of ['light', 'dark'] as const) {
       const doc = makeFakeDocument();
-      applyThemeToDocument(doc, override, 'light');
-      expect(doc.documentElement.dataset['cinderTheme']).toBe(override);
+      applyThemeToDocument(doc, override);
+      expect(doc.documentElement.dataset['theme']).toBe(override);
+      expect(doc.documentElement.style.colorScheme).toBe('');
     }
   });
 
-  it('writes data-cinder-theme to the resolved browser theme when there is no override', () => {
-    for (const resolved of ['light', 'dark'] as const) {
-      const doc = makeFakeDocument();
-      applyThemeToDocument(doc, null, resolved);
-      expect(doc.documentElement.dataset['cinderTheme']).toBe(resolved);
-    }
+  it('removes the explicit scope and inline override in system mode', () => {
+    const doc = makeFakeDocument();
+    doc.documentElement.dataset['theme'] = 'dark';
+    doc.documentElement.style.colorScheme = 'dark';
+    applyThemeToDocument(doc, null);
+    expect(doc.documentElement.style.colorScheme).toBe('');
+    expect(doc.documentElement.dataset['theme']).toBeUndefined();
   });
 });
 
