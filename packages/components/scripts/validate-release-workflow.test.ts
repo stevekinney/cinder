@@ -301,12 +301,14 @@ describe('Playwright dependency setup', () => {
     );
 
     const stepNames = staticLane?.steps?.map((step) => step['name']) ?? [];
-    expect(stepNames.indexOf('Normalize Ubuntu mirror for Playwright dependencies')).toBeLessThan(
-      stepNames.indexOf('Install Chromium for hydration smoke'),
-    );
-    expect(stepNames.indexOf('Install Chromium for hydration smoke')).toBeLessThan(
-      stepNames.indexOf('Consumer hydration smoke (cinder)'),
-    );
+    const mirrorIndex = stepNames.indexOf('Normalize Ubuntu mirror for Playwright dependencies');
+    const chromiumIndex = stepNames.indexOf('Install Chromium for hydration smoke');
+    const hydrationIndex = stepNames.indexOf('Consumer hydration smoke (cinder)');
+    expect(mirrorIndex).toBeGreaterThanOrEqual(0);
+    expect(chromiumIndex).toBeGreaterThanOrEqual(0);
+    expect(hydrationIndex).toBeGreaterThanOrEqual(0);
+    expect(mirrorIndex).toBeLessThan(chromiumIndex);
+    expect(chromiumIndex).toBeLessThan(hydrationIndex);
 
     expect(unitGate?.needs).toEqual([
       'scope',
