@@ -365,13 +365,14 @@ export const DECLARATION_TABLE: Record<string, DeclarationRow> = {
       'fixtures immediately before package weight and publish.',
   },
   'validate:consumer:hydration-smoke': {
-    layers: ['main-green'],
+    layers: ['unit-tests', 'main-green'],
     reason:
       'A lighter single-version subset of `validate:consumer` that runs only the SvelteKit ' +
-      'hydration fixture. It runs in main-green (not release, where the full `validate:consumer` ' +
-      'already covers it) so a Chromium-launch regression in the browser hydration path — which ' +
-      'otherwise executes only in the release path — is caught on Linux CI before the same-SHA ' +
-      'release can publish. See docs/validation-topology.md.',
+      'hydration fixture. The required unit-tests static-artifact lane runs it before merge, ' +
+      'including token, stylesheet, and script-only changes that skip the playground lane. ' +
+      'It verifies the packed consumer and its à-la-carte selector isolation (CIN-497). ' +
+      'main-green repeats it before the same-SHA release, whose full `validate:consumer` ' +
+      'already covers it. See docs/validation-topology.md.',
   },
   'check:readme-usage': {
     layers: ['unit-tests', 'main-green'],
