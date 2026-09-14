@@ -144,6 +144,47 @@ describe('token corpus validation', () => {
     expect(Object.hasOwn(derived.derived.child, '$type')).toBe(false);
   });
 
+  test('reports malformed extension metadata at the owning source path', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const loaded = [
+      { path: 'a.tokens.json', document: { token: { $type: 'number', $value: 1 } } },
+      { path: 'b.tokens.json', document: { broken: { $extends: 42 } } },
+    ];
+    let caught: unknown;
+    try {
+      validateLoadedTokenDocuments(resolver, loaded);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues).toEqual([
+      { path: 'b.tokens.json.broken.$extends', reason: '$extends must be a token reference' },
+    ]);
+  });
+
+  test('loads value-only token overrides using the ordered source type without rewriting source', () => {
+    const resolver: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'a.tokens.json' }, { $ref: 'b.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const base = { token: { $type: 'strokeStyle', $value: 'solid' } };
+    const override = { token: { $value: 'dashed' } };
+    const result = validateLoadedTokenDocuments(resolver, [
+      { path: 'a.tokens.json', document: base },
+      { path: 'b.tokens.json', document: override },
+    ]);
+    expect(result[0]?.document).toBe(base);
+    expect(result[1]?.document).toBe(override);
+    expect(Object.hasOwn(override.token, '$type')).toBe(false);
+  });
+
   test('isolates cross-document extension types by ordered resolver context', () => {
     const contextResolver: ResolverDocument = {
       version: '2025.10',

@@ -124,21 +124,30 @@ function isTokenType(value: unknown): value is string {
  * while the format allows a token to inherit that type from its nearest group.
  * Keeping this projection private preserves authored source and its metadata.
  */
-type GroupIndex = Map<string, Record<string, unknown>>;
+type ProjectionIndex = {
+  groups: Map<string, Record<string, unknown>>;
+  tokenTypes: Map<string, string>;
+};
 
 function isTokenNode(value: Record<string, unknown>): boolean {
   return '$value' in value || '$ref' in value;
 }
 
-function collectGroups(value: unknown, path: string, groups: GroupIndex): void {
-  if (!isJsonSchemaDocument(value) || isTokenNode(value)) return;
-  groups.set(path, value);
+function collectProjectionMetadata(value: unknown, path: string, index: ProjectionIndex): void {
+  if (!isJsonSchemaDocument(value)) return;
+  if (isTokenNode(value)) {
+    if (isTokenType(value['$type'])) index.tokenTypes.set(path, value['$type']);
+    return;
+  }
+  index.groups.set(path, value);
   for (const [name, child] of Object.entries(value)) {
-    if (!name.startsWith('$')) collectGroups(child, path ? `${path}.${name}` : name, groups);
+    if (name === '$root') collectProjectionMetadata(child, path, index);
+    else if (!name.startsWith('$'))
+      collectProjectionMetadata(child, path ? `${path}.${name}` : name, index);
   }
 }
 
-function assertSafeExtensionMetadata(value: unknown, path: string, source: string): void {
+export function assertSafeExtensionMetadata(value: unknown, path: string, source: string): void {
   if (!isJsonSchemaDocument(value)) return;
   const extension = value['$extends'];
   if (
@@ -166,7 +175,7 @@ function projectTokenDocumentForValidation(
   lookupDocuments: readonly unknown[] = [],
   source = '$',
 ): unknown {
-  const groups: GroupIndex = new Map();
+  const index: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
   if (isTokenDocument(value)) {
     assertSafeExtensionMetadata(value, '', source);
     for (const contextDocument of lookupDocuments)
@@ -182,20 +191,22 @@ function projectTokenDocumentForValidation(
         documents,
         contextDocuments.length > 0 ? contextDocuments : documents,
       );
-      if (expandedContext === undefined) collectGroups(expanded, '', groups);
+      if (expandedContext === undefined) collectProjectionMetadata(expanded, '', index);
       else {
-        const contextGroups: GroupIndex = new Map();
-        collectGroups(expandedContext, '', contextGroups);
-        const ownGroups: GroupIndex = new Map();
-        collectGroups(expanded, '', ownGroups);
-        for (const [path, group] of contextGroups) groups.set(path, group);
-        for (const [path, group] of ownGroups) {
-          const contextGroup = contextGroups.get(path);
-          groups.set(
+        const contextIndex: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
+        collectProjectionMetadata(expandedContext, '', contextIndex);
+        const ownIndex: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
+        collectProjectionMetadata(expanded, '', ownIndex);
+        for (const [path, group] of contextIndex.groups) index.groups.set(path, group);
+        for (const [path, group] of ownIndex.groups) {
+          const contextGroup = contextIndex.groups.get(path);
+          index.groups.set(
             path,
             contextGroup && group['$type'] === undefined ? { ...contextGroup, ...group } : group,
           );
         }
+        for (const [path, type] of contextIndex.tokenTypes) index.tokenTypes.set(path, type);
+        for (const [path, type] of ownIndex.tokenTypes) index.tokenTypes.set(path, type);
       }
     } catch (error) {
       // A failed composition cannot be replaced with raw groups: a later
@@ -214,7 +225,8 @@ function projectTokenDocumentForValidation(
     if (Array.isArray(node)) return node.map((entry) => entry);
     if (!isJsonSchemaDocument(node)) return node;
     const token = isTokenNode(node);
-    const ownType = token ? undefined : groups.get(path)?.['$type'];
+    const tokenType = token ? index.tokenTypes.get(path) : undefined;
+    const ownType = token ? undefined : index.groups.get(path)?.['$type'];
     const groupType = isTokenType(ownType) ? ownType : inheritedType;
     const projected: Record<string, unknown> = {};
     const defineProjectedProperty = (key: string, entry: unknown): void => {
@@ -234,8 +246,8 @@ function projectTokenDocumentForValidation(
     }
     // `$ref` has no value discriminator. Leaving it untouched ensures that
     // unresolved or cyclic aliases cannot gain acceptance through the copy.
-    if (token && '$value' in node && node['$type'] === undefined && groupType)
-      defineProjectedProperty('$type', groupType);
+    if (token && '$value' in node && node['$type'] === undefined && (tokenType ?? groupType))
+      defineProjectedProperty('$type', tokenType ?? groupType);
     return projected;
   }
 

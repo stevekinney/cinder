@@ -8,6 +8,7 @@ import {
   type ResolverReference,
   type TokenDocument,
 } from './types.ts';
+import { assertSafeExtensionMetadata } from './validate-schema.ts';
 import {
   assertValidTokenDocument,
   resolutionOrderTarget,
@@ -642,6 +643,11 @@ export function validateLoadedTokenDocuments(
   loaded: Array<{ path: string; document: unknown }>,
 ): Array<{ path: string; document: TokenDocument }> {
   const documentsByPath = new Map(loaded.map(({ path, document }) => [path, document]));
+  // Validate extension metadata against each document's owning path before
+  // composing contexts. The context array intentionally contains raw
+  // documents, so attributing a malformed lookup document to the candidate
+  // source would lose the provenance needed to repair it.
+  for (const { path, document } of loaded) assertSafeExtensionMetadata(document, '', path);
   const contextsByPath = orderedTokenValidationContexts(resolver, documentsByPath);
   return loaded.map(({ path, document }) => {
     const candidate = document;

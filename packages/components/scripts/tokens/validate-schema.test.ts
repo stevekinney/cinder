@@ -135,6 +135,44 @@ describe('JSON Schema validation (format)', () => {
     ).not.toThrow();
   });
 
+  test('keeps an effective token type when a later document overrides only its value', () => {
+    const base = { token: { $type: 'strokeStyle', $value: 'solid' } };
+    const override = { token: { $value: 'dashed' } };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).not.toThrow();
+  });
+
+  test.each(inheritedTypeCases)(
+    'preserves merged %s token types and frozen source',
+    (type, value) => {
+      const base = deepFreeze({ token: { $type: type, $value: value } });
+      const override = deepFreeze({ token: { $value: value } });
+      const before = JSON.stringify([base, override]);
+      expect(() =>
+        assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+      ).not.toThrow();
+      expect(JSON.stringify([base, override])).toBe(before);
+      expect(Object.hasOwn(override.token, '$type')).toBe(false);
+    },
+  );
+
+  test('validates a value-only override against its merged token type', () => {
+    const base = { token: { $type: 'strokeStyle', $value: 'solid' } };
+    const override = { token: { $value: 'banana' } };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).toThrow(TokenValidationError);
+  });
+
+  test('keeps an authored earlier token type ahead of a later context type', () => {
+    const base = { token: { $type: 'number', $value: 1 } };
+    const override = { token: { $type: 'strokeStyle', $value: 'solid' } };
+    expect(() =>
+      assertValidTokenDocument(base, 'base.tokens.json', [base, override]),
+    ).not.toThrow();
+  });
+
   test('does not waive a missing type because an unrelated lookup exists', () => {
     expect(() => assertValidTokenDocument({ token: { $value: 0 } }, 'probe', [{}])).toThrow(
       'probe.token: token has no $type and no inherited type',
@@ -297,6 +335,22 @@ describe('JSON Schema validation (format)', () => {
     const before = JSON.stringify(document);
     expect(() => assertValidTokenDocument(document)).not.toThrow();
     expect(JSON.stringify(document)).toBe(before);
+  });
+
+  test('keeps an effective type on a value-only $root override', () => {
+    const base = { group: { $root: { $type: 'strokeStyle', $value: 'solid' } } };
+    const override = { group: { $root: { $value: 'dashed' } } };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).not.toThrow();
+  });
+
+  test('preserves an explicit merged $root type over the surrounding group type', () => {
+    const base = { group: { $type: 'number', $root: { $type: 'strokeStyle', $value: 'solid' } } };
+    const override = { group: { $root: { $value: 'dashed' } } };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).not.toThrow();
   });
 
   test('does not project types through malformed, unresolved, or cyclic extensions', () => {
