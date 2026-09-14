@@ -110,9 +110,17 @@ export function readTarballManifest(tarballPath: string): unknown {
     encoding: 'utf8',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
-  if (result.status !== 0) {
-    throw new Error(`cannot read package.json from release artifact: ${result.stderr.trim()}`);
+  if (result.error) {
+    throw new Error('cannot read package.json from release artifact: could not start tar', {
+      cause: result.error,
+    });
   }
+  if (result.status !== 0) {
+    const detail = result.stderr?.trim() || `tar exited with ${result.signal ?? result.status}`;
+    throw new Error(`cannot read package.json from release artifact: ${detail}`);
+  }
+  if (typeof result.stdout !== 'string')
+    throw new Error('cannot read package.json from release artifact: tar returned no output');
   try {
     return JSON.parse(result.stdout);
   } catch {

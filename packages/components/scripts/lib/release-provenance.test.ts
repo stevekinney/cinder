@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, test } from 'bun:test';
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -50,6 +50,27 @@ function tarball(manifestText: string, includeManifest = true): string {
 }
 
 describe('release provenance', () => {
+  test('reports an unavailable tar executable without a secondary TypeError', () => {
+    const emptyPath = mkdtempSync(join(tmpdir(), 'cinder-no-tar-'));
+    roots.push(emptyPath);
+    const moduleUrl = new URL('./release-provenance.ts', import.meta.url).href;
+    const child = spawnSync(
+      process.execPath,
+      [
+        '-e',
+        `import { readTarballManifest } from ${JSON.stringify(moduleUrl)};
+        try { readTarballManifest('artifact.tgz'); process.exitCode = 1; }
+        catch (error) { process.stdout.write(JSON.stringify({ name: error.name, message: error.message })); }`,
+      ],
+      { env: { ...process.env, PATH: emptyPath }, encoding: 'utf8' },
+    );
+    expect(child.status).toBe(0);
+    expect(JSON.parse(child.stdout)).toEqual({
+      name: 'Error',
+      message: 'cannot read package.json from release artifact: could not start tar',
+    });
+  });
+
   test('records the actual clean checkout HEAD and matching workflow SHA', () => {
     const fixture = repository();
     expect(resolveReleaseProvenance(fixture.root, { GITHUB_SHA: fixture.head })).toEqual({
