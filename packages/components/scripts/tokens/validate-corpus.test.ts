@@ -6,11 +6,14 @@ import {
   expandContextSources,
   expandSetSources,
   normalizeSourcePath,
+  orderedTokenValidationContexts,
   parseResolutionOrder,
   sourcesForEntry,
+  validateLoadedTokenDocuments,
   validateModifierSetExpansionOrder,
   validateModifierTokenPaths,
 } from './validate-corpus.ts';
+import { assertValidTokenDocument } from './validate.ts';
 
 const resolver: ResolverDocument = {
   version: '2025.10',
@@ -43,6 +46,73 @@ const resolver: ResolverDocument = {
 };
 
 describe('token corpus validation', () => {
+  test('validates loaded cross-document inheritance without changing source objects', () => {
+    const inherited: ResolverDocument = {
+      version: '2025.10',
+      sets: { base: { sources: [{ $ref: 'base.tokens.json' }, { $ref: 'derived.tokens.json' }] } },
+      modifiers: {},
+      resolutionOrder: [{ $ref: '#/sets/base' }],
+    };
+    const base = { base: { $type: 'strokeStyle', token: { $value: 'solid' } } };
+    const derived = {
+      derived: {
+        $extends: '{base}',
+        child: { $value: '{base.token}', $extensions: { 'example.metadata': { preserved: true } } },
+      },
+    };
+    const loaded = [
+      { path: 'base.tokens.json', document: base },
+      { path: 'derived.tokens.json', document: derived },
+    ];
+    const before = JSON.stringify(loaded);
+    const validated = validateLoadedTokenDocuments(inherited, loaded);
+    expect(validated.map(({ path }) => path)).toEqual(['base.tokens.json', 'derived.tokens.json']);
+    expect(validated[0]!.document).toBe(base);
+    expect(validated[1]!.document).toBe(derived);
+    expect(JSON.stringify(loaded)).toBe(before);
+    expect(Object.hasOwn(derived.derived.child, '$type')).toBe(false);
+  });
+
+  test('isolates cross-document extension types by ordered resolver context', () => {
+    const contextResolver: ResolverDocument = {
+      version: '2025.10',
+      sets: {
+        derived: { sources: [{ $ref: 'derived.tokens.json' }] },
+      },
+      modifiers: {
+        theme: {
+          contexts: {
+            stroke: [{ $ref: 'stroke.tokens.json' }],
+            number: [{ $ref: 'number.tokens.json' }],
+          },
+          default: 'stroke',
+        },
+      },
+      resolutionOrder: [{ $ref: '#/sets/derived' }, { $ref: '#/modifiers/theme' }],
+    };
+    const derived = { derived: { $extends: '{base}', child: { $value: 'solid' } } };
+    const documents = new Map<string, unknown>([
+      ['derived.tokens.json', derived],
+      ['stroke.tokens.json', { base: { $type: 'strokeStyle', token: { $value: 'solid' } } }],
+      ['number.tokens.json', { base: { $type: 'number', token: { $value: 1 } } }],
+    ]);
+
+    const contexts = orderedTokenValidationContexts(contextResolver, documents).get(
+      'derived.tokens.json',
+    );
+    expect(contexts).toHaveLength(2);
+    expect(() =>
+      assertValidTokenDocument(derived, 'derived.tokens.json', contexts![0]!),
+    ).not.toThrow();
+    expect(() => assertValidTokenDocument(derived, 'derived.tokens.json', contexts![1]!)).toThrow();
+    expect(() =>
+      validateLoadedTokenDocuments(
+        contextResolver,
+        [...documents].map(([path, document]) => ({ path, document })),
+      ),
+    ).toThrow('derived.tokens.json.derived.child');
+  });
+
   test('decodes RFC 6901 tilde escapes so the decoded name still finds its set', () => {
     const escaped: ResolverDocument = {
       version: '2025.10',

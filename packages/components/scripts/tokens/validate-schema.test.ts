@@ -112,6 +112,53 @@ describe('JSON Schema validation (format)', () => {
     ).not.toThrow();
   });
 
+  test('uses the ordered resolver context for a cross-document extension', () => {
+    const base = {
+      base: { $type: 'strokeStyle', token: { $value: 'solid' } },
+    };
+    const derived = {
+      derived: { $extends: '{base}', child: { $value: 'solid' } },
+    };
+
+    expect(() => assertValidTokenDocument(derived, 'derived.tokens.json')).toThrow();
+    expect(() =>
+      assertValidTokenDocument(derived, 'derived.tokens.json', [base, derived]),
+    ).not.toThrow();
+  });
+
+  test('does not reuse a partial context projection after authored expansion fails', () => {
+    const document = {
+      derived: { $extends: '{missing}', child: { $value: 'solid' } },
+    };
+    const context = {
+      derived: { $type: 'strokeStyle', token: { $value: 'solid' } },
+    };
+    expect(() => assertValidTokenDocument(document, '$', [context])).toThrow();
+  });
+
+  test('rejects a composed extension cycle preserved by a partial group override', () => {
+    const base = {
+      first: { $extends: '{second}' },
+      second: { $extends: '{first}' },
+    };
+    const override = { first: { $type: 'number', child: { $value: 0 } } };
+
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).toThrow('circular $extends reference');
+  });
+
+  test('does not project missing or cyclic external extension targets', () => {
+    const document = { derived: { $extends: '{base}', child: { $value: 'solid' } } };
+    expect(() => assertValidTokenDocument(document, '$', [{ other: {} }])).toThrow();
+    expect(() =>
+      assertValidTokenDocument(document, '$', [
+        { base: { $extends: '{derived}' } },
+        { derived: { $extends: '{base}' } },
+      ]),
+    ).toThrow();
+  });
+
   test('inherits an untyped extension target through the receiver lexical parent', () => {
     expect(() =>
       assertValidTokenDocument({
@@ -218,6 +265,31 @@ describe('JSON Schema validation (format)', () => {
     ).toThrow();
   });
 
+  test('does not let an own type hide a cyclic extension', () => {
+    for (const value of [0, -1]) {
+      expect(() =>
+        assertValidTokenDocument({
+          first: {
+            $type: 'number',
+            $extends: '{second}',
+            child: { $value: value },
+          },
+          second: { $extends: '{first}' },
+        }),
+      ).toThrow();
+      expect(() =>
+        assertValidTokenDocument({
+          first: {
+            $type: 'number',
+            $extends: '{second}',
+            child: { $type: 'number', $value: value },
+          },
+          second: { $extends: '{first}' },
+        }),
+      ).toThrow();
+    }
+  });
+
   test('keeps local type precedence for reference tokens', () => {
     expect(() =>
       assertValidTokenDocument({
@@ -262,6 +334,11 @@ describe('JSON Schema validation (format)', () => {
     expect(() =>
       assertValidTokenDocument({ parent: { $type: 'strokeStyle', child: { $value: 'banana' } } }),
     ).toThrow('$.parent.child.$value');
+  });
+
+  test('preserves JSON-parsed __proto__ token keys and source paths', () => {
+    const document = JSON.parse('{"group":{"$type":"number","__proto__":{"$value":"invalid"}}}');
+    expect(() => assertValidTokenDocument(document)).toThrow('$.group.__proto__.$value');
   });
 
   test('preserves deeply frozen source and metadata after failed validation', () => {

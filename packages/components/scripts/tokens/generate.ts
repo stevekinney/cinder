@@ -41,7 +41,7 @@ import estreePlugin from 'prettier/plugins/estree';
 import postcssPlugin from 'prettier/plugins/postcss';
 import { assertPrettierResolvesToRoot } from '../lib/prettier-resolution.ts';
 
-import { loadResolverDocument, loadTokenDocuments, tokenRoot } from './load.ts';
+import { loadRawTokenDocuments, loadResolverDocument, tokenRoot } from './load.ts';
 import {
   createValueResolver,
   mergeAndExpandExtends,
@@ -62,6 +62,7 @@ import {
   normalizeSourcePath,
   parseResolutionOrder,
   sourcesForEntry,
+  validateLoadedTokenDocuments,
 } from './validate-corpus.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -2423,8 +2424,9 @@ export async function loadCorpus(): Promise<{
   documentsByPath: Map<string, TokenDocument>;
 }> {
   const resolver = await loadResolverDocument();
-  const loaded = await loadTokenDocuments();
-  const documentsByPath = new Map(loaded.map(({ path, document }) => [path, document]));
+  const loaded = await loadRawTokenDocuments();
+  const validated = validateLoadedTokenDocuments(resolver, loaded);
+  const documentsByPath = new Map(validated.map(({ path, document }) => [path, document]));
   return { resolver, documentsByPath };
 }
 

@@ -1,6 +1,6 @@
 import { posix } from 'node:path';
 
-import { loadResolverDocument, loadTokenDocuments } from './load.ts';
+import { loadRawTokenDocuments, loadResolverDocument } from './load.ts';
 import { mergeAndExpandExtends, resolveDocuments } from './resolve.ts';
 import {
   TokenValidationError,
@@ -9,10 +9,10 @@ import {
   type TokenDocument,
 } from './types.ts';
 import {
+  assertValidTokenDocument,
   resolutionOrderTarget,
   validateResolvedToken,
   validateResolverDocument,
-  validateTokenDocument,
 } from './validate.ts';
 
 /**
@@ -551,13 +551,89 @@ export function buildContextSourcesIndex(
   return index;
 }
 
-async function main(): Promise<void> {
-  const [resolver, documents] = await Promise.all([loadResolverDocument(), loadTokenDocuments()]);
-  validateResolverDocument(resolver);
-  for (const { path, document } of documents) validateTokenDocument(document, path);
+/**
+ * Returns the concrete ordered document scopes in which each source participates.
+ * `$extends` targets are resolved against these scopes only; unrelated sets and
+ * modifier contexts must not contribute projection metadata to one another.
+ */
+export function orderedTokenValidationContexts(
+  resolver: ResolverDocument,
+  documentsByPath: Map<string, unknown>,
+): Map<string, unknown[][]> {
+  const expandedSets = Object.keys(resolver.sets).map((setName) => ({
+    setName,
+    sources: expandSetSources(resolver, setName),
+  }));
+  const expandedContexts = Object.entries(resolver.modifiers).flatMap(([modifierName, modifier]) =>
+    Object.keys(modifier.contexts).map((contextName) => ({
+      modifierName,
+      contextName,
+      sources: expandContextSources(resolver, modifierName, contextName),
+    })),
+  );
+  const resolutionOrder = parseResolutionOrder(resolver);
+  const setSourcesByName = new Map(expandedSets.map((entry) => [entry.setName, entry.sources]));
+  const contextSourcesByModifier = buildContextSourcesIndex(expandedContexts);
+  const pathByDocument = new Map(
+    [...documentsByPath.entries()].map(([path, document]) => [document, path]),
+  );
+  const contextsByPath = new Map<string, unknown[][]>();
+  for (const modifierValues of combinations(resolver)) {
+    const orderedDocuments = resolutionOrder.flatMap((entry) => {
+      const sources =
+        entry.kind === 'sets'
+          ? setSourcesByName.get(entry.name)!
+          : contextSourcesByModifier.get(entry.name)!.get(modifierValues[entry.name]!)!;
+      return sources.map((source) => documentsByPath.get(normalizeSourcePath(source.$ref))!);
+    });
+    const uniqueDocuments = [...new Set(orderedDocuments)];
+    for (const document of uniqueDocuments) {
+      const path = pathByDocument.get(document);
+      if (path === undefined) continue;
+      const contexts = contextsByPath.get(path) ?? [];
+      if (
+        !contexts.some(
+          (context) =>
+            context.length === orderedDocuments.length &&
+            context.every((entry, index) => entry === orderedDocuments[index]),
+        )
+      )
+        contexts.push(orderedDocuments);
+      contextsByPath.set(path, contexts);
+    }
+  }
+  return contextsByPath;
+}
 
-  const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
-  const knownPaths = new Set(documents.map(({ path }) => path));
+export function validateLoadedTokenDocuments(
+  resolver: ResolverDocument,
+  loaded: Array<{ path: string; document: unknown }>,
+): Array<{ path: string; document: TokenDocument }> {
+  const documentsByPath = new Map(loaded.map(({ path, document }) => [path, document]));
+  const contextsByPath = orderedTokenValidationContexts(resolver, documentsByPath);
+  return loaded.map(({ path, document }) => {
+    const candidate = document;
+    const contexts = contextsByPath.get(path) ?? [];
+    assertValidLoadedDocument(candidate, path, contexts);
+    return { path, document: candidate };
+  });
+}
+
+function assertValidLoadedDocument(
+  document: unknown,
+  path: string,
+  contexts: readonly unknown[][],
+): asserts document is TokenDocument {
+  if (contexts.length === 0) assertValidTokenDocument(document, path);
+  else for (const context of contexts) assertValidTokenDocument(document, path, context);
+}
+
+async function main(): Promise<void> {
+  const resolver = await loadResolverDocument();
+  const loaded = await loadRawTokenDocuments();
+  validateResolverDocument(resolver);
+
+  const knownPaths = new Set(loaded.map(({ path }) => path));
 
   const expandedSets = Object.keys(resolver.sets).map((setName) => ({
     setName,
@@ -591,9 +667,6 @@ async function main(): Promise<void> {
   ];
   if (missingSources.length > 0) throw new TokenValidationError(missingSources);
 
-  validateModifierSetExpansionOrder(resolver, documentsByPath);
-  validateModifierTokenPaths(resolver, documentsByPath);
-
   const referencedPaths = new Set<string>([
     ...expandedSets.flatMap(({ sources }) =>
       sources.map((source) => normalizeSourcePath(source.$ref)),
@@ -602,10 +675,15 @@ async function main(): Promise<void> {
       sources.map((source) => normalizeSourcePath(source.$ref)),
     ),
   ]);
-  const unreferencedDocuments = documents
+  const unreferencedDocuments = loaded
     .filter(({ path }) => !referencedPaths.has(path))
     .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
   if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
+
+  const documents = validateLoadedTokenDocuments(resolver, loaded);
+  const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
+  validateModifierSetExpansionOrder(resolver, documentsByPath);
+  validateModifierTokenPaths(resolver, documentsByPath);
 
   const resolutionOrder = parseResolutionOrder(resolver);
   // `expandedSets`/`expandedContexts` above already expanded every set's and

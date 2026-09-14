@@ -22,8 +22,8 @@ import { fileURLToPath } from 'node:url';
 import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 
-import { tokenPathFromReference } from './resolve.ts';
-import type { ValidationIssue } from './types.ts';
+import { mergeAndExpandExtends } from './resolve.ts';
+import type { TokenDocument, ValidationIssue } from './types.ts';
 import { TokenValidationError } from './types.ts';
 
 const TOKEN_TYPES = new Set([
@@ -56,6 +56,10 @@ const SCHEMA_FORMATS = ['uri-reference', 'json-pointer-uri-fragment'] as const;
 
 function isJsonSchemaDocument(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function isTokenDocument(value: unknown): value is TokenDocument {
+  return isJsonSchemaDocument(value);
 }
 
 function loadSchema(fileName: string): object {
@@ -146,78 +150,82 @@ function collectGroups(value: unknown, path: string, groups: GroupIndex): void {
   }
 }
 
-type EffectiveGroupType = { valid: boolean; type?: string };
-
-function effectiveGroupType(
-  path: string,
-  groups: GroupIndex,
-  visiting: Set<string>,
-  allowLexicalParent = true,
-): EffectiveGroupType {
-  const group = groups.get(path);
-  if (!group || visiting.has(path)) return { valid: false };
-  const ownType = group['$type'];
-  if (isTokenType(ownType)) return { valid: true, type: ownType };
-  const extension = group['$extends'];
-  if (extension !== undefined) {
-    if (typeof extension !== 'string') return { valid: false };
+function projectInheritedTypes(
+  value: unknown,
+  lookupDocuments: readonly unknown[] = [],
+  source = '$',
+): unknown {
+  const groups: GroupIndex = new Map();
+  if (isTokenDocument(value)) {
     try {
-      const target = tokenPathFromReference(extension);
-      const extended = effectiveGroupType(target, groups, new Set([...visiting, path]), false);
-      if (!extended.valid) return { valid: false };
-      if (extended.type) return extended;
-      return allowLexicalParent ? lexicalParentType(path, groups, visiting) : extended;
-    } catch {
-      // Semantic validation and resolution report malformed references. A
-      // failed lookup must never invent a type for this schema projection.
-      return { valid: false };
+      const contextDocuments = lookupDocuments.filter(isTokenDocument);
+      // Check the composed context before indexing the source's own groups:
+      // a partial source override must not hide an inherited extension cycle.
+      if (contextDocuments.length > 0) mergeAndExpandExtends(contextDocuments);
+      const documents = [value];
+      collectGroups(
+        mergeAndExpandExtends(
+          documents,
+          contextDocuments.length > 0 ? contextDocuments : documents,
+        ),
+        '',
+        groups,
+      );
+    } catch (error) {
+      // A failed composition cannot be replaced with raw groups: a later
+      // partial group would hide inherited extension edges and their cycles.
+      if (error instanceof TokenValidationError)
+        throw new TokenValidationError(
+          error.issues.map(({ path, reason }) => ({
+            path: path ? `${source}.${path}` : source,
+            reason,
+          })),
+        );
+      throw error;
     }
   }
-  return allowLexicalParent ? lexicalParentType(path, groups, visiting) : { valid: true };
-}
-
-function lexicalParentType(
-  path: string,
-  groups: GroupIndex,
-  visiting: Set<string>,
-): EffectiveGroupType {
-  const parentSeparator = path.lastIndexOf('.');
-  const parentPath = parentSeparator === -1 ? '' : path.slice(0, parentSeparator);
-  return path === ''
-    ? { valid: true }
-    : effectiveGroupType(parentPath, groups, new Set([...visiting, path]));
-}
-
-function projectInheritedTypes(value: unknown): unknown {
-  const groups: GroupIndex = new Map();
-  collectGroups(value, '', groups);
-
   function project(node: unknown, path: string, inheritedType?: string): unknown {
     if (Array.isArray(node)) return node.map((entry) => entry);
     if (!isJsonSchemaDocument(node)) return node;
     const token = isTokenNode(node);
-    const groupType = token ? inheritedType : effectiveGroupType(path, groups, new Set()).type;
+    const ownType = token ? undefined : groups.get(path)?.['$type'];
+    const groupType = isTokenType(ownType) ? ownType : inheritedType;
     const projected: Record<string, unknown> = {};
+    const defineProjectedProperty = (key: string, entry: unknown): void => {
+      Object.defineProperty(projected, key, {
+        configurable: true,
+        enumerable: true,
+        value: entry,
+        writable: true,
+      });
+    };
     for (const [key, entry] of Object.entries(node)) {
       if (key === '$root' && isJsonSchemaDocument(entry))
-        projected[key] = project(entry, path, groupType);
+        defineProjectedProperty(key, project(entry, path, groupType));
       else if (!key.startsWith('$') && !token)
-        projected[key] = project(entry, path ? `${path}.${key}` : key, groupType);
-      else projected[key] = entry;
+        defineProjectedProperty(key, project(entry, path ? `${path}.${key}` : key, groupType));
+      else defineProjectedProperty(key, entry);
     }
     // `$ref` has no value discriminator. Leaving it untouched ensures that
     // unresolved or cyclic aliases cannot gain acceptance through the copy.
     if (token && '$value' in node && node['$type'] === undefined && groupType)
-      projected['$type'] = groupType;
+      defineProjectedProperty('$type', groupType);
     return projected;
   }
 
   return project(value, '');
 }
 
-function runSchemaValidation(validator: ValidateFunction, document: unknown, source: string): void {
+function runSchemaValidation(
+  validator: ValidateFunction,
+  document: unknown,
+  source: string,
+  lookupDocuments: readonly unknown[] = [],
+): void {
   const schemaDocument =
-    validator === getFormatValidator() ? projectInheritedTypes(document) : document;
+    validator === getFormatValidator()
+      ? projectInheritedTypes(document, lookupDocuments, source)
+      : document;
   if (validator(schemaDocument)) return;
   const errors = [...(validator.errors ?? [])].toSorted(bySpecificity);
   const issues: ValidationIssue[] = errors.map((error) => ({
@@ -228,8 +236,12 @@ function runSchemaValidation(validator: ValidateFunction, document: unknown, sou
 }
 
 /** Validates a token document against the official DTCG 2025.10 format JSON Schema. */
-export function validateTokenDocumentSchema(document: unknown, source = '$'): void {
-  runSchemaValidation(getFormatValidator(), document, source);
+export function validateTokenDocumentSchema(
+  document: unknown,
+  source = '$',
+  lookupDocuments: readonly unknown[] = [],
+): void {
+  runSchemaValidation(getFormatValidator(), document, source, lookupDocuments);
 }
 
 /**

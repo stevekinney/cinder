@@ -892,6 +892,7 @@ export function validateResolverDocument(document: ResolverDocumentShape): void 
 export function assertValidTokenDocument(
   document: unknown,
   source?: string,
+  lookupDocuments: readonly unknown[] = [],
 ): asserts document is TokenDocument {
   const issues: ValidationIssue[] = [];
   if (!isObject(document)) addIssue(issues, source ?? '$', 'document must be an object');
@@ -899,7 +900,7 @@ export function assertValidTokenDocument(
   // First-pass gate: the official DTCG 2025.10 format JSON Schema catches shape
   // violations structurally, before the semantic checks below run. See
   // validate-schema.ts for why this precedes (rather than replaces) validateTokenDocument.
-  validateTokenDocumentSchema(document, source ?? '$');
+  validateTokenDocumentSchema(document, source ?? '$', lookupDocuments);
   validateTokenDocument(document, source);
 }
 
