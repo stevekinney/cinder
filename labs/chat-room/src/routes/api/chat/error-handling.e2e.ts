@@ -49,7 +49,8 @@ test('a provider failure reaches the banner instead of being dropped', async ({ 
 	// Worse, the route answered a failure by erroring the stream, which tore
 	// the connection down and took the frame with it: every provider failure
 	// arrived as "Failed to fetch", with no kind, code, or retryability.
-	await expect(page.locator(BANNER)).toContainText('Invalid API key supplied to the fixture.');
+	await expect(page.locator(BANNER)).toContainText('The assistant could not complete this turn.');
+	await expect(page.locator(BANNER)).toHaveAttribute('data-retryable', 'false');
 
 	// One upstream request for one turn. The 401 scenario is deliberate here:
 	// see `the SDK retries a rate limit on its own` below.

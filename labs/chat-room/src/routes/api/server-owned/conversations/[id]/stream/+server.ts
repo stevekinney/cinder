@@ -7,7 +7,7 @@ import { z } from 'zod';
 
 import { chatRunResponse } from '$lib/chat-run-response';
 import { raise, unavailableDuringShutdown } from '$lib/server-owned-unavailable';
-import { AGENT_NAME, loadConversation } from '$lib/server-owned-conversations';
+import { AGENT_NAME, loadConversation, rememberTurnFailure } from '$lib/server-owned-conversations';
 import { durableRuntime } from '$lib/server-owned-durable';
 import { serverOwnedRuntime } from '$lib/server-owned-runtime';
 import {
@@ -113,6 +113,7 @@ export const POST: RequestHandler = async ({ params, request }) => {
 	const lifecycleSignal = AbortSignal.any([request.signal, shutdownSignal]);
 	return chatRunResponse({
 		signal: lifecycleSignal,
+		beforeFailure: ({ conversation, error }) => rememberTurnFailure(params.id, conversation, error),
 		start: (writer) => {
 			const gate = createElicitationGate(params.id, lifecycleSignal);
 			return createSessionHandle(params.id, {

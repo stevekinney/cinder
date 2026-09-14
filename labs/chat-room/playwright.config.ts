@@ -99,6 +99,8 @@ const CROSS_ENGINE_SHARDS = [
 	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
 	[
+		// Seven tests plus two explicit contexts fit this shard's remaining capacity.
+		'**/server-owned-synchronization.e2e.ts',
 		'**/review-modes.e2e.ts',
 		'**/review-ssr-and-a11y.e2e.ts',
 		// Another real fetch/ReadableStream path — a provider failure has to
@@ -127,9 +129,9 @@ const CROSS_ENGINE_SHARDS = [
 		// would have run in Chromium only, and a WebKit regression would have
 		// left CI green.
 		//
-		// Measured after the approval regressions: WebKit shards contain
-		// 54/62/62/53/54 tests, all below the 64-context ceiling. Re-run
-		// `--list` when this file gains a test.
+		// Measured after synchronization coverage: WebKit shards list
+		// 54/62/62/60/57 tests. The two extra synchronization contexts put
+		// webkit-4 at 62 contexts. Count explicit contexts as well as `--list`.
 		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;

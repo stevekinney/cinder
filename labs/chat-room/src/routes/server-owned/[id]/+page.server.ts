@@ -1,6 +1,6 @@
 import { error } from '@sveltejs/kit';
 
-import { loadConversation, titleOf } from '$lib/server-owned-conversations';
+import { loadConversation, serverOwnedSnapshot } from '$lib/server-owned-conversations';
 import { isShutdown } from '$lib/server-owned-unavailable';
 
 import type { PageServerLoad } from './$types';
@@ -10,7 +10,8 @@ import type { PageServerLoad } from './$types';
  * That is the whole distinction this variant exists to show: a reload renders
  * history because the session store has it.
  */
-export const load: PageServerLoad = async ({ params }) => {
+export const load: PageServerLoad = async ({ params, setHeaders }) => {
+	setHeaders({ 'cache-control': 'no-store' });
 	// Guarded for the same reason as the list loader: `loadConversation`
 	// reaches the runtime, so a navigation during shutdown would render a
 	// generic 500 rather than the 503 every other surface reports.
@@ -26,9 +27,5 @@ export const load: PageServerLoad = async ({ params }) => {
 		error(404, 'No such conversation.');
 	}
 
-	return {
-		id: session.id,
-		title: titleOf(session.metadata),
-		conversation: session.conversationHistory
-	};
+	return serverOwnedSnapshot(session);
 };
