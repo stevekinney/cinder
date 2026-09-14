@@ -535,36 +535,31 @@ Everything else is unchanged.`;
 			aria-label="submitted review-original"
 			data-testid="submitted-original"
 			style={outputStyle}
-			value={namedSubmit.values['review-original'] ?? ''}
-		></textarea>
+			value={namedSubmit.values['review-original'] ?? ''}></textarea>
 		<textarea
 			readonly
 			aria-label="submitted review-current"
 			data-testid="submitted-current"
 			style={outputStyle}
-			value={namedSubmit.values['review-current'] ?? ''}
-		></textarea>
+			value={namedSubmit.values['review-current'] ?? ''}></textarea>
 		<textarea
 			readonly
 			aria-label="submitted review-comments"
 			data-testid="submitted-comments"
 			style={outputStyle}
-			value={namedSubmit.values['review-comments'] ?? ''}
-		></textarea>
+			value={namedSubmit.values['review-comments'] ?? ''}></textarea>
 		<textarea
 			readonly
 			aria-label="submitted review-diff"
 			data-testid="submitted-diff"
 			style={outputStyle}
-			value={namedSubmit.values['review-diff'] ?? ''}
-		></textarea>
+			value={namedSubmit.values['review-diff'] ?? ''}></textarea>
 		<textarea
 			readonly
 			aria-label="submitted review-summary"
 			data-testid="submitted-summary"
 			style={outputStyle}
-			value={namedSubmit.values['review-summary'] ?? ''}
-		></textarea>
+			value={namedSubmit.values['review-summary'] ?? ''}></textarea>
 
 		<h3 style="margin: 0; font-size: 0.9rem;">Observed state — the live bindable props</h3>
 		<textarea readonly aria-label="live value" data-testid="live-value" style={outputStyle} {value}
@@ -574,8 +569,7 @@ Everything else is unchanged.`;
 			aria-label="live threads JSON"
 			data-testid="live-threads-json"
 			style={outputStyle}
-			value={liveThreadsJson}
-		></textarea>
+			value={liveThreadsJson}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -597,8 +591,7 @@ Everything else is unchanged.`;
 			aria-label="getFormData() result"
 			data-testid="imperative-form-data"
 			style={outputStyle}
-			value={imperativeFormData}
-		></textarea>
+			value={imperativeFormData}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -608,71 +601,61 @@ Everything else is unchanged.`;
 			aria-label="buildFormDataFromValues original"
 			data-testid="module-original"
 			style={outputStyle}
-			value={fromValues.original}
-		></textarea>
+			value={fromValues.original}></textarea>
 		<textarea
 			readonly
 			aria-label="buildFormDataFromValues current"
 			data-testid="module-current"
 			style={outputStyle}
-			value={fromValues.current}
-		></textarea>
+			value={fromValues.current}></textarea>
 		<textarea
 			readonly
 			aria-label="buildFormDataFromValues comments"
 			data-testid="module-comments-from-values"
 			style={outputStyle}
-			value={fromValues.comments}
-		></textarea>
+			value={fromValues.comments}></textarea>
 		<textarea
 			readonly
 			aria-label="buildFormData comments"
 			data-testid="module-comments-from-state"
 			style={outputStyle}
-			value={fromState.comments}
-		></textarea>
+			value={fromState.comments}></textarea>
 		<textarea
 			readonly
 			aria-label="exportUnifiedDiff diff"
 			data-testid="module-diff"
 			style={outputStyle}
-			value={moduleDiff}
-		></textarea>
+			value={moduleDiff}></textarea>
 		<textarea
 			readonly
 			aria-label="exportMarkdownSummary markdown"
 			data-testid="module-summary"
 			style={outputStyle}
-			value={moduleSummary}
-		></textarea>
+			value={moduleSummary}></textarea>
 		<textarea
 			readonly
 			aria-label="getSummaryContentWithoutHeading"
 			data-testid="module-summary-without-heading"
 			style={outputStyle}
-			value={summaryWithoutHeading}
-		></textarea>
+			value={summaryWithoutHeading}></textarea>
 		<textarea
 			readonly
 			aria-label="generateMarkdownSummary markdown"
 			data-testid="core-summary"
 			style={outputStyle}
-			value={coreSummary}
-		></textarea>
+			value={coreSummary}></textarea>
 		<textarea
 			readonly
 			aria-label="exportCommentsMarkdown"
 			data-testid="module-comments-markdown"
 			style={outputStyle}
-			value={moduleComments}
-		></textarea>
+			value={moduleComments}></textarea>
 		<textarea
 			readonly
 			aria-label="generateCommentsJSON"
 			data-testid="module-comments-json"
 			style={outputStyle}
-			value={moduleCommentsJson}
-		></textarea>
+			value={moduleCommentsJson}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -686,8 +669,7 @@ Everything else is unchanged.`;
 			aria-label="normalized formatting-only diff"
 			data-testid="normalized-diff"
 			style={outputStyle}
-			value={normalizedFormattingOnly.diff}
-		></textarea>
+			value={normalizedFormattingOnly.diff}></textarea>
 		<p data-testid="raw-stats" style="margin: 0;">
 			additions:{rawFormattingOnly.stats.additions} deletions:{rawFormattingOnly.stats.deletions}
 			hunks:{rawFormattingOnly.stats.hunks}
@@ -697,8 +679,7 @@ Everything else is unchanged.`;
 			aria-label="un-normalized formatting-only diff"
 			data-testid="raw-diff"
 			style={outputStyle}
-			value={rawFormattingOnly.diff}
-		></textarea>
+			value={rawFormattingOnly.diff}></textarea>
 		<p data-testid="formatting-only-summary-stats" style="margin: 0;">
 			changeCount:{formattingOnlySummary.stats.changeCount} threadCount:{formattingOnlySummary.stats
 				.threadCount}
@@ -708,8 +689,7 @@ Everything else is unchanged.`;
 			aria-label="formatting-only markdown summary"
 			data-testid="formatting-only-summary"
 			style={outputStyle}
-			value={formattingOnlySummary.markdown}
-		></textarea>
+			value={formattingOnlySummary.markdown}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -719,43 +699,37 @@ Everything else is unchanged.`;
 			aria-label="location from originalPosition"
 			data-testid="location-position"
 			style={outputStyle}
-			value={locationWithPosition}
-		></textarea>
+			value={locationWithPosition}></textarea>
 		<textarea
 			readonly
 			aria-label="location from lastKnownOffset"
 			data-testid="location-offset"
 			style={outputStyle}
-			value={locationWithOffset}
-		></textarea>
+			value={locationWithOffset}></textarea>
 		<textarea
 			readonly
 			aria-label="location unknown"
 			data-testid="location-unknown"
 			style={outputStyle}
-			value={locationUnknown}
-		></textarea>
+			value={locationUnknown}></textarea>
 		<textarea
 			readonly
 			aria-label="unparseable createdAt"
 			data-testid="unparseable-timestamp"
 			style={outputStyle}
-			value={unparseableTimestamp}
-		></textarea>
+			value={unparseableTimestamp}></textarea>
 		<textarea
 			readonly
 			aria-label="empty comments export"
 			data-testid="empty-comments-export"
 			style={outputStyle}
-			value={emptyCommentsExport}
-		></textarea>
+			value={emptyCommentsExport}></textarea>
 		<textarea
 			readonly
 			aria-label="all soft-deleted comments export"
 			data-testid="all-soft-deleted-export"
 			style={outputStyle}
-			value={allSoftDeletedExport}
-		></textarea>
+			value={allSoftDeletedExport}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -818,15 +792,13 @@ Everything else is unchanged.`;
 			aria-label="submitted bare-original"
 			data-testid="bare-submitted-original"
 			style={outputStyle}
-			value={bareSubmit.values['bare-original'] ?? ''}
-		></textarea>
+			value={bareSubmit.values['bare-original'] ?? ''}></textarea>
 		<textarea
 			readonly
 			aria-label="submitted bare-diff"
 			data-testid="bare-submitted-diff"
 			style={outputStyle}
-			value={bareSubmit.values['bare-diff'] ?? ''}
-		></textarea>
+			value={bareSubmit.values['bare-diff'] ?? ''}></textarea>
 	</section>
 
 	<section style="display: grid; gap: 0.75rem;">
@@ -862,14 +834,12 @@ Everything else is unchanged.`;
 			aria-label="orphan fixture live value"
 			data-testid="orphan-live-value"
 			style={outputStyle}
-			value={orphanValue}
-		></textarea>
+			value={orphanValue}></textarea>
 		<textarea
 			readonly
 			aria-label="orphan fixture module summary"
 			data-testid="orphan-module-summary"
 			style={outputStyle}
-			value={orphanModuleSummary.markdown}
-		></textarea>
+			value={orphanModuleSummary.markdown}></textarea>
 	</section>
 </div>
