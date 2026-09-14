@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import type { ServerOwnedConversationSnapshot } from '$lib/server-owned-snapshot';
 
 import { gotoHydrated } from '../exercises/hydration';
 import { fixtureMarker } from '../streaming-fixture';
@@ -93,7 +94,7 @@ test('keeps a durable provider failure row through reload and a later success', 
 	await page.getByRole('textbox', { name: 'Message' }).fill(rejected);
 	await page.getByRole('button', { name: 'Send message' }).click();
 	await expect(page.getByTestId('server-owned-turn-failure')).toContainText(
-		'Invalid API key supplied to the fixture.'
+		'The assistant could not complete this turn.'
 	);
 	await expect(page.getByRole('article', { name: 'You' })).toContainText(rejected);
 	await page.reload();
@@ -103,7 +104,7 @@ test('keeps a durable provider failure row through reload and a later success', 
 		page.getByRole('article', { name: 'You' }).filter({ hasText: rejected }).locator('xpath=..')
 	).toHaveAttribute('data-failed', 'true');
 	await expect(page.getByTestId('server-owned-turn-reason')).toContainText(
-		'Invalid API key supplied to the fixture.'
+		'The assistant could not complete this turn.'
 	);
 	const canonicalFailureReason = await page.getByTestId('server-owned-turn-reason').textContent();
 	// The marker fails only on its first provider request. The same conversation
@@ -134,19 +135,31 @@ test('announces durable failure batches, stays silent for SSR history, and prese
 	const first = `First ${fixtureMarker('unauthorized', `first-${Date.now().toString(36)}`)}`;
 	const second = `Second ${fixtureMarker('unauthorized', `second-${Date.now().toString(36)}`)}`;
 	const status = page.getByTestId('server-owned-sync-status');
+	await page.evaluate(() => {
+		const node = document.querySelector<HTMLElement>('[data-testid="server-owned-sync-status"]');
+		if (!node) throw new Error('sync status is missing');
+		let mutations = 0;
+		new MutationObserver(() => {
+			mutations += 1;
+			node.dataset.mutationCount = String(mutations);
+		}).observe(node, { childList: true, characterData: true, subtree: true });
+		node.dataset.mutationCount = '0';
+	});
 	await page.getByRole('textbox', { name: 'Message' }).fill(first);
 	await page.getByRole('button', { name: 'Send message' }).click();
 	await expect(status).toHaveText('1 failed turn is recorded in this conversation.');
+	await expect(status).toHaveAttribute('data-mutation-count', '1');
 	await page.getByRole('textbox', { name: 'Message' }).fill(second);
 	await page.getByRole('button', { name: 'Send message' }).click();
 	await expect(status).toHaveText('1 failed turn is recorded in this conversation.');
+	await expect(status).toHaveAttribute('data-mutation-count', '2');
 	const firstRow = page.getByRole('article', { name: 'You' }).filter({ hasText: first });
 	const secondRow = page.getByRole('article', { name: 'You' }).filter({ hasText: second });
 	await expect(firstRow.getByTestId('server-owned-turn-reason')).toContainText(
-		'Invalid API key supplied to the fixture.'
+		'The assistant could not complete this turn.'
 	);
 	await expect(secondRow.getByTestId('server-owned-turn-reason')).toContainText(
-		'Invalid API key supplied to the fixture.'
+		'The assistant could not complete this turn.'
 	);
 
 	await page.reload();
@@ -258,4 +271,121 @@ test('keeps an own-endpoint rejection overlay through refresh until the next sub
 		'Accepted replacement turn'
 	);
 	await expect(rejectedRow).toHaveCount(0);
+});
+
+test('keeps an unsaved failure through canonical adoption and later turns until durable confirmation', async ({
+	page,
+	request
+}) => {
+	const created = await request.post('/api/server-owned/conversations', {
+		data: { title: `${title}-persistence-overlay` }
+	});
+	expect(created.status()).toBe(201);
+	const { conversation } = (await created.json()) as { conversation: { id: string } };
+	const endpoint = `/api/server-owned/conversations/${conversation.id}`;
+	await page.clock.install();
+	await gotoHydrated(page, `/server-owned/${conversation.id}`);
+	const emptySnapshot = (await (
+		await request.get(endpoint)
+	).json()) as ServerOwnedConversationSnapshot;
+	const text = 'Unsaved persistence failure';
+	const failure = {
+		kind: 'generate',
+		code: 'UNKNOWN',
+		message: 'The turn outcome could not be saved.',
+		retryable: false
+	};
+	let authoritativeId = '';
+	await page.route(`**${endpoint}/stream`, async (route) => {
+		// Run the real endpoint so subsequent GETs have its native, authoritative
+		// user ID. Replace only the outcome frames to exercise the browser seam;
+		// pump unit tests independently force the actual persistence rejection.
+		const accepted = await route.fetch();
+		expect(accepted.ok()).toBe(true);
+		await accepted.body();
+		const snapshot = (await (
+			await request.get(endpoint)
+		).json()) as ServerOwnedConversationSnapshot;
+		authoritativeId = snapshot.conversation.ids.find(
+			(id) => snapshot.conversation.messages[id]?.role === 'user'
+		)!;
+		expect(authoritativeId).toBeTruthy();
+		expect(snapshot.turnFailures).toEqual({});
+		await route.fulfill({
+			status: 200,
+			contentType: 'application/x-ndjson',
+			body:
+				[
+					{
+						type: 'stream:error',
+						error: { source: 'server-owned-persistence', userMessageId: authoritativeId, failure },
+						wireVersion: 1,
+						sequence: 1
+					},
+					{ type: 'run.error', error: { name: 'Error', ...failure }, wireVersion: 1, sequence: 2 }
+				]
+					.map((frame) => JSON.stringify(frame))
+					.join('\n') + '\n'
+		});
+	});
+	await page.getByRole('textbox', { name: 'Message' }).fill(text);
+	await page.getByRole('button', { name: 'Send message' }).click();
+	const row = page.getByRole('article', { name: 'You' }).filter({ hasText: text });
+	const status = page.getByTestId('server-owned-sync-status');
+	await expect(row).toHaveCount(1);
+	await expect(row.locator('xpath=..')).toHaveAttribute('data-failed', 'true');
+	await expect(row.getByTestId('server-owned-turn-reason')).toHaveText(failure.message);
+	const refresh = async (): Promise<void> => {
+		const response = page.waitForResponse(
+			(candidate) => candidate.url().endsWith(endpoint) && candidate.request().method() === 'GET'
+		);
+		await page.evaluate(() => window.dispatchEvent(new Event('focus')));
+		await response;
+	};
+	await refresh();
+	await expect(row).toHaveCount(1);
+	await expect(row.locator('xpath=..')).toHaveAttribute('data-failed', 'true');
+	await expect(status).toHaveText('');
+	await page.unroute(`**${endpoint}/stream`);
+	await page.getByRole('textbox', { name: 'Message' }).fill('A later accepted turn');
+	await page.getByRole('button', { name: 'Send message' }).click();
+	await expect(page.getByRole('article', { name: 'Assistant' })).toHaveCount(2);
+	await expect(page.getByRole('button', { name: 'Send message' })).toBeVisible();
+	await expect(row).toHaveCount(1);
+	await expect(row.locator('xpath=..')).toHaveAttribute('data-failed', 'true');
+	await expect(row.getByTestId('server-owned-turn-reason')).toHaveText(failure.message);
+	await expect(status).toHaveText('');
+
+	// The captured row remains recoverable even after canonical adoption.
+	await page.route(`**${endpoint}`, (route) => route.fulfill({ json: emptySnapshot }));
+	await refresh();
+	await expect(page.getByRole('article', { name: 'You' })).toHaveCount(1);
+	await expect(row.locator('xpath=..')).toHaveAttribute('data-failed', 'true');
+	await page.unroute(`**${endpoint}`);
+	await refresh();
+	await expect(page.getByRole('article', { name: 'You' })).toHaveCount(2);
+	await expect(row).toHaveCount(1);
+
+	const canonical = (await (await request.get(endpoint)).json()) as ServerOwnedConversationSnapshot;
+	await page.route(`**${endpoint}`, (route) =>
+		route.fulfill({
+			json: {
+				...canonical,
+				turnFailures: {
+					[authoritativeId]: { ...failure, message: 'The assistant could not complete this turn.' }
+				}
+			}
+		})
+	);
+	await refresh();
+	await expect(row.getByTestId('server-owned-turn-reason')).toHaveText(
+		'The assistant could not complete this turn.'
+	);
+	await expect(status).toHaveText('1 failed turn is recorded in this conversation.');
+	// Removing the synthetic durable record proves the local overlay was
+	// retired, rather than merely hidden underneath that record.
+	await page.unroute(`**${endpoint}`);
+	await refresh();
+	await expect(row.locator('xpath=..')).not.toHaveAttribute('data-failed', 'true');
+	await expect(row.getByTestId('server-owned-turn-reason')).toHaveCount(0);
 });

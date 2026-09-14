@@ -14,12 +14,8 @@ import { createAnthropicProviderStream } from '@lostgradient/operative/anthropic
 import { createToolbox } from 'armorer';
 import { appendUserMessage, createConversationHistory } from '@lostgradient/chat';
 
-import {
-	createChatAgent,
-	createChatStreamWriter,
-	pumpChatRun,
-	startChatRun
-} from '../src/lib/chat-agent.ts';
+import { createChatAgent, createChatStreamWriter, startChatRun } from '../src/lib/chat-agent.ts';
+import { pumpChatRun } from '../src/lib/chat-run-pump.ts';
 
 import { decodeChatStreamEvent, type ChatStreamEvent } from '@lostgradient/chat';
 

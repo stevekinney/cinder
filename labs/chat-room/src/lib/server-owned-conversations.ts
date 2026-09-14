@@ -17,6 +17,8 @@ import type {
 /** The agent identity every conversation in this variant is filed under. */
 export const AGENT_NAME = 'chat-room-server-owned';
 
+const SAFE_TURN_FAILURE_MESSAGE = 'The assistant could not complete this turn.';
+
 /**
  * What the conversation list renders. Deliberately narrower than
  * `SessionSummary`: the list needs a title and a size, and widening it later
@@ -221,7 +223,7 @@ export function turnFailuresOf(
 		)
 			continue;
 		safe[id] = {
-			message: record.message,
+			message: SAFE_TURN_FAILURE_MESSAGE,
 			kind: record.kind as ChatSerializedRunError['kind'],
 			code: record.code as ChatSerializedRunError['code'],
 			...(typeof record.retryable === 'boolean' ? { retryable: record.retryable } : {})
@@ -251,7 +253,7 @@ export async function rememberTurnFailure(
 		.find((messageId) => conversation.messages[messageId]?.role === 'user');
 	if (userMessageId === undefined) throw new Error('The failed turn has no user message.');
 	const persistedError: ServerOwnedTurnFailure = {
-		message: error.message,
+		message: SAFE_TURN_FAILURE_MESSAGE,
 		kind: error.kind,
 		code: error.code,
 		...(typeof error.retryable === 'boolean' ? { retryable: error.retryable } : {})

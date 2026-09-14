@@ -187,6 +187,12 @@ function toJSONValue(value: unknown): JSONValue {
 	return JSON.parse(JSON.stringify(value)) as JSONValue;
 }
 
+export const SAFE_CHAT_FAILURE_MESSAGE = 'The assistant could not complete this turn.';
+
+function toSafeStreamError(): JSONValue {
+	return { name: 'Error', message: SAFE_CHAT_FAILURE_MESSAGE };
+}
+
 const STREAM_EVENT_TYPES = [
 	'stream:block-start',
 	'stream:block-delta',
@@ -209,7 +215,7 @@ function toStreamFrame(event: StreamEvent): ChatStreamFrame {
 		case 'stream:tool-call-complete':
 			return { ...event, arguments: toJSONValue(event.arguments) };
 		case 'stream:error':
-			return { type: 'stream:error', error: toJSONValue(event.error) };
+			return { type: 'stream:error', error: toSafeStreamError() };
 		case 'stream:complete':
 			// Operative's `StreamState` holds `readonly` block arrays; the wire
 			// type owns mutable copies, so copy rather than alias.

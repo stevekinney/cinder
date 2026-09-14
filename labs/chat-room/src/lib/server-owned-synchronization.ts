@@ -98,6 +98,10 @@ export function createServerOwnedSynchronizer(
 			pending = true;
 			return;
 		}
+		// A trigger that arrived while streaming or while the prior read was
+		// active is consumed by this read. A new trigger during this read sets
+		// it again and receives one coalesced follow-up below.
+		pending = false;
 		void read();
 	}
 

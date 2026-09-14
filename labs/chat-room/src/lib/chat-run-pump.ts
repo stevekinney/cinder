@@ -15,8 +15,10 @@ import {
 	type ChatSerializedRunError,
 	type ChatStreamFrame,
 	type ChatStreamWriter,
-	classifyChatRunFailure
+	classifyChatRunFailure,
+	SAFE_CHAT_FAILURE_MESSAGE
 } from './chat-agent.ts';
+import { serverOwnedPersistenceFailureHint } from './server-owned-snapshot.ts';
 
 type ChatToolResult = Extract<ChatStreamEvent, { type: 'tool.settled' }>['result'];
 const FAILURE_FINISH_REASONS = new Set([
@@ -47,14 +49,17 @@ function toChatToolResult(
 }
 
 function toTerminalFailureFrame(
-	envelope: Extract<ChatRunEnvelope, { ok: false }>,
-	error: unknown
+	envelope: Extract<ChatRunEnvelope, { ok: false }>
 ): ChatStreamFrame {
 	if (envelope.status === 'aborted') return { type: 'run.aborted', reason: envelope.error.message };
 	const serialized: ChatSerializedRunError = {
-		name: error instanceof Error ? error.name : 'Error',
+		name: 'Error',
 		...envelope.error
 	};
+	serialized.message =
+		serialized.message === 'The turn outcome could not be saved.'
+			? serialized.message
+			: SAFE_CHAT_FAILURE_MESSAGE;
 	if (envelope.status === 'tripwire') return { type: 'run.tripwire', error: serialized };
 	return { type: 'run.error', error: serialized };
 }
@@ -218,7 +223,6 @@ export async function pumpChatRun(
 
 		if (FAILURE_FINISH_REASONS.has(result.finishReason)) {
 			let envelope = classifyChatRunFailure(result.error, result.finishReason);
-			let terminalCause: unknown = result.error;
 			if (envelope.status !== 'aborted' && options.beforeFailure !== undefined) {
 				const serialized: ChatSerializedRunError = {
 					name: result.error instanceof Error ? result.error.name : 'Error',
@@ -230,6 +234,15 @@ export async function pumpChatRun(
 						error: serialized
 					});
 				} catch {
+					const failedUserMessageId = [...result.conversation.current.ids]
+						.reverse()
+						.find((messageId) => result.conversation.current.messages[messageId]?.role === 'user');
+					if (failedUserMessageId !== undefined && failedUserMessageId.length > 0) {
+						writer.write({
+							type: 'stream:error',
+							error: serverOwnedPersistenceFailureHint(failedUserMessageId) as JSONValue
+						});
+					}
 					envelope = {
 						ok: false,
 						status: 'error',
@@ -240,10 +253,9 @@ export async function pumpChatRun(
 							retryable: false
 						}
 					};
-					terminalCause = new Error('The turn outcome could not be saved.');
 				}
 			}
-			writer.write(toTerminalFailureFrame(envelope, terminalCause));
+			writer.write(toTerminalFailureFrame(envelope));
 			return envelope;
 		}
 
@@ -262,7 +274,7 @@ export async function pumpChatRun(
 		};
 	} catch (cause) {
 		const envelope = classifyChatRunFailure(cause, 'aborted');
-		writer.write(toTerminalFailureFrame(envelope, cause));
+		writer.write(toTerminalFailureFrame(envelope));
 		return envelope;
 	}
 }

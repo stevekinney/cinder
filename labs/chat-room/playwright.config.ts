@@ -28,7 +28,6 @@ import { defineConfig } from '@playwright/test';
 const CROSS_ENGINE_SHARDS = [
 	[
 		'**/adapter-push.e2e.ts',
-		'**/server-owned-synchronization.e2e.ts',
 		'**/assistant-metadata.e2e.ts',
 		'**/chat-token-registration.e2e.ts',
 		'**/composer-popover.e2e.ts',
@@ -100,6 +99,8 @@ const CROSS_ENGINE_SHARDS = [
 	],
 	['**/review-comment-lifecycle.e2e.ts', '**/review-imperative.e2e.ts'],
 	[
+		// Seven tests plus two explicit contexts fit this shard's remaining capacity.
+		'**/server-owned-synchronization.e2e.ts',
 		'**/review-modes.e2e.ts',
 		'**/review-ssr-and-a11y.e2e.ts',
 		// Another real fetch/ReadableStream path — a provider failure has to
@@ -129,8 +130,8 @@ const CROSS_ENGINE_SHARDS = [
 		// left CI green.
 		//
 		// Measured after synchronization coverage: WebKit shards list
-		// 60/62/62/53/57 tests. The two extra synchronization contexts put
-		// webkit-1 at 62 contexts. Count explicit contexts as well as `--list`.
+		// 54/62/62/60/57 tests. The two extra synchronization contexts put
+		// webkit-4 at 62 contexts. Count explicit contexts as well as `--list`.
 		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;

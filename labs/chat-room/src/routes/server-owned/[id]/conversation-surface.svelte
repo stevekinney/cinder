@@ -17,7 +17,11 @@
 		createServerOwnedSynchronizer,
 		type ServerOwnedSynchronizer
 	} from '$lib/server-owned-synchronization';
-	import type { ServerOwnedConversationSnapshot } from '$lib/server-owned-snapshot';
+	import { withUnsavedFailures, type UnsavedFailure } from '$lib/server-owned-failure-overlay';
+	import {
+		parseServerOwnedPersistenceFailureHint,
+		type ServerOwnedConversationSnapshot
+	} from '$lib/server-owned-snapshot';
 	import ApprovalSurface from './approval-surface.svelte';
 
 	/**
@@ -103,12 +107,16 @@
 	let turnFailures = $state.raw<ServerOwnedConversationSnapshot['turnFailures']>(
 		untrack(() => initialTurnFailures)
 	);
+	let unsavedFailures = $state<Record<string, UnsavedFailure>>({});
 	let seenFailureIds = $state<Set<string>>(
 		untrack(() => new Set(Object.keys(initialTurnFailures)))
 	);
 	let syncStatus = $state('');
+	let syncStatusGeneration = $state(0);
 	let knownRejectedUserId = $state<string | undefined>(undefined);
 	let streaming = $state(false);
+	let streamEpoch = 0;
+	let disposed = false;
 	// Failures are replaced as immutable records. Preserve their identity so the
 	// approval child clears only the banner it owns across the binding.
 	let failure = $state.raw<BannerFailure | null>(null);
@@ -123,18 +131,52 @@
 		);
 	}
 
+	function retainUnsavedFailure(
+		authoritativeId: string,
+		clientId: string,
+		message: UnsavedFailure['message'],
+		failure: UnsavedFailure['failure']
+	): void {
+		unsavedFailures = { ...unsavedFailures, [authoritativeId]: { clientId, message, failure } };
+		turnFailures = { ...turnFailures, [clientId]: failure };
+		conversation = markMessageDeliveryFailed(conversation, clientId);
+	}
+
 	function applySnapshot(snapshot: ServerOwnedConversationSnapshot): void {
 		const newFailureIds = Object.keys(snapshot.turnFailures).filter(
 			(messageId) => !seenFailureIds.has(messageId)
 		);
 		if (newFailureIds.length > 0) {
+			syncStatusGeneration += 1;
 			syncStatus =
 				newFailureIds.length === 1
 					? '1 failed turn is recorded in this conversation.'
 					: `${newFailureIds.length} additional failed turns are recorded in this conversation.`;
 			seenFailureIds = new Set([...seenFailureIds, ...newFailureIds]);
 		}
+		const remainingUnsaved: Record<string, UnsavedFailure> = {};
+		const visibleFailures = { ...snapshot.turnFailures };
 		let next = snapshot.conversation;
+		for (const [authoritativeId, unsaved] of Object.entries(unsavedFailures)) {
+			if (snapshot.turnFailures[authoritativeId]) continue;
+			remainingUnsaved[authoritativeId] = unsaved;
+			if (
+				next.messages[authoritativeId] === undefined &&
+				next.messages[unsaved.clientId] === undefined
+			) {
+				next = {
+					...next,
+					ids: [...next.ids, unsaved.clientId],
+					messages: { ...next.messages, [unsaved.clientId]: unsaved.message }
+				};
+			}
+			if (next.messages[authoritativeId] === undefined) {
+				visibleFailures[unsaved.clientId] = unsaved.failure;
+			} else {
+				visibleFailures[authoritativeId] = unsaved.failure;
+			}
+		}
+		unsavedFailures = remainingUnsaved;
 		const rejected = knownRejectedUserId;
 		if (rejected && !next.messages[rejected]) {
 			const local = conversation.messages[rejected];
@@ -146,15 +188,15 @@
 				};
 			}
 		}
-		turnFailures = snapshot.turnFailures;
-		conversation = withServerFailures(next, snapshot.turnFailures);
+		turnFailures = visibleFailures;
+		conversation = withServerFailures(next, visibleFailures);
 	}
 
 	let synchronizer: ServerOwnedSynchronizer | undefined;
 
 	const session = createChatSessionController({
 		getConversation: () => $state.snapshot(conversation),
-		setConversation: (next) => (conversation = next),
+		setConversation: (next) => (conversation = withUnsavedFailures(next, unsavedFailures)),
 		transport: async ({ conversation: history, signal }) => {
 			// ONE message, never a transcript. `/api/chat` sends the whole
 			// history because the browser owns it there; here the server holds
@@ -191,6 +233,9 @@
 			}
 			const text = last.content;
 
+			const clientUserId = last.id;
+			const clientMessage = conversation.messages[clientUserId];
+			const requestEpoch = streamEpoch;
 			const response = await fetch(`/api/server-owned/conversations/${id}/stream`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
@@ -204,10 +249,29 @@
 				}
 				throw new Error(await failureMessage(response));
 			}
-			return decodeChatStreamEvents(response.body);
+			const events = decodeChatStreamEvents(response.body);
+			return (async function* () {
+				for await (const event of events) {
+					if (event.type === 'stream:error') {
+						const hint = parseServerOwnedPersistenceFailureHint(event.error);
+						if (hint === undefined) {
+							yield event;
+							continue;
+						}
+						if (!disposed && !signal.aborted && requestEpoch === streamEpoch) {
+							if (clientMessage) {
+								retainUnsavedFailure(hint.userMessageId, clientUserId, clientMessage, hint.failure);
+							}
+						}
+						continue;
+					}
+					yield event;
+				}
+			})();
 		},
 		hooks: {
 			onStreamingChange: (value) => {
+				if (value) streamEpoch += 1;
 				streaming = value;
 				synchronizer?.setStreaming(value);
 				// Cleared when the NEXT turn starts, not when this one fails: a
@@ -251,6 +315,8 @@
 	// stays open and billed. `dispose()` stops the active run and releases the
 	// controller's own subscriptions.
 	onDestroy(() => {
+		disposed = true;
+		streamEpoch += 1;
 		synchronizer?.dispose();
 		session.dispose();
 	});
@@ -312,7 +378,9 @@
 	{/if}
 </p>
 
-<p class="sync-status" role="status" data-testid="server-owned-sync-status">{syncStatus}</p>
+<p class="sync-status" role="status" data-testid="server-owned-sync-status">
+	{#key syncStatusGeneration}<span>{syncStatus}</span>{/key}
+</p>
 
 <div class="chat" data-testid="server-owned-chat" data-streaming={streaming}>
 	<!--

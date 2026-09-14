@@ -18,6 +18,8 @@ describe('server-owned synchronizer', () => {
 		const timers: (() => void)[] = [];
 		const delays: number[] = [];
 		const calls: string[] = [];
+		let resolveTimerRegistration!: () => void;
+		const timerRegistered = new Promise<void>((resolve) => (resolveTimerRegistration = resolve));
 		let resolveRead: ((value: Response) => void) | undefined;
 		const synchronizer = createServerOwnedSynchronizer({
 			id: 'c1',
@@ -30,6 +32,7 @@ describe('server-owned synchronizer', () => {
 			setTimer: (callback, delay) => {
 				timers.push(callback);
 				delays.push(delay);
+				resolveTimerRegistration();
 				return timers.length as never;
 			},
 			clearTimer: () => undefined,
@@ -38,8 +41,7 @@ describe('server-owned synchronizer', () => {
 		synchronizer.trigger();
 		expect(calls).toEqual(['read']);
 		resolveRead?.(response(snapshot('c1')));
-		await new Promise<void>((resolve) => setTimeout(resolve, 10));
-		await Promise.resolve();
+		await timerRegistered;
 		expect(timers).toHaveLength(1);
 		expect(delays).toEqual([5000]);
 		timers[0]!();
@@ -68,8 +70,35 @@ describe('server-owned synchronizer', () => {
 		synchronizer.dispose();
 	});
 
+	test('consumes streaming triggers into one postrun refresh', async () => {
+		let reads = 0;
+		let resolveReadStarted!: () => void;
+		const readStarted = new Promise<void>((resolve) => (resolveReadStarted = resolve));
+		const synchronizer = createServerOwnedSynchronizer({
+			id: 'c1',
+			visible: () => true,
+			streaming: () => true,
+			fetcher: async () => {
+				reads += 1;
+				resolveReadStarted();
+				return response(snapshot('fresh'));
+			},
+			apply: () => undefined,
+			setTimer: () => 1 as never,
+			clearTimer: () => undefined
+		});
+		synchronizer.trigger();
+		synchronizer.trigger();
+		synchronizer.setStreaming(false);
+		await readStarted;
+		expect(reads).toBe(1);
+		synchronizer.dispose();
+	});
+
 	test('coalesces pending triggers into one read after the active read completes', async () => {
 		let resolveFirst!: (response: Response) => void;
+		let resolveSecondStarted!: () => void;
+		const secondReadStarted = new Promise<void>((resolve) => (resolveSecondStarted = resolve));
 		let calls = 0;
 		const synchronizer = createServerOwnedSynchronizer({
 			id: 'c1',
@@ -78,6 +107,7 @@ describe('server-owned synchronizer', () => {
 			fetcher: async () => {
 				calls += 1;
 				if (calls === 1) return new Promise<Response>((resolve) => (resolveFirst = resolve));
+				resolveSecondStarted();
 				return response(snapshot('fresh'));
 			},
 			apply: () => undefined,
@@ -89,9 +119,7 @@ describe('server-owned synchronizer', () => {
 		synchronizer.trigger();
 		expect(calls).toBe(1);
 		resolveFirst(response(snapshot('first')));
-		await new Promise<void>((resolve) => setTimeout(resolve, 0));
-		expect(calls).toBe(2);
-		await Promise.resolve();
+		await secondReadStarted;
 		expect(calls).toBe(2);
 		synchronizer.dispose();
 	});

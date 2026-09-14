@@ -186,7 +186,7 @@ describe('server-owned conversations', () => {
 			[userId]: {
 				kind: 'generate',
 				code: 'UNKNOWN',
-				message: 'Provider failed',
+				message: 'The assistant could not complete this turn.',
 				retryable: false
 			}
 		});
@@ -243,7 +243,7 @@ describe('server-owned conversations', () => {
 		expect(
 			Object.values(serverOwnedSnapshot((await loadConversation(created.id))!).turnFailures)[0]!
 				.message
-		).toBe('first');
+		).toBe('The assistant could not complete this turn.');
 		await disposeServerOwnedRuntime();
 	});
 
@@ -294,6 +294,24 @@ describe('server-owned conversations', () => {
 		expect(stored).not.toContain('private');
 		expect(stored).not.toContain('CredentialNameCanary');
 		expect(projected).not.toContain('CredentialNameCanary');
+		await disposeServerOwnedRuntime();
+	});
+
+	it('replaces provider messages with the controlled user-safe reason', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('Message redaction');
+		const appended = await appendUserTurn(created.id, 'secret message');
+		await rememberTurnFailure(created.id, appended!.conversationHistory, {
+			name: 'AgentRunError',
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'https://provider.test?authorization=Bearer credential-canary'
+		});
+		const stored = JSON.stringify(await loadConversation(created.id));
+		const projected = JSON.stringify(serverOwnedSnapshot((await loadConversation(created.id))!));
+		expect(stored).not.toContain('credential-canary');
+		expect(projected).not.toContain('credential-canary');
+		expect(projected).toContain('The assistant could not complete this turn.');
 		await disposeServerOwnedRuntime();
 	});
 });
