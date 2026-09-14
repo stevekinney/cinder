@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { TokenValidationError, type ResolverDocument } from './types.ts';
+import { TokenValidationError, type ResolverDocument, type TokenDocument } from './types.ts';
 import {
   buildContextSourcesIndex,
   combinations,
@@ -110,7 +110,7 @@ describe('token corpus validation', () => {
       modifiers: {},
       resolutionOrder: [{ $ref: '#/sets/base' }],
     };
-    const document = { $type: 'number', token: { $value: 0 } };
+    const document = { $type: 'number', token: { $value: 0 } } satisfies TokenDocument;
 
     expect(
       validateLoadedTokenDocuments(normalized, [{ path: 'base.tokens.json', document }]),
