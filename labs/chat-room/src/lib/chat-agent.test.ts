@@ -223,6 +223,8 @@ describe('pumpChatRun: provider failure', () => {
 		const lines: string[] = [];
 		let release!: () => void;
 		const persisted = new Promise<void>((resolve) => (release = resolve));
+		let startedResolve!: () => void;
+		const started = new Promise<void>((resolve) => (startedResolve = resolve));
 		const pending = runAndCollect(
 			async () => {
 				throw new Error('provider failed');
@@ -231,11 +233,12 @@ describe('pumpChatRun: provider failure', () => {
 			lines,
 			[],
 			async () => {
+				startedResolve();
 				expect(lines.some((line) => line.includes('run.error'))).toBe(false);
 				await persisted;
 			}
 		);
-		await Promise.resolve();
+		await started;
 		expect(lines.some((line) => line.includes('run.error'))).toBe(false);
 		release();
 		await pending;

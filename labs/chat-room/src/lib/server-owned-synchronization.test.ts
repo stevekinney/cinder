@@ -16,6 +16,7 @@ const response = (body: ServerOwnedConversationSnapshot, ok = true): Response =>
 describe('server-owned synchronizer', () => {
 	test('reads immediately, then waits five seconds after completion', async () => {
 		const timers: (() => void)[] = [];
+		const delays: number[] = [];
 		const calls: string[] = [];
 		let resolveRead: ((value: Response) => void) | undefined;
 		const synchronizer = createServerOwnedSynchronizer({
@@ -26,8 +27,9 @@ describe('server-owned synchronizer', () => {
 				calls.push('read');
 				return new Promise<Response>((resolve) => (resolveRead = resolve));
 			},
-			setTimer: (callback) => {
+			setTimer: (callback, delay) => {
 				timers.push(callback);
+				delays.push(delay);
 				return timers.length as never;
 			},
 			clearTimer: () => undefined,
@@ -41,6 +43,7 @@ describe('server-owned synchronizer', () => {
 		await Promise.resolve();
 		await Promise.resolve();
 		expect(timers).toHaveLength(1);
+		expect(delays).toEqual([5000]);
 		timers[0]!();
 		expect(calls).toEqual(['read', 'read']);
 		synchronizer.dispose();
@@ -69,22 +72,31 @@ describe('server-owned synchronizer', () => {
 
 	test('does not apply a body that becomes stale while JSON is pending', async () => {
 		let applied = 0;
+		let releaseBody!: () => void;
 		const synchronizer = createServerOwnedSynchronizer({
 			id: 'c1',
 			visible: () => true,
 			streaming: () => false,
-			fetcher: async () =>
-				new Response(
-					new ReadableStream({
-						start(controller) {
+			fetcher: async () => {
+				const body = new ReadableStream({
+					start(controller) {
+						releaseBody = () => {
+							controller.enqueue(new TextEncoder().encode(JSON.stringify(snapshot('stale'))));
 							controller.close();
-						}
-					})
-				),
+						};
+					}
+				});
+				return new Response(body);
+			},
 			apply: () => applied++
 		});
 		synchronizer.trigger();
-		synchronizer.setVisible(false);
+		await Promise.resolve();
+		synchronizer.setStreaming(true);
+		releaseBody();
+		await Promise.resolve();
+		await Promise.resolve();
+		await Promise.resolve();
 		await Promise.resolve();
 		expect(applied).toBe(0);
 		synchronizer.dispose();
