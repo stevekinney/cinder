@@ -60,6 +60,7 @@ import type {
 import {
   expandContextSources,
   normalizeSourcePath,
+  normalizedDocumentsByPath,
   parseResolutionOrder,
   sourcesForEntry,
   validateLoadedTokenDocuments,
@@ -2426,7 +2427,9 @@ export async function loadCorpus(): Promise<{
   const resolver = await loadResolverDocument();
   const loaded = await loadRawTokenDocuments();
   const validated = validateLoadedTokenDocuments(resolver, loaded);
-  const documentsByPath = new Map(validated.map(({ path, document }) => [path, document]));
+  const documentsByPath = normalizedDocumentsByPath(
+    new Map(validated.map(({ path, document }) => [path, document])),
+  );
   return { resolver, documentsByPath };
 }
 

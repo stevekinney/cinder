@@ -3,6 +3,10 @@ import { TokenValidationError } from './types.ts';
 
 type JsonObject = Record<string, unknown>;
 type ResolvedTokens = Map<string, DesignToken>;
+// Origins follow group objects through the same merges and clones as values.
+// A path-only map would confuse an earlier prefix with later lookup overrides.
+type ExtensionOrigin = { source: string; path: string };
+type ExtensionOrigins = WeakMap<object, ExtensionOrigin>;
 /**
  * Every token's ORIGINAL `$ref` string, captured once in `buildTokenIndex`
  * before any resolution runs. `resolveRefToken` deletes `$ref` from a
@@ -33,10 +37,18 @@ function isTokenGroup(value: unknown): value is TokenGroup {
   return isObject(value) && !isToken(value);
 }
 
-function clone<T>(value: T): T {
+function clone<T>(value: T, extensionOrigins?: ExtensionOrigins): T {
   const copy = structuredClone(value);
   normalizeObjectPrototypes(copy);
+  if (extensionOrigins) copyExtensionOrigins(value, copy, extensionOrigins);
   return copy;
+}
+
+function copyExtensionOrigins(value: unknown, copy: unknown, origins: ExtensionOrigins): void {
+  if (!isObject(value) || !isObject(copy)) return;
+  const origin = origins.get(value);
+  if (origin) origins.set(copy, origin);
+  for (const [key, child] of Object.entries(value)) copyExtensionOrigins(child, copy[key], origins);
 }
 
 function normalizeObjectPrototypes(value: unknown): void {
@@ -105,6 +117,40 @@ function collectGroups(group: TokenGroup, prefix: string, groups: Map<string, To
   }
 }
 
+function collectExtensionOrigins(
+  group: TokenGroup,
+  prefix: string,
+  source: string | undefined,
+  origins: ExtensionOrigins,
+): void {
+  if (source !== undefined && typeof group.$extends === 'string')
+    origins.set(group, { source, path: prefix });
+  for (const [name, value] of Object.entries(group)) {
+    if (name.startsWith('$') || !isObject(value) || !isTokenGroup(value)) continue;
+    collectExtensionOrigins(value, prefix ? `${prefix}.${name}` : name, source, origins);
+  }
+}
+
+function extensionIssue(
+  groupPath: string,
+  reason: string,
+  group: TokenGroup,
+  extensionOrigins?: ExtensionOrigins,
+): never {
+  const origin = extensionOrigins?.get(group);
+  throw new TokenValidationError(
+    [
+      {
+        path: origin
+          ? `${origin.source}${origin.path ? `.${origin.path}` : ''}.$extends`
+          : groupPath,
+        reason,
+      },
+    ],
+    origin !== undefined,
+  );
+}
+
 function collectTokens(
   group: TokenGroup,
   prefix: string,
@@ -128,17 +174,27 @@ function collectTokens(
   }
 }
 
-function inheritMissingGroupMembers(target: TokenGroup, source: TokenGroup): void {
+function inheritMissingGroupMembers(
+  target: TokenGroup,
+  source: TokenGroup,
+  extensionOrigins?: ExtensionOrigins,
+): void {
   for (const [name, value] of Object.entries(source)) {
     const existing = target[name];
-    if (isTokenGroup(existing) && isTokenGroup(value)) inheritMissingGroupMembers(existing, value);
-    else if (!Object.hasOwn(target, name))
+    if (isTokenGroup(existing) && isTokenGroup(value))
+      inheritMissingGroupMembers(existing, value, extensionOrigins);
+    else if (!Object.hasOwn(target, name)) {
       Object.defineProperty(target, name, {
         configurable: true,
         enumerable: true,
-        value: clone(value),
+        value: clone(value, extensionOrigins),
         writable: true,
       });
+      if (name === '$extends') {
+        const origin = extensionOrigins?.get(source);
+        if (origin) extensionOrigins?.set(target, origin);
+      }
+    }
   }
 }
 
@@ -213,15 +269,47 @@ function resolveExtends(
   visiting: Set<string>,
   complete: Set<string>,
   lookupGroups: Map<string, TokenGroup> = groups,
+  extensionOrigins?: ExtensionOrigins,
 ): TokenGroup {
   const group = groups.get(groupPath);
   if (!group) return issue(groupPath, '$extends must reference an existing group');
   if (complete.has(groupPath)) return group;
-  if (visiting.has(groupPath)) return issue(groupPath, 'circular $extends reference');
+  if (visiting.has(groupPath))
+    return extensionIssue(groupPath, 'circular $extends reference', group, extensionOrigins);
   visiting.add(groupPath);
   if (group.$extends) {
-    const extendedPath = tokenPathFromReference(group.$extends);
-    const extended = resolveExtends(extendedPath, groups, visiting, complete);
+    let extendedPath: string;
+    try {
+      extendedPath = tokenPathFromReference(group.$extends);
+    } catch (error) {
+      if (error instanceof TokenValidationError && extensionOrigins?.has(group))
+        return extensionIssue(
+          groupPath,
+          error.issues.map((entry) => entry.reason).join('; '),
+          group,
+          extensionOrigins,
+        );
+      throw error;
+    }
+    if (!groups.has(extendedPath)) {
+      return extensionIssue(
+        extendedPath,
+        '$extends must reference an existing group',
+        group,
+        extensionOrigins,
+      );
+    }
+    if (visiting.has(extendedPath)) {
+      return extensionIssue(extendedPath, 'circular $extends reference', group, extensionOrigins);
+    }
+    const extended = resolveExtends(
+      extendedPath,
+      groups,
+      visiting,
+      complete,
+      lookupGroups,
+      extensionOrigins,
+    );
     if (group.$type === undefined && extended.$type !== undefined) group.$type = extended.$type;
     // `$deprecated: false` is a real, meaningful value (it un-deprecates a
     // subtree under a deprecated ancestor) rather than an absence, so this
@@ -241,9 +329,16 @@ function resolveExtends(
     for (let end = ancestors.length; end >= 0; end -= 1) {
       const ancestorPath = ancestors.slice(0, end).join('.');
       if (groups.get(ancestorPath)?.$extends)
-        resolveExtends(ancestorPath, groups, visiting, complete, lookupGroups);
+        resolveExtends(ancestorPath, groups, visiting, complete, lookupGroups, extensionOrigins);
       if (lookupGroups.get(ancestorPath)?.$extends)
-        resolveExtends(ancestorPath, lookupGroups, new Set(), new Set(), lookupGroups);
+        resolveExtends(
+          ancestorPath,
+          lookupGroups,
+          new Set(),
+          new Set(),
+          lookupGroups,
+          extensionOrigins,
+        );
     }
     const effectiveExtendedDeprecated =
       effectiveGroupDeprecated(extendedPath, groups) ??
@@ -254,12 +349,12 @@ function resolveExtends(
       if (!name.startsWith('$') || name === '$root') {
         const existing = group[name];
         if (isTokenGroup(existing) && isTokenGroup(value))
-          inheritMissingGroupMembers(existing, value);
+          inheritMissingGroupMembers(existing, value, extensionOrigins);
         else if (!Object.hasOwn(group, name))
           Object.defineProperty(group, name, {
             configurable: true,
             enumerable: true,
-            value: clone(value),
+            value: clone(value, extensionOrigins),
             writable: true,
           });
       }
@@ -272,7 +367,7 @@ function resolveExtends(
     if (name.startsWith('$') || !isTokenGroup(value)) continue;
     const nestedPath = groupPath ? `${groupPath}.${name}` : name;
     if (groups.get(nestedPath)?.$extends)
-      resolveExtends(nestedPath, groups, visiting, complete, lookupGroups);
+      resolveExtends(nestedPath, groups, visiting, complete, lookupGroups, extensionOrigins);
   }
   visiting.delete(groupPath);
   complete.add(groupPath);
@@ -599,23 +694,37 @@ function resolveToken(
 export function mergeAndExpandExtends(
   documents: TokenDocument[],
   lookupDocuments: TokenDocument[] = documents,
+  sourceByDocument?: ReadonlyMap<object, string>,
 ): TokenDocument {
-  const merged = mergeDocuments(documents);
+  const extensionOrigins: ExtensionOrigins | undefined = sourceByDocument
+    ? new WeakMap()
+    : undefined;
+  if (extensionOrigins)
+    for (const document of new Set([...lookupDocuments, ...documents]))
+      collectExtensionOrigins(document, '', sourceByDocument?.get(document), extensionOrigins);
+  const merged = mergeDocuments(documents, extensionOrigins);
   const groups = new Map<string, TokenGroup>();
   const lookupGroups = new Map<string, TokenGroup>();
+  const ownGroups = new Map<string, TokenGroup>();
   if (lookupDocuments !== documents) {
-    const lookupMerged = mergeDocuments(lookupDocuments);
+    const lookupMerged = mergeDocuments(lookupDocuments, extensionOrigins);
     collectGroups(lookupMerged, '', lookupGroups);
     collectGroups(lookupMerged, '', groups);
   }
-  collectGroups(merged, '', groups);
-  for (const groupPath of groups.keys())
+  collectGroups(merged, '', ownGroups);
+  for (const [groupPath, group] of ownGroups) groups.set(groupPath, group);
+  // Resolve only groups contributed by the authored documents. Lookup groups
+  // remain indexed so an authored `$extends` can resolve forward, but an
+  // unrelated later lookup group must not make an earlier source fail while
+  // it is being validated.
+  for (const groupPath of ownGroups.keys())
     resolveExtends(
       groupPath,
       groups,
       new Set(),
       new Set(),
       lookupDocuments === documents ? groups : lookupGroups,
+      extensionOrigins,
     );
   return merged;
 }
@@ -682,18 +791,30 @@ export function createValueResolver(documents: TokenDocument[]): ValueResolver {
  * when the override does not restate them. "Last occurrence wins" therefore
  * still describes `$value`, and no longer describes the whole token.
  */
-export function mergeDocuments(documents: TokenDocument[]): TokenDocument {
+export function mergeDocuments(
+  documents: TokenDocument[],
+  extensionOrigins?: ExtensionOrigins,
+): TokenDocument {
   const result: TokenDocument = Object.create(null);
-  for (const document of documents) mergeGroup(result, document);
+  for (const document of documents) mergeGroup(result, document, extensionOrigins);
   return result;
 }
 
-function mergeGroup(target: TokenGroup, source: TokenGroup): void {
+function mergeGroup(
+  target: TokenGroup,
+  source: TokenGroup,
+  extensionOrigins?: ExtensionOrigins,
+): void {
   for (const [key, value] of Object.entries(source)) {
     const existing = target[key];
-    if (isTokenGroup(existing) && isTokenGroup(value)) mergeGroup(existing, value);
+    if (isTokenGroup(existing) && isTokenGroup(value))
+      mergeGroup(existing, value, extensionOrigins);
     else if (isToken(existing) && isToken(value)) target[key] = mergeToken(existing, value);
-    else target[key] = clone(value);
+    else target[key] = clone(value, extensionOrigins);
+    if (key === '$extends') {
+      const origin = extensionOrigins?.get(source);
+      if (origin) extensionOrigins?.set(target, origin);
+    }
   }
 }
 

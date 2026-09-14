@@ -141,7 +141,10 @@ export type ResolverDocument = {
 export type ValidationIssue = { path: string; reason: string };
 
 export class TokenValidationError extends Error {
-  constructor(readonly issues: ValidationIssue[]) {
+  constructor(
+    readonly issues: ValidationIssue[],
+    readonly sourceOwned = false,
+  ) {
     super(issues.map((issue) => `${issue.path}: ${issue.reason}`).join('\n'));
     this.name = 'TokenValidationError';
   }

@@ -35,6 +35,22 @@ export function normalizeSourcePath(reference: string): string {
   return posix.normalize(decoded).replace(/^\.\//, '');
 }
 
+export function normalizedDocumentsByPath<T>(documentsByPath: Map<string, T>): Map<string, T> {
+  const normalized = new Map<string, T>();
+  for (const [path, document] of documentsByPath) {
+    const normalizedPath = normalizeSourcePath(path);
+    if (normalized.has(normalizedPath))
+      throw new TokenValidationError([
+        {
+          path: '$',
+          reason: `duplicate loaded token document path after normalization: ${normalizedPath}`,
+        },
+      ]);
+    normalized.set(normalizedPath, document);
+  }
+  return normalized;
+}
+
 /**
  * Whether a source `$ref` names a resolver-internal pointer (`#/sets/<name>`)
  * rather than an on-disk document, decoding percent-escapes FIRST -- the same
@@ -592,6 +608,7 @@ export function orderedTokenValidationContexts(
   resolver: ResolverDocument,
   documentsByPath: Map<string, unknown>,
 ): Map<string, unknown[][]> {
+  documentsByPath = normalizedDocumentsByPath(documentsByPath);
   const expandedSets = Object.keys(resolver.sets).map((setName) => ({
     setName,
     sources: expandSetSources(resolver, setName),
@@ -642,7 +659,22 @@ export function validateLoadedTokenDocuments(
   resolver: ResolverDocument,
   loaded: Array<{ path: string; document: unknown }>,
 ): Array<{ path: string; document: TokenDocument }> {
-  const documentsByPath = new Map(loaded.map(({ path, document }) => [path, document]));
+  const rawDocumentsByPath = new Map<string, unknown>();
+  for (const { path, document } of loaded) {
+    if (rawDocumentsByPath.has(path))
+      throw new TokenValidationError([
+        {
+          path: '$',
+          reason: `duplicate loaded token document path after normalization: ${normalizeSourcePath(path)}`,
+        },
+      ]);
+    rawDocumentsByPath.set(path, document);
+  }
+  const documentsByPath = normalizedDocumentsByPath(rawDocumentsByPath);
+  const sourceByDocument = new Map<object, string>();
+  for (const { path, document } of loaded) {
+    if (typeof document === 'object' && document !== null) sourceByDocument.set(document, path);
+  }
   // Validate extension metadata against each document's owning path before
   // composing contexts. The context array intentionally contains raw
   // documents, so attributing a malformed lookup document to the candidate
@@ -651,8 +683,8 @@ export function validateLoadedTokenDocuments(
   const contextsByPath = orderedTokenValidationContexts(resolver, documentsByPath);
   return loaded.map(({ path, document }) => {
     const candidate = document;
-    const contexts = contextsByPath.get(path) ?? [];
-    assertValidLoadedDocument(candidate, path, contexts);
+    const contexts = contextsByPath.get(normalizeSourcePath(path)) ?? [];
+    assertValidLoadedDocument(candidate, path, contexts, sourceByDocument);
     return { path, document: candidate };
   });
 }
@@ -661,9 +693,12 @@ function assertValidLoadedDocument(
   document: unknown,
   path: string,
   contexts: readonly unknown[][],
+  sourceByDocument: ReadonlyMap<object, string>,
 ): asserts document is TokenDocument {
-  if (contexts.length === 0) assertValidTokenDocument(document, path);
-  else for (const context of contexts) assertValidTokenDocument(document, path, context);
+  if (contexts.length === 0) assertValidTokenDocument(document, path, [], sourceByDocument);
+  else
+    for (const context of contexts)
+      assertValidTokenDocument(document, path, context, sourceByDocument);
 }
 
 async function main(): Promise<void> {
@@ -692,12 +727,14 @@ async function main(): Promise<void> {
     ),
   ]);
   const unreferencedDocuments = loaded
-    .filter(({ path }) => !referencedPaths.has(path))
+    .filter(({ path }) => !referencedPaths.has(normalizeSourcePath(path)))
     .map(({ path }) => ({ path, reason: 'token document is not referenced by the resolver' }));
   if (unreferencedDocuments.length > 0) throw new TokenValidationError(unreferencedDocuments);
 
   const documents = validateLoadedTokenDocuments(resolver, loaded);
-  const documentsByPath = new Map(documents.map(({ path, document }) => [path, document]));
+  const documentsByPath = normalizedDocumentsByPath(
+    new Map(documents.map(({ path, document }) => [path, document])),
+  );
   validateModifierSetExpansionOrder(resolver, documentsByPath);
   validateModifierTokenPaths(resolver, documentsByPath);
 

@@ -174,49 +174,44 @@ function projectTokenDocumentForValidation(
   value: unknown,
   lookupDocuments: readonly unknown[] = [],
   source = '$',
+  sourceByDocument?: ReadonlyMap<object, string>,
 ): unknown {
   const index: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
   if (isTokenDocument(value)) {
     assertSafeExtensionMetadata(value, '', source);
-    for (const contextDocument of lookupDocuments)
-      assertSafeExtensionMetadata(contextDocument, '', source);
+    const contextDocuments = lookupDocuments.filter(isTokenDocument);
+    const candidatePosition = contextDocuments.indexOf(value);
+    // The loaded corpus validates each document's own extension metadata at
+    // its owning path before entering this projection. Direct callers do not
+    // have that ownership record, so retain the historical lookup check when
+    // the candidate is not one of the ordered context documents.
+    if (candidatePosition < 0)
+      for (const contextDocument of contextDocuments)
+        assertSafeExtensionMetadata(contextDocument, '', source);
     try {
-      const contextDocuments = lookupDocuments.filter(isTokenDocument);
-      // Check the composed context before indexing the source's own groups:
-      // a partial source override must not hide an inherited extension cycle.
-      const expandedContext =
-        contextDocuments.length > 0 ? mergeAndExpandExtends(contextDocuments) : undefined;
-      const documents = [value];
+      // Type metadata belongs to the ordered prefix through the authored
+      // source. Later ordinary overrides must not change how an earlier value
+      // is validated. The complete context remains the lookup scope so a
+      // source may refer forward through `$extends`.
+      const orderedPrefix =
+        candidatePosition >= 0 ? contextDocuments.slice(0, candidatePosition + 1) : [value];
+      const documents = orderedPrefix.length > 0 ? orderedPrefix : [value];
       const expanded = mergeAndExpandExtends(
         documents,
         contextDocuments.length > 0 ? contextDocuments : documents,
+        sourceByDocument,
       );
-      if (expandedContext === undefined) collectProjectionMetadata(expanded, '', index);
-      else {
-        const contextIndex: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
-        collectProjectionMetadata(expandedContext, '', contextIndex);
-        const ownIndex: ProjectionIndex = { groups: new Map(), tokenTypes: new Map() };
-        collectProjectionMetadata(expanded, '', ownIndex);
-        for (const [path, group] of contextIndex.groups) index.groups.set(path, group);
-        for (const [path, group] of ownIndex.groups) {
-          const contextGroup = contextIndex.groups.get(path);
-          index.groups.set(
-            path,
-            contextGroup && group['$type'] === undefined ? { ...contextGroup, ...group } : group,
-          );
-        }
-        for (const [path, type] of contextIndex.tokenTypes) index.tokenTypes.set(path, type);
-        for (const [path, type] of ownIndex.tokenTypes) index.tokenTypes.set(path, type);
-      }
+      collectProjectionMetadata(expanded, '', index);
     } catch (error) {
       // A failed composition cannot be replaced with raw groups: a later
       // partial group would hide inherited extension edges and their cycles.
       if (error instanceof TokenValidationError)
         throw new TokenValidationError(
           error.issues.map(({ path, reason }) => ({
-            path: path ? `${source}.${path}` : source,
+            path: error.sourceOwned ? path : path ? `${source}.${path}` : source,
             reason,
           })),
+          error.sourceOwned,
         );
       throw error;
     }
@@ -259,10 +254,11 @@ function runSchemaValidation(
   document: unknown,
   source: string,
   lookupDocuments: readonly unknown[] = [],
+  sourceByDocument?: ReadonlyMap<object, string>,
 ): unknown {
   const schemaDocument =
     validator === getFormatValidator()
-      ? projectTokenDocumentForValidation(document, lookupDocuments, source)
+      ? projectTokenDocumentForValidation(document, lookupDocuments, source, sourceByDocument)
       : document;
   if (validator(schemaDocument)) return schemaDocument;
   const errors = [...(validator.errors ?? [])].toSorted(bySpecificity);
@@ -278,8 +274,15 @@ export function validateTokenDocumentSchema(
   document: unknown,
   source = '$',
   lookupDocuments: readonly unknown[] = [],
+  sourceByDocument?: ReadonlyMap<object, string>,
 ): unknown {
-  return runSchemaValidation(getFormatValidator(), document, source, lookupDocuments);
+  return runSchemaValidation(
+    getFormatValidator(),
+    document,
+    source,
+    lookupDocuments,
+    sourceByDocument,
+  );
 }
 
 /**
