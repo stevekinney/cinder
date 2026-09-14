@@ -286,21 +286,21 @@ describe('Playwright dependency setup', () => {
     const staticLane = workflow.jobs['static-artifact'];
     const unitGate = workflow.jobs['unit-tests'];
     const hydrationStep = staticLane?.steps?.find(
-      (step) => step.name === 'Consumer hydration smoke (cinder)',
+      (step) => step['name'] === 'Consumer hydration smoke (cinder)',
     );
 
     expect(workflowSource).toContain('  pull_request: {}');
     expect(staticLane?.needs).toBe('scope');
-    expect(hydrationStep?.run).toBe(
+    expect(hydrationStep?.['run']).toBe(
       'bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke',
     );
-    expect(hydrationStep?.if).toBeUndefined();
+    expect(hydrationStep?.['if']).toBeUndefined();
     expect(hydrationStep?.['continue-on-error']).toBeUndefined();
-    expect(staticLane?.steps?.some((step) => step.name === 'Validate workflow contracts')).toBe(
+    expect(staticLane?.steps?.some((step) => step['name'] === 'Validate workflow contracts')).toBe(
       true,
     );
 
-    const stepNames = staticLane?.steps?.map((step) => step.name) ?? [];
+    const stepNames = staticLane?.steps?.map((step) => step['name']) ?? [];
     expect(stepNames.indexOf('Normalize Ubuntu mirror for Playwright dependencies')).toBeLessThan(
       stepNames.indexOf('Install Chromium for hydration smoke'),
     );
@@ -316,12 +316,12 @@ describe('Playwright dependency setup', () => {
       'component',
     ]);
     const aggregatorStep = unitGate?.steps?.find(
-      (step) => step.name === 'Require every selected lane to succeed',
+      (step) => step['name'] === 'Require every selected lane to succeed',
     );
-    expect(aggregatorStep?.env).toMatchObject({
+    expect(aggregatorStep?.['env']).toMatchObject({
       STATIC: '${{ needs.static-artifact.result }}',
     });
-    expect(aggregatorStep?.run).toContain('*,static,*) [ "$STATIC" = success ] || exit 1');
+    expect(aggregatorStep?.['run']).toContain('*,static,*) [ "$STATIC" = success ] || exit 1');
   });
 });
 
