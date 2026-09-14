@@ -199,9 +199,11 @@ test('announces two durable failures together and leaves unchanged refreshes sil
 	for (const text of [first, second]) {
 		await page.getByRole('textbox', { name: 'Message' }).fill(text);
 		await page.getByRole('button', { name: 'Send message' }).click();
+		await expect(
+			page.getByRole('article', { name: 'You' }).filter({ hasText: text }).locator('xpath=..')
+		).toHaveAttribute('data-failed', 'true');
 	}
 	releaseSnapshot();
-	await page.clock.runFor(5000);
 	const status = page.getByTestId('server-owned-sync-status');
 	await expect(status).toHaveText('2 additional failed turns are recorded in this conversation.');
 	await expect(
