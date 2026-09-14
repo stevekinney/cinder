@@ -220,18 +220,9 @@ function validateValue(
     case 'strokeStyle':
       if (
         typeof value === 'string' &&
-        [
-          'none',
-          'hidden',
-          'dotted',
-          'dashed',
-          'solid',
-          'double',
-          'groove',
-          'ridge',
-          'inset',
-          'outset',
-        ].includes(value)
+        ['dotted', 'dashed', 'solid', 'double', 'groove', 'ridge', 'inset', 'outset'].includes(
+          value,
+        )
       )
         return;
       if (

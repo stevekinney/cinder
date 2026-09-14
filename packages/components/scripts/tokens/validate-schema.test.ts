@@ -6,6 +6,52 @@ import { fileURLToPath } from 'node:url';
 import { validateResolverDocumentSchema, validateTokenDocumentSchema } from './validate-schema.ts';
 import { assertValidTokenDocument, validateTokenDocument } from './validate.ts';
 
+const inheritedTypeCases = [
+  ['color', { colorSpace: 'oklch', components: [0.5, 0.1, 255] }],
+  ['dimension', { value: 1, unit: 'rem' }],
+  ['fontFamily', ['Inter', 'sans-serif']],
+  ['fontWeight', 600],
+  ['duration', { value: 150, unit: 'ms' }],
+  ['cubicBezier', [0.2, 0, 0, 1]],
+  ['number', 1],
+  ['strokeStyle', 'solid'],
+  ['border', { color: '{color}', width: '{dimension}', style: 'solid' }],
+  ['transition', { duration: '{duration}', delay: '{duration}', timingFunction: '{easing}' }],
+  [
+    'shadow',
+    {
+      color: '{color}',
+      offsetX: '{dimension}',
+      offsetY: '{dimension}',
+      blur: '{dimension}',
+      spread: '{dimension}',
+    },
+  ],
+  [
+    'gradient',
+    [
+      { color: '{color}', position: 0 },
+      { color: '{color}', position: 1 },
+    ],
+  ],
+  [
+    'typography',
+    {
+      fontFamily: '{family}',
+      fontSize: '{dimension}',
+      fontWeight: '{weight}',
+      letterSpacing: '{dimension}',
+      lineHeight: 1.5,
+    },
+  ],
+] as const;
+
+function deepFreeze<T>(value: T): T {
+  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) return value;
+  for (const child of Object.values(value)) deepFreeze(child);
+  return Object.freeze(value);
+}
+
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const schemaDirectory = join(scriptDirectory, 'schemas');
 
@@ -25,6 +71,209 @@ describe('vendored DTCG schema files', () => {
 });
 
 describe('JSON Schema validation (format)', () => {
+  test.each(inheritedTypeCases)(
+    'accepts an inherited %s type without rewriting source',
+    (type, value) => {
+      const document = deepFreeze({
+        $extensions: { 'com.example.editor': { untouched: true } },
+        group: { $type: type, token: { $value: value } },
+      });
+      const before = JSON.stringify(document);
+      expect(() => assertValidTokenDocument(document)).not.toThrow();
+      expect(JSON.stringify(document)).toBe(before);
+    },
+  );
+
+  test.each(inheritedTypeCases)('accepts a locally declared %s type control', (type, value) => {
+    expect(() => assertValidTokenDocument({ token: { $type: type, $value: value } })).not.toThrow();
+  });
+
+  test('uses the nearest inherited type and preserves an explicit local override', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        outer: {
+          $type: 'strokeStyle',
+          inner: {
+            $type: 'number',
+            inherited: { $value: 1 },
+            local: { $type: 'strokeStyle', $value: 'solid' },
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  test('inherits a type through an $extends group reference', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        base: { $type: 'strokeStyle', token: { $value: 'solid' } },
+        derived: { $extends: '{base}', child: { $value: 'solid' } },
+      }),
+    ).not.toThrow();
+  });
+
+  test('inherits an untyped extension target through the receiver lexical parent', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        outer: {
+          $type: 'strokeStyle',
+          derived: { $extends: '{base}', child: { $value: 'solid' } },
+        },
+        base: {},
+      }),
+    ).not.toThrow();
+  });
+
+  test('prefers explicit and chained extension target types over the receiver parent', () => {
+    expect(() =>
+      validateTokenDocumentSchema({
+        outer: {
+          $type: 'strokeStyle',
+          explicit: { $extends: '{base}', child: { $value: 1 } },
+          chained: { $extends: '{middle}', child: { $value: 2 } },
+        },
+        base: { $type: 'number', token: { $value: 0 } },
+        middle: { $extends: '{base}' },
+      }),
+    ).not.toThrow();
+  });
+
+  test('handles overlapping inherited scalar and composite shapes', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        family: { $type: 'fontFamily', token: { $value: 'Inter' } },
+        typography: {
+          $type: 'typography',
+          token: {
+            $value: {
+              fontFamily: 'Inter',
+              fontSize: '{size}',
+              fontWeight: '{weight}',
+              letterSpacing: '{spacing}',
+              lineHeight: 1.5,
+            },
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  test('handles numeric lineHeight alongside dimension-shaped typography members', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        number: { $type: 'number', $value: 1.5 },
+        numeric: {
+          $type: 'typography',
+          token: {
+            $value: {
+              fontFamily: 'Inter',
+              fontSize: { value: 1, unit: 'rem' },
+              fontWeight: 400,
+              letterSpacing: { value: 0, unit: 'px' },
+              lineHeight: 1.5,
+            },
+          },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  test('projects inherited types onto a group $root token without changing source', () => {
+    const document = deepFreeze({
+      group: { $type: 'strokeStyle', $root: { $value: 'solid' } },
+    });
+    const before = JSON.stringify(document);
+    expect(() => assertValidTokenDocument(document)).not.toThrow();
+    expect(JSON.stringify(document)).toBe(before);
+  });
+
+  test('does not project types through malformed, unresolved, or cyclic extensions', () => {
+    for (const document of [
+      { derived: { $extends: 42, child: { $value: 'solid' } } },
+      { derived: { $extends: '{missing}', child: { $value: 'solid' } } },
+      {
+        first: { $extends: '{second}', child: { $value: 'solid' } },
+        second: { $extends: '{first}' },
+      },
+    ])
+      expect(() => assertValidTokenDocument(document)).toThrow();
+
+    expect(() =>
+      assertValidTokenDocument({
+        outer: {
+          $type: 'strokeStyle',
+          derived: { $extends: '{missing}', child: { $value: 'solid' } },
+        },
+      }),
+    ).toThrow();
+
+    expect(() =>
+      assertValidTokenDocument({
+        outer: {
+          $type: 'strokeStyle',
+          first: { $extends: '{outer.second}', child: { $value: 'solid' } },
+          second: { $extends: '{outer.first}' },
+        },
+      }),
+    ).toThrow();
+  });
+
+  test('keeps local type precedence for reference tokens', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        base: { $type: 'strokeStyle', $value: 'solid' },
+        group: {
+          $type: 'number',
+          inherited: { $ref: '#/base' },
+          local: { $type: 'strokeStyle', $ref: '#/base' },
+        },
+      }),
+    ).not.toThrow();
+  });
+
+  test('rejects malformed inherited composite values at their source paths', () => {
+    expect(() =>
+      assertValidTokenDocument({
+        border: { $type: 'border', token: { $value: { color: '{color}', width: '{width}' } } },
+      }),
+    ).toThrow('$.border.token.$value');
+    expect(() =>
+      assertValidTokenDocument({
+        typography: {
+          $type: 'typography',
+          token: { $value: { fontFamily: 'Inter', lineHeight: { value: -1, unit: 'px' } } },
+        },
+      }),
+    ).toThrow('$.typography.token.$value');
+  });
+
+  test.each(['none', 'hidden', 'banana'])('rejects invalid inherited strokeStyle %s', (value) => {
+    expect(() =>
+      assertValidTokenDocument({ stroke: { $type: 'strokeStyle', token: { $value: value } } }),
+    ).toThrow();
+    expect(() =>
+      assertValidTokenDocument({
+        stroke: { $type: 'strokeStyle', token: { $type: 'strokeStyle', $value: value } },
+      }),
+    ).toThrow();
+  });
+
+  test('retains source paths for invalid projected inherited values', () => {
+    expect(() =>
+      assertValidTokenDocument({ parent: { $type: 'strokeStyle', child: { $value: 'banana' } } }),
+    ).toThrow('$.parent.child.$value');
+  });
+
+  test('preserves deeply frozen source and metadata after failed validation', () => {
+    const document = deepFreeze({
+      $extensions: { 'com.example.editor': { untouched: ['exact', 1] } },
+      parent: { $type: 'strokeStyle', child: { $value: 'banana' } },
+    });
+    const before = JSON.stringify(document);
+    expect(() => assertValidTokenDocument(document)).toThrow();
+    expect(JSON.stringify(document)).toBe(before);
+  });
+
   test('accepts a document that conforms to the official DTCG 2025.10 format schema', () => {
     expect(() =>
       validateTokenDocumentSchema({
