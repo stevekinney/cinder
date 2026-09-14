@@ -10,6 +10,21 @@ import { TokenValidationError, type TokenDocument } from './types.ts';
 import { assertValidTokenDocument } from './validate.ts';
 
 describe('DTCG resolver', () => {
+  test.each([
+    ['{missing}', 'missing'],
+    ['nope', 'nope'],
+    ['#/bad~3pointer', '#/bad~3pointer'],
+  ])('identifies the failed reference %s without loaded source metadata', (reference, path) => {
+    let caught: unknown;
+    try {
+      mergeAndExpandExtends([{ group: { $extends: reference } }]);
+    } catch (error) {
+      caught = error;
+    }
+    expect(caught).toBeInstanceOf(TokenValidationError);
+    expect((caught as TokenValidationError).issues[0]?.path).toBe(path);
+  });
+
   test('resolves curly aliases and composite property references', () => {
     const resolved = resolveDocument({
       primitive: { $type: 'dimension', value: { $value: { value: 2, unit: 'px' } } },
