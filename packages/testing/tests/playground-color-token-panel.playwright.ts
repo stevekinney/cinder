@@ -540,7 +540,7 @@ test.describe('playground color token panel', () => {
   test('supports visual color editing with correct swatches, focus, theme isolation, and reset UX', async ({
     page,
   }) => {
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
@@ -720,7 +720,7 @@ test.describe('playground color token panel', () => {
 
   test('keeps token row actions and value input usable at narrow widths', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
@@ -766,7 +766,7 @@ test.describe('playground color token panel', () => {
     page,
   }) => {
     await page.emulateMedia({ forcedColors: 'active' });
-    await page.goto('/', { waitUntil: 'load' });
+    await page.goto('/?theme=light', { waitUntil: 'load' });
     await waitForPlayground(page);
 
     await selectTheme(page, 'light');
