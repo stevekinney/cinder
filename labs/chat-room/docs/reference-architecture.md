@@ -206,6 +206,8 @@ The difference between the two shapes is smaller than it sounds, and in one plac
 
 `server-owned-recovery-contract.test.ts` pins the declared `recover()`, `unwrap()`, `output()`, and `result()` members at the type level, so changes to those declarations break the build. The `closed()` distinction above describes runtime behavior; this type test does not enforce it.
 
+The detail route also exposes a no-store synchronization snapshot containing `id`, `title`, the full native `ConversationHistory`, and a `turnFailures` map. A failed run is recorded before its terminal wire frame: the map is keyed by the authoritative last user message from that run's result, and each value contains only the chat wire's classified `name`, `message`, `kind`, `code`, and optional `retryable` fields. The session update merges metadata atomically with first-write-wins semantics and does not refresh activity, so concurrent failures and unrelated metadata survive.
+
 **Recovery classification is reported once.** `recover()` reconciles a stranded `running` reference as it reports the rejection, so the first ask after a restart answers `orphaned` with its failures and the second answers `nothing-to-resume`. Both are correct. A surface that showed the classification without saying so would look like it lost the answer, so the panel says it.
 
 The kill/restart procedure, its exact commands, and the observed state at each step are in [durability-exercise.md](./durability-exercise.md).

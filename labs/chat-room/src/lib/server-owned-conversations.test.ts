@@ -7,7 +7,9 @@ import {
 	createConversation,
 	listConversations,
 	loadConversation,
-	messageCountOf
+	messageCountOf,
+	rememberTurnFailure,
+	serverOwnedSnapshot
 } from './server-owned-conversations.ts';
 import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
 
@@ -163,6 +165,135 @@ describe('server-owned conversations', () => {
 		const session = await loadConversation(created.id);
 		expect(messageCountOf(session!)).toBe(2);
 		expect(contentsOf(session!)).toEqual(['from tab one', 'from tab two']);
+		await disposeServerOwnedRuntime();
+	});
+
+	it('persists a classified failure against the run result user message', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('Failure');
+		const appended = await appendUserTurn(created.id, 'will fail');
+		const userId = getMessages(appended!.conversationHistory)[0]!.id;
+		await rememberTurnFailure(created.id, appended!.conversationHistory, {
+			name: 'AgentRunError',
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'Provider failed',
+			retryable: false
+		});
+
+		const snapshot = serverOwnedSnapshot((await loadConversation(created.id))!);
+		expect(snapshot.turnFailures).toEqual({
+			[userId]: {
+				kind: 'generate',
+				code: 'UNKNOWN',
+				message: 'Provider failed',
+				retryable: false
+			}
+		});
+		expect(snapshot.conversation.messages[userId]!.metadata?._deliveryStatus).toBe('failed');
+		await disposeServerOwnedRuntime();
+	});
+
+	it('merges concurrent failures and preserves unrelated metadata', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('Concurrent failures');
+		await appendUserTurn(created.id, 'first');
+		const second = await appendUserTurn(created.id, 'second');
+		const { sessions } = serverOwnedRuntime();
+		await sessions.update(created.id, (session) => ({
+			...session!,
+			metadata: { ...session!.metadata, keep: 'yes' }
+		}));
+		const ids = getMessages(second!.conversationHistory).map((message) => message.id);
+		await Promise.all([
+			rememberTurnFailure(
+				created.id,
+				{ ...second!.conversationHistory, ids: [ids[0]!] },
+				{ name: 'Error', kind: 'generate', code: 'UNKNOWN', message: 'first failure' }
+			),
+			rememberTurnFailure(created.id, second!.conversationHistory, {
+				name: 'Error',
+				kind: 'generate',
+				code: 'UNKNOWN',
+				message: 'second failure'
+			})
+		]);
+		const session = (await loadConversation(created.id))!;
+		expect(session.metadata.keep).toBe('yes');
+		expect(Object.keys(serverOwnedSnapshot(session).turnFailures)).toHaveLength(2);
+		await disposeServerOwnedRuntime();
+	});
+
+	it('keeps the first classified failure for repeated message ids', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('First write wins');
+		const appended = await appendUserTurn(created.id, 'repeat');
+		await rememberTurnFailure(created.id, appended!.conversationHistory, {
+			name: 'Error',
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'first'
+		});
+		await rememberTurnFailure(created.id, appended!.conversationHistory, {
+			name: 'Error',
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'second'
+		});
+		expect(
+			Object.values(serverOwnedSnapshot((await loadConversation(created.id))!).turnFailures)[0]!
+				.message
+		).toBe('first');
+		await disposeServerOwnedRuntime();
+	});
+
+	it('rejects missing sessions and missing user rows', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('Missing identity');
+		const appended = await appendUserTurn(created.id, 'present');
+		const emptySession = await createConversation('Empty target');
+		const failure = {
+			name: 'Error',
+			kind: 'generate' as const,
+			code: 'UNKNOWN' as const,
+			message: 'failed'
+		};
+		await expect(
+			rememberTurnFailure('missing', appended!.conversationHistory, failure)
+		).rejects.toThrow();
+		await expect(
+			rememberTurnFailure(emptySession.id, appended!.conversationHistory, failure)
+		).rejects.toThrow();
+		await expect(
+			rememberTurnFailure(
+				emptySession.id,
+				(await loadConversation(emptySession.id))!.conversationHistory,
+				failure
+			)
+		).rejects.toThrow();
+		await disposeServerOwnedRuntime();
+	});
+
+	it('strips raw cause fields before storing or projecting a failure', async () => {
+		await disposeServerOwnedRuntime();
+		const created = await createConversation('Redaction');
+		const appended = await appendUserTurn(created.id, 'secret');
+		await rememberTurnFailure(created.id, appended!.conversationHistory, {
+			name: 'CredentialNameCanary',
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'safe',
+			...({ cause: { authorization: 'Bearer secret' }, stack: 'private' } as Record<
+				string,
+				unknown
+			>)
+		} as never);
+		const stored = JSON.stringify(await loadConversation(created.id));
+		const projected = JSON.stringify(serverOwnedSnapshot((await loadConversation(created.id))!));
+		expect(stored).not.toContain('Bearer secret');
+		expect(stored).not.toContain('private');
+		expect(stored).not.toContain('CredentialNameCanary');
+		expect(projected).not.toContain('CredentialNameCanary');
 		await disposeServerOwnedRuntime();
 	});
 });

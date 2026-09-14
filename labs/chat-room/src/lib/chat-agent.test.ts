@@ -19,9 +19,9 @@ import {
 	classifyChatRunFailure,
 	createChatAgent,
 	createChatStreamWriter,
-	pumpChatRun,
 	startChatRun
 } from './chat-agent.ts';
+import { pumpChatRun } from './chat-run-pump.ts';
 
 import type { ChatStreamEvent } from '@lostgradient/chat';
 
@@ -120,7 +120,8 @@ async function runAndCollect(
 	generate: StreamingGenerateFunction,
 	toolbox: AnyToolbox = createToolbox([]),
 	lines: string[] = [],
-	beforeToolExecution?: BeforeToolExecutionHook[]
+	beforeToolExecution?: BeforeToolExecutionHook[],
+	beforeFailure?: NonNullable<Parameters<typeof pumpChatRun>[2]>['beforeFailure']
 ): Promise<{ frames: ChatStreamEvent[]; envelope: Awaited<ReturnType<typeof pumpChatRun>> }> {
 	// Mirrors the route exactly: one request-local writer feeds both the
 	// `stream:*` forwarding `createChatAgent` installs and the `tool.*`/`run.*`
@@ -130,7 +131,7 @@ async function runAndCollect(
 	const run = startChatRun(agent, conversationWith('hello'));
 	// Disposed like the route disposes it, so a run's listeners cannot outlive
 	// the test that made it and leak into the next one.
-	const envelope = await pumpChatRun(run, writer).finally(() => disposeRun(run));
+	const envelope = await pumpChatRun(run, writer, { beforeFailure }).finally(() => disposeRun(run));
 	const frames = decodeLines(lines);
 	expectWellFormedWire(frames);
 	return { frames, envelope };
@@ -218,6 +219,52 @@ describe('pumpChatRun: completed success', () => {
 });
 
 describe('pumpChatRun: provider failure', () => {
+	test('awaits failure persistence before writing the terminal frame', async () => {
+		const lines: string[] = [];
+		let release!: () => void;
+		const persisted = new Promise<void>((resolve) => (release = resolve));
+		const pending = runAndCollect(
+			async () => {
+				throw new Error('provider failed');
+			},
+			createToolbox([]),
+			lines,
+			[],
+			async () => {
+				expect(lines.some((line) => line.includes('run.error'))).toBe(false);
+				await persisted;
+			}
+		);
+		await Promise.resolve();
+		expect(lines.some((line) => line.includes('run.error'))).toBe(false);
+		release();
+		await pending;
+	});
+
+	test('emits one safe terminal when failure persistence rejects', async () => {
+		const { frames, envelope } = await runAndCollect(
+			async () => {
+				throw new Error('provider exploded');
+			},
+			createToolbox([]),
+			[],
+			[],
+			async () => {
+				throw new Error('storage unavailable');
+			}
+		);
+		expect(envelope).toMatchObject({
+			ok: false,
+			error: { code: 'UNKNOWN', message: 'The turn outcome could not be saved.', retryable: false }
+		});
+		expect(ofType(frames, 'run.error')).toHaveLength(1);
+		expect(ofType(frames, 'run.error')[0]?.error).toMatchObject({
+			name: 'Error',
+			code: 'UNKNOWN',
+			message: 'The turn outcome could not be saved.'
+		});
+	});
+
 	test('surfaces kind: "generate" when the provider throws', async () => {
 		const generate: StreamingGenerateFunction = async () => {
 			throw new Error('simulated provider failure');

@@ -116,6 +116,7 @@ const CROSS_ENGINE_SHARDS = [
 	],
 	[
 		'**/review-views.e2e.ts',
+		'**/server-owned-synchronization.e2e.ts',
 		'**/row-reconciliation.e2e.ts',
 		'**/utilities.e2e.ts',
 		'**/virtualization.e2e.ts',

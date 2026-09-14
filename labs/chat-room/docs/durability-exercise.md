@@ -170,6 +170,8 @@ Anyone following this procedure twice would otherwise file that as a defect, so 
 
 The same procedure with a browser watching `/server-owned/<id>`, recording the panel's own text at each step.
 
+The detail response is a no-store server snapshot. It includes the native conversation and a `turnFailures` map. When a generation fails, the server persists the classified, redacted reason against that run's last user message before emitting the terminal `run.error`; reloading therefore retains both the failed delivery marker and its safe reason. Provider causes, stacks, response objects, and credentials never enter session metadata or the snapshot.
+
 The panel is a disclosure, closed on load. Before the layout fix, expanding it at 844×390 could leave the transcript and composer at 0px. The current layout retains a fixed-height chat while idle, then allows document scrolling and gives the chat an `8rem` minimum block size while an approval question, recovery status, or failure is visible. The short-viewport regression includes a populated recovery failure, so a failed check cannot collapse the transcript. Status and error regions remain mounted whether the disclosure is open or closed; opening it reveals the check control.
 
 **On load, before any check** — both regions present and empty. That is the rule `error-live-regions.e2e.ts` enforces: a live region that appears with text already in it is not reliably announced.
