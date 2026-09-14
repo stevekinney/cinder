@@ -36,7 +36,11 @@ describe('SchemaForm async JSON Schema validation', () => {
       properties: { name: { type: 'string', title: 'Name' } },
       required: ['name'],
     };
-    const validator = new Ajv2020().compile(schema);
+    const validator = new Ajv2020({
+      strict: false,
+      allErrors: true,
+      addUsedSchema: false,
+    }).compile(schema);
     const delayedValidator = new Proxy(validator, {
       apply(target, thisArgument, argumentsList) {
         validationStarted.resolve();
