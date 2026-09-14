@@ -45,12 +45,14 @@ describe('EnumEditor', () => {
       onValuesChange: () => {},
     });
 
-    expect(
-      screen.getByRole('textbox', { name: 'Enum value 1 description' }),
-    ).toHaveProperty('value', 'Not yet visible');
-    expect(
-      screen.getByRole('textbox', { name: 'Enum value 2 description' }),
-    ).toHaveProperty('value', '');
+    expect(screen.getByRole('textbox', { name: 'Enum value 1 description' })).toHaveProperty(
+      'value',
+      'Not yet visible',
+    );
+    expect(screen.getByRole('textbox', { name: 'Enum value 2 description' })).toHaveProperty(
+      'value',
+      '',
+    );
   });
 
   test('editing a description commits both arrays with the value array untouched', async () => {
