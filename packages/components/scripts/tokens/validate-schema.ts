@@ -23,24 +23,12 @@ import Ajv, { type ErrorObject, type ValidateFunction } from 'ajv';
 import addFormats from 'ajv-formats';
 
 import { mergeAndExpandExtends } from './resolve.ts';
-import type { TokenDocument, ValidationIssue } from './types.ts';
-import { TokenValidationError } from './types.ts';
-
-const TOKEN_TYPES = new Set([
-  'color',
-  'dimension',
-  'fontFamily',
-  'fontWeight',
-  'duration',
-  'cubicBezier',
-  'number',
-  'strokeStyle',
-  'border',
-  'transition',
-  'shadow',
-  'gradient',
-  'typography',
-]);
+import {
+  TOKEN_TYPES,
+  TokenValidationError,
+  type TokenDocument,
+  type ValidationIssue,
+} from './types.ts';
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const schemaDirectory = join(scriptDirectory, 'schemas');
@@ -127,7 +115,7 @@ function bySpecificity(left: ErrorObject, right: ErrorObject): number {
 }
 
 function isTokenType(value: unknown): value is string {
-  return typeof value === 'string' && TOKEN_TYPES.has(value);
+  return typeof value === 'string' && TOKEN_TYPES.some((type) => type === value);
 }
 
 /**
@@ -150,27 +138,65 @@ function collectGroups(value: unknown, path: string, groups: GroupIndex): void {
   }
 }
 
-function projectInheritedTypes(
+function assertSafeExtensionMetadata(value: unknown, path: string, source: string): void {
+  if (!isJsonSchemaDocument(value)) return;
+  const extension = value['$extends'];
+  if (
+    extension !== undefined &&
+    !(
+      (typeof extension === 'string' && /^\{[^{}]+\}$/.test(extension)) ||
+      (typeof extension === 'string' && extension.startsWith('#/'))
+    )
+  ) {
+    throw new TokenValidationError([
+      {
+        path: `${source}${path ? `.${path}` : ''}.$extends`,
+        reason: '$extends must be a token reference',
+      },
+    ]);
+  }
+  for (const [name, child] of Object.entries(value)) {
+    if (!name.startsWith('$'))
+      assertSafeExtensionMetadata(child, path ? `${path}.${name}` : name, source);
+  }
+}
+
+function projectTokenDocumentForValidation(
   value: unknown,
   lookupDocuments: readonly unknown[] = [],
   source = '$',
 ): unknown {
   const groups: GroupIndex = new Map();
   if (isTokenDocument(value)) {
+    assertSafeExtensionMetadata(value, '', source);
+    for (const contextDocument of lookupDocuments)
+      assertSafeExtensionMetadata(contextDocument, '', source);
     try {
       const contextDocuments = lookupDocuments.filter(isTokenDocument);
       // Check the composed context before indexing the source's own groups:
       // a partial source override must not hide an inherited extension cycle.
-      if (contextDocuments.length > 0) mergeAndExpandExtends(contextDocuments);
+      const expandedContext =
+        contextDocuments.length > 0 ? mergeAndExpandExtends(contextDocuments) : undefined;
       const documents = [value];
-      collectGroups(
-        mergeAndExpandExtends(
-          documents,
-          contextDocuments.length > 0 ? contextDocuments : documents,
-        ),
-        '',
-        groups,
+      const expanded = mergeAndExpandExtends(
+        documents,
+        contextDocuments.length > 0 ? contextDocuments : documents,
       );
+      if (expandedContext === undefined) collectGroups(expanded, '', groups);
+      else {
+        const contextGroups: GroupIndex = new Map();
+        collectGroups(expandedContext, '', contextGroups);
+        const ownGroups: GroupIndex = new Map();
+        collectGroups(expanded, '', ownGroups);
+        for (const [path, group] of contextGroups) groups.set(path, group);
+        for (const [path, group] of ownGroups) {
+          const contextGroup = contextGroups.get(path);
+          groups.set(
+            path,
+            contextGroup && group['$type'] === undefined ? { ...contextGroup, ...group } : group,
+          );
+        }
+      }
     } catch (error) {
       // A failed composition cannot be replaced with raw groups: a later
       // partial group would hide inherited extension edges and their cycles.
@@ -221,12 +247,12 @@ function runSchemaValidation(
   document: unknown,
   source: string,
   lookupDocuments: readonly unknown[] = [],
-): void {
+): unknown {
   const schemaDocument =
     validator === getFormatValidator()
-      ? projectInheritedTypes(document, lookupDocuments, source)
+      ? projectTokenDocumentForValidation(document, lookupDocuments, source)
       : document;
-  if (validator(schemaDocument)) return;
+  if (validator(schemaDocument)) return schemaDocument;
   const errors = [...(validator.errors ?? [])].toSorted(bySpecificity);
   const issues: ValidationIssue[] = errors.map((error) => ({
     path: instancePathToTokenPath(source, error.instancePath),
@@ -240,8 +266,8 @@ export function validateTokenDocumentSchema(
   document: unknown,
   source = '$',
   lookupDocuments: readonly unknown[] = [],
-): void {
-  runSchemaValidation(getFormatValidator(), document, source, lookupDocuments);
+): unknown {
+  return runSchemaValidation(getFormatValidator(), document, source, lookupDocuments);
 }
 
 /**

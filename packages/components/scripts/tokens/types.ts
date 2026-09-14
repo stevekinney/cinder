@@ -55,20 +55,23 @@ export type TokenValue =
   | number
   | [number, number, number, number];
 
-export type TokenType =
-  | 'color'
-  | 'dimension'
-  | 'fontFamily'
-  | 'fontWeight'
-  | 'duration'
-  | 'cubicBezier'
-  | 'number'
-  | 'strokeStyle'
-  | 'border'
-  | 'transition'
-  | 'shadow'
-  | 'gradient'
-  | 'typography';
+export const TOKEN_TYPES = [
+  'color',
+  'dimension',
+  'fontFamily',
+  'fontWeight',
+  'duration',
+  'cubicBezier',
+  'number',
+  'strokeStyle',
+  'border',
+  'transition',
+  'shadow',
+  'gradient',
+  'typography',
+] as const;
+
+export type TokenType = (typeof TOKEN_TYPES)[number];
 
 export type TokenExtensions = Record<string, unknown>;
 

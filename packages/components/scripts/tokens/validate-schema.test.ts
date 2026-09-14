@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { TokenValidationError } from './types.ts';
 import { validateResolverDocumentSchema, validateTokenDocumentSchema } from './validate-schema.ts';
 import { assertValidTokenDocument, validateTokenDocument } from './validate.ts';
 
@@ -124,6 +125,70 @@ describe('JSON Schema validation (format)', () => {
     expect(() =>
       assertValidTokenDocument(derived, 'derived.tokens.json', [base, derived]),
     ).not.toThrow();
+  });
+
+  test('inherits a type from an ordinary merged group override', () => {
+    const base = { group: { $type: 'strokeStyle', token: { $value: 'solid' } } };
+    const override = { group: { token: { $value: 'dashed' } } };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).not.toThrow();
+  });
+
+  test('does not waive a missing type because an unrelated lookup exists', () => {
+    expect(() => assertValidTokenDocument({ token: { $value: 0 } }, 'probe', [{}])).toThrow(
+      'probe.token: token has no $type and no inherited type',
+    );
+  });
+
+  test('applies semantic validation to an inherited gradient from a merged context', () => {
+    const base = {
+      group: {
+        $type: 'gradient',
+        token: {
+          $value: [
+            { color: '{color}', position: 0 },
+            { color: '{color}', position: 1 },
+          ],
+        },
+      },
+    };
+    const override = {
+      group: {
+        token: {
+          $value: [
+            { color: '{color}', position: 0.8 },
+            { color: '{color}', position: 0.2 },
+          ],
+        },
+      },
+    };
+    expect(() =>
+      assertValidTokenDocument(override, 'override.tokens.json', [base, override]),
+    ).toThrow(
+      'override.tokens.json.group.token.1.position: gradient positions must be nondecreasing',
+    );
+  });
+
+  test('reports malformed extension metadata in lookup documents before resolving', () => {
+    for (const extension of [42, [], {}]) {
+      let failure: unknown;
+      try {
+        assertValidTokenDocument({ token: { $type: 'number', $value: 1 } }, 'source.tokens.json', [
+          { broken: { $extends: extension } },
+        ]);
+      } catch (error) {
+        failure = error;
+      }
+      expect(failure).toBeInstanceOf(TokenValidationError);
+      if (!(failure instanceof TokenValidationError)) throw failure;
+      expect(failure.issues).toEqual([
+        {
+          path: 'source.tokens.json.broken.$extends',
+          reason: '$extends must be a token reference',
+        },
+      ]);
+    }
   });
 
   test('does not reuse a partial context projection after authored expansion fails', () => {
@@ -263,6 +328,14 @@ describe('JSON Schema validation (format)', () => {
         },
       }),
     ).toThrow();
+  });
+
+  test('reports malformed $extends at its source path', () => {
+    for (const extendsValue of [42, [], {}]) {
+      expect(() =>
+        assertValidTokenDocument({ group: { $extends: extendsValue, token: { $value: 'solid' } } }),
+      ).toThrow('$.group.$extends: $extends must be a token reference');
+    }
   });
 
   test('does not let an own type hide a cyclic extension', () => {

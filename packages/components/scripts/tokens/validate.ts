@@ -5,26 +5,12 @@ import type {
   TokenType,
   ValidationIssue,
 } from './types.ts';
-import { TokenValidationError } from './types.ts';
+import { TOKEN_TYPES, TokenValidationError } from './types.ts';
 import { validateResolverDocumentSchema, validateTokenDocumentSchema } from './validate-schema.ts';
 
 const TOKEN_NAME_PATTERN = /^[^${}.][^{}.]*$/;
 const VENDOR_EXTENSION_PATTERN = /^(?:[a-z0-9-]+\.)+[a-z0-9-]+$/i;
-const TOKEN_TYPES = new Set<string>([
-  'color',
-  'dimension',
-  'fontFamily',
-  'fontWeight',
-  'duration',
-  'cubicBezier',
-  'number',
-  'strokeStyle',
-  'border',
-  'transition',
-  'shadow',
-  'gradient',
-  'typography',
-]);
+const TOKEN_TYPE_SET = new Set<string>(TOKEN_TYPES);
 const COLOR_SPACES = new Set([
   'srgb',
   'srgb-linear',
@@ -900,8 +886,8 @@ export function assertValidTokenDocument(
   // First-pass gate: the official DTCG 2025.10 format JSON Schema catches shape
   // violations structurally, before the semantic checks below run. See
   // validate-schema.ts for why this precedes (rather than replaces) validateTokenDocument.
-  validateTokenDocumentSchema(document, source ?? '$', lookupDocuments);
-  validateTokenDocument(document, source);
+  const projected = validateTokenDocumentSchema(document, source ?? '$', lookupDocuments);
+  validateTokenDocument(projected, source);
 }
 
 export function assertValidResolverDocument(
@@ -939,5 +925,5 @@ function isString(value: unknown): value is string {
 }
 
 function isTokenType(value: unknown): value is TokenType {
-  return typeof value === 'string' && TOKEN_TYPES.has(value);
+  return typeof value === 'string' && TOKEN_TYPE_SET.has(value);
 }
