@@ -215,7 +215,13 @@ export function turnFailuresOf(
 	if (value === null || typeof value !== 'object' || Array.isArray(value)) return {};
 	const safe: Record<string, ServerOwnedTurnFailure> = {};
 	for (const [id, candidate] of Object.entries(value)) {
-		if (candidate === null || typeof candidate !== 'object') continue;
+		if (
+			candidate === null ||
+			typeof candidate !== 'object' ||
+			!('message' in candidate) ||
+			typeof candidate.message !== 'string'
+		)
+			continue;
 		try {
 			// Use Chat's existing classified-error boundary so its kind/code
 			// unions remain authoritative without duplicating an allowed-value list.

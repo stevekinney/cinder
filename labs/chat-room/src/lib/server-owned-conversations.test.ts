@@ -43,6 +43,8 @@ describe('server-owned conversations', () => {
 					valid,
 					unknownKind: { ...valid, kind: 'credential-canary' },
 					unknownCode: { ...valid, code: 'credential-canary' },
+					missingMessage: { kind: valid.kind, code: valid.code },
+					invalidMessage: { ...valid, message: 123 },
 					invalidRetryability: { ...valid, retryable: 'credential-canary' }
 				}
 			})
