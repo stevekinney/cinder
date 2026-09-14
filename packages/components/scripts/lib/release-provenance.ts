@@ -63,14 +63,18 @@ export function resolvePackProvenance(cwd: string): ReleaseProvenance {
   return provenance;
 }
 
+type PublishedManifest<T> = {
+  [Key in keyof T as Key extends 'gitHead' ? never : Key]: T[Key];
+} & { gitHead?: string };
+
 export function withReleaseProvenance<T extends { gitHead?: string }>(
   manifest: T,
   provenance: ReleaseProvenance,
-): Omit<T, 'gitHead'> & { gitHead?: string } {
-  const { gitHead: _authoredGitHead, ...withoutGitHead } = manifest;
-  return provenance.gitHead === undefined
-    ? withoutGitHead
-    : { ...withoutGitHead, gitHead: provenance.gitHead };
+): PublishedManifest<T> {
+  const published = { ...manifest };
+  delete published.gitHead;
+  if (provenance.gitHead !== undefined) published.gitHead = provenance.gitHead;
+  return published;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
