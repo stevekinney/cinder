@@ -3,6 +3,12 @@ import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import {
+  resolvePackProvenance,
+  withReleaseProvenance,
+  type ReleaseProvenance,
+} from '../../components/scripts/lib/release-provenance.ts';
+
 type ConditionalExport = {
   types?: string;
   browser?: string;
@@ -15,6 +21,7 @@ type ConditionalExport = {
 export type PackageManifest = {
   name: string;
   version: string;
+  gitHead?: string;
   files?: string[];
   exports: Record<string, string | ConditionalExport>;
   dependencies?: Record<string, string>;
@@ -157,7 +164,10 @@ function publishedExport(entry: string | ConditionalExport): string | Conditiona
   return published;
 }
 
-export function buildPublishedManifest(source: PackageManifest): PackageManifest {
+export function buildPublishedManifest(
+  source: PackageManifest,
+  provenance?: ReleaseProvenance,
+): PackageManifest {
   const published: PackageManifest = {
     ...source,
     exports: Object.fromEntries(
@@ -195,7 +205,7 @@ export function buildPublishedManifest(source: PackageManifest): PackageManifest
   const serialized = JSON.stringify(published);
   if (serialized.includes('workspace:')) throw new Error('published manifest contains workspace:');
   if (serialized.includes('./src/')) throw new Error('published exports contain source paths');
-  return published;
+  return withReleaseProvenance(published, provenance ?? {});
 }
 
 async function copyIntoStaging(relativePath: string): Promise<void> {
@@ -264,7 +274,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
     throw new Error('dist is missing; run `bun run build` before `bun run pack:publish`');
   }
 
-  const published = buildPublishedManifest(source);
+  const published = buildPublishedManifest(source, resolvePackProvenance(PACKAGE_ROOT));
   await stageFiles(published);
   await Bun.write(join(STAGING_ROOT, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
   assertStagedExports(published);

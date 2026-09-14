@@ -42,7 +42,11 @@
 		correct only while someone remembers to extend it.
 	-->
 	{#key data.id}
-		<ConversationSurface id={data.id} conversation={data.conversation} />
+		<ConversationSurface
+			id={data.id}
+			conversation={data.conversation}
+			turnFailures={data.turnFailures}
+		/>
 	{/key}
 
 	<!--
