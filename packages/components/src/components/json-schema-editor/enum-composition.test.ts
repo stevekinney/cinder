@@ -35,7 +35,7 @@ describe('isEnumLikeOneOf', () => {
     expect(isEnumLikeOneOf(undefined)).toBe(false);
   });
 
-  test('false when a branch\'s description is not a string', () => {
+  test("false when a branch's description is not a string", () => {
     // A foreign/hand-authored schema could carry a non-string description.
     // Rejecting it here keeps `buildEnumPatch`'s `.trim()` call safe.
     expect(isEnumLikeOneOf([{ const: 'draft', description: 123 as unknown as string }])).toBe(
@@ -54,9 +54,9 @@ describe('detectEnumSource', () => {
   });
 
   test('prefers enum when both are somehow present', () => {
-    expect(
-      detectEnumSource({ enum: ['a'], oneOf: [{ const: 'b', description: 'B' }] }),
-    ).toBe('enum');
+    expect(detectEnumSource({ enum: ['a'], oneOf: [{ const: 'b', description: 'B' }] })).toBe(
+      'enum',
+    );
   });
 
   test('null for a real composition', () => {
