@@ -13,6 +13,7 @@ import {
 import { discoverComponentDefinition, discoverComponents, discoverExamples } from './discover.ts';
 import { PLAYGROUND_TEMP_ROOT } from './playground-paths.ts';
 import { getRebuildGeneration } from './rebuild-generation.ts';
+import { previewSourceComponentName } from './shell-app/compound-families.ts';
 
 /**
  * Page-bundle entries: keyed by component name → entry artifact path
@@ -55,7 +56,8 @@ export async function compilePageBundleArtifacts(
   const componentDefinition = await discoverComponentDefinition(componentName);
   if (componentDefinition === undefined) return null;
 
-  const scenarios = await discoverExamples(componentName);
+  const previewSourceName = previewSourceComponentName(componentName);
+  const scenarios = await discoverExamples(previewSourceName);
   // Zero scenarios is allowed: the bundle still mounts component-page.svelte,
   // which renders a "No examples found" fallback.
 
@@ -66,7 +68,7 @@ export async function compilePageBundleArtifacts(
   const scenarioLoaders = scenarios
     .map(
       (scenario) =>
-        `  ${JSON.stringify(scenario)}: () => import('../../src/examples/${componentName}/${scenario}.example.svelte'),`,
+        `  ${JSON.stringify(scenario)}: () => import('../../src/examples/${previewSourceName}/${scenario}.example.svelte'),`,
     )
     .join('\n');
 

@@ -1215,6 +1215,12 @@ describe('/bundle/:name/:scenario.js', () => {
     expect(response.headers.get('Content-Type')).toBe('application/javascript');
   });
 
+  it('serves a strict-context part through its authored parent example', async () => {
+    const response = await handleRequest(req('/bundle/accordion-item/basic.js'));
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('Accordion');
+  });
+
   it('returns the same bundle on repeated requests (cache hit)', async () => {
     const r1 = await handleRequest(req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`));
     const r2 = await handleRequest(req(`/bundle/${FIXTURE_COMPONENT}/${FIXTURE_SCENARIO}.js`));
@@ -1233,6 +1239,12 @@ describe('/example-src/:name/:scenario', () => {
     expect(response.headers.get('Content-Type')).toBe('text/plain');
     const source = await response.text();
     expect(source).toContain('Button');
+  });
+
+  it('serves the parent source behind a strict-context part route', async () => {
+    const response = await handleRequest(req('/example-src/accordion-item/basic'));
+    expect(response.status).toBe(200);
+    expect(await response.text()).toContain('Accordion');
   });
 
   it('returns 404 for a nonexistent example', async () => {
@@ -1517,6 +1529,20 @@ describe('/page/:name', () => {
     expect(html).toContain('window.__CINDER_EXAMPLES__');
     expect(html).toContain('/page-bundle/input.js');
     expect(html).not.toContain('/fixture-bundle/');
+  });
+
+  it('uses authored parent scenarios while retaining strict-part documentation identity', async () => {
+    const response = await handleRequest(req('/page/accordion-item'));
+    expect(response.status).toBe(200);
+    const html = await response.text();
+    expect(html).toContain('window.__CINDER_EXAMPLES__');
+    expect(html).toContain('"scenario":"basic"');
+    expect(html).toContain('/page-bundle/accordion-item.js');
+    expect(html).toContain('Accordion Item');
+    expect(html).toContain('href="/playground-styles/documentation.css"');
+    expect(html).toContain('id="overview-mount-basic"');
+    expect(html).toContain('data-overview-preview-rendered');
+    expect(html).toContain('cinder-accordion');
   });
 
   it('server-renders highlighted README code and the featured overview example', async () => {

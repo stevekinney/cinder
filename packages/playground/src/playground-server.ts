@@ -105,6 +105,7 @@ import {
 import { repositorySourceHref, rewriteRelativeRenderedMarkdownLinks } from './repository-links.ts';
 import { matchRoute, type RouteDefinition } from './route-table.ts';
 import { buildBundle } from './scenario-bundle.ts';
+import { previewSourceComponentName } from './shell-app/compound-families.ts';
 import { humanizeComponentName } from './shell-app/humanize.ts';
 import { buildShellBundle } from './shell-bundle.ts';
 import {
@@ -337,7 +338,8 @@ async function renderComponentPage(
   baseUrl: string,
 ): Promise<string> {
   const componentDefinition = await discoverComponentDefinition(componentName);
-  const scenarios = await discoverExamples(componentName);
+  const previewSourceName = previewSourceComponentName(componentName);
+  const scenarios = await discoverExamples(previewSourceName);
   const componentStylesheetUrl =
     componentDefinition === undefined
       ? null
@@ -348,7 +350,11 @@ async function renderComponentPage(
   const componentStylesheetUrls = [
     ...(componentDefinition === undefined
       ? []
-      : documentationExampleStylesheetUrls(componentDefinition.source, componentName, scenarios)),
+      : documentationExampleStylesheetUrls(
+          componentDefinition.source,
+          previewSourceName,
+          scenarios,
+        )),
     ...(componentStylesheetUrl === null ? [] : [componentStylesheetUrl]),
   ].filter((stylesheetUrl, index, urls) => urls.indexOf(stylesheetUrl) === index);
   const componentStylesheetLinks = componentStylesheetUrls
@@ -360,7 +366,7 @@ async function renderComponentPage(
         PLAYGROUND_ROOT,
         'src',
         'examples',
-        componentName,
+        previewSourceName,
         `${scenario}.example.svelte`,
       );
       const meta = await readExampleMetadata(filePath);
@@ -428,7 +434,7 @@ async function renderComponentPage(
       if (overviewExample !== undefined) {
         const mountId = `overview-mount-${overviewExample.scenario}`;
         const renderedExample = await renderFeaturedExample(
-          componentName,
+          previewSourceName,
           overviewExample.scenario,
           mountId,
         );
@@ -801,11 +807,12 @@ async function handlePageRoute(url: URL, componentName: string): Promise<Respons
 
 async function handleExampleSrcRoute(componentName: string, scenario: string): Promise<Response> {
   if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
+  const previewSourceName = previewSourceComponentName(componentName);
   const examplePath = join(
     PLAYGROUND_ROOT,
     'src',
     'examples',
-    componentName,
+    previewSourceName,
     `${scenario}.example.svelte`,
   );
   const exampleFile = Bun.file(examplePath);
@@ -938,7 +945,7 @@ export const ROUTES: RouteDefinition[] = [
       const componentName = match[1]!;
       const scenario = match[2]!;
       if (!isSafeSegment(componentName) || !isSafeSegment(scenario)) return notFound();
-      const code = await buildBundle(componentName, scenario);
+      const code = await buildBundle(previewSourceComponentName(componentName), scenario);
       if (code === null) {
         return notFound(`Example "${componentName}/${scenario}" not found or failed to build`);
       }

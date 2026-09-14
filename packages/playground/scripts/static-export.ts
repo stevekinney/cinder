@@ -47,7 +47,10 @@ import {
   discoverSidebarComponents,
 } from '../src/discover.ts';
 import { handleRequest } from '../src/playground-server.ts';
-import { COMPOUND_COMPONENT_FAMILIES } from '../src/shell-app/compound-families.ts';
+import {
+  COMPOUND_COMPONENT_FAMILIES,
+  previewSourceComponentName,
+} from '../src/shell-app/compound-families.ts';
 import { fingerprintStaticAssets } from './static-asset-fingerprints.ts';
 
 const PLAYGROUND_ROOT = join(import.meta.dirname, '..');
@@ -567,7 +570,7 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
     await renderJsBundleGraph(`/page-bundle/${name}.js`, context);
     await render(`/api/manifest/${name}`, context);
     await render(`/api/documentation/${name}`, context);
-    for (const scenario of await discoverExamples(name)) {
+    for (const scenario of await discoverExamples(previewSourceComponentName(name))) {
       await render(`/example-src/${name}/${scenario}`, context);
     }
   }

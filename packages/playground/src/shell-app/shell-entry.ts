@@ -73,6 +73,7 @@ function hydrateShell(): Promise<void> {
       },
     });
     shellHydrated = true;
+    return undefined;
   });
   return shellHydration;
 }
@@ -158,6 +159,7 @@ if (sidebarFilter instanceof HTMLInputElement) {
         if (!(hydratedFilter instanceof HTMLInputElement)) return;
         hydratedFilter.value = latestFilterValue;
         hydratedFilter.dispatchEvent(new Event('input', { bubbles: true }));
+        return undefined;
       })
       .catch((error) =>
         console.error('[cinder playground] failed to hydrate landing shell:', error),

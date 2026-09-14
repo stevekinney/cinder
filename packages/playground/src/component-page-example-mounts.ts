@@ -140,6 +140,7 @@ export function createExampleMountHelpers(options: ExampleMountState): {
             if (disposed || app === undefined) return;
             element.setAttribute('data-example-preview-ready', '');
             settle();
+            return undefined;
           });
         } catch (error) {
           console.error(`[cinder playground] failed to mount example "${scenario}":`, error);

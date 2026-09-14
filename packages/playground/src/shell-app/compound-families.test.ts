@@ -1,11 +1,12 @@
 import { describe, expect, test } from 'bun:test';
 
 import { CINDER_COMPONENT_SOURCE } from '../component-sources.ts';
-import { COMPOSE_ONLY_COMPONENTS } from '../discover.ts';
+import { COMPOSE_ONLY_COMPONENTS, discoverExamples } from '../discover.ts';
 import {
   COMPOUND_COMPONENT_FAMILIES,
   COMPOUND_COMPONENT_PARENTS,
   CONTEXT_REQUIRED_PARTS,
+  previewSourceComponentName,
 } from './compound-families.ts';
 
 describe('compound-families registry completeness', () => {
@@ -43,6 +44,25 @@ describe('CONTEXT_REQUIRED_PARTS', () => {
     // or, worse, would suppress a standalone component's preview outright.
     for (const part of CONTEXT_REQUIRED_PARTS) {
       expect(COMPOUND_COMPONENT_PARENTS[part]).toBeDefined();
+    }
+  });
+
+  test('resolves only strict-context parts to their authored parent examples', () => {
+    for (const part of CONTEXT_REQUIRED_PARTS) {
+      const parent = COMPOUND_COMPONENT_PARENTS[part];
+      if (parent === undefined) throw new Error(`Missing parent for ${part}`);
+      expect(previewSourceComponentName(part)).toBe(parent);
+    }
+    expect(previewSourceComponentName('accordion')).toBe('accordion');
+    expect(previewSourceComponentName('table-row')).toBe('table-row');
+    expect(previewSourceComponentName('side-navigation-item')).toBe('side-navigation-item');
+  });
+
+  test('every strict-context part resolves to a parent with authored examples', async () => {
+    for (const part of CONTEXT_REQUIRED_PARTS) {
+      const parent = previewSourceComponentName(part);
+      const examples = await discoverExamples(parent);
+      expect(examples.length).toBeGreaterThan(0);
     }
   });
 

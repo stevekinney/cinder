@@ -105,3 +105,14 @@ export const CONTEXT_REQUIRED_PARTS: ReadonlySet<string> = new Set([
   'table-header-cell',
   'tree-item',
 ]);
+
+/**
+ * Resolve the component whose authored examples should back a documentation
+ * preview. Strict-context parts have no standalone examples, so their parent
+ * is the only truthful source for the mounted composition. Every other
+ * component keeps its own source and therefore its existing preview behavior.
+ */
+export function previewSourceComponentName(componentName: string): string {
+  if (!CONTEXT_REQUIRED_PARTS.has(componentName)) return componentName;
+  return COMPOUND_COMPONENT_PARENTS[componentName] ?? componentName;
+}

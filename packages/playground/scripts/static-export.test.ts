@@ -269,7 +269,7 @@ describe('static export', () => {
       const indexHtml = await readFile(join(outputDirectory, 'index.html'), 'utf8');
 
       expect(indexHtml).toContain('id="shell-root"');
-      expect(indexHtml).toContain('<html data-static-export="true">');
+      expect(indexHtml).toContain('<html lang="en" data-static-export="true">');
       expect(indexHtml).toContain('id="cinder-initial"');
       expect(indexHtml).toContain('readmeHtml');
       expect(indexHtml).toMatch(/\/assets\/[a-f0-9]{64}\/shell-bundle\/shell\.js/);
@@ -375,6 +375,23 @@ describe('static export', () => {
       await expect(
         readFile(join(outputDirectory, 'page', 'chat-composer-popover', 'index.html'), 'utf8'),
       ).resolves.toContain('data-component-page');
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
+  }, 120_000);
+
+  test('materializes parent-authored source under strict-part export routes', async () => {
+    const outputDirectory = await mkdtemp(join(tmpdir(), 'cinder-static-export-composed-'));
+    try {
+      const rendered = await runStaticExport({
+        outputDirectory,
+        sidebarComponents: ['accordion'],
+        allComponents: ['accordion-item'],
+      });
+      expect(rendered.has('/example-src/accordion-item/basic')).toBe(true);
+      await expect(
+        readFile(join(outputDirectory, 'example-src', 'accordion-item', 'basic'), 'utf8'),
+      ).resolves.toContain('Accordion');
     } finally {
       await rm(outputDirectory, { recursive: true, force: true });
     }
