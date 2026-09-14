@@ -3,6 +3,7 @@ import type { AgentSession } from '@lostgradient/operative';
 import {
 	appendUserMessage,
 	createConversationHistory,
+	decodeChatStreamEvent,
 	getMessages,
 	markMessageDeliveryFailed
 } from '@lostgradient/chat';
@@ -215,19 +216,26 @@ export function turnFailuresOf(
 	const safe: Record<string, ServerOwnedTurnFailure> = {};
 	for (const [id, candidate] of Object.entries(value)) {
 		if (candidate === null || typeof candidate !== 'object') continue;
-		const record = candidate as Record<string, unknown>;
-		if (
-			typeof record.message !== 'string' ||
-			typeof record.kind !== 'string' ||
-			typeof record.code !== 'string'
-		)
-			continue;
-		safe[id] = {
-			message: SAFE_TURN_FAILURE_MESSAGE,
-			kind: record.kind as ChatSerializedRunError['kind'],
-			code: record.code as ChatSerializedRunError['code'],
-			...(typeof record.retryable === 'boolean' ? { retryable: record.retryable } : {})
-		};
+		try {
+			// Use Chat's existing classified-error boundary so its kind/code
+			// unions remain authoritative without duplicating an allowed-value list.
+			const frame = decodeChatStreamEvent({
+				type: 'run.error',
+				wireVersion: 1,
+				sequence: 0,
+				error: { ...candidate, name: 'Error', message: SAFE_TURN_FAILURE_MESSAGE }
+			});
+			if (frame.type !== 'run.error') continue;
+			safe[id] = {
+				message: frame.error.message,
+				kind: frame.error.kind,
+				code: frame.error.code,
+				...(frame.error.retryable !== undefined ? { retryable: frame.error.retryable } : {})
+			};
+		} catch {
+			// Malformed stored metadata is neither a classified failure nor safe
+			// diagnostic text. Keep it out of GET and SSR.
+		}
 	}
 	return safe;
 }

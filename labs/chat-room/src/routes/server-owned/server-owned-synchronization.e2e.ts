@@ -135,6 +135,7 @@ test('announces durable failure batches, stays silent for SSR history, and prese
 	const first = `First ${fixtureMarker('unauthorized', `first-${Date.now().toString(36)}`)}`;
 	const second = `Second ${fixtureMarker('unauthorized', `second-${Date.now().toString(36)}`)}`;
 	const status = page.getByTestId('server-owned-sync-status');
+	await expect(status).toHaveCSS('position', 'absolute');
 	await page.evaluate(() => {
 		const node = document.querySelector<HTMLElement>('[data-testid="server-owned-sync-status"]');
 		if (!node) throw new Error('sync status is missing');

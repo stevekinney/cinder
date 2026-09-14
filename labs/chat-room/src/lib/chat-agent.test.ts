@@ -228,6 +228,51 @@ describe('pumpChatRun: completed success', () => {
 });
 
 describe('pumpChatRun: provider failure', () => {
+	test.each(['failure', 'abort'] as const)(
+		'handles a rejected result as %s without inventing a conversation',
+		async (outcome) => {
+			const lines: string[] = [];
+			const cause =
+				outcome === 'abort'
+					? new DOMException('Stopped', 'AbortError')
+					: new Error('credential-canary');
+			const run = {
+				async *[Symbol.asyncIterator]() {},
+				result: async () => {
+					throw cause;
+				}
+			} as unknown as AgentRun;
+			let persistenceCalls = 0;
+			await pumpChatRun(
+				run,
+				createChatStreamWriter((line) => lines.push(line)),
+				{
+					beforeFailure: async () => {
+						persistenceCalls += 1;
+					}
+				}
+			);
+			const frames = decodeLines(lines);
+			expect(persistenceCalls).toBe(0);
+			expect(frames).toHaveLength(1);
+			if (outcome === 'abort') {
+				expect(frames[0]).toMatchObject({ type: 'run.aborted', reason: 'Stopped' });
+			} else {
+				expect(frames[0]).toMatchObject({
+					type: 'run.error',
+					error: {
+						name: 'Error',
+						kind: 'generate',
+						code: 'UNKNOWN',
+						message: 'The turn outcome could not be saved.',
+						retryable: false
+					}
+				});
+				expect(lines.join('')).not.toContain('credential-canary');
+			}
+		}
+	);
+
 	test('awaits failure persistence before writing the terminal frame', async () => {
 		const lines: string[] = [];
 		let release!: () => void;

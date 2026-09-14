@@ -18,7 +18,10 @@ import {
 	classifyChatRunFailure,
 	SAFE_CHAT_FAILURE_MESSAGE
 } from './chat-agent.ts';
-import { serverOwnedPersistenceFailureHint } from './server-owned-snapshot.ts';
+import {
+	serverOwnedPersistenceFailureHint,
+	SERVER_OWNED_PERSISTENCE_FAILURE_MESSAGE
+} from './server-owned-snapshot.ts';
 
 type ChatToolResult = Extract<ChatStreamEvent, { type: 'tool.settled' }>['result'];
 const FAILURE_FINISH_REASONS = new Set([
@@ -57,7 +60,7 @@ function toTerminalFailureFrame(
 		...envelope.error
 	};
 	serialized.message =
-		serialized.message === 'The turn outcome could not be saved.'
+		serialized.message === SERVER_OWNED_PERSISTENCE_FAILURE_MESSAGE
 			? serialized.message
 			: SAFE_CHAT_FAILURE_MESSAGE;
 	if (envelope.status === 'tripwire') return { type: 'run.tripwire', error: serialized };
@@ -249,7 +252,7 @@ export async function pumpChatRun(
 						error: {
 							kind: 'generate',
 							code: 'UNKNOWN',
-							message: 'The turn outcome could not be saved.',
+							message: SERVER_OWNED_PERSISTENCE_FAILURE_MESSAGE,
 							retryable: false
 						}
 					};
@@ -273,7 +276,24 @@ export async function pumpChatRun(
 			...('output' in result ? { output: result.output } : {})
 		};
 	} catch (cause) {
-		const envelope = classifyChatRunFailure(cause, 'aborted');
+		let envelope = classifyChatRunFailure(
+			cause,
+			cause instanceof Error && cause.name === 'AbortError' ? 'aborted' : 'error'
+		);
+		// A rejected result supplies no authoritative conversation to persist.
+		// Preserve explicit cancellation; report every other missing outcome safely.
+		if (envelope.status !== 'aborted' && options.beforeFailure !== undefined) {
+			envelope = {
+				ok: false,
+				status: 'error',
+				error: {
+					kind: 'generate',
+					code: 'UNKNOWN',
+					message: SERVER_OWNED_PERSISTENCE_FAILURE_MESSAGE,
+					retryable: false
+				}
+			};
+		}
 		writer.write(toTerminalFailureFrame(envelope));
 		return envelope;
 	}

@@ -9,7 +9,8 @@ import {
 	loadConversation,
 	messageCountOf,
 	rememberTurnFailure,
-	serverOwnedSnapshot
+	serverOwnedSnapshot,
+	turnFailuresOf
 } from './server-owned-conversations.ts';
 import { disposeServerOwnedRuntime, serverOwnedRuntime } from './server-owned-runtime.ts';
 
@@ -29,6 +30,25 @@ const contentsOf = (session: AgentSession): string[] =>
 		.sort();
 
 describe('server-owned conversations', () => {
+	it('filters malformed stored classifications through the native error contract', () => {
+		const valid = {
+			kind: 'generate',
+			code: 'UNKNOWN',
+			message: 'credential-canary',
+			retryable: false
+		} as const;
+		expect(
+			turnFailuresOf({
+				turnFailures: {
+					valid,
+					unknownKind: { ...valid, kind: 'credential-canary' },
+					unknownCode: { ...valid, code: 'credential-canary' },
+					invalidRetryability: { ...valid, retryable: 'credential-canary' }
+				}
+			})
+		).toEqual({ valid: { ...valid, message: 'The assistant could not complete this turn.' } });
+	});
+
 	it('creates a conversation the list can see', async () => {
 		await disposeServerOwnedRuntime();
 		const created = await createConversation('Release planning');

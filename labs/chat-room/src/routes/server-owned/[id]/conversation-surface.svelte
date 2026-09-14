@@ -378,7 +378,12 @@
 	{/if}
 </p>
 
-<p class="sync-status" role="status" data-testid="server-owned-sync-status">
+<p
+	class="sync-status"
+	role="status"
+	data-testid="server-owned-sync-status"
+	data-empty={syncStatus === ''}
+>
 	{#key syncStatusGeneration}<span>{syncStatus}</span>{/key}
 </p>
 
@@ -469,7 +474,7 @@
 		margin: 0;
 	}
 
-	.sync-status:empty {
+	.sync-status[data-empty='true'] {
 		position: absolute;
 		inline-size: 1px;
 		block-size: 1px;
