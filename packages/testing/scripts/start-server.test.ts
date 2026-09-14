@@ -1,15 +1,26 @@
 import { describe, expect, test } from 'bun:test';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { once } from 'node:events';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 import {
-  appendServerOutputBuffer,
   childProcessHasFinished,
+  cleanupManagedChildren,
+  descendantProcessIds,
+  installSignalCleanupHandlers,
+  parseProcessGroupSnapshot,
+  parseProcessTreeSnapshot,
+  terminateChildProcess,
+  waitForExit,
+} from './process-lifecycle.ts';
+import {
+  appendServerOutputBuffer,
   clearTrackedTimer,
   enqueueOrderedBuild,
   finalPlaywrightExitCode,
-  installSignalCleanupHandlers,
   localPlaygroundUrlForReportedPort,
   parsePlaygroundFingerprintHeader,
   parsePlaygroundListeningPort,
@@ -31,7 +42,6 @@ import {
   shutdownExitCodeAfterRequest,
   stalePlaygroundServerMessage,
   takeNextOrderedBuild,
-  waitForExit,
   waitForPlaygroundReadinessWithCleanup,
 } from './start-server.ts';
 
@@ -231,13 +241,212 @@ describe('playground readiness cleanup', () => {
 });
 
 describe('child process cleanup', () => {
-  test('uses ordinary foreground child processes for finite dependency builds', () => {
+  test('finds only descendants in a captured process tree', () => {
+    const snapshot = parseProcessTreeSnapshot(
+      ['10 1', '11 10', '12 11', '13 99', '14 1'].join('\n'),
+    );
+
+    expect(descendantProcessIds(10, snapshot)).toEqual([11, 12]);
+  });
+
+  test('parses process groups without widening ownership to a sentinel', () => {
+    expect(parseProcessGroupSnapshot('10 10\n11 10\n12 99')).toEqual([
+      { pid: 10, groupId: 10 },
+      { pid: 11, groupId: 10 },
+      { pid: 12, groupId: 99 },
+    ]);
+  });
+
+  test.each([
+    ['normal exit', 0, null],
+    ['child failure', 1, null],
+    ['SIGINT shutdown', 0, 130],
+    ['SIGTERM shutdown', 0, 143],
+    ['playground death during browser work', 137, null],
+  ] as const)(
+    '%s cleans the real server/browser ownership set',
+    async (_label, serverExit, triggerCode) => {
+      const temporaryRoot = mkdtempSync(join(tmpdir(), 'cinder-lifecycle-'));
+      const ownershipFile = join(temporaryRoot, 'playground-port.txt');
+      writeFileSync(ownershipFile, 'owned');
+      const serverLifetimeMs = 1_000;
+      const server = spawn(
+        process.execPath,
+        [
+          '-e',
+          [
+            "const { spawn } = require('node:child_process');",
+            "const http = require('node:http');",
+            "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+            "const server = http.createServer((_request, response) => response.end('ok'));",
+            "server.listen(0, '127.0.0.1', () => { process.stdout.write(JSON.stringify({ grandchildPid: grandchild.pid, port: server.address().port }) + '\\n'); });",
+            `setTimeout(() => process.exit(${serverExit}), ${serverLifetimeMs});`,
+          ].join(' '),
+        ],
+        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+      );
+      const browser = spawn(
+        process.execPath,
+        [
+          '-e',
+          [
+            "const { spawn } = require('node:child_process');",
+            "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+            "process.stdout.write(String(grandchild.pid) + '\\n');",
+            'setInterval(() => {}, 1000);',
+          ].join(' '),
+        ],
+        { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+      );
+      const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+        detached: process.platform !== 'win32',
+        stdio: 'ignore',
+      });
+      const managedServer = playgroundBundleDependencyBuildProcess(
+        server,
+        'lifecycle server',
+        false,
+        process.platform !== 'win32',
+      );
+      const managedBrowser = playgroundBundleDependencyBuildProcess(
+        browser,
+        'lifecycle browser',
+        false,
+        process.platform !== 'win32',
+      );
+      const serverClosed = once(server, 'close');
+      const browserClosed = once(browser, 'close');
+
+      try {
+        const [serverOutput] = await once(server.stdout!, 'data');
+        const [browserOutput] = await once(browser.stdout!, 'data');
+        const serverDetails = JSON.parse(String(serverOutput).trim()) as {
+          grandchildPid: number;
+          port: number;
+        };
+        const browserGrandchildPid = Number(String(browserOutput).trim());
+        const ownedPids = [
+          server.pid!,
+          serverDetails.grandchildPid,
+          browser.pid!,
+          browserGrandchildPid,
+        ];
+        expect(await (await fetch(`http://127.0.0.1:${serverDetails.port}`)).text()).toBe('ok');
+        if (triggerCode === 130 || triggerCode === 143) {
+          server.kill(triggerCode === 130 ? 'SIGINT' : 'SIGTERM');
+        }
+        await once(server, 'exit');
+        if (serverExit === 137) {
+          expect(server.exitCode).toBe(137);
+          expect(server.signalCode).toBeNull();
+        } else if (triggerCode === 130 || triggerCode === 143) {
+          expect(server.exitCode).toBeNull();
+          expect(server.signalCode).toBe(triggerCode === 130 ? 'SIGINT' : 'SIGTERM');
+        } else if (triggerCode === null) {
+          expect(server.exitCode).toBe(serverExit);
+        }
+        await cleanupManagedChildren([managedServer, managedBrowser], ownershipFile);
+        await cleanupManagedChildren([managedServer, managedBrowser], ownershipFile);
+
+        await Promise.all([serverClosed, browserClosed]);
+        for (const pid of ownedPids) expect(() => process.kill(pid, 0)).toThrow();
+        expect(() => process.kill(sentinel.pid!, 0)).not.toThrow();
+        expect(existsSync(ownershipFile)).toBe(false);
+        await expect(fetch(`http://127.0.0.1:${serverDetails.port}`)).rejects.toThrow();
+        if (triggerCode !== null) expect(triggerCode).toBeGreaterThanOrEqual(128);
+      } finally {
+        if (server.exitCode === null && server.signalCode === null) server.kill('SIGKILL');
+        if (browser.exitCode === null && browser.signalCode === null) browser.kill('SIGKILL');
+        if (sentinel.exitCode === null && sentinel.signalCode === null) sentinel.kill('SIGTERM');
+        rmSync(temporaryRoot, { recursive: true, force: true });
+      }
+    },
+  );
+
+  test('cleans up a real child and grandchild when process-group cleanup is disabled', async () => {
+    const fixture = spawn(
+      process.execPath,
+      [
+        '-e',
+        [
+          "const { spawn } = require('node:child_process');",
+          "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+          "process.stdout.write(String(grandchild.pid) + '\\n');",
+          'setInterval(() => {}, 1000);',
+        ].join(' '),
+      ],
+      { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+
+    try {
+      await once(fixture.stdout!, 'data');
+      await terminateChildProcess({
+        childProcess: fixture,
+        name: 'descendant fixture',
+        killProcessGroup: false,
+      });
+      expect(fixture.exitCode === null && fixture.signalCode === null).toBe(false);
+    } finally {
+      if (fixture.exitCode === null && fixture.signalCode === null) fixture.kill('SIGKILL');
+    }
+  });
+
+  test('cleans up immediate descendants after the finite build root fails', async () => {
+    const fixture = spawn(
+      process.execPath,
+      [
+        '-e',
+        [
+          "const { spawn } = require('node:child_process');",
+          "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });",
+          "process.stdout.write(String(grandchild.pid) + '\\n');",
+          'process.exit(7);',
+        ].join(' '),
+      ],
+      { detached: process.platform !== 'win32', stdio: ['ignore', 'pipe', 'ignore'] },
+    );
+
+    const managedFixture = playgroundBundleDependencyBuildProcess(
+      fixture,
+      'failed descendant fixture',
+      process.platform !== 'win32',
+      process.platform !== 'win32',
+    );
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+      detached: process.platform !== 'win32',
+      stdio: 'ignore',
+    });
+    const [output] = await once(fixture.stdout!, 'data');
+    const grandchildPid = Number(String(output).trim());
+    await once(fixture, 'exit');
+    await terminateChildProcess(managedFixture);
+    await terminateChildProcess(managedFixture);
+
+    expect(() => process.kill(grandchildPid, 0)).toThrow();
+    expect(() => process.kill(sentinel.pid!, 0)).not.toThrow();
+    sentinel.kill('SIGTERM');
+  });
+
+  test('gives finite dependency builds scoped process-group ownership', () => {
     expect(
-      playgroundBundleDependencyBuildProcess({} as ChildProcess, '@lostgradient/cinder', false),
+      playgroundBundleDependencyBuildProcess(
+        {} as ChildProcess,
+        '@lostgradient/cinder',
+        process.platform !== 'win32',
+        process.platform !== 'win32',
+      ),
     ).toMatchObject({
       name: '@lostgradient/cinder build',
-      killProcessGroup: false,
+      killProcessGroup: process.platform !== 'win32',
     });
+    expect(
+      playgroundBundleDependencyBuildProcess(
+        {} as ChildProcess,
+        '@lostgradient/cinder',
+        process.platform !== 'win32',
+        process.platform !== 'win32',
+      ).ownedProcessGroupId,
+    ).toBeUndefined();
   });
 
   test('observes a child that exited before exit listeners were attached', async () => {
@@ -267,6 +476,41 @@ describe('child process cleanup', () => {
     expect(childProcessHasFinished({ pid: undefined, exitCode: null, signalCode: null })).toBe(
       true,
     );
+  });
+
+  test.each([
+    ['SIGINT', 130],
+    ['SIGTERM', 143],
+  ] as const)('runs the actual cleanup handler for %s', async (signal, exitCode) => {
+    const lifecycleModule = fileURLToPath(new URL('./process-lifecycle.ts', import.meta.url));
+    const wrapper = spawn(
+      process.execPath,
+      [
+        '-e',
+        [
+          "import { spawn } from 'node:child_process';",
+          `import { cleanupManagedChildren, installSignalCleanupHandlers, manageChildProcess } from ${JSON.stringify(lifecycleModule)};`,
+          "const grandchild = spawn(process.execPath, ['-e', 'setInterval(() => {}, 100000)'], { stdio: 'ignore' });",
+          "const managed = manageChildProcess(grandchild, 'signal fixture', false, false);",
+          "process.stdout.write(String(grandchild.pid) + '\\n');",
+          'installSignalCleanupHandlers(() => cleanupManagedChildren([managed], null));',
+          'setInterval(() => {}, 100000);',
+        ].join(' '),
+      ],
+      { stdio: ['ignore', 'pipe', 'inherit'] },
+    );
+
+    try {
+      const [output] = await once(wrapper.stdout!, 'data');
+      const grandchildPid = Number(String(output).trim());
+      wrapper.kill(signal);
+      const [observedCode, observedSignal] = await once(wrapper, 'exit');
+      expect(observedCode).toBe(exitCode);
+      expect(observedSignal).toBeNull();
+      expect(() => process.kill(grandchildPid, 0)).toThrow();
+    } finally {
+      if (wrapper.exitCode === null && wrapper.signalCode === null) wrapper.kill('SIGKILL');
+    }
   });
 });
 

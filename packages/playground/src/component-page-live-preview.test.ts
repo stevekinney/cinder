@@ -451,4 +451,19 @@ describe('component-page live preview (#405)', () => {
 
     element.remove();
   });
+
+  test('does not restore the ready marker after cleanup races the mount tick', async () => {
+    const mountErrors: MountErrorRecord = {};
+    const element = document.createElement('div');
+    element.id = LIVE_MOUNT_CONTAINER_ID;
+    document.body.append(element);
+
+    const factory = createLivePreviewMount({ mountErrors });
+    const teardown = factory(LiveProbe, { label: 'Raced' })(element);
+    teardown();
+    await tick();
+
+    expect(element.hasAttribute('data-live-preview-ready')).toBe(false);
+    element.remove();
+  });
 });

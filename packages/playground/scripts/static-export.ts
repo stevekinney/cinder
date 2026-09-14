@@ -68,6 +68,21 @@ export type StaticExportOptions = {
   baseUrl?: string;
 };
 
+export type StaticExportInventory = {
+  version: 1;
+  sourceSha: string;
+  routes: string[];
+};
+
+export type StaticExportMetadata = {
+  version: 1;
+  sourceSha: string;
+  exportDurationMs: number;
+  rssBytes: number;
+  rssMiB: number;
+  rssSample: 'export-completion';
+};
+
 export type InitialRoutePayload = {
   transferBytes: number;
   decodedBytes: number;
@@ -236,8 +251,16 @@ async function render(pathname: string, context: StaticExportContext): Promise<s
     return null;
   }
   const body = await response.text();
-  await writeFile(outputPath, body);
-  return body;
+  const staticBody = isHtml ? markStaticExportDocument(body) : body;
+  await writeFile(outputPath, staticBody);
+  return staticBody;
+}
+
+export function markStaticExportDocument(html: string): string {
+  return html.replace(/<html\b([^>]*)>/i, (match, attributes: string) => {
+    if (/\bdata-static-export\s*=\s*["']true["']/i.test(attributes)) return match;
+    return `<html${attributes} data-static-export="true">`;
+  });
 }
 
 /** Write a file, creating parent directories as needed. */
@@ -580,6 +603,13 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
   );
   context.rendered.add('/sitemap.xml');
   context.rendered.add('/robots.txt');
+  const sourceSha =
+    Bun.env['GITHUB_SHA'] ?? Bun.spawnSync(['git', 'rev-parse', 'HEAD']).stdout.toString().trim();
+  await writeFile(
+    join(outputDirectory, 'static-inventory.json'),
+    `${JSON.stringify({ version: 1, sourceSha, routes: canonicalRoutes } satisfies StaticExportInventory, null, 2)}\n`,
+  );
+  context.rendered.add('/static-inventory.json');
 
   const { fingerprintedUrlBySourceUrl } = await fingerprintStaticAssets(outputDirectory);
   for (const [sourceUrl, fingerprintedUrl] of fingerprintedUrlBySourceUrl) {
@@ -589,6 +619,12 @@ export async function runStaticExport(options: StaticExportOptions = {}): Promis
 
   assertDocumentationPagesArePreRendered(documentationPages);
   await assertInitialRoutePayloadBudgets(outputDirectory, canonicalRoutes);
+
+  const rssBytes = process.memoryUsage().rss;
+  await writeFile(
+    join(dirname(outputDirectory), 'static-export-metadata.json'),
+    `${JSON.stringify({ version: 1, sourceSha, exportDurationMs: Date.now() - start, rssBytes, rssMiB: rssBytes / (1024 * 1024), rssSample: 'export-completion' } satisfies StaticExportMetadata, null, 2)}\n`,
+  );
 
   const seconds = ((Date.now() - start) / 1000).toFixed(1);
   process.stdout.write(

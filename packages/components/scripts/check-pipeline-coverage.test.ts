@@ -59,9 +59,8 @@ describe('Turbo input topology', () => {
       readFileSync(resolve(root, 'packages/components/package.json'), 'utf8'),
     ) as { devDependencies: Record<string, string> };
     expect(unitWorkflow).toContain('name: unit-tests');
-    expect(unitWorkflow).toContain(
-      'needs: [scope, static-artifact, package, playground, component]',
-    );
+    expect(unitWorkflow).toContain('playground-production:');
+    expect(unitWorkflow).toContain('browser-runner-lifecycle:');
     expect(unitWorkflow).toContain('component_matrix={"chunk":[1,2,3,4]}');
     expect(unitWorkflow).toContain(
       "needs.scope.result == 'success' && needs.scope.outputs.component_matrix",

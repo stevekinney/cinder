@@ -27,6 +27,7 @@ describe('PageHeader', () => {
     expect(pageHeaderSchema.properties).toMatchObject({
       title: { type: 'string' },
       description: { type: 'string' },
+      headingLevel: { enum: [1, 2, 3, 4, 5, 6] },
     });
     expect(pageHeaderSchema.metadata?.unsupportedProps?.map((prop) => prop.name)).toEqual([
       'actions',
@@ -36,12 +37,17 @@ describe('PageHeader', () => {
     expect(validate({})).toBe(false);
   });
 
-  test('renders the required title as h1', () => {
+  test('renders the required title as h1 by default', () => {
     const { container } = render(PageHeader, { props: { title: 'Approvals' } });
     const titleEl = container.querySelector('.cinder-page-header__title');
     expect(titleEl).not.toBeNull();
     expect(titleEl?.tagName).toBe('H1');
     expect(titleEl?.textContent?.trim()).toBe('Approvals');
+  });
+
+  test.each([1, 2, 3, 4, 5, 6] as const)('renders resting headingLevel=%s', (headingLevel) => {
+    const { container } = render(PageHeader, { props: { title: 'Approvals', headingLevel } });
+    expect(container.querySelector('.cinder-page-header__title')?.tagName).toBe(`H${headingLevel}`);
   });
 
   test('renders named title, description, breadcrumb, and action regions', () => {

@@ -146,7 +146,11 @@ function installDocumentationDataIsland(fixture: ComponentDocumentationPayload):
 // `new EventSource(url)` throws `ReferenceError: EventSource is not defined`.
 // This stub only needs to exist and stay inert — these tests assert on layout,
 // not on live-reload behavior (that's covered by `event-source.test.ts`).
+let eventSourceOpenCount = 0;
 class NoopEventSource {
+  constructor() {
+    eventSourceOpenCount += 1;
+  }
   addEventListener(): void {}
   removeEventListener(): void {}
   close(): void {}
@@ -155,6 +159,7 @@ class NoopEventSource {
 const originalEventSource = Reflect.get(globalThis, 'EventSource') as unknown;
 
 beforeEach(() => {
+  eventSourceOpenCount = 0;
   resetLedgers();
   const happyWindow = window as unknown as { happyDOM: { setURL(url: string): void } };
   happyWindow.happyDOM.setURL('http://localhost/page/button');
@@ -167,6 +172,7 @@ beforeEach(() => {
 afterEach(() => {
   resetLedgers();
   document.body.innerHTML = '';
+  document.documentElement.removeAttribute('data-static-export');
   if (originalEventSource === undefined) {
     Reflect.deleteProperty(globalThis, 'EventSource');
   } else {
@@ -188,6 +194,21 @@ async function showPlayground(): Promise<void> {
 }
 
 describe('component-page single-scroll layout', () => {
+  test('does not open the development EventSource for static exports', async () => {
+    document.documentElement.setAttribute('data-static-export', 'true');
+    const { unmount } = render(ComponentPage, { documentation: baseFixture() });
+    await tick();
+    expect(eventSourceOpenCount).toBe(0);
+    unmount();
+  });
+
+  test('opens the development EventSource for normal documents', async () => {
+    const { unmount } = render(ComponentPage, { documentation: baseFixture() });
+    await tick();
+    expect(eventSourceOpenCount).toBeGreaterThan(0);
+    unmount();
+  });
+
   test('groups standalone page actions and exposes focus-visible tooltips', async () => {
     // The page controls live in the SIDEBAR footer now, not a top bar — the band
     // they came from restated the sidebar brand, the hero eyebrow, and the page

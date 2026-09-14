@@ -18,16 +18,28 @@
 
 <script lang="ts">
   import { classNames } from '../../utilities/class-names.ts';
-  import type { PageHeaderProps } from './page-header.types.ts';
+  import type { PageHeaderHeadingLevel, PageHeaderProps } from './page-header.types.ts';
+
+  const headingTags: Record<PageHeaderHeadingLevel, string> = {
+    1: 'h1',
+    2: 'h2',
+    3: 'h3',
+    4: 'h4',
+    5: 'h5',
+    6: 'h6',
+  };
 
   let {
     title,
+    headingLevel = 1,
     description,
     breadcrumbs,
     actions,
     class: className,
     ...rest
   }: PageHeaderProps = $props();
+
+  const headingTag = $derived(headingTags[headingLevel] ?? 'h1');
 </script>
 
 <div class={classNames('cinder-page-header', className)} {...rest}>
@@ -39,13 +51,13 @@
 
   <div class="cinder-page-header__row">
     <div class="cinder-page-header__heading-group">
-      <h1 class="cinder-page-header__title">
+      <svelte:element this={headingTag} class="cinder-page-header__title">
         {#if typeof title === 'string'}
           {title}
         {:else}
           {@render title()}
         {/if}
-      </h1>
+      </svelte:element>
       {#if description}
         <p class="cinder-page-header__description">
           {#if typeof description === 'string'}

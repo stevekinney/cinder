@@ -7,7 +7,11 @@ const schema = {
     title: {
       type: 'string',
       description:
-        'Page-level heading text rendered inside `<h1>`; the runtime API also accepts a template-only snippet.',
+        'Page-level heading text rendered inside the configured heading level; the runtime API also accepts a template-only snippet.',
+    },
+    headingLevel: {
+      enum: [1, 2, 3, 4, 5, 6],
+      description: 'Heading level for the title element. Default 1.',
     },
     description: {
       type: 'string',

@@ -246,7 +246,11 @@
   // dev-server stream. Snapshot pages deliberately stay quiet: automated
   // visual and focus suites share the dev server and a reload would interrupt
   // the test currently driving the page.
-  const liveReloadUrl = !snapshotMode && typeof window !== 'undefined' ? '/events' : null;
+  const isStaticExport =
+    typeof document !== 'undefined' &&
+    document.documentElement.getAttribute('data-static-export') === 'true';
+  const liveReloadUrl =
+    !snapshotMode && typeof window !== 'undefined' && !isStaticExport ? '/events' : null;
   function handleLiveReload(): void {
     window.location.reload();
   }

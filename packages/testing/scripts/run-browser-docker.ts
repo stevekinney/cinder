@@ -1,7 +1,7 @@
 import type { ChildProcess } from 'node:child_process';
 import { dirname, resolve as resolvePath } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+import { installSignalCleanupHandlers, terminateChildProcess } from './process-lifecycle.ts';
 import {
   buildPlaywrightDockerImage,
   dockerBrowserCommand,

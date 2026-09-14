@@ -10,7 +10,7 @@ import {
   writeBaselineProvenance,
 } from './baseline-provenance.ts';
 import { checkDockerAuthenticity, formatFailures } from './docker-authenticity.ts';
-import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+import { installSignalCleanupHandlers, terminateChildProcess } from './process-lifecycle.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 const packageRoot = resolvePath(here, '..');

@@ -53,7 +53,7 @@ function componentTestDirectories(slugs: readonly string[]): string[] {
 
 export type CanaryResult = {
   /** Peak RSS across the child test process, normalized to bytes (see {@link bytesFromMaxRss}). */
-  peakRssBytes: number;
+  peakRssBytes: number | null;
   exitCode: number;
 };
 
@@ -65,8 +65,15 @@ export async function runMemoryCanary(
   slugs: readonly string[] = CANARY_COMPONENT_SLUGS,
 ): Promise<CanaryResult> {
   const directories = componentTestDirectories(slugs);
-  const child = Bun.spawn(['bun', 'test', ...BUN_TEST_FLAGS, ...directories], {
-    cwd: packageRoot,
+  return measureSubprocess(['bun', 'test', ...BUN_TEST_FLAGS, ...directories]);
+}
+
+export async function measureSubprocess(
+  command: readonly string[],
+  cwd: string = packageRoot,
+): Promise<CanaryResult> {
+  const child = Bun.spawn(command, {
+    cwd,
     stdio: ['inherit', 'inherit', 'inherit'],
     env: { ...process.env, TZ: 'UTC', LANG: 'en_US.UTF-8' },
   });
@@ -75,30 +82,36 @@ export async function runMemoryCanary(
   // `resourceUsage()` is only populated once the process has exited; reading
   // it before `exited` resolves would race the child's own accounting.
   const usage = child.resourceUsage();
-  const peakRssBytes = bytesFromMaxRss(usage?.maxRSS ?? 0);
+  const peakRssBytes = usage?.maxRSS === undefined ? null : bytesFromMaxRss(usage.maxRSS);
 
   return { peakRssBytes, exitCode };
 }
 
 /**
- * `resourceUsage().maxRSS` reports `getrusage`'s `ru_maxrss` verbatim, whose
- * unit is platform-dependent: bytes on Darwin/macOS, kibibytes on Linux
- * (glibc). CI (`main-green.yaml`) runs on `ubuntu-latest`; local development on
- * this repo runs on macOS. Detect via `process.platform` rather than assuming
- * either unit, so the printed megabyte figure is correct on both.
+ * Bun's `Subprocess.resourceUsage().maxRSS` is a byte count on both Darwin and
+ * Linux. This differs from Node's `process.resourceUsage()`, whose
+ * `maxRSS` is documented in kilobytes. Keep this conversion deliberately
+ * platform-independent so Linux does not multiply Bun's bytes by 1024.
  */
-function bytesFromMaxRss(maxRss: number): number {
-  return process.platform === 'darwin' ? maxRss : maxRss * 1024;
+export function bytesFromMaxRss(maxRss: number): number {
+  return maxRss;
 }
 
-function bytesToMegabytes(bytes: number): number {
+export function bytesToMegabytes(bytes: number): number {
   return bytes / 1024 / 1024;
+}
+
+export function formatCanaryReport(result: CanaryResult, suiteCount: number): string {
+  const peak =
+    result.peakRssBytes === null
+      ? 'unavailable'
+      : `${result.peakRssBytes} bytes (${bytesToMegabytes(result.peakRssBytes).toFixed(1)} MB)`;
+  return `memory-canary: runtime ${process.versions.bun ?? process.version}; peak RSS ${peak} over ${suiteCount} suites`;
 }
 
 async function main(): Promise<void> {
   const result = await runMemoryCanary();
-  const peakMegabytes = bytesToMegabytes(result.peakRssBytes);
-  const summary = `memory-canary: peak RSS ${peakMegabytes.toFixed(1)} MB over ${CANARY_COMPONENT_SLUGS.length} suites`;
+  const summary = formatCanaryReport(result, CANARY_COMPONENT_SLUGS.length);
   console.log(summary);
 
   // GitHub Actions treats $GITHUB_STEP_SUMMARY as an append-only Markdown file

@@ -17,7 +17,7 @@
  *     the live mount fails.
  */
 import type { Snippet } from 'svelte';
-import { mount, unmount } from 'svelte';
+import { mount, tick, unmount } from 'svelte';
 
 import type {
   PlaygroundControl,
@@ -270,17 +270,25 @@ export function createLivePreviewMount(
       return () => {};
     }
     let app: ReturnType<typeof mount> | undefined;
+    let disposed = false;
     try {
       app = mount(component, {
         target: element,
         props,
       });
       mountErrors[mountKey] = undefined;
+      void tick().then(() => {
+        if (!disposed && app !== undefined && element.isConnected)
+          element.setAttribute('data-live-preview-ready', '');
+        return undefined;
+      });
     } catch (error) {
       console.error('[cinder playground] failed to mount live preview:', error);
       mountErrors[mountKey] = toMountErrorDetail(error);
     }
     return () => {
+      disposed = true;
+      element.removeAttribute('data-live-preview-ready');
       if (app === undefined) return;
       try {
         // `unmount` returns a Promise (outro animations); the teardown is

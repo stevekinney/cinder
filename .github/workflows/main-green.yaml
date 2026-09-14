@@ -184,6 +184,34 @@ jobs:
       - name: Install Chromium for hydration smoke
         run: bunx playwright install --with-deps chromium
 
+      - name: Build credential-independent static Playground export
+        run: PLAYGROUND_BASE_URL=https://cinder.website bun run --filter=@cinder/playground vercel-build
+
+      - name: Verify static Playground production artifact
+        run: bun run check:playground-production -- --directory packages/playground/public
+      - name: Assert Playground production evidence exists
+        run: |
+          test -f packages/playground/static-playground-report.json
+          test -f packages/playground/static-export-metadata.json
+          test -f packages/testing/test-results/playground-production.json
+      - name: Upload Playground production evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            packages/playground/static-playground-report.json
+            packages/playground/static-export-metadata.json
+            packages/testing/test-results/playground-production.json
+      - name: Upload Playground production failure evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          if-no-files-found: ignore
+          path: packages/testing/test-results/playground-production/
+
       - name: Consumer hydration smoke (cinder)
         run: bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke
 

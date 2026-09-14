@@ -3,7 +3,7 @@ import { readFileSync } from 'node:fs';
 import { dirname, isAbsolute, relative, resolve as resolvePath, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { REQUIRED_BASELINE_ARCHITECTURE } from './baseline-provenance.ts';
-import { installSignalCleanupHandlers, terminateChildProcess } from './start-server.ts';
+import { installSignalCleanupHandlers, terminateChildProcess } from './process-lifecycle.ts';
 
 /** The exact CI dispatch every architecture-refusal message must name. */
 export const BASELINE_UPDATE_WORKFLOW_DISPATCH_COMMAND =

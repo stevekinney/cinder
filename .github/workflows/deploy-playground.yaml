@@ -163,6 +163,40 @@ jobs:
             PLAYGROUND_BASE_URL=https://cinder.website vercel build --token="$VERCEL_TOKEN"
           fi
 
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+
+      - name: Install Chromium for static production gate
+        run: bunx playwright install --with-deps chromium
+
+      - name: Verify the exact Vercel static artifact before deployment
+        run: bun run check:playground-production -- --directory .vercel/output/static --metadata packages/playground/static-export-metadata.json
+      - name: Assert Playground production evidence exists
+        run: |
+          test -f .vercel/output/static-playground-report.json
+          test -f packages/playground/static-export-metadata.json
+          test -f packages/testing/test-results/playground-production.json
+      - name: Upload Playground production evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-evidence-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          if-no-files-found: error
+          path: |
+            .vercel/output/static-playground-report.json
+            packages/playground/static-export-metadata.json
+            packages/testing/test-results/playground-production.json
+      - name: Upload Playground production failure evidence
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: playground-production-failures-${{ github.run_id }}-${{ github.run_attempt }}-${{ github.sha }}
+          if-no-files-found: ignore
+          path: packages/testing/test-results/playground-production/
+
       - name: Deploy to Vercel
         id: deploy
         run: |
