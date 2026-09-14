@@ -102,9 +102,9 @@ describe('token corpus validation', () => {
     );
     expect(contexts).toHaveLength(2);
     expect(() =>
-      assertValidTokenDocument(derived, 'derived.tokens.json', contexts![0]!),
+      assertValidTokenDocument(derived, 'derived.tokens.json', contexts![0]),
     ).not.toThrow();
-    expect(() => assertValidTokenDocument(derived, 'derived.tokens.json', contexts![1]!)).toThrow();
+    expect(() => assertValidTokenDocument(derived, 'derived.tokens.json', contexts![1])).toThrow();
     expect(() =>
       validateLoadedTokenDocuments(
         contextResolver,
