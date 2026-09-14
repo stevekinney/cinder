@@ -98,6 +98,24 @@ jobs:
           bun run --filter=@lostgradient/cinder validate:release-workflow
           bun test packages/testing/scripts/pinned-bun-version.test.ts
           bun test packages/components/scripts/check-css-duplication.test.ts
+      # Keep the PR artifact lane aligned with main-green for the Linux browser
+      # launch path. This lane runs for every PR scope, including styles,
+      # token, and script-only changes, so a runner-level hydration regression
+      # cannot wait until after merge to be detected.
+      - name: Normalize Ubuntu mirror for Playwright dependencies
+        run: >-
+          sudo sed -i
+          's|http://azure.archive.ubuntu.com/ubuntu/|https://archive.ubuntu.com/ubuntu/|g'
+          /etc/apt/apt-mirrors.txt
+
+      - name: Install Chromium for hydration smoke
+        run: bunx playwright install --with-deps chromium
+
+      - name: Consumer hydration smoke (cinder)
+        run: bun run --filter=@lostgradient/cinder validate:consumer:hydration-smoke
+
+      - name: Validate workflow contracts
+        run: bun test packages/components/scripts/validate-release-workflow.test.ts
 
   package:
     needs: scope
