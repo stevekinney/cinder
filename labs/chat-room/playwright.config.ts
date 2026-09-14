@@ -128,9 +128,9 @@ const CROSS_ENGINE_SHARDS = [
 		// would have run in Chromium only, and a WebKit regression would have
 		// left CI green.
 		//
-		// Measured after the approval regressions: WebKit shards contain
-		// 54/62/62/53/54 tests, all below the 64-context ceiling. Re-run
-		// `--list` when this file gains a test.
+		// Measured after synchronization coverage: WebKit shards list
+		// 60/62/62/53/57 tests. The two extra synchronization contexts put
+		// webkit-1 at 62 contexts. Count explicit contexts as well as `--list`.
 		'**/server-owned-approval-focus.e2e.ts'
 	]
 ] as const;

@@ -38,9 +38,7 @@ describe('server-owned synchronizer', () => {
 		synchronizer.trigger();
 		expect(calls).toEqual(['read']);
 		resolveRead?.(response(snapshot('c1')));
-		await Promise.resolve();
-		await Promise.resolve();
-		await Promise.resolve();
+		await new Promise<void>((resolve) => setTimeout(resolve, 10));
 		await Promise.resolve();
 		expect(timers).toHaveLength(1);
 		expect(delays).toEqual([5000]);
@@ -67,6 +65,34 @@ describe('server-owned synchronizer', () => {
 		await Promise.resolve();
 		expect(applied).toBe(0);
 		synchronizer.setStreaming(false);
+		synchronizer.dispose();
+	});
+
+	test('coalesces pending triggers into one read after the active read completes', async () => {
+		let resolveFirst!: (response: Response) => void;
+		let calls = 0;
+		const synchronizer = createServerOwnedSynchronizer({
+			id: 'c1',
+			visible: () => true,
+			streaming: () => false,
+			fetcher: async () => {
+				calls += 1;
+				if (calls === 1) return new Promise<Response>((resolve) => (resolveFirst = resolve));
+				return response(snapshot('fresh'));
+			},
+			apply: () => undefined,
+			setTimer: () => 1 as never,
+			clearTimer: () => undefined
+		});
+		synchronizer.trigger();
+		synchronizer.trigger();
+		synchronizer.trigger();
+		expect(calls).toBe(1);
+		resolveFirst(response(snapshot('first')));
+		await new Promise<void>((resolve) => setTimeout(resolve, 0));
+		expect(calls).toBe(2);
+		await Promise.resolve();
+		expect(calls).toBe(2);
 		synchronizer.dispose();
 	});
 
