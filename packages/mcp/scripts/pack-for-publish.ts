@@ -3,6 +3,12 @@ import { existsSync, statSync } from 'node:fs';
 import { cp, mkdir, rm } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 
+import {
+  resolvePackProvenance,
+  withReleaseProvenance,
+  type ReleaseProvenance,
+} from '../../components/scripts/lib/release-provenance.ts';
+
 import { stripDanglingSourceMapUrlComments } from './lib/dangling-source-map-comments.ts';
 
 type ConditionalExport = {
@@ -16,6 +22,7 @@ type ConditionalExport = {
 export type PackageManifest = {
   name: string;
   version: string;
+  gitHead?: string;
   bin?: Record<string, string>;
   files?: string[];
   exports: Record<string, string | ConditionalExport>;
@@ -134,7 +141,10 @@ async function readCinderVersion(): Promise<string> {
   return parsed.version;
 }
 
-export async function buildPublishedManifest(source: PackageManifest): Promise<PackageManifest> {
+export async function buildPublishedManifest(
+  source: PackageManifest,
+  provenance?: ReleaseProvenance,
+): Promise<PackageManifest> {
   const cinderVersion = await readCinderVersion();
   const published: PackageManifest = {
     ...source,
@@ -154,7 +164,7 @@ export async function buildPublishedManifest(source: PackageManifest): Promise<P
   const serialized = JSON.stringify(published);
   if (serialized.includes('workspace:')) throw new Error('published manifest contains workspace:');
   if (serialized.includes('./src/')) throw new Error('published exports contain source paths');
-  return published;
+  return withReleaseProvenance(published, provenance ?? {});
 }
 
 async function copyIntoStaging(relativePath: string): Promise<void> {
@@ -244,7 +254,7 @@ export async function packForPublish(): Promise<PackForPublishResult> {
     throw new Error('dist is missing; run `bun run build` before `bun run pack:publish`');
   }
 
-  const published = await buildPublishedManifest(source);
+  const published = await buildPublishedManifest(source, resolvePackProvenance(PACKAGE_ROOT));
   await stageFiles(published);
   await Bun.write(join(STAGING_ROOT, 'package.json'), `${JSON.stringify(published, null, 2)}\n`);
   assertStagedExports(published);

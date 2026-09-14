@@ -106,6 +106,7 @@ describe('publish-release existing-version handling', () => {
         artifactExists: () => true,
         validateConsumerArtifact,
         spawnPublish,
+        validateReleaseProvenance: () => {},
         writeOutput: (message) => {
           output.push(message);
         },
@@ -137,6 +138,7 @@ describe('publish-release existing-version handling', () => {
         artifactExists: () => artifactReady,
         validateConsumerArtifact,
         spawnPublish,
+        validateReleaseProvenance: () => {},
         writeOutput: (message) => {
           output.push(message);
         },
@@ -169,6 +171,7 @@ describe('publish-release existing-version handling', () => {
           publishedArguments.push(arguments_);
           return { exitCode: 0 };
         },
+        validateReleaseProvenance: () => {},
         writeOutput: () => {},
       },
     });
@@ -176,5 +179,60 @@ describe('publish-release existing-version handling', () => {
     expect(publishedArguments).toEqual([
       ['publish', '/tmp/cinder-package/lostgradient-cinder-0.15.0.tgz'],
     ]);
+  });
+
+  test('runs provenance validation even when consumer validation is skipped', async () => {
+    const spawnPublish = mock((_publishArguments: string[]) => ({ exitCode: 0 }));
+    await expect(
+      runPublishRelease({
+        dryRun: false,
+        skipValidation: true,
+        packageRootPath: '/tmp/cinder-package',
+        dependencies: {
+          readManifest: async () => ({ name: '@lostgradient/cinder', version: '0.15.0' }),
+          versionExists: async () => false,
+          artifactExists: () => true,
+          validateConsumerArtifact: async () => {},
+          validateReleaseProvenance: () => {
+            throw new Error('release provenance unavailable');
+          },
+          spawnPublish,
+          writeOutput: () => {},
+        },
+      }),
+    ).rejects.toThrow('release provenance unavailable');
+    expect(spawnPublish).not.toHaveBeenCalled();
+  });
+
+  test('blocks every public package identity before npm when provenance fails', async () => {
+    const identities = [
+      ['@lostgradient/cinder', '0.15.0'],
+      ['@lostgradient/chat', '0.15.0'],
+      ['@lostgradient/editor', '0.15.0'],
+      ['@lostgradient/markdown', '0.15.0'],
+      ['@lostgradient/cinder-mcp', '0.15.0'],
+    ] as const;
+    for (const [name, version] of identities) {
+      const spawnPublish = mock((_publishArguments: string[]) => ({ exitCode: 0 }));
+      await expect(
+        runPublishRelease({
+          dryRun: false,
+          skipValidation: true,
+          packageRootPath: '/tmp/cinder-package',
+          dependencies: {
+            readManifest: async () => ({ name, version }),
+            versionExists: async () => false,
+            artifactExists: () => true,
+            validateConsumerArtifact: async () => {},
+            validateReleaseProvenance: () => {
+              throw new Error('release provenance unavailable');
+            },
+            spawnPublish,
+            writeOutput: () => {},
+          },
+        }),
+      ).rejects.toThrow('release provenance unavailable');
+      expect(spawnPublish).not.toHaveBeenCalled();
+    }
   });
 });
